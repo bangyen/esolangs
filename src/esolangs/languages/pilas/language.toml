@@ -8,22 +8,22 @@ admitted = 2026-10-27T10:54:26+00:00
 [proof_status]
 labels = ["tree"]
 qualification = "—"
-scaling = "linear: at most 38T characters: one 27-command node per branch"
-execution = "poly n: worst 46n - 17 commands"
+scaling = "linear: at most 38T characters: before zero-add cancellation"
+execution = "poly n: worst 46n - 21 commands past n = 1: 29 at n=1"
 workspace = "poly n: at most 3n + 24 bits"
 
 [catalogue]
 sharing_exempt = "no names or jumps across lines: code runs once per place it is written"
 
 [generator_sizes]
-"00000001" = { commands = 97, commands_by_row = { "0" = 79, "1" = 79, "2" = 79, "3" = 79, "4" = 117, "5" = 117, "6" = 97, "7" = 97 }, source_units = 92 }
-"00001100" = { commands = 83, commands_by_row = { "0" = 79, "1" = 79, "2" = 79, "3" = 79, "4" = 83, "5" = 83, "6" = 83, "7" = 83 }, source_units = 68 }
-"00110110" = { commands = 121, commands_by_row = { "0" = 59, "1" = 59, "2" = 59, "3" = 59, "4" = 97, "5" = 97, "6" = 121, "7" = 121 }, source_units = 84 }
-"0110" = { commands = 75, commands_by_row = { "0" = 51, "1" = 51, "2" = 75, "3" = 75 }, source_units = 50 }
-"01101001" = { commands = 97, commands_by_row = { "0" = 97, "1" = 97, "2" = 121, "3" = 121, "4" = 121, "5" = 121, "6" = 97, "7" = 97 }, source_units = 122 }
-"0110100110010110" = { commands = 167, commands_by_row = { "0" = 143, "1" = 143, "2" = 167, "3" = 167, "4" = 167, "5" = 167, "6" = 143, "7" = 143, "8" = 167, "9" = 167, "10" = 143, "11" = 143, "12" = 143, "13" = 143, "14" = 167, "15" = 167 }, source_units = 266 }
-"1101001101101101" = { commands = 143, commands_by_row = { "0" = 167, "1" = 167, "2" = 143, "3" = 143, "4" = 105, "5" = 105, "6" = 105, "7" = 105, "8" = 143, "9" = 143, "10" = 167, "11" = 167, "12" = 167, "13" = 167, "14" = 143, "15" = 143 }, source_units = 228 }
-"11111110" = { commands = 121, commands_by_row = { "0" = 83, "1" = 83, "2" = 83, "3" = 83, "4" = 121, "5" = 121, "6" = 121, "7" = 121 }, source_units = 108 }
+"00000001" = { commands = 93, commands_by_row = { "0" = 75, "1" = 75, "2" = 75, "3" = 75, "4" = 113, "5" = 113, "6" = 93, "7" = 93 }, source_units = 86 }
+"00001100" = { commands = 79, commands_by_row = { "0" = 75, "1" = 75, "2" = 75, "3" = 75, "4" = 79, "5" = 79, "6" = 79, "7" = 79 }, source_units = 64 }
+"00110110" = { commands = 117, commands_by_row = { "0" = 55, "1" = 55, "2" = 55, "3" = 55, "4" = 93, "5" = 93, "6" = 117, "7" = 117 }, source_units = 78 }
+"0110" = { commands = 71, commands_by_row = { "0" = 47, "1" = 47, "2" = 71, "3" = 71 }, source_units = 46 }
+"01101001" = { commands = 93, commands_by_row = { "0" = 93, "1" = 93, "2" = 117, "3" = 117, "4" = 117, "5" = 117, "6" = 93, "7" = 93 }, source_units = 114 }
+"0110100110010110" = { commands = 163, commands_by_row = { "0" = 139, "1" = 139, "2" = 163, "3" = 163, "4" = 163, "5" = 163, "6" = 139, "7" = 139, "8" = 163, "9" = 163, "10" = 139, "11" = 139, "12" = 139, "13" = 139, "14" = 163, "15" = 163 }, source_units = 250 }
+"1101001101101101" = { commands = 139, commands_by_row = { "0" = 163, "1" = 163, "2" = 139, "3" = 139, "4" = 101, "5" = 101, "6" = 101, "7" = 101, "8" = 139, "9" = 139, "10" = 163, "11" = 163, "12" = 163, "13" = 163, "14" = 139, "15" = 139 }, source_units = 214 }
+"11111110" = { commands = 117, commands_by_row = { "0" = 79, "1" = 79, "2" = 79, "3" = 79, "4" = 117, "5" = 117, "6" = 117, "7" = 117 }, source_units = 102 }
 
 [ablations]
 audited = "2026-10-29"
@@ -41,6 +41,7 @@ tables = 25
 verdict = "kept: a span whose halves are opposite constants prints its first input's byte (,.) or 97 minus it, then reads the rest away, not a 27-command node and its leaves. Against a build with the same ,:- read-and-drop spelling: random n=8 38.5% (n=7 38.6%); n=8 parity 51.5%, majority 31.0%, threshold-3 27.0%, and 10.6%, or 10.2%. Every row run: n<=3 exhaustive, random to n=8, named, quarter-block tables; a wrong table fails"
 
 [audits]
+trick_prototype = 2026-11-02
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 blind_reimplementation = 2026-10-27
@@ -51,3 +52,18 @@ saving = 36.2
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: root-only fixed output with a closed byte-retention budget. ASCII 0/1 costs six bits and is nonzero, so comma/empty braces discard a byte without leaving a flag; the root needs no zero residue for a caller. Keep k=min(n,max(0,floor((3n+10-bl(3n+10)-bl(n))/6))) initial bytes and discard the rest, then print. L=3n+13-2k+2b chars; E=4n-2k+15+4b steps. W<=6k+14+bl(3n+10)+bl(n)<=3n+24: retained bytes, ten literal-stack bits, one idle-stack bit, two bits for its pointer, turn, and code/input cursors. The published cap is unchanged. Retaining every byte is shorter but n=8 reaches 71 bits against 48 allowed; the budget keeps four and reaches 47. n=7 zero/one 42/44 -> 28/30 chars (32.6% combined); n=8 46/48 -> 29/31 (36.2%), 81/85 -> 39/43 steps, workspace 33 -> 47 bits within 48; n=12 62/64 -> 37/39 chars. The root keeps its unused bytes; all nested leaves retain their old zero-residue interface. n=3 corpus 25650 -> 25634 chars. Both evaluation arities exceed either numerical size bar. Extra native checks cover pointer boundaries at 24 arities through n=512 without truth-table allocation, including exact steps and preserved following input. Each language passed 5656 paired old/new row executions; all 270 nonconstant defaults through n=3 stay byte-identical. Both constants n=1..12 execute default, width=1 and balanced. Separate 1120-run native probes per language cover every row through n=8. All 24 balanced scores per language match or improve; all 24 benchmark size/command pins across the batch remain unchanged. Owned checks enforce all reads before output, no EOF probe and a preserved following record. No new collected cases."
+
+[ablations.trick_prototype_20261102_zero_plus]
+arity = 8
+saving = 5.18
+verdict = "kept as minimal spelling: a generated zero residue immediately added to the existing flag is the identity x0+ = x. A linear output stack cancels adjacent 0+ on line one only, including newly adjacent pairs; line two remains0{0}. Digits are individual pushes, not decimal literals. No body is duplicated, reordered or replaced by an old-candidate race. Source upper bound remains valid. Runtime tightens from46n-17 to46n-21 for n>=2, still29 at n=1: every nonliteral descent cancels at least one leaf zero plus its parent add, removing four interleaved commands; root literals/constants are cheaper. Both parities reach the new bound at each n=2..8; all small-table maxima are29,71,117 at n=1,2,3. Each cancellation removes two line-one commands and their idle turns; the unchanged workspace proof already budgets every idle-stack/pointer phase. 164728 paired old/live executions cover every table/row through3,20 seeded plus constants/parities/thresholds per4..9,200 seeded plus7 named at7/8 (every row at both verdict arities). All outputs correct, every print after exactly n reads, no EOF probes, following7 preserved. All-small WrittenState samples stay within3n+24. All source lengths nonincreasing. n3 source25634->24034,steps195808->187744. Including7 named controls, n7 chars393818->373358 (5.1953%),n8 784420->743858 (5.1710%); this is the explicit minimal-spelling exemption, not a percentage exception. Twenty-table generation times n7/8/9 grow1.65/3.05/5.93ms ->3.21/6.30/12.57ms; no speed claim. Native wrong-table control fires."
+
+[ablations.trick_prototype_20261102_carried_zero_byte]
+arity = 8
+saving = 25.78
+verdict = "rejected for the unchanged workspace invariant, despite correct sampled outputs and25.85%/25.78% source savings at7/8 on20 seeded Random(1000*n+k).choices tables. 2760 native executions:331 exceed3n+24 and14 tables grow. Smallest bound witness: table10,row0 consumes its one input and prints1, but WrittenState reaches29 bits against27 allowed. No old/new length race or loosened bound admitted. Root constants retain their existing budgeted construction."
+
+[ablations.trick_prototype_20261102_unread_tail]
+arity = 8
+saving = 5.52
+verdict = "rejected for input consumption. 2760 native executions compute the right bit, but1338 print before all row inputs are consumed. Table0001,row00 prints0 after only one of two inputs; baseline consumes both and preserves the following7. Twenty-table n7/8 source saves5.61%/5.52%, also below the noncanonical percentage gate. Equal-halves reads and existing root constants are retained in the prototype; neither masks the leaf failure."

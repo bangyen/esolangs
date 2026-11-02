@@ -3,14 +3,14 @@
 Line two idles in ``0{0}``, a loop that never exits, so only line one's
 pointer can end the run.  Each node reads a byte, subtracts 48 to get the
 bit ``b`` and runs ``:{Z+2+1}1-:{O+1+1}1-``: the first ``{`` enters only
-on ``b = 0`` and leaves a 2 behind, the second only on the one arm.  Every
-nested subtree pushes exactly one 0, so ``+`` folds it into the flag below and
+on ``b = 0`` and leaves a 2 behind, the second only on the one arm. Before
+shortening, each nested subtree pushes one 0; ``+`` folds it into the flag and
 each node, like each leaf, leaves one 0 for its parent.  A span whose
 halves are opposite constants reads the rest, then prints its first input's
-byte, or 97 minus it.
+byte, or 97 minus it. Adjacent zero-push/add identities are omitted.
 
 Size:
-    O(T) in the tree's nodes; n=4 parity: 266 chars.
+    O(T) in the tree's nodes; n=4 parity: 250 chars.
     Root constants retain k bytes: 3n+13-2k+2b chars, 4n-2k+15+4b steps;
     6k+14+bl(3n+10)+bl(n) written bits at most, within 3n+24.
 
@@ -68,7 +68,15 @@ def pilas(truth_table: str) -> str:
             return _DROP + zero + "+"
         return _READ + ":{" + zero + "+2+1}1-:{" + one + "+1+1}1-"
 
-    return build(0, 2**n) + "\n0{0}"
+    # A child's zero residue followed by + is an identity. Cancel in one
+    # pass; repeated replacement is quadratic on nested 00++ spellings.
+    line: list[str] = []
+    for char in build(0, 2**n):
+        if char == "+" and line and line[-1] == "0":
+            line.pop()
+        else:
+            line.append(char)
+    return "".join(line) + "\n0{0}"
 
 
 LANGUAGE = Language(
