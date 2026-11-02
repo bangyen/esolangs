@@ -4,9 +4,9 @@ admitted = 2026-11-01T17:53:41-05:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "a lexical guard selects the true child; every leaf halts before its sibling, and folded suffixes consume all remaining inputs in order; grouped guards work under both binding readings"
+qualification = "a lexical guard selects the true child; every leaf halts before its sibling, and folded suffixes consume all remaining inputs in order; grouped internal guards and complete parity-leaf enqueue targets work under both binding readings"
 scaling = "linear: at most 10T - 6 characters"
-execution = "poly n: at most 3n + 3 commands: read, dequeue, guard per input and enqueue, write, halt"
+execution = "poly n: at most 3n + 4 commands: one extra guard for compact parity leaves"
 workspace = "poly n: at most 2n + bl(L) + 32 bits: queued trits, flag, cursor, lap and input progress"
 
 [catalogue]
@@ -46,13 +46,14 @@ verdict = "All three builds execute every row of all 276 tables at n=1..3 and fi
 "00000001" = { commands = 12, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 11, "5" = 11, "6" = 12, "7" = 12 }, source_units = 40 }
 "00001100" = { commands = 11, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 11, "5" = 11, "6" = 11, "7" = 11 }, source_units = 32 }
 "00110110" = { commands = 12, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 12, "5" = 12, "6" = 12, "7" = 12 }, source_units = 58 }
-"0110" = { commands = 9, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9 }, source_units = 34 }
-"01101001" = { commands = 12, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 12, "5" = 12, "6" = 12, "7" = 12 }, source_units = 74 }
-"0110100110010110" = { commands = 15, commands_by_row = { "0" = 15, "1" = 15, "2" = 15, "3" = 15, "4" = 15, "5" = 15, "6" = 15, "7" = 15, "8" = 15, "9" = 15, "10" = 15, "11" = 15, "12" = 15, "13" = 15, "14" = 15, "15" = 15 }, source_units = 154 }
+"0110" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10 }, source_units = 30 }
+"01101001" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13 }, source_units = 66 }
+"0110100110010110" = { commands = 16, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 16, "5" = 16, "6" = 16, "7" = 16, "8" = 16, "9" = 16, "10" = 16, "11" = 16, "12" = 16, "13" = 16, "14" = 16, "15" = 16 }, source_units = 138 }
 "1101001101101101" = { commands = 15, commands_by_row = { "0" = 14, "1" = 14, "2" = 15, "3" = 15, "4" = 14, "5" = 14, "6" = 14, "7" = 14, "8" = 15, "9" = 15, "10" = 15, "11" = 15, "12" = 14, "13" = 14, "14" = 15, "15" = 15 }, source_units = 122 }
 "11111110" = { commands = 12, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 11, "5" = 11, "6" = 12, "7" = 12 }, source_units = 40 }
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-11-01
 
 [interpreter_ablations.blind_reimplementation]
@@ -81,3 +82,23 @@ saving = 40.0
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "kept: canonical constant folding, exempt. Enqueue the answer before reading; every r appends behind it and WH prints the untouched front only after all inputs. Nested leaves keep their drain skeleton. Chars n+4, commands n+3: n=7 18->11 (38.9%), n=8 20->12 (40.0%), n=12 28->16. n=8 commands 19->11; written workspace 13/14->19/20 bits because the binary input trits remain queued, within the unchanged 2n+bl(L)+32 cap. Both guard readings execute both answers and all layouts; raw queue inspection verifies answer then inputs, exact reads and following record. n=3 corpus chars 12632->12626 and executed aggregate commands 22912->22864. 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Extend existing collected cases only."
+
+[ablations.trick_prototype_20261102_parity_leaf_pair]
+arity = 8
+saving = 10.0234925607
+verdict = "kept only full-input parity and its complement. A final pair uses r->1+c>0+dWH: both guards own one complete + operand, so opcode and recursive bindings agree. Each of T/2 pairs saves2 chars; actual source10T-6 ->9T-6. Thus saving T/(10T-6) is strictly above10% for EVERY positive arity, with no cap: sustained by an exact all-arity floor, not an asymptotic-limit exemption. n7 1274->1146 (10.0471%), n8 2554->2298 (10.0235%); the tiny decrease is fixed overhead, never a loss of the10% saving. Both members of the entire named class execute every verdict row, so this is not a random near-bar estimate needing invented duplicate tables. Emitted identities and boundary rows agree through12. 20128 paired old/live native runs cover all tables/rows through3,16 seeded plus both parities per4..8 (all rows through6, all parity rows through8);350 non-parity controls byte-identical,16 changed tables. Every print follows n reads and preserves a sentinel;16 whitespace-framed runs also pass. The unchanged frozen model SHA6ee4fcebb061e7d40a8caf4470eef3a9e7c86daf0406dc6b9709235766ec71d3 agrees in output, queue, flag and steps;1092 recursive guard chains pass, and the known opcode/recursive divergence fires as a positive control. Runtime adds one command per parity row: exact3n+4, update the global cap; workspace expression unchanged. n3 chars12626->12610,commands22864->22880. Constants, ignored-input folds and all other functions remain unchanged; no generic fallback race or interpreter change."
+
+[ablations.trick_prototype_20261102_ungrouped_pair_generic]
+arity = 8
+saving = 8.5128480207
+verdict = "rejected generic extension. Complete opposite-constant pairs above the final level must still read their remaining inputs: enqueue the chosen answer, append those inputs behind it, then WH. The undrained sketch on table0011,input00 reads only1 of2 inputs. Corrected programs execute all small rows and sampled/named larger rows under both bindings, agree with the frozen model and preserve the sentinel, but200 seeded tables Random(1000*n+k),choice01 give n7 chars175838->160994 (8.44%),n8 350482->320646 (8.51%), below10. Every threshold at7/8 executes all rows; majority778->738 /1422->1352,AND/OR116->114 /140->138, all below the bar. Do not extend the named parity admission to scattered local pairs. Reject on measured saving, not a blanket claim that ungrouped guards are unsafe."
+
+[ablations.trick_prototype_20261102_bulk_read_prefix]
+arity = 8
+saving = 13.2297712530
+verdict = "rejected for stream correctness even though source saves13.01%/13.23% on20 seeded tables. Front-load R and replace each r- by-; adapt root constants to+answerRWH. Canonical EOF-only Boolean runs compute their bits, but R consumes following records. Under BOTH bindings, identity table01 on input02 prints# instead of space and consumes2 trits for a one-input row; unchanged baseline prints space and leaves2 unread. A root constant still prints its answer but also consumes the following2. Folded table0011,input002 likewise prints# instead of space. No EOF/bulk-read exception to the all-inputs-and-only-this-record convention."
+
+[ablations.trick_prototype_20261102_drop_fold_drain]
+arity = 8
+saving = 7.1355411403
+verdict = "rejected: deleting remaining r- pairs can keep the Boolean result while violating consumption. Under both bindings, table0011,input002 prints space after consuming only the first0; baseline consumes both row inputs and leaves2. Positive baseline controls check the read count and following record, not only output. Default root constants are intentionally left on their existing read-first fast path. Twenty-table source17788->16594 /35148->32640 (6.71%/7.14%) also misses the size bar. No weakening of ordered/all-input reads."

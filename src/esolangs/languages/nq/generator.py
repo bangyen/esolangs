@@ -6,15 +6,16 @@ returns into its sibling. Constant and equal-child folds retain every input
 read. Root constants enqueue the answer before the reads append behind it.
 Chunk emission and subtree ranks take O(T) time and space, with
 expected constant-time rank lookups on O(log T)-bit words. An unfolded
-internal node costs six characters and a leaf four. Grouped guards make
-the same program valid under both guard-binding readings.
+internal node costs six characters and a leaf four. Parity pairs share WH
+using guards over complete enqueue operands; other guards stay grouped.
+Both guard-binding readings agree.
 
 Size:
-    At most 10T-6 characters; n=10 random 1847: 7,154 chars.
+    At most 10T-6 characters; parity 9T-6. n=10 random 1847: 7,154 chars.
     Root constants: n + 4 chars and n + 3 commands.
 """
 
-from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.helpers import _parity_bias, _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.nq.interpreter import GUARD_BINDINGS, guard_dialect
 from esolangs.registry._contracts import BooleanContract
@@ -28,6 +29,7 @@ def nq(truth_table: str, *, guard_binding: str = "opcode") -> str:
     if truth_table.count(truth_table[0]) == len(truth_table):
         # Keep the answer at the front while reads append behind it.
         return ("+0" if truth_table[0] == "0" else "+2") + "r" * n + "WH"
+    parity = _parity_bias(truth_table) is not None
     ids = subtree_ids(truth_table)
     chunks: list[str] = []
     stack: list[tuple[int, int] | str] = [(0, 0)]
@@ -43,6 +45,13 @@ def nq(truth_table: str, *, guard_binding: str = "opcode") -> str:
             chunks.extend(("r-" * (n - depth), "+2WH" if node else "+0WH"))
             continue
         chunks.append("r-")
+        # Complete + operands bind identically in both dialects. The two
+        # parity leaf guards share WH, saving exactly T characters overall.
+        # [ablations.trick_prototype_20261102_parity_leaf_pair]
+        if parity and depth + 1 == n:
+            low, high = ids[n][2 * k], ids[n][2 * k + 1]
+            chunks.append(f">1+{2 * high}>0+{2 * low}WH")
+            continue
         # Keep the read but drop equal-child tests: [ablations.ignored_input].
         if ids[depth + 1][2 * k] == ids[depth + 1][2 * k + 1]:
             stack.append((depth + 1, 2 * k))

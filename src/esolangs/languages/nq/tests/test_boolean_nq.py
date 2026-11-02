@@ -47,7 +47,7 @@ def test_language_contract() -> None:
                     vm.step()
                     steps += 1
                 assert vm.halted
-                assert steps <= 3 * n + 3
+                assert steps <= 3 * n + 4
                 assert language.read_answer(vm.output) == answer
                 assert vm.snapshot()[-1] == n
     for binding in ("opcode", "recursive"):
@@ -62,7 +62,7 @@ def test_language_contract() -> None:
             while not vm.halted:
                 vm.step()
                 steps += 1
-            assert steps == 3 * n + 3
+            assert steps == 3 * n + (4 if n == 1 else 3)
             assert vm.output == "#"
 
 
