@@ -8,8 +8,9 @@ one right heading; input setters remain off those paths, as they do for
 ignored cascade inputs.
 
 Size:
-    O(T) rows of one (``0``) or two (``1``) lines; n=10 and: 3,447 chars (was
-    5,500 at three lines a row). Constant-one setters pack outside the ring
+    O(T) rows of one (``0``) or two (``1``) lines; n=10 and: 4,893 chars,
+    4,988 cells (was 6,558). Unreachable zero-row ring halves are omitted
+    ([ablations.bare_zero_runs_trick]). Constant-one setters pack outside the ring
     in rectangles of at least n + 8 cells; n=8 uses 16 cells.
     Narrow paths drop ignored inputs for area
     ([ablations.essential_projection]).
@@ -22,7 +23,7 @@ Size:
 Decisions:
     The decision tree (``n <= 4``) was never smaller at n=4 (0.0% by area, 200
     random tables) and kept ignored inputs.
-    Input polarity stays lopsided (n=8 area: and 1,878 vs nor 348, nand 2,178
+    Input polarity stays lopsided (n=8 area: and 1,650 vs nor 348, nand 2,178
     vs or 354): the dropped tail is always the high-index end, and a leading
     run would need the count ``T - 1 - r``, but a stage cell pushes a bit
     (``~``) or nothing (``.``), never ``1 - bit``.  The answer is halt or
@@ -179,9 +180,9 @@ def _cascade(truth_table: str) -> list[str]:
 #: rows r, r+1 and columns 1..5, so strips stand side by side.
 _LEAF = {"0": " +++~+", "1": " + +~+"}
 
-#: The line below a strip's last entry: the ring's lower half, and for a ``0``
-#: the ``+`` its halt laps.  Columns 0 and 1 stay free for a fold's corridor.
-_LEAF_END = {"0": "  ++~+", "1": "   +~+"}
+#: The line below a strip's last entry: the ring's lower half, or only the
+#: two ``+`` a zero exit needs.  Columns 0 and 1 stay free for a fold's corridor.
+_LEAF_END = {"0": "  ++", "1": "   +~+"}
 
 #: Lines, entry column, exit column; the IP enters and leaves heading down.
 type _Block = tuple[list[str], int, int]
@@ -226,7 +227,12 @@ def _folded(table: str, height: int) -> str | None:
         reads[j] = rank
     leaves = read_at(table, [reads[j] for j in range(n) if weights[j]], n)
     tail = len(leaves.rstrip(leaves[-1]))
-    lines = [_LEAF[bit] for bit in leaves[:tail]]
+    # Only a preceding one uses the lower ring at columns 4/5.  The selector
+    # stays in column 1, zero halts in columns 2/3, and corridors stay outside.
+    lines = [
+        " +++" if bit == "0" and i and leaves[i - 1] == "0" else _LEAF[bit]
+        for i, bit in enumerate(leaves[:tail])
+    ]
     blocks: list[_Block] = [([line], 1, 1) for line in lines]
     if leaves[-1] == "1":
         blocks.append((_DRAINED_RING, 1, 1))
@@ -266,8 +272,8 @@ def _render_strips(strips: list[list[_Block]]) -> str:
                 row += 1
         if i < last:
             lines, _entry, exit_col = strip[-1]
-            if lines[-1] in _LEAF.values():
-                below = _LEAF_END["0" if lines[-1] == _LEAF["0"] else "1"]
+            if lines[-1] in (*_LEAF.values(), " +++"):
+                below = _LEAF_END["0" if lines[-1] in (_LEAF["0"], " +++") else "1"]
                 grid[row][left : left + len(below)] = below
             grid[row][x] = grid[row][left + exit_col] = "*"
         x += widths[i]

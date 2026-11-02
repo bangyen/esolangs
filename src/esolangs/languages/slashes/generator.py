@@ -16,9 +16,9 @@ The table is a literal with no subtrees to fold or share.  Constants parse
 the input letters as a rule pattern that cannot match their literal answer.
 
 Size:
-    O(T) chars, ~22% fewer on random tables than T full sweeps
-    ([ablations.sweep_count]); worst case unchanged; n=10 random
-    1847: 15,809 chars, n=12 random 1847: 63,805 chars.
+    O(T) chars: run sweeps expand from one fixed macro
+    ([ablations.sweep_macro_runs_20261102]); n=10 random
+    1847: 2,404 chars, n=12 random 1847: 9,297 chars.
     Constants: n + 4 chars and three commands.
 
 Decisions:
@@ -37,6 +37,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, _tokens, balance_score
+from esolangs.languages.slashes.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape
 
@@ -47,6 +48,8 @@ _UNARY = "/b/a*//*a/a**//a//"
 #: unescaped, they become ``/>/>/`` and every non-constant row through n=2
 #: hangs (60 of 72).
 _SWEEP = "/*\\>qA/>//*\\>qB/>/"
+#: Quoting preserves the backslash that shields later sweep patterns.
+_SWEEP_DEF = "/S/" + _SWEEP.replace("\\", "\\\\").replace("/", "\\/") + "/"
 #: Mark the entry at the cursor, delete the others, print the mark's digit.
 _DECODE = "/>qA/C//>qB/D//qA///qB///C/0//D/1/"
 #: Deletes an ignored input's ``X``-marked bit before the unary sweep reads it.
@@ -58,14 +61,18 @@ _CONSTANT = "/a///b//"
 def _sweeps(bits: str) -> int:
     """Sweeps that delete the first ``len(bits) - 1`` entries.
 
-    A sweep deletes one entry, or two when a ``0`` is followed by a ``1``
-    (``qA`` then ``qB``); fewer stars than entries leave later sweeps idle.
+    Each rule repeats, so a sweep consumes one ``0*1*`` block; only a
+    ``10`` transition in the required prefix needs another sweep.
     """
-    done = sweeps = 0
-    while done < len(bits) - 1:
-        done += 2 if bits[done : done + 2] == "01" else 1
-        sweeps += 1
-    return sweeps
+    return 1 + bits.count("10", 0, len(bits) - 1) if len(bits) > 1 else 0
+
+
+def _sweep_rules(bits: str) -> str:
+    """Spell repeated sweeps directly until their fixed macro is shorter."""
+    count = _sweeps(bits)
+    if len(_SWEEP_DEF) + count < len(_SWEEP) * count:
+        return _SWEEP_DEF + "S" * count
+    return _SWEEP * count
 
 
 def slashes(truth_table: str) -> str:
@@ -86,7 +93,7 @@ def slashes(truth_table: str) -> str:
         TEMPLATE_CHAR if weight else "X" + TEMPLATE_CHAR for weight in weights
     )
     prefix = _IGNORE if 0 in weights else ""
-    return prefix + _UNARY + _SWEEP * _sweeps(bits) + _DECODE + slots + ">" + table
+    return prefix + _UNARY + _sweep_rules(bits) + _DECODE + slots + ">" + table
 
 
 def _constant_pattern(n: int, bit: str) -> str:
@@ -139,7 +146,7 @@ def _is_unfilled_template(code: str) -> bool:
     if read < 0 or len(table) != 2 << read:
         return False
     bits = table.replace("qA", "0").replace("qB", "1")
-    return prefix == head + _UNARY + _SWEEP * _sweeps(bits)
+    return prefix == head + _UNARY + _sweep_rules(bits)
 
 
 LANGUAGE = Language(
@@ -158,5 +165,6 @@ LANGUAGE = Language(
     ),
     no_wrap="newlines are literal output and substitution data",
     wrap_balance=_balance,
+    proof_workspace=(workspace, True, (1, 2, 3, 5)),
     example=Example(pair=("a", "b"), unfilled=_is_unfilled_template),
 )

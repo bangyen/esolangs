@@ -20,6 +20,8 @@ mostly ones costs what its complement does.  The shortest of the four ships.
 The east corridor is built westward from its far end, so the ant ends the
 build at the origin and the program needs one ``E`` run (to the far end, for
 later passes) instead of two ``W`` runs.
+All-but-one thresholds build the mirror westward from its wall too
+([ablations.eastward_flipped_build]).
 
 Size:
     O(T) characters, one corridor cell per row; n=10 parity: 6,684 chars,
@@ -60,13 +62,25 @@ def _program(truth_table: str) -> str:
         return "P" + (TEMPLATE_CHAR + "S") * n + ("p" if truth_table[0] == "0" else "")
     # An ignored input walks no ``E``: the corridor is the essential inputs'.
     weights, table = input_weights(truth_table, n)
+    mirror = _westward_flipped if _near_unanimity(truth_table, n) else _flipped
     return min(
         (
             f(table, weights, invert=inv)
-            for f in (_east, _flipped)
+            for f in (_east, mirror)
             for inv in (False, True)
         ),
         key=len,
+    )
+
+
+def _near_unanimity(table: str, n: int) -> bool:
+    """Whether all but at most one input must be one, or its negation."""
+    bit = "1" if table[0] == "0" else "0"
+    return (
+        n >= 2
+        and table.count(bit) == n + 1
+        and table[-1] == bit
+        and all(table[len(table) - 1 - (1 << i)] == bit for i in range(n))
     )
 
 
@@ -112,6 +126,23 @@ def _flipped(table: str, weights: list[int], *, invert: bool) -> str:
         _answers(out, bit, invert=invert)
     # Wall cell, then its lane stopper; ``S`` returns on pass 1 only.
     out.append("ePEnPS" + "W" * len(cells))
+    for weight in weights:
+        out.append(TEMPLATE_CHAR)
+        out.append("e" * weight + "SN")
+    out.append("s" + "nN" * invert)
+    return "".join(out)
+
+
+def _westward_flipped(table: str, weights: list[int], *, invert: bool) -> str:
+    """Build from the wall westward, ending at the selector's origin."""
+    run = len(table) - len(table.lstrip(table[0]))
+    cells = table[run - 1 :]
+    # Each later pass reaches the wall, then takes exactly len(cells) west
+    # steps. PnPS plants the wall and lane stopper only on the first pass.
+    out = ["SN"[not invert], "E" * len(cells), "PnPS"]
+    for bit in cells:
+        out.append("wPW")
+        _answers(out, bit, invert=invert)
     for weight in weights:
         out.append(TEMPLATE_CHAR)
         out.append("e" * weight + "SN")

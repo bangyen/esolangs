@@ -17,7 +17,7 @@ then emit ``DCC`` or ``DDC``.
 
 Size:
     Theta(T) text worst case: 18 chars a pair and 73 a reader stage;
-    n=4 parity: 594 chars, n=10 parity: 14,640.
+    n=8 majority: 1,999 chars, n=10 parity: 14,640.
     Constants use 4n+3 characters and rewrites; n=8 zero: 35 chars.
 
 Decisions:
@@ -25,7 +25,7 @@ Decisions:
     fold, n=10 parity is 14,640 chars against 15,696.
 """
 
-from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.hot.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
@@ -40,22 +40,42 @@ _ANSWER = (
 )
 
 
-def _tree(table: str) -> str:
-    """Return the pair tree whose applications to the bits pick the leaf."""
-    if len(table) == 1:
-        return table
-    half = len(table) // 2
-    lo, hi = table[:half], table[half:]
-    if lo == hi:
-        return f"K{_grouped(_tree(lo))}"
-    if (hi, lo) == ("1", "0"):
-        return "0K"
-    return f"S(S(0K)(K{_grouped(_tree(hi))}))(K{_grouped(_tree(lo))})"
+def _tree(table: str, *, majority: bool = False) -> str:
+    """Return the pair tree, emitting each character once from canonical IDs."""
+    ids = subtree_ids(table)
+    n = len(ids) - 1
+    pieces: list[str] = []
 
+    def emit(depth: int, slot: int, *, grouped: bool = False) -> None:
+        if depth == n:
+            pieces.append(table[slot])
+            return
+        if grouped:
+            pieces.append("(")
+        lo, hi = 2 * slot, 2 * slot + 1
+        if (
+            majority
+            and depth == n - 2
+            and table[4 * slot : 4 * slot + 4] in ("0001", "0111")
+        ):
+            # AND is lambda xy.xyx; OR is lambda xy.xxy, not searched terms.
+            pieces.append("SSK" if table[4 * slot + 1] == "0" else "S(0K)(0K)")
+        elif ids[depth + 1][lo] == ids[depth + 1][hi]:
+            pieces.append("K")
+            emit(depth + 1, lo, grouped=True)
+        elif depth == n - 1 and table[lo : hi + 1] == "01":
+            pieces.append("0K")
+        else:
+            pieces.append("S(S(0K)(K")
+            emit(depth + 1, hi, grouped=True)
+            pieces.append("))(K")
+            emit(depth + 1, lo, grouped=True)
+            pieces.append(")")
+        if grouped:
+            pieces.append(")")
 
-def _grouped(term: str) -> str:
-    """Return ``term`` as an argument: a leaf bare, an application grouped."""
-    return term if len(term) == 1 else f"({term})"
+    emit(0, 0)
+    return "".join(pieces)
 
 
 def hot(truth_table: str) -> str:
@@ -67,7 +87,11 @@ def hot(truth_table: str) -> str:
     program = _ANSWER
     for _ in range(n):
         program = _READ.format(program)
-    return f"{program}({_tree(truth_table)})"
+    # Only the named family clears the gate ([ablations.majority_pair_rule]).
+    majority = all(
+        (bit == "1") == (2 * row.bit_count() > n) for row, bit in enumerate(truth_table)
+    )
+    return f"{program}({_tree(truth_table, majority=majority)})"
 
 
 LANGUAGE = Language(

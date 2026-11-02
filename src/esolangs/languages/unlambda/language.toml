@@ -53,6 +53,7 @@ verdict = "kept 2026-10-30 (named-function clause, as Nandypants read_ladder): a
 
 [audits]
 plain_rewrite = 2026-10-29
+trick_prototype = 2026-11-02
 
 [ablations.constant_table_audit_20261101]
 arity = 8
@@ -60,3 +61,24 @@ saving = 39.3
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: root-only constant promise chain. Each @ forces the next delayed read; the last read flag applies the literal printer, and outer success flags finish as identities. Nested leaves retain their old absorbing value. L=4n+2 chars; E=14n+2 machine steps. Written bits are 16n+17+max(16n+3,8n+8+sum(bl(i),i=1..n+1))+bl(n): task peak 16n+8, continuation peak at depth 2 or n+1, character/done/input 9+bl(n). The depth term matters at n=512: 7170 executed steps, 16440 bits, component peaks 8200/8221/8/1/10; a small-arity linear extrapolation would miss 26 bits. That diagnostic raised only the Python snapshot-counter recursion limit, not language semantics. Native formulas also execute at 22 arities through n=128 without truth-table allocation. n=7 50 -> 30 chars; n=8 56 -> 34 (39.3%), 145 -> 114 steps, 494 -> 280 written bits; n=12 80 -> 50 chars. Both evaluation arities exceed the declining gate. n=3 corpus 28115 -> 28091 chars. Owned checks preserve following input, output after every read, and the full continuation-depth bound. Each language passed 5656 paired old/new row executions; 270 nonconstant defaults through n=3 stay byte-identical. Both constants n=1..12 execute default, width=1 and balanced. Separate 1120-run native probes per language include every row through n=8. All 24 balanced scores per language match or improve, with 72 old balanced row executions per language as controls; all 24 benchmark size/command pins across the batch stay unchanged. No new collected cases."
+
+[ablations.tail_pair_table_20261102]
+seed = "Random(1000*n+s).getrandbits(2**n), s=0..199"
+arity = 8
+saving = 0.0
+tables = "200 fixed generic tables each n=7,8; every table/row n<=3, ten sampled tables each n=4..6; all16 two-input blocks"
+verdict = "rejected as supplied: offline shortest-first enumeration and a frozen16-case table violate named-construction policy; no search launched. A bounded compositional Shannon/leaf-pair control preserves constant and agreeing-half folds, invokes the penultimate-tail rule653 times in the native sweep, and produces identical source:367126/741318 chars atn7/8, n3 total28091. Its16 unit expressions execute64 rows; replacing AND by OR causes wrong rows, proving the probe fires. This is no impossibility or optimality claim about other compositional tails. No whole-old-program min or searched constants ship."
+
+[ablations.single_test_split_20261102]
+seed = "same fixed Random(1000*n+s) corpus"
+arity = 8
+saving = -0.84
+tables = "same fixed200 each n=7,8; exhaustive small, sampled4..6, parity/majority/and/or/threshold3 at7/8"
+verdict = "rejected: shortest-template enumeration is inadmissible; no search launched. Literal named sketch S(S I(K dZ))(K dO), substituted only when no share is bound, grows source367126/741318 ->370063/747576 (0.80/0.84%) and is wrong. Two-input AND0001 rows10/11 print nothing and consume1/2 inputs. The v arm absorbs the delayed O rather than selecting it. Across the8904-run small/unit sweep947 rows fail; existing two-test reference and compositional tail controls have zero failures. No universal one-test impossibility is claimed."
+
+[ablations.print_first_leaf_20261102]
+seed = "same fixed Random(1000*n+s) corpus"
+arity = 8
+saving = 11.07
+tables = "same fixed200 each n=7,8; exhaustive small and sampled4..6; five named functions at7/8"
+verdict = "rejected for input/output order: literal @ chains evaluate their printing argument before reading. Two unread inputs cost8 instead20 chars, print0 after0 reads, then consume2; proper delayed leaf prints after2. In full table00000001,row000, literal leaf prints0 after1/3 reads though final consumption is3. Apparent source367126/741318 ->327071/659278 (10.91/11.07%), n3 total24395 instead28091, does not qualify. Native sweep finds1066 early-output rows; judge/named control adds35. Root constants remain unchanged. No production source/proof/pin/anchor/example changes."

@@ -9,8 +9,8 @@ is packed reversed under complemented reads, if shorter ([ablations.negated_read
 
 Size:
     O(T) characters for the literal, O(n) statements;
-    n=8 constant zero: 124 chars; n=10 parity: 1,703 chars,
-    n=16 random 1847: 66,539 chars.
+    n=8 constant zero: 82 chars; n=10 parity: 1,468 chars,
+    n=16 random 1847: 66,190 chars.
 
 Decisions:
     A packed literal has no subtrees to fold or share.  Variables 48 and 49
@@ -68,6 +68,16 @@ def _print(expr: str) -> str:
 
 def qoibl(truth_table: str, width: int | None = None) -> str:
     """Build a Qoibl program; ``truth_table`` has length ``2**n``, MSB first."""
+    program = _source(truth_table)
+    if width is None:
+        # Generated arithmetic uses ry, never yr/rr; adjacent literals are
+        # separated by fixed mnemonics. See [ablations.token_space_elision].
+        return "".join(program.split())
+    return _fit(program, width)
+
+
+def _source(truth_table: str) -> str:
+    """Return spaced statements for layout and literal splitting."""
     n = _validate_truth_table(truth_table)
     # An ignored input is read into ``p`` until the first essential read sets
     # it, then into ``row``, which the packed literal overwrites: it costs no
@@ -79,16 +89,15 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
         # [ablations.constant_table_audit_20261101]: no power or decoder.
         lines = [_assign(_qoibl_enc(0), _INPUT)] * n
         lines.append(_print(_qoibl_enc(_ASCII_ZERO + int(truth_table[0]))))
-        return _fit("\n".join(lines), width)
+        return "\n".join(lines)
     truth_table = projected
-    program = min(
+    return min(
         (
             _program(table, weights, negated=negated)
             for table, negated in ((truth_table, False), (truth_table[::-1], True))
         ),
         key=len,
     )
-    return _fit(program, width)
 
 
 def _program(truth_table: str, weights: list[int], *, negated: bool) -> str:
@@ -102,7 +111,8 @@ def _program(truth_table: str, weights: list[int], *, negated: bool) -> str:
     row = _qoibl_enc(1)
     zero = _qoibl_enc(_ASCII_ZERO)
     two = _qoibl_enc(2)
-    packed = sum(int(bit) << index for index, bit in enumerate(truth_table))
+    # Base-two parsing is linear; summing successively wider shifted ints is not.
+    packed = int(truth_table[::-1], 2)
     # Trailing zeros of the literal are free, trailing ones are not: pack the
     # complement when it is shorter and print '1' minus the bit instead
     # ([ablations.polarity_flip]).
@@ -243,6 +253,9 @@ def balance_qoibl(table: str, default: str) -> str:
     three ``a`` values 0, 3 and 6 stay within a few percent of the best
     width on random tables of 8-2048 rows.
     """
+    # Width requests need token boundaries; estimate from the same spaced
+    # source as before compaction, preserving the existing balanced layouts.
+    default = _source(table)
     literal = max(map(len, default.split()))
     widths = [(2 * len(default) + a * literal) ** 0.5 for a in (0, 3, 6)]
     return min((qoibl(table, round(width)) for width in widths), key=balance_score)

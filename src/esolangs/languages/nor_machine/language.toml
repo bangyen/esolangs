@@ -13,10 +13,10 @@ folds_without_tree = true
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "the table read at its essential inputs is one integer built by Horner's rule; each essential bit, smeared over a half-width mask, keeps V or V >> h by NORs, and the lone final V prints the low bit"
-scaling = "linear: 8T + 8r + O(n^2) characters for r runs of 1s"
-execution = "linear: at most 15T + 12n^2 + 93n - 20 commands past n = 1, each run once"
-workspace = "linear: at most 3T + 4n + bl(L) + 24 bits: V, its copy and three half-width masks"
+qualification = "Horner builds the projected table above packed inputs in one accumulator; four NORs select each cofactor, whole right shifts consume its input, and large levels rebuild -2 only from the sole live accumulator"
+scaling = "linear: 6T + 8r + O(n^2) characters for r runs of 1s"
+execution = "linear: at most 15T + 12n^2 + 93n - 20 commands, each run once"
+workspace = "linear: at most 3T + 4n + bl(L) + 24 bits: three accumulator copies or two selected arms"
 
 [ablations]
 audited = "2026-10-29"
@@ -29,14 +29,14 @@ tables = "20 random and 20 with a random proper subset of inputs essential, n=8 
 verdict = "kept: a table ignoring inputs packs only the essential-input table; 76.7% at n=8 and 88.0% at n=10 on those tables, 0.0% on random ones"
 
 [generator_sizes]
-"00000001" = { commands = 402, commands_by_row = { "0" = 402, "1" = 402, "2" = 402, "3" = 402, "4" = 402, "5" = 402, "6" = 402, "7" = 402 }, source_units = 402 }
-"00001100" = { commands = 293, commands_by_row = { "0" = 293, "1" = 293, "2" = 293, "3" = 293, "4" = 293, "5" = 293, "6" = 293, "7" = 293 }, source_units = 293 }
-"00110110" = { commands = 410, commands_by_row = { "0" = 410, "1" = 410, "2" = 410, "3" = 410, "4" = 410, "5" = 410, "6" = 410, "7" = 410 }, source_units = 410 }
-"0110" = { commands = 239, commands_by_row = { "0" = 239, "1" = 239, "2" = 239, "3" = 239 }, source_units = 239 }
-"01101001" = { commands = 418, commands_by_row = { "0" = 418, "1" = 418, "2" = 418, "3" = 418, "4" = 418, "5" = 418, "6" = 418, "7" = 418 }, source_units = 418 }
-"0110100110010110" = { commands = 653, commands_by_row = { "0" = 653, "1" = 653, "2" = 653, "3" = 653, "4" = 653, "5" = 653, "6" = 653, "7" = 653, "8" = 653, "9" = 653, "10" = 653, "11" = 653, "12" = 653, "13" = 653, "14" = 653, "15" = 653 }, source_units = 653 }
-"1101001101101101" = { commands = 661, commands_by_row = { "0" = 661, "1" = 661, "2" = 661, "3" = 661, "4" = 661, "5" = 661, "6" = 661, "7" = 661, "8" = 661, "9" = 661, "10" = 661, "11" = 661, "12" = 661, "13" = 661, "14" = 661, "15" = 661 }, source_units = 661 }
-"11111110" = { commands = 402, commands_by_row = { "0" = 402, "1" = 402, "2" = 402, "3" = 402, "4" = 402, "5" = 402, "6" = 402, "7" = 402 }, source_units = 402 }
+"00000001" = { commands = 332, commands_by_row = { "0" = 332, "1" = 332, "2" = 332, "3" = 332, "4" = 332, "5" = 332, "6" = 332, "7" = 332 }, source_units = 332 }
+"00001100" = { commands = 247, commands_by_row = { "0" = 247, "1" = 247, "2" = 247, "3" = 247, "4" = 247, "5" = 247, "6" = 247, "7" = 247 }, source_units = 247 }
+"00110110" = { commands = 340, commands_by_row = { "0" = 340, "1" = 340, "2" = 340, "3" = 340, "4" = 340, "5" = 340, "6" = 340, "7" = 340 }, source_units = 340 }
+"0110" = { commands = 203, commands_by_row = { "0" = 203, "1" = 203, "2" = 203, "3" = 203 }, source_units = 203 }
+"01101001" = { commands = 348, commands_by_row = { "0" = 348, "1" = 348, "2" = 348, "3" = 348, "4" = 348, "5" = 348, "6" = 348, "7" = 348 }, source_units = 348 }
+"0110100110010110" = { commands = 545, commands_by_row = { "0" = 545, "1" = 545, "2" = 545, "3" = 545, "4" = 545, "5" = 545, "6" = 545, "7" = 545, "8" = 545, "9" = 545, "10" = 545, "11" = 545, "12" = 545, "13" = 545, "14" = 545, "15" = 545 }, source_units = 545 }
+"1101001101101101" = { commands = 553, commands_by_row = { "0" = 553, "1" = 553, "2" = 553, "3" = 553, "4" = 553, "5" = 553, "6" = 553, "7" = 553, "8" = 553, "9" = 553, "10" = 553, "11" = 553, "12" = 553, "13" = 553, "14" = 553, "15" = 553 }, source_units = 553 }
+"11111110" = { commands = 332, commands_by_row = { "0" = 332, "1" = 332, "2" = 332, "3" = 332, "4" = 332, "5" = 332, "6" = 332, "7" = 332 }, source_units = 332 }
 
 [ablations.complement_runs]
 saving = 46.7
@@ -62,6 +62,7 @@ verdict = "kept: with every input essential the 1 and -2 are built from the pack
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+trick_prototype = 2026-11-02
 
 [ablations.constant_table_audit_20261101]
 arity = 8
@@ -69,3 +70,24 @@ saving = 94.6
 seed = "both constant values; witnesses(n) at n=4..6"
 tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
 verdict = "kept: canonical whole constants. n-1 NORs collapse the preloaded queue, AAVV maps x to x NOR complement(x), zero, then V prints; AVLAVV instead builds one via complement, shift and NOR before printing. Exactly n+4+5bit chars/commands; workspace at most max(3n,9)+bl(L-1)+1+bl(2n), since values remain in {-2,-1,0,1} and normalization copies at most thrice. At n=8 zero/one 266/274 -> 12/17 chars; n=12 456/464 -> 16/21. All 24 balanced scores improve or match; generic envelopes and eight benchmark pins unchanged. n=3 corpus 99874 -> 99693 chars. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 are byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts within their resource bounds."
+
+[ablations.single_accumulator_20261102]
+seed = 2026
+arity = 8
+saving = 17.33
+tables = "one supplied raw proposal; every table/row n=1..3, sampled n=4..6; 200 seeded generic tables each n=7,8"
+verdict = "kept coherent single-accumulator plus low rematerialization, judged against independently admitted four-NOR mux: 444592/746752 -> 375192/617352 chars at n=7/8 (15.61/17.33%); balanced area 448253/750967 -> 377649/621695. Rolling accumulator alone and raw low rebuild alone fail 10%; no per-table source race. Local h>=16 singleton factory costs 15 commands; constants and ordered whole-stream preload are unchanged. Four-NOR mux independently reduces exhaustive n=3 99693/797544 chars/commands to 84107/672856, no larger table or slower row; joint 83041/664328. Old late-constant/shared-rotation/run rules remain inside the new construction, not competing fallback programs. Source series 6T+8r+O(n^2), versus independent baseline 8T+8r+O(n^2): random limit 20%, all-essential limit at least 1/6. Twenty emitted tables per n=9/10/11/12/14 give 18.45/19.14/19.52/19.75/19.92%, with native boundary controls; no favorable arity cap. Existing numerical E/W caps retained; E also valid n=1. Native field/liveness assertions cover 2213 rows and 8728 checkpoints, plus wrong-low and omitted-shift mutants."
+
+[ablations.raw_low_rebuild_20261102]
+seed = 2026
+arity = 8
+saving = 6.96
+tables = "200 generic tables each n=7,8; exhaustive small and sampled n=4..6; original four-copy and repaired three-copy factories"
+verdict = "rejected alone: literal h>=32 rebuild 475192/781752 -> 450392/727352 chars (5.22/6.96%), below sustained 10%; improved factory 449592/726152 also fails. Both fire on larger levels; 72 literal/repaired/joint native control rows pass. Rolling-only against the stronger four-NOR mux 444592/746752 -> 413192/688152 also fails alone. Joint h>=16 singleton rebuild is separately admitted above. Small n=1/2/3 old totals 251/2991/99693, four-NOR 209/2477/84107, joint 243/2623/83041; versus four-NOR, joint grows 2/14/6 tables by at most 17/19/19 chars. No source-min fallback hides this small-arity growth."
+
+[ablations.nor_mux_20261102]
+seed = 2026
+arity = 3
+saving = 15.63
+tables = "every three-input table and all eight rows"
+verdict = "kept independently by execution gate: complementary negative arms NOR(NOR(v,M),NOR(upper,~M)) select the same bits with four NORs. 99693 -> 84107 chars, 797544 -> 672856 commands, no table grows or row slows. Fewer live aligned masks preserve the unchanged workspace cap when combined with the fused accumulator."

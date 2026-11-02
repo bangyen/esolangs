@@ -62,5 +62,50 @@ def test_constant_reads_precede_output_and_preserve_the_next_character() -> None
                     assert io.input_char() == ord("Q")
     assert (
         sum(len(esolangs.generate("SwitchCase", format(v, "08b"))) for v in range(256))
-        == 70218
+        == 31572
     )
+
+    _check_shared_residuals()
+
+
+def _check_shared_residuals() -> None:
+    """Every small table preserves IO; parity reaches the command bound."""
+    from esolangs.languages.switchcase.interpreter import _Machine
+    from esolangs.languages.switchcase.proof_formulas import execution, workspace
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    summed = 0
+    for value in range(256):
+        table = f"{value:08b}"
+        program = esolangs.generate("SwitchCase", table)
+        for row in range(8):
+            io = ScriptedIO(f"{row:03b}Q")
+            machine = _Machine(program, io)
+            written = WrittenState(machine.snapshot())
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                written.sample(machine.snapshot())
+                steps += 1
+                if io.getvalue():
+                    assert io.reads == 3
+            summed += steps
+            assert io.getvalue() == table[row]
+            assert io.input_char() == ord("Q")
+            assert steps <= execution(3, program)
+            assert written.bits <= workspace(3, program)
+    assert summed == 48400
+    for n in range(1, 9):
+        table = "".join(str(row.bit_count() % 2) for row in range(1 << n))
+        program = esolangs.generate("SwitchCase", table)
+        # Every parity path has n tests; a one prints after the increment.
+        io = ScriptedIO(f"{1:0{n}b}")
+        machine = _Machine(program, io)
+        steps = 0
+        while not machine.halted:
+            machine.step()
+            steps += 1
+        assert steps == execution(n, program)
+        # Buffer cases, two residuals per lower depth, root, two leaves, end.
+        assert len(machine.cases) == 3 * n + 3

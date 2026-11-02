@@ -1,18 +1,19 @@
-"""bit~ Boolean program generator: three-cell blocks addressed by Horner jumps.
+"""bit~ Boolean program generator: split planting and three-cell weighted jumps.
 
 A block is a zero sentinel and the two cells ``e0``, ``e0 ^ e1`` of an entry
 pair; the sentinel lane has stride 3, so the one-shot jump loops land on a
 zero cell and each walk is 1.5 cells an entry, not 2 ([ablations.block_lane]).
-The last essential input is read into the sentinel and clears the cell it
-does not select; up to five essential inputs the stride-2 lane races it
-and the shorter wins.  The minority ``e0`` is planted, the print windows swapped
+The first essential input is read between planting the two table halves;
+its one path skips the upper half. Later weighted jumps select a block, and
+the last input clears the cell it does not select. The minority ``e0`` is
+planted, the print windows swapped
 when it is 0 ([ablations.minority_planting]).  An affine table XORs its inputs
 into one window instead ([ablations.xor_window]). Constants drain that window
 and print from the untouched next one.
 
 Size:
-    O(T) cells, three per entry pair; n=10 random 1847: 3,856 chars, n=10 and:
-    3,362 chars. Constants: n+17+9b characters and commands,
+    O(T) cells, three per entry pair; n=10 random 1847: 3,104 chars, n=10 and:
+    2,610 chars. Constants: n+17+9b characters and commands,
     23+4b+bl(n+17+9b)+bl(n) written bits, b the answer.
 """
 
@@ -41,13 +42,10 @@ _BIT_TILDE_SWAPPED = (3, 4, 12, 13, 17, 18, 27)
 #: Step three cells left and flip, which runs forever over a zero lane and
 #: stops on the planted 1 it clears.
 _BIT_TILDE_WALK = "<<<~{<<<~}"
-#: Essential inputs up to which the stride-2 build races the block one.  With
-#: T entries it is 4T + 18w + 75 chars + minority marks P_s against the
-#: block's 3T + 19w + 99 + P_b; P_b - P_s <= T/4 (a differing pair holds a one
-#: and a zero), so it wins only if 3T/4 <= 24 + w: never at w >= 6.
-_RACE_WIDTH = 5
-#: The same walk on the stride-2 lane; the leading ``<~`` primes the loop.
-_STRIDE_WALK = "<~{<<~}"
+#: Read the selector, clear the unselected difference, XOR both pair cells.
+_SELECTOR = "~" + "<" * 7 + ")" + ">" * 7 + "{~<<{~}>>}<{~>~<}<{~>>~<<}>>"
+#: Route the selected bit along the sentinel lane to its print window.
+_FINISH = "{" + _BIT_TILDE_WALK + "}" + _BIT_TILDE_WALK + "<" * 17 + "("
 
 
 def bit_tilde(truth_table: str) -> str:
@@ -94,93 +92,93 @@ def _xor_window(bias: int, coefficients: list[int]) -> str:
 
 
 def _lookup(truth_table: str, n: int) -> str:
-    """Return the block lookup, or the shorter of it and the stride-2 build.
-
-    The block build loses to the stride-2 one on small tables and is strictly
-    shorter from six essential inputs ([ablations.block_lane]).
-    """
+    """Return the projected block lookup, split while reading its first bit."""
     used = essential_inputs(truth_table, n)
-    table = read_at(truth_table, used, n)
-    block = _block_lookup(used, table, n)
-    if len(used) > _RACE_WIDTH:
-        return block
-    return min(block, _stride_lookup(used, table, n), key=len)
+    return _block_lookup(used, read_at(truth_table, used, n), n)
 
 
-def _stride_lookup(used: list[int], table: str, n: int) -> str:
-    """Build the planted lookup, two cells per entry."""
-    width = len(used)
-    # Above the planted region (max 27, lowest entry 32) and even, so that the
-    # reads stay in the lane whose jumps land in the zero one.
-    start = 2 * len(table) + 34
-
-    # A planted entry costs a ``~`` more than a skipped one: plant the minority.
-    swapped = 2 * table.count("1") > len(table)
-    planted = set(_BIT_TILDE_SWAPPED if swapped else _BIT_TILDE_PLANTED)
-    mark = "0" if swapped else "1"
-    planted.update(
-        start - 2 * index - 2 for index, bit in enumerate(table) if bit == mark
-    )
-
-    cells = sorted(planted)
-    prog = [_plant(cells), ">" * (start - cells[-1])]
-
-    depth = {stream: level for level, stream in enumerate(used)}
+def _single_lookup(used: list[int], table: str, n: int) -> str:
+    """Handle the base case with no non-selector bit to split on."""
+    e0 = int(table[0])
+    diff = int(table[0]) ^ int(table[-1])
+    cells = [*(_BIT_TILDE_SWAPPED if e0 else _BIT_TILDE_PLANTED)]
+    if diff:
+        cells.append(31)
+    prog = [_plant(cells), ">" * (33 - cells[-1])]
     for i in range(n):
-        # ``)`` XORs; the flip three along, in the jump lane, is undone. A jump
-        # sends later reads below this bit; an unused input reads one up.
-        if i in depth:
-            weight = 2 << (width - 1 - depth[i])
-            prog.append(")>>>~>>>>{" + "<" * weight + "}" + "<" * 7)
-        else:
-            prog.append(">)>>~<<<")
+        prog.append(_SELECTOR if i in used else ">)>>~<<<")
+    if not used:
+        prog.append("<{~>~<}>")
+    return "".join([*prog, _FINISH])
 
-    prog.append("<<{" + _STRIDE_WALK + "}" + _STRIDE_WALK)
-    prog.append("<" * 17 + "(")
-    return "".join(prog)
+
+def _pair_cells(
+    pairs: list[tuple[int, int]], start: int, begin: int, end: int, *, swapped: bool
+) -> list[int]:
+    """Return one half's planted cells in ascending order, without sorting."""
+    cells = []
+    for index in range(end - 1, begin - 1, -1):
+        e0, diff = pairs[index]
+        sentinel = start - 3 * index
+        if diff:
+            cells.append(sentinel - 2)
+        if e0 != swapped:
+            cells.append(sentinel - 1)
+    return cells
+
+
+def _split_head(cells: list[int], prefix: int) -> str:
+    """Plant the lower half, folding preceding ignored reads into the walk."""
+    if not prefix:
+        return _plant(cells)
+    # Prefix ASCII reads alter cells2/3 and7. Fold the fixed garbage into
+    # planting; clear their unknown low bit en route, before the next window.
+    if prefix % 2:
+        cells[0] = 2  # cell3 already holds its planted one
+    cells.insert(2, 7)
+    return ")" * prefix + "".join(
+        ">" * (b - a) + ("{~}" if b == 7 else "~") for a, b in pairwise([0, *cells])
+    )
 
 
 def _block_lookup(used: list[int], table: str, n: int) -> str:
-    """Build the block lookup for a nonconstant table."""
+    """Read the first bit between planting the lower and upper table halves."""
     width = len(used)
+    if width < 2:
+        return _single_lookup(used, table, n)
     pairs = [
         (int(table[i]), int(table[i]) ^ int(table[i + 1]))
         for i in range(0, len(table), 2)
     ]
-    # Sentinels at multiples of 3 from 33 up; the block's cells sit just below.
     start = 3 * len(pairs) + 30
-
-    # A planted ``e0`` costs a ``~`` more than a skipped one: plant the minority.
+    half = len(pairs) // 2
+    lower_top = start - 3 * half
+    upper_top = start + 6
     swapped = 2 * sum(e0 for e0, _ in pairs) > len(pairs)
-    planted = set(_BIT_TILDE_SWAPPED if swapped else _BIT_TILDE_PLANTED)
-    for index, (e0, diff) in enumerate(pairs):
-        sentinel = start - 3 * index
-        if e0 != swapped:
-            planted.add(sentinel - 1)
-        if diff:
-            planted.add(sentinel - 2)
-
-    cells = sorted(planted)
-    prog = [_plant(cells), ">" * (start - cells[-1])]
-
+    lower = [
+        *(_BIT_TILDE_SWAPPED if swapped else _BIT_TILDE_PLANTED),
+        *_pair_cells(pairs, start, half, len(pairs), swapped=swapped),
+    ]
+    prog = [_split_head(lower, used[0]), ">" * (lower_top - 1 - lower[-1])]
+    # [ablations.split_first_input_20261102]: the six-cell gap keeps read
+    # garbage above the lower half. Both exits land on their own top sentinel.
+    prog.append(")" + ">" * 7 + "~{~" + "<" * 5 + "~>~")
+    upper = _pair_cells(pairs, upper_top, 0, half, swapped=swapped)
+    pos = lower_top + 2
+    for cell in upper:
+        prog.append(">" * (cell - pos) + "~")
+        pos = cell
+    prog.append(">" * (upper_top + 6 - pos) + "}" + "<" * 6)
     depth = {stream: level for level, stream in enumerate(used)}
-    for i in range(n):
+    for i in range(used[0] + 1, n):
         if i not in depth:
-            # Scratch window above the pointer; ``~`` undoes the flip at +3.
             prog.append(">)>>~<<<")
         elif depth[i] == width - 1:
-            # Pre-flipped, the sentinel reads ``not x``: clear ``e0 ^ e1``
-            # for x = 0, then XOR both cells into the sentinel.
-            prog.append("~" + "<" * 7 + ")" + ">" * 7 + "{~<<{~}>>}<{~>~<}<{~>>~<<}>>")
+            prog.append(_SELECTOR)
         else:
-            # The window's b lands on the sentinel; its flips at -5 and -4
-            # are undone before the jump.
             weight = 3 << (width - 2 - depth[i])
             prog.append("<" * 7 + ")>>~>~>>>>{" + "<" * weight + "}")
-
-    prog.append("{" + _BIT_TILDE_WALK + "}" + _BIT_TILDE_WALK)
-    prog.append("<" * 17 + "(")
-    return "".join(prog)
+    return "".join([*prog, _FINISH])
 
 
 LANGUAGE = Language(

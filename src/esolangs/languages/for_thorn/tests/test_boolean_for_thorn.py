@@ -38,17 +38,20 @@ class TestForth:
         """Each leaf pushes 48 + its table entry."""
         program = boolean.for_thorn("0001")
         assert "3F*3+" in program  # '0' leaves push 48 = 3*15+3
-        assert "3F*4+" in program  # the '1' leaf pushes 49 = 3*15+4
+        assert "v68*+" in program
+        assert "v77*v-" in boolean.for_thorn("1110")
+        assert verify_generated("Forþ", "0001")
+        assert verify_generated("Forþ", "1110")
 
     def test_scales(self) -> None:
         """More inputs mean more tree functions, and every input is read."""
         # Parity folds nothing under any order, so it spends the full tree.
         parity = "".join(str(bin(row).count("1") % 2) for row in range(32))
-        assert _forth_plain(parity).count("{") == 2 ** (5 + 1) - 2
-        # Sharing keeps two dispatching nodes a level (parity and its
-        # complement) and two calls to them: 2 + 4 * 3 + 4 leaves.
+        assert _forth_plain(parity).count("{") == 2**5 - 2
+        # Sharing keeps two dispatching nodes a level and two calls,
+        # ending in two arithmetic bodies and two calls: 2 + 4 * 3.
         program = boolean.for_thorn(parity)
-        assert program.count("{") == 18
+        assert program.count("{") == 14
         assert program.count(",68*-") == 5
 
     def test_constant_subtrees_fold(self) -> None:
@@ -56,21 +59,19 @@ class TestForth:
         _check_constants()
         assert _forth_plain("1" * 8).count("{") == 2
         assert _forth_plain("01" * 4).count("{") == 2
-        assert _forth_plain("0" * 4 + "1" * 4).count("{") == 14
+        assert _forth_plain("0" * 4 + "1" * 4).count("{") == 6
         parity = "".join(str(bin(row).count("1") % 2) for row in range(8))
-        assert _forth_plain(parity).count("{") == 2 ** (3 + 1) - 2
+        assert _forth_plain(parity).count("{") == 2**3 - 2
 
     def test_folded_subtree_leaves_no_orphans(self) -> None:
         """Folding drops the whole subtree, not just the two children."""
         assert _forth_scope_keys("1" * 8) == set()
-        # Nodes 2 and 4 are constant, so each drops its subtree: only 3's
-        # leaves remain.
-        assert _forth_scope_keys("00101010") == {1, 2, 3, 4, 7, 8}
+        # Nodes 2 and 4 fold; node 3 converts its last bit directly.
+        assert _forth_scope_keys("00101010") == {1, 2, 3, 4}
         # An ignored input has no level: one node over the input that matters.
         assert _forth_scope_keys("0" * 4 + "1" * 4) == {1, 2}
-        # The one-side fold keeps its sibling's descendants: AND's zero
-        # subtree collapses to node 1 while 2 keeps 5 and 6.
-        assert _forth_scope_keys("0001") == {1, 2, 5, 6}
+        # AND folds node 1 and converts the last bit at node 2.
+        assert _forth_scope_keys("0001") == {1, 2}
 
     def test_the_natural_stack_order_is_emitted(self) -> None:
         """Sharing never grows a table, and an ignored input is never a level."""
@@ -88,8 +89,8 @@ class TestForth:
         """Calling a repeated subtree's twin cuts the totals, growing none."""
         three = [format(value, "08b") for value in range(256)]
         for tables, before, after in (
-            (three, 28672, 24364),
-            (five_input_sample(), 93764, 63240),
+            (three, 18688, 17344),
+            (five_input_sample(), 62226, 55331),
         ):
             plain = [len(_forth_plain(table)) for table in tables]
             shared = [len(boolean.for_thorn(table)) for table in tables]

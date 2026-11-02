@@ -48,6 +48,7 @@ tables = 20
 verdict = "kept: the first (m-3)//2 essential reads branch (`iA>-<x>`, push half, `IA<x->`, push other half, `OA<`: 16 chars a node) and push only their half, so their 2^k pops leave the program; level d+1 pays while 2^(m-d-1) + 10 > 16*2^d. Random chars, 20 seeded tables: -19.3% n=7 (7,037 -> 5,677), -26.5% n=8 (12,357 -> 9,077), -32.1% n=9 (22,797 -> 15,477), -12.2% n=6; n=10 (6 tables) -37.5%. Named n=7 / 8 / 9: parity -19.3 / -26.5 / -32.1%, majority -19.5 / -27.6 / -33.5%, and/or -14.8 / -33.6 / -43.1%, thr2 -20.1 / -34.3 / -43.6%. Balanced side^2 area on random -19.9 / -22.6 / -32.2% (n=7 / 8 / 9). Saving grows with n (the pops are half of 2T). Every row of every table n<=3, 20 random n=4..9, 6 at n=10 and named n=4..10 plus complements executes; wrong-table control fails"
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
@@ -67,3 +68,24 @@ saving = 20.5
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "kept: canonical constant folding, exempt. Root constants read/pop each byte before constructing the answer. Zero uses 6 doubled three times, one retains the odd +2 spelling. Chars and commands 2n+10/28: n=7 42/42->24/42 (21.4% combined), n=8 44/44->26/44 (20.5%), n=12 52/52->34/52; zero-only n=8 saving 40.9%. n=8 workspace 27/27->25/26 bits. n=3 corpus chars 17708->17690. Executed 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Default, width=1 and balanced constants execute through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged; global resource caps unchanged. Owned read-first checks cover both constant answers and following-record preservation (whole-stream loading for Codesick)."
+
+[ablations.shared_parity_prefix]
+saving = 0.2
+arity = 8
+seed = "Random(184700+n).choices('01'), 200 tables per judge arity"
+tables = "all tables/rows n<=3; 10 random per n=4..6; 200 per n=7,8; named n=4..10 and complements"
+verdict = "rejected 2026-11-02: pre-read the first d essential flags in physical input order, then branch in reverse flag order before pushing table data. Permuting the corresponding leaf chunks preserves the lookup; no deep stack access is needed. Exact all-essential saving is 5(2^d-1)-7d characters, just one at n=7/8: 56796->56596 (0.35%) / 90791->90591 (0.22%), below either bar. Prefix iA>-<xP is seven characters, not eight. Native baseline and every valid prototype run 5864 rows each; every small table/row, all rows of random/named n<=6, four boundary rows per larger table. Forced d<=2 additionally executes 2092 small rows per branching variant, so d=0 cannot make the branch probe vacuous. Ordered full reads, print-after-read and following-byte preservation hold; wrong-table control fails. No source or bound change."
+
+[ablations.branch_tail_print]
+saving = 0.0
+arity = 8
+seed = "Random(184700+n).choices('01'), 200 tables per judge arity"
+tables = "same native corpus as shared_parity_prefix"
+verdict = "rejected 2026-11-02: the existing A+24 increments+Po tail is 27 characters, not 28. A valid two-arm repair costs 48: keep the selected bit, branch on its double, seed 49 from one or 48 from zero, then print the shared stack result. Random totals grow 56796->60996 at n=7 and 90791->94991 at n=8. Native commands over 5864 rows grow 2728904->2734488. Pre-encoding ASCII in each leaf is correct but grows the same source totals to 484640/963092. Doubling and +/- preserve even parity after a double, so the proposed short even Horner setup cannot produce odd 49 without reseeding; no claim of global shortest spelling is made. This conditional conversion is not canonical constant folding. No production change."
+
+[ablations.cheaper_branch_node]
+saving = 0.0
+arity = 8
+seed = "Random(184700+n).choices('01'), 200 tables per judge arity"
+tables = "same native corpus as shared_parity_prefix; forced branching on every nonconstant small table"
+verdict = "rejected 2026-11-02: complementing normalized 0/2 by -x gives -4/0 and reverses the arms, but the IA marker is still needed to exit the first loop and skip the other arm. Keeping it costs 18 rather than 16 characters per node: judge totals grow 56796->57996 / 90791->91991. The 15-character marker-elision mutant on table 0110/input00 exceeds a 1000-step guard while growing its stack; it does not yield a valid saving or necessarily a repeated-state cycle. The repaired variant passes 5864 native rows plus 2092 forced small-branch rows. No global optimality or stack-access impossibility inferred; no production change."

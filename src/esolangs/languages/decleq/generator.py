@@ -3,14 +3,16 @@
 Branches on each essential input (48/49 made 1/2 by 47 passes of a loop that
 decrements every essential cell once per pass; zero decrements to 0 and jumps,
 one falls through) down to single
-entries.  A width-1 span is constant, so the bottom of the tree is one jump to
-a shared print gadget, and an equal subtree is emitted once, which collapses
+entries. A zero edge to a constant goes straight to its print gadget; a one
+edge falls into a jump. Equal subtrees are emitted once, which collapses
 the low levels (only 4 distinct 2-row subtrees exist, 16 at the next level).
-All n inputs are read; only essential ones are normalized.
+All n inputs are read; only essential ones are normalized. Strict majority
+and fixed thresholds 3..6 give each shared node a fall-through parent
+([ablations.fallthrough_owner_families_20261102]); other tables keep DFS order.
 
 Size:
     O(T) cells, O(n) steps: one three-cell branch per distinct subtree,
-    one three-cell jump per entry reached; n=10 random 1847: 3,631 chars.
+    at most one three-cell jump per node; n=10 random 1847: 3,496 chars.
     Constants: n+2 commands; n=8: 93 chars.
 """
 
@@ -56,13 +58,28 @@ def decleq(truth_table: str) -> str:
         cells += [-2, digit, 3 * n + 3, zero, zero, end, 48 + int(truth_table[0]), 0, 0]
         return " ".join(map(str, cells))
     essential = essential_inputs(truth_table, n)
-    # Routing only the essential inputs drops an ignored one's level and the
-    # subtree it doubles.  Racing it against the full routing (which can keep a
-    # constant half: 0100010011111111 is 1763 vs 1371) saved 0.1-0.2% on tables
-    # with 3 or 4 essential inputs at n=7..8, 0% elsewhere; not raced.
-    # All n inputs are read either way; only the essential ones pay the chain.
+    # Routing only essential inputs drops ignored levels. All inputs are read;
+    # only essential ones pay normalization. The historical full-routing race
+    # remains rejected ([ablations.routing_race_figures]).
     reduced = read_at(truth_table, essential, n)
-    return _CodeBuilder(reduced, n, essential).build()
+    builder = _OwnerBuilder if _owner_family(truth_table, n) else _CodeBuilder
+    return builder(reduced, n, essential).build()
+
+
+def _owner_family(table: str, n: int) -> bool:
+    """Recognize strict majority and fixed thresholds 3..6, or their negations."""
+    profile: list[str | None] = [None] * (n + 1)
+    for row, bit in enumerate(table):
+        weight = row.bit_count()
+        if profile[weight] not in (None, bit):
+            return False
+        profile[weight] = bit
+    threshold = next((i for i, bit in enumerate(profile) if bit != profile[0]), n + 1)
+    return (
+        threshold <= n
+        and (3 <= threshold <= 6 or threshold == n // 2 + 1)
+        and all(bit == profile[-1] for bit in profile[threshold:])
+    )
 
 
 class _CodeBuilder:
@@ -121,6 +138,8 @@ class _CodeBuilder:
         # instruction, so SUBBIG's jump-to-c reading runs the same program.
         for rc in self.read_cells:
             self.emit(-1, rc, self.pc() + 3)
+        if not self.routes:
+            return
         # 47 passes over the essential cells (48/49 -> 1/2), counted down in a
         # cell of 47 that exits the loop on reaching 0.
         top = self.pc()
@@ -130,9 +149,12 @@ class _CodeBuilder:
         self.emit(0, 0, top)
 
     def earlier(self, level: int, row: int) -> int | None:
-        """Address of an equal non-constant subtree already emitted, if any."""
+        """Return a constant gadget or an equal subtree already emitted, if any."""
         if self.is_constant(row, row + 2 ** (self.m - level)):
-            return None
+            # [ablations.constant_zero_side_target_20261102]: the skipped
+            # jump only decremented negative cell0. Gadgets need that sign,
+            # fixed ASCII constants and all reads done.
+            return _OUT_ONE if self.truth_table[row] == "1" else _OUT_ZERO
         return self.done.get((level, self.ids[level][row >> (self.m - level)]))
 
     def node(self, level: int, row: int) -> None:
@@ -140,9 +162,6 @@ class _CodeBuilder:
         width = 2 ** (self.m - level)
         if (copy := self.earlier(level, row)) is not None:
             self.emit(0, 0, copy)
-            return
-        if self.is_constant(row, row + width):
-            self.emit(0, 0, _OUT_ONE if self.truth_table[row] == "1" else _OUT_ZERO)
             return
         self.done[level, self.ids[level][row >> (self.m - level)]] = self.pc()
         rc = self.read_cells[self.routes[level]]
@@ -156,6 +175,57 @@ class _CodeBuilder:
         self.mem[branch + 2] = target
 
 
+type _Node = tuple[int, int]
+type _Target = _Node | int
+
+
+class _OwnerBuilder(_CodeBuilder):
+    """Emit chains owned by one-edge parents for the admitted named families."""
+
+    def node(self, level: int, row: int) -> None:
+        """Give each nonconstant node one fall-through parent, if it has one."""
+        assert (level, row) == (0, 0)
+        graph: dict[_Node, tuple[_Target, _Target]] = {}
+        order: list[_Node] = []
+        one_children: set[_Node] = set()
+
+        def target(level: int, row: int) -> _Target:
+            width = 1 << (self.m - level)
+            if self.is_constant(row, row + width):
+                return _OUT_ONE if self.truth_table[row] == "1" else _OUT_ZERO
+            key = (level, self.ids[level][row >> (self.m - level)])
+            if key in graph:
+                return key
+            order.append(key)
+            one = target(level + 1, row + width // 2)
+            zero = target(level + 1, row)
+            graph[key] = zero, one
+            if isinstance(one, tuple):
+                one_children.add(one)
+            return key
+
+        target(0, 0)
+        addresses: dict[_Node, int] = {}
+        fixups: list[tuple[int, _Node]] = []
+        # Decrementing the required count is injective: each nonconstant
+        # one-child has one parent, so these chains are disjoint.
+        for key in (key for key in order if key not in one_children):
+            while True:
+                addresses[key] = self.pc()
+                zero, one = graph[key]
+                rc = self.read_cells[self.routes[key[0]]]
+                branch = self.pc()
+                self.emit(rc, rc, zero if isinstance(zero, int) else 0)
+                if isinstance(zero, tuple):
+                    fixups.append((branch + 2, zero))
+                if isinstance(one, int):
+                    self.emit(0, 0, one)
+                    break
+                key = one
+        for address, key in fixups:
+            self.mem[address] = addresses[key]
+
+
 LANGUAGE = Language(
     "Decleq",
     "decleq",
@@ -165,5 +235,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_grid,
-    proof_workspace=(workspace, True, (3, 4)),
+    proof_workspace=(workspace, True, (1, 2, 3, 4)),
 )

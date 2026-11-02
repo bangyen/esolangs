@@ -7,8 +7,8 @@ answers 1.  The identity is ``,[]``: binary ``1 101 110 111``, 887 zeros,
 which halt on input 0 and loop on 255.
 
 Inputs are bytes 0 and 255. Complementing a read with + gives 1 and 0
-without an ASCII prelude.  Every path reads n inputs, so the source has at
-least n commands, at least ``8**n`` zeros; the generator takes at most nine
+without an ASCII prelude. This construction unrolls all n reads, so its
+source has at least n commands and ``8**n`` zeros; it accepts at most nine
 inputs.
 
 Size:
@@ -68,9 +68,9 @@ def _decoded(truth_table: str) -> str:
 def unary(truth_table: str) -> CompressedText:
     """Return gzip source within the file and expanded-work budgets."""
     n = _validate_truth_table(truth_table)
-    # Every path must read n inputs, so every encoding has at least n commands.
+    # This construction unrolls each read, so its own source needs n commands.
     if n > 9:
-        raise GeneratorCapError("Unary needs at least 8**n zeros; max-inputs=9")
+        raise GeneratorCapError("Unary unrolled construction: max-inputs=9")
     return CompressedText.repeated("0", _zeros(_decoded(truth_table)), limits=_LIMITS)
 
 

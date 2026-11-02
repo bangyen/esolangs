@@ -620,8 +620,8 @@ requires a construction exemption rather than a sub-gate bound.
 
 <!-- SHARING-COUNTS:START -->
 
-A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 46
-of 72 tree-shaped generators build parity or a repeated-block table at most
+A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 47
+of 73 tree-shaped generators build parity or a repeated-block table at most
 0.90x its dense or distinct-block twin (6 by a local helper); 26 are
 exempt with a reason. One shrinking probe does not establish complete sharing.
 

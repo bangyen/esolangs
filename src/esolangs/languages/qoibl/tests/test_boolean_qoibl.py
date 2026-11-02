@@ -50,24 +50,34 @@ class TestQoibl:
         program = boolean.qoibl("00100000")
         # 0b100: row 2 is the only one set, and it is bit 2 (its
         # complement packs no shorter, and reversed it packs longer).
-        assert program.count(" yee ") == 1
+        from esolangs.languages.qoibl.interpreter import tokenize
+
+        assert sum(tokens.count("yee") for tokens in tokenize(program)) == 1
         assert program.endswith("tt")
 
     def test_the_reads_are_one_statement_each(self) -> None:
         """Only the input count scales the statements; the table does not."""
+        from esolangs.languages.qoibl.interpreter import tokenize
+
         counts = [
-            boolean.qoibl(
-                "".join(str(row.bit_count() & 1) for row in range(2**n))
-            ).count("\n")
+            len(
+                tokenize(
+                    boolean.qoibl(
+                        "".join(str(row.bit_count() & 1) for row in range(2**n))
+                    )
+                )
+            )
             for n in range(1, 6)
         ]
-        assert counts == [6, 7, 8, 9, 10]
+        assert counts == [7, 8, 9, 10, 11]
 
     def test_a_constant_table_still_reads_its_inputs(self) -> None:
         """A constant function packs to zero but keeps the reads it owes."""
         program = boolean.qoibl("0000")
-        assert program.count(" et ") == 2
-        assert program == "we e we et we\nwe e we et we\ntt yyeeee tt"
+        from esolangs.languages.qoibl.interpreter import tokenize
+
+        assert sum(tokens.count("et") for tokens in tokenize(program)) == 2
+        assert program == "weeweetweweeweetwettyyeeeett"
 
 
 def test_constant_table_reads_cost_one_line_each() -> None:
@@ -84,7 +94,8 @@ def test_constant_table_reads_cost_one_line_each() -> None:
 @pytest.mark.medium
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """One read into a register the next write clears."""
-    assert_an_ignored_input_costs("Qoibl", 6, 20)
+    assert_an_ignored_input_costs("Qoibl", 6, 13)
+    _check_compact_input_tokens()
 
 
 @pytest.mark.medium
@@ -161,7 +172,7 @@ def test_constant_audit_read_first_and_sentinel() -> None:
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Qoibl", bit * (1 << n), **options)
                 if not options:
-                    assert len(program) == 14 * n + 12
+                    assert len(program) == 9 * n + 10
                 for row in rows:
                     io = ReadFirstIO(
                         esolangs.encode_inputs(
@@ -185,5 +196,35 @@ def test_constant_audit_read_first_and_sentinel() -> None:
 def test_constant_audit_three_input_corpus_size() -> None:
     assert (
         sum(len(esolangs.generate("Qoibl", format(v, "08b"))) for v in range(256))
-        == 76654
+        == 51216
     )
+
+
+def _check_compact_input_tokens() -> None:
+    """Compaction preserves statements, all ordered reads and their answers."""
+    from esolangs.languages.qoibl.generator import _source
+    from esolangs.languages.qoibl.interpreter import _Machine, tokenize
+    from esolangs.languages.qoibl.proof_formulas import execution, workspace
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for value in range(256):
+        table = f"{value:08b}"
+        program = boolean.qoibl(table)
+        assert tokenize(program) == tokenize(_source(table))
+        for row in range(8):
+            io = ScriptedIO(f"{row:03b}Q")
+            machine = _Machine(program, io)
+            written = WrittenState(machine.snapshot())
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                written.sample(machine.snapshot())
+                steps += 1
+                if io.getvalue():
+                    assert io.reads == 3
+            assert io.getvalue() == table[row]
+            assert io.reads == 3
+            assert io.input_char() == ord("Q")
+            assert steps <= execution(3, program)
+            assert written.bits <= workspace(3, program)

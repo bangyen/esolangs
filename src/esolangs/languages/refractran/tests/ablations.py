@@ -4,12 +4,18 @@ from typing import Literal
 from unittest.mock import patch
 
 from esolangs.languages.refractran import generator
+from esolangs.languages.refractran.generator import _is_parity
 
 Rule = Literal["constant_fold", "ignored_input", "subtree_sharing"]
 
 
 def _diagram(table: str, n: int, rule: Rule) -> tuple[list[tuple[int, int, int]], int]:
     """Return an emission DAG with one rule disabled, tracking semantics apart."""
+
+    def negate(reference: int) -> int:
+        return 1 - reference if reference in (0, 1) else -reference
+
+    complement = _is_parity(table)
     nodes: list[tuple[int, int, int]] = []
     seen: dict[tuple[int, int, int], int] = {}
     semantics: dict[tuple[int, int, int], int] = {}
@@ -30,6 +36,9 @@ def _diagram(table: str, n: int, rule: Rule) -> tuple[list[tuple[int, int, int]]
             if key not in semantics:
                 semantics[key] = len(semantics) + 2
             semantic = semantics[key]
+        negative = complement and (zero == 1 or zero < 0)
+        if negative:
+            zero, one = negate(zero), negate(one)
         key = (depth, zero, one)
         if rule == "subtree_sharing" or key not in seen:
             index = len(nodes) + 2
@@ -38,7 +47,7 @@ def _diagram(table: str, n: int, rule: Rule) -> tuple[list[tuple[int, int, int]]
                 seen[key] = index
         else:
             index = seen[key]
-        return index, semantic
+        return -index if negative else index, semantic
 
     root, _ = walk(0, 0, len(table))
     return nodes, root

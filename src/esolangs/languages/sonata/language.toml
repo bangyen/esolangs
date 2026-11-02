@@ -8,12 +8,12 @@ admitted = 2026-10-21T23:43:42-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "the essential input bits double a unary row index in one rewrite each, and each index unit strips one entry of the table read at them"
-scaling = "linear: worst T + 4n + 101 characters: projected table plus reads"
-execution = "linear: worst T + n + 3 steps: a doubling an input, a strip a row"
+scaling = "linear: at most T + 4n + 101 - 21min(1,(n-2)^2) characters"
+execution = "linear: worst T + n + 3 - min(1,(n-2)^2) steps: index, strips, halt"
 workspace = "linear: worst 16T + 10 bits: the string at its longest, an index of T - 1 units beside the table"
 
 [ablations]
-audited = "2026-10-29"
+audited = "2026-11-02"
 
 [ablations.essential_projection]
 saving = 48.3
@@ -40,14 +40,14 @@ verdict = "kept: one char per row pair (0/1 for 00/11, a for 01 = the last bit, 
 folding_constant_local = "_RULES"  # no essential input: the setup rule leaves @#c
 
 [generator_sizes]
-"00000001" = { commands = 10, commands_by_row = { "0" = 7, "1" = 8, "2" = 8, "3" = 9, "4" = 8, "5" = 9, "6" = 9, "7" = 10 }, source_units = 113 }
-"00001100" = { commands = 9, commands_by_row = { "0" = 6, "1" = 6, "2" = 7, "3" = 7, "4" = 8, "5" = 8, "6" = 9, "7" = 9 }, source_units = 115 }
-"00110110" = { commands = 14, commands_by_row = { "0" = 7, "1" = 8, "2" = 9, "3" = 10, "4" = 11, "5" = 12, "6" = 13, "7" = 14 }, source_units = 121 }
+"00000001" = { commands = 9, commands_by_row = { "0" = 6, "1" = 7, "2" = 7, "3" = 8, "4" = 7, "5" = 8, "6" = 8, "7" = 9 }, source_units = 92 }
+"00001100" = { commands = 8, commands_by_row = { "0" = 5, "1" = 5, "2" = 6, "3" = 6, "4" = 7, "5" = 7, "6" = 8, "7" = 8 }, source_units = 94 }
+"00110110" = { commands = 13, commands_by_row = { "0" = 6, "1" = 7, "2" = 8, "3" = 9, "4" = 10, "5" = 11, "6" = 12, "7" = 13 }, source_units = 100 }
 "0110" = { commands = 8, commands_by_row = { "0" = 6, "1" = 7, "2" = 7, "3" = 8 }, source_units = 108 }
-"01101001" = { commands = 10, commands_by_row = { "0" = 7, "1" = 8, "2" = 8, "3" = 9, "4" = 8, "5" = 9, "6" = 9, "7" = 10 }, source_units = 113 }
-"0110100110010110" = { commands = 12, commands_by_row = { "0" = 8, "1" = 9, "2" = 9, "3" = 10, "4" = 9, "5" = 10, "6" = 10, "7" = 11, "8" = 9, "9" = 10, "10" = 10, "11" = 11, "12" = 10, "13" = 11, "14" = 11, "15" = 12 }, source_units = 118 }
-"1101001101101101" = { commands = 23, commands_by_row = { "0" = 8, "1" = 9, "2" = 10, "3" = 11, "4" = 12, "5" = 13, "6" = 14, "7" = 15, "8" = 16, "9" = 17, "10" = 18, "11" = 19, "12" = 20, "13" = 21, "14" = 22, "15" = 23 }, source_units = 133 }
-"11111110" = { commands = 10, commands_by_row = { "0" = 7, "1" = 8, "2" = 8, "3" = 9, "4" = 8, "5" = 9, "6" = 9, "7" = 10 }, source_units = 113 }
+"01101001" = { commands = 9, commands_by_row = { "0" = 6, "1" = 7, "2" = 7, "3" = 8, "4" = 7, "5" = 8, "6" = 8, "7" = 9 }, source_units = 92 }
+"0110100110010110" = { commands = 11, commands_by_row = { "0" = 7, "1" = 8, "2" = 8, "3" = 9, "4" = 8, "5" = 9, "6" = 9, "7" = 10, "8" = 8, "9" = 9, "10" = 9, "11" = 10, "12" = 9, "13" = 10, "14" = 10, "15" = 11 }, source_units = 97 }
+"1101001101101101" = { commands = 22, commands_by_row = { "0" = 7, "1" = 8, "2" = 9, "3" = 10, "4" = 11, "5" = 12, "6" = 13, "7" = 14, "8" = 15, "9" = 16, "10" = 17, "11" = 18, "12" = 19, "13" = 20, "14" = 21, "15" = 22 }, source_units = 112 }
+"11111110" = { commands = 9, commands_by_row = { "0" = 6, "1" = 7, "2" = 7, "3" = 8, "4" = 7, "5" = 8, "6" = 8, "7" = 9 }, source_units = 92 }
 
 [schemes]
 folds_without_tree = true
@@ -63,3 +63,24 @@ saving = 82.2
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: canonical whole-constant folding. One whole-string rule consumes n distinct s-vars; only n=2 needs two rules guarded by a literal first bit, preventing the two-character result =b from matching again. Wrong lengths stay unanswered. Exactly 2n+5 chars (16 at n=2), two commands, 8max(n,2)+2 written bits. n=8 118 -> 21 chars; n=12 126 -> 29. n=3 corpus 30508 -> 30314 chars, area 43358 -> 43070. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions verify exact resources and input/output framing."
+
+[ablations.setup_mvar_prefix]
+arity = 8
+saving = 8.1
+seed = "random.Random(184700 + n * 1000 + s), s < 200"
+tables = "200 random tables per n=7,8; all tables/rows n=1..3; ten tables/all rows n=4..6; two random tables/all rows n=7,8; every one-ignored shape n=4,7,8; named families sampled n=3,7,8,10,12"
+verdict = "rejected 2026-11-02: n=7/8 source 45600 -> 41600 / 59200 -> 54400 chars (8.77/8.11%), declining below 20%; zero execution saving on the n=3 corpus. Projected programs stay byte-identical. The m-var setup also breaks documented wrong-length rejection: table 00110110 on 00 or 0000 answers =0, while the baseline leaves %00 or %0000 unanswered. Native wrong-pair-symbol control fails 64/128 rows. No generator change."
+
+[ablations.drop_input_marker]
+arity = 8
+saving = 7.1
+seed = "random.Random(184700 + n * 1000 + s), s < 200"
+tables = "200 random tables per n=7,8; all tables/rows n=1..3; ten tables/all rows n=4..6; two random tables/all rows n=7,8; every one-ignored shape n=4,7,8; parity/and/majority four rows n=3,7,8,10,12"
+verdict = "kept 2026-11-02 for execution: exactly n=3 all 256 tables/2048 rows use 20112 -> 18080 commands (10.10% fewer), no slower row or larger table; source 30314 -> 24980 chars. Remove the once-only marker except at n=2, whose setup can match the two-character answer. After setup, remaining bits match the earlier index rules; with no bits, a nonempty index matches strip and an empty index matches a final rule. Setup therefore cannot reenter; its exact n s-vars cannot match the two-character result when n!=2. All four n=1 tables/eight rows execute; the two nonconstant programs also drop the marker. Wrong-length binary input has neither @ nor n characters, so no rule matches and it stays unanswered. Each changed nonconstant program loses 21 chars and one rewrite; n=7/8 totals 45600 -> 41400 / 59200 -> 55000 (9.21/7.09%), declining below the size bar. No sampled later-arity or named-family command/source regression. The workspace bound stays unchanged: the longest indexed string is unchanged. Each of four variants passed 7076 native rows with whole-stream input framing, plus 2112 forced quad rows; setup-hit controls observe exactly one setup for every nonconstant unmarked run."
+
+[ablations.quad_table]
+arity = 8
+saving = -119.9
+seed = "random.Random(184700 + n * 1000 + s), s < 200"
+tables = "200 random tables per n=7,8; same native corpus as drop_input_marker; forced quad decoder over all two/three-input tables and rows"
+verdict = "rejected 2026-11-02: one char per quad plus explicit decoder costs 112947 / 130209 chars at n=7/8 versus pair baseline 45600 / 59200 (+147.69/+119.95%); every one of the 400 random programs grows. No old-program min fallback or shifted evaluation window. Below the existing pair threshold it is byte-identical, so it cannot qualify for n=3 execution savings. Forced decoder checks execute all 2112 rows of all two/three-input functions, including all sixteen quad patterns; no semantic failure. No generator change."

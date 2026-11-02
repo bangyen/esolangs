@@ -22,6 +22,8 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 
 def test_constants_consume_the_queue_then_print_once() -> None:
+    _check_single_accumulator_boundaries()
+
     from esolangs.languages.nor_machine.interpreter import _Machine
     from esolangs.languages.nor_machine.proof_formulas import workspace
     from esolangs.runtime.io import ScriptedIO
@@ -60,5 +62,52 @@ def test_constants_consume_the_queue_then_print_once() -> None:
                     assert written.bits <= workspace(n, "".join(program.split()))
     assert (
         sum(len(esolangs.generate("NOR machine", format(v, "08b"))) for v in range(256))
-        == 99693
+        == 83041
     )
+
+
+def _check_single_accumulator_boundaries() -> None:
+    from esolangs.languages.nor_machine.generator import _low_from_singleton, _Queue
+    from esolangs.languages.nor_machine.interpreter import _Machine
+    from esolangs.languages.nor_machine.proof_formulas import execution, workspace
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    q = _Queue(0)
+    q.names = ["v"]
+    _low_from_singleton(q, "v")
+    macro = "".join(q.out)
+    assert len(macro) == 15
+    machine = _Machine(macro, ScriptedIO("37\n"))
+    for _ in macro:
+        machine.step()
+    assert list(machine.queue) == [37, -2]
+    assert not machine.halted
+    assert machine.io.getvalue() == ""
+    for n in (1, 4, 5, 6):
+        for ignored in (False, True):
+            table = "".join(
+                str((row >> int(ignored)).bit_count() % 2) for row in range(1 << n)
+            )
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("NOR machine", table, **options)
+                commands = "".join(program.split())
+                for row in (0, 1, (1 << n) - 1):
+                    io = ScriptedIO(
+                        esolangs.encode_inputs(
+                            "NOR machine", list(map(int, f"{row:0{n}b}"))
+                        )
+                    )
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps <= len(commands)
+                    assert io.getvalue() == table[row]
+                    assert io.progress() == 2 * n
+                    assert io.past_end == 0
+                    assert steps == len(commands) <= execution(n, commands)
+                    assert written.bits <= workspace(n, commands)

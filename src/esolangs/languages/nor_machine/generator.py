@@ -1,16 +1,16 @@
 """NOR machine Boolean program generator: the table as one integer, muxed.
 
-The machine has no literals, so the first input is copied and NORed with
-its own complement into 0, and 1 is grown from that.  ``V`` is built by
-Horner's rule so bit ``k`` holds row ``k``, and the essential inputs are
-packed into one integer ``P``, first input lowest.  Each input then keeps
-the half of ``V`` it selects: its bit smeared over a half-width mask
-chooses ``V`` or ``V >> h``.  The low bit of what is left is printed by the
-lone final ``V``.  Straight-line code, run once: it never loops.
+The machine has no literals: an input and its complement make 0, then -2.
+Horner builds the table integer V, and essential inputs form P, first input
+lowest. The accumulator starts as ``(V << m) | P``. Each input selects a
+half of V with a mask above the remaining input field; shifting the whole
+accumulator right drops the consumed bit. Only one persistent value rides
+large smear passes: rebuilding -2 costs 15 commands, so halves of at least
+16 consume it. The final V prints the selected low bit. Code runs once.
 
 Size:
-    8T + 8r + O(n^2) chars for r runs of true rows, every input essential;
-    n=4 parity: 653 chars; n=8 constant zero: 12 chars
+    6T + 8r + O(n^2) chars for r runs of true rows, every input essential;
+    n=4 parity: 545 chars; n=8 constant zero: 12 chars
 
 Decisions:
     Horner holds ``~V`` through each run of 1s ([ablations.complement_runs]),
@@ -110,6 +110,7 @@ def nor_machine(truth_table: str) -> str:
     """Build a NOR machine program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
     essential = essential_inputs(truth_table, n)
+    m = len(essential)
     table = read_at(truth_table, essential, n)
     if not essential:
         # [ablations.constant_table_audit_20261101]: NOR all inputs, then x NOR ~x.
@@ -152,13 +153,14 @@ def nor_machine(truth_table: str) -> str:
         low = minus_one
     else:
         low = q.inv(one)  # -2: NOR with it keeps bit 0 of the complement
-    for level in range(1, len(essential) + 1):
-        h = len(table) >> level
-        bit = q.dup(packed) if level < len(essential) else packed
-        mask = q.nor(q.inv(bit), q.dup(low))
-        if level < len(essential):
-            q.unary("R", packed, packed)
-        # The smear's h - 1 left shifts ride the half-shift's h right ones.
+    # [ablations.single_accumulator_20261102]: retain P below the table;
+    # each right shift consumes one input bit and shrinks that field.
+    q.shift("L", v, m)
+    v = q.or_(v, packed)
+    for remaining in range(m, 0, -1):
+        h = 1 << (remaining - 1)
+        refresh_low = h >= 16  # one-value rematerialization costs exactly 15
+        mask = q.nor(q.inv(q.dup(v)), low if refresh_low else q.dup(low))
         upper = q.dup(v)
         width = 1
         while width < h:
@@ -167,13 +169,28 @@ def nor_machine(truth_table: str) -> str:
             mask = q.or_(mask, wide)
             width *= 2
         q.shift("R", upper, h - width + 1)
-        # mask ? upper : v, as nor(nor(~mask, ~upper), nor(mask, ~v)).
-        keep_upper = q.nor(q.inv(q.dup(mask)), q.inv(upper))
-        keep_lower = q.nor(mask, q.inv(v))
-        v = q.inv(q.nor(keep_upper, keep_lower))
+        q.shift("L", mask, remaining)
+        # [ablations.nor_mux_20261102]: complementary negative arms select
+        # with four NORs, without keeping three copies of the aligned mask.
+        keep_lower = q.nor(v, q.dup(mask))
+        keep_upper = q.nor(upper, q.inv(mask))
+        v = q.nor(keep_lower, keep_upper)
+        q.unary("R", v, v)
+        if refresh_low:
+            low = _low_from_singleton(q, v)
     result = q.nor(q.inv(v), low)
     assert q.names == [result], q.names
     return "".join(q.out) + "V"
+
+
+def _low_from_singleton(q: _Queue, value: str) -> str:
+    """Keep the accumulator and append -2 in exactly 15 commands."""
+    assert q.names == [value], q.names
+    inverse = q.inv(q.dup(value))
+    zero = q.nor(q.dup(value), inverse)
+    low = q.inv(zero)
+    q.unary("L", low, low)
+    return low
 
 
 LANGUAGE = Language(
@@ -181,7 +198,7 @@ LANGUAGE = Language(
     "nor_machine",
     category="queue_based",
     boolean=nor_machine,
-    proof_execution=(execution, False, (2, 3, 5)),
+    proof_execution=(execution, False, (1, 2, 3, 5)),
     proof_workspace=(workspace, False, (1, 2, 3, 5)),
     # Not a tree: Horner's rule packs every row of the essential-input table.
     shape=Shape.LOOKUP,

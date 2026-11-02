@@ -27,7 +27,8 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 def test_equal_subtables_share_one_node() -> None:
     # Parity: one node per (level, parity), not one per row prefix.
-    assert quassaunt("0110100110010110").count("%%Ifdisjoint") == 7
+    assert quassaunt("0110100110010110").count("%%Ifdisjoint") == 8
+    _check_store_loop()
 
 
 def test_balance_cuts_only_compact_programs() -> None:
@@ -38,7 +39,7 @@ def test_balance_cuts_only_compact_programs() -> None:
     default = quassaunt(parity)
     balanced = _balance(parity, default)
     assert max(map(len, balanced.splitlines())) < max(map(len, default.split()))
-    wide = format(random.Random(8).getrandbits(256), "0256b")
+    wide = format(random.Random(8).getrandbits(1024), "01024b")
     assert _balance(wide, quassaunt(wide)).split() == quassaunt(wide).split()
 
 
@@ -53,3 +54,42 @@ def test_constants_read_every_input(n: int, bit: str) -> None:
         run(program, io)
         assert io.getvalue() == bit
         assert io.input_char() == ord("Q")
+
+
+def _check_store_loop() -> None:
+    from esolangs.languages.quassaunt.interpreter import _Machine
+    from esolangs.languages.quassaunt.proof_formulas import execution, workspace
+    from scripts.benchmark import WrittenState
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value):
+            assert self.reads == 3
+            super()._write(value)
+
+    table = "00110110"
+    baseline_steps = {}
+    for options in ({}, {"width": 1}, {"balance": True}):
+        program = esolangs.generate("Quassaunt", table, **options)
+        for row in (0, 1, 7):
+            io = ReadFirstIO(f"{row:03b}Q")
+            machine = _Machine(program, io)
+            measured = WrittenState(machine.snapshot())
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                measured.sample(machine.snapshot())
+                steps += 1
+            assert io.getvalue() == table[row]
+            assert io.past_end == 0
+            assert io.input_char() == ord("Q")
+            assert not machine.globals["##Errormessage"]
+            assert machine.globals["[_x]"] == frozenset({""})
+            assert steps <= execution(3, program)
+            assert measured.bits == workspace(3, program)
+            if not options:
+                baseline_steps[row] = steps
+            else:
+                assert steps == baseline_steps[row] + 2 * program.split().count(
+                    "%%Concatenate"
+                )
+    assert sum(len(quassaunt(f"{v:08b}")) for v in range(256)) == 272196

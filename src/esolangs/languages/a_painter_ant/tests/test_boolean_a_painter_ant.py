@@ -47,6 +47,7 @@ class TestAPainterAnt:
 
     def test_tables_are_exact(self) -> None:
         """Every table at arity 1-3, and wide tables at 4-6, are exact."""
+        _check_near_unanimity()
         for n in (1, 2):
             for value in range(1 << (1 << n)):
                 table = format(value, f"0{1 << n}b")
@@ -179,3 +180,43 @@ def _check_constants() -> None:
                     assert esolangs.read_answer("A Painter Ant", io.getvalue()) == bit
                     assert io.reads == 0
                     assert io.input_char() == ord("7")
+
+
+def _check_near_unanimity() -> None:
+    from esolangs.languages.a_painter_ant.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in (4, 5, 7, 8):
+        plain = "".join(str(int(row.bit_count() >= n - 1)) for row in range(1 << n))
+        for table in (plain, plain.translate(str.maketrans("01", "10"))):
+            for options in ({}, {"width": 1}, {"balance": True}):
+                template = esolangs.generate("A Painter Ant", table, **options)
+                assert template.count("$") == n
+                for row in range(1 << n):
+                    bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+                    source = esolangs.instantiate("A Painter Ant", template, bits)
+                    io = ScriptedIO("Q")
+                    machine = _Machine(source, io)
+                    written = WrittenState(machine.snapshot()) if row == 0 else None
+                    for _ in machine.prog:
+                        machine.step()
+                        if written:
+                            written.sample(machine.snapshot())
+                    after = machine.snapshot()
+                    for _ in machine.prog:
+                        machine.step()
+                        if written:
+                            written.sample(machine.snapshot())
+                    assert machine.snapshot() == after
+                    if written:
+                        bound = 2 * (n + 1) * (1 << n) + 3
+                        assert written.bits <= bound + (len(source) - 1).bit_length()
+                    machine.interrupt()
+                    machine.step()
+                    assert (
+                        esolangs.read_answer("A Painter Ant", io.getvalue())
+                        == table[row]
+                    )
+                    assert io.reads == 0
+                    assert io.input_char() == ord("Q")

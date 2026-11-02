@@ -24,11 +24,9 @@ workspace = "linear: worst max(88T+232n+235, 132T+24n-53) + bl(n) bits past n = 
 
 [catalogue]
 sharing_exempt = "no names: binding a repeated subtree by abstraction adds S and K to every pair above it"
-folding_ignored_local = "_tree"  # equal halves fold to K of one half
-folding_constant_local = "_tree"  # a constant table folds to K chains over one leaf
 
 [ablations]
-audited = "2026-10-19"
+audited = "2026-11-02"
 
 [ablations.equal_halves_fold]
 saving = 49.3
@@ -46,6 +44,7 @@ arity = 12
 verdict = "kept: spelling, not a trick (plain-rewrite audit 2026-10-29): a leaf argument goes bare instead of parenthesized, the minimal way to write an application. Grouping every argument costs +7.74% at n=10 and +8.15% at n=12 on random tables, +8.45 / +9.06% on one-ignored tables; the share is arity-stable, not a fixed amount"
 
 [audits]
+trick_prototype = 2026-11-02
 docstring_reimplementation = 2026-10-30
 blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29
@@ -56,3 +55,31 @@ saving = 95.1
 seed = "both constant values"
 tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
 verdict = "kept: canonical constants. A0 consumes and discards one virtual stream bit; two pairs per physical input consume its marker and value, followed by DCC or DDC for the opening bit, answer and closing zero. Both constants use 4n+3 characters and rewrites, and 32n+27+bl(n) written bits. At n=7 chars 635 -> 31; n=8 711 -> 35; n=12 1015 -> 51. All 270 nonconstant programs through n=3 are byte-identical; n=3 corpus chars 98898 -> 98266. Default, width=1 and balanced constants n=1..12 execute; every optimized balance score improves or matches its old counterpart. Sentinel regressions also check the pending payload is cleared and exact rewrite counts."
+
+[ablations.bottom_pair_search]
+arity = 8
+saving = 3.9
+seed = "random.Random(seed + n*1000 + s), seed in (184700,987100), s < 200"
+tables = "200 random tables per seed at n=7,8; first seed also n=10,12; all tables/rows n=1..3; ten tables/all rows n=4..6; two random tables/all rows per seed n=7,8; ignored-input and named witnesses"
+verdict = "rejected 2026-11-02: the raw rule freezes a searched 16-function dictionary, violating the no-search construction rule. No term enumeration or searched production data. Its two supplied closed terms do work: SSK is AND, S(0K)(0K) is OR. Applying only those named identities saves 3.34/3.92% at n=7/8 (378427 -> 365776 / 652490 -> 626931 chars); second seed 3.39/3.67%, below either gate. First-seed n=10/12 saves 4.44/4.65%. Exactly n=3 source 98266 -> 97274 chars and 293432 -> 292792 rewrites (0.22%), no larger table or slower row, below the 5% execution gate. No optimum claim: the complete searched proposal was rejected on construction, not measured as if the two supplied terms were optimal for all sixteen functions. Each of four controls passed 4932 native generated-program rows; separate old/named subtree controls passed all 4224 direct two/three-bit applications without A or F before closing C. A wrong AND-to-OR mutant fails 2/4 rows."
+
+[ablations.three_bit_subtree_search]
+arity = 8
+saving = 0.0
+seed = "random.Random(seed + n*1000 + s), seed in (184700,987100), s < 200"
+tables = "same corpus as bottom_pair_search; all 256 three-input functions and their eight rows as direct subtree controls"
+verdict = "rejected 2026-11-02: the raw rule searches candidate compositions and freezes 256 winners, both forbidden. Enumeration through 13 characters was not launched; no searched terms were supplied to execute. The constructive control is the named AND/OR rule at the bottom followed by the existing recursive Church-pair rule; on all 256 three-input functions it has zero incremental saving beyond bottom_pair_search, hence the same 3.34/3.92% first-seed n=7/8 saving. This is a control, not an optimal-search bound. Every direct three-bit application executes with its expected bit and closing C, and no A/F before halt. No generator change or old-program minimum fallback. The baseline recursive slicing and concatenation copied Theta(T log T) characters on dense tables; the majority repair now uses canonical IDs and append-only emission in O(T)."
+
+[ablations.reader_stage_reabstraction]
+arity = 8
+saving = 0.0
+seed = "random.Random(seed + n*1000 + s), seed in (184700,987100), s < 200"
+tables = "same generated-program corpus as bottom_pair_search; standalone closing-C mutation over five tables and all sixteen rows"
+verdict = "rejected 2026-11-02: deterministic eta-aware bracket abstraction of the documented lambdas reproduces _READ and _ANSWER byte-for-byte (73 chars per reader, 102 answer), so source and execution savings are zero. The compiler's eta rule has a positive control. Replacing a constant K with 1 cannot save characters and adds a rewrite. The concrete halt shortcut removing the final c from t d c c shortens the answer to 69 chars but fails all 16 native rows tested: table 01 input 0 prints 01 instead of 0 and reaches extra F before closing C. Optimizing search is forbidden; no claim that arbitrary alternate reader terms are exhausted. All existing proof bounds, pins and Size anchors remain unchanged; sampled old/named programs also pass 48 native workspace-envelope checks."
+
+[ablations.majority_pair_rule]
+arity = 16
+saving = 27.2
+seed = "strict majority, 2*ones > n; generic controls use both raw-proposal seed sets"
+tables = "strict majority n=2..16; all tables/rows n=1..3; twelve witnesses/all rows n=4..6; 800 generic random programs at n=7,8 byte-compared; eight unchanged size pins/all rows"
+verdict = "kept 2026-11-02: search-free named-family repair of bottom_pair_search. Only strict majority uses AND=SSK (lambda xy.xyx) and OR=S(0K)(0K) (lambda xy.xxy) for two-bit residuals. Generic AND/OR replacement fails admission, so other families remain byte-identical. Majority n=7/8 source 1633 -> 1313 / 2574 -> 1999 chars (19.60/22.34%); peak measured n=14 101494 -> 73642 (27.44%), n=16 382778 -> 278531 (27.23%). With h=floor(n/2)+1 and out-of-range binomials zero, old tree length L=17*C(n+1,h)-14*C(n-1,h-1)+3*(C(n,h+1)+C(n,h-2))-18; total adds 73n+104. Exact saving is 19*C(n-2,h-2)+13*C(n-2,h-1). Relative to C(n,floor(n/2)), L tends to 33 and saving to 8, so the limiting saving is 8/33 (24.24%), not zero. Every measured size matches these derived counts and executes n=2..16, including every row at n=7,8. Exactly n=3 source 98266 -> 98234 chars, 293432 -> 293412 rewrites; only strict-majority tables change. Local four-row AND/OR controls use 6..9 rewrites instead of 9..11 and at most 82 snapshot bits instead of 122, without A or F. Thus the existing execution/workspace envelopes stay bounds; unchanged non-majority witnesses still attain them and all original proof arities stay. Eight committed pins are unchanged and executed. The required build repair replaces recursive character copying with O(T) subtree IDs and append-only emission; linear-only gendiff finds zero differences in 632 programs, zero errors, 0.11 -> 0.10 seconds. Direct dense generation medians at n=8/12/16 are 0.086/1.386/22.026 ms old versus 0.122/1.928/30.828 ms append-only: a roughly 40% constant-factor cost for the O(T) build. The whole-constant path and input protocol remain unchanged; no old-program minimum fallback."

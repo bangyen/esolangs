@@ -5,7 +5,6 @@ import pytest
 import esolangs
 from esolangs.debugger import make_vm
 from esolangs.exceptions import TemplateError
-from esolangs.generation.helpers import essential_inputs
 from esolangs.generation.wrap import wrap_program
 from esolangs.languages.slashes.generator import (
     _DECODE,
@@ -21,20 +20,17 @@ from tests.support.witness_tables import witnesses
 
 @pytest.mark.parametrize("n", [1, 2, 3, 4])
 def test_source_length_is_the_documented_formula(n: int) -> None:
-    """Worst case 20 * 2**m + n + 35, plus k + 10 for k ignored inputs.
+    """Alternating run boundaries maximize the compressed sweep count."""
+    from esolangs.languages.slashes.tests.formulas import _scaling
 
-    Reached when the first 2**m - 1 entries are all ``0``: one entry per
-    sweep.  A ``0`` before a ``1`` shares a sweep and trims 18 characters.
-    """
+    if n == 1:
+        _check_run_macros()
     for table in witnesses(n):
-        m = len(essential_inputs(table, n))
-        k = n - m
-        size = 20 * 2**m + n + 35 + (k + 10 if k else 0)
-        if len(set(table)) == 1:
-            size = n + 4
-        assert len(esolangs.generate("///", table)) <= size, table
-    table = "0" * (2**n - 1) + "1"
-    assert len(esolangs.generate("///", table)) == 20 * 2**n + n + 35
+        assert len(str(esolangs.generate("///", table))) <= _scaling(n, ""), table
+    table = (
+        "10" if n == 1 else "10111011" if n == 3 else "10" * (2 ** (n - 1) - 1) + "11"
+    )
+    assert len(str(esolangs.generate("///", table))) == _scaling(n, "")
 
 
 @pytest.mark.medium
@@ -127,15 +123,50 @@ def test_balanced_program_folds_behind_the_newline_rule(table: str) -> None:
 
 
 def test_balanced_side_is_square_at_n8() -> None:
-    """Seed 8: 4011 chars on one line fold to 46 x 92 behind the rule."""
+    """Seed 8 folds to 18 x 38 behind the newline rule."""
     import random
 
     from esolangs.generation.wrap import balance_score
 
     table = format(random.Random(8).getrandbits(256), "0256b")
     balanced = str(esolangs.generate("///", table, balance=True))
-    assert balance_score(balanced)[0] == 92
+    assert balance_score(balanced)[0] == 38
     assert balanced.startswith("/\n//")
+
+
+def _check_run_macros() -> None:
+    from esolangs.languages.slashes.generator import _SWEEP_DEF
+    from esolangs.languages.slashes.interpreter import _Machine
+    from esolangs.languages.slashes.proof_formulas import workspace
+    from esolangs.runtime.io import ScriptedIO
+
+    io = ScriptedIO("Q")
+    machine = _Machine(_SWEEP_DEF + "SS", io)
+    for _ in range(4):
+        machine.step()
+    assert machine.state == (_SWEEP * 2, None)
+    for table in ("1011", "10111011", "00010100", "0101101000011010"):
+        n = len(table).bit_length() - 1
+        for balanced in (False, True):
+            template = esolangs.generate("///", table, balance=balanced)
+            assert balanced or _is_unfilled_template(str(template))
+            for row in range(1 << n):
+                program = esolangs.instantiate(
+                    "///", template, [int(c) for c in f"{row:0{n}b}"]
+                )
+                io = ScriptedIO("Q")
+                machine = _Machine(str(program), io)
+                written = WrittenState(machine.snapshot())
+                while not machine.halted:
+                    machine.step()
+                    written.sample(machine.snapshot())
+                assert io.getvalue() == table[row]
+                assert io.reads == 0
+                assert io.input_char() == ord("Q")
+                if not balanced:
+                    assert written.bits <= workspace(n, str(template))
+                    if row == (1 << n) - 1:
+                        assert written.bits == workspace(n, str(template))
 
 
 def _check_constants() -> None:

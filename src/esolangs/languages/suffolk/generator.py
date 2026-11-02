@@ -7,8 +7,8 @@ Either prints the answer from the accumulator after reading to exhaustion.
 
 Size:
     DAG route O(T) (nodes limited to O(n), rendering O(n**2)); sweep route
-    O(T).  n=10 and: 1,910 chars, n=10 majority: 6,308 chars, n=10 random
-    1847: 7,780 chars. Constants: L=2n+51+b chars, L+1 commands,
+    O(T).  n=10 and: 1,910 chars, n=10 majority: 5,933 chars, n=10 random
+    1847: 7,405 chars. Constants: L=2n+51+b chars, L+1 commands,
     13+bl(L-1)+bl(n) written bits, b the answer.
 """
 
@@ -23,7 +23,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import wrap_chars
-from esolangs.languages.suffolk.proof_formulas import execution
+from esolangs.languages.suffolk.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -87,29 +87,60 @@ def _suffolk_lookup(truth_table: str) -> str:
     halves = (reduced[:half], reduced[half:])
     # Each half's (falling, rising) step counters, in table order.
     (falls0, rises0), (falls1, rises1) = _COUNTS
-    out = [_write(_DOWN)]  # H - x = 1 + the weights of the zero bits
 
-    for i in range(n):
-        if i not in used:
-            # Drain an input the table ignores.  Cell 3 is still zero and a
-            # read leaves it there: 48 or 49 outruns the clamp.
-            out.append(">" * rises0 + ",!")
-            continue
-        # Reading adds the byte to the accumulator, so a cell holding 48
-        # comes back holding the *negated* bit.
-        out.append(_one(falls0) + _write(falls0) * (_ASCII_ZERO - 1))
-        out.append(">" * falls0 + ",!")
-        input_position = used.index(i)
-        if input_position > 0:
-            out.append(_read(_TWO) + _read(falls0) + _write(_TWO))
-            out.append((_read(_TWO) + _write(_DOWN)) * (half >> input_position))
-        else:
-            # The top bit steers the halves instead of the countdown.
-            out.append(_read(_RAW) + _read(falls0) + _write(_RAW))
-            out.append(_read(_NEGATED) + _read(_RAW) + _write(_NEGATED))
+    # [ablations.inputs_first_20261102]: storage loses source from n=11.
+    if n >= 11:
+        out = [_write(_DOWN) + _one(_DOWN)]  # Reset after a previous print.
 
-    out.append(_one(_TWO) + _write(_TWO))  # cell 1 <- 2
-    out.append(_read(_TWO) + _write(falls0))  # and the read cell <- 0
+        for i in range(n):
+            if i not in used:
+                # Drain an ignored byte; stale counters are canceled below.
+                out.append(">" * rises0 + ",!")
+                continue
+            # Reading adds the byte to the accumulator, so a cell holding 48
+            # comes back holding the *negated* bit.
+            out.append(_one(falls0) + _write(falls0) * (_ASCII_ZERO - 1))
+            out.append(">" * falls0 + ",!")
+            input_position = used.index(i)
+            if input_position > 0:
+                out.append(_read(_TWO) + _read(falls0) + _write(_TWO))
+                out.append((_read(_TWO) + _write(_DOWN)) * (half >> input_position))
+            else:
+                # The top bit steers the halves instead of the countdown.
+                out.append(_read(_RAW) + _read(falls0) + _write(_RAW))
+                out.append(_read(_NEGATED) + _read(_RAW) + _write(_NEGATED))
+
+        out.append(_one(_TWO) + _write(_TWO))  # cell 1 <- 2
+        out.append(_read(_TWO) + _write(falls0))  # and the read cell <- 0
+        for cell in (rises0, falls1, rises1):
+            out.append(_read(cell) + _read(_TWO) + _write(cell))
+
+    else:
+        # [ablations.inputs_first_20261102]: cheap scratch reads precede countdown.
+        # RAW holds the top bit; lower bits borrow counters before their reset.
+        slots = {
+            i: (6 if j == 0 else j if j < 6 else j + 2) for j, i in enumerate(used)
+        }
+        out = [_write(0)]
+        for i in range(n):
+            if i not in used:
+                out.append(",!")
+            else:
+                # Cancel old storage: a repeated record must overwrite its bit.
+                out.append(_one(0) + _write(0) * (_ASCII_ZERO - 1) + ",!")
+                out.append(_read(slots[i]) + _read(0) + _write(slots[i]))
+        out.append(_one(0))
+        for j, i in enumerate(used):
+            if j:
+                out.append((_read(slots[i]) + _write(0)) * (half >> j))
+        out.append(_one(1) + _write(1))
+        for cell in (2, 3, 4, 5, 7):
+            out.append(
+                (_read(cell) if cell not in slots.values() and cell != 7 else "")
+                + _read(1)
+                + _write(cell)
+            )
+        out.append(_read(_RAW) + _write(_NEGATED))
 
     step = _read(_TWO) + _write(_DOWN)
     for round_ in range(half):
@@ -242,4 +273,5 @@ LANGUAGE = Language(
     eof="reads to exhaustion, so EOF is the halt",
     empty_program="Suffolk program cannot be empty",
     proof_execution=(execution, True, (3, 6)),
+    proof_workspace=(workspace, False, (3, 5, 6)),
 )

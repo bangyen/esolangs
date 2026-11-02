@@ -13,19 +13,19 @@ bf_derivative = true
 labels = ["finite lookup"]
 qualification = "every loop's cycle is 0 (mod 8), so its exit rotation is the same whatever its trip count"
 scaling = "linear: worst P characters, n = 2..10: a lone zero"
-execution = "linear: worst 8T² + 43T + 15n - 5 commands for n = 2..6: a lone zero second to last"
+execution = "linear: worst 183 commands at n=1; 8T²+43T+15n-5 for n=2..6: penultimate lone zero"
 workspace = "linear: worst W bits for n = 2..6, at most V after: 2T + 7 cells"
 definitions = ["W = 2T + n + 8 + bl(2T+6) + bl(L) + bl(E) + bl(n), E the execution worst", "V = 2T + 5n + 35 + bl(2080L) + bl(2T+6) + bl(L) + bl(n)"]
 
 [generator_sizes]
-"00000001" = { commands = 364, commands_by_row = { "0" = 212, "1" = 252, "2" = 252, "3" = 308, "4" = 236, "5" = 292, "6" = 292, "7" = 364 }, source_units = 268 }
+"00000001" = { commands = 419, commands_by_row = { "0" = 267, "1" = 307, "2" = 307, "3" = 363, "4" = 291, "5" = 347, "6" = 347, "7" = 419 }, source_units = 243 }
 "00001100" = { commands = 326, commands_by_row = { "0" = 166, "1" = 166, "2" = 190, "3" = 190, "4" = 270, "5" = 270, "6" = 326, "7" = 326 }, source_units = 214 }
 "00110110" = { commands = 893, commands_by_row = { "0" = 229, "1" = 253, "2" = 333, "3" = 389, "4" = 541, "5" = 629, "6" = 773, "7" = 893 }, source_units = 301 }
-"0110" = { commands = 238, commands_by_row = { "0" = 158, "1" = 198, "2" = 182, "3" = 238 }, source_units = 198 }
-"01101001" = { commands = 365, commands_by_row = { "0" = 213, "1" = 253, "2" = 253, "3" = 309, "4" = 237, "5" = 293, "6" = 293, "7" = 365 }, source_units = 269 }
-"0110100110010110" = { commands = 507, commands_by_row = { "0" = 267, "1" = 307, "2" = 307, "3" = 363, "4" = 307, "5" = 363, "6" = 363, "7" = 435, "8" = 291, "9" = 347, "10" = 347, "11" = 419, "12" = 347, "13" = 419, "14" = 419, "15" = 507 }, source_units = 339 }
+"0110" = { commands = 293, commands_by_row = { "0" = 213, "1" = 253, "2" = 237, "3" = 293 }, source_units = 173 }
+"01101001" = { commands = 420, commands_by_row = { "0" = 268, "1" = 308, "2" = 308, "3" = 364, "4" = 292, "5" = 348, "6" = 348, "7" = 420 }, source_units = 244 }
+"0110100110010110" = { commands = 562, commands_by_row = { "0" = 322, "1" = 362, "2" = 362, "3" = 418, "4" = 362, "5" = 418, "6" = 418, "7" = 490, "8" = 346, "9" = 402, "10" = 402, "11" = 474, "12" = 402, "13" = 474, "14" = 474, "15" = 562 }, source_units = 314 }
 "1101001101101101" = { commands = 2786, commands_by_row = { "0" = 306, "1" = 330, "2" = 410, "3" = 466, "4" = 618, "5" = 706, "6" = 850, "7" = 970, "8" = 1226, "9" = 1378, "10" = 1586, "11" = 1770, "12" = 2050, "13" = 2266, "14" = 2538, "15" = 2786 }, source_units = 402 }
-"11111110" = { commands = 366, commands_by_row = { "0" = 214, "1" = 254, "2" = 254, "3" = 310, "4" = 238, "5" = 294, "6" = 294, "7" = 366 }, source_units = 270 }
+"11111110" = { commands = 421, commands_by_row = { "0" = 269, "1" = 309, "2" = 309, "3" = 365, "4" = 293, "5" = 349, "6" = 349, "7" = 421 }, source_units = 245 }
 
 [catalogue]
 folding_constant_local = "_program"  # one-entry rotated lookup
@@ -84,6 +84,7 @@ verdict = "kept under the named-function rule: a table depending only on how man
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
+trick_prototype = 2026-11-02
 
 [ablations.constant_table_audit_20261101]
 arity = 8
@@ -91,3 +92,25 @@ saving = 54.3
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: canonical whole constants. Raw reads share one cell, then a fresh six-count loop builds ASCII 48=6*8 and adds the answer bit. The existing phase builder emits both rotations; four neutral commands in the body repeat six times. Default source L=n+26+b chars and L+80 commands. Workspace 16+bl(L)+bl(L+80)+bl(n) backward, one more forward. Proof bounds also account for wrapped comments: executed steps are raw source length plus five times the open-to-close body span; rotation still counts L+80 commands. n=8 zero/one 75/76 -> 34/35 chars; commands 75/76 -> 114/115, backward workspace stays 33 bits and forward uses 34. n=12 87/88 -> 38/39. n=3 corpus 72302 -> 72240 chars. Every constant row at n=8 remains executed, plus both rotations through n=12 across all layouts. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources, all reads before output and a preserved following record; bit readers also finish the whole last byte without EOF probes. No new collected cases."
+
+
+[ablations.constant_runs_by_multiplication]
+saving = 28.05
+arity = 8
+seed = "random.Random(184700+n), successive getrandbits(1<<n)"
+tables = "200 generic per n7/8; all 254/510 nonconstant symmetric tables; named functions and negations through14"
+verdict = "Kept for nonconstant full symmetry under the 20% declining gate. Existing count readers use zero carrier+2 for bias and the zero current carrier for output. Three local spellings: plain, isqrt quotient/remainder, radix16 quotient/remainder; no open seek means a changed global phase cannot change later padding lengths. Backward old source is291+h/361+h at n7/8, forward307+h/377+h, h=1..n weight-table ones; savings are68/108 chars throughout. Thus the entire class saves at least22.82%/29.27% backward and21.66%/28.05% forward, not merely a firing sample. All1528 emitted old/new pairs checked. Parity295→227,365→257,340→272,314→285,391→339,468→390 at n7/8/9/10/12/14: peak8, later decline/oscillation tends0; no arity cap. Named negations also clear fixed7/8. Generic and projected readers retain their old spellings: the generic prototype saves7.41%/9.47% backward and7.85%/9.75% forward, failing both bars on fixed200. Tail multiplication also applies below7; n1 source128→103 and worst E128→183, n3 chars72240→71890 and commands914176→920336. Original exact source/E/W scopes and global n2..6 maxima remain: modified symmetric E is at most8n²+87n+88, below the unchanged generic worst. All8 pins and balanced example updated; n10 AND310→281. Native5124 full-program rows,2600 default symmetric resource rows at n2..5 and7680 byte-addition primitives pass; nonzero-scratch mutant fails. Inputs, byte cells and physical order unchanged; O(T) build/source and existing V after6 retained."
+
+[ablations.packed_entry_pairs]
+saving = 5.49
+arity = 8
+seed = "random.Random(184700+n), successive getrandbits(1<<n)"
+tables = "20 generic per n7/8; three per n9/10/12; every table/row through3, both rotations"
+verdict = "Working prototype, rejected on fixed7/8 source. Pack even+2*odd, decode low0 with mod2 and low1 with floor(v/2), using zero carrier remainder/quotient/flag loops. Read the last essential bit after the high-index walk; drain trailing ignores before output. No named multiplication is stacked. Backward totals13745→14898 at7 (8.39% growth),22463→21301 at8 (5.17% saving); forward15025→16178 (7.67% growth),24063→22741 (5.49% saving). Decoder/rotation overhead misses both bars. Later three-table savings10.12%/18.83%/27.93% at9/10/12 backward,9.27%/18.53%/27.73% forward do not move the fixed judging range or justify a cap excluding the still-saving n8 case. Native4256 small/large rows and60 later/projected controls pass. No production packing retained."
+
+[ablations.raced_digit_split]
+saving = 7.34
+arity = 8
+seed = "random.Random(184700+n), successive getrandbits(1<<n)"
+tables = "200 generic per n7/8, both rotations; named and native endpoint controls"
+verdict = "Rejected: four fixed radix4/5/6/7 grouping rules include all supplied n7/8 splits and the shipped six-bit rule; no input permutation or search. Backward totals137568→125768 at7 (8.58%),223909→207909 at8 (7.15%); forward150368→138568 (7.85%),239909→222309 (7.34%). Below both bars and declining; named readers tie. Native endpoint programs pass, but an n8 endpoint grows102142→216078 commands backward and125198→287198 forward. No production split race retained."

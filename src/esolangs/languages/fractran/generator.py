@@ -8,8 +8,8 @@ in all, each written in ``O(log T)`` digits.  Every base is a prime below the
 text's length, which the interpreter's index factors and buckets by state.
 
 Size:
-    Theta(T) text, at most ``n + 1`` fractions fire a run; n=10 parity: 364
-    chars, n=10 random 1847: 4,466 chars. Constants omit the state prime:
+    Theta(T) text, at most ``n`` fractions fire a run; n=10 parity: 342
+    chars, n=10 random 1847: 4,397 chars. Constants omit the state prime:
     at most n+1 commands including the halt; n=8: 71/75 chars.
 """
 
@@ -101,20 +101,19 @@ def _tree(truth_table: str, n: int) -> list[_Leaf | _Node]:
 def _nodes(
     nodes: list[_Leaf | _Node], states: list[int], inputs: list[int]
 ) -> list[str]:
-    """Return the diagram's fractions: a leaf's answer, a node's two."""
+    """Return two fractions per node; leaf edges carry the answer directly."""
     fractions: list[str] = []
     for index, entry in enumerate(nodes):
         if isinstance(entry, _Leaf):
-            fractions.append(f"{2 if entry.answer == '1' else 1}/{states[index]}")
-        else:
-            # The one-child first: the zero-child is the else, by priority.
-            # A large guard is spelled as its primes, which the index factors.
-            one, zero = entry.one, entry.zero
-            state, bit = states[index], inputs[entry.depth]
-            product = state * bit
-            guard = product if product <= SMALL_BASE else f"{state}*{bit}"
-            fractions.append(f"{states[one]}/{guard}")
-            fractions.append(f"{states[zero]}/{state}")
+            continue
+        # The one-child first: the zero-child is the else, by priority.
+        # A large guard is spelled as its primes, which the index factors.
+        one, zero = entry.one, entry.zero
+        state, bit = states[index], inputs[entry.depth]
+        product = state * bit
+        guard = product if product <= SMALL_BASE else f"{state}*{bit}"
+        fractions.append(f"{states[one]}/{guard}")
+        fractions.append(f"{states[zero]}/{state}")
     return fractions
 
 
@@ -145,14 +144,22 @@ def _plain(truth_table: str, n: int, *, small_root: bool = False) -> str:
     """Return the table as a decision diagram: every level read.
 
     Only ``2`` is reserved, so the inputs and states take the smallest primes
-    there are, and a run is a step a level, one for the leaf, and a clear for
+    there are, and a run is a step a level and a clear for
     each input a path left unread.
     """
     nodes = _tree(truth_table, n)
-    primes = _primes(1 + n + len(nodes))
-    inputs, states = primes[1 : 1 + n], primes[1 + n :]
+    primes = _primes(1 + n + sum(isinstance(entry, _Node) for entry in nodes))
+    inputs = primes[1 : 1 + n]
+    state_primes = iter(primes[1 + n :])
+    # Leaf edges remove one command on every nonconstant run; see
+    # [ablations.leaf_inline]. Only internal nodes need state primes.
+    states = [
+        1 + int(entry.answer) if isinstance(entry, _Leaf) else next(state_primes)
+        for entry in nodes
+    ]
     if small_root:
-        states[0], states[-1] = states[-1], states[0]
+        first = next(i for i, entry in enumerate(nodes) if isinstance(entry, _Node))
+        states[first], states[-1] = states[-1], states[first]
     fractions = _nodes(nodes, states, inputs)
     unread = _unread(nodes, n)
     fractions += [f"1/{p}" for depth, p in enumerate(inputs) if depth in unread]

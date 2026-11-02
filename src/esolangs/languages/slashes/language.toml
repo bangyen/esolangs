@@ -6,20 +6,21 @@ backlinks = 86
 
 [proof_status]
 labels = ["parameterized lookup"]
-qualification = "binary-to-unary substitutions form the row index; T escaped sweeps consume indexed entries before decoding one answer and deleting the suffix"
-scaling = "linear: worst 20T + n + 35 characters: T sweeps, 2T table"
-execution = "linear: worst 6T + n + 15 steps: rule parses, failed searches and substitutions"
-workspace = "linear: worst 8L + 56 + 8max(0,T-15) bits: the program string, rewritten in place"
+qualification = "binary-to-unary substitutions form the row index; fixed macros expand run sweeps before decoding one answer"
+scaling = "linear: worst 5T/2+n+83 characters past n=3; smaller arities include projection overhead"
+execution = "linear: worst E steps: 9T/2+n+21 past n = 1; 28 at n = 1"
+workspace = "linear: worst W bits: expanded source and separate pattern/replacement peaks"
+definitions = ["E = 28 at n=1, else 9T/2+n+21", "W = exact per-template peak from proof_formulas.workspace"]
 
 [generator_sizes]
-"00000001" = { commands = 66, commands_by_row = { "0" = 59, "1" = 60, "2" = 61, "3" = 62, "4" = 63, "5" = 64, "6" = 65, "7" = 66 }, source_units = 198 }
-"00001100" = { commands = 42, commands_by_row = { "0" = 39, "1" = 39, "2" = 40, "3" = 40, "4" = 41, "5" = 41, "6" = 42, "7" = 42 }, source_units = 111 }
-"00110110" = { commands = 58, commands_by_row = { "0" = 51, "1" = 52, "2" = 53, "3" = 54, "4" = 55, "5" = 56, "6" = 57, "7" = 58 }, source_units = 162 }
-"0110" = { commands = 37, commands_by_row = { "0" = 34, "1" = 35, "2" = 36, "3" = 37 }, source_units = 99 }
-"01101001" = { commands = 58, commands_by_row = { "0" = 51, "1" = 52, "2" = 53, "3" = 54, "4" = 55, "5" = 56, "6" = 57, "7" = 58 }, source_units = 162 }
-"0110100110010110" = { commands = 95, commands_by_row = { "0" = 80, "1" = 81, "2" = 82, "3" = 83, "4" = 84, "5" = 85, "6" = 86, "7" = 87, "8" = 88, "9" = 89, "10" = 90, "11" = 91, "12" = 92, "13" = 93, "14" = 94, "15" = 95 }, source_units = 269 }
-"1101001101101101" = { commands = 99, commands_by_row = { "0" = 84, "1" = 85, "2" = 86, "3" = 87, "4" = 88, "5" = 89, "6" = 90, "7" = 91, "8" = 92, "9" = 93, "10" = 94, "11" = 95, "12" = 96, "13" = 97, "14" = 98, "15" = 99 }, source_units = 287 }
-"11111110" = { commands = 66, commands_by_row = { "0" = 59, "1" = 60, "2" = 61, "3" = 62, "4" = 63, "5" = 64, "6" = 65, "7" = 66 }, source_units = 198 }
+"00000001" = { commands = 42, commands_by_row = { "0" = 35, "1" = 36, "2" = 37, "3" = 38, "4" = 39, "5" = 40, "6" = 41, "7" = 42 }, source_units = 90 }
+"00001100" = { commands = 38, commands_by_row = { "0" = 35, "1" = 35, "2" = 36, "3" = 36, "4" = 37, "5" = 37, "6" = 38, "7" = 38 }, source_units = 93 }
+"00110110" = { commands = 50, commands_by_row = { "0" = 43, "1" = 44, "2" = 45, "3" = 46, "4" = 47, "5" = 48, "6" = 49, "7" = 50 }, source_units = 104 }
+"0110" = { commands = 33, commands_by_row = { "0" = 30, "1" = 31, "2" = 32, "3" = 33 }, source_units = 81 }
+"01101001" = { commands = 55, commands_by_row = { "0" = 48, "1" = 49, "2" = 50, "3" = 51, "4" = 52, "5" = 53, "6" = 54, "7" = 55 }, source_units = 105 }
+"0110100110010110" = { commands = 82, commands_by_row = { "0" = 67, "1" = 68, "2" = 69, "3" = 70, "4" = 71, "5" = 72, "6" = 73, "7" = 74, "8" = 75, "9" = 76, "10" = 77, "11" = 78, "12" = 79, "13" = 80, "14" = 81, "15" = 82 }, source_units = 124 }
+"1101001101101101" = { commands = 87, commands_by_row = { "0" = 72, "1" = 73, "2" = 74, "3" = 75, "4" = 76, "5" = 77, "6" = 78, "7" = 79, "8" = 80, "9" = 81, "10" = 82, "11" = 83, "12" = 84, "13" = 85, "14" = 86, "15" = 87 }, source_units = 125 }
+"11111110" = { commands = 42, commands_by_row = { "0" = 35, "1" = 36, "2" = 37, "3" = 38, "4" = 39, "5" = 40, "6" = 41, "7" = 42 }, source_units = 90 }
 
 [catalogue]
 folding_constant_local = "_constant_pattern"  # parse inputs before the literal answer
@@ -52,9 +53,10 @@ saving = 22.1
 arity = 9
 seed = "random.Random(131s + n), s = 0..19"
 tables = "20 random per n=7,8,9 plus parity/and/or/majority/threshold-3/threshold-(n-1) at n=7,8,9"
-verdict = "kept: emits only the sweeps that clear the first T-1 entries, not T: a sweep deletes two when a qA is followed by a qB, so a random table needs ~0.78T. Random totals 52,400 -> 41,168 (-21.4%) at n=7, 103,620 -> 80,760 (-22.1%) at n=8, 206,040 -> 160,464 (-22.1%) at n=9, a share that holds with n; named: parity 2,620 -> 1,846 / 5,181 -> 3,633 / 10,302 -> 7,224 (-29.5%, -29.9%, -29.9%), majority -14.4 / -12.5 / -12.4%, threshold-3 -11.0 / -7.6 / -5.1%, and/or -0.7% (all-qA prefix, one entry per sweep). Balanced area at n=7 / 8 (seed 131*3+n): side 74 -> 68 / 104 -> 92, area -15.6% / -21.7%. Every program ran on every row (n=2,3 all 276 tables; 26 tables at n=4,5,7,8,9, 0 bad) and a wrong table failed on each"
+verdict = "superseded 2026-11-02 by run counting and macros; historical measurements: emits only the sweeps that clear the first T-1 entries, not T: a sweep deletes two when a qA is followed by a qB, so a random table needs ~0.78T. Random totals 52,400 -> 41,168 (-21.4%) at n=7, 103,620 -> 80,760 (-22.1%) at n=8, 206,040 -> 160,464 (-22.1%) at n=9, a share that holds with n; named: parity 2,620 -> 1,846 / 5,181 -> 3,633 / 10,302 -> 7,224 (-29.5%, -29.9%, -29.9%), majority -14.4 / -12.5 / -12.4%, threshold-3 -11.0 / -7.6 / -5.1%, and/or -0.7% (all-qA prefix, one entry per sweep). Balanced area at n=7 / 8 (seed 131*3+n): side 74 -> 68 / 104 -> 92, area -15.6% / -21.7%. Every program ran on every row (n=2,3 all 276 tables; 26 tables at n=4,5,7,8,9, 0 bad) and a wrong table failed on each"
 
 [audits]
+trick_prototype = 2026-11-02
 plain_rewrite = 2026-10-28
 
 [ablations.constant_table_audit_20261101]
@@ -63,3 +65,24 @@ saving = 29.4
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "kept: canonical constant folding, exempt. Inputs fill one nonempty a/b pattern in /pattern// followed by the literal digit. Parsing consumes every slot, the pattern cannot match the answer, and the digit prints. Chars n+4, commands 3: n=7 16->11 (31.2%), n=8 17->12 (29.4%), n=12 21->16. Native workspace bound 16n+32 bits; n=8 rises 144->160 bits while commands fall 13->3, within unchanged global caps. Recognize these unfilled/partially filled templates and retain recognition of old templates. n=3 corpus chars 41316->41306. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command records and global resource caps unchanged. Owned IO/template checks verify input use before output and preserve the following record."
+
+[ablations.sweep_macro_20261102]
+arity = 8
+saving = 80.23
+seed = "random.Random(1847+n), successive getrandbits(1<<n)"
+tables = "200 per fixed n7/8; all tables/rows through3; native named/ignored/sample4..14"
+verdict = "kept: one fixed /S/escaped-sweep/ definition expands one S per sweep. Exact quoting preserves the backslash shielding future sweep patterns; S appears in no later rule, slot or data cell. A named local spelling rule uses the macro only when30+c<18c, hence from two sweeps; this is no search or whole-source fallback. Independent fixed200 n7/8 chars406892->88294 (78.30%),803640->158880 (80.23%). No table grows. All8480 small native variant rows and4800 fixed-judge rows pass. Macro expansion adds2+c commands, explicitly accepted by the source gate. Generic expected source tends2.75T versus15.5T, saving51/62; ignored-input probability tends0. Actual sources/native last rows extend through14, with no moved cap."
+
+[ablations.sweep_macro_runs_20261102]
+arity = 8
+saving = 15.96
+seed = "random.Random(1847+n), successive getrandbits(1<<n)"
+tables = "200 per fixed n7/8; all tables/rows through3; native named/ignored/sample4..14"
+verdict = "kept: independently admitted run counting after macro spelling. A sweep repeats its zero rule across the zero run, then its one rule across the one run; only10 transitions among the first T-1 entries need another sweep. Exactly1+count10 sweeps, at mostT/2, while positive tiny diagnostic tables can use zero/one sweeps without a macro. Fixed200 n7/8 marginal chars88294->75690 (14.27%),158880->133515 (15.96%); standalone406892->180020 (55.75%),803640->347070 (56.81%). Joint savings81.40%/83.39%. IID expected prefix counts: old3T/4-1/2, newT/4+1/2, so marginal expected saving tends2/11>10%; actual source/native extensions through14 rise toward that limit. No source race, arity cap, reordered reads, searched table or widened cell. Both constants byte-identical; input projection and a/b template pair/order unchanged. Native8480 small variant rows,4800 fixed-judge rows,5314 extended rows (including balanced and ignored controls),110 exact workspace runs pass. A wrong expected bit fails. n3 chars41306->26199, commands110168->96848. Worst source76/95/107 at n1/2/3 then5T/2+n+83; n3 maximum is one ignored input with four-entry core1011. Full modified alternating tail1011 reaches the larger-arity bound. Default worst E28 at1, then9T/2+n+21: row+T+n+4c+20, plus macro2+c; ignored inputs add4 and reduce T. Old source/E/W proof rungs1/2/3/5 retained. Workspace includes expansion, not compressed length alone: constants16n+32; otherwise8(L+max(0,M-15-P-2k,M-1-m-P-2k+17c-48 if macro))+32+(144 if macro else24), M=2^m reduced entries,k ignored inputs,P=10 iff k>0. Initial/unary/macro source peaks and separate4-byte pattern/18-byte macro replacement peaks yield this exact all-row bound; last row reaches it. It is O(T), conservatively<=96T+8n+848. All8 pins/Size anchors/balanced example updated and n3 corpus remeasured. No new collected language cases."
+
+[ablations.digit_entries_20261102]
+arity = 8
+saving = 0.0
+seed = "random.Random(1847+n), successive getrandbits(1<<n)"
+tables = "200 per fixed n7/8; all tables/rows through3; native named/ignored/sample4..14"
+verdict = "rejected: raw digit table destroys its own decoder. /0// also deletes the0 in later /C/0/, and /1// deletes1 in /D/1/, so the chosen marker is deleted rather than printed. Actual programs for01,10,0110,00110110 print the empty string on all16 rows, failing every expected bit. No size/equivalence claim or incomplete-rule halt workaround ships. The native failure is the positive control; the general interpreter remains unchanged."

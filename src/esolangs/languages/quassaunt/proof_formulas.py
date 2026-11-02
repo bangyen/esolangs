@@ -1,49 +1,52 @@
-"""Executed word and snapshot-bit bounds."""
+"""Executed-word and snapshot-bit bounds for the shared store loop."""
 
 
-def execution(n: int, _: str) -> int:
-    """5N + 15n + 14, N the most distinct subtables a diagram holds.
-
-    A level of height h has 2^(n-h) positions and 2^2^h subtables; the
-    branch avoids building 2^2^h when it is the larger.
-    """
-    nodes = sum(
-        1 << (1 << h) if 1 << h <= n - h else 1 << (n - h) for h in range(n + 1)
-    )
-    return 5 * nodes + 15 * n + 14
+def node_cap(n: int) -> int:
+    """The most distinct residuals, including constants at each input depth."""
+    return sum(1 << (1 << h) if 1 << h <= n - h else 1 << (n - h) for h in range(n + 1))
 
 
-def workspace(n: int, p: str) -> int:
-    """Frames, globals, locals and input exact; the stack at its longest body.
+def execution(n: int, program: str) -> int:
+    """Startup, 23 words per stored triple, then one n-level dispatch path."""
+    extra = 2 * program.split().count("%%Concatenate")
+    if "%%Store" not in program:
+        return n + 2 + extra
+    # D <= N+1 includes [], and C chains save seven words versus branches.
+    # Exact path: 40+15n+26D-7C; the full-diagram witness has C=0.
+    return 26 * node_cap(n) + 15 * n + 66 + extra
 
-    The frame holds the program's words once (8L - 40D - 47 + bl(5D+6): the
-    pc reaches the last of 5D + 7 words); the globals every definition once
-    (8L - 288D - 8r - 288, r the root name's length: the start is not
-    stored; ``[one]`` is one more definition); one local ``d`` is 17; the
-    input count is bl(n).  The stack peaks holding the longest word's body
-    after its ``%%Obtain`` and four more characters, reached only with a
-    chain above it, whose local rides the same row.
-    """
-    text = str(p)
-    if "%%Store" not in text:
-        # Frames retain every word; input strings remain stacked after printing.
+
+def workspace(n: int, program: str) -> int:
+    """Exact component peaks; cuts alter the raw frame, not assembled payloads."""
+    raw = program.split()
+    if "%%Store" not in program:
         return (
-            8 * sum(map(len, text.split()))
+            8 * sum(map(len, raw))
             + 8 * (n + 1)
             + (n + 1).bit_length()
             + 1
             + n.bit_length()
         )
-    defs = text.count(" %%Empty %%Makecontain %%Store")
-    root = len(text.split()[-5]) - 4
-    longest = max(map(len, text.split()))
-    bl = int.bit_length
+    words: list[str] = []
+    for word in raw:
+        if word == "%%Concatenate":
+            right, left = words.pop(), words.pop()
+            words.append(left + right[2:])
+        else:
+            words.append(word)
+    # Five helper-store words, 2n fillers, three dummy words, then triples
+    # and the seven-word initial call. Cuts reconstruct this same layout.
+    helper = len(words[1]) - 2
+    triples = words[8 + 2 * n : -7]
+    names = [len(triples[i]) - 2 for i in range(0, len(triples), 3)]
+    bodies = [len(triples[i]) - 2 for i in range(1, len(triples), 3)]
+    a, b, k = sum(names), sum(bodies), max(names)
+    # Stack: dummy, all triples and helper. Globals: every definition plus
+    # helper, dummy and error name. Local d holds the longest key. Raw words
+    # dominate frame peaks, including every literal/Concatenate introduced by cuts.
     return (
-        16 * len(text)
-        - 328 * defs
-        - 8 * root
-        - 302
-        + 8 * longest
-        + bl(5 * defs + 6)
-        + bl(n)
+        8 * (sum(map(len, raw)) + 26 + 2 * b + 3 * a + 2 * helper + k)
+        + 10
+        + (len(raw) - 1).bit_length()
+        + n.bit_length()
     )

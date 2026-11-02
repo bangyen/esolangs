@@ -12,14 +12,14 @@ def _constant_answer(p: str) -> int | None:
     return 1 if head == "2" else None
 
 
-def execution(n: int, p: str) -> int:
+def execution(n: int, _p: str) -> int:
     """The stated execution bound, evaluated for n and the program."""
-    return n + (1 if _constant_answer(p) is not None else 2)
+    return n + 1
 
 
 def _diagram_cap(n: int) -> int:
-    """The maximal state count: two leaves, then each depth's unequal-halves cap."""
-    return 2 + sum(
+    """The maximal internal-state count: each depth's unequal-halves cap."""
+    return sum(
         min(1 << d, (1 << (1 << (n - d))) - (1 << (1 << (n - d - 1)))) for d in range(n)
     )
 

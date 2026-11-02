@@ -50,10 +50,10 @@ def test_fractran_shares_equal_subtables() -> None:
     parity = str(boolean.fractran("".join(str(r.bit_count() & 1) for r in range(32))))
     assert "^1 " not in parity
     assert "^1*" not in parity
-    # A root, two nodes a level below it, two leaves: two fractions a node.
-    assert len(parity.split()) - 1 == 2 * (2 * 5 - 1) + 2
+    # A root, two nodes a level below it: two fractions a node.
+    assert len(parity.split()) - 1 == 2 * (2 * 5 - 1)
     tables = [format(i, "08b") for i in range(256)]
-    assert sum(len(boolean.fractran(t)) for t in tables) == 19_664
+    assert sum(len(boolean.fractran(t)) for t in tables) == 15_524
 
 
 def _fractran_steps(template: str, n: int) -> int:
@@ -75,11 +75,11 @@ def test_fractran_runs_a_step_a_level() -> None:
     """A run fires at most n + 1 fractions; a constant table clears its set inputs."""
     _check_native_constants()
     tables = [format(i, "08b") for i in range(256)]
-    assert sum(_fractran_steps(boolean.fractran(t), 3) for t in tables) == 9_392
+    assert sum(_fractran_steps(boolean.fractran(t), 3) for t in tables) == 7_360
     for n in range(1, 8):
         table = "".join(str((row * row + 1) % 3 & 1) for row in range(2**n))
         # The machine's count includes the step that finds it halted.
-        assert _fractran_steps(boolean.fractran(table), n) <= (n + 2) << n
+        assert _fractran_steps(boolean.fractran(table), n) <= (n + 1) << n
         # One clear per set input, then the halt: 1 + popcount per row.
         constant = _fractran_steps(boolean.fractran("1" * 2**n), n)
         assert constant == 2**n + n * 2 ** (n - 1)
@@ -148,7 +148,7 @@ def test_nonuniform_cells_retain_tokens(program: str) -> None:
 def test_a_request_as_wide_as_the_widest_token_keeps_the_plain_root() -> None:
     """At width == the widest token the plain build stands; no swap is tried."""
 
-    assert fractran("0001", 10) == "17*3^$*5^$\n1/7 2/11\n11/65 7/13\n13/51 7/17\n1/5"
+    assert fractran("0001", 10) == "11*3^$*5^$\n2/35 1/7\n7/33 1/11\n1/5"
 
 
 def test_balanced_width_bounds_stop_below_the_widest_token() -> None:
@@ -156,7 +156,7 @@ def test_balanced_width_bounds_stop_below_the_widest_token() -> None:
     table = "0100110000110100000110010110110100111010011101100010000011011111"
     program = str(esolangs.generate("FRACTRAN", table, balance=True))
     rows = program.split("\n")
-    assert (len(program), len(rows), max(map(len, rows))) == (462, 16, 33)
+    assert (len(program), len(rows), max(map(len, rows))) == (431, 16, 30)
     assert _evaluate("FRACTRAN", program, inputs=6) == table
 
 

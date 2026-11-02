@@ -15,6 +15,13 @@ def test_every_row_prints_its_answer(table: str) -> None:
         _check_constants()
     n = len(table).bit_length() - 1
     program = esolangs.generate("Sonata", table)
+    if n != 2:
+        assert "0_I->%0_I" not in program
+        # An exact-length setup still leaves a wrong-length binary input unanswered.
+        invalid = "0" * (n + 1)
+        assert esolangs.run("Sonata", program, stdin=invalid) == invalid
+    elif len(set(table)) == 2:
+        assert "0_I->%0_I" in program
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("Sonata", bits)
@@ -57,6 +64,16 @@ def _check_constants() -> None:
                     assert written.bits == 8 * max(n, 2) + 2
                 invalid = "0" * (n + 1)
                 assert esolangs.run("Sonata", program, stdin=invalid) == invalid
-    assert (
-        sum(len(esolangs.generate("Sonata", f"{v:08b}")) for v in range(256)) == 30314
-    )
+    total_chars = total_steps = 0
+    for value in range(256):
+        table = f"{value:08b}"
+        program = esolangs.generate("Sonata", table)
+        total_chars += len(program)
+        for row in range(8):
+            io = ScriptedIO(f"{row:03b}")
+            machine = _Machine(program, io)
+            while not machine.halted:
+                machine.step()
+                total_steps += 1
+            assert io.getvalue() == "=" + table[row]
+    assert (total_chars, total_steps) == (24980, 18080)

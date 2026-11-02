@@ -4,13 +4,14 @@ Scope ``m`` (children ``2m+1``, ``2m+2``) is a ``{...}`` labelled a step past
 the previous one (definitions advance by ``1+``); ``{scope}`` stores its
 unpopped key and ``;`` pops and calls.  Internal scopes share one dispatch,
 ``2*1++:;``, which consumes a bit and an index, keeps the callee's key and
-calls the child; leaves push ``48+result`` for ``.``.
+calls the child; leaves push ``48+result`` for ``.``. A final bit is
+converted directly to its output byte, leaving the scope index below it.
 Constant subtrees collapse to a leaf; a same-level twin is called by distance
 (``{}-:;``) when that beats inlining.  An ignored input is read and dropped.
 
 Size:
-    O(T) dense, near-linear in n for parity and and; n=10 parity: 444 chars,
-    n=10 and: 292 chars, n=10 random 1847: 5,141 chars.
+    O(T) dense, near-linear in n for parity and and; n=10 parity: 397 chars,
+    n=10 and: 264 chars, n=10 random 1847: 5,094 chars.
     Constants use L=2n+4 chars, 2n+5 steps and
     8L+10-b+2bl(2n)+bl(n) written bits.
 """
@@ -101,6 +102,9 @@ def _forth_ordered(truth_table: str, reads: str, *, share: bool = False) -> str:
                 body = _forth_const(_ASCII_ZERO + int(truth_table[lo]))
             elif call:
                 body = call
+            elif depth == n - 1:
+                # [ablations.bit_arith_bottom]: no child scopes or final dispatch.
+                body = "v68*+" if truth_table[lo:hi] == "01" else "v77*v-"
             else:
                 body = _FORTH_DISPATCH
                 pending.extend((2 * m + 1, 2 * m + 2))

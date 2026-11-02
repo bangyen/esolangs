@@ -19,7 +19,7 @@ workspace = "linear: worst T + 11 + bl(T+6n+8) bits: a queue of T + 6 bits, the 
 "0110" = { commands = 74, commands_by_row = { "0" = 66, "3" = 74 }, commands_by_row_nulls = [1, 2], source_units = 131 }
 "01101001" = { commands_by_row = { "0" = 80, "3" = 93, "5" = 112, "6" = 121 }, commands_by_row_nulls = [1, 2, 4, 7], source_units = 201 }
 "0110100110010110" = { commands = 200, commands_by_row = { "0" = 94, "3" = 107, "5" = 126, "6" = 135, "9" = 164, "10" = 173, "12" = 192, "15" = 200 }, commands_by_row_nulls = [1, 2, 4, 7, 8, 11, 13, 14], source_units = 299 }
-"1101001101101101" = { commands_by_row = { "2" = 177, "4" = 159, "5" = 160, "8" = 238, "11" = 266, "14" = 276 }, commands_by_row_nulls = [0, 1, 3, 6, 7, 9, 10, 12, 13, 15], source_units = 341 }
+"1101001101101101" = { commands_by_row = { "2" = 177, "4" = 159, "5" = 160, "8" = 238, "11" = 266, "14" = 276 }, commands_by_row_nulls = [0, 1, 3, 6, 7, 9, 10, 12, 13, 15], source_units = 337 }
 "11111110" = { commands = 121, commands_by_row = { "7" = 121 }, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6], source_units = 231 }
 
 [catalogue]
@@ -59,6 +59,7 @@ arity = 8
 verdict = "retired 2026-10-28: the balanced race also built the 1-, 5- and 6-column cascades and never beat the default or a fold on balanced area (side squared): 0.0% on 20 seeded tables at n=7/8 (seed 1000n + i), on the parity, majority, and, or, nand, nor and thresholds tables at n=7..12, on all 65,534 non-constant tables at n=1..4 and 300 each at n=5/6. Byte-identical on area; 76 of 80 differing tables at n<=4 and 4 larger ones only lose a 2-3 character tie on length (balanced area unchanged). width=N remains the user-requested layout. Executed: 616 default and balanced programs (every n<=3 table, random n=7/8, named n=7..9) all correct, a wrong table fails"
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
@@ -69,3 +70,24 @@ saving = 44.4
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "kept: canonical constant-root layout packing. The one-heading ring visits eight fixed cells; fill the other cells with ignored input setters, preserving the existing off-path input convention and the old n=1/2 layouts. Compare four-column and three-row rectangles by area; explicit narrower widths pack at a four-column floor and fitting widths preserve the default. At n=7 one area 32->15 (53.1%; both answers combined 42.5%), n=8 36->16 (55.6%; combined 44.4%), n=12 52->20 (61.5%; combined 49.2%). Zero area n+1 unchanged. One still diverges by the same nine-step repeated-state witness, not a finite execution claim; zero still halts at its first empty pop. Written workspace unchanged at 0/7 bits. n=3 corpus area 52634->52630; text chars 46508 unchanged. Owned trace coverage proves every setter stays outside the visited path. 1120 native/candidate row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute or prove their termination answer in default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command records and global resource caps unchanged. No added collected cases."
+
+[ablations.paired_leaves_trick]
+arity = 8
+saving = 0.0
+seed = 7000
+tables = "retained-bit interface controls, both answers and both last bits"
+verdict = "rejected 2026-11-02: incomplete construction. The raw proposal supplies no mixed-pair discriminator; existing 0/1 leaves ignore an extra D after R,D,L,U (four native interface controls: zero halts after 6/7 steps, one repeats after 13/14). Thus replacing pairs by existing leaves fails 01/10, a positive firing control. No claimed size saving or impossibility wall. Its proposed min against the old whole program is also forbidden without a class break; no searched gadget or fallback was introduced. Uniform input pairs and physical setter order remain mandatory."
+
+[ablations.fold_height_sweep_trick]
+arity = 8
+saving = 6.1
+seed = 7000
+tables = "five Random(1000n+i).choices tables and seven named tables per n=7/8"
+verdict = "rejected 2026-11-02: production search and superlinear build. Trying every height 10..2centre emits Theta(sqrt(T)) O(T) grids, rather than four fixed candidates; independently choosing the last cap adds search. Diagnostic height-only candidates reduce total area 12482->11676 (6.46%) / 21077->19788 (6.12%), below either bar. Native selected layouts passed four rows each. The first generic pilot improves 1272->1152 / 2178->2016, so the probe fires. No last-cap search was implemented and no global best-layout claim is made."
+
+[ablations.bare_zero_runs_trick]
+arity = 8
+saving = 0.0
+seed = 7000
+tables = "200 Random(1000n+i).choices tables per n=7/8; all tables/rows n<=3; samples n=4..6"
+verdict = "kept 2026-11-02: canonical dead-code removal, percentage-exempt. A folded zero after zero omits columns 4/5; zero strip closures omit the same unused ring half. The selector crosses only column1; selected zero halts in columns2/3. Only a preceding one ring uses columns4/5, so its following row stays full; fold corridors use column0/1 and rows0/1. Shorter strips merely translate the same disjoint corridors. The cascade already has bare zero rows and is unchanged; no new Boolean construction, height search or old-program fallback. O(T) build/source, constant folding, ordered setters, uniform ./~ pair and existing source/execution/workspace bounds are unchanged. Actual area (including trailing lines) 249630->249630 / 429344->429344, zero growing generic tables; characters 245916->243794 (-0.86%) / 414776->411714 (-0.74%). Named AND area 1074->1032 / 1878->1650 (3.91/12.14%); all six other named areas tie. Default area-first selection can increase text: AND n=7 660->979, n=8 1077->1536. n=3 area52630 and chars46508 unchanged; halting-row commands96928 unchanged, nonhalting rows retain repeated-state witnesses. 7072 paired old/new row runs plus10776 balanced/narrow/height-diagnostic runs passed; all small tables/rows, five random samples n=4..6 and named cases, four sampled rows n=7/8. Public bytes equal the prototype. Wrong constant program and deleting a needed preceding-one ring half are caught. One size pin341->337; all command pins and existing proof arities unchanged; balanced example loses four unreachable glyphs. Balanced area on the same 200-table corpus249696->249696 / 432072->432072."

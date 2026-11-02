@@ -28,8 +28,9 @@ def test_nor_cancels_the_targets_old_value(target, left, right) -> None:
 
 def _execute(table, program, rows):
     n = len(table).bit_length() - 1
-    bases = (len(program) - 1).bit_length() + max(6, n - 1) + max(19, 4 * n - 1)
-    cap = bases + n.bit_length() + 4
+    from esolangs.languages.suffolk.proof_formulas import workspace
+
+    cap = workspace(n, program)
     peak = 0
     for row in rows:
         machine = _Machine(program, ScriptedIO(f"{row:0{n}b}"))

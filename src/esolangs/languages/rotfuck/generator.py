@@ -17,11 +17,13 @@ seek.
 
 A symmetric table sums its bits on the carrier and walks n + 1 entries
 ([ablations.symmetric_count]).  From n = 7 the inputs are read raw and the
-ASCII bias leaves once per digit ([ablations.raw_digits]).
+ASCII bias leaves once per digit ([ablations.raw_digits]). Full symmetric
+tables multiply bias and output constants on zero carriers
+([ablations.constant_runs_by_multiplication]).
 
 Size:
     O(T): two ``>`` and half a ``+`` per entry, the rest O(n) plus walk
-    strides; n=10 random 1847: 3,165 chars, n=10 and: 310 chars.
+    strides; n=10 random 1847: 3,165 chars, n=10 and: 281 chars.
     Constants: n+26+b chars, n+106+b commands in either rotation, b the answer.
 
 Decisions:
@@ -30,6 +32,7 @@ Decisions:
 """
 
 from collections.abc import Callable
+from math import isqrt
 
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
@@ -236,6 +239,35 @@ class _Builder:
         """Return the finished, rotated source."""
         return "".join(self.src)
 
+    def emit_shortest(self, texts: tuple[str, ...]) -> None:
+        """Emit the shortest fixed spelling at a boundary with no open seek."""
+        assert not self._seeks
+        options = []
+        for text in texts:
+            other = _Builder(self.cycle)
+            other.rot = self.rot
+            other.emit(_parse(text))
+            options.append(other)
+        best = min(options, key=lambda option: len(option.src))
+        # A global rotation offset shifts every later seek and opcode equally,
+        # so this boundary's new phase cannot change subsequent padding length.
+        self.src.extend(best.src)
+        self.rot = best.rot
+
+
+def _constant(out: _Builder, run: str) -> None:
+    """Add ``run`` using a zero carrier two cells above, leaving it zero."""
+    if not run:
+        return
+    forms = [run]
+    amount, op = len(run), run[0]
+    if amount >= 16:
+        root = isqrt(amount)
+        for a, b in ((root, amount // root), (amount // 16, 16)):
+            remainder = amount - a * b
+            forms.append(">>" + "+" * a + "[<<" + op * b + ">>-]<<" + op * remainder)
+    out.emit_shortest(tuple(forms))
+
 
 def _groups(width: int) -> list[int]:
     """Bit counts of the index's base-64 digits, lowest digit first.
@@ -288,10 +320,11 @@ def _strip(table: str) -> str:
 def _unbias(weight: int, *, raw: bool) -> str:
     """The run correcting ``weight`` ASCII biases, or ``""`` when ``raw`` is off.
 
-    Raw characters sum to ``48 * weight`` extra, mod 256: ``2**width - 1`` for a
-    Horner digit, the input count for a plain sum.  One shortest ``+``/``-``
-    run per digit replaces the 48 ``-`` after every read
-    ([ablations.raw_digits]).
+        Raw characters sum to ``48 * weight`` extra, mod 256: ``2**width - 1`` for a
+        Horner digit, the input count for a plain sum.  One shortest ``+``/``-``
+        run per digit replaces the 48 ``-`` after every read
+        ([ablations.raw_digits]). Full symmetric tables multiply bias and output
+    constants on zero carriers ([ablations.constant_runs_by_multiplication]).
     """
     if not raw:
         return ""
@@ -359,13 +392,28 @@ def _program(truth_table: str, *, rotation: str = "backward") -> str:
     used = essential_inputs(truth_table, n)
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
     raw = n >= _RAW_FROM
-    lookups = [(table, _select(n, used, _groups(len(used)), raw=raw))]
+    # At one input the lookup already is the sum reader.
+    lookups = [(table, _select(n, used, _groups(len(used)), raw=raw), n == 1)]
     if (symmetric := symmetric_weights(truth_table, n)) is not None:
-        lookups.append((symmetric[1], _count(n, used, raw=raw)))
+        lookups.append((symmetric[1], _count(n, used, raw=raw), len(used) == n))
     texts = []
-    for entries, select in lookups:
+    for entries, select, multiply in lookups:
         out = _Builder(cycle)
-        out.emit(_parse(_strip(entries) + select + "<" + "+" * _ASCII_ZERO + "."))
+        out.emit(_parse(_strip(entries)))
+        if multiply:
+            # Full symmetry clears the declining gate in both rotations:
+            # see [ablations.constant_runs_by_multiplication]. Projected cores
+            # and the generic lookup retain their separately admitted reader.
+            bias = _unbias(len(used), raw=raw)
+            walk = _walk(2)
+            assert select.endswith(bias + walk)
+            out.emit(_parse(select[: -(len(bias) + len(walk))]))
+            _constant(out, bias)
+            out.emit(_parse(walk))
+            # The walk leaves a zero carrier above the selected bit.
+            out.emit_shortest(("<" + "+" * _ASCII_ZERO + ".", "++++++[<++++++++>-]<."))
+        else:
+            out.emit(_parse(select + "<" + "+" * _ASCII_ZERO + "."))
         texts.append(out.text())
     return min(texts, key=len)
 
@@ -406,8 +454,8 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
-    # Parity's bias run is 48 * n mod 256 (128 at n=8, 32 at n=10), so its size
-    # dips by up to 51 between rungs 8 and 10; 10, 12, 14 grow by 77 each.
+    # Retain the even scaling rungs across bias phases; parity now measures
+    # 285/339/390 chars there ([ablations.constant_runs_by_multiplication]).
     scaling_rungs=(10, 12, 14),
     proof_execution=(execution, True, (3, 5)),
     proof_workspace=(workspace, True, (3, 4, 5)),

@@ -4,7 +4,12 @@
 def _chars(n: int, _: str) -> int:
     """L* - [n >= 7] for n <= 12, L* - 9 from n = 13 (L* below).
 
-    L* = (17T + 316n + 482)/2.  The sweep is a constant plus a cost per half
+    The old L* = (17T + 316n + 482)/2 gains the prefix delta below.
+    Storage changes no table-step costs, DAG nodes or ledger admissions;
+    the same witnesses and exclusions apply (their admitted DAGs still win).
+    From physical n=11 the original reader returns with mandatory resets,
+    so delta is 38.
+    The sweep is a constant plus a cost per half
     that depends only on the half's skipped rounds j (rounds without a step):
     floor(j/2) * (9 or 13) + (j odd), strictly rising in the steps, and two
     fully alternating halves are equal (the top input ignored), so no table
@@ -15,7 +20,21 @@ def _chars(n: int, _: str) -> int:
     or three in the first) have 3n - 5 nodes against a limit under 3n - 8 -
     bl(n), so they ship L* - 9, the worst.
     """
-    return (17 * (1 << n) + 316 * n + 482) // 2 - (n >= 7) - 8 * (n >= 13)
+    half = 1 << (n - 1)
+    delta = (
+        38
+        if n >= 11
+        else (
+            n * n
+            - 106 * n
+            + 27
+            + 4 * max(0, n - 6)
+            + sum(cell + 1 for cell in range(max(2, n), 6))
+            + half
+            + 2 * max(0, (half >> 5) - 1)
+        )
+    )
+    return (17 * (1 << n) + 316 * n + 482) // 2 - (n >= 7) - 8 * (n >= 13) + delta
 
 
 FORMULAS = {"scaling": (_chars, True, (4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14))}

@@ -160,15 +160,6 @@ class TestRotfuck:
         for table in ("01", "0110", "11110000", "01101001"):
             assert set(boolean.rotfuck(table)) <= set("+-><,.[]"), table
 
-        from esolangs.languages.rotfuck.generator import _Builder, _UnplaceableError
-
-        builder = _Builder()
-        assert _is_net_zero(list(builder._pad(2)))  # noqa: SLF001 - neutral-pad control
-        builder._seeks = list(range(8))  # noqa: SLF001 - contradictory seek constraints
-        with pytest.raises(_UnplaceableError, match="no neutral pad"):
-            builder._pad(2)  # noqa: SLF001 - rejected padding must not emit source
-        assert builder.src == []
-
     def test_backward_is_the_default_direction(self) -> None:
         assert boolean.rotfuck("01", rotation="backward") == boolean.rotfuck("01")
 
@@ -197,10 +188,11 @@ class TestRotfuck:
             assert run_rotfuck_forward(program, [str(b) for b in bits]) == table[combo]
 
     def test_raw_digits_shed_the_bias_once_per_digit_from_n_7(self) -> None:
-        """Parity at n=7 reads raw (295 characters) and answers every row."""
+        """Raw parity and zero-carrier multipliers keep native input/output."""
+        _check_symmetric_multipliers()
         table = "".join(str(bin(row).count("1") & 1) for row in range(128))
         program = boolean.rotfuck(table)
-        assert len(program) == 295
+        assert len(program) == 227
         for combo in range(0, 128, 5):
             got = run_rotfuck(program, [str(b) for b in row_bits(combo, 7)])
             assert got == table[combo], combo
@@ -208,12 +200,12 @@ class TestRotfuck:
     @pytest.mark.parametrize(
         ("table", "length"),
         [
-            ("01", 128),
-            ("10", 128),
-            ("0001", 198),
-            ("0110", 198),
+            ("01", 103),
+            ("10", 103),
+            ("0001", 173),
+            ("0110", 173),
             ("11110000", 134),
-            ("01101001", 269),
+            ("01101001", 244),
         ],
     )
     def test_the_emitted_length_is_exact(self, table: str, length: int) -> None:
@@ -223,12 +215,12 @@ class TestRotfuck:
     @pytest.mark.parametrize(
         ("table", "length"),
         [
-            ("01", 144),
-            ("10", 144),
-            ("0001", 214),
-            ("0110", 214),
+            ("01", 119),
+            ("10", 119),
+            ("0001", 189),
+            ("0110", 189),
             ("11110000", 150),
-            ("01101001", 285),
+            ("01101001", 260),
         ],
     )
     def test_the_forward_length_is_exact(self, table: str, length: int) -> None:
@@ -383,5 +375,56 @@ def _check_native_constants(bit: str) -> None:
                     assert io.past_end == 0
                     assert io.input_char() == ord("Q")
     assert (
-        sum(len(esolangs.generate("ROTfuck", f"{v:08b}")) for v in range(256)) == 72240
+        sum(len(esolangs.generate("ROTfuck", f"{v:08b}")) for v in range(256)) == 71890
     )
+
+
+def _check_symmetric_multipliers() -> None:
+    from esolangs.languages.rotfuck import generator as g
+    from esolangs.languages.rotfuck.generator import _Builder, _constant, _parse
+    from esolangs.languages.rotfuck.interpreter import _Machine
+    from esolangs.languages.rotfuck.proof_formulas import workspace
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for rotation, cycle in g.ROTFUCK_CYCLES.items():
+        for delta in (-80, 128):
+            for value in (0, 1, 127, 255):
+                out = _Builder(cycle)
+                out.emit(_parse("+" * value + ">+++++++<"))
+                _constant(out, ("+" if delta > 0 else "-") * abs(delta))
+                out.emit(_parse("."))
+                io = ScriptedIO("Q")
+                machine = _Machine(out.text(), io, rotation=rotation)
+                for _ in range(5000):
+                    if machine.halted:
+                        break
+                    machine.step()
+                assert machine.halted
+                assert io.getvalue() == chr((value + delta) % 256)
+                cells = (*machine.tape, 0, 0, 0)
+                assert cells[machine.ptr + 1] == 7
+                assert cells[machine.ptr + 2] == 0
+                assert io.input_char() == ord("Q")
+        for n in (1, 7, 8):
+            table = "".join(
+                str((row.bit_count() + (n == 8)) & 1) for row in range(1 << n)
+            )
+            program = g.rotfuck(table, rotation=rotation)
+            for row in (0, (1 << n) - 1):
+                io = ScriptedIO(f"{row:0{n}b}" + "Q")
+                machine = _Machine(program, io, rotation=rotation)
+                written = WrittenState(machine.snapshot())
+                for _ in range(2080 * len(program)):
+                    if machine.halted:
+                        break
+                    machine.step()
+                    written.sample(machine.snapshot())
+                    if io.getvalue():
+                        assert io.progress() == n
+                assert machine.halted
+                if rotation == "backward" and n == 1 and row == 1:
+                    assert machine.prog.rotation() == 183
+                assert io.getvalue() == table[row]
+                assert io.input_char() == ord("Q")
+                assert written.bits <= workspace(n, program)

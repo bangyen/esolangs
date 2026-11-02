@@ -1,24 +1,26 @@
-"""Quassaunt Boolean program generator: a shared decision diagram.
+"""Quassaunt Boolean generator: shared residuals and one definition-store loop.
 
-Every distinct subtable's code is stored once, as a one-string set in a
-global ``[id]``, and a node runs a child by obtaining it and turning the
-set back into its string (the wiki's ``@@ %%Swap @@ %%Swap @@
-%%Concatenateall``, here as ``@@?@@?@@[id]?%%Obtain?@@?%%Concatenateall``).
-A branching node pushes the two children's names as one-word strings,
-the set ``{c}`` of the character it reads, and ``[one]`` (``{1}``):
-``%%Ifdisjoint`` runs the 0-child's name when ``c`` is ``0`` -- the
-chosen name is then obtained, so one ``_code`` dance serves both children.
-A node whose halves agree, and a constant subtable's chain, reads
-its bit into a local and runs its child with ``%%Evaluatereplace``.
-Names are ``subtree_ids`` ids, the chains ``z<depth>``/``o<depth>``.
+Every input depth reads once. Equal halves share a chain; other nodes use
+``%%Ifdisjoint`` on the read character and ``{1}`` to choose a child.
+Globals use frequency-ranked base-89 names; ``[]`` holds ``{1}``.
+
+A helper stores the queued name/body/key triples, then an empty dummy key
+selects the root. Two empty strings per input supply the discarded operands
+of singleton ``%%Concatenateall`` calls. Constants read and print directly.
 
 Size:
-    O(T) size and build time: at most T - 1 diagram nodes and 2n chain
-    nodes; n=10 random 1847: 41,645 chars, n=10 parity: 3,502 chars.
+    O(T) size and construction: O(T/log T) residuals with logarithmic names.
+    n=10 random 1847: 33,170 chars, n=10 parity: 3,062 chars.
     Constants use 12n + 20 chars and n + 2 commands; n=8: 116 chars.
+
+Decisions:
+    The store loop trades more executed words and workspace for source size
+    ([ablations.word_economy]). ``[]`` is a bracketed global name.
 """
 
+from collections import Counter
 from math import isqrt
+from typing import NamedTuple
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.token_balance import CELL_ASPECT, balanced_token_width
@@ -28,9 +30,95 @@ from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
 
-def _code(name: str) -> str:
-    """Push the code stored under ``[name]``, as ``?``-separated words."""
-    return f"@@?@@?@@[{name}]?%%Obtain?@@?%%Concatenateall"
+class _Node(NamedTuple):
+    kind: str
+    bit: int
+    children: tuple[str, ...]
+
+
+# Exclude code separators/brackets, helper-name '_' and reserved [Whitespace].
+_ALPHABET = "".join(chr(i) for i in range(33, 127) if chr(i) not in "?[]_W")
+
+
+def _short_name(index: int) -> str:
+    """Return the indexed nonempty bijective-base name."""
+    digits: list[str] = []
+    while True:
+        index, digit = divmod(index, len(_ALPHABET))
+        digits.append(_ALPHABET[digit])
+        if not index:
+            return "".join(reversed(digits))
+        index -= 1
+
+
+def _graph(table: str, n: int) -> dict[str, _Node]:
+    """Reachable residuals, retaining one read for every input depth."""
+    ids = subtree_ids(table)
+
+    def key(depth: int, slot: int) -> str:
+        sub = ids[depth][slot]
+        return "zo"[sub] + str(depth) if sub < 2 else str(sub)
+
+    nodes: dict[str, _Node] = {}
+    frontier = {0}
+    for depth in range(n + 1):
+        below: set[int] = set()
+        for slot in sorted(frontier):
+            here = key(depth, slot)
+            if here in nodes:
+                continue
+            sub = ids[depth][slot]
+            zero, one = 2 * slot, 2 * slot + 1
+            if depth == n:
+                node = _Node("leaf", sub, ())
+            elif sub < 2 or ids[depth + 1][zero] == ids[depth + 1][one]:
+                node = _Node("chain", sub, (key(depth + 1, zero),))
+                below.add(zero)
+            else:
+                node = _Node("branch", sub, (key(depth + 1, zero), key(depth + 1, one)))
+                below.update((zero, one))
+            nodes[here] = node
+        frontier = below
+    return nodes
+
+
+def _dense_names(nodes: dict[str, _Node]) -> dict[str, str]:
+    """Assign the shortest names to the most frequent references; ties stay stable."""
+    counts = Counter(dict.fromkeys(nodes, 1))
+    counts[next(iter(nodes))] += 1
+    for node in nodes.values():
+        counts.update(node.children)
+    return {
+        key: _short_name(rank)
+        for rank, key in enumerate(sorted(nodes, key=lambda key: -counts[key]))
+    }
+
+
+def _code(name: str, *, fillers: bool = False) -> str:
+    """Obtain singleton code, using two explicit fillers only at startup."""
+    return ("@@?@@?" if fillers else "") + f"@@[{name}]?%%Obtain?@@?%%Concatenateall"
+
+
+def _node_body(node: _Node, names: dict[str, str]) -> str:
+    """Read once and tail-call the selected child, or print at a leaf."""
+    if node.kind == "leaf":
+        return f"@@{node.bit}?%%Printtoconsole"
+    if node.kind == "chain":
+        return "%%Inputchar?" + _code(names[node.children[0]]) + "?%%Evaluatereplace"
+    zero, one = (names[child] for child in node.children)
+    return (
+        f"@@@@[{zero}]?%%Inputchar?%%Empty?%%Makecontain?@@@@[{one}]?"
+        "@@[]?%%Obtain?%%Ifdisjoint?%%Obtain?@@?%%Concatenateall?%%Evaluatereplace"
+    )
+
+
+def _store_loop(root: str) -> str:
+    """Store a triple; its empty dummy key selects the root after the last pair."""
+    return (
+        "@@d?%%Swap?%%Empty?%%Makecontain?%%Store?%%Empty?%%Makecontain?%%Store?"
+        "@@?@@?@@@@[_s]?@@d?%%Obtain?@@@@[" + root + "]?@@?%%Empty?%%Makecontain?"
+        "%%Ifdisjoint?%%Obtain?@@?%%Concatenateall?%%Evaluatereplace"
+    )
 
 
 def quassaunt(truth_table: str) -> str:
@@ -38,45 +126,21 @@ def quassaunt(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     if truth_table.count(truth_table[0]) == len(truth_table):
         return "%%Inputchar " * n + f"@@{truth_table[0]} %%Printtoconsole"
-    ids = subtree_ids(truth_table)
-
-    def name(depth: int, k: int) -> str:
-        sub = ids[depth][k]
-        return "zo"[sub] + str(depth) if sub < 2 else str(sub)
-
-    # Reachable nodes; stored code is only looked up when it runs.
-    nodes: dict[str, str] = {}
-    branching = False
-    frontier = {0}
-    for depth in range(n + 1):
-        below: set[int] = set()
-        for k in sorted(frontier):
-            sub, here = ids[depth][k], name(depth, k)
-            if here in nodes:
-                continue
-            zero, one = 2 * k, 2 * k + 1
-            if depth == n:
-                body = f"@@{sub}?%%Printtoconsole"
-            elif sub < 2 or ids[depth + 1][zero] == ids[depth + 1][one]:
-                body = (
-                    "@@d?%%Inputchar?%%Empty?%%Makecontain?%%Store?"
-                    f"{_code(name(depth + 1, zero))}?%%Evaluatereplace"
-                )
-                below.add(zero)
-            else:
-                body = (
-                    f"@@?@@?@@@@[{name(depth + 1, zero)}]?"
-                    "%%Inputchar?%%Empty?%%Makecontain?"
-                    f"@@@@[{name(depth + 1, one)}]?@@[one]?%%Obtain?"
-                    "%%Ifdisjoint?%%Obtain?@@?%%Concatenateall?%%Evaluatereplace"
-                )
-                branching = True
-                below |= {zero, one}
-            nodes[here] = f"@@[{here}] @@{body} %%Empty %%Makecontain %%Store"
-        frontier = below
-    start = _code(name(0, 0)).replace("?", " ") + " %%Evaluate"
-    shared = ["@@[one] @@1 %%Empty %%Makecontain %%Store"] * branching
-    return " ".join([*nodes.values(), *shared, start])
+    nodes = _graph(truth_table, n)
+    names = _dense_names(nodes)
+    root = names[next(iter(nodes))]
+    definitions = [
+        (f"[{names[key]}]", _node_body(node, names)) for key, node in nodes.items()
+    ]
+    definitions.append(("[]", "1"))
+    # [ablations.word_economy]: every path consumes at most two fillers per bit.
+    parts = [
+        "@@[_s] @@" + _store_loop(root) + " %%Empty %%Makecontain %%Store",
+        "@@ " * (2 * n) + "@@[_x] @@ @@",
+        *(f"@@{key} @@{body} @@{key}" for key, body in definitions),
+        _code("_s", fillers=True).replace("?", " ") + " %%Evaluate",
+    ]
+    return " ".join(parts)
 
 
 def _cut(word: str, limit: int) -> list[str]:
@@ -100,10 +164,9 @@ def _cut(word: str, limit: int) -> list[str]:
     return out
 
 
-#: Piece limit.  A node body cannot wrap, so a compact program is as wide as its
-#: longest word; cutting at 64 saves 35-88% of the balanced area on named
-#: functions n=3..10 and 1.2% on random n=7, so only compact programs are cut
-#: (the old race over six limits saved 13.8% n=7 and 5.3% n=8 on random).
+#: Fixed limit for compact programs: an uncut body pins their width.
+#: [ablations.balance_cut] records why the race was replaced; the new helper's
+#: geometry is measured separately in [ablations.word_economy].
 _CUT = 64
 
 

@@ -1,28 +1,30 @@
 """Fish Boolean program generator: the truth table sits in the codebox.
 
-Each input is read and turned into a bit (``68*-`` subtracts ASCII ``0``),
-folded into a row number most significant first (``$2*+``); ``g`` fetches the
-answer from the table's digits by coordinates and ``n`` prints it.  For n=2:
+Plain lookup normalizes ASCII bits with ``68*-`` and folds them into a row
+(``$2*+``). Packed lookup instead folds raw ASCII from -48, leaving row-48;
+coordinate offsets restore the address. ``g`` reads and ``n`` prints. For n=2:
 
     0i68*-$2*+i68*-$2*+1g68*-n;
     0110
 
 Narrow widths fold the table into a block of columns, which the fish reaches
 by snaking down.  A parity table needs no table at all, and another symmetric
-one adds its bits over m + 1 entries ([ablations.symmetric_count]).  From n=4 the
-default is one row: the code, six powers of two, and the table packed six
-entries a cell ([ablations.packed_row]).
+one adds its bits over m + 1 entries ([ablations.symmetric_count]).  From n=3 the
+generic default is one row while coordinates are exact: the code, six powers of
+two, and six entries a cell ([ablations.packed_row]).
 
 Size:
-    O(T), independent of the table at default width: about T/6 cells past
-    n=3; n=16 parity: 71 chars, n=10 random 1847: 312 chars.
+    O(T) generic default: about T/6 cells while packed coordinates are exact,
+    then 2T cells with integer addressing; n=16 parity: 71 chars,
+    n=10 random 1847: 267 chars.
     Constants use 2n+3 cells/commands in one row, with
     7+bl(2n+3)+bl(n) written bits; narrow requests snake or use one column.
 
 Decisions:
     A table has no subtrees to fold or share.  ``balance=True`` also folds the
     packed row into a snake over a block of cells
-    ([ablations.balance_packed_fold]).
+    ([ablations.balance_packed_fold]). Beyond binary64 coordinate precision,
+    plain lookup or integer-coordinate folds preserve correctness.
 """
 
 from math import isqrt
@@ -62,8 +64,7 @@ def fish(truth_table: str, width: int | None = None) -> str:
             # ([ablations.symmetric_count]).
             counts = "".join("i68*-+" if weight else "i~" for weight in symmetric[0])
             plain = "0" + counts + "1g68*-n;\n" + symmetric[1]
-        # Packed wins on area from n=4 but costs characters below n=6; area
-        # decides, characters break ties.
+        # Area decides; packing can cost more text at low arities.
         return min(packed, plain, key=grid_rank)
     if max(len(header), len(truth_table)) <= width:
         return header + "\n" + truth_table
@@ -90,6 +91,8 @@ def _constant(inputs: int, bit: str, width: int | None) -> str:
 #: 64 printable codes from 35 skip DEL ([ablations.packed_row]).
 _WORD = 6
 _BASE = 35
+#: Every integer up to this magnitude is exact in the division result.
+_EXACT = 1 << 53
 
 
 def _column(least: int) -> tuple[int, str]:
@@ -104,6 +107,11 @@ def _column(least: int) -> tuple[int, str]:
     return 1 << m, "1" + "2*" * m
 
 
+def _packed_reads(reads: str) -> str:
+    """Leave row-48: each ASCII read cancels one doubled -48 offset."""
+    return "068*-" + reads.replace("i68*-$2*+", "2*i+")
+
+
 def _packed(reads: str, truth_table: str) -> str:
     """Return one row: the code, then six powers of two, then the packed table.
 
@@ -111,6 +119,20 @@ def _packed(reads: str, truth_table: str) -> str:
     splits into the cell and a bit ``b``; the cell over ``2**b``, mod 2, is
     under 1 exactly when the entry is 1.  The cells sit past ``;``, unrun.
     """
+    # The raw index is r-48: mod6 is unchanged, quotient is q-8.
+    head = f"{_packed_reads(reads)}:{_WORD}%:@-{_WORD},"
+    # ``57*`` is _BASE, ``88*`` the powers' 64.
+    # 14 = the six power cells plus the eight-word coordinate offset.
+    middle, tail = "e++0g57*-$", "+0g88*-,2%1(n;"
+    bare = len(head) + len(middle) + len(tail)
+    # The literal appears twice, and its length can move the column.
+    start, literal = _column(bare + 6)
+    if bare + 2 * len(literal) > start:
+        start, literal = _column(bare + 2 * len(literal))
+    code = head + literal + middle + literal + tail
+    # Both the converted offset and every float coordinate must stay exact.
+    if max(start + 14, start + 6 + (len(truth_table) - 1) // _WORD) > _EXACT:
+        return "0" + reads + "1g68*-n;\n" + truth_table
     cells = "".join(
         chr(_BASE + sum((ch == "0") << j for j, ch in enumerate(word)))
         for word in (
@@ -118,15 +140,6 @@ def _packed(reads: str, truth_table: str) -> str:
         )
     )
     powers = "".join(chr(64 + (1 << bit)) for bit in range(_WORD))
-    head = f"0{reads}:{_WORD}%:@-{_WORD},"
-    # ``57*`` is _BASE, ``88*`` the powers' 64.
-    middle, tail = f"{_WORD}++0g57*-$", "+0g88*-,2%1(n;"
-    bare = len(head) + len(middle) + len(tail)
-    # The literal appears twice, and its length can move the column.
-    start, literal = _column(bare + 6)
-    if bare + 2 * len(literal) > start:
-        start, literal = _column(bare + 2 * len(literal))
-    code = head + literal + middle + literal + tail
     return code.ljust(start) + powers + cells
 
 
@@ -136,6 +149,26 @@ def _parity(n: int, bias: int) -> str:
     ASCII ``0`` is even, so the characters' sum already has the bits' parity.
     """
     return "\n".join("vi" + "i+" * (n - 1) + "2%" + ("0=" if bias else "") + "n;")
+
+
+def _integer_coordinates(reads: str, columns: int) -> str:
+    """Split essential bits at a power-of-two column into integer coordinates."""
+    tokens = ["i" + part for part in reads.split("i")[1:]]
+    count = sum(token != "i~" for token in tokens)
+    high = max(0, count - (columns.bit_length() - 1))
+    code = ["0"]
+    done = 0
+    split = False
+    for token in tokens:
+        if token != "i~":
+            if done == high and not split:
+                code.append("0")
+                split = True
+            done += 1
+        code.append(token)
+    if not split:
+        code.append("0")
+    return "".join(code) + "$"
 
 
 def _folded(reads: str, truth_table: str, columns: int) -> str:
@@ -153,21 +186,25 @@ def _folded(reads: str, truth_table: str, columns: int) -> str:
     # One hex digit up to 15 rows, else a*b with a = ceil(sqrt(rows)) up to 225,
     # else a doubling literal at a power of two.
 
-    def rows_for(extra: int) -> int:
-        return -(-(len(body) + extra + len(tail)) // columns)
+    def plan(prefix: str) -> tuple[int, str]:
+        def rows_for(extra: int) -> int:
+            return -(-(len(prefix) + extra + len(tail)) // columns)
 
-    if rows_for(1) <= 15:
-        height = rows_for(1)
-        literal = f"{height:x}"
-    elif rows_for(3) <= 225:
-        need = rows_for(3)
-        first = isqrt(need - 1) + 1
-        second = -(-need // first)
-        height = first * second
-        literal = f"{first:x}{second:x}*"
-    else:
-        height = 1 << (2 * len(body) // columns + 32).bit_length()
-        literal = "1" + "2*" * (height.bit_length() - 1)
+        if rows_for(1) <= 15:
+            height = rows_for(1)
+            return height, f"{height:x}"
+        if rows_for(3) <= 225:
+            need = rows_for(3)
+            first = isqrt(need - 1) + 1
+            second = -(-need // first)
+            return first * second, f"{first:x}{second:x}*"
+        height = 1 << (2 * len(prefix) // columns + 32).bit_length()
+        return height, "1" + "2*" * (height.bit_length() - 1)
+
+    height, literal = plan(body)
+    if height + (len(truth_table) - 1) // columns > _EXACT:
+        body = _integer_coordinates(reads, columns)
+        height, literal = plan(body)
     body += literal + tail
     rows: list[str] = []
     for offset in range(0, len(body), columns):
@@ -197,6 +234,24 @@ def _packed_folded(reads: str, truth_table: str, columns: int) -> str:
     ``columns``-wide rows under them; an index ``i`` of a cell is at
     ``(i % c, rows + 1 + i // c)``.  Rows of code alternate as in :func:`_folded`.
     """
+    width = _number(columns)
+    rows = 1
+    while True:
+        # Cell i -> (i % c, rows + 1 + i // c); a power b -> (b, rows).
+        coordinates = f":{width}%:@-{width},{_number(rows + 1)}+g"
+        # Undo the eight-word offset before splitting the cell coordinates.
+        body = (
+            f"{_packed_reads(reads)}:{_WORD}%:@-{_WORD},8+{coordinates}"
+            f"57*-${_number(rows)}g88*-,2%1(n;"
+        )
+        if -(-len(body) // columns) <= rows:
+            break
+        rows += 1
+    quotient = (len(truth_table) - 1) // _WORD
+    if max(quotient, columns, rows + 1 + quotient // columns) > _EXACT:
+        # The packed float is no longer exact; an unpacked power-of-two fold
+        # can split its integer index before converting a smaller quotient.
+        return _folded(reads, truth_table, 1 << (columns.bit_length() - 1))
     cells = "".join(
         chr(_BASE + sum((ch == "0") << j for j, ch in enumerate(word)))
         for word in (
@@ -204,17 +259,6 @@ def _packed_folded(reads: str, truth_table: str, columns: int) -> str:
         )
     )
     powers = "".join(chr(64 + (1 << bit)) for bit in range(_WORD))
-    width = _number(columns)
-    rows = 1
-    while True:
-        # Cell i -> (i % c, rows + 1 + i // c); a power b -> (b, rows).
-        coordinates = f":{width}%:@-{width},{_number(rows + 1)}+g"
-        body = (
-            f"0{reads}:{_WORD}%:@-{_WORD},{coordinates}57*-${_number(rows)}g88*-,2%1(n;"
-        )
-        if -(-len(body) // columns) <= rows:
-            break
-        rows += 1
     snake: list[str] = []
     for offset in range(0, len(body), columns):
         chunk = body[offset : offset + columns].ljust(columns)
@@ -230,10 +274,10 @@ def _packed_folded(reads: str, truth_table: str, columns: int) -> str:
 
 
 def balance_fish(truth_table: str, default: str) -> str:
-    """Minimize the rendered side over four folds of the packed row.
+    """Minimize rendered side over four packed or precision-safe folds.
 
-    The widths lie near ``sqrt(2 * length)`` ([ablations.balance_packed_fold]);
-    folds of the unpacked table never won ([ablations.balance_unpacked_folds]).
+    Widths lie near ``sqrt(2 * length)`` ([ablations.balance_packed_fold]);
+    unpacked folds are reserved for coordinates beyond binary64 precision.
     """
     n = _validate_truth_table(truth_table)
     candidates = [default]

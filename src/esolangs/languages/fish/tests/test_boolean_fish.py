@@ -98,7 +98,7 @@ def test_a_balanced_table_past_225_code_rows_uses_a_doubling_height_literal() ->
         assert esolangs.read_answer("Fish", got) == table[row], row
 
 
-def test_packed_programs_execute_seeded_random_tables() -> None:
+def test_packed_programs_execute_seeded_random_tables(monkeypatch) -> None:
     # The witness tables' packed forms lose the race or cancel out; a
     # plain random table's packed row is decoded against _BASE and the
     # complemented bits, and both must hold.
@@ -107,6 +107,7 @@ def test_packed_programs_execute_seeded_random_tables() -> None:
         for _ in range(3):
             table = "".join(rng.choice("01") for _ in range(1 << n))
             assert _evaluate("Fish", fish(table), inputs=n) == table
+    _check_precision_guards(monkeypatch)
 
 
 def test_a_width_that_exactly_fits_the_header_returns_the_plain_program() -> None:
@@ -150,10 +151,10 @@ def test_the_packed_overlap_check_reserves_two_literals() -> None:
     # The literal appears twice; when both copies would overrun the
     # column the powers start at, the column moves past them.
     powers = "".join(chr(64 + (1 << bit)) for bit in range(6))
-    snug = _packed("r" * 189, "0" * 16)
+    snug = _packed("r" * 185, "0" * 16)
     assert snug.index(powers) == 256
     assert len(snug) == 265
-    wide = _packed("r" * 190, "0" * 16)
+    wide = _packed("r" * 186, "0" * 16)
     assert wide.index(powers) == 512
     assert len(wide) == 521
 
@@ -166,7 +167,7 @@ def test_the_fold_height_past_225_doubles_from_the_body_length() -> None:
     assert rows.count("") == 270
 
 
-@pytest.mark.parametrize(("n", "side"), [(7, 20), (8, 22)])
+@pytest.mark.parametrize(("n", "side"), [(7, 18), (8, 18)])
 def test_balance_folds_the_packed_row(n: int, side: int) -> None:
     """Seed n: the packed row folded (an unpacked fold gave side 30 / 34)."""
     table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
@@ -231,3 +232,29 @@ def _check_constants() -> None:
             for width in range(1, len(default) + 1):
                 source = fish(table, width)
                 assert max(map(len, source.splitlines())) <= width
+
+
+def _check_precision_guards(monkeypatch) -> None:
+    from esolangs.languages.fish import generator
+    from esolangs.languages.fish.generator import _integer_coordinates
+    from esolangs.languages.fish.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    # Force every precision fallback on small tables, including ignored bits.
+    monkeypatch.setattr(generator, "_EXACT", 0)
+    for table in ("00110110", "01011010", "00000001", "11111110"):
+        for options in ({}, {"balance": True}, {"width": 1}, {"width": 3}):
+            program = esolangs.generate("Fish", table, **options)
+            assert _evaluate("Fish", program, inputs=3) == table
+    # Logical large addresses need only the coordinate prefix, not a huge table.
+    for n, columns, row in (
+        (53, 1, (1 << 53) - 1),
+        (108, 1 << 54, (1 << 108) - 1),
+    ):
+        prefix = _integer_coordinates("i68*-$2*+" * n, columns)
+        io = ScriptedIO(f"{row:0{n}b}")
+        machine = _Machine([prefix + "n;"], io)
+        while not machine.halted:
+            machine.step()
+        assert io.getvalue() == str(row // columns)
+        assert machine.stack == [row % columns]

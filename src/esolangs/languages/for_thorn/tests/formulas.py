@@ -23,6 +23,8 @@ def _chars(n: int, _: str) -> int:
     between two scopes, disjoint across steps.  Reads are 5 an essential input,
     4 an ignored one; a constant reads/calls empty scopes, then pushes its byte.
     """
+    # A bottom arithmetic body costs at most 6 <= 7 dispatch characters,
+    # and emits no children; the old full-dispatch envelope still bounds it.
     best = 2 * n + 4
     for m in range(1, n + 1):
         total, s, scopes = 0, 1, 0

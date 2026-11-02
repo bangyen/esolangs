@@ -94,6 +94,7 @@ tables = 200
 verdict = "kept 2026-10-27: key k is the closed-form wrapped-zero family (4 + 3 (bl(k) - 1) characters, the shortest grammar lengths) rather than the plain linear key, 3 wrapped k times (1 + 3k); linear keys grow random tables 10.6% at n=7 and 11.1% at n=8 over 200 tables, 11.2% at n=10 and n=12 over 5, and 19-40% on parity, and, or and majority at n=7..12. Borderline at n=7 (10.6%), flat near 11"
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
 
@@ -110,3 +111,24 @@ saving = 45.0
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "kept: canonical constant folding and minimal spelling, exempt. Read all n rational tokens, then emit the answer with a bracket literal. Chars n+3, commands n+1: n=7 22/16->10/10 (47.4%), n=8 23/17->11/11 (45.0%), n=12 27/21->15/15. n=8 commands 23/17->9/9, workspace 42/37->24/24 bits. n=3 corpus chars 36884->36866. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged; global resource caps unchanged. Owned raw IO checks preserve all input reads and following record; Smallfuck retains fixed-width slots, executes straight-line setters and dumps only after the program."
+
+[ablations.stack_operand_reuse_20261102]
+arity = 8
+saving = 0.705
+seed = "random.Random(1000*n+i).getrandbits(1<<n), i<200"
+tables = "400 generic tables n7/8; exhaustive276 tables n1..3;24 tables each n4..6; parity/and/or/majority n4..10"
+verdict = "rejected: sound two-item tracking saves .641%/.705%, source262666/489493 ->260983/486041, below10%. The skipped guard leaves0 above the entry stack; join its second item with the taken exit, rather than retaining only the emitted body's state. A consumed unknown top needs333x at close, not33x (which may divide by0). n3 source36866 ->36755, commands251718 ->251364 (.141%);16 tables grow. Restricting consumption to a known-zero item beneath repairs those growths but saves only .645%/.707%; n3 source36737, commands251292 (.169%), no table grows. Named n7/8 safe savings: parity2.19%/1.67%, and0%/0%, or4.37%/4.49%, majority2.40%/1.71%; no family qualifies.14448 native runs cover all raw/repair variants, exhaustive small and sampled4..6;420 further named rows n4..10 pass with exact reads, no EOF probe and sentinel intact. All400 generic programs change; a deliberately wrong guard-top record computes the wrong10 row1 answer. Both plain/shared-block paths use the same stack joins, no new old-source fallback. Sampled generic7/8 commands404317/667628 ->402428/664054 (three rows/table), below1% saving; omitting33x saves3 chars, not4. Source/command estimates nowhere approach admission; full fixed-corpus native execution priced at minutes and not launched for this rejection."
+
+[ablations.zero_top_write_only_20261102]
+arity = 8
+saving = 0.0
+seed = "random.Random(1000*n+i).getrandbits(1<<n), i<200"
+tables = "400 generic tables n7/8 plus exhaustive256 n3 tables; zero-write firing fixture"
+verdict = "rejected: zero-only consuming writes have0 firing sites and byte-identical source/commands on the generic and exhaustive n3 corpora, including plain and shared emitters. The existing value tracking already skips these zero writes. Positive control: two explicit zero stack items followed by3#v stores0 and leaves one item, confirming the probe can fire. The proposal's stack-neutral claim is false: v pops key and value.3(333x3#v) repeats a full machine state indefinitely because close sees the underlying3;3(333x3#v33x)3^! halts and prints0. A zero write saving3 chars can therefore require3 extra close chars. Conservative tracking and unknown-top reset were tested, not the unsound stack-neutral version. Constants remain unchanged."
+
+[ablations.inverted_decode_20261102]
+arity = 8
+saving = 0.121
+seed = "random.Random(1000*n+i).getrandbits(1<<n), i<200"
+tables = "400 generic tables n7/8; exhaustive276 tables n1..3;24 tables each n4..6; parity/and/or/majority n4..10"
+verdict = "rejected: complement emission and3 R ^3x! decode are correct, but source saves .511%/.121%,262666/489493 ->261325/488899, below20% declining. The tail saves3 chars, not4: x takes[a,b,c] to(c-b)/a, so[3,R,3] computes(3-R)/3. Reversed subtraction[3,3,0] instead prints-1, caught by native algebra control. Unconditional n3 source36866 ->36104, commands251718 ->245622 (2.422%);90 tables grow. Even audit-only best-of-old/complement source race saves1.928%/1.133% at7/8; n3 source35219, commands244476 (2.877%),198 slower rows, failing5% execution admission too. Both polarities execute allsmall and sampled4..10 with ordered reads/sentinel; no production race added, no bounds/pins/anchors/examples changed."

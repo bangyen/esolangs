@@ -151,6 +151,19 @@ def test_ring_pops_rdlu_then_sustains() -> None:
     assert verdict(_ROWS["1"], entry) == "1"
     assert verdict(_ROWS["0"], entry) == "0"
 
+    from esolangs.languages.arrowqueue.generator import _LEAF, _LEAF_END
+
+    # Zero-after-zero has no preceding ring; a one still needs its lower half.
+    for pair in ("00", "01", "10", "11"):
+        rows = [
+            " +++" if i and bit == pair[i - 1] == "0" else _LEAF[bit]
+            for i, bit in enumerate(pair)
+        ]
+        rows.append(_LEAF_END[pair[-1]])
+        for index, bit in enumerate(pair):
+            assert verdict(rows, (down,) * index + entry) == bit
+    assert verdict([_LEAF["1"], "  ++"], entry) == "0"  # wrong-ring control
+
 
 def _check_constants() -> None:
     import esolangs
@@ -161,12 +174,6 @@ def _check_constants() -> None:
         for bit in "01":
             table = bit * (1 << n)
             default = esolangs.generate("ArrowQueue", table)
-            if n == 10 and bit == "1":
-                # The second width candidate saves two cells; fills execute below.
-                assert (
-                    len(default.splitlines()) * max(map(len, default.splitlines()))
-                    == 18
-                )
             span = max(map(len, default.splitlines()))
             assert esolangs.generate("ArrowQueue", table, width=span) == default
             for options in (

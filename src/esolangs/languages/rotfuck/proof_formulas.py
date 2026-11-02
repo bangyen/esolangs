@@ -20,9 +20,11 @@ def _constant_details(n: int, p: str) -> tuple[str, int, int] | None:
 
 
 def execution(n: int, p: str) -> int:
-    """The stated execution bound, evaluated for n and the program."""
+    """Default execution bound; native constant layouts are recognized separately."""
     if details := _constant_details(n, p):
         return len(p) + 5 * details[2]
+    if n == 1:
+        return 183
     return 8 * (1 << (2 * n)) + 43 * (1 << n) + 15 * n - 5
 
 

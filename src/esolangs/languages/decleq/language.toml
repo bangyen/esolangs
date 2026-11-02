@@ -7,21 +7,21 @@ admitted = 2026-08-14T08:52:07-04:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "the tree branches on every essential input down to single entries; an equal subtree is emitted once, and constant subtrees jump to one of two shared print gadgets"
+qualification = "zero edges enter fixed print gadgets directly; admitted symmetric thresholds use fall-through chains"
 scaling = "linear: at most B characters: six cells per distinct subtree"
 execution = "poly n: worst 50n + 95 commands past n = 1: 47 passes, n - 2 copy jumps"
 workspace = "linear: worst M + 5n + bl(C) + bl(n) + 5 bits: memory, pointer and input cursor"
 definitions = ["M = bits of the program's cells", "C = cell count"]
 
 [generator_sizes]
-"00000001" = { commands = 244, commands_by_row = { "0" = 242, "1" = 242, "2" = 242, "3" = 242, "4" = 243, "5" = 243, "6" = 244, "7" = 244 }, source_units = 170 }
-"00001100" = { commands = 196, commands_by_row = { "0" = 195, "1" = 195, "2" = 195, "3" = 195, "4" = 196, "5" = 196, "6" = 196, "7" = 196 }, source_units = 147 }
-"00110110" = { commands = 244, commands_by_row = { "0" = 243, "1" = 243, "2" = 243, "3" = 243, "4" = 244, "5" = 244, "6" = 244, "7" = 244 }, source_units = 200 }
-"0110" = { commands = 195, commands_by_row = { "0" = 195, "1" = 195, "2" = 195, "3" = 195 }, source_units = 153 }
-"01101001" = { commands = 244, commands_by_row = { "0" = 244, "1" = 244, "2" = 245, "3" = 245, "4" = 244, "5" = 244, "6" = 244, "7" = 244 }, source_units = 195 }
-"0110100110010110" = { commands = 293, commands_by_row = { "0" = 293, "1" = 293, "2" = 293, "3" = 293, "4" = 294, "5" = 294, "6" = 295, "7" = 295, "8" = 293, "9" = 293, "10" = 294, "11" = 294, "12" = 293, "13" = 293, "14" = 293, "15" = 293 }, source_units = 243 }
-"1101001101101101" = { commands = 293, commands_by_row = { "0" = 292, "1" = 292, "2" = 293, "3" = 293, "4" = 292, "5" = 292, "6" = 292, "7" = 292, "8" = 293, "9" = 293, "10" = 293, "11" = 293, "12" = 292, "13" = 292, "14" = 293, "15" = 293 }, source_units = 256 }
-"11111110" = { commands = 244, commands_by_row = { "0" = 242, "1" = 242, "2" = 242, "3" = 242, "4" = 243, "5" = 243, "6" = 244, "7" = 244 }, source_units = 170 }
+"00000001" = { commands = 244, commands_by_row = { "0" = 241, "1" = 241, "2" = 241, "3" = 241, "4" = 242, "5" = 242, "6" = 243, "7" = 244 }, source_units = 149 }
+"00001100" = { commands = 196, commands_by_row = { "0" = 194, "1" = 194, "2" = 194, "3" = 194, "4" = 195, "5" = 195, "6" = 196, "7" = 196 }, source_units = 133 }
+"00110110" = { commands = 244, commands_by_row = { "0" = 242, "1" = 242, "2" = 243, "3" = 243, "4" = 243, "5" = 244, "6" = 243, "7" = 244 }, source_units = 179 }
+"0110" = { commands = 195, commands_by_row = { "0" = 194, "1" = 195, "2" = 194, "3" = 195 }, source_units = 139 }
+"01101001" = { commands = 244, commands_by_row = { "0" = 243, "1" = 244, "2" = 244, "3" = 245, "4" = 243, "5" = 244, "6" = 243, "7" = 244 }, source_units = 181 }
+"0110100110010110" = { commands = 293, commands_by_row = { "0" = 292, "1" = 293, "2" = 292, "3" = 293, "4" = 293, "5" = 294, "6" = 294, "7" = 295, "8" = 292, "9" = 293, "10" = 293, "11" = 294, "12" = 292, "13" = 293, "14" = 292, "15" = 293 }, source_units = 229 }
+"1101001101101101" = { commands = 293, commands_by_row = { "0" = 291, "1" = 291, "2" = 292, "3" = 293, "4" = 291, "5" = 291, "6" = 292, "7" = 292, "8" = 292, "9" = 293, "10" = 292, "11" = 293, "12" = 291, "13" = 291, "14" = 292, "15" = 293 }, source_units = 228 }
+"11111110" = { commands = 244, commands_by_row = { "0" = 241, "1" = 241, "2" = 241, "3" = 241, "4" = 242, "5" = 242, "6" = 243, "7" = 244 }, source_units = 149 }
 
 [ablations]
 audited = "2026-10-19"
@@ -54,9 +54,10 @@ verdict = "removed (retirement candidate 25, 2026-10-20): the tree stopped k lev
 [ablations.routing_race_figures]
 saving = 0.0
 arity = 4
-verdict = "recorded: the comment's routing-race example (0100010011111111 at 1345 vs 1371) half reproduces — 1371 is the shipped essential routing exactly, but 1345 arises under no flag combination of the current emitter; full routing measures 1,763 on this table, so the example's direction has reversed. The race itself is a rejected variant, not shipped, and was not priced. See the stale-figures entry F22"
+verdict = "recorded before pass_loop: the comment's routing-race example (0100010011111111 at 1345 vs 1371) half reproduces — 1371 was the then-shipped essential routing exactly, but 1345 arises under no flag combination of the then-current emitter; full routing measured 1,763 on this table, so the example's direction has reversed. The race itself is a rejected variant, not shipped, and was not priced. See the stale-figures entry F22"
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
@@ -73,3 +74,31 @@ saving = 34.5
 seed = 0
 tables = "both constant tables n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: canonical whole-constant folding. Reuse one scratch cell for all n reads, print one literal, then decrement a dedicated zero and jump past memory. Every instruction has three operands; I/O c names the next instruction, preserving both fall-through and jump-to-c readings. Exactly n+2 commands and 3n+9 cells. Written bits M+6+bl(3n+9)+bl(n), M the initial cell bits: scratch grows by five and halt zero gains a sign bit. n=8 142 -> 93 chars; n=12 184 -> 129. n=3 corpus 46278 -> 46204 chars. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced constant scores improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check exact resources and every input slot; stream readers preserve an unread sentinel and read before output."
+
+[ablations.constant_zero_side_target_20261102]
+arity = 8
+saving = 6.899
+seed = "random.Random(1847+n), successive getrandbits(1<<n), first200 tables"
+tables = "400 fixed generic tables; all276 tables/rows n1..3;20 each n4..6; ignored and named controls"
+verdict = "kept: canonical fixed-target jump threading, percentage-exempt. A zero branch targets print gadget3/9 directly; the removed0,0,gadget only decremented negative cell0. Every caller has all n reads done, fixed ASCII cells15/16=48/49, negative cell0 and END=C. Gadgets inspect no tree cells, then0,0,END necessarily halts. Full-memory equality is not claimed. Source171237/267063 ->156304/248639 at7/8 (8.721%/6.899%), balanced area241983/367643 ->220291/340259. Direct-only n3 source46204->42242, commands478768->477752; no table grows or row slows. All constants byte-identical. Native controls6895 runs check2212 gadget entries and exact reads/sentinel; wrong target and unpermuted-route mutants fail;24 fixed-byte-swap wrong programs print the complement and fail every expected bit. The preamble is unchanged, so M+5n+5 memory peak still occurs before counter decrement16; source/E/global bounds preserved, exact workspace arities1/2 added without dropping3/4. I/O c operands still name the following instruction, preserving both supported readings."
+
+[ablations.fallthrough_owner_generic_20261102]
+arity = 8
+saving = 4.067
+seed = "random.Random(1847+n), successive getrandbits(1<<n), first200 tables"
+tables = "400 generic tables plus exhaustive small and samples4..6"
+verdict = "rejected generically: two-pass one-edge ownership changes all200 programs at each fixed arity but saves only3.439%/4.067% against mandatory canonical threading,156304/248639 ->150929/238527. Raw old/owner source171237/267063 ->165537/256951. n3 raw owner46204/478768 chars/commands ->46036/478720, far below5% execution admission. No old-order source-min fallback ships. Named parity372/419 ->333/371 initially clears10%, but its1/11 limit is below the sustained floor; observed high17.123% at96 falls to16.511% at128, and fixed7/8 fail20% declining. Variable near-unanimity likewise359/404 ->319/356,11.142%/11.881%, limit1/11, rejected as a family. Fixed threshold2 fails n7 at9.819% despite10.682% at8; threshold7 fails n7(AND). Only separately admitted fixed thresholds3..6 and majority below ship. Native raw/small variants11800 runs pass; wrong-program controls fire."
+
+[ablations.fallthrough_owner_families_20261102]
+arity = 8
+saving = 18.061
+seed = "full-input strict majority and fixed popcount thresholds3,4,5,6, with negations"
+tables = "each family at fixed7/8 and through16; semantic DAG extension through256; all small tables/rows"
+verdict = "kept only for strict majority and separately qualifying fixed thresholds3..6. Their source savings7/8 are: majority16.180%/18.061% (445/526->373/431); k3 14.319%/15.675% (433/504->371/425); k4 16.180%/17.978% (445/534->373/438); k5 15.036%/18.061% (419/526->356/431); k6 11.142%/16.529% (359/484->319/404). Negations have identical source lengths. No cap, source race, searched table or input reordering. Symmetry is tested on the full physical inputs; a single profile transition identifies k. Ignored-input parity/thresholds stay generic. A threshold decrements its required count on one, an injective map, so every nonconstant one-child has one parent; emit those disjoint chains, backpatch zero edges, and retain constant gadget targets. Generic owner choices are unnecessary in production. Leading source coefficients give fixed-k saving limit(k-1)/(4k+3), respectively2/15,3/19,4/23,5/27, all above10%; strict majority tends1/3. DFS has k(n-k+1) nodes and(k-1)(n-k) copy jumps; chains remove all copies. Fixed-k DFS/chains coefficients4k+3 and3k+4 multiply n log10(n); majority coefficients6 and4 multiply N log10(n). Observed fixed-k highs22.533/27.173/30.176/32.244% at64 decline by96; majority43.662% at128 declines to41.675% at256. Extension emits real programs through the same builders with semantic residual IDs, not a character proxy;134 byte controls match materialized tables through16, and old/new extended sources execute (120 fixed/majority rows,128 broader rows). This audit-only representation is not production. Named ordinary-table native1936 rows, final layouts/ignored192 rows and40 exact workspace runs pass. Balanced areas7/8: majority630/741->527/595; k3 630/741->527/595; k4 630/780->527/630; k5 595/741->527/595; k6 527/702->465/560. Full program bounds remain; each named path has no copy jump, <=49n+97 commands. Existing nonfamily worst witness still attains50n+95 at2..6, so no shared witness change. Final n3 source42228, commands477748; production3563 rows and600 exact workspace rows pass."
+
+[ablations.routing_order_race_20261102]
+arity = 8
+saving = 2.344
+seed = "random.Random(1847+n), successive getrandbits(1<<n), first200 tables"
+tables = "400 generic tables; exhaustive small ordering controls; named symmetric functions"
+verdict = "rejected: identity/reverse/greedy race gives canonical156304/248639 ->150940/242810 (3.432%/2.344%), below10%; raw old/race171237/267063 ->165012/260893. Reverse alone156097/248056, .132%/.234%; greedy alone152192/244190,2.631%/1.789%. Greedy tries remaining variables by distinct residual count and is structural search, audit-only regardless of its saving. Probe fires: reversed order differs200/200, greedy159/163 of200 at7/8. Greedy nonconstant node profiles summed over tables: n7[200,400,800,1600,2962,2263,400] vs identity[200,400,800,1600,3092,2445,400]; n8[200,400,800,1600,3199,5719,2679,400] vs[200,400,800,1600,3199,5980,2760,400]. Every trial uses an actually permuted table and matching routes; native ordered-read/sentinel controls pass. Reversing routes without the table computes wrong0010 row1, caught. Named parity/threshold tables are symmetric and gain no characters from these orders at7/8. No production search, routing race or cache added."

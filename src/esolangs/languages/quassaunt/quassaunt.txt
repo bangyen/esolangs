@@ -1,21 +1,20 @@
-@@[3]
-@@@@?@@?@@@@[z1]?%%Inputchar?%%Empty?%%Makecontain?@@@@[2]?
-@@@@[one]?%%Obtain?%%Ifdisjoint?%%Obtain?@@?%%Concatenateall?
+@@[_s]
+@@@@d?%%Swap?%%Empty?%%Makecontain?%%Store?%%Empty?%%Makecontain?
+@@%%Store?@@?@@?@@@@[_s]?@@d?%%Obtain?@@@@["]?@@?%%Empty?
+%%Concatenate
+@@%%Makecontain?%%Ifdisjoint?%%Obtain?@@?%%Concatenateall?
 %%Concatenate @@%%Evaluatereplace
 %%Concatenate %%Empty %%Makecontain
-%%Store @@[z1]
-@@@@d?%%Inputchar?%%Empty?%%Makecontain?%%Store?@@?@@?@@[z2]?
-@@%%Obtain?@@?%%Concatenateall?%%Evaluatereplace
-%%Concatenate %%Empty %%Makecontain
-%%Store @@[2]
-@@@@?@@?@@@@[z2]?%%Inputchar?%%Empty?%%Makecontain?@@@@[o2]?
-@@@@[one]?%%Obtain?%%Ifdisjoint?%%Obtain?@@?%%Concatenateall?
-%%Concatenate @@%%Evaluatereplace
-%%Concatenate %%Empty %%Makecontain
-%%Store @@[z2] @@@@0?%%Printtoconsole
-%%Empty %%Makecontain %%Store @@[o2]
-@@@@1?%%Printtoconsole %%Empty
-%%Makecontain %%Store @@[one] @@1
-%%Empty %%Makecontain %%Store @@ @@
-@@[3] %%Obtain @@ %%Concatenateall
-%%Evaluate
+%%Store @@ @@ @@ @@ @@[_x] @@ @@ @@["]
+@@@@@@[#]?%%Inputchar?%%Empty?%%Makecontain?@@@@[$]?@@[]?%%Obtain?
+@@%%Ifdisjoint?%%Obtain?@@?%%Concatenateall?%%Evaluatereplace
+%%Concatenate @@["] @@[#]
+@@%%Inputchar?@@[!]?%%Obtain?@@?%%Concatenateall?%%Evaluatereplace
+@@[#] @@[$]
+@@@@@@[!]?%%Inputchar?%%Empty?%%Makecontain?@@@@[%]?@@[]?%%Obtain?
+@@%%Ifdisjoint?%%Obtain?@@?%%Concatenateall?%%Evaluatereplace
+%%Concatenate @@[$] @@[!]
+@@@@0?%%Printtoconsole @@[!] @@[%]
+@@@@1?%%Printtoconsole @@[%] @@[] @@1
+@@[] @@ @@ @@[_s] %%Obtain @@
+%%Concatenateall %%Evaluate

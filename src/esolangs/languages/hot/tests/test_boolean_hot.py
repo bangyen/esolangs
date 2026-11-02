@@ -63,7 +63,30 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
 
 
 def test_three_input_corpus_size() -> None:
+    _check_majority()
     assert (
         sum(len(esolangs.generate("Hot", format(value, "08b"))) for value in range(256))
-        == 98266
+        == 98234
     )
+
+
+def _check_majority() -> None:
+    from esolangs.languages.hot.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    for n, size in ((2, 253), (3, 353), (7, 1313), (8, 1999)):
+        table = "".join(str(int(2 * row.bit_count() > n)) for row in range(1 << n))
+        for options in ({}, {"width": 1}, {"balance": True}):
+            program = esolangs.generate("Hot", table, **options)
+            if not options:
+                assert len(program) == size
+            for row in (0, (1 << n) // 3, (1 << n) - 1):
+                io = ScriptedIO(f"{row:0{n}b}" + "Q")
+                machine = _Machine(program, io)
+                while not machine.halted:
+                    machine.step()
+                assert io.getvalue() == table[row]
+                assert io.reads == n
+                assert io.past_end == 0
+                assert machine.pending is None
+                assert io.input_char() == ord("Q")

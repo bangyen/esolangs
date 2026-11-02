@@ -31,7 +31,7 @@ class TestDecleq:
                 assert decs == (1 + tests[i] if tests[i] else 0), (table, i)
 
     def test_constant_subtrees_fold(self) -> None:
-        """A constant subtree is a one-instruction jump to a print gadget."""
+        """A constant zero side enters its print gadget directly."""
         halves = "1" * 16 + "0" * 16
         parity = "".join(str(bin(row).count("1") & 1) for row in range(32))
 
@@ -42,6 +42,7 @@ class TestDecleq:
         # Only the two gadgets print, and no operand can be -2 (operands are
         # addresses, read cells and the two ASCII constants), so every program
         # carries exactly two.
+        _check_gadgets_and_owner_families()
         assert outputs(halves) == 2
         assert outputs(parity) == 2
         assert len(boolean.decleq(halves)) < len(boolean.decleq(parity))
@@ -165,4 +166,43 @@ def test_constants_reuse_scratch_and_print_after_every_read() -> None:
                     assert written.bits == workspace(n, program)
                     assert io.getvalue() == bit
                     assert io.input_char() == ord("Q")
-    assert sum(len(boolean.decleq(format(v, "08b"))) for v in range(256)) == 46204
+    assert sum(len(boolean.decleq(format(v, "08b"))) for v in range(256)) == 42228
+
+
+def _check_gadgets_and_owner_families() -> None:
+    from esolangs.languages.decleq.generator import _owner_family
+    from esolangs.languages.decleq.interpreter import _Machine
+    from esolangs.languages.decleq.proof_formulas import workspace
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    cells = list(map(int, boolean.decleq("01").split()))
+    tree = cells[2] + 12  # one read, one normalization and its two controls
+    assert cells[tree : tree + 3] == [17, 17, 3]
+    cases = ["00010100"]
+    for n, threshold, admitted in ((7, 4, True), (8, 6, True), (8, 7, False)):
+        table = "".join(str(int(row.bit_count() >= threshold)) for row in range(1 << n))
+        assert _owner_family(table, n) == admitted
+        cases.extend((table, table.translate(str.maketrans("01", "10"))))
+    parity = _parity(7)
+    assert not _owner_family(parity, 7)
+    cases.append(parity)
+    for table in cases:
+        n = len(table).bit_length() - 1
+        program = boolean.decleq(table)
+        for row in (0, (1 << n) // 3, (1 << n) - 1):
+            io = ScriptedIO(f"{row:0{n}b}Q")
+            machine = _Machine(program, io)
+            written = WrittenState(machine.snapshot())
+            while not machine.halted:
+                if machine.pc in (3, 9):
+                    memory = machine.state[1]
+                    assert memory[0] < 0
+                    assert memory[15:17] == (48, 49)
+                    assert io.reads == n
+                machine.step()
+                written.sample(machine.snapshot())
+            assert written.bits == workspace(n, program)
+            assert io.getvalue() == table[row]
+            assert io.past_end == 0
+            assert io.input_char() == ord("Q")

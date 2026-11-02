@@ -60,7 +60,9 @@ def test_every_constant_row_within_written_state_bound(bit: str) -> None:
                 assert written.bits == workspace
                 assert io.getvalue() == bit
                 assert io.input_char() == ord("Q")
-    assert sum(len(boolean.bit_tilde(format(v, "08b"))) for v in range(256)) == 39208
+    assert sum(len(boolean.bit_tilde(format(v, "08b"))) for v in range(256)) == 46372
+    if bit == "0":
+        _check_split_inputs()
 
 
 def test_xor_window_scratch_read_comes_back_eight() -> None:
@@ -81,3 +83,45 @@ def test_xor_window_scratch_read_comes_back_eight() -> None:
         for row in range(1 << n):
             bits = list(f"{row:0{n}b}")
             assert run(program, bits) == table[row]
+
+
+def _check_split_inputs() -> None:
+    import esolangs
+    from esolangs.languages.bit_tilde.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    # First-bit exits and odd/even ignored prefixes, including before planting.
+    for n, used in ((5, list(range(5))), (6, [1, 2, 3, 4, 5]), (7, [2, 3, 4, 5, 6])):
+        table = "".join(
+            str(int(all((row >> (n - 1 - i)) & 1 for i in used)))
+            for row in range(1 << n)
+        )
+        for options in ({}, {"width": 1}, {"balance": True}):
+            program = esolangs.generate("bit~", table, **options)
+            for row in (0, (1 << n) // 3, (1 << n) - 1):
+                io = ScriptedIO(f"{row:0{n}b}Q")
+                machine = _Machine("".join(program.split()), io)
+                while not machine.halted:
+                    machine.step()
+                assert io.getvalue() == table[row]
+                assert io.reads == n
+                assert io.past_end == 0
+                assert io.input_char() == ord("Q")
+    # A balanced e0 lane and every diff set attain all three resource maxima.
+    for n, expected_steps, expected_bits in ((4, 271, 92), (5, 365, 117)):
+        quarter = 1 << (n - 2)
+        e0 = [1] * (quarter - 1) + [0, 1] + [0] * (quarter - 1)
+        table = "".join(f"{bit}{1 - bit}" for bit in e0)
+        program = boolean.bit_tilde(table)
+        assert len(program) == 3 * (1 << n) + 19 * n + 115
+        io = ScriptedIO("0" * n)
+        machine = _Machine(program, io)
+        written = WrittenState(machine.snapshot())
+        steps = 0
+        while not machine.halted:
+            machine.step()
+            written.sample(machine.snapshot())
+            steps += 1
+        assert steps == expected_steps
+        assert written.bits == expected_bits

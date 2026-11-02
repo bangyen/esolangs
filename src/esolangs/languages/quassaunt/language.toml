@@ -7,24 +7,24 @@ admitted = 2026-10-15T12:24:04-04:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "constants read every input before printing directly; otherwise each distinct subtable's code is stored once in a global and run by name; a node tests its character's set {c} against the stored {1} with `%%Ifdisjoint` to pick a child's name, then obtains that code once; equal halves and constant chains read their bits unbranched"
-scaling = "linear: worst F characters, n = 3..21; at most beyond"
-execution = "linear: worst 5N + 15n + 14 steps: five a stored node, 15 a level"
-workspace = "linear: worst 16L-328D-8r+8W+bl(5D+6)+bl(n)-302 bits past n = 2; constants 96n+161+bl(n+1)+bl(n)"
-definitions = ["N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables", "D = the program's definitions", "r = the root name's length", "W = the longest word's characters"]
+qualification = "shared residuals read every input depth; a fixed helper stores all code before the root runs"
+scaling = "linear: at most F characters: bounded names and nodes"
+execution = "linear: worst 26N + 15n + 66 steps: store loop, then one path"
+workspace = "linear: worst G bits: frames, stack, globals, locals and input"
+definitions = ["N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables", "G = 8(R+26+2B+3A+2H+K)+10+bl(P-1)+bl(n); R/P raw word characters/count, A/B stored name/body characters, H helper characters, K longest key"]
 
 [generator_sizes]
-"00000001" = { commands = 94, commands_by_row = { "0" = 88, "1" = 88, "2" = 88, "3" = 88, "4" = 91, "5" = 91, "6" = 94, "7" = 94 }, source_units = 1020 }
-"00001100" = { commands = 91, commands_by_row = { "0" = 88, "1" = 88, "2" = 88, "3" = 88, "4" = 91, "5" = 91, "6" = 91, "7" = 91 }, source_units = 993 }
-"00110110" = { commands = 104, commands_by_row = { "0" = 101, "1" = 101, "2" = 101, "3" = 101, "4" = 104, "5" = 104, "6" = 104, "7" = 104 }, source_units = 1364 }
-"0110" = { commands = 69, commands_by_row = { "0" = 69, "1" = 69, "2" = 69, "3" = 69 }, source_units = 730 }
-"01101001" = { commands = 94, commands_by_row = { "0" = 94, "1" = 94, "2" = 94, "3" = 94, "4" = 94, "5" = 94, "6" = 94, "7" = 94 }, source_units = 1072 }
-"0110100110010110" = { commands = 119, commands_by_row = { "0" = 119, "1" = 119, "2" = 119, "3" = 119, "4" = 119, "5" = 119, "6" = 119, "7" = 119, "8" = 119, "9" = 119, "10" = 119, "11" = 119, "12" = 119, "13" = 119, "14" = 119, "15" = 119 }, source_units = 1414 }
-"1101001101101101" = { commands = 134, commands_by_row = { "0" = 131, "1" = 131, "2" = 134, "3" = 134, "4" = 131, "5" = 131, "6" = 131, "7" = 131, "8" = 134, "9" = 134, "10" = 134, "11" = 134, "12" = 131, "13" = 131, "14" = 134, "15" = 134 }, source_units = 1878 }
-"11111110" = { commands = 94, commands_by_row = { "0" = 88, "1" = 88, "2" = 88, "3" = 88, "4" = 91, "5" = 91, "6" = 94, "7" = 94 }, source_units = 1020 }
+"00000001" = { commands = 293, commands_by_row = { "0" = 279, "1" = 279, "2" = 279, "3" = 279, "4" = 286, "5" = 286, "6" = 293, "7" = 293 }, source_units = 970 }
+"00001100" = { commands = 286, commands_by_row = { "0" = 279, "1" = 279, "2" = 279, "3" = 279, "4" = 286, "5" = 286, "6" = 286, "7" = 286 }, source_units = 911 }
+"00110110" = { commands = 345, commands_by_row = { "0" = 338, "1" = 338, "2" = 338, "3" = 338, "4" = 345, "5" = 345, "6" = 345, "7" = 345 }, source_units = 1246 }
+"0110" = { commands = 226, commands_by_row = { "0" = 226, "1" = 226, "2" = 226, "3" = 226 }, source_units = 806 }
+"01101001" = { commands = 293, commands_by_row = { "0" = 293, "1" = 293, "2" = 293, "3" = 293, "4" = 293, "5" = 293, "6" = 293, "7" = 293 }, source_units = 1088 }
+"0110100110010110" = { commands = 360, commands_by_row = { "0" = 360, "1" = 360, "2" = 360, "3" = 360, "4" = 360, "5" = 360, "6" = 360, "7" = 360, "8" = 360, "9" = 360, "10" = 360, "11" = 360, "12" = 360, "13" = 360, "14" = 360, "15" = 360 }, source_units = 1370 }
+"1101001101101101" = { commands = 438, commands_by_row = { "0" = 431, "1" = 431, "2" = 438, "3" = 438, "4" = 431, "5" = 431, "6" = 431, "7" = 431, "8" = 438, "9" = 438, "10" = 438, "11" = 438, "12" = 431, "13" = 431, "14" = 438, "15" = 438 }, source_units = 1666 }
+"11111110" = { commands = 293, commands_by_row = { "0" = 279, "1" = 279, "2" = 279, "3" = 279, "4" = 286, "5" = 286, "6" = 293, "7" = 293 }, source_units = 970 }
 
 [ablations]
-audited = "2026-10-19"
+audited = "2026-11-02"
 
 [ablations.subtree_sharing]
 saving = 483.1
@@ -48,9 +48,10 @@ saving = 0.0
 arity = 8
 seed = "random.Random(100 + n)"
 tables = 20
-verdict = "retired as a race, kept as a rule for compact programs. The balance route raced whole-word layout against bodies cut into %%Concatenate pieces at six limits (16..96), min by rendered side: balanced area (side^2, generic wrap as baseline) 88.5 / 79.4 / 69.0 / 52.9 / 13.8 / 5.3 / 3.4% on random n=3..9, then 43.0 / 0.0 / 33.0% at n=10..12 (an artifact of the generic width choice, 472 against an ideal 326 at n=10, not of the cut); at n=8 11 of 20 tables gained, chars +8.3-18%. On 200 random tables (seed 4100 + n, rows times longest row) the race saves 15.5% at n=7 and 2.7% at n=8, the rule 10.4% and 0.0%; at 20 tables n=9 -3.0%, n=10 23.1%, n=11 0.0%. Fails 10% on random at n=8; named functions (parity, and, or, majority, thr2, complements) gain 35-89% at n=3..10. Replaced by one cut at 64 when isqrt(2 * len) < the longest word (a compact program, which a node body pins at 180 wide), else whole-word: random area saving 87.6 / 79.4 / 69.0 / 50.4 / 1.2 / 0 / 0 / 0% at n=3..10, named 35-88% at n=3..10 (within 5% of the race but n=3 random +8%, n=6 random +5%); random n>=8 now generic. Default programs byte-identical (only the balance hook changed); 552 default+balanced builds n<=3 execute, 65 balanced n=4..8 random+named execute, control fails."
+verdict = "retired as a race, kept as a rule for compact programs (2026-10-29 baseline). The balance route raced whole-word layout against bodies cut into %%Concatenate pieces at six limits (16..96), min by rendered side: balanced area (side^2, generic wrap as baseline) 88.5 / 79.4 / 69.0 / 52.9 / 13.8 / 5.3 / 3.4% on random n=3..9, then 43.0 / 0.0 / 33.0% at n=10..12 (an artifact of the generic width choice, 472 against an ideal 326 at n=10, not of the cut); at n=8 11 of 20 tables gained, chars +8.3-18%. On 200 random tables (seed 4100 + n, rows times longest row) the race saves 15.5% at n=7 and 2.7% at n=8, the rule 10.4% and 0.0%; at 20 tables n=9 -3.0%, n=10 23.1%, n=11 0.0%. Fails 10% on random at n=8; named functions (parity, and, or, majority, thr2, complements) gain 35-89% at n=3..10. Replaced by one cut at 64 when isqrt(2 * len) < the longest word (a compact program, which a node body pins at 180 wide), else whole-word: random area saving 87.6 / 79.4 / 69.0 / 50.4 / 1.2 / 0 / 0 / 0% at n=3..10, named 35-88% at n=3..10 (within 5% of the race but n=3 random +8%, n=6 random +5%); random n>=8 now generic. Default programs byte-identical (only the balance hook changed); 552 default+balanced builds n<=3 execute, 65 balanced n=4..8 random+named execute, control fails."
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
@@ -58,3 +59,31 @@ plain_rewrite = 2026-10-29
 arity = 12
 tables = "both constants at n=1..12, every row through n=3 and four rows thereafter"
 verdict = "kept: canonical constant output, percentage gate exempt. Read all inputs then print the literal without definitions or evaluated chains: 12n+20 characters, n+2 commands, and exactly 96n+161+bl(n+1)+bl(n) written bits. At n=8, characters 1272 -> 116, commands 150 -> 10, sampled written peaks 17948 -> 937 bits; warm generation medians 34.83/34.46 -> 2.21/2.17 us for zero/one. At n=12, characters 1858 -> 164, commands 218 -> 14, peaks 26029 -> 1321 bits. Both versions passed 200 executions; all 270 nonconstant programs through n=3 are byte-identical. Sentinel regressions pin n=8 size and every required read. The workspace formula handles direct constant frames separately; generic envelopes and existing size pins remain unchanged."
+
+[ablations.stack_reservoir_fillers]
+arity = 8
+saving = 5.0
+seed = "random.Random(1000*n), sequential choice('01')"
+tables = "200 random tables per n=7,8; all tables/rows n=1..3; sampled random/named/ignored-input controls"
+verdict = "rejected alone 2026-11-02: n=7/8 source 1688993 -> 1594641 / 2802994 -> 2661788 chars (5.59/5.04%), below both size bars. Exactly n=3 commands 193280 -> 186816 (3.34% fewer), below the 5% execution bar; source 289876 -> 269316, no table larger or row slower. Kept only in the jointly qualifying word_economy construction. Two empty strings per input suffice: a branch consumes two and a chain one; every path reads all n inputs."
+
+[ablations.dense_global_names]
+arity = 8
+saving = 2.9
+seed = "random.Random(1000*n), sequential choice('01')"
+tables = "same corpus as stack_reservoir_fillers; alphabet/name and full native bundle controls"
+verdict = "rejected alone 2026-11-02: source 1688993 -> 1641717 / 2802994 -> 2720508 chars at n=7/8 (2.80/2.94%); n=3 commands unchanged, source 289876 -> 283772. Reservoir plus dense names still saves only 8.39/7.98%, below admission. Kept jointly in word_economy. The 89 printable ASCII characters exclude ?[]_W: no code separator, bracket ambiguity, helper collision or reserved [Whitespace]. Bijective names are nonempty; [] is the separate {1} global, allowed by the bracketed-global rule. Stable frequency order includes each definition and every reference; the extra batch key adds one uniform occurrence, preserving that order. No name search or frozen table."
+
+[ablations.batched_store_loop]
+arity = 8
+saving = 12.1
+seed = "random.Random(1000*n), sequential choice('01')"
+tables = "same corpus as stack_reservoir_fillers; native dictionary equality on all 270 nonconstant tables through n=3"
+verdict = "rejected alone 2026-11-02: n=7/8 source 1688993 -> 1499256 / 2802994 -> 2464631 (11.23/12.07%), a finite benefit below the declining 20% bar. The uncompressed duplicated key costs Theta(D log D), eventually exceeding the O(D) fixed-store-word saving, so this cannot be called sustained. No arity cap or old-program race. Exactly n=3 source 289876 -> 300538, 254 tables grow; commands 193280 -> 627216. Kept jointly in word_economy: dense keys make the duplicate affordable. Each real name/body/key triple is stored once; an empty dummy key chooses the root after the last triple. All 270 small nonconstant dictionaries match the unbatched reservoir+dense build exactly after removing only helper [_s] and dummy [_x]."
+
+[ablations.word_economy]
+arity = 8
+saving = 20.6
+seed = "random.Random(1000*n), sequential choice('01')"
+tables = "200 random tables per n=7,8, all 76800 rows; 20 random tables each n=9,10,12,14,16, four native rows of the first; all tables/rows n<=3; sampled n=4..6 and named/ignored-input controls"
+verdict = "kept 2026-11-02 for source only: the reservoir, dense names and fixed store loop jointly save 20.158/20.607% at n=7/8 (1688993 -> 1348509 / 2802994 -> 2225358 chars), clearing even the declining bar. The measured extension curve is nonmonotone: n=9/10/12/14/16 saves 20.371/20.270/20.275/20.521/20.624%; no global peak claim. If old weighted name cost is A and own-name cost O, every reachable definition is referenced, so O<=A/2. Adding one test key and encoding with base89 costs at most 1.5*ln(10)/ln(89)*A+O(D); fixed words are O(D), while distinct old names force A=Omega(D log D). Thus limiting saving is bounded below by 23.05285%, not zero. Stable frequency sorting costs O(D log D)=O(T), canonical residual construction O(T), and names emit their digits once; no search or fallback. Startup 15+2n+3D words plus 23(D+1) storer words and 13B+6C+2 path words gives exact E=40+15n+26D-7C, B+C=n; D<=N+1 yields 26N+15n+66, attained by native n=3/6 witnesses. Costs are explicit: n=3 source 289876 -> 272196 but six tables grow; n=1/2 totals 836 -> 1112 / 9582 -> 10270 and every nonconstant table grows. n=3 commands 193280 -> 620752 (3.212x); full n=7/8 totals 9458720 -> 37904672 / 27959050 -> 119593666 (old totals analytically derived and validated natively). Generic sampled workspace peaks summed over three tables rise 346609 -> 433599 / 590932 -> 744285 bits at n=7/8, about 25-26%. Warm generation n=8/12/16 takes 0.131/1.387/18.688 -> 0.235/2.429/30.564 ms; native all-row table runs n=4/6/8 take 2.663/22.613/199.149 -> 7.754/77.615/761.142 ms. This is neither an execution nor memory optimization. The workspace formula counts raw cut frames and reconstructed payloads separately; every standalone Concatenate adds two execution steps. Original proof arities remain, all eight pins updated, and the balanced example executes. Full 76800-row prototype run passed in 195.24 seconds; public output matches that frozen prototype byte-for-byte. Balanced grid_area, without stripping trailing lines, falls 2141087 -> 1882202 / 2873246 -> 2532395 on the fixed 200-table n=7/8 corpora (12.09/11.86%); no table grows. Across 70 named/complement builds at n=3,4,6,7,8,10,12, eight areas grow, at most 6.83%, while the largest reduction is 48%; native old/new balanced witnesses execute. Wrong-leaf and wrong-sentinel controls are detected on 4/8 and 8/8 rows; [] uses the ordinary global-name rule."

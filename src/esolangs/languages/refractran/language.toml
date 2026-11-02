@@ -4,7 +4,7 @@ admitted = 2026-11-01T16:02:12-05:00
 
 [proof_status]
 labels = ["parameterized tree"]
-qualification = "bottom-up reduced decision DAG: three controlled rail swaps compute each mux; a swap is four fractions and restores the control primes and shared scratch; every input has one ordered exponent embed"
+qualification = "reduced DAG with constant-controlled swaps pruned; parity shares complementary residuals by signed rails; every input has one ordered exponent embed"
 scaling = "linear: O(T/log T) shared nodes, O(log T) digits per node"
 execution = "linear: at most 2L + 1 commands: each four-fraction swap takes at most eight inspections, plus the final dump"
 workspace = "linear: at most 8L + bl(L) + 16 bits: prime rails or summed constant exponents, fraction cursor and direction"
@@ -14,56 +14,57 @@ folding_ignored_local = "_diagram"
 folding_constant_local = "_diagram"
 
 [generator_sizes]
-"00000001" = { commands = 57, commands_by_row = { "0" = 41, "1" = 45, "2" = 41, "3" = 49, "4" = 41, "5" = 45, "6" = 41, "7" = 57 }, source_units = 384 }
-"00001100" = { commands = 35, commands_by_row = { "0" = 33, "1" = 33, "2" = 35, "3" = 35, "4" = 41, "5" = 41, "6" = 35, "7" = 35 }, source_units = 272 }
-"00110110" = { commands = 91, commands_by_row = { "0" = 69, "1" = 79, "2" = 85, "3" = 93, "4" = 69, "5" = 87, "6" = 91, "7" = 91 }, source_units = 622 }
-"0110" = { commands = 57, commands_by_row = { "0" = 45, "1" = 59, "2" = 53, "3" = 57 }, source_units = 383 }
-"01101001" = { commands = 93, commands_by_row = { "0" = 73, "1" = 87, "2" = 87, "3" = 85, "4" = 81, "5" = 85, "6" = 85, "7" = 93 }, source_units = 633 }
-"0110100110010110" = { commands = 125, commands_by_row = { "0" = 101, "1" = 115, "2" = 115, "3" = 113, "4" = 115, "5" = 113, "6" = 113, "7" = 127, "8" = 109, "9" = 113, "10" = 113, "11" = 121, "12" = 113, "13" = 121, "14" = 121, "15" = 125 }, source_units = 892 }
-"1101001101101101" = { commands = 159, commands_by_row = { "0" = 121, "1" = 135, "2" = 123, "3" = 143, "4" = 119, "5" = 135, "6" = 137, "7" = 153, "8" = 119, "9" = 141, "10" = 131, "11" = 141, "12" = 127, "13" = 143, "14" = 135, "15" = 159 }, source_units = 999 }
-"11111110" = { commands = 59, commands_by_row = { "0" = 57, "1" = 59, "2" = 63, "3" = 61, "4" = 63, "5" = 65, "6" = 69, "7" = 59 }, source_units = 394 }
+"00000001" = { commands = 33, commands_by_row = { "0" = 17, "1" = 21, "2" = 17, "3" = 25, "4" = 17, "5" = 21, "6" = 17, "7" = 33 }, source_units = 158 }
+"00001100" = { commands = 15, commands_by_row = { "0" = 13, "1" = 13, "2" = 15, "3" = 15, "4" = 21, "5" = 21, "6" = 15, "7" = 15 }, source_units = 117 }
+"00110110" = { commands = 63, commands_by_row = { "0" = 41, "1" = 51, "2" = 57, "3" = 65, "4" = 41, "5" = 59, "6" = 63, "7" = 63 }, source_units = 373 }
+"0110" = { commands = 31, commands_by_row = { "0" = 21, "1" = 33, "2" = 29, "3" = 31 }, source_units = 179 }
+"01101001" = { commands = 51, commands_by_row = { "0" = 33, "1" = 49, "2" = 45, "3" = 43, "4" = 41, "5" = 47, "6" = 43, "7" = 51 }, source_units = 297 }
+"0110100110010110" = { commands = 65, commands_by_row = { "0" = 45, "1" = 65, "2" = 61, "3" = 55, "4" = 57, "5" = 59, "6" = 55, "7" = 67, "8" = 53, "9" = 63, "10" = 59, "11" = 63, "12" = 55, "13" = 67, "14" = 63, "15" = 65 }, source_units = 425 }
+"1101001101101101" = { commands = 123, commands_by_row = { "0" = 85, "1" = 99, "2" = 87, "3" = 107, "4" = 83, "5" = 99, "6" = 101, "7" = 117, "8" = 83, "9" = 105, "10" = 95, "11" = 105, "12" = 91, "13" = 107, "14" = 99, "15" = 123 }, source_units = 687 }
+"11111110" = { commands = 31, commands_by_row = { "0" = 29, "1" = 31, "2" = 35, "3" = 33, "4" = 35, "5" = 37, "6" = 41, "7" = 31 }, source_units = 218 }
 
 [ablations]
-audited = "2026-11-01"
+audited = "2026-11-02"
 
-n3_source_units = 123062
-n3_commands = 133528
-executed_rows = 11624
-balanced_executed_rows = 68
+n3_source_units = 74510
+n3_commands = 87920
+executed_rows = 9332
+historical_balanced_executed_rows_20261101 = 68
 
 [ablations.constant_fold]
 saving = 96.2158808933
 arity = 12
 seed = "constant zero and one"
 tables = 2
-n3_ablated_source_units = 171902
-n3_ablated_commands = 184960
-verdict = "kept: canonical. Disable only equal constant-child folds with tests.ablations.ablate(table, 'constant_fold'); retain ignored-input folding and sharing. At n=7/8/10/12, constants save 96.10/96.12/96.16/96.22%; at n=12, 122 vs 3224 total chars."
+n3_ablated_source_units = 111830
+n3_ablated_commands = 128632
+verdict = "kept: canonical. Larger-arity figures are historical (2026-11-01); n3 fields were refreshed 2026-11-02. Disable only equal constant-child folds with tests.ablations.ablate(table, 'constant_fold'); retain ignored-input folding and sharing. At n=7/8/10/12, constants save 96.10/96.12/96.16/96.22%; at n=12, 122 vs 3224 total chars."
 
 [ablations.ignored_input]
 saving = 3.0194178743
 arity = 12
 seed = "random.Random(1000*n+k), choice('01'), k=0..19"
 tables = 20
-n3_ablated_source_units = 132168
-n3_ablated_commands = 142952
-verdict = "kept: canonical. Disable equal nonconstant-child folds with tests.ablations.ablate(table, 'ignored_input'); retain constant folds and sharing. Lift each n-1 input table at positions 0, n//2, n-1 (60 tables per arity). Savings at n=7: 6.98-29.24%; n=8: 6.18-31.47%; n=10: 4.27-23.88%; n=12: 3.02-16.40%."
+n3_ablated_source_units = 82980
+n3_ablated_commands = 97344
+verdict = "kept: canonical. Larger-arity figures are historical (2026-11-01); n3 fields were refreshed 2026-11-02. Disable equal nonconstant-child folds with tests.ablations.ablate(table, 'ignored_input'); retain constant folds and sharing. Lift each n-1 input table at positions 0, n//2, n-1 (60 tables per arity). Savings at n=7: 6.98-29.24%; n=8: 6.18-31.47%; n=10: 4.27-23.88%; n=12: 3.02-16.40%."
 
 [ablations.subtree_sharing]
 saving = 73.6499187638
 arity = 12
 seed = "random.Random(1000*n+k), choice('01'), k=0..19"
 tables = 20
-n3_ablated_source_units = 142666
-n3_ablated_commands = 155104
-verdict = "kept: canonical. tests.ablations.ablate(table, 'subtree_sharing') emits each occurrence separately; semantic IDs preserve both folds. Random savings at n=7/8/10/12: 50.92/57.83/66.01/73.65%; n=12: 2198538 vs 8343572 total chars. Parity saves 89.97/94.37/98.30/99.51%. Eleven-build medians at n=8/10/12 (k=0): shared 0.408/1.526/5.240 ms, unshared 0.968/4.404/19.307 ms."
+n3_ablated_source_units = 81710
+n3_ablated_commands = 96416
+verdict = "kept: canonical. Larger-arity figures are historical (2026-11-01); n3 fields were refreshed 2026-11-02. tests.ablations.ablate(table, 'subtree_sharing') emits each occurrence separately; semantic IDs preserve both folds. Random savings at n=7/8/10/12: 50.92/57.83/66.01/73.65%; n=12: 2198538 vs 8343572 total chars. Parity saves 89.97/94.37/98.30/99.51%. Eleven-build medians at n=8/10/12 (k=0): shared 0.408/1.526/5.240 ms, unshared 0.968/4.404/19.307 ms."
 
 [ablations.execution_corpus]
 seed = "small exhaustive; random.Random(1000*n+k), choice('01')"
 tables = 276
-verdict = "All four builds execute every row of all tables at n=1..3, plus five tables each at n=4..6. At n=7/8/10/12 execute row (1000*n+k) mod 2**n of every measured build (constant k is its bit, parity k=0). Layout checks cover all 904 large builds: balanced chars equal default; 68 balanced rows execute (k=0 and both constants). n3 totals sum chars once per table and commands over all eight rows. The omitted-reflection positive control fails."
+verdict = "Historical 2026-11-01 corpus: all four builds execute every row of all tables at n=1..3, plus five tables each at n=4..6. At n=7/8/10/12 execute row (1000*n+k) mod 2**n of every measured build (constant k is its bit, parity k=0). Layout checks cover all 904 large builds: balanced chars equal default; 68 balanced rows execute (k=0 and both constants). n3 totals sum chars once per table and commands over all eight rows. The omitted-reflection positive control fails."
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-11-01
 
 [interpreter_ablations.blind_reimplementation]
@@ -83,9 +84,37 @@ seed = 0
 tables = "both constants, n=1..12"
 verdict = "kept: canonical ignored-input constant fold, exempt. With no gates, all ordered input exponents may share odd prime 3; parity still holds the answer and every input exponent is parsed. Gated rails remain distinct and squarefree. Chars 4n+1: n=7 36->29 (19.4%), n=8 41->33 (19.5%), n=12 61->49. One final dump command and one written bit unchanged. Initial integer is exactly (2 for zero, 1 for one)*3**sum(inputs), at most 2*3**n, so existing resource caps remain valid. Owned tests inspect the parsed initial integer, every slot and output after parsing, with no port reads. n=3 corpus chars 123068->123062. 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Extend existing collected cases only."
 
-[ablations.balanced_initializer]
-arity = 12
-saving = 98.091727598546
-seed = "random.Random(4242+n), choice('01'), two tables per arity"
-tables = 4
-verdict = "kept: repairs balanced growth with a named fraction initializer. Unused odd fuel primes alternate while each four-fraction swap deposits one constant rail. Mean squared balanced side falls 93.78% at n=10 and 98.09% at n=12; exponent 1.707 -> 0.855. At n=12 the first token shrinks 3736-3778 -> 67 chars and side 3736-3778 -> 518-520, costing 21.4% text. Default programs and bounds stay unchanged. Exhaustive n<=3, seeded n=4..6 and high-arity controls execute; serialized balanced templates retain provenance."
+[ablations.constant_child_gate_pruning]
+arity = 8
+saving = 11.0
+seed = "random.Random(1000*n+k).choices('01', k=2**n), k=0..199"
+tables = "200 generic tables each n=7,8; all tables/rows n=1..3; eight random tables and both constants at n=4..6"
+verdict = "kept 2026-11-02 as canonical constant propagation, percentage exempt. A false constant control cannot apply, so its swap block is dead. A known-one first swap selects the target's initial b rail; dependency order prevents that early state from affecting earlier nodes. True controls need no prime factor. All constant leaf rails then disappear, and the remaining primes compact positionally around output 2/3 and scratch 11/13/17. This introduces no new Boolean construction or candidate race. Source n=7/8: 1086517 -> 923386 / 1927536 -> 1715692 chars (15.01/10.99%); n=3: 123062 -> 74820 chars and 133528 -> 88248 commands, no larger table or slower row. Noncanonical proposals are judged against this pruned baseline, not padded by its savings."
+
+[ablations.complement_rail_sharing]
+arity = 8
+saving = 10.5
+seed = "random.Random(1000*n+k).choices('01', k=2**n), k=0..199"
+tables = "same fixed generic corpus as constant_child_gate_pruning; all small tables/rows and sampled n=4..6; named parity family separately"
+verdict = "rejected generically 2026-11-02: versus canonical pruning, n=7/8 source 923386 -> 809993 / 1715692 -> 1536181 chars (12.28/10.46%), declining below the 20% bar. The old unpruned comparison 1086517 -> 918748 / 1927536 -> 1683639 is not its admission baseline. Constant rails already vanished under mandatory pruning; the remaining rule shares complementary nonconstant functions. It qualifies only for the separately measured parity family. The raw alternative of initializing a complemented gated root with 1 is invalid: neither output rail is present; table 10, input 1 gives the wrong odd answer. Valid signed references select the opposite rail with output 2 present initially."
+
+[ablations.frequency_ranked_primes]
+arity = 8
+saving = 5.7
+seed = "random.Random(1000*n+k).choices('01', k=2**n), k=0..199"
+tables = "same fixed generic corpus and native matrix as constant_child_gate_pruning"
+verdict = "rejected 2026-11-02: versus canonical pruning, n=7/8 source 923386 -> 875750 / 1715692 -> 1617244 (5.16/5.74%), below 10%; execution counts are unchanged. Complement plus ranking against that same baseline saves only 16.14/14.95%, declining below 20%. The tempting 28.73/24.30% total against the unpruned program includes mandatory canonical savings and does not admit either noncanonical rule. Ranking alone also grows 25 small tables versus the old positional baseline. It correctly fills input slots in original order despite changing prime values, but no ranked assignment ships."
+
+[ablations.parity_complement]
+arity = 20
+saving = 48.7
+seed = "strict full-input parity and its negation"
+tables = "all rows for both functions n=1..8; four rows each at n=10,12,14,16,18,20; canonical pruned baseline"
+verdict = "kept 2026-11-02 as the named repair of complement_rail_sharing. n=7/8 source 1486 -> 801 / 1757 -> 946 chars (46.10/46.16%) for both polarities. At n=12/16/20 it is 2830 -> 1495 / 3984 -> 2049 / 5196 -> 2665 (47.17/48.57/48.71%). Ordinary pruned parity has 2n-3 internal muxes and two bottom nodes; the complemented chain has n-1 internal muxes and one bottom node. Each internal mux contributes 26*log10(n) denominator characters asymptotically; initial factors contribute 3n*log10(n) versus 2n*log10(n). Total leading costs are 55n*log10(n) versus 28n*log10(n), proving a limiting saving of 27/55 (49.09%). Recognition is an O(T) pass and direct signed-chain construction O(n), with no searched terms or arity cap. Every generic function keeps the canonical pruned DAG. For n=1 negated parity one row costs two more inspections than pruning alone; no such row regression occurs in the larger measured parity corpus. This is source admission, not an execution-gate exception. All input exponent slots stay ordered with the same (0,1) fills."
+
+[ablations.trick_execution]
+arity = 8
+saving = 0.0
+seed = "all small tables; fixed generic seeds above; every input-position literal and both polarities"
+tables = "eight prototype variants, 3240 native rows each; current public/default 2180 rows paired with old programs, plus 6360 canonical-mutant rows and 792 public parity rows through n=20"
+verdict = "verified 2026-11-02: public bytes match the selected prototype on 700 generic/small tables and the named family, without a program-length race. Current n3 headline and all three n3 ablation totals were refreshed. The ablation helper retains independent unsigned semantic IDs and signed emitted references; parity paths still pass through the patched _diagram, so disabling a canonical fold is not bypassed. All eight size pins and their per-row commands were remeasured; the n=10 random anchor and balanced example execute. Native runs enforce no input-port reads, a preserved Q sentinel, exactly n exponent fills, the eight-inspection swap bound, and integer/workspace caps. The omitted-reflection control compares full integer state because parity alone can conceal a broken final reflection. Historical larger-arity canonical-rule figures remain explicitly dated 2026-11-01."

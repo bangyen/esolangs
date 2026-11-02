@@ -7,19 +7,19 @@ backlinks = 65
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "the bits are the exponents of `n` primes in the starting value, a decision tree gives equal subtables one state prime, and the first-match rule is the else-branch"
-scaling = "linear: worst C = 2 + Σ_{d<n} min(2^d,2^2^(n-d)-2^2^(n-d-1)) states, O(log T) digits"
-execution = "poly n: worst n + 2: a step a level or unread set bit, the leaf, the halt"
+scaling = "linear: worst C = Σ_{d<n} min(2^d,2^2^(n-d)-2^2^(n-d-1)) states, O(log T) digits"
+execution = "poly n: worst n + 1: a step a level or unread set bit, then the halt"
 workspace = "poly n: worst bl(p_{n+1+C}) + n + 2 + Σ_{i≤n} bl(p_{i+1}) bits, p_k the kth prime: all-ones start"
 
 [generator_sizes]
-"00000001" = { commands = 5, commands_by_row = { "0" = 3, "1" = 4, "2" = 4, "3" = 5, "4" = 4, "5" = 5, "6" = 5, "7" = 5 }, source_units = 69 }
-"00001100" = { commands = 5, commands_by_row = { "0" = 3, "1" = 4, "2" = 4, "3" = 5, "4" = 4, "5" = 5, "6" = 4, "7" = 5 }, source_units = 56 }
-"00110110" = { commands = 5, commands_by_row = { "0" = 4, "1" = 5, "2" = 4, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 91 }
-"0110" = { commands = 4, commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4 }, source_units = 53 }
-"01101001" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 88 }
-"0110100110010110" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 6, "13" = 6, "14" = 6, "15" = 6 }, source_units = 120 }
-"1101001101101101" = { commands = 6, commands_by_row = { "0" = 5, "1" = 6, "2" = 6, "3" = 6, "4" = 5, "5" = 6, "6" = 5, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 5, "13" = 6, "14" = 6, "15" = 6 }, source_units = 141 }
-"11111110" = { commands = 5, commands_by_row = { "0" = 3, "1" = 4, "2" = 4, "3" = 5, "4" = 4, "5" = 5, "6" = 5, "7" = 5 }, source_units = 69 }
+"00000001" = { commands = 4, commands_by_row = { "0" = 2, "1" = 3, "2" = 3, "3" = 4, "4" = 3, "5" = 4, "6" = 4, "7" = 4 }, source_units = 54 }
+"00001100" = { commands = 4, commands_by_row = { "0" = 2, "1" = 3, "2" = 3, "3" = 4, "4" = 3, "5" = 4, "6" = 3, "7" = 4 }, source_units = 43 }
+"00110110" = { commands = 4, commands_by_row = { "0" = 3, "1" = 4, "2" = 3, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 4 }, source_units = 73 }
+"0110" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3 }, source_units = 40 }
+"01101001" = { commands = 4, commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 4 }, source_units = 70 }
+"0110100110010110" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5, "8" = 5, "9" = 5, "10" = 5, "11" = 5, "12" = 5, "13" = 5, "14" = 5, "15" = 5 }, source_units = 106 }
+"1101001101101101" = { commands = 5, commands_by_row = { "0" = 4, "1" = 5, "2" = 5, "3" = 5, "4" = 4, "5" = 5, "6" = 4, "7" = 5, "8" = 5, "9" = 5, "10" = 5, "11" = 5, "12" = 4, "13" = 5, "14" = 5, "15" = 5 }, source_units = 123 }
+"11111110" = { commands = 4, commands_by_row = { "0" = 2, "1" = 3, "2" = 3, "3" = 4, "4" = 3, "5" = 4, "6" = 4, "7" = 4 }, source_units = 54 }
 
 [ablations]
 audited = "2026-10-19"
@@ -83,3 +83,24 @@ saving = 9.9
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: canonical whole constants. No state prime: start at the product of all input prime powers, multiplied by 2 only for answer one; clear each input with 1/p. Zero may use prime 2 as its first input, while one reserves 2 for its answer. Uniform one-character exponent setters remain in input order. Exactly 1+popcount commands including the halt, at most n+1; workspace at most sum(bl(p), input primes)+n+1+3b, attained by all-one input. n=8 zero/one 81/81 -> 71/75 chars; n=12 121/121 -> 111/115. n=3 corpus 19678 -> 19664 chars; summed commands 9408 -> 9392. Generic bounds and nonconstant programs unchanged. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources and uniform embedded slots or input before output. No new collected cases."
+
+[ablations.leaf_inline]
+saving = 3.1
+arity = 8
+seed = "random.Random(1000*n), sequential choice('01')"
+tables = "200 random per n=7,8; all tables/rows n=1..3; 20 random per n=4..6, four asymmetric rows each"
+verdict = "kept 2026-11-02 for execution: emit 1 or 2 directly on leaf edges, assigning state primes only to internal nodes. Exhaustive n=3 source 19664→15524 chars and commands 9392→7360 (21.64% fewer); no table larger or slower and no row slower. Constants unchanged. Random n=7/8 chars 153229→146114 (4.643%) / 268969→260632 (3.100%), below size bar. Each nonconstant row removes exactly one command; sampled larger arities have no source or command regressions. All 3960 paired native row controls passed, compile_index non-None and zero stdin reads; flipped-answer control rejected. Additional full n=7 execution: 25600 paired rows, commands 219760→194160. Uniform exponent pair and prime inputs unchanged; worst commands n+1 including halt, state cap loses its two leaves."
+
+[ablations.variable_order_search]
+saving = 4.765
+arity = 8
+seed = "random.Random(1000*n), sequential choice('01')"
+tables = "200 random per n=7,8; all tables/rows n=1..3; 20 random per n=4..6, four asymmetric rows each"
+verdict = "rejected 2026-11-02: greedy variable sifting is a search, violating construction policy. Scratch one-pass n*n sifting with identity retained gives n=7/8 chars 153229→141646 (7.559%) / 268969→256152 (4.765%), below both bars and declining. n=3 commands 9392→9312 (0.852%), with row regressions, so execution also fails. 3960 paired native row controls passed with indexed compilation and zero stdin reads; flipped-answer control rejected. No production change."
+
+[ablations.input_prime_by_load]
+saving = 4.05
+arity = 8
+seed = "random.Random(1000*n), sequential choice('01')"
+tables = "200 random per n=7,8; all tables/rows n=1..3; 20 random per n=4..6, four asymmetric rows each"
+verdict = "rejected 2026-11-02: assign input primes by descending node count at each depth, stable depth ties, and map start slots consistently. Standalone n=7/8 chars 153229→146526 (4.374%) / 268969→258077 (4.050%); below both bars, no command saving. Two source regressions across the measured corpus (n=3 00111100/11000011: 64→65); the baseline race has identical n=7/8 totals. Named and/or/parity/majority/two-thirds threshold at n=7/8 save at most 3.041%/2.362%, declining to at most 1.548% at n=12; 80 native named-row controls passed. 3960 paired native row controls passed, all indexed and zero stdin reads; flipped-answer control rejected. No production change."
