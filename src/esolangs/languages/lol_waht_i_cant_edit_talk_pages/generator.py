@@ -3,10 +3,11 @@
 Each level reads the one variable ``x``, then a while-equal loop on ``1``
 runs the one arm and ends in ``waht i got banned``; the zero arm follows
 unguarded and runs only when that loop was skipped.  Leaves print through the
-signature line ``0 --tommyaweosme``, needing no variable.
+signature line ``0 --tommyaweosme``, needing no variable. An identity
+node on the final input instead reads and prints ``x`` directly.
 
 Size:
-    O(T) lines; n=4 parity: 1553 chars
+    O(T) lines; n=4 parity: 1222 chars
 
 Decisions:
     A halt ends the one arm, where two guarded loops each ended in a bump:
@@ -32,13 +33,16 @@ def lol_waht_i_cant_edit_talk_pages(truth_table: str) -> str:
     def build(level: int, lo: int, hi: int) -> tuple[str, ...]:
         if constant(lo, hi):
             return (*[read] * (n - level), f"{truth_table[lo]} --tommyaweosme")
+        if hi - lo == 2 and truth_table[lo] == "0":
+            # This is the last read: echoing earlier would skip suffix inputs.
+            return (read, "i hate u x")
         mid = (lo + hi) // 2
         zero, one = build(level + 1, lo, mid), build(level + 1, mid, hi)
         if zero == one:
             return (read, *zero)
         return (
             read,
-            "JUST LET ME CHANGE 1 MESSAGES ON x {",
+            "JUST LET ME CHANGE 1 MESSAGE ON x {",
             *one,
             "waht i got banned",
             "}",

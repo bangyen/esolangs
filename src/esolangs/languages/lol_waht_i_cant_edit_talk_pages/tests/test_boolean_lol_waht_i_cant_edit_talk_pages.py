@@ -11,14 +11,25 @@ TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
 @pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
+    from esolangs.languages.lol_waht_i_cant_edit_talk_pages.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
     n = len(table).bit_length() - 1
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value: object) -> None:
+            assert self.reads == n
+            super()._write(value)
+
     program = esolangs.generate("lol waht i cant edit talk pages", table)
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("lol waht i cant edit talk pages", bits)
-        got = esolangs.run(
-            "lol waht i cant edit talk pages", program, stdin=stdin, timeout=5
-        )
+        io = ReadFirstIO(stdin + "Q")
+        run(program, io)
+        got = io.getvalue()
+        assert io.past_end == 0
+        assert io.input_token() == "Q"
         # The answer as the contract reads it, not the raw output.
         assert (
             esolangs.read_answer("lol waht i cant edit talk pages", got) == table[row]
@@ -67,5 +78,5 @@ def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
             len(esolangs.generate("lol waht i cant edit talk pages", format(v, "08b")))
             for v in range(256)
         )
-        == 128652
+        == 110463
     )

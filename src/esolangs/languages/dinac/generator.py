@@ -1,19 +1,18 @@
 """DINAC Boolean program generator: a flat scan over the rows.
 
-Each input is read once into a variable named by its height (``b0`` the last
-input).  A flag ``f<h>`` holds whether the inputs of height >= h equal the
-current row's bits; it is rewritten (``and`` of its parent and one
-comparison) only when that prefix changes, which is ``tz(row)`` flags per
-row, T-1 in all.  Each 1-row folds ``and(f1, b0 = bit)`` into ``a`` with
-``or``; the interpreter evaluates the whole scan and the program prints ``a``.
-Only essential inputs get a height; an ignored input is read into a scratch
-variable and a constant table is read and printed with no scan.
-No branch nests, so a line costs a constant number of characters.
+Each input is read once into a variable named by its height (``b0`` last).
+The scan ORs the rarer answer's matching prefixes into ``a`` with ``o``;
+``n`` conjoins tests. Empty blocks emit nothing, full blocks fold their
+prefix once, and singleton blocks inline the remaining conjunction.
+Other prefixes use one reusable flag per height, declared on first use.
+Only essential inputs get a height; ignored inputs go into a scratch
+variable. A constant table reads and prints without a scan.
+No branch nests, so indentation cannot add a log T factor.
 
 Size:
     Linear in T: at most 40T + 18n + 120 characters; names are indexed by
     height, so the T/2**h references to height h cost O(1) on average
-    (sum of T * len(h) / 2**h); n=4 parity: 767 chars.
+    (sum of T * len(h) / 2**h); n=4 parity: 578 chars.
     Constants use 5n+15 chars, n+3 steps and 56+bl(n+2)+bl(n) written bits.
 
 Decisions:
@@ -33,25 +32,17 @@ from esolangs.registry._language import Language, Shape
 __all__ = ["dinac"]
 
 _PRELUDE = (
-    "DEF/00 and a:00 b:00",
+    "DEF/00 n a:00 b:00",
     "    IF a",
     "        GIVE ~~b",
     "    ELSE",
     "        GIVE 00",
-    "DEF/00 or a:00 b:00",
+    "DEF/00 o a:00 b:00",
     "    IF a",
     "        GIVE 01",
     "    ELSE",
     "        GIVE ~~b",
 )
-
-
-def _refreshed(row: int, n: int) -> range:
-    """The flag heights that change entering ``row``, parents first."""
-    # Entering a row flips the bits of height <= its trailing zeros; row 0
-    # sets every flag.
-    top = n - 1 if row == 0 else (row & -row).bit_length() - 1
-    return range(top, 0, -1)
 
 
 def dinac(truth_table: str) -> str:
@@ -67,7 +58,7 @@ def dinac(truth_table: str) -> str:
         return "\n".join([*_reads(n, keep), f"OUT '{truth_table[0]}"])
     table = read_at(truth_table, keep, n)
     mark = "1" if 2 * table.count("1") <= len(table) else "0"
-    return _scan(table, len(keep), mark, _reads(n, keep))
+    return _scan(table, mark, _reads(n, keep))
 
 
 def _reads(n: int, keep: list[int]) -> list[str]:
@@ -82,18 +73,47 @@ def _reads(n: int, keep: list[int]) -> list[str]:
     return lines
 
 
-def _scan(truth_table: str, n: int, mark: str, reads: list[str]) -> str:
-    """The scan that ORs the ``mark`` rows and prints ``a`` or its complement."""
-    lines = [*_PRELUDE, *reads]
-    lines.append("SET a:00")
-    for row, entry in enumerate(truth_table):
-        for h in _refreshed(row, n):
-            test = f"b{h} = '{row >> h & 1}"
-            expr = test if h == n - 1 else f"and(f{h + 1}, {test})"
-            lines.append(f"SET f{h}:{expr}" if row == 0 else f"f{h} . {expr}")
-        if entry == mark:
-            test = f"b0 = '{row & 1}"
-            lines.append(f"a . or(a, {test if n == 1 else f'and(f1, {test})'})")
+def _test(parent: str | None, height: int, bit: int) -> str:
+    """Conjoin the next input test with its prefix, if there is one."""
+    test = f"b{height}='{bit}"
+    return test if parent is None else f"n({parent},{test})"
+
+
+def _scan(truth_table: str, mark: str, reads: list[str]) -> str:
+    """Fold full blocks and singleton conjunctions; flag only mixed prefixes."""
+    lines = [*_PRELUDE, *reads, "SET a:00"]
+    counts = [0]
+    for entry in truth_table:
+        counts.append(counts[-1] + (entry == mark))
+    declared: set[int] = set()
+
+    def visit(lo: int, hi: int, parent: str | None) -> None:
+        count = counts[hi] - counts[lo]
+        if not count:
+            return
+        height = (hi - lo).bit_length() - 1
+        if count == hi - lo or count == 1:
+            if count == 1:
+                row = truth_table.index(mark, lo, hi)
+                for h in range(height - 1, -1, -1):
+                    parent = _test(parent, h, row >> h & 1)
+            assert parent is not None
+            lines.append(f"a . o(a,{parent})")
+            return
+        if parent is not None:
+            flag = f"f{height}"
+            lines.append(
+                f"SET {flag}:{parent}"
+                if height not in declared
+                else f"{flag} . {parent}"
+            )
+            declared.add(height)
+            parent = flag
+        mid = (lo + hi) // 2
+        visit(lo, mid, _test(parent, height - 1, 0))
+        visit(mid, hi, _test(parent, height - 1, 1))
+
+    visit(0, len(truth_table), None)
     lines += ["IF a", f"    OUT '{mark}", "ELSE", f"    OUT '{1 - int(mark)}"]
     return "\n".join(lines)
 

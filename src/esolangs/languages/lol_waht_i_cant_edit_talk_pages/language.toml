@@ -7,7 +7,7 @@ admitted = 2026-10-27T11:08:53+00:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "—"
+qualification = "an identity on the final bit reads and prints x directly; other branches keep the loop tree"
 scaling = "linear: at most 105T characters: one while-equal loop per branch"
 execution = "poly n: worst 2n + 3 commands"
 workspace = "poly n: at most bl(L) + 2bl(n) + 4 bits"
@@ -16,14 +16,14 @@ workspace = "poly n: at most bl(L) + 2bl(n) + 4 bits"
 sharing_exempt = "no procedures or jumps: a subtree runs only where it is written"
 
 [generator_sizes]
-"00000001" = { commands = 9, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 8, "5" = 8, "6" = 9, "7" = 9 }, source_units = 413 }
-"00001100" = { commands = 8, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 339 }
-"00110110" = { commands = 9, commands_by_row = { "0" = 7, "1" = 7, "2" = 8, "3" = 8, "4" = 9, "5" = 9, "6" = 9, "7" = 9 }, source_units = 589 }
-"0110" = { commands = 7, commands_by_row = { "0" = 6, "1" = 7, "2" = 7, "3" = 7 }, source_units = 329 }
-"01101001" = { commands = 9, commands_by_row = { "0" = 8, "1" = 9, "2" = 9, "3" = 9, "4" = 9, "5" = 9, "6" = 9, "7" = 9 }, source_units = 737 }
-"0110100110010110" = { commands = 11, commands_by_row = { "0" = 10, "1" = 11, "2" = 11, "3" = 11, "4" = 11, "5" = 11, "6" = 11, "7" = 11, "8" = 11, "9" = 11, "10" = 11, "11" = 11, "12" = 11, "13" = 11, "14" = 11, "15" = 11 }, source_units = 1553 }
-"1101001101101101" = { commands = 11, commands_by_row = { "0" = 9, "1" = 9, "2" = 11, "3" = 11, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 11, "9" = 11, "10" = 11, "11" = 11, "12" = 10, "13" = 10, "14" = 11, "15" = 11 }, source_units = 1257 }
-"11111110" = { commands = 9, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 8, "5" = 8, "6" = 9, "7" = 9 }, source_units = 413 }
+"00000001" = { commands = 8, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 331 }
+"00001100" = { commands = 8, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 337 }
+"00110110" = { commands = 9, commands_by_row = { "0" = 7, "1" = 7, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 9, "7" = 9 }, source_units = 505 }
+"0110" = { commands = 7, commands_by_row = { "0" = 5, "1" = 5, "2" = 7, "3" = 7 }, source_units = 247 }
+"01101001" = { commands = 8, commands_by_row = { "0" = 7, "1" = 7, "2" = 9, "3" = 9, "4" = 9, "5" = 9, "6" = 8, "7" = 8 }, source_units = 572 }
+"0110100110010110" = { commands = 11, commands_by_row = { "0" = 9, "1" = 9, "2" = 11, "3" = 11, "4" = 11, "5" = 11, "6" = 10, "7" = 10, "8" = 11, "9" = 11, "10" = 10, "11" = 10, "12" = 10, "13" = 10, "14" = 11, "15" = 11 }, source_units = 1222 }
+"1101001101101101" = { commands = 10, commands_by_row = { "0" = 9, "1" = 9, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 10, "9" = 10, "10" = 11, "11" = 11, "12" = 10, "13" = 10, "14" = 10, "15" = 10 }, source_units = 1009 }
+"11111110" = { commands = 9, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 8, "5" = 8, "6" = 9, "7" = 9 }, source_units = 410 }
 
 [ablations]
 audited = "2026-10-30"
@@ -34,6 +34,7 @@ arity = 8
 verdict = "kept: clears on random tables (47.6% at n=7, 47.5% at n=8; 30 tables each, random.Random(n) seeds) and named functions (n=8 parity 50.3%, majority 46.3%, threshold2 41.7%, and/or 35.9%); the one arm ends in waht i got banned, so the zero loop, both bumps and n-1 variables go; n=3..8 rows executed (25 tables per arity, wrong-table control fails)"
 
 [audits]
+trick_prototype = 2026-11-01
 docstring_reimplementation = 2026-10-30
 blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29
@@ -51,3 +52,18 @@ saving = 0.0
 seed = "both constant values; witnesses(n) at n=4..6"
 tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
 verdict = "retained: the existing constant span emits user:x, exactly n numeric reads, then its literal signature print. Both bits remain 28n+23 chars and n+2 commands; n=8 247 chars, n=12 359. The n=3 corpus stays 128652 chars. No new construction accepted; all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 are byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts within their resource bounds. Owned regressions require all reads before output and retain a following record; both Packlang literal policies execute."
+
+[ablations.trick_prototype_20261101_print_read_bit]
+arity = 8
+saving = 11.6809
+verdict = "kept: a final 01 subtree reads x and prints it numerically; only the final read may echo. 200 Random(7+n) tables per n=7,8: chars 1843014->1625254 (11.82%) and 3709988->3276628 (11.68%), no table grows. Twenty-table extension n=9..14 stays 11.34,11.60,11.72,11.71,11.61,11.66%; every old/new table executes rows 0,1,floor(T/3),T-1. Fixed n=7/8 census: 4800 variant runs plus 400 wrong-table controls. All tables/rows n<=3 and 16 named/random tables per n=4..6 pass, 7824 paired runs plus 324 wrong-table controls, including resource bounds. The wider echo is deliberately excluded: ignored suffix reads must precede output. Global source <=105T, worst execution 2n+3 and workspace <=bl(L)+2bl(n)+4 stay valid."
+
+[ablations.trick_prototype_20261101_singular_message]
+arity = 8
+saving = 0.8234
+verdict = "kept: minimal spelling, exempt. The documented truth-machine syntax accepts MESSAGE as well as MESSAGES. After identity leaves, chars 1625254->1611917 (0.82%) and 3276628->3249647 (0.82%) on the same 200-table n=7,8 corpus. Both changes together: n=3 total 128652->110463, n=4 parity 1553->1222. No table grows; bounds unchanged."
+
+[ablations.trick_prototype_20261101_elide_trailing_reads]
+arity = 8
+saving = 0.0
+verdict = "rejected: dropping padding reads violates read-first/full-consumption conventions. A constant-zero mutant prints before its first read and triggers the instrumented positive control; the shipped constant consumes its input before output and preserves the following token. No size gate can admit this IO violation."
