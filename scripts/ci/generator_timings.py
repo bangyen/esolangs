@@ -61,7 +61,16 @@ def compare(
         lines.append("New environment or corpus; recorded the first reference run.")
     else:
         references = matching[:-1] or matching
-        for key, value in sorted(current["timings"].items()):
+
+        def priority(item: tuple[str, float]) -> tuple[bool, float, str]:
+            key, value = item
+            baseline = statistics.median(run["timings"][key] for run in references)
+            persistent = (
+                len(matching) >= 2 and matching[-1]["timings"][key] / baseline >= 1.2
+            )
+            return (not persistent, -value / baseline, key)
+
+        for key, value in sorted(current["timings"].items(), key=priority):
             baseline = statistics.median(run["timings"][key] for run in references)
             ratio = value / baseline
             if ratio >= 1.2:

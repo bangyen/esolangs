@@ -139,3 +139,26 @@ def spawned(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
 
     monkeypatch.setattr(_isolated.subprocess, "Popen", spawn)
     return children
+
+
+def pytest_terminal_summary(terminalreporter: Any) -> None:
+    """Show which generator contract cases ran and why others did not."""
+    counts: dict[str, int] = {}
+    reasons: dict[str, int] = {}
+    for outcome, reports in terminalreporter.stats.items():
+        for report in reports:
+            if not report.nodeid.startswith("tests/generators/"):
+                continue
+            counts[outcome] = counts.get(outcome, 0) + 1
+            if outcome in {"skipped", "xfailed"}:
+                reason = getattr(report, "wasxfail", None)
+                if reason is None:
+                    reason = str(report.longrepr[2])
+                reasons[reason] = reasons.get(reason, 0) + 1
+    if counts:
+        terminalreporter.section("Generator contract coverage")
+        terminalreporter.write_line(
+            ", ".join(f"{n} {key}" for key, n in sorted(counts.items()))
+        )
+        for reason, n in sorted(reasons.items()):
+            terminalreporter.write_line(f"{n}: {reason}")
