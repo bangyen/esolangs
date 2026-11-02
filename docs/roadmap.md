@@ -68,7 +68,7 @@ Next experiments; budgets are wall time, not permission for an unpriced search.
 
 | Work | Next experiment | Success criterion | Budget |
 | --- | --- | --- | --- |
-| Independent semantics | Extend bounded raw-program oracles beyond Brainfuck, Boolfuck, Smallfuck, Subleq, BFStack and Underload | Match output, state, input cursor, halt and errors; include positive controls | 60 s per language check |
+| Independent semantics | Extend bounded raw-program oracles beyond Brainfuck, Boolfuck, Smallfuck, Subleq, BFStack, Underload, Befunge and Decleq | Match output, state, input cursor, halt and errors; include positive controls | 60 s per language check |
 | Mutation audits | Rank stale generators; price each baseline before sweeping | Triage every survivor before updating its swept revision | 60 s baseline; 240 s per initial batch |
 | Unreached code | Find public-table witnesses for unresolved fallbacks in `scripts/baselines/deadcode_known.toml` | Executed witness, invariant, or byte-identical removal; retain unresolved entries | 60 s per scoped scan; price whole-tree coverage separately |
 | Timing regressions | Inspect weekly environment-matched timing report | Reproduce persistent increases locally before changing code | Existing weekly sweep; no extra generation runs |

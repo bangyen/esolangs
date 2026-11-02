@@ -32,6 +32,9 @@ class TestCountdown:
         assert _run(code) == "\x00"
 
     def test_copy_decremented_value_to_another_cell(self) -> None:
+        from esolangs.languages.decleq.tests.oracle_checks import check_raw_decleq
+
+        check_raw_decleq()
         # a == 30, b == 31: memory[31] becomes memory[30] - 1 = 4.
         code = memory([[30, 31, 99], [-2, 31, 0], [0, 0, 999]], {30: 5})
         assert _run(code) == "\x04"
