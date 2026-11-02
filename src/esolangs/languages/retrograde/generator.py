@@ -95,7 +95,7 @@ def retrograde(truth_table: str) -> str:
         z, o = 2 * k, 2 * k + 1
         parts: list[str | tuple[int, int]]
         if node < 2:
-            # Branch tasks omit zero children; skip/one tasks cannot select one.
+            # Branch tasks omit zero children; skip/one tasks cannot select zero.
             parts = [">" * (n - depth), "*", "<" * (n - depth)]
         elif kind == "skip":
             parts = [">", (depth + 1, z), "<"]
