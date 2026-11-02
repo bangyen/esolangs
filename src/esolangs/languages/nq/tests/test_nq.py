@@ -39,6 +39,31 @@ def check_instructions() -> None:
     io = ScriptedIO()
     run(">1(" * 2500 + "+2WH" + ")" * 2500 + "+0WH", io)
     assert io.getvalue() == " "
+    for binding, expected in (("opcode", "#"), ("recursive", " ")):
+        io = ScriptedIO()
+        run("+0->1>0+2+0WH", io, guard_binding=binding)
+        assert io.getvalue() == expected
+    with pytest.raises(HaltError):
+        run("+0->1>0+2WH", ScriptedIO(), guard_binding="recursive")
+    for source in (">1", ">1(>0)H", ">1>0", ">0(>1)>2H"):
+        with pytest.raises(ValueError, match="complete instruction"):
+            _Machine(source, ScriptedIO(), guard_binding="recursive")
+    with pytest.raises(ValueError, match="guard_binding"):
+        _Machine("H", ScriptedIO(), guard_binding="bogus")
+    machine = _Machine(">0" * 2500 + "H", ScriptedIO(), guard_binding="recursive")
+    for _ in range(2501):
+        machine.step()
+    assert machine.halted
+    io = ScriptedIO()
+    machine = _Machine(">0(+2)W>1", io)
+    for _ in range(4):
+        machine.step()
+    assert machine.ip == 6  # wrap skips the whole first group, not just >0
+    assert machine.memory == [2]
+    for _ in range(2):
+        machine.step()
+    assert machine.memory == [2]
+    assert io.getvalue() == "##"
     machine = _Machine("l2W-", ScriptedIO())
     for _ in range(4):
         machine.step()

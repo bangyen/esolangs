@@ -14,7 +14,8 @@ Input/output:
     1 to newline and 2 to #. r at EOF raises; R reads through EOF.
 
 Errors:
-    ProgramError: missing or invalid operands, unclosed guard groups.
+    ProgramError: missing or invalid operands, unclosed guard groups, invalid
+    guard_binding, or a recursive guard without a complete lexical target.
     ArgumentError: input contains a non-trit other than whitespace.
     InputExhaustedError: r has no remaining trit.
     HaltError: - or W encounters an empty queue.
@@ -25,10 +26,14 @@ Decisions:
     * Empty/comment-only source is a no-op under the repository convention.
     * The instruction table governs guards; the cyclic-tag prose switches
       >1 to >0 for the same production. Groups nest lexically.
-    * Ungrouped guard extent and guard-target wrapping are unspecified.
-      This reading skips just the next opcode (or whole grouped guard),
-      wrapping at source end. In ``+0->1>0+2WH`` it prints #; a recursive
-      guard reading underflows. Generated programs use grouped guards only.
+    * The page and its 13 revisions do not settle nested ungrouped guards
+      or guard targets at source end. ``guard_binding="opcode"`` skips one
+      opcode (a grouped guard includes its body) and permits wrapping.
+      ``"recursive"`` skips the complete guarded instruction; its target
+      must finish within the same lexical group or top-level source.
+      ``+0->1>0+2WH`` prints # under opcode binding and underflows under
+      recursive binding. Neither reading is claimed as author intent.
+      Generated programs use grouped guards and agree under both readings.
 """
 
 from __future__ import annotations
@@ -41,6 +46,14 @@ from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
+
+GUARD_BINDINGS = ("opcode", "recursive")
+
+
+def guard_dialect(guard_binding: str = "opcode") -> None:
+    """Validate the explicit reading of an ungrouped guard's target."""
+    if guard_binding not in GUARD_BINDINGS:
+        raise ValueError("guard_binding must be opcode or recursive")
 
 
 class _Instruction(NamedTuple):
@@ -80,9 +93,11 @@ def _operand(source: str, cursor: int) -> tuple[tuple[int, ...], int]:
     return tuple(int(c) for c in text if not c.isspace()), end + 1
 
 
-def _parse(source: str) -> tuple[_Instruction, ...]:
+def _parse(source: str, *, guard_binding: str = "opcode") -> tuple[_Instruction, ...]:
     """Compile lexical groups and single-instruction guards without recursion."""
+    guard_dialect(guard_binding)
     commands: list[_Instruction] = []
+    owners: dict[int, int] = {}
     groups: list[int] = []
     cursor = 0
     while cursor < len(source):
@@ -110,16 +125,38 @@ def _parse(source: str) -> tuple[_Instruction, ...]:
             if grouped:
                 groups.append(len(commands) - 1)
                 cursor += 1
+            else:
+                owners[len(commands) - 1] = groups[-1] if groups else -1
         elif c in "-rRWH":
             commands.append(_Instruction(c, (), -1, offset))
     if groups:
         raise syntax_error("unclosed guard group", "close each >N( with )")
+    return _targets(commands, owners, guard_binding=guard_binding)
+
+
+def _targets(
+    commands: list[_Instruction], owners: dict[int, int], *, guard_binding: str
+) -> tuple[_Instruction, ...]:
+    """Resolve target extents, preserving grouped instructions across wrap."""
+    # >0(+2)W>1 must wrap past the whole first group, not enter its +2.
+    first_end = commands[0].target if commands and commands[0].target >= 0 else 1
     ends = [i + 1 for i in range(len(commands))]
     for i in range(len(commands) - 1, -1, -1):
         command = commands[i]
         if command.target == -2:
+            if guard_binding == "recursive":
+                owner = owners[i]
+                boundary = commands[owner].target if owner >= 0 else len(commands)
+                if i + 1 >= boundary:
+                    raise syntax_error(
+                        "recursive guard needs a complete instruction",
+                        "put its target before the lexical group or source ends",
+                    )
+                ends[i] = ends[i + 1]
             commands[i] = command._replace(
-                target=ends[i + 1] if i + 1 < len(commands) else len(commands) + 1
+                target=ends[i + 1]
+                if i + 1 < len(commands)
+                else len(commands) + first_end
             )
         elif command.opcode == ">":
             ends[i] = command.target
@@ -170,8 +207,8 @@ def _trits(text: str) -> tuple[int, ...]:
 class _Machine:
     """A queue with immutable control state and precompiled guard targets."""
 
-    def __init__(self, code: str, io: IO) -> None:
-        self.code = _parse(code)
+    def __init__(self, code: str, io: IO, *, guard_binding: str = "opcode") -> None:
+        self.code = _parse(code, guard_binding=guard_binding)
         self.state = _State(0, 0, first=True, stopped=not self.code)
         self.queue: deque[int] = deque()
         self.io = io
@@ -222,9 +259,9 @@ class _Machine:
             self.io.print_str(effect.output)
 
 
-def run(code: str, io: IO) -> None:
+def run(code: str, io: IO, *, guard_binding: str = "opcode") -> None:
     """Run NQ until H; a nonempty source without H can wrap forever."""
-    drive(_Machine(code, io))
+    drive(_Machine(code, io, guard_binding=guard_binding))
 
 
 if __name__ == "__main__":

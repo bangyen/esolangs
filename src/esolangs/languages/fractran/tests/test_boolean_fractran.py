@@ -105,22 +105,22 @@ def test_fractran_phase_parity_witness_tables(width: int) -> None:
             assert evaluate_generated("FRACTRAN", table, width=width) == table
 
 
-@pytest.mark.parametrize("width", [1, 4, 8, 9, 80])
-def test_fractran_parity_two_executes_at_every_width(width: int) -> None:
-    for as_string in (False, True):
-        template = esolangs.generate("FRACTRAN", "0110", width=width)
-        if as_string:
-            template = str(template)
-        for row, expected in enumerate("0110"):
-            program = esolangs.instantiate(
-                "FRACTRAN", template, [row // 2, row % 2], truth_table="0110"
-            )
-            assert (
-                esolangs.read_answer("FRACTRAN", esolangs.run("FRACTRAN", program))
-                == expected
-            )
-        with pytest.raises(esolangs.TemplateError, match="not the template"):
-            esolangs.instantiate("FRACTRAN", template, [0, 1], truth_table="0001")
+def test_fractran_parity_two_executes_at_every_width() -> None:
+    for width in (1, 4, 8, 9, 80):
+        for as_string in (False, True):
+            template = esolangs.generate("FRACTRAN", "0110", width=width)
+            if as_string:
+                template = str(template)
+            for row, expected in enumerate("0110"):
+                program = esolangs.instantiate(
+                    "FRACTRAN", template, [row // 2, row % 2], truth_table="0110"
+                )
+                assert (
+                    esolangs.read_answer("FRACTRAN", esolangs.run("FRACTRAN", program))
+                    == expected
+                )
+            with pytest.raises(esolangs.TemplateError, match="not the template"):
+                esolangs.instantiate("FRACTRAN", template, [0, 1], truth_table="0001")
 
 
 @pytest.mark.parametrize("n", [4, 5, 6])

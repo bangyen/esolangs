@@ -38,9 +38,13 @@ Exceptions and per-language notes:
 
 - NQ ignores input whitespace; `R` reads through EOF. Empty-queue reads
   and writes fail. The cyclic-tag example switches `>1` to `>0`.
-  Nested ungrouped guards and skip wrapping are unspecified:
-  `+0->1>0+2WH` prints `#` here but underflows under the blind model's
-  recursive guard reading. The generator uses grouped guards only.
+  The history does not settle ungrouped guard extent or skip wrapping.
+  `guard_binding="opcode"` (default) skips one opcode or whole grouped guard,
+  including across source wrap. `"recursive"` skips a complete guarded
+  instruction whose target must fit its lexical group or source.
+  `+0->1>0+2WH` prints `#` under opcode binding and underflows under recursive
+  binding. Neither choice establishes author intent; generated programs have
+  identical source, execution and state under both.
 
 ### Image-based languages
 

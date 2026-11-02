@@ -30,3 +30,17 @@ program = "WH"
 stdin = ""
 expect = "HaltError"
 claim = "output on an empty queue fails"
+
+[[spec_triggers]]
+program = ">1"
+stdin = ""
+settings = { guard_binding = "recursive" }
+expect = "ProgramError"
+claim = "recursive binding requires a complete target within its lexical source"
+
+[[spec_triggers]]
+program = "+0->1>0+2WH"
+stdin = ""
+settings = { guard_binding = "recursive" }
+expect = "HaltError"
+claim = "recursive binding skips the complete nested guard and its enqueue"

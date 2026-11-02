@@ -4,7 +4,7 @@ admitted = 2026-11-01T17:53:41-05:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "a lexical guard selects the true child; every leaf halts before its sibling, and folded suffixes consume all remaining inputs in order"
+qualification = "a lexical guard selects the true child; every leaf halts before its sibling, and folded suffixes consume all remaining inputs in order; grouped guards work under both binding readings"
 scaling = "linear: at most 10T - 6 characters"
 execution = "poly n: at most 3n + 3 commands: read, dequeue, guard per input and enqueue, write, halt"
 workspace = "poly n: at most 2n + bl(L) + 32 bits: one queued trit, flag, cursor, lap and input progress"
@@ -64,3 +64,13 @@ executed_rows = 11296
 widths = "default/1/8/80 at n<=3; default/8 at n=4..10"
 positive_control_rows_rejected = 2
 verdict = "Fresh spec-only subagent; no production or test exposure. Models frozen before comparison; all generated rows halt and match. All rows n<=6, rows 0/1/T//3/T-1 above that. Generated programs agree without patching the frozen model. It consumes exactly n trits per row. Seven native-command probes agree. Off-corpus assumptions differ: whitespace input, empty source, nested ungrouped guard extent and guard-target wrapping. These are unresolved spec gaps; the generator uses grouped guards and raw 0/1 inputs."
+
+[interpreter_ablations.guard_binding]
+audited = "2026-11-01"
+wiki_revision = 156166
+seed = "all tables n=1..3; witnesses(n) plus five random.Random(1000*n+1847) tables per n=4..10"
+tables = 353
+executed_rows = 22592
+recursive_chain_programs = 1092
+reference_sha256 = "6ee4fcebb061e7d40a8caf4470eef3a9e7c86daf0406dc6b9709235766ec71d3"
+verdict = "All generated rows halt under opcode and recursive bindings with identical source, output, snapshots and command counts; 11296 rows each, every row through n=6 and rows 0/1/T//3/T-1 above. Widths default/1/8/80 through n=3, default/8 above. All 1092 chains (0..5 guards, trits 0/1/2, all flag values) match the frozen recursive model. The setting fences interpretation, not author intent: 13 revisions, missing Talk:NQ and an unlinked author profile supply no resolution. Fix wrapped opcode skip entering an initial group: >0(+2)W>1 now retains one queued trit across wraps. The default 5193-program trace corpus (2763 clean halts) is unchanged; an inverted guard differs on 2200. Generator diff: 632 byte-identical programs, wrong-answer control differs on all 632. Bounds, eight size/command pins and the Size anchor remain exact for both settings. CLI run and generate/run workflows pass."

@@ -5,7 +5,8 @@ child; the false child follows the group. All leaves halt, so no branch
 returns into its sibling. Constant and equal-child folds retain every input
 read. Chunk emission and subtree ranks take O(T) time and space, with
 expected constant-time rank lookups on O(log T)-bit words. An unfolded
-internal node costs six characters and a leaf four.
+internal node costs six characters and a leaf four. Grouped guards make
+the same program valid under both guard-binding readings.
 
 Size:
     At most 10T-6 characters; n=10 random 1847: 7,154 chars.
@@ -13,12 +14,14 @@ Size:
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.nq.interpreter import GUARD_BINDINGS, guard_dialect
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
 
-def nq(truth_table: str) -> str:
+def nq(truth_table: str, *, guard_binding: str = "opcode") -> str:
     """Build a program printing space for false or # for true."""
+    guard_dialect(guard_binding)
     n = _validate_truth_table(truth_table)
     ids = subtree_ids(truth_table)
     chunks: list[str] = []
@@ -50,6 +53,8 @@ LANGUAGE = Language(
     category="queue_based",
     boolean=nq,
     wrap=wrap_chars,
+    dialect=guard_dialect,
+    dialect_values={"guard_binding": GUARD_BINDINGS},
     contract=BooleanContract(
         input_shape="char_stream",
         answer_pattern="([ #])",
