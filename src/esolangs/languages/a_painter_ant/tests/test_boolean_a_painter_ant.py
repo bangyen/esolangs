@@ -93,6 +93,8 @@ class TestAPainterAnt:
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_roots_keep_one_origin(bit: str) -> None:
+    if bit == "0":
+        _check_constants()
     """A constant table restores each input to one white origin, then leaves it."""
     from esolangs.runtime._evaluate import _evaluate
 
@@ -149,3 +151,31 @@ class TestAPainterAntTrace:
         divergence = first_divergence("nPn")  # cycle 2 moves outside the box
         assert divergence is not None
         assert (divergence.index, divergence.command) == (0, "n")
+
+
+def _check_constants() -> None:
+    from esolangs.languages.a_painter_ant.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                template = esolangs.generate("A Painter Ant", bit * (1 << n), **options)
+                assert template.count("$") == n
+                for bits in ([0] * n, [1] * n):
+                    program = esolangs.instantiate("A Painter Ant", template, bits)
+                    io = ScriptedIO("7")
+                    machine = _Machine(program, io)
+                    for _ in machine.prog:
+                        machine.step()
+                    after = machine.snapshot()
+                    for _ in machine.prog:
+                        machine.step()
+                    assert machine.snapshot() == after
+                    assert (machine.x, machine.y) == (0, 0)
+                    assert not io.getvalue()
+                    machine.interrupt()
+                    machine.step()
+                    assert esolangs.read_answer("A Painter Ant", io.getvalue()) == bit
+                    assert io.reads == 0
+                    assert io.input_char() == ord("7")

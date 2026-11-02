@@ -28,7 +28,8 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 
 
 def test_a_constant_needs_no_index() -> None:
-    assert esolangs.generate("Freestajlo", "1111") == "'1;#;#."
+    _check_constants()
+    assert esolangs.generate("Freestajlo", "1111") == ";;1:"
 
 
 def test_packed_words_start_at_code_35() -> None:
@@ -43,3 +44,32 @@ def test_balance_of_n8_cuts_the_literal() -> None:
     table = "".join("1" if (r * r * 7 + r) % 5 < 2 else "0" for r in range(256))
     program = str(esolangs.generate("Freestajlo", table, balance=True))
     assert balance_score(program) == (16, 113, 16)
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.freestajlo.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = 2 * n
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Freestajlo", bit * (1 << n), **options)
+                for row in ("0" * n, "1" * n):
+                    io = ReadFirstIO(
+                        esolangs.encode_inputs("Freestajlo", [int(b) for b in row])
+                        + "7\n"
+                    )
+                    run(program, io)
+                    assert io.getvalue() == bit
+                    assert io.reads == 2 * n
+                    assert io.past_end == 0
+                    assert io.input_num() == 7

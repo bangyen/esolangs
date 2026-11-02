@@ -99,3 +99,10 @@ seed = "random.Random(6100+n)"
 tables = "2 random plus parity/majority/and/or per n=3,5,7,8"
 baseline = "6ec40751e^"
 verdict = "measured with the interpreter/helpers at 567f2cb18. At n=8: cells 72420 -> 38556, sampled commands 32754 -> 40506, largest sampled written-state peak 30563 -> 35281 bits. Sum of seven-repeat cold generation medians: 10056958 -> 14029333 ns. All rows at n=3; rows 0,floor(T/3),T-1 otherwise. 204 correct executions, 24 wrong-table controls. Peaks and timings describe this corpus. The accepted area-strip exception spends commands, workspace and generation time. Current resource bounds pass where their stated domains apply"
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 5.3
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: minimal spelling, exempt. The final input needs no following data-pointer move: a horizontal literal prints independently of the data mark. Default area and commands 2n+2: n=7 17->16 cells (5.9%), n=8 19->18 (5.3%), n=12 27->26. Vertical layout also omits that move, 2n+3 commands and 3*(2n+1) cells, retaining its three-column floor. n=8 default workspace 334->319 bits. n=3 corpus area 180266->180264. Executed 1120 candidate/native runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command records and global resource caps unchanged. Owned tests preserve exact input use; embedded Ant slots execute before the periodic-state dump with no port reads."

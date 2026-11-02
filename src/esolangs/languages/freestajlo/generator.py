@@ -14,7 +14,7 @@ T^2.
 
 Size:
     T/6 + 4n + 20 chars past the crossover; n=4 parity: 16 chars, n=10
-    random 1847: 230 chars.
+    random 1847: 230 chars. Constants: n + 2 chars and commands.
 
 Decisions:
     A literal shares nothing; a constant is ``'c``, printed with no index.
@@ -51,7 +51,7 @@ def freestajlo(truth_table: str) -> str:
     used = essential_inputs(truth_table, n)
     reduced = read_at(truth_table, used, n)
     if not used:
-        return f"'{reduced}" + ";#" * n + "."
+        return ";" * n + reduced + ":"
     reads = [";#" for _ in range(n)]
     for k, i in enumerate(used):
         reads[i] = "2*;+" if k else ";"

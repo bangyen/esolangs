@@ -66,3 +66,10 @@ verdict = "kept under the named-function rule: a table depending only on how man
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
 blind_reimplementation = 2026-10-27
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 47.4
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: canonical constant folding, exempt. Read all n numeric inputs then print a numeric literal, without index setup or drops. Chars and commands n+2: n=7 17->9 chars (47.1%), n=8 19->10 (47.4%), n=12 27->14. n=8 commands 18->10; written workspace 19->22 bits because the read bits remain stacked, within unchanged caps. Raw reads remain exactly 2n characters on encoded bits including delimiters, all before output; following numeric record preserved. n=3 corpus chars 4946->4938. Executed 1120 candidate/native runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command records and global resource caps unchanged. Owned tests preserve exact input use; embedded Ant slots execute before the periodic-state dump with no port reads."

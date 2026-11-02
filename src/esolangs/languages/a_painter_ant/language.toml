@@ -63,3 +63,10 @@ verdict = "kept: the east corridor is built west from its far end, ending the bu
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 0.0
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "retained: the native path restores every input to one white origin before leaving it black/white. Chars 2n+2-b; execution 2*chars proves a repeat at the pass boundary, then the dump renders. n=8 18/17 chars, 36/34 commands, workspace at most 10 bits in the measured rows. Removing the final S makes the all-zero input drift north each pass for both answers: positions (0,-1) through (0,-10), rather than reaching a fixed point. Positive controls: 1120 native row runs prove equal states after passes one and two and correct rendered answers. This rejects the missing-reset candidate, not a universal optimum. n=3 corpus 12327 chars unchanged. Executed 1120 candidate/native runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command records and global resource caps unchanged. Owned tests preserve exact input use; embedded Ant slots execute before the periodic-state dump with no port reads."

@@ -7,7 +7,8 @@ print a literal answer without that walk.
 
 Size:
     O(T) source and construction in every layout; the narrow XOR2 needs
-    nine columns.  The default is the least by area of the wide strip and the
+    nine columns. Constants: 2n + 2 cells in one row. The default is the least
+    by area of the wide strip and the
     closed-form strips (no width sweep): n=10
     parity: 13,741 chars, n=10 random 1847: 13,741 chars, a 54 x 307 grid
     against the strip's 93 x 3,086 (6,809 chars of ragged rows).
@@ -209,12 +210,12 @@ def b_tapemark(truth_table: str, width: int | None = None) -> str:
     depth = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         answer = truth_table[0]
-        horizontal = ">" + "-|" * depth + answer + "!"
+        horizontal = ">" + "-|" * (depth - 1) + "-" + answer + "!"
         if width is None or len(horizontal) <= width:
             return horizontal
         # Each vertical | moves to a fresh mark; the final mirror turns right
         # so the literal digit prints rather than comparing the data mark.
-        return "v\n" + "-\n|\n" * depth + "\\" + answer + "!"
+        return "v\n" + "-\n|\n" * (depth - 1) + "-\n\\" + answer + "!"
     program = _b_tapemark_program(truth_table, width)
     if width is not None:
         return program

@@ -37,10 +37,10 @@ def test_every_one_hot_table_is_addressed(ones: tuple[int, ...] | range) -> None
 
 def test_measured_sizes() -> None:
     assert [len(tools.b_tapemark("0" * (2**n))) for n in range(1, 5)] == [
-        5,
-        7,
-        9,
-        11,
+        4,
+        6,
+        8,
+        10,
     ]
 
 
@@ -73,10 +73,12 @@ def test_constant_reads_each_input_and_prints_a_literal(n, bit) -> None:
     from esolangs.languages.b_tapemark.generator import _b_tapemark_program
     from esolangs.languages.b_tapemark.interpreter import _Machine
 
+    if n == 1 and bit == "0":
+        _check_constants()
     table = bit * (1 << n)
     default = tools.b_tapemark(table)
-    assert default == ">" + "-|" * n + bit + "!"
-    assert len(default) == 2 * n + 3
+    assert default == ">" + "-|" * (n - 1) + "-" + bit + "!"
+    assert len(default) == 2 * n + 2
     assert len(default) < len(_b_tapemark_program(table))
     for options in ({}, {"width": 1}, {"width": 8}, {"width": 40}, {"balance": True}):
         program = esolangs.generate("B-tapemark", table, **options)
@@ -93,8 +95,8 @@ def test_constant_reads_each_input_and_prints_a_literal(n, bit) -> None:
             )
             assert balance_score(program) <= balance_score(old)
     for program, expected in (
-        (default, 2 * n + 3),
-        (tools.b_tapemark(table, 1), 2 * n + 4),
+        (default, 2 * n + 2),
+        (tools.b_tapemark(table, 1), 2 * n + 3),
     ):
         io = ScriptedIO("1" * n + "0")
         machine = _Machine(program, io)
@@ -281,7 +283,7 @@ def test_the_default_is_the_least_by_area_of_the_strip_and_closed_forms() -> Non
         assert grid_area(chosen) == min(map(grid_area, layouts))
         assert chosen == strip or grid_area(chosen) < grid_area(strip)
         assert _evaluate("B-tapemark", chosen, inputs=bits) == table
-    assert tools.b_tapemark("0" * 16) == ">" + "-|" * 4 + "0!"
+    assert tools.b_tapemark("0" * 16) == ">" + "-|" * 3 + "-0!"
 
 
 def test_balance_folds_a_random_table() -> None:
@@ -322,3 +324,29 @@ def test_area_oriented_fold_executes_every_five_input_row() -> None:
     assert grid_area(program) == 1750
     for row in range(32):
         assert execute(program, format(row, "05b")) == (table[row], 5)
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.b_tapemark.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("B-tapemark", bit * (1 << n), **options)
+                for row in ("0" * n, "1" * n):
+                    io = ReadFirstIO(row + "7")
+                    run(program, io)
+                    assert io.getvalue() == bit
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_char() == ord("7")
