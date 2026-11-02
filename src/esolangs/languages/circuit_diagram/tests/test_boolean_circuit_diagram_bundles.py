@@ -52,13 +52,15 @@ def test_bundle_rejects_constants_small_prefixes_and_zero_budget() -> None:
     assert bundled_class_bank_candidate(dense(9), 0) is None
 
 
-def test_bundle_ceiling_admits_its_own_area_and_rejects_one_less() -> None:
+@pytest.mark.medium
+def test_bundle_ceiling_admits_its_own_area_and_rejects_one_less(monkeypatch) -> None:
     table = dense(9)
     model = bundled_class_bank_candidate(table)
     assert model is not None
     area = _layout_area(model)
     assert bundled_class_bank_candidate(table, area) is not None
     assert bundled_class_bank_candidate(table, area - 1) is None
+    _check_outer_bank_area_floor_rejects_before_final_assembly(monkeypatch)
 
 
 def test_mask_work_is_checked_before_building_forests(monkeypatch) -> None:
@@ -163,3 +165,27 @@ def test_large_original_prefix_ports_execute(tail) -> None:
         }
     )
     _execute(table, model.render(), rows)
+
+
+def _check_outer_bank_area_floor_rejects_before_final_assembly(monkeypatch) -> None:
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.bundled_banks"
+    )
+    original = module._online_bank_area_floor  # noqa: SLF001
+    floors = []
+
+    def measured(dimensions, n, prefix, groups, gates):
+        floor = original(dimensions, n, prefix, groups, gates)
+        floors.append((prefix, floor))
+        return floor
+
+    monkeypatch.setattr(module, "_online_bank_area_floor", measured)
+    table = dense(11)
+    model = bundled_class_bank_candidate(table)
+    assert model is not None
+    outer = next(floor for prefix, floor in floors if prefix == 0)
+    assert all(floor < outer for prefix, floor in floors if prefix)
+    floors.clear()
+    assert bundled_class_bank_candidate(table, outer - 1) is None
+    assert floors[-1] == (0, outer)
+    _execute(table, model.render(), (0, 2047))

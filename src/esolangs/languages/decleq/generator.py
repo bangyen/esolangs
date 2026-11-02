@@ -121,8 +121,6 @@ class _CodeBuilder:
         # instruction, so SUBBIG's jump-to-c reading runs the same program.
         for rc in self.read_cells:
             self.emit(-1, rc, self.pc() + 3)
-        if not self.routes:
-            return
         # 47 passes over the essential cells (48/49 -> 1/2), counted down in a
         # cell of 47 that exits the loop on reaching 0.
         top = self.pc()

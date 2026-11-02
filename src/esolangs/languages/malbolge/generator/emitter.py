@@ -47,9 +47,6 @@ _ONE = b"\x01"
 #: The walk-cost list per ``(target, ceiling)``: a pure function of the
 #: two, shared by every navigation over any memory with that target.
 _WALK_ALL: dict[tuple[int, int], list[int]] = {}
-#: The ``g``-cycle distance to a target per position on its cycle: a
-#: pure function of the target, shared likewise (read-only).
-_TARGET_DIST: dict[int, dict[int, int]] = {}
 #: Navigations by (target, ceiling, jump table).  A navigation's every
 #: input is a function of those three -- the walk costs and cycle data
 #: of the target, and tables all derived from the jump landings (a
@@ -299,19 +296,6 @@ class _ScanGreedy:
                 _WALK_ALL.clear()
             _WALK_ALL[walk_key] = walk_all
         self._walk_all = walk_all
-        # The target's cycle distances, shared likewise.
-        target_dist = _TARGET_DIST.get(target)
-        if target_dist is None:
-            target_dist = {}
-            if target in _CYCLE:
-                cycle, index = _CYCLE[target]
-                target_dist = {
-                    cell: (index - i) % len(cycle) for i, cell in enumerate(cycle)
-                }
-            if len(_TARGET_DIST) > 4096:
-                _TARGET_DIST.clear()
-            _TARGET_DIST[target] = target_dist
-        self._target_dist = target_dist
         # The per-landing memos, as ceiling-sized tables: -1 stands for
         # "not computed" where a result is never negative, and -2 where
         # -1 itself encodes a computed ``None``.
@@ -357,12 +341,11 @@ class _ScanGreedy:
                 cycle, index = _CYCLE[target]
                 pred = cycle[(index - k) % len(cycle)]
                 want = pred - 1
-                if 33 <= want <= 126:
-                    cost, cur = 0, pred
-                    while cost < k and cur != target and jump[cur] == _SUCC[cur]:
-                        cur = jump[cur]  # type: ignore[assignment]
-                        cost += 1
-                    hop = (self._free[want], cost + walk_all[cur])
+                cost, cur = 0, pred
+                while cost < k and cur != target and jump[cur] == _SUCC[cur]:
+                    cur = jump[cur]  # type: ignore[assignment]
+                    cost += 1
+                hop = (self._free[want], cost + walk_all[cur])
             self._hops.append(hop)
 
     @staticmethod
@@ -381,34 +364,13 @@ class _ScanGreedy:
         return self._value[landing]
 
     # -- clause (b): cycle-follow -----------------------------------------
-    def cycle_follow(self, pos: int, cap: int = _INF) -> int | None:
-        """Return the jump-self steps along the ``g``-cycle to the target.
+    def cycle_follow(self, pos: int) -> int | None:
+        """Return the precomputed cycle-follow distance, or ``None``.
 
-        Valid only if ``pos`` and the target share a cycle and every cycle
-        cell on the way still holds its ``g`` value (its jump lands on the
-        next cycle element).  Cells on the target's cycle are resolved in
-        ``__init__``; with a finite ``cap`` the validation of any other
-        cell stops at ``cap`` steps and returns ``cap`` -- callers only
-        ever take a minimum against ``cap``, so the distinction between
-        "at least ``cap``" and "invalid" is invisible to them, and the
-        capped result is not memoised.
+        Every cell sharing the target's cycle is resolved at construction;
+        cells outside it cannot reach the target by following that cycle.
         """
         result = self._cycle[pos]
-        if result == -2:
-            result = -1
-            dist = self._target_dist.get(pos)
-            if dist is not None:
-                x = pos
-                for steps in range(dist):
-                    if steps >= cap:
-                        return cap
-                    if self.jump[x] != _SUCC[x]:
-                        break
-                    x = self.jump[x]  # type: ignore[assignment]
-                else:
-                    if x == self.target:
-                        result = dist
-            self._cycle[pos] = result
         return None if result < 0 else result
 
     # -- clause (c): one more jump within 3 cells, then walk --------------
@@ -443,7 +405,7 @@ class _ScanGreedy:
             return cap
         best = min(cap, self._walk_all[pos])
         best = min(best, self.chain0(pos, best))
-        follow = self.cycle_follow(pos, best)
+        follow = self.cycle_follow(pos)
         if follow is not None and follow < best:
             best = follow
         if best < cap:
@@ -668,7 +630,7 @@ class _ScanGreedy:
                 u = cap
             else:
                 u = min(cap, walk_all[landing])
-                follow = self.cycle_follow(landing, u)
+                follow = self.cycle_follow(landing)
                 if follow is not None and follow < u:
                     u = follow
                 second = self.second3(landing)
@@ -706,7 +668,7 @@ class _ScanGreedy:
         # (the result is their minimum), so the cheap hops (f) run
         # before the (g) scan to tighten the caps it passes on.
         best = min(cap, self._walk_all[landing])  # (a)
-        follow = self.cycle_follow(landing, best)  # (b)
+        follow = self.cycle_follow(landing)  # (b)
         if follow is not None and follow < best:
             best = follow
         second = self.second3(landing)  # (c)
@@ -740,8 +702,6 @@ class _ScanGreedy:
                     term = step + fin
                     if term < best:
                         best = term
-                        if best <= 1:
-                            break
         if best > 1:  # a chain value below 1 would need walk == 0 above
             best = self._chains_value(landing, best)  # (d), the named chains
         if best < cap:

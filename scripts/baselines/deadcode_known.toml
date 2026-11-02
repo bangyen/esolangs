@@ -28,3 +28,14 @@
 "sstack/generator/__init__.py" = [
     "arm: if result is not None: -> for blocks in dict.fromkeys(banks):",
 ]
+
+# Euler's sieve visits primes through least[value], then breaks there or at
+# prime*value > bound. The list contains least[value], so it never exhausts.
+"refractran/generator.py" = [
+    "arm: for prime in primes: -> for value in range(2, bound + 1):",
+]
+
+# bounds yields at least one strip; its final iteration always breaks.
+"streetcode/generator.py" = [
+    "arm: for i, segment in enumerate(segments): -> return canvas, origin",
+]

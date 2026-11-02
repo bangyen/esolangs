@@ -83,15 +83,15 @@ def iebel(truth_table: str) -> str:
             lines.append("2 2 -3")
             zero, one = kids[cur]
             nxt = fall.get(cur)
-            if zero == one:
-                if nxt is None:
-                    lines.append((_GOTO, one))
-            elif nxt == one:
-                lines.append(("2 1 {}", zero))
-            elif nxt == zero:
-                lines.append(("2 3 {}", one))
-            else:
-                lines.extend([("2 1 {}", zero), (_GOTO, one)])
+            # Singleton-child nodes sort first; distinct nodes cannot share
+            # the same equal pair, so each always falls into its sole child.
+            if zero != one:
+                if nxt == one:
+                    lines.append(("2 1 {}", zero))
+                elif nxt == zero:
+                    lines.append(("2 3 {}", one))
+                else:
+                    lines.extend([("2 1 {}", zero), (_GOTO, one)])
             cur = nxt
     return "\n".join(
         line if isinstance(line, str) else line[0].format(at[line[1]]) for line in lines

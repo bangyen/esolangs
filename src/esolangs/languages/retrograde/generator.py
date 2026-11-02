@@ -56,8 +56,8 @@ def retrograde(truth_table: str) -> str:
         node = ids[depth][k]
         # Fold the whole constant suffix: [ablations.constant_fold].
         if node < 2:
-            if node:
-                chunks.extend((">" * (n - depth), "*", "<" * (n - depth)))
+            # body() drops zero nodes; a constant here is always one.
+            chunks.extend((">" * (n - depth), "*", "<" * (n - depth)))
             return
         zero, one = 2 * k, 2 * k + 1
         # Equal sibling functions ignore this input: [ablations.ignored_input].

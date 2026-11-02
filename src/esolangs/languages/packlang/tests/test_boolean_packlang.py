@@ -192,6 +192,7 @@ def test_balance_keeps_the_widest_square_candidate() -> None:
 def test_balance_of_random_n10_refolds_the_body() -> None:
     """The body refolds past the default's 72 columns; unrefolded it was
     74 x 105: (side, length, width)."""
+    _check_refolding_leaves_foreign_or_incomplete_bodies_alone()
     rng = random.Random(5)
     table = "".join(rng.choice("01") for _ in range(1024))
     program = str(esolangs.generate("Packlang", table, balance=True))
@@ -242,3 +243,14 @@ def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
         sum(len(esolangs.generate("Packlang", format(v, "08b"))) for v in range(256))
         == 78174
     )
+
+
+def _check_refolding_leaves_foreign_or_incomplete_bodies_alone() -> None:
+    from esolangs.languages.packlang.generator import _refolded
+
+    for source in (
+        "foreign",
+        "  Integer main {\nunfinished",
+        "  Integer main {\n stray\n  }\n}",
+    ):
+        assert _refolded(source) == source

@@ -141,12 +141,9 @@ def _build(truth_table: str, width: int | None, bits: int) -> str:
     used: set[str] = set()
     defs, tree = _tree(table, n, high, names, used, narrow=width is not None)
     lines = ["main{", _reads(weights, names)]
-    # A table that folds everywhere paints no block, so the register would
-    # be dead prologue.  It reads ``main``'s input bits, so it is nested
-    # there: scoping is lexical (a variable is local to a function "and its
-    # children").  It goes first, so the tree's last return closes ``main``.
-    if names.table in used:
-        lines.append(_register(names, block, high, n))
+    # The projected suffix inputs are essential, so some leaf paints a block.
+    # Its register reads main's bits and must be nested for lexical scope.
+    lines.append(_register(names, block, high, n))
     lines += [*defs, *tree, "}"]
     for bit, name in ((0, names.zero), (1, names.one)):
         if name in used:

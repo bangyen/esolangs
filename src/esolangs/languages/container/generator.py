@@ -372,7 +372,7 @@ def _container_threshold(truth_table: str) -> str:
     tilings it was kept for ([ablations.mirror_race]) (retirement candidate #12).
     """
     n = _validate_truth_table(truth_table)
-    weights, truth_table = _threshold_weights(truth_table, n)
+    weights, truth_table = input_weights(truth_table, n)
     deltas, steps = _threshold_steps(truth_table)
 
     identifiers = _free_names(_RESERVED)
@@ -385,18 +385,6 @@ def _container_threshold(truth_table: str) -> str:
     lines += _threshold_counter_lines(gate, counter, weights, latches, n)
     lines += _threshold_output_lines(counter, deltas, steps, n)
     return "\n".join(lines)
-
-
-def _threshold_weights(truth_table: str, n: int) -> tuple[list[int], str]:
-    """Return the input weights and the projected table."""
-    # An ignored input is latched like any other but adds no weight, so the
-    # steps are those of the table over the rest.  A constant keeps them all.
-    weights, projected = input_weights(truth_table, n)
-    if any(weights):
-        truth_table = projected
-    else:
-        weights = [1 << (n - 1 - k) for k in range(n)]
-    return weights, truth_table
 
 
 def _threshold_steps(
@@ -592,10 +580,10 @@ def _container_blocks(table: str) -> str:
         f"+2 T>={2 * n}",
         f"-1 T>={2 * n + 1}",
     ]
-    if blocks > 1:
-        lines.append(f"{high}:")
-        lines += [f"+{1 << (n - s - 1 - k)} {latches[k]}>={gate}" for k in range(n - s)]
-        lines.append(f"-{blocks} T>={2 * n + 1}")  # live for tick 2n + 1 only
+    # The balanced caller starts at n=4, where n-s >= 3.
+    lines.append(f"{high}:")
+    lines += [f"+{1 << (n - s - 1 - k)} {latches[k]}>={gate}" for k in range(n - s)]
+    lines.append(f"-{blocks} T>={2 * n + 1}")  # live for tick 2n + 1 only
     lines.append(f"{low}:")
     lines += [f"+{2 << (n - 1 - k)} {latches[k]}>={gate}" for k in range(n - s, n)]
     lines.append(f"-1 T>={2 * n + 1}")
