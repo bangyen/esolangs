@@ -34,10 +34,10 @@ order. This one is XOR. `generate` wrote a brainfuck program for it, and
 
 | You want | Install |
 |---|---|
-| Everything except the two below | `pip install esolangs` |
+| Text programs and in-memory raster programs | `pip install esolangs` |
 | Load or save PNG programs (image-based languages) | `pip install 'esolangs[image]'` |
 
-Image-based programs built in memory need neither extra.
+Image-based programs built in memory need no extra.
 
 ## Command line
 

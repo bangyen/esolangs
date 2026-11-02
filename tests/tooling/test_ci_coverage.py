@@ -87,3 +87,26 @@ def test_failure_log_uploads_are_unconditional_and_unique() -> None:
                 if "notes/benchmarks" in upload["with"]["path"]:
                     assert upload["if"] == "always()"
                     assert "notes/verification" in upload["with"]["path"]
+
+
+def test_weekly_full_suite_keeps_all_versions_and_bands() -> None:
+    jobs = yaml.safe_load((ROOT / ".github/workflows/weekly.yml").read_text())["jobs"]
+    versions = jobs["slow"]["strategy"]["matrix"]["python-version"]
+    assert sorted([*versions, "3.14"]) == ["3.12", "3.13", "3.14", "3.15"]
+    scan = jobs["deadcode-scan"]
+    assert scan["strategy"]["matrix"]["shard"] == [0, 1, 2, 3]
+    command = next(
+        step["run"]
+        for step in scan["steps"]
+        if step.get("name") == "Scan one deadcode shard"
+    )
+    assert '--marker ""' in command
+    assert "--exclude-node" not in command
+    assert "--cov-branch" in command
+    assert "--duration-output notes/ci/test-durations.json" in command
+    gate = jobs["deadcode"]
+    assert gate["needs"] == "deadcode-scan"
+    assert gate["steps"][0]["run"] == 'test "$SHARD_RESULT" = success'
+    commands = "\n".join(step.get("run", "") for step in gate["steps"])
+    for shard in scan["strategy"]["matrix"]["shard"]:
+        assert f"test -f .coverage.deadcode-{shard}" in commands

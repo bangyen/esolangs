@@ -38,7 +38,8 @@ jobs:
       # others -- on a weekly run there is no queue to protect.
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13", "3.14", "3.15"]
+        # Python 3.14 runs the full corpus in deadcode-scan below.
+        python-version: ["3.12", "3.13", "3.15"]
 
     steps:
     - uses: actions/checkout@v7
@@ -229,6 +230,14 @@ jobs:
         --shard ${{ matrix.shard }} --shards 4
         --manifest notes/ci/deadcode.shard.json --
         -q -n 4 --cov --cov-branch --cov-report=
+        --duration-output notes/ci/test-durations.json
+    - name: Retain measured test durations
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: test-durations-3.14-${{ matrix.shard }}
+        path: notes/ci/test-durations*.json*
+
     - name: Upload shard coverage
       uses: actions/upload-artifact@v7
       with:

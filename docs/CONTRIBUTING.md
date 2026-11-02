@@ -49,7 +49,7 @@ up or the appropriate band. CI scales the ceilings.
 
 Make focused commits with short imperative subjects. CI checks wheels on
 Linux, macOS and Windows, including examples, CLI I/O, PNG execution and
-installation with and without the mathematics extra.
+installation with and without the image extra.
 
 ## What makes a candidate worth adding
 
