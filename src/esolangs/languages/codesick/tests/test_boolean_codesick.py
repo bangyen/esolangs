@@ -29,6 +29,33 @@ def test_equal_subtables_share_one_node() -> None:
 
 @pytest.mark.parametrize("table", ["01", "0011", "00001111", "0110"])
 def test_only_a_constant_table_spends_the_missing_test(table: str) -> None:
-    # Root ids 0 and 1 are the constants; any other root reads through its node.
+    _check_constants()
+    # Constants resolve input during loading, before their single output.
     assert not codesick(table).startswith('codesick in "" *')
-    assert codesick("0" * len(table)).startswith('codesick in "" *')
+    assert codesick("0" * len(table)) == "codesick out 0 in * *;"
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.codesick.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = 1
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Codesick", bit * (1 << n), **options)
+                for row in ("0" * n, "1" * n):
+                    io = ReadFirstIO(row)
+                    run(program, io)
+                    assert io.getvalue() == bit
+                    assert io.reads == 1
+                    assert io.past_end == 0
+                    assert io.position() == n

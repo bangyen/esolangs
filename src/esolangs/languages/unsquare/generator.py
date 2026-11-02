@@ -8,7 +8,7 @@ half, so those reads' ``2**k`` pops leave the program.
 
 Size:
     About 1.1 bytes per row, O(T), against 32.5 for a decision tree; n=10
-    and: 454 chars, n=10 random 1847: 1,360 chars.
+    and: 454 chars, n=10 random 1847: 1,360 chars. Constants: 2n + 10/28 chars.
 
 Decisions:
     Run loops: no saving on seeded random tables at n=6/7 (runs fall short
@@ -67,6 +67,10 @@ def unsquare(truth_table: str) -> str:
     half costs about log of its length (:func:`_run`).
     """
     n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        # 6 doubled three times is ASCII zero; odd 49 keeps the +2 spelling.
+        literal = "OA+++xxx" if truth_table[0] == "0" else "IA" + "+" * 24
+        return "iA" * n + literal + "Po"
     weights, reduced = input_weights(truth_table, n)
     m = len(reduced).bit_length() - 1
     depth = _depth(m)

@@ -64,3 +64,10 @@ verdict = "kept as a rule (not a race): write the integer or its complement, whi
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 73.9
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: canonical constant folding, exempt. Native constants read n bytes into one cell, then overwrite it with 48/49 and print. Default area and commands n+4: n=7 43->11 cells (74.4%), n=8 46->12 (73.9%), n=12 58->16; n=8 workspace 35->17 bits. Removed the superseded n=2 zero short form. n=3 corpus area 19712->19664. Executed 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Default, width=1 and balanced constants execute through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged; global resource caps unchanged. Owned read-first checks cover both constant answers and following-record preservation (whole-stream loading for Codesick)."

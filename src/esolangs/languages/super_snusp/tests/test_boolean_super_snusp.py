@@ -135,12 +135,13 @@ class TestSuperSNUSP:
         assert super_snusp(table).startswith('"')
 
     def test_the_short_forms_are_what_the_generator_emits(self) -> None:
-        """The five hand-written two-input forms are used verbatim."""
+        """The four hand-written nonconstant two-input forms are used verbatim."""
         from esolangs.languages.super_snusp.generator import (
             _TWO_INPUT_SHORT,
             super_snusp,
         )
 
+        _check_constants()
         for table, form in _TWO_INPUT_SHORT.items():
             assert super_snusp(table) == '"' + form
 
@@ -148,8 +149,8 @@ class TestSuperSNUSP:
         ("table", "length"),
         [
             ("1010", 44),  # one dependency at two inputs
-            ("1111", 28),  # constant at two
-            ("00000000", 31),  # constant at three
+            ("1111", 6),  # constant at two
+            ("00000000", 7),  # constant at three
             ("00000011", 63),  # depends on the last two of three
         ],
     )
@@ -209,7 +210,7 @@ class TestSuperSNUSPSweepPins:
 
     @pytest.mark.parametrize(
         ("table", "shape"),
-        [("1100", (56, 5, 11)), ("1111", (39, 4, 9))],
+        [("1100", (56, 5, 11)), ("1111", (11, 2, 5))],
     )
     def test_balanced_shapes_are_pinned(self, table: str, shape: tuple) -> None:
         program = str(esolangs.generate("Super SNUSP", table, balance=True))
@@ -218,3 +219,29 @@ class TestSuperSNUSPSweepPins:
             program.count("\n") + 1,
             max(map(len, program.split("\n"))),
         ) == shape
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.super_snusp.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Super SNUSP", bit * (1 << n), **options)
+                for row in ("0" * n, "1" * n):
+                    io = ReadFirstIO(row + "7")
+                    run(program.splitlines(), io)
+                    assert io.getvalue() == bit
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_char() == ord("7")

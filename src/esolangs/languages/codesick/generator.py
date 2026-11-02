@@ -10,14 +10,16 @@ jumps to ``1#c``, which deletes ``1#c``, jumps to itself, misses, and
 jumps to the 1-child.  Bits are read last first, so the diagram is the
 one of the bit-reversed table.  Labels are ``subtree_ids`` ids; constant
 subtables print and jump to the missing label ``*``; a constant table
-first takes its input in a test that misses.  Either bit may be the
+reads its input during loading through the output instruction dereference.
+Either bit may be the
 tested one: its label ``b#c`` is the instruction of a child no other
 edge reaches, else a forwarder or, for a constant, the print itself; a
 constant on the missed side is jumped to without the delete node.
 
 Size:
     O(T) size and build time, at most three instructions per diagram node,
-    at most 3n - 1 steps; n=10 parity: 1,544 chars, n=10 random 1847: 18,181 chars.
+    at most 3n - 1 steps; constants: 22 chars and one step.
+    n=10 parity: 1,544 chars, n=10 random 1847: 18,181 chars.
 
 Decisions:
     An ignored input keeps a delete node per residual: 0.52x a real one at n=8.
@@ -52,9 +54,8 @@ def codesick(truth_table: str) -> str:
             below |= {2 * k, 2 * k + 1}
         frontier = below
     if not kids:
-        # A constant table still takes its input, through a test that misses.
-        c = ids[0][0]
-        return f'codesick in "" * {c}; {c} codesick out {c} * *;'
+        # Loading resolves `in` before output; the dereference writes no new value.
+        return f"codesick out {ids[0][0]} in * *;"
     parents = Counter(c for pair in kids.values() for c in pair)
     entry = {0: "0", 1: "1"} | {c: str(c) for c in kids}
     hit: dict[int, int] = {}

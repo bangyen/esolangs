@@ -3,11 +3,11 @@
 Horner's rule folds the inputs into a row in cell 0; cell 1 holds the table
 as one decimal literal (a digit run is ``cell * 10 + digit``), shifts it by
 the row and takes the low bit.  The random ``=`` opcode is never used.  At
-n=2 five tables use a fixed short form.
+n=2 four nonconstant tables use a fixed short form.
 
 Size:
     The table's decimal digits, at most ceil(0.30103(T-1)), plus 19n + 21
-    chars;
+    chars; constants use n + 4 cells (read each byte, then overwrite with 48/49).
     n=2 parity: 16 chars, n=16 and: 20,054 chars, n=16 parity: 20,053 chars.
 
 Decisions:
@@ -38,7 +38,6 @@ _TWO_INPUT_SHORT = {
     # These executed forms reuse 48 both to decode each input and to encode
     # the answer, keeping the literal at the bottom of the stack.  n=2 is the
     # only arity ([ablations.two_input_short_forms]).
-    "0000": "48{,-> ,-<}.",
     "0011": "48{,-> ,-<^.",
     "0101": "48{,-> ,-<>^.",
     "0110": "48{,-> ,-<^{>^.",
@@ -115,11 +114,13 @@ def _emit_lookup(truth_table: str, chunk_digits: int = 0) -> str:
 
 
 def _super_snusp_flat(truth_table: str) -> str:
-    """Emit the straight-line program: the lookup, or a fixed form at n=2.
+    """Emit a native constant, a two-input short form, or the lookup.
 
-    Every path consumes exactly ``n`` input lines.
+    Every path consumes exactly ``n`` input characters.
     """
     n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        return '"' + "," * n + f"{48 + int(truth_table[0])}."
     if n == 2 and truth_table in _TWO_INPUT_SHORT:
         # An explicit START marker removes the spec's undocumented default
         # heading from generated programs; it is a no-op once execution begins.

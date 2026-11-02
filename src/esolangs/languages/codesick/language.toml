@@ -49,3 +49,10 @@ verdict = "kept: the tested bit is the one whose child only this edge reaches; i
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 46.3
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: canonical constant folding, exempt. A single output instruction uses in as its dereference argument, so loading consumes the whole input before output; the dereference writes no changed mapping. 41->22 chars (46.3%) at n=7/8/12, 2->1 commands, workspace unchanged at 1 written bit. Whole-stream input convention unchanged. n=3 corpus chars 59184->59146. Executed 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Default, width=1 and balanced constants execute through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged; global resource caps unchanged. Owned read-first checks cover both constant answers and following-record preservation (whole-stream loading for Codesick)."

@@ -60,3 +60,10 @@ plain_rewrite = 2026-10-29
 "0110100110010110" = { commands = 374, commands_by_row = { "0" = 347, "1" = 351, "2" = 352, "3" = 356, "4" = 354, "5" = 358, "6" = 359, "7" = 363, "8" = 358, "9" = 362, "10" = 363, "11" = 367, "12" = 365, "13" = 369, "14" = 370, "15" = 374 }, source_units = 98 }
 "1101001101101101" = { commands = 374, commands_by_row = { "0" = 347, "1" = 351, "2" = 352, "3" = 356, "4" = 354, "5" = 358, "6" = 359, "7" = 363, "8" = 358, "9" = 362, "10" = 363, "11" = 367, "12" = 365, "13" = 369, "14" = 370, "15" = 374 }, source_units = 98 }
 "11111110" = { commands = 279, commands_by_row = { "0" = 263, "1" = 267, "2" = 268, "3" = 272, "4" = 270, "5" = 274, "6" = 275, "7" = 279 }, source_units = 72 }
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 20.5
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: canonical constant folding, exempt. Root constants read/pop each byte before constructing the answer. Zero uses 6 doubled three times, one retains the odd +2 spelling. Chars and commands 2n+10/28: n=7 42/42->24/42 (21.4% combined), n=8 44/44->26/44 (20.5%), n=12 52/52->34/52; zero-only n=8 saving 40.9%. n=8 workspace 27/27->25/26 bits. n=3 corpus chars 17708->17690. Executed 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Default, width=1 and balanced constants execute through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged; global resource caps unchanged. Owned read-first checks cover both constant answers and following-record preservation (whole-stream loading for Codesick)."

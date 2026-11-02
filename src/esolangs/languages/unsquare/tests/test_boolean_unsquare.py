@@ -23,6 +23,7 @@ class TestUnsquare:
 
     def test_program_shape(self) -> None:
         """The table is pushed first, then one read an input, then the print."""
+        _check_constants()
         program = boolean.unsquare("0110")
         assert program.startswith("OIIO")  # the table, reversed, one cell a row
         assert program.count("i") == 2  # one read an input
@@ -64,3 +65,29 @@ class TestUnsquare:
         table = "01101001100101101001011001101001" + tail
         assert "OA+" in boolean.unsquare(table)
         assert self._rows(table) == list(table)
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.unsquare.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Unsquare", bit * (1 << n), **options)
+                for row in ("0" * n, "1" * n):
+                    io = ReadFirstIO(row + "7")
+                    run(program, io)
+                    assert io.getvalue() == bit
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_char() == ord("7")
