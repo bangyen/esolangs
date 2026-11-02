@@ -696,6 +696,9 @@ def band_marks(band: str | None, case: str) -> list[pytest.MarkDecorator]:
 #: range, so it runs weekly: Back 17, Stisp 20, INTERCAL 18-24, What!? 22.
 #: INTERCAL's scaling cases at n = 20..23 run 25 s, 47 s, 90 s and
 #: 151 s alone (corpus generations dominate; n = 24 checks the bound).
+#: INTERCAL at n = 14 and 15 measured 9.0 s and 10.8 s on CI (weekly
+#: runs of 2026-11-02) -- over the 3 s fast band, with the formulas
+#: themselves holding in both runs; n = 16 stayed inside the band.
 _WITNESS_BAND = {
     ("Interprogck8", 8): "medium",
     ("Back", 15): "medium",
@@ -709,6 +712,8 @@ _WITNESS_BAND = {
     ("Quassaunt", 21): "weekly",
     ("Stisp", 20): "weekly",
     ("Stisp", 18): "medium",
+    ("INTERCAL", 14): "medium",
+    ("INTERCAL", 15): "medium",
     ("INTERCAL", 17): "medium",
     ("INTERCAL", 18): "weekly",
     ("INTERCAL", 19): "weekly",
