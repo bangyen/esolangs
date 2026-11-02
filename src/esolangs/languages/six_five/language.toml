@@ -9,7 +9,7 @@ admitted = 2026-08-14T00:27:50-04:00
 labels = ["finite lookup"]
 qualification = "past 35 inputs the positional walk loops on sixteen labels: each bit advances the pointer to the first row whose 2-adic valuation mark reads zero, and one pass per bit shifts the marks"
 scaling = "linear, time n log: at most N characters: two raced orders over canonical subtree IDs"
-execution = "linear: worst L commands: loop-free, each token runs at most once; constant tables run every token"
+execution = "linear: at most L + 6T + 3n commands: the walk's home loop reruns 3 commands a cell; other routes loop-free"
 workspace = "linear: worst 2T + 6n + 6 + bl(n) + bl(L) bits past n = 6: a tape of 2T cells"
 
 [generator_sizes]
