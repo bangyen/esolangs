@@ -10,17 +10,21 @@ row ``k`` whose answer differs from row ``k+1``'s gets ``LT base+2k+1``,
 keeps those increments below the next threshold.  So ``x``'s parity is the
 last row's answer flipped once per change after the row, its answer;
 ``MUL a``, ``MOD 2a``, ``ADD 2a+1``, ``DIV 2a+2`` turn it into 0 or 1 for
-``PRINT``. The program never jumps: every line runs once. Whole constants
+``PRINT``. The program never jumps: every line runs once. Parity and its complement
+sum the retained inputs and extract modulo two instead. Whole constants
 read and pop all but the last bit, then force zero by division or one by LT.
 
 Size:
     Two lines per change point, whose arguments climb to about 2T; a
     straight line's arguments sum to at least half its line count squared,
     so O(T^2) characters; at most 6n+2R+6 steps for R change points; n=10
-    parity: 1,545,756 chars, n=10 random 1847: 1,176,242 chars.
+    parity: 616 chars, n=10 random 1847: 1,176,242 chars.
     Constants use 2n^2+17n-1+6bit chars and 2n+1 steps; n=8 zero: 263 chars.
 
 Decisions:
+    Parity matches the reduced Thue-Morse table; discarded inputs are
+    still popped. No mask or permutation selection is needed.
+
     An input the table ignores is read and popped, outside the Horner code
     ([ablations.ignored_input_drop]).
 
@@ -126,6 +130,29 @@ def _scan(table: str, n: int, used: list[int], *, mirror: bool) -> str:
     return out.text()
 
 
+def _parity(n: int, used: list[int], *, invert: bool) -> str:
+    """Sum retained inputs, then extract parity with rising scale arguments."""
+    out = _Lines()
+    seen = False
+    for pos in range(n):
+        out.add(_INPUT, odd=True)
+        if pos not in used:
+            out.add(_POP)
+        elif seen:
+            out.add(_ADDS)
+        else:
+            seen = True
+    if invert:
+        out.add(_ADD, odd=True)
+    scale = out.free
+    out.add(_MUL, scale)
+    out.add(_MOD, 2 * scale)
+    out.add(_ADD, 2 * scale + 1)
+    out.add(_DIV, 2 * scale + 2)
+    out.add(_PRINT, odd=True)
+    return out.text()
+
+
 def ascenic(truth_table: str) -> str:
     """Build an Ascenic program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
@@ -141,6 +168,11 @@ def ascenic(truth_table: str) -> str:
         return out.text()
     used = essential_inputs(truth_table, n)
     table = read_at(truth_table, used, n)
+    parity = "0"
+    for _ in used:
+        parity += parity.translate(str.maketrans("01", "10"))
+    if table == parity or table == parity.translate(str.maketrans("01", "10")):
+        return _parity(n, used, invert=table[0] == "1")
     forward = _scan(table, n, used, mirror=False)
     # The mirror's ``SUB 2`` needs the first line's argument budget.
     if not used or used[0] != 0:

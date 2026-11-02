@@ -36,6 +36,7 @@ arity = 8
 verdict = "kept as a rule, not a race: when the one-child is already placed, the node falls through to the zero-child under f(..='1'). Baseline = fall_through only. Random 0.7% / 2.7% / 3.2% / 2.9% at n=2 / 4 / 6 / 8 (fails 10% on random); n=8 parity 0.0%, and 0.0%, majority 14.8%, or 17.3%, thr2 18.8% (clears 10% on the majority/or/threshold family, not the whole build); one placement pass, no second build"
 
 [audits]
+trick_prototype = 2026-11-02
 plain_rewrite = 2026-10-29
 blind_reimplementation = 2026-10-29
 
@@ -45,3 +46,18 @@ saving = 6.3
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: minimal fixed-output spelling, exempt from the percentage gate. Declare one one-letter scratch variable, read every input into it, print the fixed bit and halt at EOF. Only a constant root can omit the explicit exit; nonconstant leaves still need it to avoid falling into another block. L=6n+11 chars, E=n+2 commands, W=16+bl(n+2)+bl(2n) written bits (one ASCII variable name and value plus line/input cursors). n=7 57 -> 53 chars; n=8 63 -> 59 chars, 11 -> 10 commands, 26 -> 25 written bits; n=12 87 -> 83 chars. n=3 corpus 29486 -> 29478 chars. Each language passed 5656 paired old/new row executions; all 270 nonconstant default programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. A separate 1120-run native probe per language covers every row through n=8. All 24 balanced scores per language match or improve; all 24 benchmark size/command pins across the batch remain unchanged. Owned regressions check exact resources, every read before output, no EOF probes and a preserved following record. No new collected cases."
+
+[ablations.trick_prototype_20261102_variable_order_sift]
+arity = 8
+saving = 0.0000
+verdict = "rejected by construction: O(n^2) diagram sifting builds are a variable-order search, forbidden by the named-order/no-search policy. Not launched; no measured size or impossibility claim."
+
+[ablations.trick_prototype_20261102_header_last_addresses]
+arity = 8
+saving = 0.8000
+verdict = "rejected: place a jump first, then the diagram at address1, then input header and return jump. Every small table/row and four rows per20 seeded random tables at each fixed n=7/8 execute. Source n=7 16785->16682 (0.61%), n=8 28624->28395 (0.80%), below10%; three-input29478->31980 grows. The two added gotos are executed, so no execution-gate gain. All20 judged programs change: a firing control. No conditional old-candidate race ships."
+
+[ablations.trick_prototype_20261102_arithmetic_branch]
+arity = 8
+saving = 0.0000
+verdict = "rejected: convert tested inputs to integers and use one computed goto for both-placed nodes with positive destination difference; retain ordinary two-line branches for negative differences. All small rows and four rows of20 random tables per judge arity execute. Actual n=7 chars16785->17976 grows7.10%, n=8 28624->29668 grows3.65%; three-input29478->38092. Positive-difference computed nodes really fire:173 at n=7,320 at n=8,150 across three-input tables. A standalone computed-goto control selects both destination leaves. Conversion costs outweigh removed branch lines. No bool-to-integer conversion extension or branch fallback race ships."

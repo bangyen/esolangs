@@ -10,7 +10,7 @@ stack children vertically, and side by side at every other level, so the
 area is linear.
 
 Size:
-    Theta(T) area, about 84.5T; n=4 parity: 949 chars.
+    Theta(T) area; n=4 parity: 773 chars.
     Constants: n + 2/3 cells and commands.
 
 Decisions:
@@ -70,7 +70,9 @@ def _box(
     if not (levels % 2 and 3 <= levels < k):
         # Vertical: the bottom child under the top one.
         b = max(w0, w1) + 4
-        r1 = max(h0, 2)
+        # With two leaves, the nonzero branch can cross the splitter @
+        # eastward: it neither turns nor changes the tested cell.
+        r1 = 1 if h0 == h1 == 1 else max(h0, 2)
         _put(cells, 0, b - 1, "<*")
         _put(cells, 1, b, "@")
         _put(cells, r1, 0, "*")

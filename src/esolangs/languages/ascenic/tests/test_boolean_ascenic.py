@@ -16,10 +16,22 @@ def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     n = len(table).bit_length() - 1
     program = esolangs.generate("Ascenic", table)
+    from esolangs.languages.ascenic.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value):
+            assert self.reads == n
+            super()._write(value)
+
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("Ascenic", bits)
-        got = esolangs.run("Ascenic", program, stdin=stdin, timeout=5)
+        io = ReadFirstIO(stdin + "\nQ\n")
+        run(program, io)
+        got = io.getvalue()
+        assert io.past_end == 0
+        assert io.input_token() == "Q"
         # The answer as the contract reads it, not the raw output.
         assert esolangs.read_answer("Ascenic", got) == table[row], (table, row)
 
@@ -31,7 +43,7 @@ def test_ignored_inputs_are_popped_not_scanned() -> None:
 
 
 @pytest.mark.parametrize("n", [1, 3, 4, 6, 7, 8, 12])
-def test_constants_read_first_and_leave_the_next_record(n) -> None:
+def test_named_tables_read_first_and_leave_the_next_record(n) -> None:
     from esolangs.languages.ascenic.interpreter import run
     from esolangs.runtime.io import ScriptedIO
 
@@ -53,6 +65,17 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
                 assert io.reads == n
                 assert io.input_token() == "Q"
 
+    for invert in (False, True):
+        table = "".join(str((row.bit_count() % 2) ^ invert) for row in range(1 << n))
+        program = esolangs.generate("Ascenic", table)
+        for row in rows:
+            io = ReadFirstIO("\n".join(format(row, f"0{n}b")) + "\nQ\n")
+            run(program, io)
+            assert io.getvalue() == table[row]
+            assert io.reads == n
+            assert io.past_end == 0
+            assert io.input_token() == "Q"
+
 
 def test_three_input_corpus_size() -> None:
     assert (
@@ -60,5 +83,5 @@ def test_three_input_corpus_size() -> None:
             len(esolangs.generate("Ascenic", format(value, "08b")))
             for value in range(256)
         )
-        == 271188
+        == 264468
     )
