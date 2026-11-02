@@ -1031,7 +1031,16 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Collatz Multiverse": lambda n: (
         (_collatz_worst(n), _collatz_chars_worst(n)) if n >= 3 else ()
     ),
-    "Crement": lambda n: (_crement_worst(n),) if n >= 3 else (),
+    # Implication attains the two-input source maximum; an isolated row1
+    # keeps the full generic halting path after named tester presets.
+    "Crement": lambda n: (
+        (
+            _crement_worst(n) if n >= 3 else "1101",
+            "01" + "0" * ((1 << n) - 2),
+        )
+        if n >= 2
+        else ()
+    ),
     # A one closing each block of 2^k: n - 2 copy jumps in a row.
     "Decleq": lambda n: (
         "".join("0" * (2**k - 1) + "1" for k in range(n - 1, 0, -1)) + "00",

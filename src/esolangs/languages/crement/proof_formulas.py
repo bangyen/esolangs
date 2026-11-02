@@ -1,14 +1,30 @@
 """Snapshot-bit bounds."""
 
 
-def _crement(n: int, _: str) -> int:
-    """The whole program; P bounds the shared nodes, N the instructions."""
-    bl = int.bit_length
-    p = sum(
+def lines(n: int) -> int:
+    """The line maximum; named presets remove the old maxima below three."""
+    if n <= 2:
+        return 5 if n == 1 else 13
+    return 3 * _nodes(n) + 2 * n + 3
+
+
+def execution(n: int, _: str) -> int:
+    """Worst halting path; all larger witnesses retain the generic emitter."""
+    return 4 if n == 1 else 5 * n + 2
+
+
+def _nodes(n: int) -> int:
+    return sum(
         min(1 << k, (1 << (2 * (1 << (n - k - 1)))) - (1 << (1 << (n - k - 1))))
         for k in range(n)
     )
-    m = 3 * p + 2 * n + 3
+
+
+def _crement(n: int, _: str) -> int:
+    """The whole program; P bounds the shared nodes, N the instructions."""
+    bl = int.bit_length
+    p = _nodes(n)
+    m = lines(n)
     return (
         2 * bl(m)
         + 32

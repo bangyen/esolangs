@@ -1,7 +1,7 @@
 """Crement Boolean program generator: a decision tree over shared testers.
 
 Crement has no input instruction, so each input is embedded once as the
-*data* of a jump (:data:`PAIR`) that the tree reads by self-modification.
+*data* of a jump that the tree reads by self-modification.
 Input ``i`` owns a two-line tester (``+J 0 b`` taken when the bit is 1, then
 ``+J 0 1``) whose targets a node fills in: two ``+A`` writes patching the one-
 and zero-targets to its children, then a jump into the tester.  ``+A t d``
@@ -10,33 +10,40 @@ to the root, the halt, ``+J @ 1`` (a one-step cycle), ``2 n`` tester lines,
 then the nodes, zero subtree first; constant subtrees fold to the two gadgets.
 A child is only an address, so a subtree equal to one already emitted at its
 level is named, not re-emitted, and a node with equal halves is skipped.
+Parity and thresholds initialize each tester to its first node at that level.
+That node is the tester itself; other nodes patch only differing targets.
 
 Size:
     At most ``5 n + 2`` executed commands over ``3 (2**n - 1) + 2 n + 3`` lines;
-    n=10 parity: 633 chars, n=10 random 1847: 6,283 chars.
+    n=10 parity: 398 chars, n=10 random 1847: 6,283 chars.
     Constants: n+1 instructions, one step to halt or repeat; n=8: 62 chars.
 
 Decisions:
-    Sharing cuts the 256 three-input tables from 38,884 to 37,120 characters
-    (4.5%) and 200 seeded five-input tables from 109,525 to 81,574 (25.5%).
+    Testers are visited at most once on a row, so their initial targets
+    remain available. Parity/threshold children are distinct: selecting the
+    first node needs no mode search. Other functions retain the patching
+    construction ([ablations.trick_prototype_20261102_preset_named]).
 """
 
 from collections.abc import Callable, Iterator
+from itertools import pairwise
 from math import isqrt
 from typing import Any
 
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
+    essential_inputs,
     grid_width,
     in_input_order,
     layout_width,
     same_tokens,
     same_up_to_wrapping,
     subtree_ids,
+    symmetric_weights,
 )
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
-from esolangs.languages.crement.proof_formulas import workspace
+from esolangs.languages.crement.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -65,8 +72,8 @@ def crement(truth_table: str, width: int | None = None) -> str:
     """Build a Crement template: one run per input, its tester's first line.
 
     Constant subtrees fold and repeated halves share code. Splits stay in
-    input order. Below six columns, whitespace separates fields and only
-    tester data is filled.
+    input order. Preset testers fill only data; below six columns, other
+    templates use that field form too.
     """
     n = _validate_truth_table(truth_table)
     if truth_table == truth_table[0] * len(truth_table):
@@ -87,9 +94,8 @@ def _narrow(template: str, width: int) -> str:
             lines.append(line)
             continue
         operator, address, data = line.split()
-        lines.append(
-            f"{operator} {_short_operand(address, here)} {_short_operand(data, here)}"
-        )
+        operand = data if data == TEMPLATE_CHAR else _short_operand(data, here)
+        lines.append(f"{operator} {_short_operand(address, here)} {operand}")
     narrowed = "\n".join(lines)
     if width < 6:
         narrowed = narrowed.replace(
@@ -114,7 +120,85 @@ def _short_operand(source: str, here: int) -> str:
 
 def _crement_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     """Return one order's shared template."""
+    if _preset_family(truth_table, len(perm)):
+        return _preset_template(truth_table, perm)
     return _crement_ordered(truth_table, perm, share=True)
+
+
+type _Ref = int | tuple[int, int]
+
+
+def _preset_family(table: str, n: int) -> bool:
+    """Recognize parity and thresholds over the inputs the table retains."""
+    if len(essential_inputs(table, n)) == 1:
+        return True
+    symmetric = symmetric_weights(table, n)
+    if symmetric is None:
+        return False
+    changes = [a != b for a, b in pairwise(symmetric[1])]
+    return all(changes) or sum(changes) == 1
+
+
+def _preset_template(table: str, perm: tuple[int, ...]) -> str:
+    """Reuse each level's first tester state; parent references bypass its call."""
+    n = len(perm)
+    ids = subtree_ids(table)
+    nodes: dict[tuple[int, int], tuple[_Ref, _Ref]] = {}
+    order: list[tuple[int, int]] = []
+    defaults: dict[int, tuple[_Ref, _Ref]] = {}
+
+    def visit(level: int, block: int) -> _Ref:
+        node = ids[level][block]
+        if node < 2:
+            return node
+        if ids[level + 1][2 * block] == ids[level + 1][2 * block + 1]:
+            return visit(level + 1, 2 * block)
+        key = (level, node)
+        if key not in nodes:
+            order.append(key)
+            children = (visit(level + 1, 2 * block), visit(level + 1, 2 * block + 1))
+            nodes[key] = children
+            defaults.setdefault(level, children)
+        return key
+
+    root = visit(0, 0)
+    first = _HEADER_LINES + 2 * n
+    position: dict[tuple[int, int], int] = {}
+    end = first
+    for key in order:
+        zero, one = nodes[key]
+        z0, o0 = defaults[key[0]]
+        if (zero, one) == (z0, o0):
+            position[key] = _HEADER_LINES + 2 * perm[key[0]]
+        else:
+            position[key] = end
+            end += 1 + (zero != z0) + (one != o0)
+
+    def address(ref: _Ref) -> int:
+        if isinstance(ref, int):
+            return _LOOP + 1 if ref else _HALT + 1
+        return position[ref]
+
+    body = []
+    for key in order:
+        zero, one = nodes[key]
+        z0, o0 = defaults[key[0]]
+        if (zero, one) == (z0, o0):
+            continue
+        cell = _HEADER_LINES + 2 * perm[key[0]]
+        if one != o0:
+            body.append(f"+A {cell} {address(one) - 1}")
+        if zero != z0:
+            body.append(f"+A {cell + 1} {address(zero) - 1}")
+        body.append(f"+J {cell} 1")
+    testers = []
+    for name in range(n):
+        state = defaults.get(perm.index(name))
+        zero, one = (address(state[0]), address(state[1])) if state else (0, 0)
+        testers.extend([f"+J {one} {TEMPLATE_CHAR}", f"+J {zero} 1"])
+    return "\n".join(
+        [f"+J {address(root)} 1", f"+J {end} 1", "+J @ 1", *testers, *body]
+    )
 
 
 def _crement_ordered(
@@ -213,4 +297,5 @@ LANGUAGE = Language(
     no_wrap="jumps and patches name instruction numbers, so lines stay whole",
     example=Example(setters=crement_setters, expected=""),
     proof_workspace=(workspace, False, (3, 6)),
+    proof_execution=(execution, True, (1, 2, 3, 5)),
 )

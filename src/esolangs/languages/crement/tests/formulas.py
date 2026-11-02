@@ -1,12 +1,10 @@
-"""Crement's emitted lines: three a shared node, the header and testers."""
+"""Crement's source lines: the generic maximum survives from n=3."""
+
+from esolangs.languages.crement.proof_formulas import lines
 
 
 def _lines(n: int, _: str) -> int:
-    """N = 3P + 2n + 3, P the most unequal-halves nodes summed over levels."""
-    shared = sum(
-        min(1 << k, 4 ** (1 << (n - k - 1)) - 2 ** (1 << (n - k - 1))) for k in range(n)
-    )
-    return 3 * shared + 2 * n + 3
+    return lines(n)
 
 
-FORMULAS = {"scaling": (_lines, True, (3, 4, 5))}
+FORMULAS = {"scaling": (_lines, True, (1, 2, 3, 4, 5))}

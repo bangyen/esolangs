@@ -8,14 +8,19 @@ import pytest
 import esolangs
 from esolangs.exceptions import TruthTableError
 from esolangs.generation.helpers import TEMPLATE_CHAR, runs
-from esolangs.languages.crement.generator import PAIR, _crement_ordered, crement
+from esolangs.languages.crement.generator import (
+    PAIR,
+    _crement_ordered,
+    crement,
+    crement_setters,
+)
 from esolangs.languages.crement.interpreter import _Machine
 from esolangs.runtime._evaluate import _evaluate
 from esolangs.vm import run_until_halt_or_cycle
 from tests.generators.fills import fill
 from tests.generators.sample_tables import five_input_sample
 from tests.support.divergence import diverges
-from tests.support.witness_tables import dense
+from tests.support.witness_tables import dense, parity
 
 instantiate_crement = fill("Crement")
 
@@ -61,15 +66,27 @@ class TestCrementTree:
         assert [i for i, line in enumerate(lines) if TEMPLATE_CHAR in line] == [3, 5, 7]
         assert [line for line in lines if TEMPLATE_CHAR in line] == [run] * 3
         assert len(runs(template, TEMPLATE_CHAR, setters)) == 3
+        named = crement("01101001")
+        setters = crement_setters(named, 3)
+        assert setters == (("0", "1"),) * 3
+        assert len(runs(named, TEMPLATE_CHAR, setters)) == 3
+        assert [
+            i for i, line in enumerate(named.splitlines()) if TEMPLATE_CHAR in line
+        ] == [3, 5, 7]
 
     def test_setter_spells_the_bit_as_a_jump(self) -> None:
         """The two fills differ only in the tester's data field."""
         template = crement("0110")
         zero = instantiate_crement(template, [0, 1]).splitlines()
         one = instantiate_crement(template, [1, 1]).splitlines()
-        assert [(a, b) for a, b in zip(zero, one, strict=True) if a != b] == [
-            ("+J 0 0", "+J 0 1")
+        differences = [
+            (a.split(), b.split()) for a, b in zip(zero, one, strict=True) if a != b
         ]
+        assert len(differences) == 1
+        left, right = differences[0]
+        assert left[:2] == right[:2]
+        assert left[0] == "+J"
+        assert (left[2], right[2]) == ("0", "1")
 
     def test_one_leaf_is_a_one_step_state_cycle(self) -> None:
         """The diverging row parks on ``+J @ 1`` without writing the program."""
@@ -114,25 +131,34 @@ class TestCrementTree:
     def test_constant_subtrees_fold(self) -> None:
         """A one-dependency table is one node; parity is five, shared."""
         assert len(crement("11110000")) < len(crement("10010110"))
-        assert crement("11110000").splitlines()[9:] == ["+A 3 0", "+A 4 1", "+J 3 1"]
-        assert crement("10010110").count("\n") + 1 == 3 + 6 + 3 * 5
+        assert crement("11110000").splitlines()[9:] == []
+        assert crement("10010110").count("\n") + 1 == 15
+        _check("11110000")
+        _check("10010110")
 
-    def test_sizes_at_most_double_per_added_input(self) -> None:
-        """Seeded random templates through n=10 never more than double."""
+    def test_sizes_follow_generic_and_named_growth_routes(self) -> None:
+        """Pin seeded sizes and check growth within each construction."""
         tables = [
             format(random.Random(n).getrandbits(2**n), f"0{2**n}b")
             for n in range(1, 11)
         ]
         sizes = [len(crement(table)) for table in tables]
-        assert sizes == [13, 20, 128, 278, 416, 681, 1229, 2102, 3456, 6551]
+        assert sizes == [13, 20, 84, 278, 416, 681, 1229, 2102, 3456, 6551]
+        # Random(3) is a two-input XOR. Keep its pin, but compare generic
+        # growth with an asymmetric three-input table on the same route.
+        sizes[2] = len(crement("00110110"))
         ratios = [b / a for a, b in pairwise(sizes)]
         assert all(r <= 2.25 for r in ratios[2:]), ratios
         assert all(1.6 <= r <= 2 for r in ratios[-3:]), ratios
+        named = [len(crement(parity(n))) for n in range(3, 11)]
+        assert all(b <= 2.25 * a for a, b in pairwise(named))
 
-    def test_level_patches_the_chosen_inputs_tester(self) -> None:
-        """A table on the last input alone is one node calling its tester."""
+    def test_initial_tester_uses_the_chosen_input(self) -> None:
+        """Entry names the retained input's initialized tester."""
         template = crement("10101010")
-        assert template.splitlines()[9:] == ["+A 7 0", "+A 8 1", "+J 7 1"]
+        assert template.splitlines()[0] == "+J 7 1"
+        assert template.splitlines()[9:] == []
+        _check("10101010")
         assert len(template) < len(_crement_ordered("10101010", (0, 1, 2)))
 
     @pytest.mark.parametrize("n", [2, 3])
@@ -146,10 +172,10 @@ class TestCrementTree:
             after = len(crement(table))
             assert after <= before, table
             old, new = old + before, new + after
-        assert (old, new) == {2: (1416, 1274), 3: (42580, 37050)}[n]
+        assert (old, new) == {2: (1416, 928), 3: (42580, 35592)}[n]
 
     def test_runs_a_handful_of_commands_per_input(self) -> None:
-        """One node per level: a halting row runs ``5 n + 2`` commands at most."""
+        """Initialized complemented AND uses one tester per bit."""
         for n in (2, 4, 6):
             template = crement("1" * (2**n - 1) + "0")
             machine = _Machine(instantiate_crement(template, [1] * n))
@@ -157,7 +183,7 @@ class TestCrementTree:
             while not machine.halted:
                 machine.step()
                 steps += 1
-            assert steps == 4 * n + 2
+            assert steps == n + 2
 
 
 class TestCrementSharing:
@@ -176,12 +202,12 @@ class TestCrementSharing:
         return before, after
 
     def test_three_input_total(self) -> None:
-        """All 256 three-input tables: 43,596 to 37,862 characters, 13.2%."""
+        """All three-input tables pin the plain/shared/preset construction."""
         tables = [format(i, "08b") for i in range(256)]
-        assert self._totals(tables) == (42580, 37050)
+        assert self._totals(tables) == (42580, 35592)
 
     def test_five_input_sample_total(self) -> None:
-        """200 seeded five-input tables: 127,301 to 84,600 characters, 33.5%."""
+        """The seeded five-input sample stays on the generic shared route."""
         assert self._totals(five_input_sample()) == (122316, 81574)
 
     def test_a_shared_copy_is_patched_by_whoever_enters(self) -> None:
@@ -252,13 +278,17 @@ class TestCrementSweepPins:
             max(map(len, program.split("\n"))),
         ) == (11758, 1294, 10)
 
-    def test_width_six_keeps_the_full_tester_placeholder(self) -> None:
+    def test_width_six_preserves_preset_and_generic_setters(self) -> None:
         program = crement("0110", width=6)
         assert (
             len(program),
             program.count("\n") + 1,
             max(map(len, program.split("\n"))),
-        ) == (113, 18, 6)
+        ) == (70, 11, 6)
+        assert crement_setters(program, 2) == (("0", "1"),) * 2
+        generic = crement("00110110", width=6)
+        assert crement_setters(generic, 3) == (PAIR,) * 3
+        assert len(runs(generic, TEMPLATE_CHAR, (PAIR,) * 3)) == 3
 
     def test_balanced_shape_is_pinned(self) -> None:
         program = str(
