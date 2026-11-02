@@ -9,7 +9,9 @@ Past 15 inputs, blocks of ``2^15`` rows reload ``W`` behind a sentinel
 
 Size:
     Through 15 inputs, 7n + 12 chars plus 7 and the row's digits per change
-    point; 5T + 6n + 6 steps at most; n=10 parity: 6,846 chars (was 9,289),
+    point; constants use 3n+2 chars, n+2 commands and
+    256+bl(n+2)+bl(2n-1) written bits at most.
+    5T + 6n + 6 steps at most; n=10 parity: 6,846 chars (was 9,289),
     n=10 random 1847: 5,287 chars (was 7,405).
 
 Decisions:
@@ -31,6 +33,8 @@ _LOAD = ",0+.0+,1."
 def what(truth_table: str) -> str:
     """Build a What!? program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
+    if len(set(truth_table)) == 1:
+        return "?? " * (n - 1) + f"??{truth_table[0]}!!"
     low = min(n, _LOW_INPUTS)
     high = n - low
     block = 1 << low
@@ -54,7 +58,7 @@ def what(truth_table: str) -> str:
 
 
 #: Break between tokens, never inside a literal, a ``?`` run or a test.
-_wrap = TokenWrapper(r'\[(?:\d+>|"[01]+":)|\d+|\?+|[\s\S]')
+_wrap = TokenWrapper(r'\[(?:\d+>|"[01]+":)|\d+|[?!]+|[\s\S]')
 
 
 LANGUAGE = Language(

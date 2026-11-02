@@ -60,6 +60,7 @@ def test_literal_product_keeps_ignored_inputs(table: str, width: int | None) -> 
 
 @pytest.mark.medium
 def test_every_three_input_function_executes_through_png() -> None:
+    _check_constants()
     total = 0
     for encoded in range(256):
         truth_table = f"{encoded:08b}"
@@ -82,7 +83,7 @@ def test_every_three_input_function_executes_through_png() -> None:
     # Parent table lookup emitted 38,997 codels over this exhaustive corpus.
     # The halved lookup (retired 2026-10-28) held this at 34,062; storing the
     # complement past half zeros brings it to 33,882.
-    assert total == 33_882
+    assert total == 33_870
 
 
 @pytest.mark.slow
@@ -249,7 +250,7 @@ def test_compact_folds_execute_without_growing() -> None:
                 total += score(image)[1]
     # 40,868 under |width - height| first; max(width, height) first: 40,574.
     # The sum form and complemented lookup (2026-10-28): 40,256.
-    assert total == 40_256
+    assert total == 40_244
 
 
 @pytest.mark.parametrize("width", [13, 19, 30])
@@ -262,3 +263,67 @@ def test_compact_turns_and_halt_execute(width: int) -> None:
 def test_compact_majority_is_smaller() -> None:
     image = esolangs.generate("Piet", "00010111", balance=True)
     assert (len(image.rows[0]), len(image.rows)) == (20, 9)
+
+
+def _check_constants() -> None:
+    from esolangs.languages.piet.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Piet", bit * (1 << n), **options)
+                if not options:
+                    assert len(program.rows) * len(
+                        program.rows[0]
+                    ) <= 6 * n + 12 - 3 * int(bit)
+                peak = 0
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    stdin = esolangs.encode_inputs(
+                        "Piet", list(map(int, f"{row:0{n}b}"))
+                    )
+                    io = ReadFirstIO(stdin + "\n7\n")
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps < 1000
+                    assert io.getvalue() == bit
+                    assert io.past_end == 0
+                    assert io.input_num() == 7
+                    if not options:
+                        assert steps == 2 * n + 3 - int(bit)
+                        assert (
+                            written.bits
+                            <= 4
+                            + (2 * n + 3 - int(bit)).bit_length()
+                            + (2 * n - 1).bit_length()
+                            + n.bit_length()
+                        )
+                        peak = max(peak, written.bits)
+                if not options:
+                    assert (
+                        peak
+                        == 4
+                        + (2 * n + 3 - int(bit)).bit_length()
+                        + (2 * n - 1).bit_length()
+                        + n.bit_length()
+                    )
+
+                if not options:
+                    scaled = esolangs.generate("Piet", bit * (1 << n), scale=3)
+                    assert len(scaled.rows) == 3 * len(program.rows)
+                    assert len(scaled.rows[0]) == 3 * len(program.rows[0])
+                    assert esolangs.run("Piet", scaled, stdin="1\n" * n) == bit

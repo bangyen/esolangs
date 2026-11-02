@@ -100,8 +100,10 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 @pytest.mark.parametrize("bit", "01")
 def test_constant_leaf_preserves_shape_and_input_consumption(n: int, bit: str) -> None:
     """A constant needs only input discards and the printed literal."""
+    if n == 1 and bit == "0":
+        _check_constants()
     program = boolean.bfstack(bit * (1 << n))
-    assert len(program) == 2 * n + 51 + int(bit)
+    assert len(program) == 2 * n + 50 + int(bit)
     for row in range(1 << n):
         assert run_bfstack(program, list(format(row, f"0{n}b"))) == bit
     stdin = esolangs.encode_inputs("BFStack", [1] * n) + "0"
@@ -109,7 +111,7 @@ def test_constant_leaf_preserves_shape_and_input_consumption(n: int, bit: str) -
 
 
 def test_small_tables_do_not_grow_and_execute() -> None:
-    """The n=3 total is 59,249 characters."""
+    """The n=3 total is 59,247 characters."""
     from esolangs.languages.bfstack.generator import _bfstack_small
 
     total = 0
@@ -122,4 +124,51 @@ def test_small_tables_do_not_grow_and_execute() -> None:
                 total += len(program)
             for row, expected in enumerate(table):
                 assert run_bfstack(program, list(format(row, f"0{n}b"))) == expected
-    assert total == 59_249
+    assert total == 59_247
+
+
+def _check_constants() -> None:
+    from esolangs.languages.bfstack.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("BFStack", bit * (1 << n), **options)
+                if not options:
+                    assert len(program.replace("\n", "")) == 2 * n + 50 + int(bit)
+                peak = 0
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    stdin = esolangs.encode_inputs(
+                        "BFStack", list(map(int, f"{row:0{n}b}"))
+                    )
+                    io = ReadFirstIO(stdin + "7")
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps < 1000
+                    assert io.getvalue() == bit
+                    assert io.past_end == 0
+                    assert io.input_char() == ord("7")
+                    if not options:
+                        assert steps == 2 * n + 50 + int(bit)
+                        assert (
+                            written.bits
+                            <= 6 + len(program).bit_length() + n.bit_length()
+                        )
+                        peak = max(peak, written.bits)
+                if not options:
+                    assert peak == 6 + len(program).bit_length() + n.bit_length()

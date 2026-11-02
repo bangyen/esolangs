@@ -28,6 +28,7 @@ _SUBTRACT = (1, 1)
 _MULTIPLY = (1, 2)
 _NOT = (2, 2)
 _POINTER = (3, 1)
+_DUPLICATE = (4, 0)
 _ROLL = (4, 1)
 _IN_NUMBER = (4, 2)
 _OUT_NUMBER = (5, 1)
@@ -95,6 +96,17 @@ def _candidates(truth_table: str, inputs: int) -> list[list[_Operation]]:
     Every input is read, but only the essential ones index the table: an
     ignored input is popped, and the stored table is projected onto the rest.
     """
+    if len(set(truth_table)) == 1:
+        operations = [_Operation(_IN_NUMBER), _Operation(_POP)] * (inputs - 1)
+        operations.append(_Operation(_IN_NUMBER))
+        # Subtract the last bit from itself for zero; one needs only a push.
+        operations.extend(
+            [_Operation(_DUPLICATE), _Operation(_SUBTRACT)]
+            if truth_table[0] == "0"
+            else [_push(1)]
+        )
+        operations.append(_Operation(_OUT_NUMBER))
+        return [operations]
     essential = essential_inputs(truth_table, inputs)
     truth_table = read_at(truth_table, essential, inputs)
     direct = [

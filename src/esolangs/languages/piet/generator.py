@@ -6,6 +6,8 @@ product of literals instead; see :mod:`esolangs.generation.raster_lookup`.
 
 Size:
     O(T) codels; n=10 parity: 2,226 codels, n=10 and: 66 codels.
+    Constant strips use 6n+12-3b codels (scale 1), 2n+3-b steps and
+    4+bl(2n+3-b)+bl(2n-1)+bl(n) written bits; packing can reduce the area.
 """
 
 from functools import cache

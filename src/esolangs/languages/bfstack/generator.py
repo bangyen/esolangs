@@ -7,6 +7,8 @@ the zero rows; wider tables branch on the leading input into blocks.
 Size:
     O(T) chars; parity and and are linear in n.  n=10 parity: 633 chars,
     n=10 and: 640 chars, n=10 random 1847: 5,211 chars.
+    Constants use L=2n+50+b chars/commands, omitting the branch-only final pop;
+    written workspace 6+bl(L)+bl(n) bits.
 
 Decisions:
     No call or goto (loops nest) and the stack hides all but its top, so a
@@ -134,6 +136,8 @@ def bfstack(truth_table: str) -> str:
     when the race against the plain build is dropped.
     """
     n = _validate_truth_table(truth_table)
+    if len(set(truth_table)) == 1:
+        return _constant_leaf(n, truth_table[0])[:-1]
     symmetric = symmetric_weights(truth_table, n)
     if symmetric is None or len(symmetric[1]) > 255:
         return _bfstack_plain(truth_table)
