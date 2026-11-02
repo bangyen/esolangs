@@ -132,6 +132,12 @@ def test_early_constant_exit_does_not_dispatch_a_second_output(constant: str) ->
     assert program is not None
     _execute(table, program, [0, 3, 252, 255, 256, 259, 508, 511])
 
+    from esolangs.languages.boolfuck.generator import _Emitter, _GateTree
+
+    pending = _GateTree(constant * 4, {}, _Emitter(4, 6))
+    with pytest.raises(ValueError, match="constant cofactor reached a pending gate"):
+        pending.gate_leaf(0, 4)
+
 
 @pytest.mark.medium
 # n=16 builds sixteen full programs and runs 64 executions (~4.5-6s CPU),

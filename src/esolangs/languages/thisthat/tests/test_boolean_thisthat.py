@@ -217,6 +217,16 @@ def test_shared_residual_buses_execute_within_ledger() -> None:
         size=area,
     )
 
+    from esolangs.languages.thisthat.generator import _coalesce, _narrow_tree
+
+    narrow_plain = _narrow_tree(table, _coalesce(plain), 1)
+    narrow = thisthat(table, 1)
+    assert narrow == narrow_plain
+    for row in (0, 1, 63, 64, 127, 128, 191, 192, 255):
+        io = ScriptedIO(f"{row:08b}")
+        run(narrow.splitlines(), io)
+        assert (io.getvalue(), io.reads) == (table[row], 8)
+
 
 @pytest.mark.medium
 def test_shared_dag_rasters_and_rotations_execute_small_tables() -> None:

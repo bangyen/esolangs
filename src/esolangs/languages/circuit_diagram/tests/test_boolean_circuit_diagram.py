@@ -387,6 +387,13 @@ class TestCircuitDiagramLayoutGuards:
                 assert max(map(len, program.splitlines())) <= max(width, floor)
                 assert self._run_at(table, width) == table
 
+        from esolangs.languages.circuit_diagram.generator import _Builder, _mux
+
+        builder = _Builder()
+        assert _mux(builder, [None, None], "0", "0") == "0"
+        assert _mux(builder, [7, None], "0", "1") == 7
+        assert builder.next_signal == 0
+
     def test_banding_brings_every_arity_inside_eighty(self) -> None:
         """Which is the point: unbanded, parity clears 80 columns at n == 4."""
         from esolangs.languages.circuit_diagram.generator import circuit_diagram

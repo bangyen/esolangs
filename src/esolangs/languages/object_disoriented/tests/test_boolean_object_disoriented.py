@@ -8,6 +8,7 @@ import esolangs
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
 
 
+@pytest.mark.medium
 @pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
@@ -62,3 +63,14 @@ def _check_native_constants() -> None:
                     assert written.bits == 48 + 2 * n.bit_length()
                     assert io.getvalue() == bit
                     assert io.input_char() == ord("Q")
+
+    from itertools import islice
+
+    from esolangs.languages.object_disoriented.generator import _NAME_CHARS, _names
+
+    base = len(_NAME_CHARS)
+    rank = sum(
+        _NAME_CHARS.index(char) * base ** (3 - i) for i, char in enumerate("main")
+    )
+    before = sum(base**size for size in (1, 2, 3)) + rank - 1
+    assert list(islice(_names(), before, before + 2)) == ["maim", "maio"]

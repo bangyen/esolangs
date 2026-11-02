@@ -395,7 +395,7 @@ def test_binary_selector_skips_a_bank_whose_word_exceeds_the_workspace_budget() 
     assert best_binary_bank(table, _sstack_tree, 0, 10**9) is None
 
 
-def test_binary_bank_refuses_a_drifted_inline_builder() -> None:
+def test_binary_bank_refuses_a_drifted_inline_builder(monkeypatch) -> None:
     from esolangs.languages.sstack.generator import _sstack_tree
     from esolangs.languages.sstack.generator._binary import binary_bank
 
@@ -405,6 +405,20 @@ def test_binary_bank_refuses_a_drifted_inline_builder() -> None:
 
     with pytest.raises(ValueError, match="builder disagrees"):
         binary_bank("00010110", ((1, 0), (1, 4)), drifted)
+
+    from dataclasses import replace
+
+    from esolangs.languages.sstack.generator._binary import _price
+
+    def drifted_price(*args):
+        plan = _price(*args)
+        return replace(plan, metric=replace(plan.metric, chars=plan.metric.chars + 1))
+
+    monkeypatch.setattr(
+        "esolangs.languages.sstack.generator._binary._price", drifted_price
+    )
+    with pytest.raises(ValueError, match="emitted SStack bank disagrees"):
+        binary_bank("00010110", ((1, 0), (1, 4)), _sstack_tree)
 
 
 def test_check_runs_the_formula_case_bounds_measures() -> None:

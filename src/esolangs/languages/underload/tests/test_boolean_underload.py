@@ -128,6 +128,14 @@ def test_short_selectors_keep_public_provenance_and_uniform_width(width: int) ->
     with pytest.raises(esolangs.TemplateError, match="not the template"):
         esolangs.instantiate("Underload", template, [0, 1], truth_table="0001")
 
+    from esolangs.languages.underload.generator import _same_layout
+
+    plain = underload(table)
+    assert _same_layout(template, plain, lambda width: underload(table, width))
+    assert not _same_layout(
+        template + "+", plain, lambda width: underload(table, width)
+    )
+
 
 def test_short_selector_floor_and_actual_narrow_corpus() -> None:
     template = underload("0110", 1)

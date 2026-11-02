@@ -45,7 +45,7 @@ def test_false_stores_repeated_halves_and_skips_equal_ones() -> None:
 
 
 @pytest.mark.medium
-def test_false_runs_out_of_variables_and_writes_the_rest_inline() -> None:
+def test_false_runs_out_of_variables_and_writes_the_rest_inline(monkeypatch) -> None:
     """Past 26 repeated halves the rest stay written out, and still run."""
     import random
 
@@ -53,6 +53,22 @@ def test_false_runs_out_of_variables_and_writes_the_rest_inline() -> None:
     program = _shared(table, 9)
     assert all(f"]{name}:" in program for name in "abcdefghijklmnopqrstuvwxyz")
     assert verify_generated("FALSE", table)
+
+    # Simulate a high input position without constructing a 2**27-entry table.
+    monkeypatch.setattr(
+        "esolangs.languages.false.generator.essential_inputs", lambda *_: [26]
+    )
+
+    def reject_expression(*_args, **_kwargs):
+        raise AssertionError("expression variable exceeds the alphabet")
+
+    monkeypatch.setattr(
+        "esolangs.languages.false.generator._expression", reject_expression
+    )
+    assert false(table) == program
+    for row in (0, 1, 127, 255, 511):
+        output = esolangs.run("FALSE", program, stdin=f"{row:09b}", max_steps=10000)
+        assert output == table[row]
 
 
 @pytest.mark.medium
