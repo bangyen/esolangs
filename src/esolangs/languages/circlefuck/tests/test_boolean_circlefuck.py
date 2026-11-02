@@ -30,6 +30,7 @@ def test_constant_reads_into_spent_code_and_prints_a_literal_tail(n, bit) -> Non
 
     if n == 1 and bit == "0":
         _check_constants()
+        _check_reader()
     table = bit * (1 << n)
     program = esolangs.generate("Circlefuck", table)
     assert program == "," * n + "<.@" + bit
@@ -133,3 +134,46 @@ def _check_constants() -> None:
                     assert io.reads == n
                     assert io.past_end == 0
                     assert io.input_char() == ord("7")
+
+
+def _check_reader() -> None:
+    from esolangs.languages.circlefuck.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value):
+            assert self.reads == 3
+            super()._write(value)
+
+    total = 0
+    for value in range(256):
+        table = f"{value:08b}"
+        program = str(esolangs.generate("Circlefuck", table))
+        total += len(program)
+        for row in range(8):
+            io = ReadFirstIO(f"{row:03b}" + "7")
+            run(program, io)
+            assert io.getvalue() == table[row]
+            assert io.past_end == 0
+            assert io.input_char() == ord("7")
+    assert total == 34090
+
+    from esolangs.languages.circlefuck.interpreter import _Machine
+    from esolangs.languages.circlefuck.proof_formulas import execution, workspace
+    from scripts.benchmark import WrittenState
+
+    table = "00110110"
+    for options in ({}, {"width": 1}, {"balance": True}):
+        program = str(esolangs.generate("Circlefuck", table, **options))
+        io = ReadFirstIO("1117")
+        machine = _Machine(program, io)
+        written = WrittenState(machine.snapshot())
+        steps = 0
+        while not machine.halted:
+            machine.step()
+            written.sample(machine.snapshot())
+            steps += 1
+        assert steps == execution(3, program)
+        assert written.bits == workspace(3, program)
+        assert io.getvalue() == table[7]
+        assert io.input_char() == ord("7")

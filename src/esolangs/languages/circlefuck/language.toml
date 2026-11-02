@@ -12,19 +12,20 @@ bf_derivative = true
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the tape is the program, so the table is its tail past the `@` that stops the run, entry 0 abutting the index digits at the ring's end; `}` deletes the cell under the pointer and slides the digits down into it, so counting the index out against one `}` apiece leaves the entry it names under the pointer"
-scaling = "linear: worst N characters: the table, 40n of reads, digit-cell walks"
-execution = "linear: worst (2n+13)T + 94n + 89 + 2S to n = 7, S the codes of program characters 1..n"
-workspace = "linear: worst 6L + 12n + 7 + bl(L-1) + bl(L-T-2) + bl(n) bits: the program is the tape"
+scaling = "linear: worst N characters: the table, batched clamped reads, digit-cell walks"
+execution = "linear: worst E commands to n=7: indexed deletion and clamped reads"
+workspace = "linear: worst B + bl(L-1) + bl(h) + bl(n) + 1 bits: tape and cursors"
+definitions = ["E = (2n+13)T+68n+232+2C from n=3, otherwise (2n+13)T+94n+89+2S; C=source[n+1], S=sum(source[1:n+1]); source=parsed bytes", "B = sum of initial tape-byte bit widths; h = halt @ offset"]
 
 [generator_sizes]
-"00000001" = { commands = 895, commands_by_row = { "0" = 826, "1" = 851, "2" = 849, "3" = 874, "4" = 847, "5" = 872, "6" = 870, "7" = 895 }, source_units = 166 }
-"00001100" = { commands = 902, commands_by_row = { "0" = 827, "1" = 839, "2" = 850, "3" = 862, "4" = 867, "5" = 879, "6" = 890, "7" = 902 }, source_units = 159 }
-"00110110" = { commands = 981, commands_by_row = { "0" = 830, "1" = 855, "2" = 874, "3" = 899, "4" = 912, "5" = 937, "6" = 956, "7" = 981 }, source_units = 174 }
+"00000001" = { commands = 626, commands_by_row = { "0" = 572, "1" = 592, "2" = 590, "3" = 610, "4" = 588, "5" = 608, "6" = 606, "7" = 626 }, source_units = 129 }
+"00001100" = { commands = 633, commands_by_row = { "0" = 573, "1" = 580, "2" = 591, "3" = 598, "4" = 608, "5" = 615, "6" = 626, "7" = 633 }, source_units = 122 }
+"00110110" = { commands = 712, commands_by_row = { "0" = 576, "1" = 596, "2" = 615, "3" = 635, "4" = 653, "5" = 673, "6" = 692, "7" = 712 }, source_units = 137 }
 "0110" = { commands = 596, commands_by_row = { "0" = 552, "1" = 575, "2" = 573, "3" = 596 }, source_units = 114 }
-"01101001" = { commands = 895, commands_by_row = { "0" = 826, "1" = 851, "2" = 849, "3" = 874, "4" = 847, "5" = 872, "6" = 870, "7" = 895 }, source_units = 166 }
-"0110100110010110" = { commands = 1134, commands_by_row = { "0" = 1038, "1" = 1065, "2" = 1063, "3" = 1090, "4" = 1061, "5" = 1088, "6" = 1086, "7" = 1113, "8" = 1059, "9" = 1086, "10" = 1084, "11" = 1111, "12" = 1082, "13" = 1109, "14" = 1107, "15" = 1134 }, source_units = 220 }
-"1101001101101101" = { commands = 1383, commands_by_row = { "0" = 1044, "1" = 1071, "2" = 1092, "3" = 1119, "4" = 1134, "5" = 1161, "6" = 1182, "7" = 1209, "8" = 1218, "9" = 1245, "10" = 1266, "11" = 1293, "12" = 1308, "13" = 1335, "14" = 1356, "15" = 1383 }, source_units = 234 }
-"11111110" = { commands = 895, commands_by_row = { "0" = 826, "1" = 851, "2" = 849, "3" = 874, "4" = 847, "5" = 872, "6" = 870, "7" = 895 }, source_units = 166 }
+"01101001" = { commands = 626, commands_by_row = { "0" = 572, "1" = 592, "2" = 590, "3" = 610, "4" = 588, "5" = 608, "6" = 606, "7" = 626 }, source_units = 129 }
+"0110100110010110" = { commands = 715, commands_by_row = { "0" = 639, "1" = 661, "2" = 659, "3" = 681, "4" = 657, "5" = 679, "6" = 677, "7" = 699, "8" = 655, "9" = 677, "10" = 675, "11" = 697, "12" = 673, "13" = 695, "14" = 693, "15" = 715 }, source_units = 165 }
+"1101001101101101" = { commands = 964, commands_by_row = { "0" = 645, "1" = 667, "2" = 688, "3" = 710, "4" = 730, "5" = 752, "6" = 773, "7" = 795, "8" = 814, "9" = 836, "10" = 857, "11" = 879, "12" = 899, "13" = 921, "14" = 942, "15" = 964 }, source_units = 179 }
+"11111110" = { commands = 626, commands_by_row = { "0" = 572, "1" = 592, "2" = 590, "3" = 610, "4" = 588, "5" = 608, "6" = 606, "7" = 626 }, source_units = 129 }
 
 [catalogue]
 folding_constant_local = "_program"  # read into an executed cell and print the tail
@@ -65,6 +66,7 @@ tables = 7
 verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 adds each banked bit into one index digit and deletes that many of n + 1 entries, raced by length against the base-128 Horner index. Parity, majority, and, or, at-least-2 and exactly-1 all 6.0% at n=4, 13.5% at n=6, 21.5% at n=7, 44.9% at n=8, 65.6% at n=10, 85.2% at n=12; a symmetric table with an ignored input 19.9% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
 
@@ -74,3 +76,33 @@ saving = 0.0
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "retained: read n characters into spent code at cell zero, then wrap to the literal answer and halt. Chars n+4, commands n+3: n=8 12 chars, 11 commands, 86 written bits; n=7 11 chars, n=12 16. Removing @ leaves both answer candidates running after 64 measured steps with extra output 0.<,, or 1.<,,; keep the halt. This rejects that candidate, not a universal optimum. n=3 corpus chars 43488 unchanged. Executed 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Owned raw IO/template checks preserve exact input use, following records and no EOF probe."
+
+[ablations.trick_prototype_20261102_shared_offset_read]
+arity = 3
+saving = 29.1771
+verdict = "kept by execution gate with the mandatory clamp: read raw bytes in1..n, subtract48 with one shared six-pass counter, then slide each clamped bit into its cleared left neighbor. This frees the scratch cell for the next input while restoring the old0..n-1 bank and pointer n. Source22n+17 instead of40n; only spent code is overwritten. Keep the old reader below n=3 because measured batch startup loses25..30 commands at n=1 and5..15 at n=2, not because of an arbitrary size cap. Every small program below3 remains byte-identical. Across every three-input table/row: commands1821184->1289816 (29.18%), no slower row or larger table; source43488->34090. Raw generic size savings on20 seeded tables n=7 are10040->7860 (21.71%), n=8 16560->14020 (15.34%), failing the declining size bar; execution is the admission basis. Both old candidates lose the same18n-17 chars, preserving plain/counted selection. Exact old reader86n+12ones+2S, batch65n+7ones+143+2C; S=sum source codes1..n, C=source code n+1. For n>=4 S>=43n,C<=93 proves every bit row faster; n=3 saves254+5ones commands. New worst E through7 is(2n+13)T+68n+232+2C. Source cap subtracts18n-17 from the old bound. Owned regressions enforce read-first output, no EOF probe and a preserved following token; underfed/invalid bytes still clamp inside the table. Constant fast path unchanged."
+
+[ablations.trick_prototype_20261102_dropped_clamp]
+arity = 8
+saving = 25.6039
+verdict = "rejected: shared normalization without clamping saves36.65%/25.60% at n=7/8 and executes valid bit rows, but violates the existing underfed/out-of-alphabet guarantee. For table01101001, input1-newline halts with no bit output; empty input and xyz/999 do not halt within100000 steps. Old and safe clamped controls halt and print1 on those cases. The accepted reader retains its clamp; no EOF or byte-convention exception."
+
+[ablations.trick_prototype_20261102_eight_bit_digit]
+arity = 8
+saving = 17.6329
+verdict = "rejected: keep base128 beyond essential width8, but use one full-byte index at width8. Actual old/new small programs and judge programs execute; n=7 is byte-identical (no gain), n=8 generic chars16560->13640 (17.63%). It cannot meet either size bar at both fixed arities and changes no three-input execution. Do not bundle it with the admitted reader to conceal zero n=7 saving."
+
+[ablations.trick_prototype_20261102_horner_on_read]
+arity = 8
+saving = 0.0000
+verdict = "rejected tested construction: after each read, fold the preceding group accumulator into the current essential bit, leaving ignored inputs untouched; retain base128 digit groups and final index transfer. Every small row and four rows per20 random tables at n=7/8 execute, but the extra walks grow source: n=3 43488->44328, n=7 10040->10280 (2.39%), n=8 16560->16800 (1.45%). A larger table also fails the execution gate. No old-candidate fallback added."
+
+[ablations.trick_prototype_20261102_workspace_accounting]
+arity = 8
+saving = 0.0000
+verdict = "corrected: the old written-state expression omitted multi-digit code and used original T for the program cursor even on projected/count tables. A real eight-input generic baseline uses5102 bits against its old5095 cap; nine inputs6975 vs6968. Count initial parsed source-byte widths B and the actual halt offset h: W=B+bl(L-1)+bl(h)+bl(n)+1 on valid bit inputs. The initial tape is the peak; bank bits lose room before index digits grow, deletions only shrink it. An incremental tracker follows actual interpreter edits and agrees with official WrittenState on all eight rows of an old/new three-input control. Boundary rows at n=8/9 attain the new exact expression: new programs4297/6055 bits. Native workspace checks3/5 pass; source/code/data/input cursors and halt flag are all included."
+
+[ablations.trick_prototype_20261102_execution_wrapping]
+arity = 3
+saving = 0.0
+verdict = "corrected: source-code terms must index parsed cells, not the wrapped string. The actual width-one program for00110110,row111 uses712 commands while the raw-string offset formula gives678. Native execution now parses source first; owned regressions check actual commands and written state on plain, width-one and balanced programs. Wrapping changes neither tape nor bounds."

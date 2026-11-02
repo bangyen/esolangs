@@ -6,8 +6,8 @@ One character an entry; a symmetric table counts its bits into one digit
 over n + 1 entries ([ablations.symmetric_count]).
 
 Size:
-    O(T) chars; n=10 random 1847: 1,704 chars, n=10 parity: 586 chars,
-    n=16 and: 1,024 chars.
+    O(T) chars; n=10 random 1847: 1,541 chars, n=10 parity: 423 chars,
+    n=16 and: 753 chars.
 
 Decisions:
     No entry can drop without clamping the index, and a literal deleted into
@@ -23,7 +23,7 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.wrap import wrap_chars
-from esolangs.languages.circlefuck.proof_formulas import execution
+from esolangs.languages.circlefuck.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -43,6 +43,27 @@ _DIGIT_BITS = 7
 _READ = ",>[-]++++++[<-------->-]<[[-]>+<]>[-<+>]"
 
 
+def _reads(n: int) -> str:
+    """Normalize together, then slide clamped bits left into their bank cells."""
+    # Batch setup loses 25..30 commands at n=1 and 5..15 at n=2.
+    if n < 3:
+        return _READ * n
+    # Raw inputs occupy 1..n; one six-pass counter subtracts 48 from each.
+    # Each clamp banks into the cleared preceding cell, freeing its own
+    # cell for the next clamp. Only already executed source is overwritten.
+    return (
+        ">"
+        + ",>" * n
+        + "[-]++++++["
+        + "<--------" * n
+        + ">" * n
+        + "-]"
+        + "<" * (n + 1)
+        + "[-]"
+        + ">[[-]<+>]" * n
+    )
+
+
 def circlefuck(truth_table: str) -> str:
     """Return a Circlefuck program computing ``truth_table`` (MSB first)."""
     return _program(truth_table)
@@ -59,7 +80,7 @@ def _program(truth_table: str) -> str:
     width = len(essential)
     cells = max(1, -(-width // _DIGIT_BITS))
     prog = ["<[-]" * cells + ">" * cells]  # the index cells are the last cells
-    prog.append(_READ * n)
+    prog.append(_reads(n))
     at = n
     for digit in range(cells):
         top = max(0, width - _DIGIT_BITS * (digit + 1))
@@ -92,7 +113,7 @@ def _counted(n: int, weights: list[int], table: str) -> str:
     A symmetric table's entries are indexed by the count, n + 1 of them
     ([ablations.symmetric_count]); each bit walks home to cell 0.
     """
-    prog = ["<[-]>", _READ * n]
+    prog = ["<[-]>", _reads(n)]
     for i in reversed(range(n)):
         prog.append("<" + (f"[-{'<' * (i + 1)}+{'>' * (i + 1)}]" if weights[i] else ""))
     return "".join([*prog, "<", _deleter(0), "<.@", table[::-1], "0"])
@@ -124,4 +145,5 @@ LANGUAGE = Language(
     eof="its input command is a no-op at EOF, as the spec says",
     empty_program="Circlefuck program cannot be empty",
     proof_execution=(execution, True, (3, 5)),
+    proof_workspace=(workspace, True, (3, 5)),
 )
