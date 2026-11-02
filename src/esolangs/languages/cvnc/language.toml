@@ -58,3 +58,10 @@ verdict = "kept for the parity family only: a leaf with no reads left reuses the
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 54.5
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: canonical constant folding and minimal spelling, exempt. Native constants read every line, floor the final bit to zero, increment for one, print numerically and fall off the end. Nested leaves retain the shared halt gadget. Default chars and commands floor(3n/2)+2+2b: n=7 30/32->12/14 (58.1%), n=8 32/34->14/16 (54.5%), n=12 38/40->20/22. n=8 commands 28/30->14/16, written workspace 26/27->9/10 bits. n=3 corpus chars 14893->14857. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged and global resource caps unchanged. Owned raw read-first checks verify exact read count and preserve the following input record."

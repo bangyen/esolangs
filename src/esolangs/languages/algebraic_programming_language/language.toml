@@ -59,3 +59,10 @@ verdict = "kept: `&` binds tighter than `|`, so the default drops the spaces and
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 47.1
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: canonical constant folding and minimal spelling, exempt. Native constants omit the unused NOT definition; zero ends at the zero-valued ordered reads prefix, one adds |1. Default chars 2n+1/3, commands 4n+3/7: n=7 32/32->15/17 (50.0%), n=8 34/34->17/19 (47.1%), n=12 42/42->25/27. n=8 commands 40/40->35/39, workspace 791/791->786/790 bits. A requested width that cannot fit the native line retains the established definition/operator layout; fitting widths retain the native line. n=3 corpus chars 9215->9183. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged and global resource caps unchanged. Owned raw read-first checks verify exact read count and preserve the following input record."

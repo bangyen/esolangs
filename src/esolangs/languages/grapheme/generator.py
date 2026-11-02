@@ -8,6 +8,7 @@ subtrees to fold or share.
 
 Size:
     O(T) letters; n=10 random 1847: 498 chars, n=16 random 1847: 20,021 chars.
+    Constants: 2n + 4 chars and commands in the default dialect.
 """
 
 from esolangs.generation.helpers import _validate_truth_table, essential_inputs, read_at
@@ -98,6 +99,8 @@ def _program(
     """Build the integer lookup, including a one-entry constant table."""
     dialect = GraphemeDialect(integer_conversion)
     n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        return "WM" * n + _grapheme_literal(int(truth_table[0]), dialect) + "Y"
     used = essential_inputs(truth_table, n)
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
     reading = set(used)

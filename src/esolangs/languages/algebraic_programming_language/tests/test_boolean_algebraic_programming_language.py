@@ -52,6 +52,7 @@ class TestAlgebraicProgrammingLanguage:
 
     def test_the_constant_zero_table_still_reads_every_input(self) -> None:
         """A table with no minterms names each input so the reads still happen."""
+        _check_constants()
         program = boolean.algebraic_programming_language("0000")
         for name in ("a", "b"):
             assert name in program
@@ -240,7 +241,7 @@ class TestAlgebraicProgrammingLanguageShapes:
         )
         three = [f"{value:08b}" for value in range(256)]
         for tables, before, after in (
-            (three, 18201, 9215),
+            (three, 18201, 9183),
             (five_input_sample(), 47399, 21733),
         ):
             inline = [
@@ -391,3 +392,36 @@ def test_a_wide_table_keeps_its_one_line_tail_under_the_frame_floor() -> None:
     for combo in (0, 1, 2, 127):
         stdin = "\n".join(format(combo, "07b")) + "\n"
         assert esolangs.run(lang, program, stdin=stdin) == table[combo] + "\n"
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.algebraic_programming_language.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate(
+                    "Algebraic Programming Language", bit * (1 << n), **options
+                )
+                for row in ("0" * n, "1" * n):
+                    io = ReadFirstIO(
+                        esolangs.encode_inputs(
+                            "Algebraic Programming Language", [int(b) for b in row]
+                        )
+                        + "7\n"
+                    )
+                    run(program, io)
+                    assert io.getvalue() == bit + "\n"
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_num() == 7

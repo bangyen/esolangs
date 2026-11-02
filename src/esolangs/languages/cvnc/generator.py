@@ -14,6 +14,7 @@ first copy's syllable with ``i``, ``æ``, ``ə`` and jumps, where shorter.
 Size:
     O(T) for dense tables, near-linear in n for parity; n=10 parity: 317
     chars, n=10 random 1847: 5,215 chars, n=12 random 1847: 22,086 chars.
+    Constants: floor(3n/2) + 2 + 2b chars and commands.
 
 Decisions:
     Hoisting the reads into the deque to test in any order saves 4.87% at n=8,
@@ -367,6 +368,10 @@ def cvnc(truth_table: str) -> str:
     # A tree over the inputs that matter, its ignored reads bare, against the
     # full tree, whose sharing is sometimes the shorter; a tie keeps the full.
     n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        return _render(
+            [_READ] * n + [_NORMALIZE] + [_INCREMENT] * int(truth_table[0]) + [_PRINT]
+        )
     weights, table = input_weights(truth_table, n)
     shapes = [(truth_table, [1] * n)]
     if 1 < len(table) < len(truth_table):

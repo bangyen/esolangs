@@ -58,3 +58,10 @@ verdict = "replaced 2026-10-29 by a rule: the min-length race over four packings
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 46.7
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: canonical constant folding and minimal spelling, exempt. Read/drop each input line, then push and print the answer literal using the selected integer-conversion dialect. Default chars and commands 2n+4: n=7 35/36->18/18 (49.3%), n=8 37/38->20/20 (46.7%), n=12 45/46->28/28. n=8 written workspace 363/371->217/217 bits. Both integer-conversion dialects execute both constants n=1..12. n=3 corpus chars 18136->18101. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged and global resource caps unchanged. Owned raw read-first checks verify exact read count and preserve the following input record."

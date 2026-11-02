@@ -42,11 +42,12 @@ class TestCvnc:
 
     def test_a_constant_table_folds_to_one_leaf_but_keeps_its_reads(self) -> None:
         """Folding drops the branches, never the reads."""
+        _check_constants()
         for table in ("00000000", "11111111"):
             program = boolean.cvnc(table)
             assert program.count("s") == 3  # still three inputs consumed
             assert _branches(program) == 0  # nothing left to branch on
-            assert _leaves(program) == 1  # one leaf for the whole table
+            assert _leaves(program) == 0  # root constants fall off after output
 
     def test_a_one_dependency_table_costs_two_leaves(self) -> None:
         """Depending on one input collapses the other two levels."""
@@ -162,8 +163,8 @@ class TestCvncSharing:
     def test_three_input_total(self) -> None:
         """Three-input retirement stays within five percent of the original."""
         tables = [format(i, "08b") for i in range(256)]
-        assert self._totals(tables) == (15_834, 14_893)
-        assert 14_893 * 100 < 14_621 * 105
+        assert self._totals(tables) == (15_834, 14_857)
+        assert 14_857 * 100 < 14_621 * 105
 
     def test_five_input_sample_total(self) -> None:
         """Five-input sharing totals; the retired hoist cost 4.87% at n=8."""
@@ -247,3 +248,32 @@ class TestCvncScalingBound:
             n = len(table).bit_length() - 1
             assert len(boolean.cvnc(table)) <= 18 + _closed(table), table
             assert _closed(table) <= 17 * 2 ** (n - 1) - 5
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.cvnc.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("CV(N)(C)", bit * (1 << n), **options)
+                for row in ("0" * n, "1" * n):
+                    io = ReadFirstIO(
+                        esolangs.encode_inputs("CV(N)(C)", [int(b) for b in row])
+                        + "7\n"
+                    )
+                    run(program, io)
+                    assert io.getvalue() == bit
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_num() == 7

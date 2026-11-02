@@ -20,6 +20,7 @@ from tests.support.generator_support import evaluate_generated
 class TestGrapheme:
     def test_there_is_no_branch_left(self) -> None:
         """Indexing a literal needs no skip: parity emits no ``U``/``V``/``X``."""
+        _check_constants()
         parity = boolean.grapheme("01101001")
         assert set("UVX").isdisjoint(parity)
         assert set("UVX").isdisjoint(boolean.grapheme("0" * 8))
@@ -77,6 +78,16 @@ class TestGraphemeTable:
 
 @pytest.mark.parametrize("mode", ["between_letters", "after_each_letter"])
 def test_generator_literals_are_exact(mode) -> None:
+    from esolangs.languages.grapheme.generator import grapheme
+
+    for n in range(1, 13):
+        for bit in "01":
+            program = grapheme(bit * (1 << n), integer_conversion=mode)
+            io = ScriptedIO(esolangs.encode_inputs("Grapheme", [1] * n) + "7\n")
+            run(program, io, integer_conversion=mode)
+            assert io.getvalue() == bit
+            assert io.reads == n
+            assert io.input_char() == ord("7")
     dialect = GraphemeDialect(integer_conversion=mode)
     for value in (0, 1, 2, 5, 13, 16, 106, 1006, 1263460, 5666666, 9999996):
         io = ScriptedIO("")
@@ -85,3 +96,32 @@ def test_generator_literals_are_exact(mode) -> None:
     io = ScriptedIO("")
     run(_grapheme_push65(dialect) + "Y", io, integer_conversion=mode)
     assert io.getvalue() == "65"
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.grapheme.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Grapheme", bit * (1 << n), **options)
+                for row in ("0" * n, "1" * n):
+                    io = ReadFirstIO(
+                        esolangs.encode_inputs("Grapheme", [int(b) for b in row])
+                        + "7\n"
+                    )
+                    run(program, io)
+                    assert io.getvalue() == bit
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_char() == ord("7")

@@ -11,7 +11,7 @@ continue an expression across lines.
 
 Size:
     O(T) chars.  n=10 parity: 192 chars, n=10 and: 56 chars, n=10 random
-    1847: 2,498 chars.
+    1847: 2,498 chars. Constants: 2n + 1/3 chars and 4n + 3/7 steps.
 
 Decisions:
     A greedy input order saves 4.8% at n=8, under the 10% bar, so the order
@@ -59,6 +59,11 @@ def algebraic_programming_language(truth_table: str, width: int | None = None) -
 
     ``width`` splits the tree into definitions; the harness feeds 0 or 1.
     """
+    n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        literal = _reads(n, "&") + ("|1" if truth_table[0] == "1" else "")
+        if width is None or len(literal) <= width:
+            return literal
     if width is not None:
         return in_input_order(
             truth_table, lambda table, perm: _apl_narrow_layout(table, perm, width)[0]
