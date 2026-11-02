@@ -764,7 +764,7 @@ exact range (2026-10-23, counted from the ledger):
   Crement, Pointless, S-BLEQ (1.002x: cell bits plus 6n, packed
   route sampled to n = 10) and Underload workspace;
   Painfuck workspace (slack 1
-  at n = 3..6, never 0); Decleq scaling (8, 10, 14 short at n = 2..4,
+  at n = 3..6, never 0); Decleq scaling (historical before 2026-11-02 jump threading: 8, 10, 14 short at n = 2..4,
   exhaustive); Bitdeque scaling (GOTO digits by layout; 358 against
   400 at n = 4, exhaustive); 3x workspace (exact key bits; 1.3-1.5x at n = 3..6, 1.8x at n = 9);
   Malbolge workspace (about 470 data-dependent re-encipher widths, the

@@ -33,8 +33,9 @@ non-root state has an incoming edge, so $E-(S-1)$ is precisely the sum of
 incoming multiplicities beyond the first. The no-joins exit therefore means
 there is no remaining merge to draw, not that a residual-count cap was hit.
 
-Default generation compares the streaming fold with the existing tree
-and projection fallback. It has no node-count or sharing cutoff. No
+Default generation compares the streaming fold with a projected-inline
+fallback from six inputs; through five it retains the loaded tree and
+projection fallback. It has no node-count or sharing cutoff. No
 input-order search is performed. A joint ablation of the earlier
 seven-geometry race (forward, destination, streaming, centered, median,
 packed, projected) kept the streaming fold: on symmetric tables it alone
@@ -108,16 +109,43 @@ work.
 
 Rejected candidates retain only $O(M+n)$ nodes and segments. They never
 expand a rectangle or a long segment into grid cells. A selected drawing is
-no larger than the tree fallback. Alternating perpendicular subtree extents
-bound each tree side by $O(2^{n/2})$: two decision levels double a side,
-with an additive $O(n)$ bound for intervening pointer moves. Solving the
-recurrence $s(n)\le2s(n-2)+O(n)$ gives that bound. The loader adds $O(n)$,
-which does not change it. The fallback rectangle is therefore $O(T)$.
+no larger than the tree fallback. For the projected-inline tree, let $m$
+inputs be essential and $k=n-m$
+ignored. Each reader stem contains at most $k+1$ reads and one move;
+leaf drains add at most $k$ reads and two moves. Alternating perpendicular
+forks bound both sides by $O((k+1)2^{m/2})$. Thus the rectangle has area
+$O((k+1)^2 2^m)=O(T)$, since $(k+1)^2/2^k\le9/4$.
+The same inequality bounds construction work: at most $O(k+1)$ operations
+per node over $O(2^m)$ nodes. Canonical projection and residual identities
+cost $O(T)$; no new order or routing search is introduced.
 Selected segments overlap only at bounded-degree crossings and joins, so
 painting, row conversion and PNG output cost their $O(T)$ emitted area. No
 linear-area claim is made for an unselected complete bus.
 
 ## Execution and written workspace
+
+A projected-inline fork consumes the physical inputs since the preceding
+kept input, overwriting its next kept cell until that essential bit arrives.
+The next fork advances one cell. At the leaf, trailing ignored inputs are
+read into one spare cell, then the pointer returns to the saved kept bit.
+Correction and output follow all reads. Induction on kept inputs proves
+input order, full consumption and the table's answer. With $m>0$ kept bits,
+there are $n$ reads, $m-1$ moves, $m$ tests, at most one correction, output
+and halt: $n+2m+2$ commands, plus two moves if a tail is drained. A nonempty
+tail implies $m\le n-1$, so either case costs at most $3n+2$. Constants keep
+the existing read-first $n+4$ chain. The small construction is unchanged.
+These command improvements concern
+default generation. The legacy balanced feasibility layouts retain their
+$5n$ bound; balance may additionally retain a better default raster. At
+eight inputs, OR still balances to $900\times1880$ rather than accepting
+the narrower but taller $260\times5200$ streaming default.
+
+The spare is cell $m$ only when a tail exists, hence below $n$; all values
+remain bits. A binary tree uses at most $2^{m+1}-1\le2T$ extracted frames.
+Its longest reader/drain frame has at most $n+3\le3n-2$ operations for
+$n\ge6$. Thus the previous frame-index, opcode-index, tape and input-cursor
+workspace bounds below still apply. The stated numerical workspace envelope
+is retained as an upper bound; its old n=5 exact witness is unchanged.
 
 A streaming state overwrites original cell zero with its next input. Its
 fork tests that bit; an equal-half state continues without testing.
@@ -152,6 +180,10 @@ native extracted frames and written snapshots, not retained generator
 metadata.
 
 ## Executed evidence
+
+The following measurements predate projected-inline fallback admission; their
+old fallback pixel counts are historical. The inline ablation records the
+new fixed cohort and its deliberate raster-area cost.
 
 The fixed cohort contains 200 eight-input tables from `Random(19)`, using
 successive `choice("01")` calls. For each table, both complete geometries

@@ -1,33 +1,22 @@
 """Line Boolean program generator: a ``?`` tree over inputs read into cells.
 
-Line's ``i`` reads a whole number and ``o`` prints one, so 0/1 is what ``IO``
-hands over and no ASCII offset enters.  Reads each input into its own cell,
-then walks a ``?`` tree testing only the inputs its subtree depends on:
-through five inputs a level whose halves agree is skipped, so a constant is
-one leaf and an ignored input is read but never tested; from six inputs
-every level is tested, the skipped tree's extents growing past the tested
-tree's there.  A leaf prints the cell it just tested, after
-one ``+`` or ``-`` when the entry differs from that bit; a constant prints the
-unread cell ``n``.  Arms use measured subtree extents with one cell of
-clearance for forward-only subtrees, two otherwise.
+Line's ``i`` reads a number and ``o`` prints one. Through five inputs,
+inputs are loaded into separate cells before a pruned decision tree. From
+six inputs, essential inputs are read on their test stems; ignored reads
+overwrite the next kept cell, and trailing ignores drain through a spare
+cell before the saved answer is printed. Reads follow physical input order.
 
-Candidates compete by emitted area; the smallest wins:
+The projected inline tree bounds default area. A complete input-order
+residual fold replaces it when no larger; equal residuals share stems and
+constant residuals drain their remaining reads. A complete fold wins ties.
 
-- Projected loader: stores only essential inputs; ignored reads overwrite the
-  next kept slot, or one spare slot after the last kept input.
-- Ordered residual folds: share forward joins; the saved loader rewind pays
-  for join transitions, and measured area must beat the tree.  Shared
-  destination moves allow narrower nonterminal forks.
-- Input-order streaming: shares reads on stems, overwriting cell zero and
-  draining constant tails; its fresh output cell stays within the original
-  tape.
-
-Complete folds win fallback area ties; larger drawings retain the smaller
-fallback.
+Inline trees use at most 3n+2 commands and complete folds at most 3n+4,
+against the preceding 5n default bound. Balanced feasibility layouts retain
+5n; n<=5 retains its previous construction.
 
 Size:
     Parity and and grow linearly in n, random in T; n=10 parity: 1,892,800
-    codels, n=10 and: 1,691,200 codels, n=8 random 1847: 16,147,200 codels.
+    pixels, n=10 and: 1,691,200 pixels, n=8 random 1847: 23,976,000 pixels.
 """
 
 from __future__ import annotations
@@ -58,7 +47,7 @@ from esolangs.languages.line.generator.render import _UNIT, Canvas, _check_unit
 from esolangs.languages.line.generator.shared import CanvasPlan
 from esolangs.languages.line.generator.small_tree import small_tree_canvas
 from esolangs.languages.line.generator.tree_layout import tree_extents
-from esolangs.languages.line.proof_formulas import workspace
+from esolangs.languages.line.proof_formulas import execution, workspace
 from esolangs.raster import Pixel, Raster, Rows, lazy_raster
 from esolangs.registry._language import Language, SourceKind
 
@@ -102,6 +91,35 @@ def line_boolean(
 
     chain_onto(head, fork(levels[0][0], 0, n - 1, None))
     return head
+
+
+def _inline_boolean(truth_table: str) -> Node:
+    """Read physical inputs on essential-test stems; drain trailing ignores."""
+    n = _validate_truth_table(truth_table)
+    kept = essential_inputs(truth_table, n)
+    if not kept:
+        return chain(*("i" * n + ">" + "+" * int(truth_table[0]) + "o"))
+    reduced = read_at(truth_table, kept, n)
+    levels, children, _ = _residual_ids(reduced, len(kept))
+
+    def fork(state: int, depth: int, known: int | None) -> Node:
+        if depth == len(kept):
+            tail = n - kept[-1] - 1
+            # Preserve the final kept bit while the spare cell drains ignores.
+            drain = ">" + "i" * tail + "<" if tail else ""
+            assert known is not None
+            return chain(*drain, *correction(state, known), "o")
+        zero, one = children[state]
+        node = Node("?")
+        node.zero = fork(zero, depth + 1, 0)
+        node.nonzero = fork(one, depth + 1, 1)
+        previous = kept[depth - 1] if depth else -1
+        reads = "i" * (kept[depth] - previous)
+        head = chain(*((">" if depth else "") + reads))
+        chain_onto(head, node)
+        return head
+
+    return fork(levels[0][0], 0, None)
 
 
 def projected_boolean(truth_table: str, *, reverse: bool = False) -> Node | None:
@@ -207,18 +225,18 @@ def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
             partial(_render_node, tree, unit=unit),
         )
 
-    best = candidate(line_boolean(truth_table))
-    # Projected tree, by area: with one or two essential inputs 17-25% (n=8..11,
-    # 40 tables each), constants 20-38%; three to five 2-7%, pooled over one to
-    # n-1 essential 7.9-9.1% (n=7..10, ~200 tables each).  A majority-3 core in
-    # 8 inputs: 13%.  Kept as one candidate rather than split by essential count.
-    projected = projected_boolean(truth_table)
+    # Inline tests plus projected readers cost at most 3n+2 commands; folds
+    # retain 3n+4. See [ablations.inline_level_reads] for the pixel cost.
+    best = candidate(
+        line_boolean(truth_table) if n <= _SMALL_MAX else _inline_boolean(truth_table)
+    )
+    # Large inline readers already project; small trees retain their loader.
+    projected = projected_boolean(truth_table) if n <= _SMALL_MAX else None
     if projected is not None:
         other = candidate(projected)
         if other.area < best.area:
             best = other
-    # Streaming saves 0% on random tables at n>=8 (0.45% at n=7) but 23-96% on
-    # parity, and, majority and thresholds (n=6..12).
+    # Sharing stays canonical; complete folds must fit the inline fallback.
     # A complete fold wins a fallback tie.
     fold = streaming_canvas(truth_table, best.area + 1, unit=unit)
     if fold is not None:
@@ -302,14 +320,16 @@ def _ceilinged_choice(nodes: list[Node], *, small: bool, unit: int) -> _Choice:
 
 
 def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> Raster:
-    """Choose the most balanced compact or previous forward/reverse tree."""
+    """Preserve balanced feasibility layouts, considering the default raster."""
     _check_unit(unit)
     small = _validate_truth_table(truth_table) <= _SMALL_MAX
     score, selected, canvas, compact, tight = _balanced_choice(
         truth_table, small=small, unit=unit
     )
     width = canvas.width if canvas is not None else score.tiebreak
-    if _has_goto(cast("Node | None", default._payload)):  # noqa: SLF001 - generator-owned graph
+    if default._payload is not None and (  # noqa: SLF001 - generator-owned graph
+        not small or _has_goto(cast("Node | None", default._payload))  # noqa: SLF001
+    ):
         height, shared_width = len(default.rows), len(default.rows[0])
         shared_area = shared_width * height
         if (max(shared_width, height), shared_area, shared_width) <= (
@@ -339,5 +359,6 @@ LANGUAGE = Language(
     balance=balance,
     no_wrap="tree geometry fixes the width; balance chooses orientation",
     empty_program="image contains no ink",
+    proof_execution=(execution, False, (3, 5)),
     proof_workspace=(workspace, True, (5,)),
 )

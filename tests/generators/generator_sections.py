@@ -17,7 +17,7 @@ PUBLIC_ERRORS = frozenset({"GeneratorCapError", "ArgumentError"})
 
 #: ``n=8 parity: 1,186 chars`` -- a size ``esolangs.generate`` must reproduce.
 ANCHOR = re.compile(
-    r"n=(\d+) (parity|and|or|majority|zero|random \d+): ([\d,]+) (chars|codels)"
+    r"n=(\d+) (parity|and|or|majority|zero|random \d+): ([\d,]+) (chars|codels|pixels)"
 )
 
 _ENTRY = re.compile(r"^    (\w+):")

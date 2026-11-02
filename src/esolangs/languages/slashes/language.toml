@@ -7,7 +7,7 @@ backlinks = 86
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "binary-to-unary substitutions form the row index; fixed macros expand run sweeps before decoding one answer"
-scaling = "linear: worst 5T/2+n+83 characters past n=3; smaller arities include projection overhead"
+scaling = "linear: worst F characters: 5T/2+n+83 from n=4; 76/95/107 below"
 execution = "linear: worst E steps: 9T/2+n+21 past n = 1; 28 at n = 1"
 workspace = "linear: worst W bits: expanded source and separate pattern/replacement peaks"
 definitions = ["E = 28 at n=1, else 9T/2+n+21", "W = exact per-template peak from proof_formulas.workspace"]

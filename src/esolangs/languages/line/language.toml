@@ -14,10 +14,10 @@ admitted = 2026-08-21T23:40:31-04:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "finite decision trees preserve totality; complete ordered residual folds share every state unless their exact pixel area exceeds the fallback"
-scaling = "linear: worst F pixels past n = 5: the full tree's box"
-execution = "poly n: worst 5n commands; complete folds retain this bound"
-workspace = "poly n: worst n + 1 + bl(3n-2) + bl(n-1) + bl(2n-1) + Σ_{c<n} (max(1,bl(c)) + 1) bits past n = 4"
+qualification = "small loaded trees and projected inline readers preserve totality and physical input order; complete ordered residual folds share every state unless their exact pixel area exceeds the fallback"
+scaling = "linear: at most F pixels from n=6: projected tree envelope"
+execution = "poly n: at most 5n default commands through n = 5, 3n + 4 beyond; balanced layouts retain 5n"
+workspace = "poly n: at most n + 1 + bl(3n-2) + bl(n-1) + bl(2n-1) + Σ_{c<n} (max(1,bl(c)) + 1) bits from n=5"
 evidence = "docs/proofs/line-sharing.md"
 
 [generator_sizes]
@@ -87,6 +87,7 @@ verdict = "kept"
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
+trick_prototype = 2026-11-02
 
 [ablations.tree_orientation_prototype]
 saving = 4.6552
@@ -99,3 +100,25 @@ verdict = "Not shipped: reversed test order saves 19.88% at n=7 but 4.66% at n=8
 arity = 12
 tables = "both constants at n=1..12"
 verdict = "No new optimization: the existing projected loader reads all inputs, moves to a fresh zeroed cell and prints the constant. Printing first would save area but violates the read-before-output contract, so that prototype is withdrawn. At n=8 zero/one area remains 97600/132000 pixels at unit=20; at n=12, 136000/180000. PNG and sentinel regressions cover the retained read-first path."
+
+
+[ablations.terminal_level_collapse]
+saving = -100.6481
+arity = 8
+seed = "random.Random(1847+n), successive getrandbits(2**n)"
+tables = "200 random per n=7,8; native random/and/or/parity/majority n=4..8"
+verdict = "Rejected: bottom identity/constant residuals become one-stem leaves. Emitted unit-20 area grows 13.7086% at n=7 (2596315200→2952234000 pixels), 100.6481% at n=8 (3227955200→6476830000). Collapsing terminal tests expands the measured extents. Native PNGs pass, but n=8 still reaches 40 commands and a fresh cell 8. No source retained."
+
+[ablations.default_path_compact_race]
+saving = 4.4852
+arity = 8
+seed = "random.Random(1847+n), successive getrandbits(2**n)"
+tables = "200 random per n=7,8; native random/and/or/parity/majority n=4..8"
+verdict = "Rejected: tree_extents already defaults compact=True,tight=True, matching rendering. The four forward/reverse, tested/skipped candidates save 23.4264% at n=7 (2596315200→1988090800 pixels), 4.4852% at n=8 (3227955200→3083176400): below both size bars at n=8. Named controls tie existing folds. Native PNGs pass; no source retained."
+
+[ablations.inline_level_reads]
+saving = -48.5328
+arity = 8
+seed = "random.Random(1847+n), successive getrandbits(2**n)"
+tables = "200 random per n=7,8, three per n=9,10; native small tables and random/named/ignored controls through n=8"
+verdict = "Kept by the 25% proved-command-bound route: projected inline reads replace both large fallback trees. Small n<=5 and legacy balanced layouts are unchanged; balance also admits a better default raster. The default bound falls 5n→3n+4 for n>=6 (26.7% at n=6, tending to 40%); the inline tree alone uses 3n+2. Emitted unit-20 random area n=7 2596315200→2377265600 pixels (8.4369% smaller), n=8 3227955200→4794571200 (48.5328% larger). Three-table follow-ups cost 21.90% area at n=9 and 54.86% at n=10; four native rows pass per first table. Generic n=8 native maximum 40→26 commands; parity reaches 27 under the 28 bound. Old projected tail-ignored trees reach 38, so they are replaced, not raced. All reads precede output in physical order; workspace coefficients are unchanged. Balanced feasibility layouts retain 5n: OR n=8 keeps its 900×1880 layout rather than the default 260×5200."

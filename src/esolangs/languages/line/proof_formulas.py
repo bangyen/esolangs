@@ -1,4 +1,9 @@
-"""Snapshot-bit bounds."""
+"""Command and snapshot-bit bounds."""
+
+
+def execution(n: int, _: str) -> int:
+    """Keep small trees within 5n; inline trees and folds within 3n+4."""
+    return 5 * n if n <= 5 else 3 * n + 4
 
 
 def _floor1(x: int) -> int:

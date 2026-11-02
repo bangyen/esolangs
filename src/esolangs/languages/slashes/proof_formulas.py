@@ -2,7 +2,7 @@
 
 
 def workspace(n: int, program: str) -> int:
-    """Return the exact all-row written peak for a generated template."""
+    """Return the exact all-row written peak for an unwrapped template."""
     from esolangs.languages.slashes.generator import (
         _DECODE,
         _IGNORE,

@@ -62,6 +62,10 @@ def test_every_row_with_leading_middle_trailing_and_scattered_ignores(
     if balanced:
         image = balance(table, image)
     _execute(table, image, range(64))
+    if kept == (0, 1, 2):
+        from esolangs.languages.line.tests.inline_support import check_inline_readers
+
+        check_inline_readers(balanced=balanced)
 
 
 @pytest.mark.medium

@@ -1,4 +1,4 @@
-"""Line's emitted pixels: the full residual tree's box, worst over leaf shapes."""
+"""Independent projected-inline geometry and mixed command bounds."""
 
 from esolangs.languages.line.generator.layout import (
     _FORWARD,
@@ -9,6 +9,7 @@ from esolangs.languages.line.generator.layout import (
     _turn_right,
 )
 from esolangs.languages.line.generator.render import _UNIT
+from esolangs.languages.line.proof_formulas import execution
 
 type Box = tuple[int, int, int, int]  # (top, bottom, left, right), in units
 
@@ -65,20 +66,37 @@ def _maximal(boxes: set[Box]) -> set[Box]:
 
 
 def _pixels(n: int, _: str) -> int:
-    """F: the tree's box in pixels for the worst leaf shapes, n >= 6.
-
-    A leaf is `o`, `+o` (zero arm) or `-o` (nonzero arm); every subtree's leaf
-    shapes are free, so each level keeps every box a subtree can have.
-    """
+    """Bound every projected reader/drain shape, without inspecting the raster."""
+    # Independent stem lengths and drains form a superset of physical gaps.
+    # For k ignored inputs their area is O((k+1)^2 2^(n-k)) = O(2^n).
     nothing: Box = (0, 0, 0, 0)
-    zero = {_chain("o", nothing), _chain("+o", nothing)}
-    one = {_chain("o", nothing), _chain("-o", nothing)}
-    boxes = {_fork(a, b) for a in zero for b in one}
-    for _step in range(n - 1):
-        boxes = _maximal({_chain(">", box) for box in boxes})
-        boxes = _maximal({_fork(a, b) for a in boxes for b in boxes})
-    root = {_chain("i" + ">i" * (n - 1) + "<" * (n - 1), box) for box in boxes}
-    return max((b[1] - b[0] + 2) * (b[3] - b[2] + 2) for b in root) * _UNIT**2
+    boxes = [_chain("i" * n + ">" + "+" * bit + "o", nothing) for bit in (0, 1)]
+    for m in range(1, n + 1):
+        k = n - m
+        drains = [""] + [">" + "i" * count + "<" for count in range(1, k + 1)]
+        zero = {
+            _chain(drain + leaf, nothing) for drain in drains for leaf in ("o", "+o")
+        }
+        one = {
+            _chain(drain + leaf, nothing) for drain in drains for leaf in ("o", "-o")
+        }
+        level = _maximal({_fork(a, b) for a in zero for b in one})
+        for _depth in range(m - 1):
+            stems = _maximal(
+                {
+                    _chain(">" + "i" * count, box)
+                    for count in range(1, k + 2)
+                    for box in level
+                }
+            )
+            level = _maximal({_fork(a, b) for a in stems for b in stems})
+        boxes.extend(
+            _chain("i" * count, box) for count in range(1, k + 2) for box in level
+        )
+    return max((b[1] - b[0] + 2) * (b[3] - b[2] + 2) for b in boxes) * _UNIT**2
 
 
-FORMULAS = {"scaling": (_pixels, True, (6, 7))}
+FORMULAS = {
+    "scaling": (_pixels, False, (6, 7)),
+    "execution": (execution, frozenset({3, 5}), (3, 5, 6, 8)),
+}

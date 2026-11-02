@@ -325,7 +325,12 @@ def test_the_size_anchor_is_what_generate_emits(
     name: str, n: int, table: str, size: int, unit: str
 ) -> None:
     """A documented size is regenerated, so an optimization must update it."""
-    assert _size(esolangs.generate(name, named_table(n, table))) == (size, unit)
+    # Both raster names count emitted color cells at the generator's default scale.
+    measured_unit = "codels" if unit == "pixels" else unit
+    assert _size(esolangs.generate(name, named_table(n, table))) == (
+        size,
+        measured_unit,
+    )
 
 
 def test_the_named_tables_are_the_functions_they_name() -> None:
@@ -339,6 +344,9 @@ def test_the_named_tables_are_the_functions_they_name() -> None:
     ]
     assert named_table(3, "majority") == "00010111"
     assert len(named_table(4, "random 7")) == 16
+    assert anchors("A.\n\nSize:\n    n=2 parity: 4 pixels") == [
+        (2, "parity", 4, "pixels")
+    ]
 
 
 def triggers_of(name: str) -> dict[str, object]:
