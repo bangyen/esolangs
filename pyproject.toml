@@ -229,8 +229,6 @@ markers = [
     "interpreter: marks tests for specific interpreters",
 ]
 filterwarnings = [
-    "ignore::DeprecationWarning",
-    "ignore::PendingDeprecationWarning",
     "ignore:.*found in sys.modules.*:RuntimeWarning",
 ]
 
