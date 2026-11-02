@@ -1,20 +1,20 @@
 """Bleh Boolean program generator: a decision diagram of matching functions.
 
 A node of the reduced diagram is a function whose argument is its input's
-character, ``f io::next()``; its branches match ``"0"`` and ``"1"`` and call
+character, ``f 2()``; its branches match ``"0"`` and ``"1"`` and call
 the child with the next read.  A node whose halves agree, and a constant
 above the last input, reads its input as a statement and goes on
-(``{io::next();...}``), so every input is read once and in order; a leaf
+(``{2();...}``), so every input is read once and in order; a leaf
 prints its bit.  Functions are named by id in letters (``b`` ... ``Z``,
 ``aa`` ...: the low ids, the most called, take the shortest), and ``io`` is
-imported as ``a``.  For AND:
+imported as ``a``; the nullary ``2`` aliases ``a::next``. For AND:
 
-    ^:std::io=a;main:=c a::next();c:"0"=z1():"1"=b a::next();
-    z1:={a::next();a::print"0"};b:"0"=a::print"0":"1"=a::print"1";
+    ^:std::io=a;2:=a::next();main:=c 2();c:"0"=z1():"1"=b 2();
+    z1:={2();a::print"0"};b:"0"=a::print"0":"1"=a::print"1";
 
 Size:
     O(T) text: one function a shared node, one a constant a level;
-    n=8 constant zero: 156 chars; n=4 parity: 268 chars, n=10 random 1847: 8,010 chars.
+    n=8 constant zero: 77 chars; n=4 parity: 215 chars, n=10 random 1847: 5,545 chars.
 """
 
 from itertools import pairwise
@@ -32,27 +32,24 @@ _TOKEN = r'"[^"]*"|::|\w+|[\s\S]'
 
 #: ``io``'s import name: the first letter name, which no function takes.
 _IO = "a"
+#: A legal non-bit word, disjoint from letter and level-qualified function names.
+_NEXT = "2"
+_HEADER = f"^:std::io={_IO};{_NEXT}:={_IO}::next();"
+
+
+def _constant(n: int, bit: str) -> str:
+    """Force all inputs in one short-call block, then print the fixed bit."""
+    # The short-call AST costs 16n+256+max(1,bl(n-1))+bl(n) written bits,
+    # below the generic envelope; full io::next calls previously required chunks.
+    reads = f"{_NEXT}();" * n
+    return f'{_HEADER}main:={{{reads}{_IO}::print"{bit}"}};'
 
 
 def bleh(truth_table: str) -> str:
     """Build a Bleh program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
     if truth_table.count(truth_table[0]) == len(truth_table):
-        # [ablations.constant_table_audit_20261101]: bounded blocks preserve workspace.
-        chunks = [2] * ((n - 1) // 2) + ([1] if (n - 1) % 2 else []) + [1]
-        names = [
-            "main",
-            *(_name(int(truth_table[0]), k + 1) for k in range(len(chunks) - 1)),
-        ]
-        bodies = []
-        for k, (name, reads) in enumerate(zip(names, chunks, strict=True)):
-            tail = (
-                f"{names[k + 1]}()"
-                if k + 1 < len(names)
-                else f'{_IO}::print"{truth_table[0]}"'
-            )
-            bodies.append(f"{name}:={{{f'{_IO}::next();' * reads}{tail}}};")
-        return f"^:std::io={_IO};" + "".join(bodies)
+        return _constant(n, truth_table[0])
     ids = subtree_ids(truth_table)
     # Each level's nodes with their halves, in first-occurrence order.
     kids = [
@@ -65,18 +62,18 @@ def bleh(truth_table: str) -> str:
         if level == n:
             return f'{_IO}::print"{node}"'
         lo, hi = kids[level][node]
-        return f"{_name(node, level)}{'()' if lo == hi else f' {_IO}::next()'}"
+        return f"{_name(node, level)}{'()' if lo == hi else f' {_NEXT}()'}"
 
     defs = []
     for level in range(n):
         for node, (lo, hi) in kids[level].items():
             name = _name(node, level)
             if lo == hi:
-                defs.append(f"{name}:={{{_IO}::next();{ref(lo, level + 1)}}};")
+                defs.append(f"{name}:={{{_NEXT}();{ref(lo, level + 1)}}};")
             else:
                 zero, one = ref(lo, level + 1), ref(hi, level + 1)
                 defs.append(f'{name}:"0"={zero}:"1"={one};')
-    return f"^:std::io={_IO};main:={ref(ids[0][0], 0)};" + "".join(defs)
+    return f"{_HEADER}main:={ref(ids[0][0], 0)};" + "".join(defs)
 
 
 def _name(node: int, level: int) -> str:
@@ -105,6 +102,6 @@ LANGUAGE = Language(
     eof="an exhausted io::next() is the empty bitstring",
     underfed_raises=True,
     empty_program="a Bleh program needs a main function",
-    proof_workspace=(workspace, True, (3, 4, 5, 6, 7)),
+    proof_workspace=(workspace, False, (3, 4, 5, 6, 7)),
     proof_execution=(execution, True, (1, 2, 3, 6)),
 )

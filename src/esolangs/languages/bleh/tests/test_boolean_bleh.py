@@ -10,8 +10,11 @@ TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(1, 2**2**n - 1)]
 
 @pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
 def test_every_row_prints_its_answer(table: str) -> None:
+    from esolangs.languages.bleh.tests.ablations import ablate
+
     n = len(table).bit_length() - 1
     program = esolangs.generate("Bleh", table)
+    assert program == ablate(table, "default")
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("Bleh", bits)
@@ -40,11 +43,9 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
                 program = esolangs.generate("Bleh", bit * (1 << n), **options)
                 if not options:
                     if n == 8:
-                        assert len(program) == 156
-                    assert (
-                        max(part.count("a::next()") for part in program.split("};"))
-                        <= 2
-                    )
+                        assert len(program) == 77
+                    assert program.count("a::next()") == 1
+                    assert program.count("2()") == n
                 rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
                 for row in rows:
                     stdin = esolangs.encode_inputs(
@@ -54,16 +55,18 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
                     machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     steps = 0
-                    while not machine.halted and steps <= 3 * n + 3 * (n // 2) + 6:
+                    while not machine.halted and steps <= 5 * n + 6:
                         machine.step()
                         written.sample(machine.snapshot())
                         steps += 1
                     assert machine.halted
                     assert io.getvalue() == bit
-                    assert steps == 3 * n + 3 * (n // 2) + 6
+                    assert steps == 5 * n + 6
                     assert written.bits <= workspace(n, program)
+                    assert io.reads == n
+                    assert not io.past_end
                     assert io.input_char() == ord("Q")
     assert (
         sum(len(esolangs.generate("Bleh", format(v, "08b"))) for v in range(256))
-        == 49898
+        == 43988
     )

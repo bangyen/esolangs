@@ -7,20 +7,21 @@ admitted = 2026-10-20T08:59:29-04:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "a function a shared node matches its input's character; a folded node or constant reads it as a statement"
-scaling = "linear: worst F characters, n = 3..23; at most beyond"
-execution = "poly n: worst 8n + 5 steps: a call, a read and a match a level"
-workspace = "poly n: worst 64n + 306 + Σ_{0<a<n} bl(a) + bl(n) bits past n = 1: forced thunks, the print block"
+qualification = "shared-node functions match their input; short nullary read aliases preserve forcing order; constants use a flat read/print block"
+scaling = "linear: at most F+13-6n characters for n>=3: shortened read sites"
+execution = "poly n: worst 10n+5 steps: two extra alias transitions per read"
+workspace = "poly n: at most H+C(w)+K(w)+2bl(n) bits: heap, control, continuation and two cursors"
+definitions = ["H = 64n+1+Σ_{0<a<n} bl(a)", "w = max(ceil((n+1)/5),1+digits10(n-1))", "C = max(128,8w+16,8w+bl(n)+1)", "K = max(105,8w+17,8w+2bl(n)+1)"]
 
 [generator_sizes]
-"00000001" = { commands = 29, commands_by_row = { "0" = 24, "1" = 24, "2" = 24, "3" = 24, "4" = 26, "5" = 26, "6" = 28, "7" = 29 }, source_units = 167 }
-"00001100" = { commands = 27, commands_by_row = { "0" = 24, "1" = 24, "2" = 24, "3" = 24, "4" = 26, "5" = 26, "6" = 27, "7" = 27 }, source_units = 154 }
-"00110110" = { commands = 29, commands_by_row = { "0" = 25, "1" = 25, "2" = 26, "3" = 26, "4" = 27, "5" = 28, "6" = 28, "7" = 29 }, source_units = 242 }
-"0110" = { commands = 21, commands_by_row = { "0" = 19, "1" = 20, "2" = 20, "3" = 21 }, source_units = 132 }
-"01101001" = { commands = 29, commands_by_row = { "0" = 26, "1" = 27, "2" = 27, "3" = 28, "4" = 27, "5" = 28, "6" = 28, "7" = 29 }, source_units = 200 }
-"0110100110010110" = { commands = 37, commands_by_row = { "0" = 33, "1" = 34, "2" = 34, "3" = 35, "4" = 34, "5" = 35, "6" = 35, "7" = 36, "8" = 34, "9" = 35, "10" = 35, "11" = 36, "12" = 35, "13" = 36, "14" = 36, "15" = 37 }, source_units = 268 }
-"1101001101101101" = { commands = 37, commands_by_row = { "0" = 32, "1" = 32, "2" = 34, "3" = 35, "4" = 33, "5" = 33, "6" = 34, "7" = 34, "8" = 34, "9" = 35, "10" = 35, "11" = 36, "12" = 34, "13" = 34, "14" = 36, "15" = 37 }, source_units = 337 }
-"11111110" = { commands = 29, commands_by_row = { "0" = 24, "1" = 24, "2" = 24, "3" = 24, "4" = 26, "5" = 26, "6" = 28, "7" = 29 }, source_units = 167 }
+"00000001" = { commands = 35, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 32, "5" = 32, "6" = 34, "7" = 35 }, source_units = 150 }
+"00001100" = { commands = 33, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 32, "5" = 32, "6" = 33, "7" = 33 }, source_units = 137 }
+"00110110" = { commands = 35, commands_by_row = { "0" = 31, "1" = 31, "2" = 32, "3" = 32, "4" = 33, "5" = 34, "6" = 34, "7" = 35 }, source_units = 213 }
+"0110" = { commands = 25, commands_by_row = { "0" = 23, "1" = 24, "2" = 24, "3" = 25 }, source_units = 127 }
+"01101001" = { commands = 35, commands_by_row = { "0" = 32, "1" = 33, "2" = 33, "3" = 34, "4" = 33, "5" = 34, "6" = 34, "7" = 35 }, source_units = 171 }
+"0110100110010110" = { commands = 45, commands_by_row = { "0" = 41, "1" = 42, "2" = 42, "3" = 43, "4" = 42, "5" = 43, "6" = 43, "7" = 44, "8" = 42, "9" = 43, "10" = 43, "11" = 44, "12" = 43, "13" = 44, "14" = 44, "15" = 45 }, source_units = 215 }
+"1101001101101101" = { commands = 45, commands_by_row = { "0" = 40, "1" = 40, "2" = 42, "3" = 43, "4" = 41, "5" = 41, "6" = 42, "7" = 42, "8" = 42, "9" = 43, "10" = 43, "11" = 44, "12" = 42, "13" = 42, "14" = 44, "15" = 45 }, source_units = 278 }
+"11111110" = { commands = 35, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 32, "5" = 32, "6" = 34, "7" = 35 }, source_units = 150 }
 
 [ablations]
 audited = "2026-10-21"
@@ -47,6 +48,7 @@ tables = 200
 verdict = "kept: a rule, not a search; functions named by id in letters (the leaf-most ids are the most called, so the shortest) and io imported as `a`, against `f<id>` and `io`: 14.7% on random tables at n=8 (15.3% at n=7, 15.2% at n=9, 16.1% at n=10 on 100, 16.9% at n=12 on 20), 14.1% parity, 12.8% majority, 12.4% threshold 3, 7.3% and/or; the alias alone is 4.3%, the names alone 10.3%. Text, no balance route"
 
 [audits]
+trick_prototype = 2026-11-02
 docstring_reimplementation = 2026-10-30
 blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29
@@ -56,4 +58,27 @@ arity = 8
 saving = 21.2
 seed = "both constant values; witnesses(n) at n=4..6"
 tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
-verdict = "kept: canonical whole constants. Inline main and group at most two forced reads per named function, with the final read and print together. A flat block was rejected: at n=2 its 483 written bits exceeded the unchanged 437-bit workspace envelope. The bounded blocks use 371 bits there and 373 at n=8, within the original generic bound. Exactly 3n+3 floor(n/2)+6 commands. At n=7 both bits 177 -> 135 chars; n=8 198 -> 156; n=12 286 -> 218. Public constants at n=19,20,21 and direct construction probes at n=100,104,1000 also execute within the existing workspace envelope. n=3 corpus 49938 -> 49898 chars; all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 are byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts; all 24 old balanced constant scores improve or match. Owned regressions enforce all reads before output, preserve a sentinel and check resource bounds."
+verdict = "historical keeper, superseded by short aliases and flat blocks on 2026-11-02; the whole-constant shortcut remains. Inline main and group at most two forced reads per named function, with the final read and print together. A flat block was rejected: at n=2 its 483 written bits exceeded the unchanged 437-bit workspace envelope. The bounded blocks use 371 bits there and 373 at n=8, within the original generic bound. Exactly 3n+3 floor(n/2)+6 commands. At n=7 both bits 177 -> 135 chars; n=8 198 -> 156; n=12 286 -> 218. Public constants at n=19,20,21 and direct construction probes at n=100,104,1000 also execute within the existing workspace envelope. n=3 corpus 49938 -> 49898 chars; all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 are byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts; all 24 old balanced constant scores improve or match. Owned regressions enforce all reads before output, preserve a sentinel and check resource bounds."
+
+
+[ablations.trick_prototype_20261102_read_alias]
+arity = 8
+saving = 29.113963584121926
+seed = "random.Random(184700+n).choice"
+tables = 200
+verdict = "kept: a nullary function named 2 aliases a::next; 2 is a legal non-bit word, disjoint from generated names. Each nine-character read becomes three characters, with thirteen helper characters. Generic n=7/8 totals 297998->214960 (27.8653%) and 512304->363152 (29.1140%). Savings grow at8: twenty native-checked tables per9..18 peak31.6148% at14, decline through18 to30.4018%; use the20% declining gate, with no arity cutoff. Each read adds two VM transitions; generic execution bound8n+5->10n+5. Cached-parse native timing medians, twenty tables/all rows, three repeats: n7 .2847->.3473s (+22.0%), n8 .6287->.7826s (+24.5%); eleven-repeat generation medians .001896->.002071s and .003621->.003847s. Short calls allocate no additional heap cell; the written-state ceiling explicitly accounts for identifier width, control and continuation. Native n7/8 peaks771/839->702/771 bits. Source grows on six small tables in the selected corpus; no whole-old-program fallback. Every small table/row plus200 generic7/8 tables/all rows and named families pass;80744 selected-program runs,1512 independent fresh-parser controls, exact ordered reads, output only after all reads, sentinel7 untouched. A doubled-read alias breaks the consumption control. Construction and source remain O(T)."
+
+[ablations.trick_prototype_20261102_flat_constants]
+arity = 8
+saving = 50.64102564102564
+verdict = "kept: canonical constant spelling enabled by the short-call AST. One flat block forces n reads then prints; exactly4n+45 chars,5n+6 steps and16n+256+max(1,bl(n-1))+bl(n) peak written bits, below the generic ceiling. Both answers at8:156->77 chars,42->46 steps,373->391 bits. This trades the old chunked constant's logarithmic workspace for linear workspace within the unchanged declared poly-n class; it is not a runtime optimization. Both bits native-checked n1..12,19/20/21,100/104/1000, with large n probing the direct constructor rather than allocating a truth table. n1000 uses4045 chars,5006 steps,16276 bits. N3 corpus49898->43988 chars and53744->65984 steps with alias+flat constants. Wrapped/balanced public constants preserve all reads before print and the following sentinel."
+
+[ablations.trick_prototype_20261102_wildcard_one]
+arity = 8
+saving = 5.704035104156901
+verdict = "rejected: wildcard second branch saves5.6598%/5.7040% on200 generic7/8 tables, below10%, and violates the exhausted-input contract: table01 with EOF prints1 instead of raising HaltError. Requiring a nonempty value with [_,..] restores HaltError but grows8.4897%/8.5561%; best signed named-family saving is negative. All valid binary pilot rows pass for raw and guarded variants, with independent fresh-parser controls. The EOF failure is a live control, not a claim of equivalence on arbitrary input."
+
+[ablations.trick_prototype_20261102_identity_passthrough]
+arity = 8
+saving = 0.5075111652456332
+verdict = "rejected: a last-level identity leaf binds x and prints x. Raw savings1.2752%/0.7417% on200 generic7/8 tables; EOF halts with empty output instead of HaltError on table01. Pattern x[_,..] restores the underfed contract and saves0.8725%/0.5075%, declining far below20%. Signed parity, every threshold and projection families give at most7.3034%/6.5990%, below10%. Each pilot variant has4040 correct binary native runs and1512 fresh-parser controls; an additional96328 controls cover signed named families/all rows, both constant constructors and timing. No wildcard or identity rule ships; independent failed rules are not bundled into alias savings."

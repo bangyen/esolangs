@@ -1,4 +1,4 @@
-"""Bleh's emitted characters: functions per level, ids by letter count."""
+"""Original diagram ceiling, tightened by the short alias's minimum read savings."""
 
 from __future__ import annotations
 
@@ -130,11 +130,16 @@ def _tenth() -> str:
 
 
 def witness(n: int) -> str:
-    """The table reaching :func:`_chars`: every subtable, dear references first."""
+    """Stress the original diagram ceiling: every subtable, dear references first."""
     ref, const, _ = _prices(n)
     if n == 10:
         return _tenth()
     return worst_diagram(n, ref, const(capped_level(n)))
 
 
-FORMULAS = {"scaling": (_chars, frozenset(range(3, 24)), tuple(range(3, 24)))}
+def _alias_ceiling(n: int, program: str) -> int:
+    """The old ceiling plus the helper, less six per at-least-n read sites."""
+    return (_bound(n) if n < 3 else _chars(n, program)) + 13 - 6 * n
+
+
+FORMULAS = {"scaling": (_alias_ceiling, False, tuple(range(3, 24)))}
