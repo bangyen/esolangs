@@ -108,7 +108,7 @@ ignored-input tables included).
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
-90 of the 93 first implementations: 1 + i, 3x, 6-5, A Painter Ant,
+93 of the 93 first implementations: 1 + i, 3x, 6-5, A Painter Ant,
 ABCDirection, AddSubJump, Algebraic Programming Language, Alight, Aprknia,
 ArrowQueue, Ascenic, B-tapemark, Back, Balik, BASICER, Basicfuck, Between,
 BFStack, Bitdeque, bit~, Bleh, Blindfolded Arithmetic, BrainIf, Caballo,
@@ -117,11 +117,11 @@ Container, CreativeScript v2, Crement, CV(N)(C), Decleq, Dig, Dimensional,
 DINAC, EGL, Eval, Fackward, Fargo, Flowchart, Forbin, Forþ, Freestajlo,
 Grapheme, Home Row, Hot, HQ9+ with headers, IEBEL, Inject, Interprogck8,
 Kiss, LaserFuck, Line, lol waht i cant edit talk pages, Minsky Swap,
-Modulous, Monotonic Boolfuck, Movesum, Nandypants, NOR machine, Object
+Modulous, Monotonic Boolfuck, Movesum, Nandypants, NOR machine, NQ, Object
 disoriented, Packlang, Painfuck, Parenthesys, Pilas, Pointless, Qoibl,
-Qrain, Quassaunt, RAM0, ROTfuck, Rubic, S*bleq, SendStuff, SLOW ACV
-MAMMALIAN, Smu, Sonata, SStack, Stisp, Streetcode, Suffolk, Super SNUSP,
-SwitchCase, Taglate, thisthat, Unsquare, What!?.
+Qrain, Quassaunt, RAM0, REFRACTRAN, Retrograde, ROTfuck, Rubic, S*bleq,
+SendStuff, SLOW ACV MAMMALIAN, Smu, Sonata, SStack, Stisp, Streetcode,
+Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- BLIND-REIMPLEMENTATIONS:END -->
 - **Trick prototypes, round 2:** one admissible size rule per generator,

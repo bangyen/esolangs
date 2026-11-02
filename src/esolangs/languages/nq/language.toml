@@ -51,3 +51,16 @@ verdict = "All three builds execute every row of all 276 tables at n=1..3 and fi
 "0110100110010110" = { commands = 15, commands_by_row = { "0" = 15, "1" = 15, "2" = 15, "3" = 15, "4" = 15, "5" = 15, "6" = 15, "7" = 15, "8" = 15, "9" = 15, "10" = 15, "11" = 15, "12" = 15, "13" = 15, "14" = 15, "15" = 15 }, source_units = 154 }
 "1101001101101101" = { commands = 15, commands_by_row = { "0" = 14, "1" = 14, "2" = 15, "3" = 15, "4" = 14, "5" = 14, "6" = 14, "7" = 14, "8" = 15, "9" = 15, "10" = 15, "11" = 15, "12" = 14, "13" = 14, "14" = 15, "15" = 15 }, source_units = 122 }
 "11111110" = { commands = 12, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 11, "5" = 11, "6" = 12, "7" = 12 }, source_units = 40 }
+
+[audits]
+blind_reimplementation = 2026-11-01
+
+[interpreter_ablations.blind_reimplementation]
+wiki_revision = 156166
+reference_sha256 = "6ee4fcebb061e7d40a8caf4470eef3a9e7c86daf0406dc6b9709235766ec71d3"
+seed = "all tables n=1..3; witnesses(n) and five random tables at n=4..10, random.Random(1000*n+1847)"
+tables = 353
+executed_rows = 11296
+widths = "default/1/8/80 at n<=3; default/8 at n=4..10"
+positive_control_rows_rejected = 2
+verdict = "Fresh spec-only subagent; no production or test exposure. Models frozen before comparison; all generated rows halt and match. All rows n<=6, rows 0/1/T//3/T-1 above that. Generated programs agree without patching the frozen model. It consumes exactly n trits per row. Seven native-command probes agree. Off-corpus assumptions differ: whitespace input, empty source, nested ungrouped guard extent and guard-target wrapping. These are unresolved spec gaps; the generator uses grouped guards and raw 0/1 inputs."

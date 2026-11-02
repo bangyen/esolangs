@@ -60,3 +60,16 @@ verdict = "Every row executes for all four builds over all 276 tables at n=1..3 
 "0110100110010110" = { commands = 45, commands_by_row = { "0" = 45, "1" = 48, "2" = 48, "3" = 45, "4" = 48, "5" = 45, "6" = 45, "7" = 48, "8" = 48, "9" = 45, "10" = 45, "11" = 48, "12" = 45, "13" = 48, "14" = 48, "15" = 45 }, source_units = 201 }
 "1101001101101101" = { commands = 48, commands_by_row = { "0" = 42, "1" = 42, "2" = 45, "3" = 48, "4" = 37, "5" = 37, "6" = 42, "7" = 42, "8" = 45, "9" = 48, "10" = 48, "11" = 45, "12" = 42, "13" = 42, "14" = 45, "15" = 48 }, source_units = 160 }
 "11111110" = { commands = 33, commands_by_row = { "0" = 24, "1" = 24, "2" = 24, "3" = 24, "4" = 30, "5" = 30, "6" = 36, "7" = 33 }, source_units = 56 }
+
+[audits]
+blind_reimplementation = 2026-11-01
+
+[interpreter_ablations.blind_reimplementation]
+wiki_revision = 198201
+reference_sha256 = "5c3187a5386579bbb69b465adb2e83d706e1833f0277c9b7dfd95950cb7a838a"
+seed = "all tables n=1..3; witnesses(n) and five random tables at n=4..10, random.Random(1000*n+1847)"
+tables = 353
+executed_rows = 11296
+widths = "default/1/8/80 at n<=3; default/8 at n=4..10"
+positive_control_rows_rejected = 1
+verdict = "Fresh spec-only subagent; no production or test exposure. Models frozen before comparison; all generated rows halt and match. All rows n<=6, rows 0/1/T//3/T-1 above that. Full final tape, pointer and direction agree; ten native-construct probes agree. The model emits no I/O: the final-current-bit adapter dump is checked separately. All-zero initialization is a scenario supported by the author's REFRACTRAN reduction, not stated by the Retrograde page. Whitespace and malformed-source rules remain adapter policies."

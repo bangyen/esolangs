@@ -37,8 +37,10 @@ Exceptions and per-language notes:
   specifies only a two-road choice.
 
 - NQ ignores input whitespace; `R` reads through EOF. Empty-queue reads
-  and writes fail. The instruction table governs guards; its cyclic-tag
-  example switches `>1` to `>0` for the same production.
+  and writes fail. The cyclic-tag example switches `>1` to `>0`.
+  Nested ungrouped guards and skip wrapping are unspecified:
+  `+0->1>0+2WH` prints `#` here but underflows under the blind model's
+  recursive guard reading. The generator uses grouped guards only.
 
 ### Image-based languages
 

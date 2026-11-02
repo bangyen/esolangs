@@ -24,9 +24,11 @@ Decisions:
       separates trits, R consumes the remaining stream, and underflow fails.
     * Empty/comment-only source is a no-op under the repository convention.
     * The instruction table governs guards; the cyclic-tag prose switches
-      >1 to >0 for the same production. Groups nest lexically. A guard skips
-      one instruction: a grouped guard includes its body, an ungrouped
-      guard does not.
+      >1 to >0 for the same production. Groups nest lexically.
+    * Ungrouped guard extent and guard-target wrapping are unspecified.
+      This reading skips just the next opcode (or whole grouped guard),
+      wrapping at source end. In ``+0->1>0+2WH`` it prints #; a recursive
+      guard reading underflows. Generated programs use grouped guards only.
 """
 
 from __future__ import annotations
