@@ -65,3 +65,10 @@ verdict = "not admitted: deleting all three post-Horner setup moves saves 27 cha
 arity = 8
 saving = 0.0
 verdict = "rejected: move 5 4 corrupts a sum addend and the no-op test. On table 0110, input 00 prints 0 1 instead of 0; input 10 prints 0 1 instead of 0 1 1. The corrected sum-slot controls produce both expected prefixes. An earlier input-01 probe did not distinguish the mutant and was replaced by these firing counterexamples. No claimed operand lower bound."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 3.3722
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: direct four-cell sum. 251 programs, 150 halt cleanly, no trace differences; deliberate control differs on 122. Step throughput at longest 10/20/40 workload breadths: +3.37%/+4.51%/+4.31%. No production change; these workloads establish no useful gain, not a global performance wall."

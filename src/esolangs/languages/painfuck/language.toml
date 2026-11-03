@@ -134,3 +134,10 @@ saving = 5.6037
 seed = 0
 tables = "all256 three-input tables/every row;4096 paired native executions against current named-OR baseline"
 verdict = "rejected by table-level execution gate, not merely a slower row: generic sk inversion with s clearing gives80232->75736 commands,18147->16823 chars, no larger table, but8 tables have higher summed commands and13 have higher maxima. Table00110111 rises330->338 summed and52->57 worst-row commands. Every output, three ordered reads and following7 token pass;108 individual rows slow. This closes the source-only/row-only rationale without claiming all inverse-guard schedules impossible. Named OR/NOR keeper, source and resource bounds remain unchanged."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 0.0593
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: slotted immutable dataclasses. 248 programs, 221 halt cleanly, no trace differences; deliberate control differs on 247. Step throughput at longest 10/20/40 workload breadths: +0.39%/+0.09%/+0.06%. No production change; these workloads establish no useful gain, not a global performance wall."

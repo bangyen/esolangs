@@ -77,3 +77,10 @@ verdict = "rejected: actual emitted source over20 seeded tables n=7:23192->23170
 arity = 8
 saving = -0.0296
 verdict = "rejected tested layout: put root patches before tester0 and move halt/loop past the testers. Only eligible when root tests input0; leading ignored inputs retain baseline rather than rotate input slots. Actual n=7 source23192->23072 (0.517%); n=8 40555->40567 (growth). Larger leaf operands offset two removed jumps. Exhaustive small rows and four rows per20 judge tables execute; no fallback race ships."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 0.1664
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: direct frozen instruction construction. 445 programs, 74 halt cleanly, no trace differences; deliberate control differs on 145. Step throughput at longest 10/20/40 workload breadths: +0.17%/+0.47%/+0.37%. No production change; these workloads establish no useful gain, not a global performance wall."

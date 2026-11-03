@@ -102,3 +102,10 @@ saving = 33.6
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: canonical whole-constant spelling. Retain only skip/pad and the chosen answer macros; remove the unused node and opposite leaf definitions. Source is 57+3n chars through n=4, 61+2n thereafter; expanded execution stays identical at 55n+5 commands. Native workspace is 2688n-1094+bl(84n+15)+bl(n), including n=1 where the generic bound is out of scope. n=8 116 -> 77 chars; n=12 124 -> 85. n=3 corpus 32174 -> 32096 chars; five-input sample stays 36687. A last-bit terminal prototype reduced commands by 13 and avoided the next-bit probe, but violated the same-read-count contract across tables and left the exact execution ledger unattained: rejected. Existing single EOF probe retained. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions verify exact resources, read-before-output and one EOF probe. No new collected cases."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.558
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: single output-bit lookup. 245 programs, 156 halt cleanly, no trace differences; deliberate control differs on 152. Step throughput at longest 10/20/40 workload breadths: -0.56%/+0.14%/+0.39%. No production change; these workloads establish no useful gain, not a global performance wall."

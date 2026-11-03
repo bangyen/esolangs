@@ -137,3 +137,10 @@ saving = 0.0
 seed = "same fixed200 at7/8"
 tables = "all small/rows; sampled4..6; fixed200 source/native endpoints; all79 alphabet characters"
 verdict = "rejected:79 safe ASCII name characters replace26; default source is byte-identical on all400 fixed7/8 tables (69940/117112chars), so neither size nor execution gate qualifies. Alphabet starts lowercase, then uppercase,2..9 and safe punctuation; exclude comment/raw/builtin characters and bracket/plus spellings that can synthesize array builtins. Every character defines and calls a native function, with a wrong-body control. Wider prefixes cannot help these defaults before name27 is needed. Named fixed7/8 all unchanged; half-threshold12 saves628->586 but cannot move the judge window. Balanced20 area16378/32721->16378/32722, one table grows1cell. No production alphabet, path or state change."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 1.4003
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: slotted immutable dataclasses. 247 programs, 151 halt cleanly, no trace differences; deliberate control differs on 159. Step throughput at longest 10/20/40 workload breadths: +2.00%/+1.40%/+1.49%. No production change; these workloads establish no useful gain, not a global performance wall."

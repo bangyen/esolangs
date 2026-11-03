@@ -98,3 +98,10 @@ saving = 1.1
 seed = "random.Random(1000*n+i).getrandbits(1<<n)"
 tables = "20 random per n7/8; and/or/parity/majority/threshold-third separately; all tables/rows n<=3 plus three random per n4..6"
 verdict = "near miss: every-input choice is a search; audit one fixed first-essential flag refinement instead. Its setters stay in physical order, with table projection and weight slots changed consistently. Actual chars15322/27776 ->15268/28310 (0.352/-1.923%); a nonproduction free old-source toggle upper bound is2.199/1.051%, still below both bars. Every named function is byte-length neutral at both arities. Exhaustive/sampled4312 paired native executions pass with2156 wrong-output controls;267 tables change. n3 chars32776 unchanged, commands658168 unchanged, but77 tables grow and912 rows slow, so execution admission fails too. Uniform s/j fill, all n physical-order slots, sentinel/noEOF and wrapped widths1/3/11 pass. No reorder candidate, state or old-whole-program minimum added; generator/proofs/pins/anchors/example unchanged."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.2308
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: conditional five-cell wrap. 246 programs, 211 halt cleanly, no trace differences; deliberate control differs on 142. Step throughput at longest 10/20/40 workload breadths: +0.16%/-0.14%/-0.23%. No production change; these workloads establish no useful gain, not a global performance wall."

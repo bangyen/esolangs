@@ -74,3 +74,10 @@ verdict = "rejected tested direct printers: at opposite-constant children save t
 arity = 3
 saving = 0.0
 verdict = "corrected a pre-existing false cap: baseline table00011110,row111 runs54 commands, exceeding12n+17=53; four baseline three-input rows violate it. The exhaustive chain maximum is52. A forward root-to-constant path visits h<=n internal blocks, reads8n bits, executes at most3h-1 tests because a root child follows it, and at most n internal/ladder head labels. Prelude5, printer12 and two END occurrences give9n+3h+18<=12n+18. Constant roots are shorter. All370628 sweep runs satisfy the derived bound; do not silently retain the old false figure or call this a measured chain regression. Workspace expression and tape/input/output conventions unchanged."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 16.6635
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: direct immutable state construction. 446 programs, 431 halt cleanly, no trace differences; deliberate control differs on 441. Step throughput at longest 10/20/40 workload breadths: +16.66%/+16.89%/+17.03%. Promising; broader corpus and source-size timings required before adoption."

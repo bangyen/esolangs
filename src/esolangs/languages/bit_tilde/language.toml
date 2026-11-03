@@ -101,3 +101,10 @@ verdict = "rejected: four named encodings (base e0/e1, diff or complement) save 
 [formula_arities]
 execution = [4, 5, 6, 8]
 workspace = [4, 5, 6, 8]
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -3.6079
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: decode byte by shifts. 245 programs, 188 halt cleanly, no trace differences; deliberate control differs on 178. Step throughput at longest 10/20/40 workload breadths: -3.35%/-3.61%/-3.46%. No production change; these workloads establish no useful gain, not a global performance wall."

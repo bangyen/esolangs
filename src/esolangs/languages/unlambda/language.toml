@@ -82,3 +82,10 @@ arity = 8
 saving = 11.07
 tables = "same fixed200 each n=7,8; exhaustive small and sampled4..6; five named functions at7/8"
 verdict = "rejected for input/output order: literal @ chains evaluate their printing argument before reading. Two unread inputs cost8 instead20 chars, print0 after0 reads, then consume2; proper delayed leaf prints after2. In full table00000001,row000, literal leaf prints0 after1/3 reads though final consumption is3. Apparent source367126/741318 ->327071/659278 (10.91/11.07%), n3 total24395 instead28091, does not qualify. Native sweep finds1066 early-output rows; judge/named control adds35. Root constants remain unchanged. No production source/proof/pin/anchor/example changes."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 1.3132
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: slotted immutable dataclasses. 255 programs, 151 halt cleanly, no trace differences; deliberate control differs on 156. Step throughput at longest 10/20/40 workload breadths: +1.63%/+1.53%/+1.31%. No production change; these workloads establish no useful gain, not a global performance wall."

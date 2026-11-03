@@ -61,3 +61,10 @@ verdict = "kept: minimal spelling, exempt. Helpers and/or become n/o; omit optio
 arity = 8
 saving = 12.623
 verdict = "kept: inline the remaining conjunction when a block has exactly one marked row; no search or candidate race. After folding and compact spelling: chars 549722->482162 (12.29%) and 1054901->921741 (12.62%) on 200 Random(7+n) tables per n=7,8, no table grows. Extension n=9..14: 12.65,12.75,12.85,12.84,12.92,12.91% (20 tables through n=12, five thereafter; each old/new program executed on row 0). Full n=7/8 census executes four rows of each variant, 6400 runs plus 400 wrong-table controls. Every table/row through n=3 and 16 named/random tables per n=4..6 pass, 7824 paired executions plus 324 wrong-table controls, with resource bounds. n=3 chars 104426->77660; n=4 parity 767->578. Worst commands 15T/2+2n-9->7T+2n-9 for n>=2, reached by parity: each singleton removes one flag statement without adding calls. Workspace increases: AND n=2 uses 671 bits vs the old 636-bit cap; n=7/8 uses 1867/2109 bits. New cap 290n+n*bl(n)+424 counts scopes plus at most n extra pending conjunction nodes. Each adds a call (40 bits) and a comparison (142+bl(slot)), at most 184+bl(n) bits with slot<=2n+1, above the old 106n+424 allowance. Size <=40T+18n+120 stays valid. Generation remains O(T): disjoint singleton spans pay at most their width for their conjunction. Owned checks enforce read-first IO and a following byte."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 0.1124
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: slotted immutable dataclasses. 245 programs, 147 halt cleanly, no trace differences; deliberate control differs on 147. Step throughput at longest 10/20/40 workload breadths: +0.11%/+0.27%/+0.18%. No production change; these workloads establish no useful gain, not a global performance wall."

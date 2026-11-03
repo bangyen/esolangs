@@ -126,3 +126,10 @@ saving = 12.234101179323265
 seed = "same fixed random.Random(184700+n) corpus"
 tables = "same 20 fixed n=7/8; all small rows and bounded 4..8 native programs for all four variants"
 verdict = "rejected generic bundle: joint source 7105 -> 6923 /18146 -> 15926 (2.5616/12.2341%), still fails 7. Marginals are raw 1 on the tree and packed rows on the walk; neither may inherit the other's isolated arity. The admitted AND rule uses no walk, so packing adds 0% on its named class; generic packed 7 remains 0 after AND admission. No extra branch/state retained. Positive emitted changes and exact-output/read/sentinel controls pass; no whole-old-source fallback."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.3996
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: single arithmetic lookup. 446 programs, 433 halt cleanly, no trace differences; deliberate control differs on 391. Step throughput at longest 10/20/40 workload breadths: -0.36%/-0.40%/+0.63%. No production change; these workloads establish no useful gain, not a global performance wall."

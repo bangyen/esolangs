@@ -124,3 +124,10 @@ arity = 3
 seed = 0
 tables = "both constants n=1..12, default/width1/balanced; all input bytes consumed and following sentinel retained"
 verdict = "corrected 2026-11-02: constant overrides now use actual emitted L for the PC width instead of stripped command length. Constant0 at n3,width1 has L59 and native WrittenState25bits, not the old claim24. The old helper stripped text before execution and hid the discrepancy; it now runs actual formatted code and counts native commands while sampling every step. Default numeric bounds and all old proof scopes remain unchanged. This amends one scalar PC term and an existing test helper; no new route/state or interpreter change. Exact formatted constant checks pass through n12."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 15.8073
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: direct immutable state construction. 447 programs, 242 halt cleanly, no trace differences; deliberate control differs on 92. Step throughput at longest 10/20/40 workload breadths: +19.44%/+16.48%/+15.81%. Promising; broader corpus and source-size timings required before adoption."

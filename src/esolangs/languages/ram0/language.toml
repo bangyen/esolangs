@@ -94,3 +94,10 @@ arity = 8
 saving = 0.0
 tables = "all small tables/rows; sampled/ignored n=4..8; all7680 rows of fixed20 n=7/8; eight wrong-entry controls"
 verdict = "rejected: shared zero leaves and cell0 heads still need their physical Z for one-entry C references. A correct zero-entry copy can jump one token past it; retain the original target when crossing a decimal boundary would grow its spelling. This changes no emitted character count. Exhaustive n3 commands63712->63442 (0.424%, below5%), with142 firing tables and no slower rows; fixed7/8 commands245289/598409 ->244195/596225 (0.446/0.365%). Treating C entries as zero is wrong: eight native wrong-entry controls fail. Complete small/sample native sweep9760 executions plus23040 full judging executions passes all real variants, including exact fixed-length input setters in physical order and final state dumps. No source-size, command-bound or execution admission; generator/proof scopes/pins/examples remain unchanged."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 30.3044
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: direct immutable state construction. 445 programs, 380 halt cleanly, no trace differences; deliberate control differs on 375. Step throughput at longest 10/20/40 workload breadths: +31.36%/+30.30%/+30.91%. Promising; broader corpus and source-size timings required before adoption."

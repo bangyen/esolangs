@@ -106,3 +106,10 @@ verdict = "corrected: the old written-state expression omitted multi-digit code 
 arity = 3
 saving = 0.0
 verdict = "corrected: source-code terms must index parsed cells, not the wrapped string. The actual width-one program for00110110,row111 uses712 commands while the raw-string offset formula gives678. Native execution now parses source first; owned regressions check actual commands and written state on plain, width-one and balanced programs. Wrapping changes neither tape nor bounds."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 0.1651
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: byte wrap bit mask. 452 programs, 86 halt cleanly, no trace differences; deliberate control differs on 411. Step throughput at longest 10/20/40 workload breadths: +0.67%/+0.17%/+0.75%. No production change; these workloads establish no useful gain, not a global performance wall."

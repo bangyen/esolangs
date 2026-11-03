@@ -72,3 +72,10 @@ verdict = "rejected: a bottom-up pool emits graph-shared nodes before the root; 
 arity = 8
 saving = 0.17227857366934884
 verdict = "rejected tested named child-order constructions: no speculative full-subtree builds or strict min-of-old-program fallback. Always-one-first grows10.9714%/12.5073% on200 generic7/8 tables; graph-reference-first grows1.3333%/1.1220%. A fixed depth-two rule scores immediate shared-grandchild stubs in constant work per node and emits one first only if that score pays the extra INVERT:235959->235406 (0.2344%),382520->381861 (0.1723%), declining far below20%. It changes185 pilot programs and has a same-command-count polarity mutant, so a zero-effect probe is not mistaken for a wall. Signed named parity/threshold/projection families give no positive local-rule saving. Combining reference-first with inverted fallthrough saves1.5812%/1.4025% against old, but grows1.2942%/1.0822% against fallthrough alone; do not bundle those gains. Each of the four order/composite variants has5544 correct native rows. N3 source/commands: old51358/45472; one-first54802/48400, reference-first52262/45936, composite51638/45936, local51190/45596. None qualifies as an execution optimization. The local score is an admissible fixed-depth repair of the proposed lookahead, not an exhaustive polarity search. These measurements reject these constructions, not all possible child-order rules."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 20.3009
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: direct immutable state constructor. 445 programs, 147 halt cleanly, no trace differences; deliberate control differs on 147. Step throughput at longest 10/20/40 workload breadths: +20.68%/+20.83%/+20.30%. Promising; broader corpus and source-size timings required before adoption."

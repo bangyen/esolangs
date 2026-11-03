@@ -140,3 +140,10 @@ saving = 0.0
 seed = "all four explicit initial headings; deterministic onehot witnesses"
 tables = "old/new exact W and E witnesses n=7..11; four headings at 7/8; constant/tree/width entry controls n=1,3,5,6,7,8"
 verdict = "preserved exact benchmark scopes and all old rungs: seed 2 draws heading 0. New E worst 11T+56n+2, attained by any onehot table at all-one row; headings 1/2 add 2, headings 0/3 agree. Old 18T+56n+4 likewise omitted these 2 universal-heading steps; metadata now states the scope and separate all_heading_execution ceiling. W exact 12T+n+6+2bl(n), attained by last-onehot/all-one row, every heading: tape 12T-n-4, pointer n+2, beam n+7, skip 1, two input counters 2bl(n). Swept negative answers can reach -4 and cost 5 bits with touch flag, included in the phase proof. W n=7 1567 -> 1555, n=8 3107 -> 3094. Tree E/W through 6 and all proof arities/exact flags retained; last-onehot is the shared exactness witness. Scaling exact 3(11T+52n+3) cells beyond 6. No generator state added; proof-only all-heading helper distinguishes the existing benchmark convention. Actual balanced grid_area including trailing lines is unchanged: 20 fixed random tables n=7/n=8 total 77510/170248 cells; and/or 1365/1562, parity 6026/13468, majority 3358/6708. The old tree/width/balance paths retain their named linear-n cases; no old weighted fallback is kept. Size pins and packaged balanced AND 2 example are byte-identical (16 native row/heading runs)."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.5779
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: four-way wrap bit mask. 448 programs, 299 halt cleanly, no trace differences; deliberate control differs on 448. Step throughput at longest 10/20/40 workload breadths: -0.06%/-0.04%/-0.58%. No production change; these workloads establish no useful gain, not a global performance wall."

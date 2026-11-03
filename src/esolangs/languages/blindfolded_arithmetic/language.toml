@@ -94,3 +94,10 @@ saving = 17.5
 seed = 0
 tables = "full-input parity and negation, n=3..10,12,14,16; compared with alternating-counter baseline"
 verdict = "kept 2026-11-02: no-search repair of raw digit-register proposal, parity and negation only. Existing O(T) parity recognizer selects from n=4, the genuine crossover: n3 grows239->245 chars, n4 parity ties323 and negation329->323. Each four-bit group is0110 or1001, hence reversed hex6 or9; fixed registers1,3,6,16 emit +6 or +(6+3), no signed-term or family search. Exactly5T/8+8n+12 commands and15T/4+48n+71 chars. Independent parity savings1031->887 (13.97%) /1715->1415 (17.49%) at fixed n7/8; n9/10/12/14/16 3047->2423 /5651->4391 /21107->16007 /82643->62183 /328499->246599, tending to25%. Negation has the same new sizes (alternating baseline can be six chars longer). Limit proof: Thue-Morse consists of16-bit parity blocks or complements. For all eight triples (48bits,16 octal digits), all four entry/exit signed-carry costs are24 terms, and unsigned cost is24; leftover boundary is O(1). Thus old signed octal cost5T/6+O(1), new5T/8+O(1), lookup O(n): limiting source saving25%. Executable finite recurrence and1048 native public rows through n16 check both polarities, exact emitted counts and the genuine low-arity loss. Same O(T) source/build and global bounds; all old proof arities retained. No race against old whole programs, arbitrary upper cap or searched/frozen parity code. All eight pins, Size anchors and balanced example updated and executed."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.5293
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: conditional cyclic instruction wrap. 250 programs, 145 halt cleanly, no trace differences; deliberate control differs on 3. Step throughput at longest 10/20/40 workload breadths: -0.46%/-0.53%/-0.22%. No production change; these workloads establish no useful gain, not a global performance wall."

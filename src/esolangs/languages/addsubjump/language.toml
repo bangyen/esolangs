@@ -108,3 +108,10 @@ saving = 23.3
 seed = "random.Random(1847+n)"
 tables = "20 random tables per n=7/8; two per n=7..10,12,14; all tables/rows n<=3"
 verdict = "kept, two independent declining marginals: fixed six hot slots in two skipped data words save 23.963/23.313% at n7/8 (29212/31914 -> 22212/24474 chars); raw-byte Horner plus one bias subtraction saves a further 22.511/23.290% (->17212/18774). Hot savings fall through n14 to 6.15%; reader peaks near n8 and falls to 6.45%, both limit zero: removed O(n log n) spelling against Theta(T) chunk digits. Minimal one-word constants fail: fixed200 292094/319017 ->235694/260217, 19.309/18.432%. Direct branch selection executes four commands just as the old six-word trampoline does; 9.52/8.71% standalone source saving, rejected. Canonical dead ignored-read clearing is subsumed. Two aligned skipped words are needed for six one-digit hot cells; spare cells10/11 stay zero. INDEX/OUT move into hot slots, TABLE receives ignored bytes until its existing clear; TMP and separate normalizer disappear. No added candidate, cache, layout state or whole-program fallback. Exact source scopes6..9, exact E6, all eight size/row-command pins and old W envelope retained. 2156 paired public rows plus5416 private controls; n3 chars96030 and commands41528 unchanged. Native source-formula controls through n14; projected reads preserve physical order, sentinel and output-after-read."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.0584
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "all n<=3 tables/rows where a generator exists, published examples and 300 seeded mutations; 400-step cap"
+verdict = "prototype only: precompiled token regex. 2500 programs, 2317 halt cleanly, no trace differences; deliberate control differs on 2355. Step throughput at longest 10/20/40 workload breadths: -0.06%/+0.13%/+0.87%. No production change; these workloads establish no useful gain, not a global performance wall."

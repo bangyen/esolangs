@@ -110,3 +110,10 @@ arity = 3
 seed = "random.Random(s).getrandbits(2**n), s=0..19"
 tables = "all256 n3 tables/every row; same fixed20 generic n7/8 tables afterliteral; named and/or/parity/majority separately"
 verdict = "kept 2026-11-03 by the5% execution gate, independently afterliteral leaves: n3 commands71248→66176 (7.119%), worst45→41, no table slower or larger by area;4096 paired native rows. Standalone raw3 area saves13.115%/12.8% at7/8, under20%; n3 chars77116→64788, area88092→74612, commands83608→77912. Source alone fails: marginal area13.115%/0% at fixed7/8 (105286→91478,188786 unchanged), so no source qualification claimed. The majority-only13.115%/13.247% bump vanishes at n9..12; no named majority path/cap retained. Three alternating exhaustive timing passes give median .51651→.50452s (2.32% faster),6144 native rows pervariant. Five-build warm medians n4/8/12 are1.315→1.736,8.406→15.802,155.958→294.953ms: second tree costs construction time, both remain O(T). Added one area comparison using the already-approved flat emitter; no runtime state or new geometry. Both pitches are needed because the per-table winner varies. Shared DAG remains for polynomial-size repeated-residual classes; width and balanced feasibility paths remain. Final n3 chars77116→47482, area88092→51350, commands83608→66176. Final fixed7/8 area164700→91478 (44.458%),342500→188786 (44.88%), chars154192→87156 and328954→177010."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 0.5247
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: slotted immutable dataclasses. 251 programs, 172 halt cleanly, no trace differences; deliberate control differs on 172. Step throughput at longest 10/20/40 workload breadths: +0.63%/+0.52%/+0.72%. No production change; these workloads establish no useful gain, not a global performance wall."

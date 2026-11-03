@@ -86,3 +86,10 @@ saving = 0.0
 seed = "random.Random(1847+n), successive getrandbits(1<<n)"
 tables = "200 per fixed n7/8; all tables/rows through3; native named/ignored/sample4..14"
 verdict = "rejected: raw digit table destroys its own decoder. /0// also deletes the0 in later /C/0/, and /1// deletes1 in /D/1/, so the chosen marker is deleted rather than printed. Actual programs for01,10,0110,00110110 print the empty string on all16 rows, failing every expected bit. No size/equivalence claim or incomplete-rule halt workaround ships. The native failure is the positive control; the general interpreter remains unchanged."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -48.4533
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "all n<=3 tables/rows where a generator exists, published examples and 300 seeded mutations; 400-step cap"
+verdict = "prototype only: C-level single replacement. 2511 programs, 2501 halt cleanly, no trace differences; deliberate control differs on 2511. Step throughput at longest 10/20/40 workload breadths: -48.45%/-45.85%/-41.79%. No production change; these workloads establish no useful gain, not a global performance wall."

@@ -85,3 +85,10 @@ verdict = "rejected as supplied: lowering height5->4, write4->3 and base3->2 pro
 arity = 8
 saving = 0.0
 verdict = "not retained: the proposal admits it has no full mechanism for shortening the CD write chain. Price its concrete band/print relocation component optimistically by removing the entire band at zero cost, keeping measured write/read paths: on20 seeded tables n=7 area34800->32085 at best(7.80%), n=8 52635->52635(0%). All20 n=7 cases fire, a positive control for n=8 zero effect. Baseline programs execute four rows per table. The write chain already determines n=8 width. This is a bound on band-only savings, not a proof against a future complete write packing construction; no guessed layout ships."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -1.1765
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "all n<=3 tables/rows where a generator exists, published examples and 300 seeded mutations; 400-step cap"
+verdict = "prototype only: bit mask heading wrap. 2493 programs, 269 halt cleanly, no trace differences; deliberate control differs on 2193. Step throughput at longest 10/20/40 workload breadths: +0.06%/+0.05%/-1.18%. No production change; these workloads establish no useful gain, not a global performance wall."

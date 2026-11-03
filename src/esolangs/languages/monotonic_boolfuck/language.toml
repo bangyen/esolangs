@@ -67,3 +67,10 @@ verdict = "kept: minimal spelling, exempt. Cancel adjacent >< moves; the infinit
 arity = 8
 saving = 0.0
 verdict = "rejected: after canonical opposite-move cancellation, consuming pending bytes on the newly set right cell before READ saves zero chars. Sizes remain 517514/1041524 on the same n=7,8 corpora. Positive firing controls: emitted code changes on 199/200 and 200/200 tables; all small rows and four rows per priced table execute correctly. The preceding entry move already cancels the left consume move, exhausting the proposed two-character gain. No zero-result wall is inferred from a non-firing probe."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 16.5436
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: direct immutable state construction. 448 programs, 284 halt cleanly, no trace differences; deliberate control differs on 129. Step throughput at longest 10/20/40 workload breadths: +18.06%/+17.23%/+16.54%. Promising; broader corpus and source-size timings required before adoption."

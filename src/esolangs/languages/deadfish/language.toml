@@ -3,3 +3,10 @@
 
 [curation]
 backlinks = 316
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 1.2181
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "all n<=3 tables/rows where a generator exists, published examples and 300 seeded mutations; 400-step cap"
+verdict = "prototype only: direct arithmetic dispatch. 309 programs, 309 halt cleanly, no trace differences; deliberate control differs on 209. Preliminary step throughput +1.22%. No production change; these workloads establish no useful gain, not a global performance wall."

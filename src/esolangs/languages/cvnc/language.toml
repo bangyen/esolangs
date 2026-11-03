@@ -74,3 +74,10 @@ saving = 5.2
 seed = "random.Random(1000+n)"
 tables = "20 random per n7/8; all tables/rows n<=3; three random per n4..6; and/or/parity/majority/threshold-third n7/8"
 verdict = "near misses, nothing shipped. One named next-square alignment rule pads recurring segment entries only when recurrence-count-weighted climb savings exceed padding: actual14122/28020 ->14115/26555 chars (0.050/5.228%). Recurrence count overstates emitted reentries after ancestor sharing, so its no-growth premise fails too. Raw printing landing gives14683/27900 (-3.973/0.428%); zero leaves enter syllable2 with accumulator2, whose existing increment raises it to3 before squaring: native n4 parity needs36 written bits, beyond preserved27. Read-led constant leaf suffix sharing gives14240/28052 (-0.836/-0.114%); segment flush overhead outweighs jumps on random tables. Bare tails are not merged because their entry accumulators differ. Even free whole-program toggles, measured only as nonproduction upper bounds, save2.223/5.739%, 0.531/1.417%, 0.269/0.753% respectively. No named family clears both fixed arities. All four programs execute on every row through n3 and boundary samples4..6:8624 executions and8624 wrong-output controls; n3 chars14857 ->14843/15699/14885, commands50038 ->50258/52705/50258. Alignment fires; a private repeated256-row constant-drain control fires seven suffix jumps and executes sampled rows. LF widths1/3/11 preserve sampled candidate outputs. No production path/state added; source, proofs, pins and example unchanged."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.3495
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: byte wrap bit mask. 450 programs, 152 halt cleanly, no trace differences; deliberate control differs on 157. Step throughput at longest 10/20/40 workload breadths: +0.09%/-0.35%/-0.09%. No production change; these workloads establish no useful gain, not a global performance wall."

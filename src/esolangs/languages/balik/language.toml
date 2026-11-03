@@ -69,3 +69,10 @@ verdict = "kept after completeness recheck 2026-11-03 by independent execution a
 arity = 8
 saving = 0.0000
 verdict = "rejected by construction: choosing every essential variable as the last-tested one is a table-dependent search and exceeds four named order candidates at judge arities. Not launched. The actual projection/compaction probes keep input order."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -5.0326
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: four-way wrap bit mask. 445 programs, 372 halt cleanly, no trace differences; deliberate control differs on 444. Step throughput at longest 10/20/40 workload breadths: +0.64%/+0.14%/-5.03%. No production change; these workloads establish no useful gain, not a global performance wall."

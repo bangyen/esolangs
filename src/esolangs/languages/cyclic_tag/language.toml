@@ -73,3 +73,10 @@ verdict = "not retained: the supplied marker-position invariant fails before any
 arity = 3
 saving = 0.0
 verdict = "rejected tested two-stage expander: replace highest weight4 by11 and put00 in its two reachable expansion productions. On table00000001,row111 the literal mutant11;00;0;1;00;00;0;0;0;0;0;,1111 prints0 instead of1: expansion zeros queued behind the marker are deleted after its answer. All baseline rows of AND and parity execute correctly; their mutant failures retain full queue/head traces. The proposed repair has no complete phase or answer-preservation rule. This is a concrete failing construction, not a universal cascade impossibility claim."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.3054
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: constant validation alphabet. 445 programs, 205 halt cleanly, no trace differences; deliberate control differs on 208. Step throughput at longest 10/20/40 workload breadths: -0.31%/+0.21%/+0.45%. No production change; these workloads establish no useful gain, not a global performance wall."

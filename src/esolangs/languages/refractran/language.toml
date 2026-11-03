@@ -118,3 +118,10 @@ saving = 0.0
 seed = "all small tables; fixed generic seeds above; every input-position literal and both polarities"
 tables = "eight prototype variants, 3240 native rows each; current public/default 2180 rows paired with old programs, plus 6360 canonical-mutant rows and 792 public parity rows through n=20"
 verdict = "verified 2026-11-02: public bytes match the selected prototype on 700 generic/small tables and the named family, without a program-length race. Current n3 headline and all three n3 ablation totals were refreshed. The ablation helper retains independent unsigned semantic IDs and signed emitted references; parity paths still pass through the patched _diagram, so disabling a canonical fold is not bypassed. All eight size pins and their per-row commands were remeasured; the n=10 random anchor and balanced example execute. Native runs enforce no input-port reads, a preserved Q sentinel, exactly n exponent fills, the eight-inspection swap bound, and integer/workspace caps. The omitted-reflection control compares full integer state because parity alone can conceal a broken final reflection. Historical larger-arity canonical-rule figures remain explicitly dated 2026-11-01."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 6.9463
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: precompiled fraction validator. 245 programs, 168 halt cleanly, no trace differences; deliberate control differs on 122. Step throughput at longest 10/20/40 workload breadths: +6.95%/+7.42%/+7.47%. Promising; broader corpus and source-size timings required before adoption."

@@ -100,3 +100,10 @@ arity = 8
 saving = 0.0
 tables = "all254 accumulator inputs for groups2/4/8/16/32/64/128, native isolated gadget transitions"
 verdict = "rejected as specified: removing the second return-row plus to fit pitch2 changes doubling2v into v. The native pitch3 positive control doubles all254 values; pitch2 fails247 nonzero values. The suggested second traversal has no specified value-dependent return endpoint; a complete recovery-strip layout was not implemented, so neither its claimed fit inside five rows nor20% area saving is verified. The midpoint-turn control also fails120 values, demonstrating that uniform group spelling does not make an unconditional turn value-preserving. Eight complemented-table controls catch wrong output in complete folded programs. No broad impossibility claim and no unverified construction ships."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 0.3443
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: four-way wrap bit mask. 449 programs, 149 halt cleanly, no trace differences; deliberate control differs on 449. Step throughput at longest 10/20/40 workload breadths: +0.34%/+0.82%/+0.56%. No production change; these workloads establish no useful gain, not a global performance wall."

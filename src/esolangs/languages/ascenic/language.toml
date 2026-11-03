@@ -82,3 +82,10 @@ verdict = "superseded for the named family: actual unit-spacing forward and mirr
 arity = 8
 saving = 0.0000
 verdict = "rejected by construction: enumeration of2^m input-flip masks and exhaustive/greedy/annealed variable permutations violate the no-search/four named-order policy. Neither search was launched; no measured size or impossibility claim. Named parity needs neither search."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -1.8597
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "all n<=3 tables/rows where a generator exists, published examples and 300 seeded mutations; 400-step cap"
+verdict = "prototype only: evaluate only selected arithmetic. 2493 programs, 2261 halt cleanly, no trace differences; deliberate control differs on 2236. Step throughput at longest 10/20/40 workload breadths: +0.42%/-1.86%/+0.25%. No production change; these workloads establish no useful gain, not a global performance wall."

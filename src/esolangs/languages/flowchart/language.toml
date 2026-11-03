@@ -102,3 +102,10 @@ arity = 8
 seed = "random.Random(4242), restarted per arity; sequential choice('01')"
 tables = "200 fixed generic tables each7/8; forced depths at3/4/6/7/8 and allsmall selected-layout executions"
 verdict = "rejected 2026-11-02: standalone three-depth area race changes nothing (0%,579640/1028568 cells). Depth-dependent area is16*2^(m-k)+12*2^k; existing ceil(m/2) already minimises it for unchanged preload order. After the unadmitted merge, combined area539728/947792 versus539728/947880 (0%/0.0093% marginal), so it cannot hitchhike. Ten forced alternative-depth programs change and all60 boundary-row executions pass; pop exponents are nonnegative for1<=k<=m. Input read order and output controls pass. Command worst variable2*2^(m-k)+2^k is also minimised by existing depth (even m has a tie); no25% bound reduction. At n3 a depth change can save at most one command per row against at least30 read/answer nodes, so no5% execution route even before enforcing no source growth. No production depth race/candidate/fallback state added."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 1.2735
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: slotted immutable dataclasses. 245 programs, 145 halt cleanly, no trace differences; deliberate control differs on 145. Step throughput at longest 10/20/40 workload breadths: +1.55%/+1.35%/+1.27%. No production change; these workloads establish no useful gain, not a global performance wall."

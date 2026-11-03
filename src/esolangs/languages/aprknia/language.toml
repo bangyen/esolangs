@@ -80,3 +80,10 @@ verdict = "kept only as canonical known-zero reset removal, completing raw3; not
 
 [ablations.linear_emission_20261103]
 verdict = "required construction repair: replace cached full emitted strings (Theta(Tn) copies) by subtree IDs for constant/equal-half tests, cached zero-exit booleans and one append/join emission pass. IDs and the boolean cache are the necessary compile-time state; superseded string cache and duplicate constant-prefix table disappear. Each node emits once, constant-span skip lengths sum O(T), hence source and build O(T). Byte-identical to the raw2+canonical-elision prototype on376 tables: exhaustive n<=3 and20 each n4..8; native controls retain all old rows. No production search, ranking race or frozen expression library."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.0403
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: index operands without slice. 245 programs, 147 halt cleanly, no trace differences; deliberate control differs on 121. Step throughput at longest 10/20/40 workload breadths: -0.04%/+1.80%/+0.41%. No production change; these workloads establish no useful gain, not a global performance wall."

@@ -112,3 +112,10 @@ saving = 1.862
 seed = "Random(1000*n+i), i=0..19"
 tables = "20 generic per n=7/8; exhaustive n<=3; 10 samples per n=4..6"
 verdict = "rejected: literal local ANF saves1.079/1.128% chars at n7/8; affine refinement saves5.056/1.862% (36235->34403 /66686->65444). Local pointer-normalized break-even only; no whole-program race. n3 literal chars19926 and commands88320 vs old20234/86192, 224 rows slow; refined chars18750, commands84624 (1.819% execution saving), no slower n3 row but below5% gate; n2 has6 slower rows. Native allsmall/larger controls pass and shrinking programs prove the rule fires. Its suffix path is fully superseded by the admitted global two-input coefficient leaf, so no local ANF state ships."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.356
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: xor binary tape flip. 245 programs, 170 halt cleanly, no trace differences; deliberate control differs on 144. Step throughput at longest 10/20/40 workload breadths: -0.36%/+0.02%/-0.12%. No production change; these workloads establish no useful gain, not a global performance wall."

@@ -125,3 +125,10 @@ arity = 5
 seed = 0
 tables = "forced signed 32-bit packets default/balanced/width1; default and balanced 4384 WrittenState rows"
 verdict = "correctness repair2026-11-02: the existing shared FALSE token regex now preserves decimal runs as well as quoted single characters. The old character-only pattern split18290559 into 18/newline290559 on n=5 threshold>=3,row31, printing0 instead of1. One existing wrapper path is amended; no new wrapper, fallback or interpreter leniency is added. Multi-digit INT_MIN/sign-edge packets execute through balance and width1, whose width floor is the longest token. The unchanged committed example and all eight native pins were checked; commands uses the final row convention, not a row maximum. Diagram integer-length pricing and append-only emission are byte-identical to the old diagram on the public audit corpus and remove ancestor text state, making whole construction linear."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 0.0827
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: slotted immutable dataclasses. 249 programs, 167 halt cleanly, no trace differences; deliberate control differs on 218. Step throughput at longest 10/20/40 workload breadths: +1.05%/+0.08%/+0.23%. No production change; these workloads establish no useful gain, not a global performance wall."

@@ -87,3 +87,10 @@ verdict = "not retained: an isolated short comparator{values/=u/=/=} with accumu
 arity = 1
 saving = 0.0
 verdict = "rejected tested placement: move the tail from last-window+1 to the open window at column82. The last code band is below82 and no stop occupies82..90, yet table01 printsB on row0 andQ on row1 instead of0/1. Leaf rungs land partway through the arithmetic tail; the old closing rung is needed to align Q/T entries. All baseline fixture rows execute correctly. This rejects the proposed eligibility condition and placement, not every possible tail redesign; no speculative saving or bundled fallback ships."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 1.5947
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: slotted immutable dataclasses. 245 programs, 146 halt cleanly, no trace differences; deliberate control differs on 245. Step throughput at longest 10/20/40 workload breadths: +1.67%/+1.87%/+1.59%. No production change; these workloads establish no useful gain, not a global performance wall."
