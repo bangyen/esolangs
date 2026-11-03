@@ -13,6 +13,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     if table == "00":
         _check_constants()
+        _check_projection()
     n = len(table).bit_length() - 1
     program = esolangs.generate("Balik", table)
     if table == "10":
@@ -44,7 +45,7 @@ def _check_constants() -> None:
     from esolangs.languages.balik.interpreter import run
     from esolangs.runtime.io import ScriptedIO
 
-    assert sum(len(esolangs.generate("Balik", f"{k:08b}")) for k in range(256)) == 56163
+    assert sum(len(esolangs.generate("Balik", f"{k:08b}")) for k in range(256)) == 44929
     for n in range(1, 13):
 
         class ReadFirstIO(ScriptedIO):
@@ -64,3 +65,32 @@ def _check_constants() -> None:
                     assert io.reads == n
                     assert io.past_end == 0
                     assert io.input_char() == ord("7")
+
+
+def _check_projection() -> None:
+    """Projection leaves preserve the tested cell used by every merge."""
+    from esolangs.exceptions import InputExhaustedError
+    from esolangs.languages.balik.generator import balik
+    from esolangs.languages.balik.interpreter import _Machine, run
+    from esolangs.languages.balik.proof_formulas import execution
+    from esolangs.languages.balik.tests.formulas import execution_witness
+    from esolangs.runtime.io import ScriptedIO
+
+    for table in ("00001111", "00110011", "01010101", "01101001"):
+        for row in range(8):
+            io = ScriptedIO(f"{row:03b}" + "2")
+            run(balik(table), io)
+            assert io.getvalue() == table[row]
+            assert io.reads == 3
+            assert io.past_end == 0
+            assert io.input_char() == ord("2")
+        with pytest.raises(InputExhaustedError):
+            run(balik(table), ScriptedIO("01"))
+    for n in (1, 2, 3, 4, 5):
+        code = balik(execution_witness(n))
+        machine = _Machine(code, ScriptedIO("1" * n))
+        commands = 0
+        while not machine.halted:
+            machine.step()
+            commands += 1
+        assert commands == execution(n, code)

@@ -1098,6 +1098,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Fish": lambda n: (_low_one(n),),
     "Freestajlo": lambda n: (_freestajlo_worst(n), _low_one(n)),
     "Grapheme": lambda n: _grapheme_worst(n) if n >= 2 else (),
+    "Balik": lambda n: _diagram_witness("balik", n, 8, "execution_witness", bottom=1),
     "Hot": lambda n: (_morse("1000", "1011", n),) if n >= 2 else (),
     "INTERCAL": lambda n: (
         (_intercal_worst(n), *((_intercal_chars_worst(n),) if n <= 23 else ()))

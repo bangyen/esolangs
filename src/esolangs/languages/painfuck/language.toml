@@ -127,3 +127,10 @@ saving = 0.0
 seed = 0
 tables = "every three-input table/row; original and canonical/native public programs"
 verdict = "corrected 2026-11-02: inherited62 at n3 was false. Original01111101,row111 takes65, reduced to55 by canonical pruning; current11101001,row111 still takes65 (92chars). Exhaustive public n3 maximum65 is the new finite exact bound. Inline and direct chains stay below22n; admitted banks use B=(3n^2+3)//4+20n+4 for the WHOLE program, affine sum uses P=4n^2+9n+5-6floor(n/2). For n>=4 use max(P,B,22n); from5 P dominates. Old exact E scopes3/6 retained (65/185), source4/6 and workspace1/2/3/6 unchanged. Shared witness maintenance: retain the old affine witness and append11101001 only at n3. No proof scope narrowed or numerical claim weakened to hide the old defect."
+
+[ablations.trick_recheck_20261103_generic_guard_execution]
+arity = 3
+saving = 5.6037
+seed = 0
+tables = "all256 three-input tables/every row;4096 paired native executions against current named-OR baseline"
+verdict = "rejected by table-level execution gate, not merely a slower row: generic sk inversion with s clearing gives80232->75736 commands,18147->16823 chars, no larger table, but8 tables have higher summed commands and13 have higher maxima. Table00110111 rises330->338 summed and52->57 worst-row commands. Every output, three ordered reads and following7 token pass;108 individual rows slow. This closes the source-only/row-only rationale without claiming all inverse-guard schedules impossible. Named OR/NOR keeper, source and resource bounds remain unchanged."

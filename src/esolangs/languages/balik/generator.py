@@ -10,7 +10,7 @@ stack children vertically, and side by side at every other level, so the
 area is linear.
 
 Size:
-    Theta(T) area; n=4 parity: 773 chars.
+    Theta(T) area; n=4 parity: 685 chars.
     Constants: n + 2/3 cells and commands.
 
 Decisions:
@@ -22,6 +22,7 @@ Decisions:
 """
 
 from collections.abc import Callable
+from dataclasses import dataclass, field
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
@@ -32,19 +33,26 @@ from esolangs.generation.helpers import (
 from esolangs.languages.balik.proof_formulas import execution
 from esolangs.registry._language import Language, Shape
 
-type _Cells = dict[tuple[int, int], str]
+
+@dataclass
+class _Cells:
+    """Translated children avoid copying every glyph at every ancestor."""
+
+    local: dict[tuple[int, int], str] = field(default_factory=dict)
+    children: list[tuple["_Cells", int, int]] = field(default_factory=list)
+
+
 type _Box = tuple[_Cells, int, int]
 
 
 def _put(cells: _Cells, row: int, col: int, text: str) -> None:
     for i, c in enumerate(text):
-        assert (row, col + i) not in cells, (row, col + i)
-        cells[row, col + i] = c
+        assert (row, col + i) not in cells.local, (row, col + i)
+        cells.local[row, col + i] = c
 
 
 def _merge(cells: _Cells, child: _Cells, row: int, col: int) -> None:
-    for (r, c), ch in child.items():
-        _put(cells, row + r, col + c, ch)
+    cells.children.append((child, row, col))
 
 
 def _box(
@@ -55,11 +63,15 @@ def _box(
     if constant(start, stop):
         walk = k - depth
         leaf = ">" * walk + ("+." if table[start] == "1" else ".") + "<" * walk
-        return {(0, i): c for i, c in enumerate(leaf)}, len(leaf), 1
+        return _Cells({(0, i): c for i, c in enumerate(leaf)}), len(leaf), 1
+    # The final input is already the requested 0/1 answer; its cell is
+    # unchanged, preserving the enclosing box's merge test.
+    if stop - start == 2 and table[start:stop] == "01":
+        return _Cells({(0, 0): "."}), 1, 1
     half = (start + stop) // 2
     top, w0, h0 = _box(table, constant, start, half, k)
     bottom, w1, h1 = _box(table, constant, half, stop, k)
-    cells: _Cells = {}
+    cells = _Cells()
     # The split: a 0 reverses at ``@`` into ``*``, which turns east.
     _put(cells, 0, 1, "*>")
     _put(cells, 1, 1, "@")
@@ -120,13 +132,21 @@ def balik(truth_table: str) -> str:
     head = "".join(prefix)
     table = read_at(truth_table, essential, n)
     cells, _, height = _box(table, constant_span_test(table), 0, len(table), k)
-    rows = [[" "] * 0 for _ in range(height)]
-    grid: _Cells = {(0, i): c for i, c in enumerate(head)}
+    rows: list[dict[int, str]] = [{} for _ in range(height)]
+    grid = _Cells({(0, i): c for i, c in enumerate(head)})
     _merge(grid, cells, 0, len(head))
-    for (r, c), ch in sorted(grid.items()):
-        rows[r].extend(" " * (c - len(rows[r])))
-        rows[r].append(ch)
-    return "\n".join("".join(row) for row in rows)
+    pending = [(grid, 0, 0)]
+    while pending:
+        node, row, col = pending.pop()
+        for (r, c), ch in node.local.items():
+            target = rows[row + r]
+            assert col + c not in target, (row + r, col + c)
+            target[col + c] = ch
+        pending.extend((child, row + r, col + c) for child, r, c in node.children)
+    return "\n".join(
+        "".join(row.get(c, " ") for c in range(max(row, default=-1) + 1))
+        for row in rows
+    )
 
 
 LANGUAGE = Language(
