@@ -123,6 +123,12 @@ def check_raw_switchcase():
         "",
     )
 
+    _check(
+        _Machine,
+        [("_", {0: (("+", 7),)}), ("_", {7: (("@", ""),), "!": ((".", ""),)})],
+        "",
+    )
+
     class LostSelection(_Machine):
         def step(self):
             super().step()
