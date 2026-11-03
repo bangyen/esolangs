@@ -132,6 +132,7 @@ def test_constant_leaf_preserves_shape_and_input_consumption(n: int, bit: str) -
     """A constant needs only input discards and the printed literal."""
     if n == 1 and bit == "0":
         _check_constants()
+        _check_identities()
     program = boolean.bfstack(bit * (1 << n))
     assert len(program) == 2 * n + 50 + int(bit)
     for row in range(1 << n):
@@ -141,7 +142,7 @@ def test_constant_leaf_preserves_shape_and_input_consumption(n: int, bit: str) -
 
 
 def test_small_tables_do_not_grow_and_execute() -> None:
-    """The n=3 total is 59,247 characters."""
+    """The n=3 total is 58,899 characters."""
     from esolangs.languages.bfstack.generator import _bfstack_small
 
     total = 0
@@ -154,7 +155,66 @@ def test_small_tables_do_not_grow_and_execute() -> None:
                 total += len(program)
             for row, expected in enumerate(table):
                 assert run_bfstack(program, list(format(row, f"0{n}b"))) == expected
-    assert total == 59_247
+    assert total == 58_899
+
+
+def _check_identities() -> None:
+    from esolangs.languages.bfstack.interpreter import _Machine
+    from esolangs.languages.bfstack.proof_formulas import execution, workspace
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+        for selected in range(n):
+            table = "".join(
+                str((row >> (n - selected - 1)) & 1) for row in range(1 << n)
+            )
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("BFStack", table, **options)
+                assert len(program.replace("\n", "")) == 2 * n
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    bits = f"{row:0{n}b}"
+                    io = ScriptedIO(bits + "Q")
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        if program[machine.ind] == ".":
+                            assert io.reads == n
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps < 100
+                    assert io.getvalue() == bits[selected]
+                    assert io.past_end == 0
+                    assert io.input_char() == ord("Q")
+                    if not options:
+                        assert steps == 2 * n
+                        assert (
+                            written.bits
+                            <= 12 + n.bit_length() + len(program).bit_length()
+                        )
+    rng = random.Random(2026110209)
+    identity = "01" * 128
+    dense = "".join(rng.choice("01") for _ in range(256))
+    for table in (identity + dense, dense + identity):
+        program = boolean.bfstack(table)
+        for row in (0, 1, 255, 256, 511):
+            io = ScriptedIO(f"{row:09b}" + "Q")
+            machine = _Machine(program, io)
+            written = WrittenState(machine.snapshot())
+            steps = 0
+            while not machine.halted:
+                if program[machine.ind] == ".":
+                    assert io.reads == 9
+                machine.step()
+                written.sample(machine.snapshot())
+                steps += 1
+                assert steps <= execution(9, program)
+            assert io.getvalue() == table[row]
+            assert io.reads == 9
+            assert io.input_char() == ord("Q")
+            assert written.bits <= workspace(9, program)
 
 
 def _check_constants() -> None:

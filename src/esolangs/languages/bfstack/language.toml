@@ -75,6 +75,27 @@ verdict = "kept 2026-10-30 (random bar, gated at n>=8 by the byte): a block hold
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
+trick_prototype = 2026-11-02
+
+[ablations.raw_seed_input]
+arity = 8
+saving = 3.89
+seed = "random.Random(20261030 + n)"
+tables = "200 random per n=7,8; parity/majority/and/or/one-third threshold separately"
+verdict = "rejected: four fixed seed offsets with the first physical input assigned weight 1 save 1.10%/3.89% at n=7/8 (163850 -> 162044; 250877 -> 241116 chars); 12 n=8 tables have no valid byte-zero row among these offsets and are counted unchanged, not given a shipped fallback. Binary-weight named builds grow or have no valid offset; preserving the symmetric count reader instead saves exactly nine chars per named table (at most 2.01%/1.79% at n=7/8). Relabelled native controls pass; no production raw-seed change."
+
+[ablations.polarity_weight_search]
+arity = 8
+saving = 0.042
+seed = "random.Random(20261030 + n)"
+tables = "200 random per n=7,8; five named families separately"
+verdict = "rejected: no search; four fixed fragments combine original/swapped top weights with original/inverted first-input polarity. Normalizing by 49 leaves 255/0, which correctly controls the destructive one-shot branch. Savings 0.040%/0.042% (163850 -> 163784; 250877 -> 250772 chars), and all named families grow. Forced variants execute natively; no production change."
+
+[ablations.merged_output_offset]
+arity = 12
+saving = 82.86
+tables = "all selected positions n=1..12; exhaustive tables/rows n<=3 and seeded n=4..6; nested n=9 identity leaf"
+verdict = "kept only as canonical projection/minimal spelling: one essential input with projected table 01 retains its raw byte, drains every other physical input with ,<, then prints. L=E=2n versus 2n+116; n=7/8 130/132 -> 14/16 chars, n=12 140 -> 24. Same return stack effect, O(T) construction, no loop or fill change. Workspace at most 12+bl(n)+bl(L), six data bits at n=1; nested leaves fit the unchanged bound. Generic exact proof scopes/witnesses, eight size/command pins and parity/AND/random Size anchors remain unchanged. n=3 corpus 59247 -> 58899. The broader monotone proposal is wrong: retaining A and adding a B-only payload computes ASCII 2 on OR(1,1); equal payloads require f(1,x)-f(0,x)=1, forcing identity. Native paired/control sweep 3006 rows, two wrong-input mutant failures; owned helper covers default/width=1/balanced, all reads before output, bounded steps/resources and a preserved following record. Random n=7/8 saving is zero."
 
 [ablations.constant_table_audit_20261101]
 arity = 8

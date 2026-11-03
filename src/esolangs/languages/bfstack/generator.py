@@ -9,6 +9,7 @@ Size:
     n=10 and: 640 chars, n=10 random 1847: 5,211 chars.
     Constants use L=2n+50+b chars/commands, omitting the branch-only final pop;
     written workspace 6+bl(L)+bl(n) bits.
+    A projected identity retains its raw input byte: 2n chars/commands.
 
 Decisions:
     No call or goto (loops nest) and the stack hides all but its top, so a
@@ -112,6 +113,11 @@ def _bfstack_small(
     At most ``_BLOCK_INPUTS`` essential inputs; an ignored input weighs nothing.
     """
     weights, projected = build or input_weights(truth_table, n)
+    if projected == "01" and weights.count(1) == 1:
+        # Projection leaves only the selected byte; later reads push/pop above
+        # it. Printing after the drain preserves physical input order.
+        selected = weights.index(1)
+        return ",<" * selected + "," + ",<" * (n - selected - 1) + "."
     start = _start(projected)
     return (
         _bfstack_encoder(weights, start)

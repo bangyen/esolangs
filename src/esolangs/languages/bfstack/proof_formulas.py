@@ -7,6 +7,7 @@ def execution(n: int, _: str) -> int:
     A one arm costs 60 commands a wide level (a zero arm 59) over the worst
     eight-input block's 1,769 commands, one more under a tree (the closing
     ``<``).
+    A projected identity costs only 2n, with the same branch-only pop.
     """
     return 60 * (n - 8) + 1769 + (n > 8)
 
@@ -18,6 +19,16 @@ def workspace(n: int, p: str) -> int:
     arm (loop at position 51: six bits, not ``bl(L)``): never both at full
     width.  At n = 9 the zero arm's loop sits below 2^11 (a one arm of a
     1,510-character block), one bit short.
+
+    An identity has no loops and at most two six-bit input bytes. Inside a
+    tree it replaces a block of at least eight remaining reads: its twelve
+    data bits plus the ancestor sentinels fit n+6. The cursor and loop
+    positions use the emitted L, so shortening a block preserves the bound.
+    Alone it uses at most 12+bl(n)+bl(L) bits (six data bits when n=1),
+    below this formula also for n<8.
+    At n=9 an identity one arm puts the zero-arm loop below 128; an identity
+    zero arm has no decoder loops, while the one-arm loop stays at 51.
+    Thus the one-bit n=9 correction survives either shortened arm.
     """
     bl = int.bit_length
     return (

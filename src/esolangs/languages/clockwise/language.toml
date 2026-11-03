@@ -69,6 +69,7 @@ tables = 20
 verdict = "kept: a four-row table (the one's `?` turns where the zero's `!` does, the return row's gaps `S` before a `?` and `+` before a `!`) drops the `S` row and the flat band from six rows to five; area 5(5T + 8n + 4) against 6(5T + 8n + 4), 16.67% on random tables at n=7, 8 and 9 (84,000 to 70,000, 161,760 to 134,800, 316,320 to 263,600 over 20 tables) and on parity, and, or, majority, threshold at every n=3..9 -- a fixed share, not falling with n. balance=True is 0.00% there: its banded strips keep the five-row table and win"
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
 
@@ -78,3 +79,24 @@ saving = 0.0
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "retained: the existing read-first constant ring is already folded. Its straight command sequence has 7n reads, seven output bits, two parity changes and one accumulator clear (one extra parity change for answer one). Three turns and even two-column area give 2*ceil((7n+13+b)/2) cells; this is a bound for this straight rectangular-ring construction, not all Clockwise programs. n=7 zero/one 62/64 cells; n=8 70/70 cells and commands, 507 written bits; n=12 98/98 cells. Positive control: coordinate rings and all nonconstant rows in the paired corpus execute; the current constant path itself executes all rows through n=8. n=3 corpus unchanged at 81106 cells. Each language passed 5656 paired old/new row executions; 270 nonconstant programs through n=3 remain byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts; a separate 1120-run probe includes every row through n=8. All 24 balanced scores improve or match; all eight benchmark size/command pins remain unchanged."
+
+[ablations.gadgets_under_table_trick_20261102]
+seed = 184700
+arity = 8
+saving = 0.0
+tables = "20 Random(184700+n+i).choices per n=7/8; all tables/rows n=2/3; ten samples and projections n=4..8"
+verdict = "rejected: an executable mirrored table below the gadget band needs a ninth home-return row. Emitted area totals70000/134800 ->80280/150840 at fixed7/8 (14.69/11.90% larger), with area9(3T+8n+6) against25T+40n+20, tending8% larger. Both lookup repairs execute7296 combined native rows with exact7n logical reads. The proposed stronger split-last-gadget shortcut is invalid as a simple midpoint R-pair: native G=8,v=5 returns9 instead of10. All254 baseline gadget inputs throughG=128 double exactly;120 midpoint variants fail. A complete offset-preserving split-gadget layout was not implemented; no claim that every folded layout fails. Existing generator, proof scopes, pins and examples remain unchanged."
+
+[ablations.last_input_branch_trick_20261102]
+seed = 184700
+arity = 8
+saving = 0.0
+tables = "same fixed20 and small/sample corpus;36 cyclic-realignment native rows n=2/3/4/7/8"
+verdict = "rejected: two executable flat half-bands with a physical-first selector occupy14 rows and area35T+112n, not the proposed20T. Fixed7/8 emitted areas70000/134800 ->105280/197120 (50.40/46.23% larger); limit40% larger. Last-input-first additionally requires rotating7(n-1) queue bits: native corrected programs produce correct answers but execute7(2n-1) reads, violating the required7n rotation. Omitting realignment gives14 wrong rows among36 controls. The first-input flat-strip repair and below-band repair pass7296 native runs; all256 three-input tables give baseline area81106/E325248, folded124416/E380928, strips157696/E374784; each repair slows2048 rows. No execution admission or whole-old-program fallback."
+
+[ablations.two_groups_per_gadget_cell_trick_20261102]
+seed = 0
+arity = 8
+saving = 0.0
+tables = "all254 accumulator inputs for groups2/4/8/16/32/64/128, native isolated gadget transitions"
+verdict = "rejected as specified: removing the second return-row plus to fit pitch2 changes doubling2v into v. The native pitch3 positive control doubles all254 values; pitch2 fails247 nonzero values. The suggested second traversal has no specified value-dependent return endpoint; a complete recovery-strip layout was not implemented, so neither its claimed fit inside five rows nor20% area saving is verified. The midpoint-turn control also fails120 values, demonstrating that uniform group spelling does not make an unconditional turn value-preserving. Eight complemented-table controls catch wrong output in complete folded programs. No broad impossibility claim and no unverified construction ships."
