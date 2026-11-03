@@ -1,5 +1,7 @@
 """Unit tests for the Modulous interpreter."""
 
+from itertools import product
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -386,6 +388,18 @@ def test_modulous_reset_loops_and_end_halts() -> None:
     assert run_until_halt_or_cycle(Modulous("[RST]", ScriptedIO())) is False
     end = Modulous("[END]", ScriptedIO())
     assert run_until_halt_or_all_branches_cycle(end) is True
+
+    for a, b, threshold in product((-7, 0, 12), (-5, 1, 19), (-7, 0, 12)):
+        source = (
+            f"[INP INT][DUP][PSH VAR1][PSH INT {b}][SWP]"
+            f"[JMP F 3 IF {threshold}][PRT INT][PRT INT]"
+            "[PRT VAR1 INT][END]"
+        )
+        io = ScriptedIO(f" {a} unused")
+        run(source, io)
+        expected = [a] if a == threshold else [a, b, a]
+        assert io.getvalue() == "".join(map(str, expected))
+        assert io.position() == len(str(a)) + 1
 
 
 def test_modulous_forks_every_value_rnd_could_draw() -> None:
