@@ -173,7 +173,7 @@ definition was attempted and its preservation form is closed:
   heuristic still prices candidate landings, so it is a cheaper
   search in kind, not a formula.  Whole navigations are memoised
   (438 distinct states serve 5,551 `goto`s).  The main line ends at
-  cell 6,548 at n=1 (5,499 at n=16); the code must end below 6,561,
+  cell 6,548 at n=1 (5,753 at n=16); the code must end below 6,561,
   where the hubs and stubs start.  The breadth-first search it
   replaced ended at 6,532 at n=1 (5,487 at n=16), over 5,571 path
   cells; against the traced corpus (5,194 programs) the heuristic's
