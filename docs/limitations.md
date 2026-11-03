@@ -162,6 +162,14 @@ its closed-form question is closed under the bounded-read
 definition below; the one signature-relative route past that
 definition was attempted and its preservation form is closed:
 
+- A legal-source bank of `j` glyphs at addresses 34–128 reflects
+  `D` on 34–127. The sequence `joj` decrements on that ring, preserving
+  `A`. Starting at 37 or 84, `*jojj` overwrites `A` and synthesizes a
+  persistent pointer to 19,716 or 39,383. With a chosen legal return glyph,
+  the native out-and-back routes reuse those pointers in 20 or 10
+  instructions, respectively, at all 94 instruction phases. A bank
+  layout that covers the generator's full address range remains open.
+
 - Navigation (`emitter.py` `goto`) is a deterministic bounded
   heuristic, the chain-valued scan-greedy -- not a closed form.  From
   the current cell it scans the next 32 cells' jump landings and
