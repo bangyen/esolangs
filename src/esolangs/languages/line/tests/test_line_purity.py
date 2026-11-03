@@ -1,5 +1,7 @@
 """The pure transition at Line's core, and the shell that wraps it."""
 
+from itertools import product
+
 import pytest
 
 from esolangs.languages.line.interpreter.simulate import (
@@ -67,6 +69,31 @@ def test_drive_is_the_shell_that_applies_the_effects() -> None:
     # ``+`` makes 1, ``o`` writes 1, ``i`` stores the fed 7.
     assert written == [1]
     assert dict(final) == {0: 7}
+
+    def frame(ops, *, zero=None, nonzero=None):
+        return _Frame(
+            ops=ops,
+            positions=tuple((i, 0) for i in range(len(ops))),
+            end=(len(ops), 0),
+            zero=zero,
+            nonzero=nonzero,
+            goto=None,
+        )
+
+    for value, delta, other in product((-4, 0, 7), (-7, 0, 4), (-5, 0, 11)):
+        adjust = ("+" if delta >= 0 else "-", abs(delta))
+        frames = (
+            frame((("i", 1), adjust), zero=1, nonzero=2),
+            frame(((">", 1), ("i", 1), ("o", 1), ("<", 1), ("o", 1))),
+            frame((("o", 1), (">", 1), ("i", 1), ("o", 1))),
+        )
+        supplied = iter((value, other))
+        output = []
+        cells = dict(_drive(frames, IO(read=supplied.__next__, write=output.append)))
+        result = value + delta
+        assert output == ([result, other] if result else [other, 0])
+        assert cells == {0: result, 1: other}
+        assert next(supplied, None) is None
 
 
 def test_the_shell_writes_before_the_next_read() -> None:
