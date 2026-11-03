@@ -9,6 +9,9 @@ from esolangs.runtime.io import ScriptedIO
 def test_k_exits_zero_and_s_exits_nonzero() -> None:
     assert run("K", ScriptedIO()) == 0
     assert run("S", ScriptedIO()) == 1
+    from .oracle_checks import check_raw_kiss
+
+    check_raw_kiss()
 
 
 def test_the_cat_exits_zero_after_echoing() -> None:

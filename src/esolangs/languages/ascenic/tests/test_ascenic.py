@@ -41,6 +41,9 @@ def _run(code: str, stdin: str = "") -> str:
 def test_wiki_hello_world() -> None:
     lines = [line for args in _HELLO for line in zip((5, 4, 1, 10), args, strict=True)]
     assert _run(_program(*lines)) == "Hello, World!"
+    from .oracle_checks import check_raw_ascenic
+
+    check_raw_ascenic()
 
 
 def test_wiki_a_plus_b() -> None:
@@ -127,10 +130,8 @@ def test_every_run_halts_within_its_line_count() -> None:
         assert steps <= 12
 
 
-def test_a_number_past_the_host_digit_cap_is_a_limit() -> None:
-    """Reported as ProgramError (a load error) though the program is valid."""
-    import esolangs
-    from esolangs.exceptions import InterpreterLimitError
-
-    with pytest.raises(InterpreterLimitError, match="4300"):
-        esolangs.run("Ascenic", "AAsss\nAsssss", stdin="9" * 5000 + "\n")
+def test_decimal_output_exceeds_the_host_digit_cap() -> None:
+    stdin = "9" * 5000
+    io = ScriptedIO(stdin)
+    run("AAsss\nAsssss", io)
+    assert io.getvalue() == stdin

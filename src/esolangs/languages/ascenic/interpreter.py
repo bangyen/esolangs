@@ -54,6 +54,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer
 from esolangs.runtime.randomness import Randomness, draw
 
 _LINE = re.compile(r"(A*)(s+)")
@@ -109,11 +110,13 @@ def _advance(
     top, rest = _pop(stack)
     if opcode == _PRINT:
         if arg % 2:
-            out = str(top)
+            out = format_integer(top)
         elif 0 <= top <= sys.maxunicode and not 0xD800 <= top <= 0xDFFF:
             out = chr(top)
         else:
-            raise HaltError(f"Ascenic: PRINT of {top}, which is no code point")
+            raise HaltError(
+                f"Ascenic: PRINT of {format_integer(top)}, which is no code point"
+            )
     elif opcode in {_INPUT, _RND}:
         assert value is not None
         stack = (value, stack)

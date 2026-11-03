@@ -105,3 +105,6 @@ def test_the_heading_is_part_of_the_code_position() -> None:
     assert isinstance(machine.ip, tuple)
     assert len(machine.ip) == 4
     assert run_until_halt_or_growth(machine) is False
+    from .oracle_checks import check_raw_back
+
+    check_raw_back()
