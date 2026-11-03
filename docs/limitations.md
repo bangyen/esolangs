@@ -466,6 +466,16 @@ generators have one.
   their average step. A zero average gives order two
   (`test_window_classes.py`).
 
+  If the odd sheet is a shifted copy of the even sheet with colors
+  permuted, a fixed color must cover the union of the two shifted offset
+  sets. No seven positions cover that union at any shift
+  (`test_window_classes.py`). With `f` fixed colors and `o` other odd
+  cycles, the 13-entry minimum per meaning gives
+  `47 >= 8f + (13(7-f) + o)/2`. There is at most one fixed color.
+  With one fixed color, all other cycles have even length. At shifts 10 and 39
+  the union has six offsets and needs at least nine positions per fixed
+  color, which excludes fixed colors entirely.
+
   Carrying state across groups does not escape it (2026-10-25, audit M5):
   in the one-query architecture the only cross-group state is entry state
   the fold delivers, a function of the group's address, so a stateful

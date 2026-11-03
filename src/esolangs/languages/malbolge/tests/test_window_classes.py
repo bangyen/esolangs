@@ -12,6 +12,7 @@ classes: eight classes, three bits per cell, are impossible.
 
 from __future__ import annotations
 
+from functools import cache
 from itertools import combinations, combinations_with_replacement
 
 from esolangs.languages.malbolge.interpreter import _XLAT1
@@ -124,6 +125,52 @@ def test_parity_conditioned_meaning_needs_thirteen_entries() -> None:
     roots = [(a, b) for a, b in combinations(containing[0], 2) if a & b == 1]
     assert len(roots) == 20
     assert not any(tiles(full ^ (a | b)) for a, b in roots)
+
+
+def test_shifted_relabeling_fixed_colors_need_eight_entries() -> None:
+    """A fixed color must cover the union of the shifted offset sets."""
+    cells = _CELLS // 2
+    full = (1 << cells) - 1
+    even, odd = ({op // 2 for op in _OPS if op % 2 == sheet} for sheet in (0, 1))
+
+    def covers(offsets: set[int], size: int) -> bool:
+        blocks = [sum(1 << ((i - op) % cells) for op in offsets) for i in range(cells)]
+        containing = [
+            [block for block in blocks if block >> i & 1] for i in range(cells)
+        ]
+        width = len(offsets)
+
+        @cache
+        def fit(left: int, slots: int) -> bool:
+            if not left:
+                return True
+            needed = left.bit_count()
+            if needed > slots * width:
+                return False
+            minimum = needed - (slots - 1) * width
+            choices = min(
+                (
+                    [
+                        block
+                        for block in containing[i]
+                        if (block & left).bit_count() >= minimum
+                    ]
+                    for i in range(cells)
+                    if left >> i & 1
+                ),
+                key=len,
+            )
+            return any(fit(left & ~block, slots - 1) for block in choices)
+
+        # Translate a chosen position to zero.
+        return fit(full & ~blocks[0], size - 1)
+
+    assert covers(set(range(7)), 7)
+    for shift in range(cells):
+        offsets = even | {(op + shift) % cells for op in odd}
+        assert not covers(offsets, 7)
+        if len(offsets) == 6:
+            assert not covers(offsets, 8)
 
 
 def test_equal_steps_force_alternating_sheet_swaps() -> None:
