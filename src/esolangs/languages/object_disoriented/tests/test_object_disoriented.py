@@ -179,3 +179,11 @@ def test_object_bits_pack_to_the_corresponding_byte() -> None:
     for byte in range(256):
         objects = ["nrpzz" if bit == "1" else "z" for bit in f"{byte:08b}"]
         assert _run(_bits(*objects)) == chr(byte)
+
+    for data in ("\x01\x80", "\xff\x00", "A\xa5Z"):
+        objects = [
+            "nrpzz" if bit == "1" else "z"
+            for char in data
+            for bit in f"{ord(char):08b}"
+        ]
+        assert _run(_bits(*objects)) == data
