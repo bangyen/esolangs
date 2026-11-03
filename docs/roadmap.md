@@ -150,13 +150,13 @@ Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-95 of the 114 generators: ///, 1 + i, 3x, A Painter Ant, ABCDirection,
+96 of the 114 generators: ///, 1 + i, 3x, A Painter Ant, ABCDirection,
 AddSubJump, Algebraic Programming Language, Alight, Aprknia, ArrowQueue,
 Ascenic, B-tapemark, Back, Balik, BASICER, Basicfuck, Befunge, Between,
 BFStack, Bitdeque, Bitwise Cyclic Tag, bit~, Bleh, Blindfolded Arithmetic,
 Boolfuck, brainfuck, BrainIf, Caballo, CARP, Chicken, Circlefuck, Circuit
 Diagram, Clockwise, Codesick, Collatz Multiverse, Container, CreativeScript
-v2, Crement, CV(N)(C), Cyclic tag, Decleq, DINAC, EGL, Eval, Fackward,
+v2, Crement, CV(N)(C), Cyclic tag, Decleq, Dig, DINAC, EGL, Eval, Fackward,
 FALSE, Fish, Forþ, FRACTRAN, Freestajlo, Grapheme, Hot, HQ9+ with headers,
 IEBEL, Interprogck8, Kiss, Line, lol waht i cant edit talk pages, Minsky
 Swap, Modulous, Monotonic Boolfuck, Movesum, Nandypants, NOR machine, NQ,

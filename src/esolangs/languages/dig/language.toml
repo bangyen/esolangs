@@ -8,18 +8,18 @@ outside_implementation = { date = 2020-07-09T19:30:00Z, source = "DeybisMelendez
 
 [proof_status]
 labels = ["tree"]
-qualification = "finite cell placement, the last six essential inputs left to a painted leaf table, an ignored input among or above them read and dropped"
+qualification = "ordered primitive lookups or a direct complementary-residual parity chain"
 scaling = "linear: worst A cells past n = 6: the dense table"
-execution = "linear: at most 125 + 74·2^((n-6)/2) for even n, 125 + 92·2^((n-7)/2) for odd, past n = 6"
-workspace = "linear: worst 8RC + bl(R-1) + bl(C-1) + bl(2n-1) + bl(n) + 10 bits past n = 4: the R×C grid"
+execution = "linear: at most max(H,48n-48) commands past n=6; H includes the indexed caps"
+workspace = "linear: at most W bits past n=4: byte grid, coordinates and derived transient maxima; equality at n=5"
 
 [generator_sizes]
 "00000001" = { commands = 28, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 22, "5" = 22, "6" = 28, "7" = 28 }, source_units = 113 }
 "00001100" = { commands = 22, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 22, "5" = 22, "6" = 22, "7" = 22 }, source_units = 70 }
 "00110110" = { commands = 32, commands_by_row = { "0" = 24, "1" = 24, "2" = 24, "3" = 24, "4" = 32, "5" = 32, "6" = 32, "7" = 32 }, source_units = 190 }
-"0110" = { commands = 22, commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22 }, source_units = 98 }
-"01101001" = { commands = 35, commands_by_row = { "0" = 35, "1" = 35, "2" = 35, "3" = 35, "4" = 35, "5" = 35, "6" = 35, "7" = 35 }, source_units = 274 }
-"0110100110010110" = { commands = 129, commands_by_row = { "0" = 123, "1" = 125, "2" = 127, "3" = 129, "4" = 123, "5" = 125, "6" = 127, "7" = 129, "8" = 123, "9" = 125, "10" = 127, "11" = 129, "12" = 123, "13" = 125, "14" = 127, "15" = 129 }, source_units = 230 }
+"0110" = { commands = 48, commands_by_row = { "0" = 48, "1" = 48, "2" = 48, "3" = 48 }, source_units = 53 }
+"01101001" = { commands = 96, commands_by_row = { "0" = 96, "1" = 96, "2" = 96, "3" = 96, "4" = 96, "5" = 96, "6" = 96, "7" = 96 }, source_units = 97 }
+"0110100110010110" = { commands = 144, commands_by_row = { "0" = 144, "1" = 144, "2" = 144, "3" = 144, "4" = 144, "5" = 144, "6" = 144, "7" = 144, "8" = 144, "9" = 144, "10" = 144, "11" = 144, "12" = 144, "13" = 144, "14" = 144, "15" = 144 }, source_units = 141 }
 "1101001101101101" = { commands = 129, commands_by_row = { "0" = 123, "1" = 125, "2" = 127, "3" = 129, "4" = 123, "5" = 125, "6" = 127, "7" = 129, "8" = 123, "9" = 125, "10" = 127, "11" = 129, "12" = 123, "13" = 125, "14" = 127, "15" = 129 }, source_units = 230 }
 "11111110" = { commands = 28, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 22, "5" = 22, "6" = 28, "7" = 28 }, source_units = 113 }
 
@@ -92,11 +92,11 @@ verdict = "retired 2026-10-21 (plain-rewrite audit): the two-band tree stays a w
 [ablations.compaction]
 saving = 67.4
 arity = 16
-verdict = "kept: clears on its parity class (58.8% of area at n=13, 65.1% at n=14, 67.4% at n=16, against the same shared build uncompacted); 1.3-1.8% on random repeated-leaf tables at n=12..14, 0.0% at n <= 12 where no lane build wins"
+verdict = "kept, repriced 2026-11-02: the strict full-parity chain supersedes its original full-parity qualifier, but parity with one ignored input immediately before the six-bit leaf still qualifies. Physical n=14/drop7 and n=15/drop8 default and balanced grid_area 24969 vs 60557 (58.7678%) /43624 vs 124845 (65.0575%) with compaction disabled; all 32 paired default/balanced native rows pass. No new construction/state is added. Majority and random four-class mosaic marginals are only 1.3453% /1.7897% at n=13/14 (balanced same); retain this path for the live ignored-input parity class, not those weak marginals. Historical full-parity savings (58.8% of area at n=13, 65.1% at n=14, 67.4% at n=16, against the same shared build uncompacted); 1.3-1.8% on random repeated-leaf tables at n=12..14, 0.0% at n <= 12 where no lane build wins"
 
 [ablations.width_machinery]
 saving = 0.0
-verdict = "kept: feasibility -- fit-width candidates, the quarter turn and the two-input XOR stencil; no default-path effect"
+verdict = "kept: feasibility -- fit-width candidates, the quarter turn and the two-input XOR stencil, now the chain’s n=2 instance; width paths remain unchanged"
 
 [interpreter_ablations]
 audited = "2026-10-18"
@@ -108,6 +108,7 @@ workload = "run"
 verdict = "removed 2026-10-20 (interpreter candidate I-6): -3.0% run with overlapping spreads in the audit; no measurable earning"
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-30
 
@@ -124,3 +125,40 @@ saving = 0.0
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "retained: counted windows already read ignored inputs and print a literal. At n=8 both constants use 16 cells, 16 commands and 22 written bits; at n=7 area 15, n=12 area 20. Removing the explicit final @ executes correctly on all 512 n=8 rows and saves one cell, but relies on the interpreter-only off-grid halt documented in interpreter.py rather than the explicit halt. Keep @; no claim of universal optimality. n=3 corpus area 54912 unchanged. 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Owned raw read-first tests preserve exact read counts and following input records, with no EOF probe."
+
+
+[ablations.whole_table_leaf_prototype]
+saving = -28.0
+arity = 8
+seed = "random.Random(1847+n), sequential choice('01')"
+tables = "20 fixed tables at each n=7/8; all rows, plus all-small and sampled4..6 fallback controls"
+verdict = "rejected 2026-11-02: existing four-bit adders emit multi-character10/11 counters and a16-column paint row emits literal16, not a cell. Faithful executable repair chains one-digit arming windows and computes/stores16 before inputs. Bootstrap multiplication isolates its operand with an armed spacer so all rotations read the same unique numeric neighbour. Actual whole rectangles608/1152 cells versus indexed540/900: fixed20 areas10800 ->12160 /18000 ->23040 (growth12.5926/28.0%). E totals496640 ->519680 /1320960 ->1377280, maxima210/284 vs201/265; no25% command alternative. n<=3 source/E unchanged, so no5% route. Repaired programs execute all7680 judge rows with n ordered reads, exactone output and trailing sentinel. No production path/state added; no claim that every possible whole-table layout fails."
+
+[ablations.leaf_orientation_race_prototype]
+saving = 0.0
+arity = 8
+seed = "random.Random(1847+n), sequential choice('01')"
+tables = "20 fixed tables per n=7/8, all rows in each unselected shape; named controls"
+verdict = "rejected 2026-11-02: both proposed opposite splits are executable after the same counter repairs. Four/two-bit leaves cost1435/2911 cells at n=7/8; two/four (with stored16 setup and rotated arrows)3381/6831. Fixed20 actual area totals28700/58220 and67620/136620 versus default10800/18000. All15360 alternative judge rows run, including each rotated stage. Existing indexed bodies win every fixed generic table, so a three-orientation race changes no selected default (0%); the unselected candidates demonstrably differ and execute. Four/two E totals537600/1259520 (n8 -4.65%, n7 growth), two/four688640/1633280: no25% command gain; n3 unchanged excludes5% route. No production layout parameter/race added."
+
+[ablations.complement_leaf_print]
+saving = 49.0909
+arity = 8
+seed = "random.Random(1847+n), sequential choice('01')"
+tables = "parity and complement n=2..16; exhaustive tables/rows n<=3, sampled4..6, 20 fixed7/8 tables"
+verdict = "kept named full parity/negation 2026-11-02, generic complement lane not added: fixed20 generic tables at7/8 have zero complement collisions among their64-entry leaves, with a random u+not(u) positive matcher control. The named family has complementary residuals at every input; chaining existing a+b-2ab directly implements conditional complement. Actual positive parity area540 ->288 /660 ->336 (46.6667/49.0909%); negative540 ->300 /660 ->348 (44.4444/47.2727%), both clear stricter20% fixed-window bar. Source is12 rows by4n-4 (positive) or4n-3 (negative), with48n-48 commands. Adjacent stages need no spacer: later stores remain pending and each new $ reads its own right9 before the prior left8; gapless1016-row control passes. n9..12 gains fluctuate down to45.0/43.75%; n13..16 positive97.6931/98.5696/99.2460/99.5652%, negative97.6451/98.5421/99.2325/99.5580%. Past12 the old complete-prefix tree keeps at least2^(n-6)-1 branch cells, so O(n) new source has saving limit100%."
+n3_chars_before = 43238
+n3_chars_after = 42810
+n3_area_before = 54912
+n3_area_after = 54401
+n3_commands_before = 56320
+n3_commands_after = 57776
+complexity = "One parity carry recognizer and one chained version of the existing polynomial stencil replace the separate two-input helper. No search, frozen tables, source-min fallback or extra runtime flag. Each later stage retains a and reads only b; last stage alone prints, negation uses2ab+1-(a+b). Explicit-width and share=False constructions remain unchanged, preserving feasibility and canonical ablations. Existing leading-ignored wrapper composes with the new inner parity source; its exact grammar participates in resource recognition. Compaction remains necessary for middle-ignored parity, as repriced separately."
+tradeoffs = "Source admission only: n3 commands grow2.5852%; primitive/indexed H remains unchanged on those layouts, but the named bound48n-48 exceeds old numeric H atn6..9 (240/288/336/384 vs199/217/273/371). Global max(H,48n-48) keeps O(sqrtT); every old E7..12 rung remains False. Native warm allrow medians atn4/6/8 .001422/.007950/.043219 ->.002814/.019264/.107631s, commands2016/10624/53760 ->2304/15360/86016. Warm5-build medians atn8/12/16 improve4.286625/47.105834/830.232541 ->.069666/.701250/10.825750ms. Balanced positive area945 ->288 /660 ->336; negative945 ->300 /660 ->348."
+
+[ablations.workspace_accounting_repair]
+seed = "random.Random(1847+n), indexed classes random.Random(4400+n)"
+tables = "4754 native rows: old/final small, parity both biases2..12, indexed class maxima7..12, leading-discard thresholds1/2/5/6/7/8/9"
+saving = 0.0
+arity = 12
+verdict = "correctness repair 2026-11-02: inherited indexed W undercounts real states (old parity n7 last4349>4347; n9 5791>5789,n10 7199>7197,n11 7231>7229). Derive class label<=9,stride<=8, stored offset<=72,row count<=81; prefix decoder<=16. All stored cells remain nonnegative<=81 (one byte). Indexed mole/num need at most7+7 bits plus heading2, so replace primitive constant10 with16 only for existing capture opcode ';*$2'. Native10-class controls attain the full+6 correction, not only the observed parity+2. Primitive formula/scopes unchanged. Polynomial route is recognized by its actual twelve-row travel/terminal line and exact existing discard-column grammar, with no marker/state; exact W uses visited coordinates, counter9, signed-mole peak and uniform-token cursors. All old Wn5 exact=True coverage retained; negative two-input special and discard-window boundaries checked natively."

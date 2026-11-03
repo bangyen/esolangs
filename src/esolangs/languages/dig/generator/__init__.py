@@ -4,10 +4,12 @@ Each tree level is a ``$3~;#`` block that reads a bit, stores it and turns on
 it; leaves print the answer.  The tree is laid out in one band, or under
 ``width`` two that turn round; at four inputs it races the alternating
 layout, past them it is that layout, whose flat-leaf layout, shared variants
-and indexed leaf decoder compete by length and grid area.
+and indexed leaf decoder compete by length and grid area. Full parity and
+its negation chain the four-pass XOR stencil instead, retaining each result
+while later stores remain pending until earlier stages finish.
 
 Size:
-    Area O(T) past four inputs; n=10 parity: 614 chars, n=10 random 1847:
+    Area O(T) past four inputs; n=10 parity: 405 chars, n=10 random 1847:
     7,097 chars.
 
 Decisions:
@@ -23,12 +25,12 @@ Decisions:
     ([proof_formulas.execution]); no ledger refuses a build.  A prefix
     lookup can index up to ten shared leaf classes at n=7..12 (one prefix
     bit at n=7), adding eight rows per class to one six-input body;
-    full-input parity uses 720 cells and 227 commands at n=9, four-class
+    full-input parity uses 384 cells and 384 commands at n=9, four-class
     n=10 controls 1,152 cells and 291 commands.
     Narrow widths can use the indexed leaf decoder.
-    The quarter turn is not a balance candidate for the shared default:
-    operand lookup scans neighbours in a fixed order, so its rotated n=10
-    parity and majority programs read the wrong digit.  The flat tree's turn
+    The shared lookup's quarter turn is not a balance candidate: its original
+    n=10 parity and majority programs read the wrong digit, because operand
+    lookup scans neighbours in a fixed order. The flat tree's turn
     (n <= 4) runs correctly on every table.
 """
 
@@ -362,23 +364,55 @@ def _dig_quarter_turn(program: str) -> str:
     return "\n".join("".join(row).rstrip() for row in grid)
 
 
-def _dig_xor_pair() -> str:
-    """Compute a+b-2ab in four operand-sharing passes, with two input reads."""
-    # Down the first column: read/store a and b. Up the second: copy b
-    # into three cells, add a, store their sum. Down the third: copy the
-    # sum twice, subtract b, multiply by b, and store ab three times.
-    # The final climb starts with ab, subtracts its three stored copies,
-    # adds the saved sum, and prints. Separating stores from readers
-    # prevents the up/right/down/left operand priority selecting a copy.
+def _dig_parity_bias(table: str) -> int | None:
+    """Recognize complementary residuals using fewer than 2T carry toggles."""
+    parity = bias = int(table[0])
+    for row, value in enumerate(table):
+        if int(value) != parity:
+            return None
+        carry = row
+        while carry & 1:
+            parity ^= 1
+            carry >>= 1
+        parity ^= 1
+    return bias
+
+
+def _dig_parity_chain(n: int, bias: int) -> str:
+    """Chain the four-pass a+b-2ab stencil, retaining each preceding result."""
+    # Reads/stores a,b; copies b, saves a+b; forms/stores ab; then subtracts
+    # three copies of ab from ab and adds a+b. Adjacent later stores are
+    # still semicolons while earlier operators run; each $ reads its own
+    # right-hand 9 before a preceding stage's left-hand 8.
     columns = (
         "'$~;  ~;   >",
         ">9;+ ;;;  $^",
         "'$;; -*;;;8>",
         "@8:+   ---$^",
     )
-    return "\n".join(
-        "".join(column[row] for column in columns).rstrip() for row in range(12)
-    )
+    rows: list[list[str]] = [[] for _ in range(12)]
+    for stage in range(n - 1):
+        last = stage == n - 2
+        for row in range(12):
+            cells = [column[row] for column in columns]
+            if stage and row == 2:
+                cells[0] = " "  # a is already in the mole; read only b
+            if not last:
+                if row == 2:
+                    cells[3] = " "  # retain the result instead of printing
+                elif row == 0:
+                    cells[3] = ">"
+            elif bias:
+                if row == 9:
+                    cells[3] = "+"
+                elif row in (7, 8):
+                    cells[3] = " "
+                elif row == 4:
+                    cells[3:] = ["+", "1"]
+                elif row == 3:
+                    cells[3] = "-"  # 2ab + 1 - (a+b)
+            rows[row].append("".join(cells))
+    return "\n".join("".join(parts).rstrip() for parts in rows)
 
 
 def _dig_discards(count: int, tail: str = "0") -> str:
@@ -412,6 +446,10 @@ def dig(truth_table: str, width: int | None = None, *, share: bool = True) -> st
     four-column polynomial stencil.
     """
     n = _validate_truth_table(truth_table)
+    if n >= 2 and share and width is None:
+        bias = _dig_parity_bias(truth_table)
+        if bias is not None:
+            return _dig_parity_chain(n, bias)
     built = _dig_build(truth_table, n, width, share=share)
     essential = essential_inputs(truth_table, n)
     if width is None and not essential:
@@ -444,7 +482,7 @@ def _dig_build(
 ) -> str:
     """Return :func:`dig`'s layout for every table, ignored inputs included."""
     if width is not None and 0 < width < 8 and truth_table == "0110":
-        return _dig_xor_pair()
+        return _dig_parity_chain(2, 0)
 
     def settle(current: str) -> str:
         """Try the indexed decoder against the cheapest layout so far."""

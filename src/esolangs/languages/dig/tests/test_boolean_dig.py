@@ -16,12 +16,37 @@ run_dig = _runner("dig", lines=True, newline=True)
 
 class TestDig:
     def test_four_input_parity_keeps_the_compact_layout(self) -> None:
-        """Four-input parity races the alternating layout: 230 chars."""
-        table = "0110100110010110"
-        program = boolean.dig(table)
-        assert len(program) <= 436
-        for row, expected in enumerate(table):
-            assert run_dig(program, list(format(row, "04b"))) == expected
+        """Polynomial complements retain exact command and workspace accounting."""
+        from esolangs.languages.dig.interpreter import _Machine
+        from esolangs.languages.dig.proof_formulas import (
+            _parity_chain,
+            execution,
+            workspace,
+        )
+        from esolangs.runtime.io import ScriptedIO
+        from scripts.benchmark import WrittenState
+
+        for n in (4, 5):
+            for bias in (0, 1):
+                table = "".join(str(bias ^ (r.bit_count() % 2)) for r in range(1 << n))
+                program = boolean.dig(table)
+                assert _parity_chain(n, program) == (n, 0)
+                peak = 0
+                for row, expected in enumerate(table):
+                    io = ScriptedIO(" ".join(format(row, f"0{n}b")) + " Q")
+                    machine = _Machine(program.splitlines(), io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted and steps <= execution(n, program):
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                    assert machine.halted
+                    assert steps == execution(n, program)
+                    assert io.getvalue() == expected
+                    assert io.input_token() == "Q"
+                    peak = max(peak, written.bits)
+                assert peak == workspace(n, program)
 
     @pytest.mark.medium
     def test_alternating_layout_executes_every_row(self) -> None:
@@ -279,7 +304,7 @@ class TestDig:
             if count == 1:
                 assert (
                     len(program.splitlines()) * max(map(len, program.splitlines()))
-                    == 119
+                    == 68
                 )
             else:
                 assert program.endswith("\n" + boolean.dig(inner))
