@@ -117,7 +117,7 @@ def test_printing() -> None:
         return f"{real} {'-' if imag < 0 else '+'} {magnitude}"
 
     # Small Gaussian integers are represented exactly by Python complex.
-    values = [complex(a, b) for a, b in product((-3, 0, 2), repeat=2)]
+    values = [complex(a, b) for a, b in product((-3, 0, 2, 65536), repeat=2)]
     for left, right, (opcode, evaluate) in product(
         values, values, (("+", add), ("*", mul))
     ):
