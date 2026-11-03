@@ -69,6 +69,12 @@ def test_comparison_is_minus_one_for_true() -> None:
             source = f"{literal(a)}a:{literal(b)}b:[a;b;{opcode}]f:f;!."
             assert run_program(run, source) == str(expected), source
 
+    for a, b in product((-(2**31), -7, 7), (-3, -1, 2)):
+        magnitude = abs(a) // abs(b)
+        quotient = -magnitude if (a < 0) != (b < 0) else magnitude
+        source = f"{literal(a)} {literal(b)}/."
+        assert run_program(run, source) == str(signed(quotient)), source
+
 
 def test_a_lambda_runs_on_demand() -> None:
     assert run_program(run, "[1+]f:3f;!.") == "4"
