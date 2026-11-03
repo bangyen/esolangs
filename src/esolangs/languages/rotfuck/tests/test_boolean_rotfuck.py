@@ -243,6 +243,9 @@ class TestRotfuck:
 
 
 def test_rotation_is_checked() -> None:
+    from .oracle_checks import check_raw_rotfuck
+
+    check_raw_rotfuck()
     with pytest.raises(ValueError, match="rotation"):
         boolean.rotfuck("01", rotation="sideways")
 
