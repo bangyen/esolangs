@@ -50,6 +50,9 @@ def test_output(code, expected) -> None:
 class TestPointer:
     def test_wraps_within_a_row_and_by_rows(self) -> None:
         """``f`` wraps at the row edge; ``d`` moves a whole row forward."""
+        from esolangs.languages.home_row.tests.oracle_checks import check_raw_home_row
+
+        check_raw_home_row()
         from esolangs.languages.home_row.interpreter import _Machine
 
         for code, ptr in (("d", 5), ("f", 1)):

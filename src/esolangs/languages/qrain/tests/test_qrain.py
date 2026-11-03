@@ -43,5 +43,8 @@ def test_semantics(code: str, stdin: str, expected: str) -> None:
 
 
 def test_dequeue_of_empty_queue_raises() -> None:
+    from esolangs.languages.qrain.tests.oracle_checks import check_raw_qrain
+
+    check_raw_qrain()
     with pytest.raises(HaltError):
         _run("<-")

@@ -11,6 +11,9 @@ def _step(code: str, text: str) -> str:
 
 
 def test_the_page_duplicates_the_first_character() -> None:
+    from esolangs.languages.sonata.tests.oracle_checks import check_raw_sonata
+
+    check_raw_sonata()
     assert _step("^A_B->^A^A_B", "abc") == "aabc"
 
 
