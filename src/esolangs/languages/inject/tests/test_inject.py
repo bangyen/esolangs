@@ -96,7 +96,7 @@ class TestWikiExamples:
         assert _run(CAT, "ab\n\ncd\n") == "ab\n\ncd\n"
 
     def test_cat_preserves_line_content_and_order(self) -> None:
-        for first in ["", "a b", "loop;", "λ"]:
+        for first in ["", "a b", "loop;", "λ", "\tword"]:
             for last in ["", "0", "skip", "  "]:
                 data = f"{first}\n\n{last}\n"
                 assert _run(CAT, data) == data
