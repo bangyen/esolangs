@@ -5,10 +5,11 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
-## Unreleased
+## 1.6.0
 
 - **Breaking:** Remove Minifuck. Pin `esolangs==1.5.1` to generate or run
   Minifuck programs.
+- Add NQ, REFRACTRAN and Retrograde (117 languages).
 - Add `save_program(program, path)` for native text, PNG and gzip files.
 
 ## 1.5.1
