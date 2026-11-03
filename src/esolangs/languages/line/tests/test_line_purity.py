@@ -95,6 +95,14 @@ def test_drive_is_the_shell_that_applies_the_effects() -> None:
         assert cells == {0: result, 1: other}
         assert next(supplied, None) is None
 
+    for left, right in product((-5, 0, 11), repeat=2):
+        frames = (frame((("<", 1), ("i", 1), (">", 1), (">", 1), ("i", 1))),)
+        supplied = iter((left, right))
+        output = []
+        cells = dict(_drive(frames, IO(read=supplied.__next__, write=output.append)))
+        assert cells == {-1: left, 1: right}
+        assert output == []
+
 
 def test_the_shell_writes_before_the_next_read() -> None:
     """The output effect is applied before the next input is requested."""
