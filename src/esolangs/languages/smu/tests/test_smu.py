@@ -22,6 +22,9 @@ def _run(code: str, stdin: str = "") -> str:
 
 
 def test_wiki_cat_copies_every_byte() -> None:
+    from .oracle_checks import check_raw_smu
+
+    check_raw_smu()
     text = "".join(map(chr, range(256)))
     assert _run(CAT, text) == text
     assert _run(CAT) == ""
