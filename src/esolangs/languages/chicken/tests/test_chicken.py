@@ -46,6 +46,9 @@ def test_99_chickens_counts_down_from_the_input() -> None:
 
 
 def test_empty_program_prints_the_pad() -> None:
+    from .oracle_checks import check_raw_chicken
+
+    check_raw_chicken()
     assert _go(()) == "0"
 
 
