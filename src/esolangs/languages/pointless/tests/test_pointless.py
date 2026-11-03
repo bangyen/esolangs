@@ -102,6 +102,10 @@ def test_indirect_commands() -> None:
     assert machine.pointer == 1
     assert _finish("!>+-").memory[1] == 0
 
+    from .oracle_checks import check_raw_pointless
+
+    check_raw_pointless()
+
 
 def test_bang_runs_once() -> None:
     with pytest.raises(HaltError):
