@@ -500,4 +500,7 @@ class TestContract(EmptyProgramContract, CycleContract):
 
 @pytest.mark.medium
 def test_malformed_source_carries_a_repair_hint() -> None:
+    from .oracle_checks import check_raw_addsubjump
+
+    check_raw_addsubjump()
     assert_rejected_with_hint("AddSubJump", "ASJ 1", "2 to 4 address operands")
