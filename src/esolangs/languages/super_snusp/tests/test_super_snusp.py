@@ -22,7 +22,9 @@ def run_super(program: str, stdin: str = "") -> str:
 
 
 def _check_accumulator_arithmetic() -> None:
-    for divisor, value, sign in product((1, 2, 7, 13), (0, 1, 65, 255), ("", "_")):
+    for divisor, value, sign in product(
+        (1, 2, 7, 13), (0, 1, 65, 255, 2**55 + 1), ("", "_")
+    ):
         signed = -value if sign else value
         quotient = value // divisor * (-1 if sign else 1)
         prefix = f'"{divisor}{{{value}{sign}'
