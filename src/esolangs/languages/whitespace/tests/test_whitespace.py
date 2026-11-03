@@ -89,7 +89,9 @@ def test_arithmetic_takes_the_first_pushed_as_left() -> None:
     assert wrun(push(4) + push(5) + ADD + OUT_NUM + END) == "9"
 
     label = T + S
-    for a, b in product((-257, -7, 0, 3, 256), (-11, -2, 1, 5)):
+    for address, a, b in product(
+        (-17, 2**32 + 17), (-257, -7, 0, 3, 256), (-11, -2, 1, 5)
+    ):
         quotient = abs(a) // abs(b) * (-1 if (a < 0) != (b < 0) else 1)
         for opcode, result in (
             (ADD, a + b),
@@ -100,7 +102,6 @@ def test_arithmetic_takes_the_first_pushed_as_left() -> None:
         ):
             # A call writes the result to the heap. The caller retrieves it
             # after returning and prints both decimal and byte views.
-            address = -17
             source = (
                 push(address)
                 + call(label)
