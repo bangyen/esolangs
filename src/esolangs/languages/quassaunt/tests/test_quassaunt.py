@@ -110,6 +110,16 @@ def test_set_operations_and_their_error_messages() -> None:
             "T" if top.isdisjoint(bottom) else "F"
         )
 
+    for members in subsets:
+        for removed in sorted(members):
+            reduced = f"{construct(members)} @@{removed} %%Makenotcontain"
+            for probe in "abc":
+                source = (
+                    f"@@@@T?%%Printtoconsole {reduced} "
+                    f"@@@@F?%%Printtoconsole {construct({probe})} %%Ifdisjoint"
+                )
+                assert _run(source) == ("F" if probe in members - {removed} else "T")
+
 
 @pytest.mark.parametrize(
     ("bottom", "top", "proper", "disjoint"),
