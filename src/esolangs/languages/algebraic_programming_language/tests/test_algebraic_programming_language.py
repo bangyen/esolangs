@@ -612,7 +612,7 @@ class TestPureTransition:
 
 
 def test_rounding_matches_integer_bounds() -> None:
-    for numerator in [0, 1, 2, 7, 16, 31]:
+    for numerator in [-31, -8, -1, 0, 1, 2, 7, 16, 31]:
         for denominator in [1, 2, 3, 8]:
             fraction = f"{numerator} / {denominator}"
             lower, residue = divmod(numerator, denominator)
