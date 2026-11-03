@@ -199,6 +199,7 @@ def check_raw_lol_waht_i_cant_edit_talk_pages():
         "user:a\nJUST LET ME CHANGE a MESSAGES ON A {\ni hate u a\n}",
         "USER:a\nuser:A\ni hate u a",
         "user:用户1\nim awesome tottaly but no 用户1\ni hate u 用户1",
+        "user:a\nedit user talk:a to remove 1 message\ngrr why u do this a",
         "user:a\nedit user talk:a to change -1 messages\ngrr why u do this a",
         "im awesome tottaly but no missing",
         "im awesome tottaly but no no\ni hate u no",
