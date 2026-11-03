@@ -265,6 +265,9 @@ definition was attempted and its preservation form is closed:
   accumulator trits 4..8 remain equal in `{0, 1}`, and encryption of a
   printable result stays printable. Separating `C` and `D` or revisiting
   modified operands falls outside this obstruction.
+  A separated, revisiting 420-cell prefix does deposit 170 at cell 152
+  and restores `A = 0`; its full n=1 build with walk-potential routing still
+  collides with the table at a measured main end of 9,958.
 - Short-layout seeds and stubs (`digits.py` `_short_layout`, n <= 15) are
   a construction, the canonical-action rule: a chain's action on a
   pointer-region value is fully determined by `(r, F)` -- `r` its number
@@ -328,6 +331,10 @@ generators have one.
   Its algebra checks all 59,049 words; native execution is not exhaustive.
   It reads one word, not seventeen ASCII bits. Character normalization,
   packed-group addressing, bit selection and the full layout remain unbuilt.
+  A separate shared two-word `crazy` fold uses 4,428 characters and 4,447
+  steps: 17 runtime input pairs pass on byte-identical source, and a
+  source mutation installing the wrong operation fails. Its indirect
+  operand records do not establish a general decoder or table placement.
 
   Provenance: the `scripts/malbolge17/` archive survives at `09ab2fad`
   and `b42d79e` (deleted in `0f4b0284`), on the old module layout.
