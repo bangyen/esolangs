@@ -96,8 +96,8 @@ class TestQoiblBehaviour:
             run(["tt y tt w"], IO())
 
     def test_one_digit_adder(self) -> None:
-        for left in range(5):
-            for right in range(6):
+        for left in range(10):
+            for right in range(10):
                 code: list[str] = [
                     "we e we yyeeee we",  # var[0] = 2
                     "we y we et ry ey ry qe e qe we",  # var[1] = input - 2
@@ -112,7 +112,7 @@ class TestQoiblBehaviour:
                     redirect_stdout(io.StringIO()) as f,
                 ):
                     run(code, IO())
-                assert f.getvalue() == str(left + right)
+                assert f.getvalue() == chr(ord("0") + left + right)
 
     def test_variable_indices_stay_within_the_256_cell_list(self) -> None:
         from esolangs.exceptions import HaltError
