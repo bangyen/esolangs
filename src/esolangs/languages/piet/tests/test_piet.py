@@ -1,5 +1,6 @@
 """Piet interpreter conformance tests."""
 
+from itertools import product
 from pathlib import Path
 
 import pytest
@@ -66,6 +67,25 @@ def test_arithmetic_and_output() -> None:
         (BLACK, BLACK, BLACK, BLACK, BLACK, LIGHT_RED),
     )
     assert execute(program) == "4"
+
+    # Only the middle row reaches the rightmost codel of the first block.
+    # The final vertical block traps the pointer after the output.
+    for extra, second in product(range(5), range(1, 7)):
+        middle = (
+            (LIGHT_RED, LIGHT_RED)
+            + (RED,) * second
+            + (
+                DARK_RED,
+                DARK_YELLOW,
+                LIGHT_RED,
+            )
+        )
+        edge = (BLACK,) * (len(middle) - 1) + (LIGHT_RED,)
+        top = (LIGHT_RED, *edge[1:])
+        tail = ((LIGHT_RED,) + (BLACK,) * (len(middle) - 1),) * extra
+        bottom = ((LIGHT_RED, *edge[1:])) if extra else edge
+        image = raster(top, middle, bottom, *tail[: max(0, extra - 1)])
+        assert execute(image) == str(3 + extra + second)
 
 
 def test_white_slide_executes_no_transition() -> None:
