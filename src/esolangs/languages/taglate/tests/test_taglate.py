@@ -238,6 +238,9 @@ class TestTheTwoQueueLanguagesDifferOnPurpose:
 
 
 def test_a_trailing_g_is_skipped() -> None:
+    from .oracle_checks import check_raw_taglate
+
+    check_raw_taglate()
     assert run_and_capture(["A", "ig"]) == "A"
 
 
