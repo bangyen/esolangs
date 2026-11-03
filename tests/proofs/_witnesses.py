@@ -252,7 +252,7 @@ def _quassaunt_stack(n: int) -> str:
 def _laserfuck_worst(n: int) -> tuple[str, ...]:
     """The tree's: nodes all distinct, the all-ones row ending on a one.
 
-    Past n = 6 the lookup's: T - 1 ones in steps, one-hot in bits.
+    Past six, retain old extremes; last-onehot attains the new tape peak.
     """
     width = 1 << n
     if n < 7:
@@ -261,7 +261,11 @@ def _laserfuck_worst(n: int) -> tuple[str, ...]:
             "".join(str((row.bit_count() + n + 1) & 1) for row in range(width)),
             "".join(str(1 - row.bit_count() % 2) for row in range(width)),
         )
-    return "0" + "1" * (width - 1), "1" + "0" * (width - 1)
+    return (
+        "0" + "1" * (width - 1),
+        "1" + "0" * (width - 1),
+        "0" * (width - 1) + "1",
+    )
 
 
 # language-owners: ["Object disoriented"]

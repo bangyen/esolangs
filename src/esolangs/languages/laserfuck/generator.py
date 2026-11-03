@@ -9,10 +9,10 @@ the weighted linear-space lookup replaces the tree. Constants without a width
 read into one cell, zero it with a ring, then add their answer bit.
 
 Size:
-    About 23T chars from n=7 (weighted lookup); the tree under it:
+    About 14T chars from n=7 (weighted lookup); the tree under it:
     n=4 random 1847: 548 chars, n=5 random 1847: 1,640 chars,
-    n=6 random 1847: 4,241 chars, n=10 random 1847: 24,605 chars,
-    n=16 and: 1,443,471 chars.
+    n=6 random 1847: 4,241 chars, n=10 random 1847: 15,387 chars,
+    n=16 and: 984,713 chars.
     Constants without a width use 2n+20+bit chars and 3(n+9+bit) cells;
     n=8 zero: 36 chars.
     Balanced (tiled subtrees from n=9): about 110 cells of area a row at
@@ -62,26 +62,19 @@ _LASER_BIAS = _LASER_OUTER * _LASER_INNER  # 48, the code of '0'
 
 
 def _laserfuck_weighted(truth_table: str) -> str:
-    r"""Build the table in linear space with weighted conditional walks.
+    r"""Build a negative answer band followed by weighted input cells.
 
-    The top row first writes the T answer cells one band to the right, then
-    returns to cell zero.  Input bit ``i`` conditionally crosses an arm of
-    ``T/2**(i+1)`` ``>`` commands; the arm lengths sum to ``T-1``, so the
-    pointer finishes at its binary input index.  A fixed T-step walk reaches
-    that answer cell and adds two.
+    Answers occupy cells 0..T-1, preset to bit-2. Reads start at T;
+    conditional arms sum to T-1, so the pointer finishes at T+k. A fixed
+    T-step return and two increments expose answer k. The rightward
+    2T-1-cell sweep retires every higher answer and input; lower answers
+    stay negative. Moving creates untouched cells, which the dump excludes.
 
-    Moving left 2T steps deliberately overruns the tape.  Prepending cells
-    shifts the chosen answer to cell 2T regardless of its index.  One 3T-cell
-    sweep subtracts two everywhere: every other initialized answer and every
-    input becomes negative, while the chosen cell becomes exactly its table
-    bit.  LaserFuck prints only touched nonnegative cells, hence only it.
-
-    A conditional arm is a two-row diamond.  ``#v)`` lets zero continue on
-    the top row; one reflects onto ``v``, crosses the lower arm, and rises to
-    the same ``}`` exit.  The three rows, table initialization, arms, and
-    cleanup all have total length O(T), and construction performs only those
-    linear appends.  An ignored input is read and normalized but crosses no
-    arm, so T counts the essential inputs alone.
+    [ablations.negative_preset_left_sweep] and [ablations.answers_first_no_rewind]
+    each qualify independently and marginally; together they save 34.45/36.61%
+    area at n=7/8, tending to 40% on unbiased full-essential tables. The
+    single layout replaces the old preset/rewind/sweep, adding no state.
+    An ignored input still reads and normalizes but crosses no arm.
     """
     weights, truth_table = input_weights(
         truth_table, _validate_truth_table(truth_table)
@@ -96,9 +89,7 @@ def _laserfuck_weighted(truth_table: str) -> str:
         middle.extend(" " * len(text))
         bottom.extend(" " * len(text))
 
-    straight(">" * size)
-    straight("".join(("+" if bit == "1" else "") + ">" for bit in truth_table))
-    straight("<" * (2 * size))
+    straight("".join(("-" if bit == "1" else "--") + ">" for bit in truth_table))
     for arm in weights:
         straight("," + "-" * _LASER_BIAS)
         if not arm:
@@ -108,7 +99,7 @@ def _laserfuck_weighted(truth_table: str) -> str:
         top.extend(upper)
         middle.extend(lower)
         bottom.extend(" " * len(upper))
-    straight(">" * size + "++" + "<" * (2 * size) + "-->" * (3 * size) + "x")
+    straight("<" * size + "++" + ">" + "-->" * (2 * size - 1) + "x")
     return "\n".join("".join(row).rstrip() for row in (top, middle, bottom))
 
 

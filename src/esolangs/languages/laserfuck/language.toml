@@ -15,8 +15,8 @@ bf_derivative = true
 labels = ["finite lookup"]
 qualification = "weighted arms select one of `2**n` prewritten cells, cleaned in one sweep"
 scaling = "linear: worst N cells: a tree to n = 6, then three rows"
-execution = "linear: worst T + 296n + 682 steps for n = 5, 6, then 18T + 56n + 4"
-workspace = "linear: worst 8n + 26 bits at n = 5, 6, then 12T + 2n + 11 + 2bl(n)"
+execution = "linear: worst T+296n+682 steps for n = 5, 6, then 11T+56n+2 at seed 2; other headings add at most 2"
+workspace = "linear: worst 8n+26 bits at n = 5, 6, then 12T+n+6+2bl(n)"
 
 [generator_sizes]
 "00000001" = { commands = 1574, commands_by_row = { "0" = 1560, "1" = 1560, "2" = 1560, "3" = 1560, "4" = 1565, "5" = 1565, "6" = 1570, "7" = 1574 }, source_units = 266 }
@@ -88,6 +88,7 @@ saving = 0.0
 verdict = "kept: feasibility -- flip, vertical tree, raise funnel, four-column builder; no default-path effect"
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-18
@@ -110,3 +111,32 @@ saving = 95.8
 seed = "both constant values"
 tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
 verdict = "kept: canonical constants, percentage gate exempt. Default constants overwrite one cell with n reads, then zero the final ASCII digit in one ring and add the answer bit. 2n+20+bit characters, 3(n+9+bit) cells, at most n+491+bit commands across all initial headings. At n=7, area 1098/1101 -> 48/51 cells; n=8 1245/1248 -> 51/54; n=12 1833/1836 -> 63/66. Explicit widths retain the existing reader layout. Constants at n=1..12 ran with default, width=1 and balance=True; owned regressions check sentinel preservation and every initial heading across n=1,3,6,7,8,12. The 270 nonconstant programs through n=3 are byte-identical; n=3 totals fall 87727 -> 87555 chars and 88849 -> 88555 cells."
+
+
+[ablations.negative_preset_left_sweep]
+arity = 8
+saving = 20.943564993630627
+seed = "random.Random(184700+n), sequential choice('01')"
+tables = "200 fixed tables each n=7,8; 20 each n=9..14; every table/row/head through n=3, forced weighted plus public; samples n=4..8"
+verdict = "kept, sustained: preset bit-2 and expose the selected answer with ++; the left sweep skips the chosen cell. Independent area 1566429 -> 1257171 (19.7429%) /  2941419 -> 2325381 (20.9436%) at n=7/8, growing to 22.7961% at 14. Marginal after shifted positive bands 18.4603/19.8725%, growing to 22.1453%; unbiased limits 22.8571% standalone and 22.2222% marginal, proved from emitted widths. Public n=3 chars 87555, cells 88555 and commands 3192280 unchanged. No new state or branch: negative presets replace positive presets; the joint shifted layout replaces this prototype's leftward cleanup. A changed preset fails the output checker. Motion appends untouched zeros, excluded by dump; all nonselected touched cells end negative."
+
+[ablations.answers_first_no_rewind]
+arity = 8
+saving = 19.816107553987926
+seed = "random.Random(184700+n), sequential choice('01')"
+tables = "same fixed 200 n=7,8 and 20 n=9..14; all small/public/forced, bounded samples and four initial headings"
+verdict = "kept, repaired and sustained: answers at 0..T-1, reads from T; return T cells before exposing the answer. Raw shifted positive presets need a T-cell cleanup rewind followed by 3T cells, not 2T: retaining 2T leaves a nonnegative read cell, caught n=7, row  0. Repaired standalone area 1566429 -> 1259229 (19.6115%) / 2941419 -> 2327019 (20.8879%). Marginal after negative presets 1257171 -> 1026771 (18.3269%) / 2325381 -> 1864581 (19.8161%), growing to 22.1484% at 14 and limit 22.2222%. Joint saving 34.4515/36.6095%, growing to 39.8956% at 14, limit 40%. One layout, no race/state/old fallback: remove offset/rewind and sweep 2T-1 cells right from selected+1. All ordered reads, uniform character inputs and sentinel preserved."
+
+[ablations.looped_bias_per_input]
+arity = 8
+saving = 4.079663590940285
+seed = "random.Random(184700+n), sequential choice('01')"
+tables = "same 200 fixed n=7,8; forced ring every nonconstant table/row/head n<=3, existing public constant route; random ring controls n=7/8"
+verdict = "rejected: executable adjacent-cell 8x6 ring saves 25 columns/input, not estimated 28. Standalone area 1566429 -> 1461429 (6.7031%) / 2941419 -> 2821419 (4.0797%); after admitted joint layout 1026771 -> 921771 (10.2262%) / 1864581 -> 1744581 (6.4358%), declining below 20%. Even deleting all 49 normalization columns/input has at most 13.16% upside at n=8 after the keeper; savings tend to 0. The ring's eight passes each exceed six decrement plus movement/steering steps, so it cannot meet 25% commands; public n=3 execution is unchanged. Forced ring constants can corrupt answer storage (11, row  0 prints 0), so the existing constant route must bypass it. Native 8480 small rows/headings plus 48 generic ring controls passed; scratch only. Added counter cell and return-row ring are unnecessary below the gate; no production path/state retained."
+
+[ablations.weighted_resource_accounting_20261102]
+arity = 11
+saving = 0.0
+seed = "all four explicit initial headings; deterministic onehot witnesses"
+tables = "old/new exact W and E witnesses n=7..11; four headings at 7/8; constant/tree/width entry controls n=1,3,5,6,7,8"
+verdict = "preserved exact benchmark scopes and all old rungs: seed 2 draws heading 0. New E worst 11T+56n+2, attained by any onehot table at all-one row; headings 1/2 add 2, headings 0/3 agree. Old 18T+56n+4 likewise omitted these 2 universal-heading steps; metadata now states the scope and separate all_heading_execution ceiling. W exact 12T+n+6+2bl(n), attained by last-onehot/all-one row, every heading: tape 12T-n-4, pointer n+2, beam n+7, skip 1, two input counters 2bl(n). Swept negative answers can reach -4 and cost 5 bits with touch flag, included in the phase proof. W n=7 1567 -> 1555, n=8 3107 -> 3094. Tree E/W through 6 and all proof arities/exact flags retained; last-onehot is the shared exactness witness. Scaling exact 3(11T+52n+3) cells beyond 6. No generator state added; proof-only all-heading helper distinguishes the existing benchmark convention. Actual balanced grid_area including trailing lines is unchanged: 20 fixed random tables n=7/n=8 total 77510/170248 cells; and/or 1365/1562, parity 6026/13468, majority 3358/6708. The old tree/width/balance paths retain their named linear-n cases; no old weighted fallback is kept. Size pins and packaged balanced AND 2 example are byte-identical (16 native row/heading runs)."

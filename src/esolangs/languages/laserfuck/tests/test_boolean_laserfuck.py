@@ -24,6 +24,7 @@ class TestLaserFuck:
     @pytest.mark.medium
     def test_weighted_table_executes_every_row(self) -> None:
         """The default route computes dense tables at every initial heading."""
+        module = importlib.import_module("esolangs.languages.laserfuck.generator")
         for n in (5, 6):
             size = 1 << n
             tables = (
@@ -31,11 +32,41 @@ class TestLaserFuck:
                 "".join(str((i * 73 + i // 3) & 1) for i in range(size)),
             )
             for table in tables:
-                program = boolean.laserfuck(table)
+                program = module._laserfuck_weighted(table)  # noqa: SLF001
                 for combo in range(size):
                     bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                     for heading in range(4):
                         assert run_laserfuck(program, bits, heading) == table[combo]
+
+        from esolangs.languages.laserfuck.interpreter import _Machine
+        from esolangs.languages.laserfuck.proof_formulas import (
+            all_heading_execution,
+            execution,
+            workspace,
+        )
+        from esolangs.runtime.io import ScriptedIO
+        from esolangs.runtime.randomness import FirstDraw
+        from scripts.benchmark import WrittenState
+
+        for n in (7, 8):
+            table = "0" * ((1 << n) - 1) + "1"
+            program = boolean.laserfuck(table)
+            for heading in range(4):
+                stream = ScriptedIO("1" * n + "Q")
+                machine = _Machine(program.splitlines(), stream, FirstDraw(heading))
+                written = WrittenState(machine.snapshot())
+                commands = 0
+                while not machine.halted:
+                    machine.step()
+                    written.sample(machine.snapshot())
+                    commands += 1
+                assert commands == execution(n, program) + 2 * (heading in (1, 2))
+                assert commands <= all_heading_execution(n, program)
+                assert written.bits == workspace(n, program)
+                machine.step()
+                assert stream.getvalue() == "1"
+                assert stream.reads == n
+                assert stream.input_char() == ord("Q")
 
     def test_an_ignored_input_crosses_no_arm(self) -> None:
         """The weighted lookup reads an ignored input but indexes the rest."""

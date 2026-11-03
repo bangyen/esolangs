@@ -94,7 +94,7 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         # the longest scaling text needs a layout parity misses at n = 11, 12.
         return (_parity(n), _befunge_worst(n))
     if name == "LaserFuck" and n >= 5:
-        # Its worsts, all zeros and all ones; a 3T + 1 cell tape is slow.
+        # Retain prior extremes and include the shifted tape's exact witness.
         return (_parity(n), _dense(n), "0" * width, "1" * width, *_laserfuck_worst(n))
     if name == "BFStack" and n >= 10:
         # Lower arities sweep the generic families; this named witness reaches
