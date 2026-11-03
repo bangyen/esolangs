@@ -54,7 +54,7 @@ def test_groups_nest_and_compute() -> None:
     assert out("'a'v.\n[a]s|3|\n[a]s|[a]+|4||\n[a]s|[a]*|[a]+|1|||\n[a]p.") == "56"
     assert out("'a'v.\n[a]s|'12'c.|\n[a]p.") == "12"
 
-    for a, b, c in product(range(5), range(4), range(3)):
+    for a, b, c in product((*range(5), 65536), range(4), range(3)):
         code = f"'a'v.\n[a]s|{a}|\n[a]s|[a]+|{b}||\n[a]s|[a]*|[a]+|{c}|||\n[a]p."
         assert out(code) == str((a + b) * (a + b + c)), code
 
