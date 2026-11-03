@@ -64,6 +64,17 @@ def test_a_forced_argument_is_read_once() -> None:
                 expected = bits[1:-1] * 2 or "[]"
             assert _out(program) == expected, bits
 
+    for bits in ("001", "010", "01101", "01110"):
+        program = (
+            f"^:std::io; main := f({bits}); "
+            "f : [x, middle.., x, 1] = io::debug(middle) "
+            ": _ = io::debug 0;"
+        )
+        expected = (
+            (bits[1:-2] or "[]") if bits[0] == bits[-2] and bits[-1] == "1" else "0"
+        )
+        assert _out(program) == expected, bits
+
     for char, sentinel in product(("b", "é", "😀"), ("z", "!")):
         io = ScriptedIO(char + sentinel)
         run(code, io)
