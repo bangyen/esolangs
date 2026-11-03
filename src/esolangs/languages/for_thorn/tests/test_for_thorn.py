@@ -97,6 +97,8 @@ class TestForth:
             )
             assert run_program(source) == expected
 
+        assert run_program("1{**.}FFF1;") == chr(15**3)
+
         assert run_program("84/.") == "\x02"
         assert run_program("85%.") == "\x03"
 
