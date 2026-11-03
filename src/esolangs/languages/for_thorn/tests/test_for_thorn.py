@@ -1,6 +1,8 @@
 """Unit tests for the Forþ interpreter."""
 
 from functools import partial
+from itertools import product
+from operator import add, mul, sub
 
 import pytest
 
@@ -83,6 +85,18 @@ class TestForth:
         assert run_program("23+.") == "\x05"
         assert run_program("95-.") == "\x04"
         assert run_program("28*.") == "\x10"
+
+        for a, b, (op, evaluate) in product(
+            (0, 1, 7, 15), (0, 2, 11, 15), (("+", add), ("-", sub), ("*", mul))
+        ):
+            # Save the arithmetic as a scope and call it twice on fresh operands.
+            source = f"1{{{op}.}}{a:X}{b:X}1;{b:X}{a:X}1;"
+            values = evaluate(a, b), evaluate(b, a)
+            expected = "".join(
+                chr(value if value >= 0 else value % 256) for value in values
+            )
+            assert run_program(source) == expected
+
         assert run_program("84/.") == "\x02"
         assert run_program("85%.") == "\x03"
 
