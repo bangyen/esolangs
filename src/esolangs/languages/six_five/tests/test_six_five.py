@@ -18,6 +18,9 @@ run_and_capture = run_lines(sixfive.run)
 
 class TestSixFive:
     def test_input_echo(self) -> None:
+        from esolangs.languages.six_five.tests.oracle_checks import check_raw_six_five
+
+        check_raw_six_five()
         assert run_and_capture("BA0", inputs=["X"]) == "X"
 
     def test_right_move_reuses_an_already_allocated_tape(self) -> None:

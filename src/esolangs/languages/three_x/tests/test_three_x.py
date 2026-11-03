@@ -44,6 +44,9 @@ class Test3x:
         assert run_program(code) == expected
 
     def test_x_operation(self) -> None:
+        from esolangs.languages.three_x.tests.oracle_checks import check_raw_three_x
+
+        check_raw_three_x()
         # (3-3)/3 = 0, (3-0)/3 = 1
         assert run_program("333x!") == "0"
         assert run_program("3333x3x!") == "1"

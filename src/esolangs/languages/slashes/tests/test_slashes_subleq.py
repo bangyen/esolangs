@@ -52,6 +52,9 @@ def test_slashes_escaped_pattern() -> None:
 
 
 def test_slashes_divergence_controls() -> None:
+    from esolangs.languages.slashes.tests.oracle_checks import check_raw_slashes
+
+    check_raw_slashes()
     empty = SlashMachine("///", ScriptedIO())
     empty.step()
     before = empty.snapshot()
