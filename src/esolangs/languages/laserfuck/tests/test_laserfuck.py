@@ -371,7 +371,7 @@ def test_laserfuck_search_skips_the_command_after_a_hash() -> None:
     assert skipped[2] == ((0, 2, 3),), "'{' was passed over, not executed"
     assert skipped[4] == frozenset(), "the skip disarms itself"
 
-    for a, b, adjust in product((0, 65, 255, 937), (0, 1, 66), (-2, 0, 3)):
+    for a, b, adjust in product((0, 65, 255, 937, 65536), (0, 1, 66), (-2, 0, 3)):
         arithmetic = "+" * adjust if adjust >= 0 else "-" * -adjust
         for byte_mode in (0, 1):
             row = "ÿ" * byte_mode + "}o," + arithmetic + ">,<#-x"
