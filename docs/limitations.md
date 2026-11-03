@@ -443,6 +443,12 @@ generators have one.
   independently indexed blocks use 49,152 payload characters and
   leave 9,897 cells. All 131,072 bit lookups of a sample table passed
   in Python after loading the payload. Native lookup remains open.
+  A 302-character native control starts with `ji` to skip its
+  operand glyphs. Two all-ones words six cells apart in the loader
+  tail synthesize zero, and the next tail word seeds a low trit of
+  two. Four `p` operations then compute NAND on the low trits of
+  source operands. All four input pairs halt in 200–229 steps.
+  Wiring runtime values through the gate remains open.
 
   A period-47 rule cannot supply seven meanings either
   (`test_window_classes.py`). Its difference graph has independence 4.
