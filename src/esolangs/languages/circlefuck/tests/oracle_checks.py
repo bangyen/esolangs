@@ -79,6 +79,8 @@ def check_raw_circlefuck():
     for initial in (b"}", b">{.<}@", b">[\0]@", b"@]<", b">[[\0]]", b"],[", b",\xff.@"):
         _check(_Machine, initial, "\0")
 
+    _check(_Machine, b",+.@", "ÿ")
+
     class SkipsExecution(_Machine):
         def step(self):
             pass
