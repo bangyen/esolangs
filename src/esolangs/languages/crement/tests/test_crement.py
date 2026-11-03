@@ -28,6 +28,9 @@ def test_positive_and_negative_jump_conditions() -> None:
 
 
 def test_data_instruction_rewrites_the_target_data() -> None:
+    from .oracle_checks import check_raw_crement
+
+    check_raw_crement()
     machine = _Machine("+D 1 4\n+J 2 0")
     machine.step()
     assert machine.state.program[1].data == 5
