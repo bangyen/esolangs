@@ -89,6 +89,10 @@ class TestExpressions:
             expression = f"{left}{first}{middle}{second}{right}+64"
             assert self._value(expression) == chr(result + 64)
 
+        for numerator, divisor in product((1, 3, 7), (2, 3, 5)):
+            expression = f"{numerator}/{divisor}*{divisor}+64"
+            assert self._value(expression) == chr(numerator + 64)
+
     def test_character_and_string_literals(self) -> None:
         """``'c`` is a character's code and ``"str"`` a list of them."""
         assert self._value("'A") == "A"
