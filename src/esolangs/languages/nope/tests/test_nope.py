@@ -16,6 +16,9 @@ def test_constant_output(code: str, stdin: str) -> None:
 
 
 def test_empty_source_has_one_output_transition() -> None:
+    from esolangs.languages.nope.tests.oracle_checks import check_raw_nope
+
+    check_raw_nope()
     io = ScriptedIO()
     machine = _Machine("", io)
     before = machine.snapshot()

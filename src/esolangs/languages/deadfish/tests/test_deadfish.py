@@ -25,6 +25,9 @@ class TestDeadfish:
 
     def test_every_program_halts(self) -> None:
         """The position only ever advances, so there is no loop to detect."""
+        from esolangs.languages.deadfish.tests.oracle_checks import check_raw_deadfish
+
+        check_raw_deadfish()
         for program in ("", "i", _HELLO, "iissso", "h", "xyz"):
             machine = _Machine(program, ScriptedIO())
             steps = 0

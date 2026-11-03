@@ -1,0 +1,56 @@
+"""Revision 193999: one constant-output transition, regardless of source or input."""
+
+import random
+
+import pytest
+
+from esolangs.languages.nope.interpreter import _Machine
+from tests.interpreters.oracle_support import observed
+
+
+def _agrees(factory, source, stdin):
+    initial = ((False, 0), False, "", 0, 0)
+    final = ((True, 1), True, "Nope.", 0, 0)
+    expected = None, [initial, *([final] * 4)]
+    assert observed(factory, source, stdin, lambda m: (m.state, m.ip)) == expected, (
+        source,
+        stdin,
+    )
+
+
+def check_raw_nope():
+    rng = random.Random(20261103)
+    sources = ["", "Nope.", "\x00λ\n", "()[]{}", "+-*/", "NOPE."]
+    sources += [
+        "".join(rng.choices("abcXYZ09[]\x00λ\n", k=length)) for length in range(64)
+    ]
+    inputs = ("", "unused", "λ\n")
+    for source in sources:
+        for stdin in inputs:
+            _agrees(_Machine, source, stdin)
+    for fault in ("empty", "newline", "input", "repeat", "stop"):
+
+        class Fault(_Machine):
+            mode = fault
+
+            def __init__(self, code, io):
+                if self.mode == "newline":
+                    write = io.print_str
+                    io.print_str = lambda text: write(text + "\n")
+                super().__init__(code, io)
+                if self.mode == "empty" and not code:
+                    self.state = True
+
+            def step(self):
+                previous = self.state
+                if self.mode == "input" and not previous:
+                    self.io.input_char()
+                super().step()
+                if self.mode == "repeat" and previous:
+                    self.io.print_str("Nope.")
+                elif self.mode == "stop":
+                    self.state = False
+
+        with pytest.raises(AssertionError):
+            _agrees(Fault, "", "unused")
+    return len(sources) * len(inputs), 5

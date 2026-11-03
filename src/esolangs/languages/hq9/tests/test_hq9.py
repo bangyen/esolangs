@@ -18,6 +18,9 @@ def test_quine_preserves_source(code: str) -> None:
 
 
 def test_execution_order_and_silent_accumulator() -> None:
+    from esolangs.languages.hq9.tests.oracle_checks import check_raw_hq9
+
+    check_raw_hq9()
     io = ScriptedIO("unused")
     machine = _Machine("h++qH", io)
     while not machine.halted:
