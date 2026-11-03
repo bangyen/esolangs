@@ -438,6 +438,11 @@ generators have one.
   symbol-phase pairs round-trip through the loader. This packs 131,072
   bits into 43,691 source characters. Native address selection and
   residue decoding remain open.
+  The low three trits distinguish seven symbols at every phase.
+  Three consecutive base-seven symbols hold one byte, so 16,384
+  independently indexed blocks use 49,152 payload characters and
+  leave 9,897 cells. All 131,072 bit lookups of a sample table passed
+  in Python after loading the payload. Native lookup remains open.
 
   A period-47 rule cannot supply seven meanings either
   (`test_window_classes.py`). Its difference graph has independence 4.
