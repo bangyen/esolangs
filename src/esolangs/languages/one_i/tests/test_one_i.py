@@ -1,5 +1,8 @@
 """Tests for the 1 + i interpreter."""
 
+from itertools import product
+from operator import add, mul
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -103,6 +106,28 @@ def test_printing() -> None:
     assert _run("ici*:+/p") == "0.5"
     assert _run("ici*ic+p") == "1 - i"
     assert _run("ici*ii++p") == "1 + 2i"
+
+    def spelling(value: complex) -> str:
+        real, imag = int(value.real), int(value.imag)
+        if not imag:
+            return str(real)
+        magnitude = "i" if abs(imag) == 1 else f"{abs(imag)}i"
+        if not real:
+            return ("-" if imag < 0 else "") + magnitude
+        return f"{real} {'-' if imag < 0 else '+'} {magnitude}"
+
+    # Small Gaussian integers are represented exactly by Python complex.
+    values = [complex(a, b) for a, b in product((-3, 0, 2), repeat=2)]
+    for left, right, (opcode, evaluate) in product(
+        values, values, (("+", add), ("*", mul))
+    ):
+        stdin = f"{spelling(left)}\n{spelling(right)}\n"
+        assert _run(f"DD{opcode}p", stdin) == spelling(evaluate(left, right))
+
+    for value in values:
+        stdin = spelling(value) + "\n"
+        assert _run("Dcp", stdin) == spelling(value.conjugate())
+        assert _run("[ici*p][ii*p]D?", stdin) == ("-1" if value else "1")
 
 
 def test_bytes_and_eof() -> None:
