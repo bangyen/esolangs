@@ -1,5 +1,7 @@
 """Unit tests for the Alight interpreter and its generator."""
 
+from itertools import product
+from operator import add, mul, sub
 from typing import ClassVar
 
 import pytest
@@ -78,6 +80,14 @@ class TestExpressions:
         """``2+3*10`` is ``(2+3)*10``, not ``2+(3*10)``."""
         assert self._value("2+3*10") == "2"
         assert self._value("1*2+3*10") == "2"
+
+        operations = {"+": add, "-": sub, "*": mul}
+        for left, middle, right, first, second in product(
+            (1, 4, 8), (1, 3), (2, 5), operations, operations
+        ):
+            result = operations[second](operations[first](left, middle), right)
+            expression = f"{left}{first}{middle}{second}{right}+64"
+            assert self._value(expression) == chr(result + 64)
 
     def test_character_and_string_literals(self) -> None:
         """``'c`` is a character's code and ``"str"`` a list of them."""
