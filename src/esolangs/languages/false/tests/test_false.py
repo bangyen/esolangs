@@ -1,6 +1,8 @@
 """Execution tests for the FALSE interpreter."""
 
 import re
+from itertools import product
+from operator import add, and_, eq, gt, mul, or_, sub
 
 import pytest
 
@@ -52,6 +54,20 @@ def test_comparison_is_minus_one_for_true() -> None:
     assert run_program(run, "2 1>.") == "-1"
     assert run_program(run, "1 2>.") == "0"
     assert run_program(run, "3 3=.") == "-1"
+
+    def signed(value: int) -> int:
+        return (value + 2**31) % 2**32 - 2**31
+
+    def literal(value: int) -> str:
+        return str(abs(value)) + ("_" if value < 0 else "")
+
+    operators = {"+": add, "-": sub, "*": mul, "&": and_, "|": or_, ">": gt, "=": eq}
+    for a, b in product((-(2**31), -9, 0, 7, 2**31 - 1), repeat=2):
+        for opcode, evaluate in operators.items():
+            result = evaluate(a, b)
+            expected = -int(result) if isinstance(result, bool) else signed(result)
+            source = f"{literal(a)}a:{literal(b)}b:[a;b;{opcode}]f:f;!."
+            assert run_program(run, source) == str(expected), source
 
 
 def test_a_lambda_runs_on_demand() -> None:
