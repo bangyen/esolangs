@@ -73,7 +73,12 @@ def _applicative_oracle():
 
     atoms = ("i", "k", ".A", ".B")
     for f, g, x in product(atoms, repeat=3):
-        for tree in ((("k", f), g), ((("s", f), g), x), (f, (g, x))):
+        for tree in (
+            (("k", f), g),
+            ((("s", f), g), x),
+            (f, (g, x)),
+            ((("k", f), g), x),
+        ):
             output = []
             execute(tree, output)
             io = ScriptedIO("unused")
