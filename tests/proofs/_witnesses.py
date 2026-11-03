@@ -1145,7 +1145,10 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         *_diagram_witness("switchcase", n, 5, "workspace_witness", bottom=1),
     ),
     "Smu": lambda n: (_smu_worst(n),),
-    "Modulous": lambda n: (_row_one(n),),
+    "Modulous": lambda n: (
+        _row_one(n),
+        *_diagram_witness("modulous", n, 8, "resource_witness", bottom=2),
+    ),
     "Piet": lambda n: (
         tuple(
             dict.fromkeys(
@@ -1168,21 +1171,10 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
 
 # language-owners: ["Piet"]
 def _piet_worst(n: int, kind: str) -> str:
-    """Piet's largest shipped area, step count or written bits: the peak z.
+    """Keep Piet's named witnesses in its owned module."""
+    from esolangs.languages.piet.tests.formulas import resource_witness
 
-    T - z ones spread (the complement past half zeros): at both ends (every
-    input essential) and then mid-weight rows, so neither half is constant and
-    nothing but the entry count matters.  At n = 7 area peaks at z = 76,
-    steps at 65, bits at 101.
-    """
-    from esolangs.languages.piet.tests.formulas import bit_zeros, walk_zeros, zeros
-
-    width = 1 << n
-    middle = [r for r in range(width) if 2 <= r.bit_count() <= n - 2]
-    rest = [r for r in range(1, width - 1) if r not in middle]
-    z = {"area": zeros, "steps": walk_zeros, "bits": bit_zeros}[kind](n)
-    ones = {0, width - 1, *[*middle, *rest][: width - z - 2]}
-    return "".join("1" if r in ones else "0" for r in range(width))
+    return resource_witness(n, kind)
 
 
 def _streetcode_worst(n: int) -> str:

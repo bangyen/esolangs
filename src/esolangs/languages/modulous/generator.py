@@ -1,16 +1,17 @@
 """Modulous Boolean program generator: the table is a pushed string literal.
 
 ``PSH STR`` pushes the table so entry 0 is on top.  Each input is read and
-added into a counter at its weight (an ignored input is read and popped), then
-a ``JMP`` loop discards one entry per count and prints the entry left on top.
+added into a counter at half its weight (an ignored input is read and popped),
+then a ``JMP`` loop selects a two-entry code. The final essential input
+decodes that code to ASCII 0/1 before output.
 Small-weight suffix reads discard entries directly after the walk.
 A symmetric table uses only these reads over n + 1 entries
 ([ablations.symmetric_count]).
 
 Size:
-    T + a few dozen characters per input; one loop step per row index.
-    n=8 constant zero: 138 chars; n=10 random 1847: 1,577 chars,
-    n=12 random 1847: 4,753 chars.
+    T/2 + a few dozen characters per input; one loop step per pair index.
+    n=8 constant zero: 138 chars; n=10 random 1847: 1,165 chars,
+    n=12 random 1847: 2,804 chars.
 
 Decisions:
     The tail retains every ignored input in order, before output.
@@ -78,10 +79,35 @@ def modulous(truth_table: str, width: int | None = None) -> str:
         if grid_width(wrapped) <= width:
             return wrapped
         return wrap_space_delimited(" ".join(_TOKEN.findall(program)), width)
-    builds = [projected, symmetric_weights(truth_table, n)]
-    return min(
-        (_lookup(*build, width) for build in builds if build is not None), key=len
+    symmetric = symmetric_weights(truth_table, n)
+    if symmetric is not None:
+        # The count reader preserves O(n) source on symmetric functions.
+        return _lookup(*symmetric, width)
+    # Counter-free direct tails are faster through four essential inputs;
+    # pairing starts where the weighted reader otherwise needs its walk.
+    if sum(weight > 0 for weight in projected[0]) <= 4:
+        return _lookup(*projected, width)
+    return _pair_lookup(*projected, width)
+
+
+def _pair_lookup(weights: list[int], table: str, width: int | None) -> str:
+    """Select a pair by high bits, then decode its last input without rereading."""
+    # 00/11 are already ASCII answers; 01/10 encode as ASCII 2/3.
+    codes = {"00": "0", "11": "1", "01": "2", "10": "3"}
+    packed = "".join(codes[table[i : i + 2]] for i in range(0, len(table), 2))
+    slot = weights.index(1)
+    prefix = _lookup([w // 2 for w in weights[:slot]], packed, None)
+    prefix = prefix.removesuffix("[PRT STR][END]")
+    # At bit1, 2->1 and 3->0; at bit0, 2->0 and 3->1.
+    # Relative targets are fixed command offsets, unaffected by literal folds.
+    decode = (
+        "[INP INT][JMP F 9 IF 0][POP][JMP F 3 IF 50]"
+        "[JMP F 4 IF 51][JMP F 10][SUB 1][JMP F 8][SUB 3]"
+        "[JMP F 6][POP][JMP F 3 IF 50][JMP F 2 IF 51]"
+        "[JMP F 2][SUB 2]"
     )
+    program = prefix + decode + "[INP INT][POP]" * (len(weights) - slot - 1)
+    return _fit(program + "[PRT STR][END]", packed, width)
 
 
 def _lookup(weights: list[int], truth_table: str, width: int | None) -> str:
@@ -112,6 +138,11 @@ def _lookup(weights: list[int], truth_table: str, width: int | None) -> str:
     walk = "[JMP F 5 IF 0][SUB 1][SWP][POP][JMP B 4][POP]" if split else ""
     walk += "".join(tail) + "[PRT STR][END]"
     program = f'[PSH STR "{truth_table}"]{"".join(reads)}{walk}'
+    return _fit(program, truth_table, width)
+
+
+def _fit(program: str, table: str, width: int | None) -> str:
+    """Fold a literal and its relative-command suffix without changing jumps."""
     if width is None:
         return program
     wrapped = _bracket_literal(program, width)
@@ -120,16 +151,15 @@ def _lookup(weights: list[int], truth_table: str, width: int | None) -> str:
     # Push chunks from last to first: each string itself pushes in reverse.
     # All jumps follow the prologue and are relative, so its length is free.
     chunk = max(1, width - 3)
-    starts = range(0, len(truth_table), chunk)
+    starts = range(0, len(table), chunk)
     prologue = (
-        "".join(f"[PSH INT {_ASCII_ZERO + int(bit)}]" for bit in reversed(truth_table))
+        "".join(f"[PSH INT {_ASCII_ZERO + int(bit)}]" for bit in reversed(table))
         if width < 4
         else "".join(
-            f'[PSH STR "{truth_table[start : start + chunk]}"]'
-            for start in reversed(starts)
+            f'[PSH STR "{table[start : start + chunk]}"]' for start in reversed(starts)
         )
     )
-    tokens = _TOKEN.findall(prologue + "".join(reads) + walk)
+    tokens = _TOKEN.findall(prologue + program[len(table) + _TABLE_PUSH_OVERHEAD :])
     return wrap_space_delimited(" ".join(tokens), width)
 
 
@@ -157,7 +187,7 @@ def _balance(table: str, default: str) -> str:
     candidates = [default, modulous(table, width)]
     if default.startswith("[INP INT]"):
         return min(candidates, key=balance_score)
-    size = len(table)
+    size = len(atoms[0]) - _TABLE_PUSH_OVERHEAD
     # Skip the ``[PSH STR "`` prologue, the table, and the ``"]`` closer: the
     # rest is the instruction suffix the chunked rows pack beside the pushes.
     suffix = _TOKEN.findall(default[size + _TABLE_PUSH_OVERHEAD :])

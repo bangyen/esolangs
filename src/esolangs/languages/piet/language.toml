@@ -6,11 +6,11 @@ backlinks = 65
 
 [proof_status]
 labels = ["finite lookup"]
-qualification = "a table stack and row index, literal conjunction products, or projected majority/complement counts"
+qualification = "triple stacks from four essential inputs; smaller lookups, literal products, majority counts"
 scaling = "linear: worst F codels for n = 2..7, then at most F"
-execution = "linear: worst F steps for n = 2..7, then at most 5T + 11n + 31: blocks plus turns"
-workspace = "linear: worst F bits for n = 2..7, then at most S: the stack"
-definitions = ["S = T + 2n + 12 + 2bl(3T+5n+15) + bl(2n-1) + bl(n)"]
+execution = "linear: worst F steps for n = 2..7, then at most F: triples or small projections"
+workspace = "linear: worst F bits for n = 2..7, then at most F: stack and cursor"
+definitions = []
 
 [generator_sizes]
 "00000001" = { commands = 7, commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 7, "5" = 7, "6" = 7, "7" = 7 }, source_units = 24 }
@@ -18,8 +18,8 @@ definitions = ["S = T + 2n + 12 + 2bl(3T+5n+15) + bl(2n-1) + bl(n)"]
 "00110110" = { commands = 40, commands_by_row = { "0" = 40, "1" = 40, "2" = 40, "3" = 40, "4" = 40, "5" = 40, "6" = 40, "7" = 40 }, source_units = 159 }
 "0110" = { commands = 30, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30 }, source_units = 114 }
 "01101001" = { commands = 40, commands_by_row = { "0" = 40, "1" = 40, "2" = 40, "3" = 40, "4" = 40, "5" = 40, "6" = 40, "7" = 40 }, source_units = 159 }
-"0110100110010110" = { commands = 96, commands_by_row = { "0" = 96, "1" = 96, "2" = 96, "3" = 96, "4" = 96, "5" = 96, "6" = 96, "7" = 96, "8" = 96, "9" = 96, "10" = 96, "11" = 96, "12" = 96, "13" = 96, "14" = 96, "15" = 96 }, source_units = 231 }
-"1101001101101101" = { commands = 54, commands_by_row = { "0" = 54, "1" = 54, "2" = 54, "3" = 54, "4" = 54, "5" = 54, "6" = 54, "7" = 54, "8" = 54, "9" = 54, "10" = 54, "11" = 54, "12" = 54, "13" = 54, "14" = 54, "15" = 54 }, source_units = 228 }
+"0110100110010110" = { commands = 63, commands_by_row = { "0" = 63, "1" = 63, "2" = 63, "3" = 63, "4" = 63, "5" = 63, "6" = 63, "7" = 63, "8" = 63, "9" = 63, "10" = 63, "11" = 63, "12" = 63, "13" = 63, "14" = 63, "15" = 63 }, source_units = 303 }
+"1101001101101101" = { commands = 62, commands_by_row = { "0" = 62, "1" = 62, "2" = 62, "3" = 62, "4" = 62, "5" = 62, "6" = 62, "7" = 62, "8" = 62, "9" = 62, "10" = 62, "11" = 62, "12" = 62, "13" = 62, "14" = 62, "15" = 62 }, source_units = 306 }
 "11111110" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 27 }
 
 [catalogue]
@@ -93,17 +93,18 @@ verdict = "kept: sum essential bits, seed from the first read, drain ignored rea
 
 [ablations.chunked_entry_push]
 arity = 8
-saving = -34.91
+saving = -150.85
 seed = "random.Random(184700 + n)"
-tables = "200 random per n=7,8; native exhaustive n<=3 and sampled n=4..8"
-verdict = "rejected: little-endian triples store sum(bit_i*2^i), retain row below the chunks using explicit depth rolls, select floor(row/3), and divide by q(q+1)/2+1 for q=row mod 3, then mod 2. Actual scale-1 codel area grows 34.061%/34.912% (104038 -> 139474; 156398 -> 211000). Blocks 3..7 do not always fit the packed lane room; the bounded variant spells every integer above 2 exactly in binary, since the old power-of-two-only doubling would silently miscompile chunk depths/values. This needs an additional integer-construction path, retained-row state and extraction operations without a qualifying saving; none ships."
+tables = "historical200 source; revised20 fixed per7/8,4 per4..6,exhaustive<=3;2 tables/allrows/3 timing passes per7/8"
+verdict = "kept 2026-11-03 by the 25% command alternative. Historical area-selected triples grew34.061/34.912%; their extra binary integer builder is rejected. Instead one three-row strip pushes each0..7 chunk directly, preserves the row below the stack, selects floor(row/3), divides by q(q+1)/2+1 then mod2. Choose source-min polarity, commands only on a source tie. No pair route, bounded builder, whole-old source comparison or runtime decision state. Constants/products/majority keep O(n) layouts. From m4 essential inputs the worst-command bound crosses: old n3 maximum40 versus triple upper58 (native00011111 loses39->56), old n4 maximum96 versus triple68 (-29.167%). Old n5/6/7 maxima131/200/317 become82/108/154 (-37.405/46.000/51.420%); n8 bound244. Small projections and named readers remain below these global bounds. All old source/E/W exact scopes and flags are retained, with constructive new n4..7 maxima source333/468/723/1218 and W43/62/95/157. Some n4 tables slow (0111100111100011:54->64 on all16 rows); this is not the 5% no-table-regression route. Nevertheless native whole-table batch wall medians4..6 improve .02241->.02046 / .06592->.05000 / .19771->.13182s. Fixed20 actual scale1 codel area7/8 grows10393->21825 /15638->39228 (109.997/150.850%); four asymmetric rows per table commands24980->9476 /42772->13664 (-62.066/68.054%), zero slower rows there. Whole-table wall medians7/8 .3161->.1980s /1.0970->.6814s. Every table/row1..3 and four fixed all-row tables4..6 pass ordered reads, sole output, following record and halt; n3 source33633/E68104 unchanged. Command schedules are input-independent. From n8 old parity takes at least3T/2+4n+16, while new global bound2ceil(T/3)+4n+40 improves it by at least25%, approaching at least55.556%. Six pins and AND example unchanged; both four-input pins refreshed (parity96->63 commands,asymmetric54->62) with last-row/by-row counts; native anchors n10 parity6477 (was2226), AND66 and n8 majority87. Added state is one retained row and extraction operands replacing the T-entry stack, O(T) source/build, fixed byte-valued RGB palette. Existing narrow/balance feasibility remains; no source admission claim."
+
 
 [ablations.pair_chunk_lookup]
 arity = 8
 saving = -6.73
 seed = "random.Random(184700 + n)"
-tables = "same corpus as chunked_entry_push"
-verdict = "rejected: little-endian pairs use the same retained-row selection, with divisor (row mod 2)+1. Actual codel area grows 11.069%/6.730% (104038 -> 115554; 156398 -> 166923), 200/193 tables grow. The extra depth rolls and exact bounded integer construction consume the entry saving. An old-whole-program fallback is not retained. The three uniform prototypes together passed 2249 native PNG row/control groups, including odd/even rows and every table/row n<=3; all probes fire, wrong-table control fails 8/8. No pair/triple production paths or persistent state remain."
+tables = "historical200 per7/8; original2249 native PNG/control groups; revised60 raw strip/packed checks"
+verdict = "superseded by the admitted triple strip, not rejected solely for source. Historical bounded pairs grew11.069/6.730% (104038->115554;156398->166923),200/193 tables grow. The unbounded strip refinement also reduces commands, but its worst T+4m+2q+34 exceeds triple2ceil(T/3)+4m+2q+40 from the admitted m4 crossover; its worst leading area coefficient is also larger (11T/4 versus5T/2 columns). Both retain the same row and decode by division/mod; pairs add no class protection. Original all-small/firing/wrong-table controls and revised raw pair/triple strip controls execute correctly. Only the stronger triple construction ships; no pair builder, integer-construction path or source race remains."
 
 [ablations.packing_offsets_prototype]
 saving = 0.7404

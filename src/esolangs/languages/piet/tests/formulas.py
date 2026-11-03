@@ -1,4 +1,4 @@
-"""Piet's emitted codels: the strip, or the least-area packed layout.
+"""Piet bounds: triple strips, or packed lookups below four essential inputs.
 
 To n = 7 every packed layout is a function of the operations' block sizes alone
 (a lane takes whole blocks to its room; 5,800 random tables at n = 5..7 never
@@ -9,11 +9,13 @@ Past half zeros the complement is stored instead, T - z zeros and a ``not`` on
 the selected entry, so the worst z is the middle one.
 Majority and its complement count their inputs in O(n) operations instead.
 They stay below these bounds; unchanged generic witnesses attain the maxima.
-From n = 8 a colour clash can cost a row (+32 codels at n = 8, in 53 of 1,277
-tables), the rows depend on the bit pattern, and only the fold's bound holds.
+For old full lookups from n = 8 a colour clash can cost a row (+32 codels
+at n = 8, in 53 of 1,277 tables). Rows depend on the bit pattern; only the
+fold's bound holds.
 """
 
 from functools import cache
+from itertools import combinations
 from math import isqrt
 
 
@@ -123,7 +125,7 @@ def walk_zeros(n: int) -> int:
     return max(range(2, (1 << n) - 1), key=lambda z: (_walk(n, z), z))
 
 
-def _steps(n: int, _: str) -> int:
+def _lookup_steps(n: int, _: str) -> int:
     """Worst steps: the most over z to n = 7, then the fold's bound."""
     if n >= 8:
         return 5 * (1 << n) + 11 * n + 31
@@ -229,7 +231,7 @@ def bit_zeros(n: int) -> int:
     return max(range(2, (1 << n) - 1), key=lambda z: (_bits(n, z, (1 << n) - 1), z))
 
 
-def _written(n: int, _: str) -> int:
+def _lookup_written(n: int, _: str) -> int:
     """Worst written bits: the most over z and rows to n = 7, then the stack bound."""
     if n >= 8:
         return (
@@ -267,7 +269,7 @@ def _fold(blocks: int) -> int:
     return columns * (5 * rows // 2 + 3 + 1)
 
 
-def _codels(n: int, _: str) -> int:
+def _lookup_codels(n: int, _: str) -> int:
     """F: max over z in [2, T - 2] of min(strip, least packed layout) to n = 7.
 
     Fewer essential inputs store fewer entries (the family
@@ -281,6 +283,119 @@ def _codels(n: int, _: str) -> int:
         )
     z = zeros(n)
     return min(_strip(n, z), _packed(n, z))
+
+
+@cache
+def _projected_steps(inputs: int) -> int:
+    """Old layouts with at most three essential bits; retain physical read order."""
+    found: list[int] = []
+    for n in range(2, min(inputs, 3) + 1):
+        for essential in combinations(range(inputs), n):
+            prefix = [1, 1]
+            for cell in range(inputs):
+                prefix += [2, 1, 1, 1] if cell in essential else [1, 1]
+            for z in range(2, (1 << n) - 1):
+                flip = _flipped(n, z)
+                tail = prefix + _tail(n, flip=flip)[2 + 4 * n :]
+                entries = (1 << n) + _stored(n, z)
+                root = isqrt(entries + sum(tail))
+                layouts: list[tuple[int, int]] = []
+                for kind, floor in ((0, 22), (1, 18), (2, 18)):
+                    for offset in (5, 9, 13):
+                        width, lanes = _lanes(
+                            entries, tail, max(floor, root + offset), kind
+                        )
+                        count = len(lanes)
+                        rows = 3 if count == 1 else count + 4 if kind else 2 * count + 2
+                        layouts.append(
+                            (width * rows, entries + len(tail) + 5 * (count - 1) + 2)
+                        )
+                layouts.append(
+                    (_strip(n, z) + 6 * (inputs - n), entries + len(tail) - 2 * n)
+                )
+                least = min(area for area, _ in layouts)
+                found.extend(steps for area, steps in layouts if area == least)
+    return max(found)
+
+
+def _chunk_count(n: int) -> int:
+    return ((1 << n) + 2) // 3
+
+
+def _chunk_width(n: int) -> int:
+    # Endpoint chunk costs sum to nine. The final one-bit chunk forces
+    # a one-codel congruence loss at even arities.
+    return 3 * _chunk_count(n) + 5 * n + 50 + 3 * (1 << (n - 1)) - (n % 2 == 0)
+
+
+def _chunk_bits(n: int) -> int:
+    return (11 * _chunk_count(n) - (3 if n % 2 else 5)) // 4
+
+
+def _codels(n: int, program: str) -> int:
+    return _lookup_codels(n, program) if n < 4 else 3 * _chunk_width(n)
+
+
+def _steps(n: int, program: str) -> int:
+    if n < 4:
+        return _lookup_steps(n, program)
+    projected = _projected_steps(n) if n <= 6 else 71 + 11 * n
+    return max(2 * _chunk_count(n) + 4 * n + 40, projected)
+
+
+def _written(n: int, program: str) -> int:
+    if n < 4:
+        return _lookup_written(n, program)
+    return (
+        _chunk_bits(n)
+        + 3 * n
+        + (_chunk_width(n) - 1).bit_length()
+        + (2 * n - 1).bit_length()
+        + n.bit_length()
+        + 3
+    )
+
+
+def _chunk_table(values: list[int], n: int) -> str:
+    return "".join(str((value >> j) & 1) for value in values for j in range(3))[
+        : 1 << n
+    ]
+
+
+def source_witness(n: int) -> str:
+    """Balanced endpoint chunks attain the source maximum from four inputs."""
+    count = _chunk_count(n)
+    ones = (count - 1) // 2 if n % 2 else count // 2
+    return _chunk_table([7] * ones + [0] * (count - 1 - ones) + [3 if n % 2 else 1], n)
+
+
+def execution_witness(n: int) -> str:
+    """Three zero rows force the complemented sparse triple lookup."""
+    return "000" + "1" * ((1 << n) - 3)
+
+
+def workspace_witness(n: int) -> str:
+    """Chunks 4/2 saturate the source-choice bit inequality."""
+    count = _chunk_count(n)
+    twos = (count + 1) // 4 if n % 2 else (count - 2) // 4
+    return _chunk_table([4] * (count - 1 - twos) + [2] * twos + [2 if n % 2 else 1], n)
+
+
+def resource_witness(n: int, kind: str) -> str:
+    """Triple-strip attainers from four; original packed cases below."""
+    if n >= 4:
+        return {
+            "area": source_witness,
+            "steps": execution_witness,
+            "bits": workspace_witness,
+        }[kind](n)
+
+    width = 1 << n
+    middle = [r for r in range(width) if 2 <= r.bit_count() <= n - 2]
+    rest = [r for r in range(1, width - 1) if r not in middle]
+    z = {"area": zeros, "steps": walk_zeros, "bits": bit_zeros}[kind](n)
+    ones = {0, width - 1, *[*middle, *rest][: width - z - 2]}
+    return "".join("1" if r in ones else "0" for r in range(width))
 
 
 FORMULAS = {

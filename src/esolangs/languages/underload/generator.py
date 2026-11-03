@@ -1,16 +1,16 @@
 """Underload Boolean program generator: each input picks a half of a promise tree.
 
-The template opens with one seven-character slot per input, filled with a
-selector: ``(()!!^)`` for 0 or ``(~:!!^)`` for 1.  The rest pushes the
+The template opens with one five-character slot per input, filled with a
+selector: ``(!^:)`` for 0 or ``(~!^)`` for 1.  The rest pushes the
 decision tree as one string, runs it with ``^``, and ``S`` prints the bit
 it leaves.  ``0110`` (exclusive or) on inputs 1, 0 runs as
 
-    (~:!!^)(()!!^)((((0))~((1))~^)~(((1))~((0))~^)~^)^S
+    (~!^)(!^:)((((0))~((1))~^)~(((1))~((0))~^)~^)^S
 
 and prints 1.  A node ``(A)~(B)~^`` tucks its halves under the input block
-on top, and the input's ``^`` keeps one and runs it: 0 runs ``!^`` (drop
-``B``, run ``A``) and 1 swaps first.  ``()!`` and ``:!`` are padding, so
-both selectors have one width and the template one shape per table.  A leaf
+on top, and the input's ``^`` keeps one and runs it: 0 drops ``B``, runs
+``A`` and duplicates its answer; 1 swaps first.
+Both selectors have one width and the template one shape per table.  A leaf
 pushes its bit, ``(0)`` or ``(1)``. Named AND/OR and threshold-2 tails
 leave unused selectors below the answer instead of dropping them.
 
@@ -23,8 +23,8 @@ except the named terminal tails that retain it beneath the answer.
 
 Size:
     Carries are priced before terminal drops are erased; halves are copied
-    into enclosing nodes, O(T * n) construction work. n=10 parity: 3,695
-    chars, n=10 and: 177 chars, n=10 random 1847: 6,138 chars.
+    into enclosing nodes, O(T * n) construction work. n=10 parity: 3,675
+    chars, n=10 and: 157 chars, n=10 random 1847: 6,118 chars.
     Constants push/drop each literal input: 4n+4 chars, 2n+2 commands;
     written workspace 8(n+1)+bl(4n+4) bits.
 
@@ -49,8 +49,8 @@ from esolangs.generation.wrap import wrap_tokens
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
-# ()! and :! are neutral, padding both selectors to seven space-free characters.
-PAIR = ("(()!!^)", "(~:!!^)")
+# A zero duplicates the returned bit, giving both selectors five characters.
+PAIR = ("(!^:)", "(~!^)")
 _SHORT_PAIR = ("(!) ", "(~!)")
 _BIT_PAIR = (" ", "~")
 

@@ -8,18 +8,18 @@ backlinks = 167
 labels = ["parameterized tree"]
 qualification = "equal-width input programs leave one selector apiece; each node stores both branches as strings and the selector evaluates exactly one, while a constant leaf discards unused selectors except in named AND/OR and threshold-2 tails; a repeated subtree is pushed once and carried above the next selector, and the plain tree stays a candidate"
 scaling = "linear: at most F characters past n = 3: 241 a five-input half"
-execution = "poly n: worst 12n + 3 + 2⌊(n-1)/2⌋ commands past n = 2: n slots, 11 a level, carries"
+execution = "poly n: worst 10n + 3 + 2⌊(n-1)/2⌋ commands past n = 2: n slots, 9 a level, carries"
 workspace = "linear: at most 24L + 168T + 32n - 168 + bl(2L+14T+6n-14) bits: spliced program, stack"
 
 [generator_sizes]
-"00000001" = { commands = 37, commands_by_row = { "0" = 16, "1" = 26, "2" = 16, "3" = 36, "4" = 16, "5" = 26, "6" = 16, "7" = 37 }, source_units = 58 }
-"00001100" = { commands = 19, commands_by_row = { "0" = 26, "1" = 26, "2" = 19, "3" = 19, "4" = 27, "5" = 27, "6" = 19, "7" = 19 }, source_units = 50 }
-"00110110" = { commands = 37, commands_by_row = { "0" = 26, "1" = 35, "2" = 27, "3" = 36, "4" = 26, "5" = 36, "6" = 27, "7" = 37 }, source_units = 80 }
-"0110" = { commands = 26, commands_by_row = { "0" = 24, "1" = 25, "2" = 25, "3" = 26 }, source_units = 51 }
-"01101001" = { commands = 41, commands_by_row = { "0" = 38, "1" = 39, "2" = 39, "3" = 40, "4" = 39, "5" = 40, "6" = 40, "7" = 41 }, source_units = 94 }
-"0110100110010110" = { commands = 52, commands_by_row = { "0" = 48, "1" = 49, "2" = 49, "3" = 50, "4" = 49, "5" = 50, "6" = 50, "7" = 51, "8" = 49, "9" = 50, "10" = 50, "11" = 51, "12" = 50, "13" = 51, "14" = 51, "15" = 52 }, source_units = 161 }
-"1101001101101101" = { commands = 44, commands_by_row = { "0" = 49, "1" = 41, "2" = 50, "3" = 51, "4" = 50, "5" = 50, "6" = 51, "7" = 44, "8" = 50, "9" = 41, "10" = 51, "11" = 52, "12" = 51, "13" = 51, "14" = 52, "15" = 44 }, source_units = 156 }
-"11111110" = { commands = 37, commands_by_row = { "0" = 16, "1" = 26, "2" = 16, "3" = 36, "4" = 16, "5" = 26, "6" = 16, "7" = 37 }, source_units = 58 }
+"00000001" = { commands = 31, commands_by_row = { "0" = 15, "1" = 23, "2" = 15, "3" = 31, "4" = 15, "5" = 23, "6" = 15, "7" = 31 }, source_units = 52 }
+"00001100" = { commands = 17, commands_by_row = { "0" = 24, "1" = 24, "2" = 17, "3" = 17, "4" = 24, "5" = 24, "6" = 17, "7" = 17 }, source_units = 44 }
+"00110110" = { commands = 31, commands_by_row = { "0" = 24, "1" = 31, "2" = 24, "3" = 31, "4" = 24, "5" = 31, "6" = 24, "7" = 31 }, source_units = 74 }
+"0110" = { commands = 22, commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22 }, source_units = 47 }
+"01101001" = { commands = 35, commands_by_row = { "0" = 35, "1" = 35, "2" = 35, "3" = 35, "4" = 35, "5" = 35, "6" = 35, "7" = 35 }, source_units = 88 }
+"0110100110010110" = { commands = 44, commands_by_row = { "0" = 44, "1" = 44, "2" = 44, "3" = 44, "4" = 44, "5" = 44, "6" = 44, "7" = 44, "8" = 44, "9" = 44, "10" = 44, "11" = 44, "12" = 44, "13" = 44, "14" = 44, "15" = 44 }, source_units = 153 }
+"1101001101101101" = { commands = 38, commands_by_row = { "0" = 45, "1" = 37, "2" = 45, "3" = 45, "4" = 45, "5" = 44, "6" = 45, "7" = 38, "8" = 45, "9" = 37, "10" = 45, "11" = 45, "12" = 45, "13" = 44, "14" = 45, "15" = 38 }, source_units = 148 }
+"11111110" = { commands = 31, commands_by_row = { "0" = 15, "1" = 23, "2" = 15, "3" = 31, "4" = 15, "5" = 23, "6" = 15, "7" = 31 }, source_units = 52 }
 
 [ablations]
 audited = "2026-10-19"
@@ -68,4 +68,11 @@ verdict = "rejected raw selector placement: native0001 row0 prints!(0), not0. In
 [ablations.trick_prototype_20261102_space_padded_selectors]
 arity = 8
 saving = 1.028105843496585
-verdict = "rejected: the five-character ( !^)/(~!^) pair computes8692 tested native rows but embeds padding spaces, forbidden by the input convention. It saves only2n characters:1.7558%/1.0281% on200 generic7/8 tables, declining below20%. A conforming (!^:)/(~!^) repair duplicates the returned bit instead of padding; it also passes8692 native rows and has the same source counts. That repair misses the generic bar. It qualifies separately on projection families (best19.4444%/20.0% at7/8), but is not stacked onto the selected terminal-drop rule in this one-rule audit; it is not rejected on its named-family percentages."
+verdict = "historical audit; conforming duplicate repair is now kept below: rejected raw padding: the five-character ( !^)/(~!^) pair computes8692 tested native rows but embeds padding spaces, forbidden by the input convention. It saves only2n characters:1.7558%/1.0281% on200 generic7/8 tables, declining below20%. A conforming (!^:)/(~!^) repair duplicates the returned bit instead of padding; it also passes8692 native rows and has the same source counts. That repair misses the generic bar. It qualifies separately on projection families (best19.4444%/20.0% at7/8), but is not stacked onto the selected terminal-drop rule in this one-rule audit; it is not rejected on its named-family percentages."
+
+[ablations.trick_recheck_20261103_duplicate_selectors]
+arity = 3
+saving = 10.9991
+seed = 0
+tables = "all256 three-input tables/every row;4096 paired native executions after named terminal cleanup"
+verdict = "kept by independent5% execution gate: uniform five-character(!^:)/(~!^) selectors give61096->54376 commands,17800->16276 actual filled chars, no larger/slower table or row. Zero duplicates its returned bit; copies remain beneath the answer. Constants and narrow short/bit selectors stay unchanged. No search, candidate or old-source race. Seven alternating n3 native batches run .111031->.105386s. E becomes10n+3+2floor((n-1)/2), attained by existing all-one carry witnesses; F replaces7n by5n, original scopes/flags retained. Existing W ceiling holds: generic copies cost at most8n bits; for named tails use D<=3T/2 deleted drops and the original pre-cleanup bound, giving24L+156T+88n-168+bl(2L+13T+10n-14), below the current ceiling from5. All finite named families through4 pass WrittenState.3560 additional native named/layout/sample rows pass; all pins/byrows, anchors and balanced example updated together. Source/build class unchanged. Historical source-only rejection missed this route."

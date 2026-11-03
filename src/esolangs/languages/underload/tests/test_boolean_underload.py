@@ -78,10 +78,10 @@ def test_first_eight_tables_through_three_inputs(n: int) -> None:
 
 
 def test_setters_are_equal_width_and_embedded_once() -> None:
-    assert len(PAIR[0]) == len(PAIR[1]) == 7
+    assert len(PAIR[0]) == len(PAIR[1]) == 5
     for n in range(1, 8):
         template = underload("01" * (1 << (n - 1)))
-        assert template.count(TEMPLATE_CHAR) == 7 * n
+        assert template.count(TEMPLATE_CHAR) == 5 * n
 
 
 def test_source_growth_is_linear() -> None:
@@ -92,14 +92,14 @@ def test_source_growth_is_linear() -> None:
 @pytest.mark.medium
 def test_repeated_subtrees_are_carried_and_no_table_grows() -> None:
     """The reduced, carrying tree cuts both totals and lengthens no table."""
-    assert underload("01101001")[21:] == (
+    assert underload("01101001")[15:] == (
         "((((0))~((1))~^)~(~(^)~(!((1))~((0))~^)~^)~(~(!((1))~((0))~^)~(^)~^)~^)^S"
     )
     _check_terminal_drops()
     three = [format(value, "08b") for value in range(256)]
     for tables, before, after in (
-        (three, 21032, 17800),
-        (five_input_sample(), 58565, 44756),
+        (three, 19496, 16276),
+        (five_input_sample(), 56565, 42756),
     ):
         plain = [len(underload_plain(table)) for table in tables]
         shared = [len(underload(table)) for table in tables]
@@ -196,7 +196,7 @@ def _check_terminal_drops() -> None:
         assert ablate(table, "default") == underload(table)
         totals[0] += len(ablate(table, "terminal_drops"))
         totals[1] += len(underload(table))
-    assert totals == [17820, 17800]
+    assert totals == [16296, 16276]
     for n in (4, 7, 8):
         for threshold in (1, 2, n - 1, n):
             table = "".join(

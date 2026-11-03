@@ -62,6 +62,7 @@ def test_literal_product_keeps_ignored_inputs(table: str, width: int | None) -> 
 def test_every_three_input_function_executes_through_png() -> None:
     _check_constants()
     _check_majority()
+    _check_triples()
     total = 0
     for encoded in range(256):
         truth_table = f"{encoded:08b}"
@@ -135,31 +136,31 @@ def _codels(program: Raster) -> int:
     return len(program.rows) * len(program.rows[0])
 
 
-def test_the_default_is_the_smaller_of_strip_and_fold() -> None:
+def test_retained_lookup_is_the_smaller_of_strip_and_fold() -> None:
     """The strip wins a tie, a fold only by strictly less area; folds from n=5."""
-    from esolangs.languages.piet.generator import _generate
+    from esolangs.languages.piet.generator import _generate, _smallest
 
     rng = random.Random(11)
     for bits in (2, 4, 5, 6):
         table = "".join(rng.choice("01") for _ in range(1 << bits))
-        flat, chosen = _generate(table), generate(table)
+        flat, chosen = _generate(table), _smallest(table)
         assert chosen is flat or _codels(chosen) < _codels(flat)
         if bits >= 5:
             assert _codels(chosen) < _codels(flat)
         assert _evaluate("Piet", chosen, inputs=bits) == table
 
 
-def test_a_tied_pack_loses_to_the_strip() -> None:
+def test_a_tied_retained_pack_loses_to_the_strip() -> None:
     """This n=4 table's least packed layout ties the strip's area exactly.
 
     The seeded tables in the race test above contain no tie, so the
     strip-wins-a-tie rule needs this witness: at equal area the
     default must be the strip itself, not the packed layout.
     """
-    from esolangs.languages.piet.generator import _generate
+    from esolangs.languages.piet.generator import _generate, _smallest
 
     table = "1111000111100010"
-    assert generate(table).rows == _generate(table).rows
+    assert _smallest(table).rows == _generate(table).rows
     assert _evaluate("Piet", generate(table), inputs=4) == table
 
 
@@ -399,3 +400,53 @@ def _check_constants() -> None:
                     assert len(scaled.rows) == 3 * len(program.rows)
                     assert len(scaled.rows[0]) == 3 * len(program.rows[0])
                     assert esolangs.run("Piet", scaled, stdin="1\n" * n) == bit
+
+
+def _check_triples() -> None:
+    """Exercise the command-admitted strip, polarity and ignored-input layouts."""
+    from esolangs.languages.piet.generator import _INITIAL, _chunks, _next_colour, strip
+    from esolangs.languages.piet.interpreter import _Machine
+    from esolangs.languages.piet.tests.formulas import (
+        _codels as bound_area,
+    )
+    from esolangs.languages.piet.tests.formulas import (
+        _steps,
+        _written,
+    )
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in (7, 8):
+        rng = random.Random(184700 + n)
+        table = "".join(rng.choice("01") for _ in range(1 << n))
+        cases = [table, table.translate(str.maketrans("01", "10"))]
+        if n == 8:
+            cases.append("".join(table[row & 127] for row in range(256)))
+        for truth_table in cases:
+            for options in ({}, {"width": 15}, {"balance": True}):
+                image = esolangs.generate("Piet", truth_table, **options)
+                assert isinstance(image, Raster)
+                image = Raster.from_png(image.to_png())
+                for row in (0, (1 << n) // 3, (1 << n) - 1):
+                    io = ScriptedIO("\n".join(f"{row:0{n}b}") + "\n7\n")
+                    machine = _Machine(image, io, scale=1)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps < 10_000
+                    assert io.getvalue() == truth_table[row]
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_token() == "7"
+                    if not options:
+                        assert _codels(image) <= bound_area(n, "")
+                        assert steps <= _steps(n, "")
+                        assert written.bits <= _written(n, "")
+    # The divisor is essential: modulo3 cannot decode three packed bits.
+    table = "00110110"
+    operations = _chunks(table, [0, 1, 2], 3, flip=False)
+    good = strip(operations, _INITIAL, _next_colour)
+    assert _evaluate("Piet", good, inputs=3) == table

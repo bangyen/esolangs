@@ -65,7 +65,7 @@
   "lol_waht_i_cant_edit_talk_pages": "linear: at most 105T characters: one while-equal loop per branch",
   "malbolge": "measured: worst 13340 characters to n = 13, 19683 at 14, 52480 at 15, then 59049: the 3^10-cell store whole",
   "minsky_swap": "linear: worst N characters through n=5; at most beyond",
-  "modulous": "linear: worst N characters: T-character literal, one read block an input",
+  "modulous": "linear: worst S characters past n=1; worst68 at n=1",
   "monotonic_boolfuck": "linear: worst 53T/2 - 21 characters past n = 1",
   "movesum": "linear: 4T + 6n + 4 commands, 32 characters a row",
   "nandypants": "linear: \u0398(T / log T) blocks of O(log T) digits",

@@ -2,7 +2,7 @@
 
 
 def scaling(n: int, _: str) -> int:
-    """F: 161 at n = 4, then 7n + 31T/4 - 3: 7 a node over 5-input halves of <= 241.
+    """F: 153 at n = 4, then 5n + 31T/4 - 3: 7 a node over 5-input halves of <= 241.
 
     The plain composition is always a candidate, so a node is at most 7 plus
     its halves.  241 is the worst 5-input subtree: every ordered pair of
@@ -10,8 +10,8 @@ def scaling(n: int, _: str) -> int:
     exhaustive n = 4 worst.
     """
     if n == 4:
-        return 161
-    return 7 * n + 31 * 2**n // 4 - 3
+        return 153
+    return 5 * n + 31 * 2**n // 4 - 3
 
 
 FORMULAS = {"scaling": (scaling, False, (4, 5, 6, 7))}

@@ -7,11 +7,11 @@ admitted = 2021-05-16T15:17:47-04:00
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "the PSH STR literal puts row0 on top; prefix inputs count large weights, then an ordered suffix discards its entries directly; symmetric tables need no counter"
-scaling = "linear: worst N characters: T-character literal, one read block an input"
-execution = "linear: worst E commands past n=1; worst 7 at n=1"
-workspace = "linear: worst W bits past n=1; worst 13 at n=1"
-definitions = ["E = T+3n+2 at n=2..4, otherwise 5T+5n-33", "W = 6T+2+bl(T+3n+2)+bl(2n-1)+bl(n) at n=2..4; otherwise 6T+n+2+bl(6n+8)+bl(2n-1)+bl(n)"]
+qualification = "pair literal for asymmetric inputs; O(n)-source symmetric count reader retained; default exact maxima, split literals pay extra pushes/cursor bits"
+scaling = "linear: worst S characters past n=1; worst68 at n=1"
+execution = "linear: worst E commands past n=1; worst7 at n=1; split literal adds H-1"
+workspace = "linear: worst W bits past n=1; worst13 at n=1; split literal uses max(P,actual) command cursor"
+definitions = ["S = 6T+28n+21 at n=2..4; 3T+28n+144 at n=5; otherwise T/2+48n+157+sum(digits(2^k),k=0..n-2)", "E = T+3n+2 at n=2..4; T/2+3n+6 at n=5; otherwise 5T/2+5n-31", "P = T+3n+2 at n=2..4; T/2+3n+14 at n=5; otherwise 6n+17 default commands", "W = 6T+2+bl(P)+bl(2n-1)+bl(n) at n=2..4; otherwise 3T+(2 if n<=5 else n+1)+bl(P)+bl(2n-1)+bl(n)", "H = number of table-literal pushes"]
 
 [generator_sizes]
 "00000001" = { commands = 15, commands_by_row = { "0" = 12, "1" = 13, "2" = 13, "3" = 14, "4" = 13, "5" = 14, "6" = 14, "7" = 15 }, source_units = 129 }
@@ -55,7 +55,7 @@ tables = 488
 verdict = "retired 2026-10-29 (plain-rewrite audit): the balance hook also raced a numeric-token width (1-3), the narrow widths 4-8 and the whole table as one literal chunk. None ever won: dropping all three leaves balanced output byte-identical on 488 tables (40 random a arity at n=1..10, 8 at n=11..12, plus parity, and, or, majority, at-least-2, nand), so the code went. The width= path is untouched"
 
 [audits]
-trick_prototype = 2026-11-02
+trick_prototype = 2026-11-03
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
@@ -84,9 +84,16 @@ verdict = "rejected: corrected all-bare lookup reads and IF48 execute canonical 
 [ablations.trick_prototype_20261102_pair_packed_literal]
 arity = 8
 saving = 3.8095
-verdict = "rejected tested complete decoder: pack00/11/01/10 as digits0/1/2/3, halve higher weights, read the selector last, then branch to SUB2 for the zero arm or SUB1/SUB3 for the one arm. Keep trailing ignored reads before printing. All small rows and four rows per20 judge/named tables execute actual generated programs. Generic chars11120->11860 at7 (6.65% growth),14700->14140 at8 (3.81% saving), failing the fixed gate; racing old at7 would give zero gain there. Named symmetric builds also grow. Three-input chars58634->83678, so it fails the no-larger-table execution admission too. This rejects this explicit branch decoder, not every pair encoding."
+verdict = "historical size-only rejection, superseded by pair_execution_20261103 below: pack00/11/01/10 as digits0/1/2/3, halve higher weights, read the selector last, then branch to SUB2 for the zero arm or SUB1/SUB3 for the one arm. Keep trailing ignored reads before printing. All small rows and four rows per20 judge/named tables execute actual generated programs. Generic chars11120->11860 at7 (6.65% growth),14700->14140 at8 (3.81% saving), failing the fixed gate; racing old at7 would give zero gain there. Named symmetric builds also grow. Three-input chars58634->83678, so it fails the no-larger-table execution admission too. This rejects this explicit branch decoder, not every pair encoding."
 
 [ablations.trick_prototype_20261102_variable_counter_via_prt]
 arity = 2
 saving = 0.0000
 verdict = "rejected tested counter replacement: weighted one bits update VAR1 while the stack counter remains0. On table0001,row11 the actual mutant prints0 instead of1; baseline prints1. A direct PSH INT7,PSH VAR1,POP,PSH INT0 control leaves VAR1=7 and stack(0), proving PSH VAR1 stores rather than loads. PRT VAR1 prints without pushing a stack counter. No complete variable-to-stack walk was supplied; hypothetical size savings are not measurements and no interpreter change is admitted."
+
+[ablations.pair_execution_20261103]
+arity = 8
+saving = 49.5726
+seed = "Random(1000*n+i), i=0..19"
+tables = "fixed20 at n7/8, all rows for native wall; exhaustive n<=3 and samples4..6"
+verdict = "kept by the independent 25% command-bound route, correcting the historical source-only rejection. Retain the counter-free direct-pop construction through four essential inputs: replacing it by the decoder grows a four-input program 229->304 chars and measured native all-row time .736->.788ms. From five essential inputs the old reader needs an indexed prefix; pairing its rows halves that walk, retaining the existing cheap direct suffix. Full asymmetric E at n5 is152->37; at fixed n7/8 it is642->324 and1287->649 (49.53/49.57% less). For n>=6 the exact caps are5T+5n-33 versus5T/2+5n-31; saving has its later minimum at7, increases from there and tends50%, so no favorable cap or source race. Encode00/11/01/10 as ASCII0/1/2/3; consume the last essential bit after the high-index walk, decode with a fixed forward branch, then drain trailing ignored reads. Preserve the O(n)-source symmetric count reader by semantic dispatch, not an old-source minimum. One decoder path and one shared literal-fold helper; the full weighted generic route is replaced, while its direct suffix helper serves small, symmetric and half-index readers. No new persistent state, search or wide literal. Default generic source fixed20 Random(1000*n+i).choices tables grows10560->11300 at7 and shrinks14140->13580 at8; no size admission claimed. All276 small default programs, n3 source37030/commands30384, all eight pins/by-row commands and the balanced AND example remain byte-identical. Native5216 old/new/layout controls pass exhaustive n<=3 plus samples4..8, exact default S/E/W attainers2..10, every two-input width-one table, ignored-input order, print-after-read, following Q and required-EOF controls; wrong-answer mutant fires. Owned tests additionally run gapped five-essential inputs over seven physical inputs in default/narrow/balanced layouts. Scalar base cases and every old proof arity/True flag retained; explicit split-literal push/cursor terms fix layout caps without relaxing default maxima. Default W at n5/6/7/8 is111/212/405/792 versus212/405/790/1560. Cached-program three-pass medians over all rows of20 fixed tables: n5 .07755->.02692s, n7 1.32468->.64365s, n8 5.68029->2.71755s; n3 bytes/commands identical (.04676/.04605s timing context). Parsing n7/8 grows19.55/21.04us ->22.63/24.23us per program; a few early rows can execute more decoder commands, so no universal per-row speed claim. Source anchors10/12 are1165/2804 chars and execute both endpoints. Generation remains O(T); per-build medians n5/7/8 rise14.30/29.09/45.93us ->16.57/37.32/61.28us. No new collected tests."

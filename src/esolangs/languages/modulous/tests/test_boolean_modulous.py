@@ -49,6 +49,7 @@ class TestModulous:
 @pytest.mark.medium
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """``[INP INT][POP]``."""
+    _check_pair_resources()
     assert_an_ignored_input_costs("Modulous", 6, 14)
 
     from esolangs.languages.modulous.interpreter import _Machine
@@ -139,3 +140,57 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
         sum(len(esolangs.generate("Modulous", format(v, "08b"))) for v in range(256))
         == 37030
     )
+
+
+def _check_pair_resources() -> None:
+    from esolangs.exceptions import InputExhaustedError
+    from esolangs.languages.modulous.interpreter import _Machine
+    from esolangs.languages.modulous.proof_formulas import execution, workspace
+    from esolangs.languages.modulous.tests.formulas import resource_witness
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(2, 9):
+        table = resource_witness(n)
+        for options in ({}, {"width": 1}, {"balance": True}):
+            program = str(esolangs.generate("Modulous", table, **options))
+            row = (1 << n) - 1
+            io = ScriptedIO("\n".join(f"{row:0{n}b}") + "\nQ")
+            machine = _Machine(program, io)
+            written = WrittenState(machine.snapshot())
+            steps = 0
+            bound = execution(n, program)
+            while not machine.halted:
+                if machine.tokens[machine.ind].startswith("PRT"):
+                    assert io.reads == n
+                machine.step()
+                written.sample(machine.snapshot())
+                steps += 1
+                assert steps <= bound
+            assert io.getvalue() == table[row]
+            assert io.reads == n
+            assert io.input_token() == "Q"
+            assert written.bits <= workspace(n, program)
+            if not options:
+                assert steps == bound
+                assert written.bits == workspace(n, program)
+    program = str(esolangs.generate("Modulous", "0010"))
+    machine = _Machine(program, ScriptedIO("0\n"))
+
+    def finish() -> None:
+        while not machine.halted:
+            machine.step()
+
+    with pytest.raises(InputExhaustedError):
+        finish()
+
+    table = resource_witness(5)
+    mutant = str(esolangs.generate("Modulous", table)).replace("[SUB 3]", "[SUB 2]")
+    io = ScriptedIO("1\n" * 5)
+    machine = _Machine(mutant, io)
+    for _ in range(40):
+        if machine.halted:
+            break
+        machine.step()
+    assert machine.halted
+    assert io.getvalue() != table[-1]
