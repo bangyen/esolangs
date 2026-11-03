@@ -1,18 +1,21 @@
 """Forbin Boolean program generator: painted blocks behind a branch tree.
 
-One multi-assignment reads all ``8n`` input bits and keeps each low bit.  The
-last ``b`` inputs address a block of literal entries through a shift
-register in ``table``; the rest pick the block with range-loop ifs, and a
+Nonconstant tables read all ``8n`` input bits in one multi-assignment and
+keep each low bit. The last ``b`` inputs address literal entries through a
+shift register in ``table``; the rest pick the block with range-loop ifs, and a
 constant span collapses to a call to a printer.  Repeated blocks or subtrees
 become one function nested in ``main``.  ``b`` is the width in 3..7 that
 gives the shortest program.
 
 Size:
     Two characters per painted entry, O(T);
-    n=8 constant zero: 168 chars; n=10 random 1847: 3,111 chars,
+    n=8 constant zero: 80 chars; n=10 random 1847: 3,111 chars,
     n=12 random 1847: 10,224 chars.
 
 Decisions:
+    Constants drain bytes through one function once its cost amortizes;
+    the return value is discarded ([ablations.constant_reader_20261102]).
+
     Sharing a repeated block or subtree: tables tiled from two random
     128-entry blocks shrink, random tables are unchanged
     ([ablations.subtree_sharing]).  Names go out in order of first use
@@ -107,13 +110,12 @@ def forbin(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     if truth_table.count(truth_table[0]) == len(truth_table):
         # [ablations.constant_table_audit_20261101]: no printer closure.
-        program = (
-            "main{"
-            + ",".join(["a"] * (8 * n))
-            + "=(in 0);"
-            + f"return(out {_byte(int(truth_table[0]))})"
-            + "}"
-        )
+        # The fixed helper amortizes from two bytes; its result is discarded.
+        if n >= 2:
+            reads = "r{a,a,a,a,a,a,a,a=(in 0)}" + ",".join(["a"] * n) + "=(r 0);"
+        else:
+            reads = ",".join(["a"] * (8 * n)) + "=(in 0);"
+        program = "main{" + reads + f"return(out {_byte(int(truth_table[0]))})" + "}"
         if width is None or grid_width(program) <= width:
             return program
         # The default needs return to keep its two-step bound; narrow out falls off.

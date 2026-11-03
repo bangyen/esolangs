@@ -14,7 +14,7 @@ def _forbin(n: int, _: str) -> int:
 
 def workspace(n: int, p: str) -> int:
     """The stated workspace bound, evaluated for n and the program."""
-    if p.startswith("main{a,"):
-        # One local in both scope and frame; n byte reads and 8n bit reads.
+    if p.startswith(("main{a,", "main{r{a,a,a,a,a,a,a,a=(in 0)}")):
+        # One local in scope/frame; reader frames finish before the snapshot.
         return 76 + 2 * n.bit_length()
     return _forbin(n, p)

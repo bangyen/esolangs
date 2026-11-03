@@ -266,7 +266,7 @@ def test_constants_read_whole_bytes_then_print_inline() -> None:
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Forbin", bit * (1 << n), **options)
                 if not options:
-                    assert len(program) == 16 * n + 40
+                    assert len(program) == (16 * n + 40 if n == 1 else 2 * n + 64)
                 rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
                 for row in rows:
                     io = ReadFirstIO(format(row, f"0{n}b") + "Q")
@@ -278,6 +278,7 @@ def test_constants_read_whole_bytes_then_print_inline() -> None:
                         written.sample(machine.snapshot())
                         steps += 1
                     assert machine.halted
+                    assert machine.state.reads == 8 * n
                     assert io.getvalue() == bit
                     assert steps == (3 if options else 2)
                     assert io.input_char() == ord("Q")
@@ -285,5 +286,5 @@ def test_constants_read_whole_bytes_then_print_inline() -> None:
                         assert written.bits == workspace(n, program)
     assert (
         sum(len(esolangs.generate("Forbin", format(v, "08b"))) for v in range(256))
-        == 46726
+        == 46690
     )

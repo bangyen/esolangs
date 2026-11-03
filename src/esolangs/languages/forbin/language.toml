@@ -93,6 +93,7 @@ tables = "all tables n=1..3; four random plus one mixed-constant n=4..6; 20 rand
 verdict = "rejected: merge the two constant printers into one bit-parameterized printer, changing calls of the one-printer to pass 1. Upside is one fixed definition: 22 emitted characters where both printers occur. Random totals at n=7 / 8 / 10 / 12: 14,420 / 22,000 / 62,220 / 204,480 characters, unchanged. Named functions: parity, and/or and threshold-3 unchanged; majority 0.0% / 0.0% / 1.728% / 1.223% (1,273 -> 1,251 at n=10, 1,799 -> 1,777 at n=12), below 10% and declining. Executed old/new on all 2,680 rows of 291 tables through n=6 (all tables through n=3), plus four rows per measured larger table; no differences, all input bytes consumed with no EOF reads and exactly the expected output. n=3 total 46,748 -> 46,748. Positive control: mixed-constant n=6, 458 -> 436 chars, both printer branches execute correctly; negating the printer parameter produces a wrong answer. No generator change"
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
 
@@ -102,3 +103,31 @@ saving = 6.1
 seed = "both constant values; witnesses(n) at n=4..6"
 tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
 verdict = "kept: canonical whole-constant output, inlining a single-use printer. One multi-assignment drains all 8n bits into scratch a, then a literal out. A return expression retains the two-command default bound; narrow/balanced statements fall off in three commands instead of the old five, a 40% command reduction. Default chars 16n+40, workspace 76+2bl(n). At n=8 both bits 179 -> 168 chars; n=12 243 -> 232. The smaller default size gain is canonical; the narrow path independently clears the 25% command gate. n=3 corpus 46748 -> 46726 chars; all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions. All 270 nonconstant programs per language through n=3 remain byte-identical; Bitdeque and Forbin also retain all 540 nonconstant narrow/balanced programs each. All 24 old balanced constant scores per changed language improve or match. Both constants n=1..12 execute in default, width=1 and balanced layouts; owned regressions cover complete input consumption and resource bounds, with sentinel preservation for stream readers."
+
+[ablations.reader_function_20261102]
+arity = 8
+saving = 7.0909
+seed = "Random(1000*n+i),i=0..19; fixed7/8 before judging"
+tables = "all tables/rows n<=3;20sampled4..6;20fixed7/8;zero/one/and/or/nor/nand/parity/strict-majority/half-threshold/threshold3"
+verdict = "generic rule rejected:14420/22000->13140/20440chars saves8.8766/7.0909%, below the declining20% bar. Saving is O(n), while every all-essential family's input names alone require Omega(nlogn), so the share tends to zero. AND/OR/NAND/NOR16.75/18.40% and parity11.59/11.93% also fail20%; majority/thresholds fail. n3chars46726->44676 but commands4096 unchanged, so neither execution gate qualifies. No whole-old min. The constant family is admitted independently below with a smaller draining helper whose result is unused; no generic reader path/state ships."
+
+[ablations.register_reads_low_inputs_20261102]
+arity = 8
+saving = 6.1818
+seed = "same fixed20 each7/8; exhaustive n3 everyrow"
+tables = "11500native variant rows through6;2340ignored-subset/width/balance rows;3390exact-bound proof rows;moderate named controls"
+verdict = "rejected by explicit user decision2026-11-02: the repaired coherent prototype cuts n3 VMcommands4096->2064 (49.609%), with source46726->44566 and no growing table or costlier VM row, but actual nativewall0.6715->1.0130s is50.9% slower. Work moved into synchronous expression calls, not a speed improvement; user chose reject the slower optimization. Fixed7/8 source13300/20640 saves7.767/6.182%, below20%. Low range bounds consume bytes once; ignored gaps/trailing inputs and constant-leaf drains were repaired and verified before rejection. n1/2 batch by genuine source loss; widths<6 batch because value-returning helper needs the six-character return token. Balanced fixed20 area14820/22560 unchanged. Candidate proof/pin/source patch remains ignored evidence; none of its low-register paths, reader names or input-plan state ships. Existing generic source/E/W formulas and all old exact scopes remain."
+
+[ablations.trailing_zero_elision_20261102]
+arity = 8
+saving = 1.3545
+seed = "same fixed20 each7/8"
+tables = "all small native rows;sampled4..6;fixed7/8 endpoints;forced both-polarity register control"
+verdict = "language-valid but inadmissible: authorwiki Arguments explicitly defaults unpassed parameters to0 (https://esolangs.org/wiki/Forbin#Arguments), while CONTRIBUTING forbids missing operands buying generator savings. No interpreter change. Explicit/omitted zero calls agree natively; dropping a trailing1 instead changes its answer. Elision alone14420/22000->14094/21702 saves2.261/1.355%, n3source46726->46264 with unchanged4096commands. Per-block polarity with a second inverted-output register yields16608/25342chars (15.17/15.19% larger); both register polarities execute correctly, but its savings also rely on forbidden omitted arguments. Removed unused clone definitions in the prototype; no omission, clone, race or added state ships."
+
+[ablations.constant_reader_20261102]
+arity = 8
+saving = 52.3810
+seed = "both whole constants;physical arities1..16"
+tables = "480constant default/narrow/balanced native rows;1110nonconstant bytepairs/6880native rows;76pin rows plus saved example"
+verdict = "kept only for whole constants by source admission: one byte-draining definition and one n-target assignment replace the 8n-target read. No returned input bit is needed: the function falls off with default0, and its result goes only to junk. Removing the dead return also preserves the four-column width floor without a separate narrow fallback. Exact default chars16n+40->2n+64 from n=2; n1 would grow10chars and retains its shorter inline read. No old-program race. At7/8 each constant152/168->78/80 saves48.684/52.381%, monotonically approaching87.5%; balanced grid_area153/162->72/78. All8n bitreads precede output and preserve the next record; EOF and seven-bit mutants fire. Default2VMsteps and exact constant76+2bl(n)written bits stay unchanged; completed helper scopes are absent at observable snapshots. Nativewall does grow for zero:200runs n3 .0430->.0685s (1.59x), n8 .1596->.3350s (2.10x), n12 .2901->.7039s (2.43x); this is source admission, no speed claim. Adds only the necessary constant-function/read-spelling branch, no extra live main local; supersedes its repeated inline read from n2 and removes the unused return-bit state. Every nonconstant source is byte-identical, including width/balance. n3chars46726->46690, commands4096 unchanged. All global formulas/exact arities, eight pins/by-row/last-row counts and the example remain valid; constant Size anchor80 replaces168."
