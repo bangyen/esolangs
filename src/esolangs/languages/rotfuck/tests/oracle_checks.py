@@ -90,6 +90,9 @@ def check_raw_rotfuck():
     for source, stdin, direction in product(corpus, ("", "Ł"), ("forward", "backward")):
         _check(_Machine, source, stdin, direction)
 
+    # Each effective command is +, including the ninth after a full rotation.
+    _check(_Machine, "+][.,<>-+", "", "forward")
+
     class NoRotation(_Machine):
         def step(self):
             super().step()
