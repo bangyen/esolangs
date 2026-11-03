@@ -32,6 +32,9 @@ def test_copy_and_character_input() -> None:
 
 
 def test_the_swap_marker_dialect_names_the_marker_that_moves() -> None:
+    from .oracle_checks import check_raw_b_tapemark
+
+    check_raw_b_tapemark()
     """After a swap, ``new`` steps the new grid's marker, ``old`` the old one's."""
     for reading, expected in (
         ("new", ((1, 0), (1, 0))),
