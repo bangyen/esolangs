@@ -82,6 +82,9 @@ class TestStepMachine:
 
     def test_load_reads_the_address_in_z(self) -> None:
         """L loads RAM at the address z holds, not at a fixed one."""
+        from esolangs.languages.ram0.tests.oracle_checks import check_raw_ram0
+
+        check_raw_ram0()
         from esolangs.languages.ram0.interpreter import _Machine
 
         machine = _Machine("A N S L", IO())

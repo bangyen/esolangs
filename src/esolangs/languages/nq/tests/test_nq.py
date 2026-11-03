@@ -9,6 +9,9 @@ from esolangs.runtime.io import ScriptedIO
 
 def check_instructions() -> None:
     """Check grouping, first-lap loads, wrapping, I/O and failures."""
+    from esolangs.languages.nq.tests.oracle_checks import check_raw_nq
+
+    check_raw_nq()
     for source, stdin, expected in [
         ("+(012)W-W-WH", "", " \n#"),
         ("RW-W-WH", "0 1\n2", " \n#"),
