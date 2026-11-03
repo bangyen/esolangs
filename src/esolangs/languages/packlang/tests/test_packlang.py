@@ -83,7 +83,7 @@ class TestLiteralBase:
         """Its *logic* is right; only the base its literals were written in."""
         assert _run(DEPENDENCY_REBASED) == "0110"
 
-        for a, b in product((0, 1, 7, 16, 255), repeat=2):
+        for a, b in product((0, 1, 7, 16, 128, 255), repeat=2):
             source = DEPENDENCY_REBASED.replace("equals(5, 3)", f"equals({a}, {b})")
             source = source.replace("equals(1, 1)", f"equals({b}, {a})")
             assert _run(source) == ("1100" if a == b else "0011")
