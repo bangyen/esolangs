@@ -95,7 +95,7 @@ class TestStreetcodeIO:
 
     def test_two_cells_print_in_reverse_input_order(self) -> None:
         for left in ["A", "z", "é", " "]:
-            for right in ["B", "0", "λ", " "]:
+            for right in ["B", "0", "λ", " ", "😀"]:
                 expected = right + left
                 assert run_street("CI=IO_O;", inputs=[left + right]) == expected
 
