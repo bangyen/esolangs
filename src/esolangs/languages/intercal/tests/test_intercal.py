@@ -1,6 +1,7 @@
 """C-INTERCAL expression, I/O, and NEXT-stack semantics."""
 
 from functools import partial
+from itertools import product
 
 import pytest
 
@@ -26,6 +27,24 @@ def test_calculate_mingle_select_unary_and_output() -> None:
     # bit0, not bit1.
     source = 'PLEASE .1 <- \'"&#1$#1"~"#0$#65535"\'\nDO READ OUT .1\nDO GIVE UP'
     assert _run(source) == "I\n"
+
+    # Interleave fixed-width strings, then retain only positions named by
+    # the mask. This avoids the evaluator's bit operations entirely.
+    for left, right, mask in product(
+        (0, 1, 173, 65535), (0, 2, 256, 65535), (0, 1, 0xAAAA, 0xFFFF)
+    ):
+        bits = "".join(
+            a + b for a, b in zip(f"{left:016b}", f"{right:016b}", strict=True)
+        )
+        selected = "".join(
+            bit for bit, keep in zip(bits, f"{mask:032b}", strict=True) if keep == "1"
+        )
+        source = f"PLEASE :1 <- #{left}$#{right}\nDO .2 <- :1~#{mask}\nDO GIVE UP"
+        machine = _Machine(source, ScriptedIO("unused"))
+        machine.step()
+        assert machine.memory == [int(bits, 2)]
+        machine.step()
+        assert sorted(machine.memory) == sorted((int(bits, 2), int(selected or "0", 2)))
 
 
 def test_written_number_words_are_read() -> None:
