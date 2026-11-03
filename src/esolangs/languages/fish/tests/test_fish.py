@@ -104,7 +104,7 @@ def test_literals_arithmetic_comparison_and_output() -> None:
         assert _run(source) == str(int(evaluate(left, right)))
 
     # Write a character into a second row, retrieve it and then read a byte.
-    for char, column in product(("A", "Ω", "i"), (0, 3, 9)):
+    for char, column in product(("A", "Ω", "i", "😀"), (0, 3, 9)):
         io = ScriptedIO("z!")
         source = f"'{char}'{column}1p{column}1goio;"
         run([source], io)
