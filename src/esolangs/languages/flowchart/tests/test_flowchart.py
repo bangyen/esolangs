@@ -310,6 +310,12 @@ class TestNodes:
         assert run_program([f"( )─{body}─(( ))"], "AB") == "A\x00"
         assert run_program([f"( )─{body}─(( ))"], "AC") == "A\x01"
 
+        for width in range(2, 8):
+            body = "─".join(["/ /─\\ \\"] * width)
+            for byte in (0, 85, 170, 255):
+                expected = chr(byte % (1 << width))
+                assert run_program([f"( )─{body}─(( ))"], chr(byte)) == expected
+
     def test_reads_past_eof_are_empty(self) -> None:
         """EOF empties the register, rather than supplying zeros."""
         machine = _Machine(["( )─/ /─/ /─(( ))"], ScriptedIO(""))
