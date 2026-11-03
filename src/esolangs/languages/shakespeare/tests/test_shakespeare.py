@@ -43,7 +43,7 @@ def test_the_page_fragment_prints_minus_two_then_hamlet_plus_two() -> None:
     def noun(sign: int, adjectives: int) -> str:
         return "a " + "big " * adjectives + ("rose" if sign > 0 else "coward")
 
-    for sa, sb, na, nb in product((-1, 1), (-1, 1), range(4), range(4)):
+    for sa, sb, na, nb in product((-1, 1), (-1, 1), (*range(4), 32), range(4)):
         a, b = sa * 2**na, sb * 2**nb
         body = (
             f"You are {noun(sa, na)}!\n"
