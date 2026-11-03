@@ -25,6 +25,11 @@ def _page_loop(before: str, body: str, after: str) -> str:
 
 
 def test_increment_wraps_at_three() -> None:
+    from esolangs.languages.balik.tests.oracle_checks import (
+        check_raw_balik,
+    )
+
+    check_raw_balik()
     assert _out("+.+.+.") == "120"
 
 

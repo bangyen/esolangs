@@ -17,6 +17,11 @@ def test_lone_nor_prints_the_value_itself() -> None:
 
 
 def test_nor_is_twos_complement() -> None:
+    from esolangs.languages.nor_machine.tests.oracle_checks import (
+        check_raw_nor_machine,
+    )
+
+    check_raw_nor_machine()
     # ~(5 | 2) = -8.
     assert _out("V V", "5 2") == "-8"
 

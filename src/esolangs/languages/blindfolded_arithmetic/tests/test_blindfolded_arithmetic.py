@@ -25,6 +25,11 @@ def test_an_empty_program_is_refused_before_reading() -> None:
 
 
 def test_ip_is_the_next_instructions_source_offset() -> None:
+    from esolangs.languages.blindfolded_arithmetic.tests.oracle_checks import (
+        check_raw_blindfolded_arithmetic,
+    )
+
+    check_raw_blindfolded_arithmetic()
     machine = _Machine("a=i/i;  b=a+a", ScriptedIO("1\n"))
     assert machine.ip == 0
     machine.step()
