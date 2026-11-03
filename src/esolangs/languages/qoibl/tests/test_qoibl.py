@@ -95,7 +95,9 @@ class TestQoiblBehaviour:
         with pytest.raises(ValueError, match="malformed Qoibl expression"):
             run(["tt y tt w"], IO())
 
-    def test_one_digit_adder(self) -> None:
+    @pytest.mark.parametrize("left", range(5))
+    @pytest.mark.parametrize("right", range(6))
+    def test_one_digit_adder(self, left: int, right: int) -> None:
         code: list[str] = [
             "we e we yyeeee we",  # var[0] = 2
             "we y we et ry ey ry qe e qe we",  # var[1] = input - 2
@@ -105,13 +107,12 @@ class TestQoiblBehaviour:
             "tt qe y qe tt",  # print var[1]
         ]
 
-        # Test 2 + 3 = 5
         with (
-            patch("builtins.input", side_effect=["23"]),
+            patch("builtins.input", return_value=f"{left}{right}"),
             redirect_stdout(io.StringIO()) as f,
         ):
             run(code, IO())
-        assert f.getvalue() == "5"  # Should print 5
+        assert f.getvalue() == str(left + right)
 
     def test_variable_indices_stay_within_the_256_cell_list(self) -> None:
         from esolangs.exceptions import HaltError
