@@ -1,5 +1,8 @@
 """Unit tests for the Fargo interpreter."""
 
+from itertools import product
+from operator import and_, or_, xor
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -55,6 +58,16 @@ class TestBuiltins:
         assert run_program("% 0 | 0 1\n$") == "1"
         assert run_program("% 0 ^ 1 1\n$") == "0"
         assert run_program("% 0 ^ 1 0\n$") == "1"
+
+        for left, right, (symbol, evaluate) in product(
+            range(8), range(8), (("&", and_), ("|", or_), ("^", xor))
+        ):
+            writes = [
+                f"% {index:b} {symbol} {left >> index & 1} {right >> index & 1}"
+                for index in (2, 0, 1)
+            ]
+            source = "\n".join([*writes, "$"])
+            assert run_program(source) == str(evaluate(left, right))
 
     def test_binary_operators_read_both_arguments(self) -> None:
         """Each operand must come from its own position."""
