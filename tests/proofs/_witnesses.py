@@ -516,8 +516,8 @@ _IC_PAIRS = [
 ]
 #: The same pairs, those reading ``10`` (named after ``01``, so never shorter) first.
 _IC_CHAR_PAIRS = [_IC_PAIRS[i] for i in (0, 1, 6, 7, 8, 9, 2, 3, 4, 5, 10, 11)]
-#: Diagram nodes per level of the worst-statement table, n = 3..8; past it a full
-#: tree to level n - 5, then two levels of its width, 12 and 2.
+#: Historical old-policy width profiles retained for coverage, n = 3..8;
+#: then a full tree to level n - 5 and two levels of its width, 12 and 2.
 _IC_WIDTHS = {
     3: (1, 2, 2),
     4: (1, 2, 3, 2),
@@ -550,7 +550,7 @@ def _intercal_levels(level: list[str], widths: tuple[int, ...]) -> str:
 
 
 def _intercal_worst(n: int) -> str:
-    """Diagram with the most named nodes: full unnamed top, lower nodes read twice."""
+    """Historical old-policy naming witness, retained for coverage."""
     if n >= 13:
         # Widest level 2^(n-5) to n = 21, 2^(n-6) from 22, then every ordered
         # pair of the 256 eight-row tables (240 level n - 3 nodes, 16 doubled).

@@ -120,11 +120,11 @@ def test_execution_and_workspace_formulas_hold(name: str, n: int) -> None:
 
 
 def test_every_formula_cell_is_checked() -> None:
-    """A ``worst``/``at most`` Workspace clause in bits has a formula here."""
+    """Every bounded or exact Workspace clause in bits has a formula here."""
     stated = {
         row.generator
         for row in load_ledger().rows
-        if row.workspace_clause.startswith(("worst ", "at most "))
+        if row.workspace_clause.startswith(("worst ", "at most ", "exact "))
         and " bits" in row.workspace_clause
     }
     unchecked = sorted(stated - set(FORMULAS))

@@ -16,7 +16,7 @@ from esolangs.languages.intercal.generator import (
 
 def test_intercal_token_floor_and_wrapped_corpus_size() -> None:
     assert max(map(len, intercal("0110", 1).splitlines())) == 6
-    assert sum(len(intercal(format(value, "08b"), 1)) for value in range(256)) == 54492
+    assert sum(len(intercal(format(value, "08b"), 1)) for value in range(256)) == 46244
 
 
 @pytest.mark.parametrize("width", [1, 6, 9, 17, 22, 40])
@@ -81,7 +81,7 @@ def test_balance_stays_within_five_percent_of_every_fit_width(seed: int) -> None
 
 
 @pytest.mark.parametrize(
-    ("n", "side"), [(7, 73), pytest.param(8, 93, marks=pytest.mark.medium)]
+    ("n", "side"), [(7, 52), pytest.param(8, 65, marks=pytest.mark.medium)]
 )
 def test_balance_packs_short_statements_into_shared_rows(n: int, side: int) -> None:
     """Seed n: statements start at DO/PLEASE, so a row holds several."""

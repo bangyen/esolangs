@@ -57,7 +57,7 @@
   "hq9_with_headers": "linear: at most one table literal, one read command per input",
   "iebel": "linear: one block per distinct subtable, jumps of log T digits",
   "inject": "linear: worst C characters past n = 4: every n",
-  "intercal": "linear: at most F characters: unfolded envelope minus a terminal fold",
+  "intercal": "linear: at most F characters: unshared-select envelope plus bounded spilling",
   "interprogck8": "linear: worst F characters, n = 3..10; at most beyond",
   "kiss": "linear: worst 7T-5 characters: 5 a node, 2 a leaf",
   "laserfuck": "linear: worst N cells: a tree to n = 6, then three rows",

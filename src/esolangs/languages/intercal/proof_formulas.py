@@ -1,16 +1,17 @@
-"""Executed command and snapshot-bit bounds.
+"""Exact emitted-route costs, with separate conservative global ceilings."""
 
-Constant-mux folding keeps every assignment and its one-bit value width,
-so the unfolded naming policy's exact bounds and witnesses still apply.
-"""
-
+import re
 from math import isqrt
 
-_VARIABLE_MAX = 65535  # the largest INTERCAL variable number
+_VARIABLE_MAX = 65535
+_STATEMENT = re.compile(r"\b(?:DO|PLEASE)\s+")
+_ASSIGNMENT = re.compile(
+    r"([.:,])\s*(\d+)(?:\s+SUB\s+#\s*(\d+))?\s*<-\s*(?:#\s*(\d+))?"
+)
 
 
 def _named(n: int) -> int:
-    """The most named shared nodes (the Execution clause's M), for n >= 5."""
+    """Bound repeated BDD nodes by indegrees and the bottom-level capacities."""
     t = 1 << n
     if n <= 21:
         return min((t >> 3) + 2, (t >> 4) + 14, (t >> 5) + 254)
@@ -18,66 +19,84 @@ def _named(n: int) -> int:
 
 
 def _arrays(n: int, named: int) -> int:
-    """DIMENSION statements for the P names past ``.65535``, highest 2n - 2 + named."""
+    """Bound array declarations after the scalar namespace fills."""
     spilled = 2 * n - 2 + named - _VARIABLE_MAX
     return (spilled - 1) // (isqrt(spilled - 1) + 1) + 1 if spilled > 0 else 0
 
 
 def _bl_sum(m: int) -> int:
-    """``sum(map(int.bit_length, range(1, m + 1)))`` in closed form."""
+    """Return sum(k.bit_length() for k in range(1, m + 1))."""
     if m <= 0:
         return 0
     b = m.bit_length()
     return (b - 2) * (1 << (b - 1)) + 1 + b * (m - (1 << (b - 1)) + 1)
 
 
-def execution(n: int, program: str) -> int:
-    """N + 3 fixed, at most n - 3 named negations, the named shared nodes, and arrays.
-
-    Edges into levels 1..l number Q_l - 1 + M_l <= 2Q_{l-1}, so r levels
-    below the root name at most 2^(r-1); the last two levels hold 2 and 12.
-    A level of width w holding q_l nodes names at most N + 1 - 2w in all,
-    N the node count; the last levels hold 2, 12, 240 (the 240 pairs of
-    level n - 3) and 65,280 (level n - 4), so the widest level is 2^(n-5)
-    to n = 21 and 2^(n-6) from 22.  Exact for n <= 26 (witnesses build that
-    far; n <= 4 exhaustive, naming 0, 0, 2, 3 nodes); equal to the bound to
-    n = 38, past it the next level's cap makes this an upper bound.
-    """
-    if "READ OUT #" in program:
-        return n + 2
-    if n <= 4:
-        return (4, 5, 8, 11)[n - 1]
-    named = _named(n)
-    return 2 * n + named + _arrays(n, named)
+def execution(_n: int, program: str) -> int:
+    """Count straight-line statements, including GIVE UP, in any wrapping."""
+    return len(_STATEMENT.findall(program))
 
 
 def workspace(n: int, program: str) -> int:
-    """Nine bits and a key per variable; past .65535 the spilled names cost less.
+    """Price the final write set; all-one inputs attain every mask's two bits.
 
-    Exact to n = 27: the written snapshot only grows and the statement
-    index climbs, so the peak bits are the final snapshot's — each
-    scalar a key of ``8 + bl(k)`` around a one-bit value, the scalars
-    ``.1``..``.m``; past 20 the P spilled names fill A arrays of width
-    ``isqrt(P - 1) + 1`` (key ``8 + bl(j)``, elements ``bl(i) + 1``
-    0-based), checked against snapshots at 21, 22, 25 and 26 and
-    text at 27 — at 27 the text (2,164,188 statements, streamed at a
-    680 MB peak) carries 1,448 arrays of width 1,449, the last holding
-    500, and the write set read off its assignment targets — every
-    scalar, every element of the full arrays — prices to this sum
-    exactly, as the 25 and 26 write sets do to theirs.
+    Inputs, negations, shared nodes and result are Boolean. A named selector
+    mask is 1 or 2; all selectors equal to one make every mask 2 together.
+    Entries persist, and the final cursor maximizes its width. Constants
+    overwrite .1, so their repeated assignments contribute one scalar.
     """
-    if "READ OUT #" in program:
-        return 10 + (n + 2).bit_length()
+    scalars: dict[tuple[str, int], int] = {}
+    arrays: dict[int, tuple[int, set[int]]] = {}
+    for statement in _STATEMENT.split(program)[1:]:
+        matched = _ASSIGNMENT.match(statement)
+        if matched is None:
+            continue
+        tag, number, subscript, dimension = matched.groups()
+        index = int(number)
+        if tag != ",":
+            scalars[tag, index] = 2 if tag == ":" else 1
+        elif subscript is None:
+            assert dimension is not None
+            arrays[index] = int(dimension), set()
+        else:
+            arrays[index][1].add(int(subscript) - 1)
+    bits = sum(8 + key.bit_length() + value for (_, key), value in scalars.items())
+    bits += sum(
+        8
+        + key.bit_length()
+        + width.bit_length()
+        + sum((index.bit_length() or 1) + 1 for index in written)
+        for key, (width, written) in arrays.items()
+    )
+    return bits + execution(n, program).bit_length()
+
+
+def global_execution(n: int) -> int:
+    """Bound all routes; old repeated-node caps remain ceilings, not maxima."""
+    if n <= 4:
+        # Every non-root BDD node can be named at most once, plus aliases.
+        return 3 * n + (1 << n) + 2
+    return 2 * n + _named(n) + _arrays(n, _named(n)) + n - 2
+
+
+def global_workspace(n: int) -> int:
+    """Bound the dot/array write set and at most n-2 two-bit colon masks."""
     bl = int.bit_length
-    s = execution(n, "")
-    named = _named(n) if n > 4 else 0
-    spilled = 2 * n - 2 + named - _VARIABLE_MAX
+    if n <= 4:
+        top = 2 * n + (1 << n)
+        return 9 * top + _bl_sum(top) + 10 * n + _bl_sum(n) + bl(global_execution(n))
+    named = _named(n)
+    top = 2 * n - 2 + named
+    spilled = top - _VARIABLE_MAX
     if spilled <= 0:
-        return 9 * s - 18 + sum(map(bl, range(1, s - 1))) + bl(s)
-    width = isqrt(spilled - 1) + 1
-    arrays = _arrays(n, named)
-    total = 9 * _VARIABLE_MAX + _bl_sum(_VARIABLE_MAX)  # the scalars .1..65535
-    total += arrays * (8 + bl(width)) + _bl_sum(arrays)  # the ,j keys and widths
-    full = width + 1 + _bl_sum(width - 1)
-    last = spilled - (arrays - 1) * width
-    return total + (arrays - 1) * full + (last + 1 + _bl_sum(last - 1)) + bl(s)
+        total = 9 * top + _bl_sum(top)
+    else:
+        width = isqrt(spilled - 1) + 1
+        arrays = _arrays(n, named)
+        total = 9 * _VARIABLE_MAX + _bl_sum(_VARIABLE_MAX)
+        total += arrays * (8 + bl(width)) + _bl_sum(arrays)
+        full = width + 1 + _bl_sum(width - 1)
+        last = spilled - (arrays - 1) * width
+        total += (arrays - 1) * full + last + 1 + _bl_sum(last - 1)
+    # Reordering can put the n-2 masks on the largest keys :3 through :n.
+    return total + 10 * (n - 2) + _bl_sum(n) - _bl_sum(2) + bl(global_execution(n))

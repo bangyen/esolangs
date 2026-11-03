@@ -1,23 +1,20 @@
 """INTERCAL Boolean program generator: a fully grouped Shannon expression.
 
-Inputs are read into ``.1``..``.n`` by a polite ``@@`` template, tested in
-input order, and the result is printed with ``READ OUT``.  Subexpressions the
-expression would repeat are assigned once to spare variables and named where
-they recur (:func:`_intercal_shared`).
+Inputs are read into ``.1``..``.n`` by a polite ``@@`` template in input
+order. A mingle of the two children selected by ``selector$not selector``
+forms each mux; constant branches fold first. Repeated masks, complements
+and folded subexpressions are named where shorter, then ``READ OUT`` prints
+the result (:func:`_intercal_shared`).
 
 Size:
-    O(n) for structured tables, O(T) for random;
-    n=8 constant zero: 129 chars; n=10 parity: 1,185 chars,
-    n=10 random 1847: 8,241 chars.
+    O(T) for dense tables;
+    n=8 constant zero: 129 chars; n=10 parity: 810 chars,
+    n=10 random 1847: 3,338 chars.
 
 Decisions:
-    Greedy input order costs +0.00% on three inputs and on the
-    five-input sample: the emitted size is invariant under input
-    permutation, so no order can cost or save anything.  Narrower rebuilds
-    (unsimplified, per-operation names, split mingles) were retired: at
-    n=7..10 wrapping the natural program is smaller summed over widths 1 to
-    259, by 27.0% (n=7) to 32.6% (n=10).  ``balance=True`` also shares rows
-    between short statements ([ablations.balance_packed_rows]).
+    Inputs remain in physical order. Retired layouts are historical;
+    ``balance=True`` packs short statements into shared rows
+    ([ablations.balance_packed_rows]).
 """
 
 import re
@@ -55,6 +52,15 @@ class _Expr:
         if self.op == "element":
             return self.text
         outer, inner = ("'", '"') if depth % 2 == 0 else ('"', "'")
+        if self.op == "mingle":
+            left, right = self.children
+            return f"{outer}{left.render(depth + 1)}${right.render(depth + 1)}{outer}"
+        if self.op == "select":
+            zero, one, mask = self.children
+            return (
+                f"{outer}{inner}{one.render(depth + 2)}${zero.render(depth + 2)}{inner}"
+                f"~{mask.render(depth + 1)}{outer}"
+            )
         if self.op == "not":
             children, operator = (*self.children, _ONE), "?"
         else:
@@ -145,12 +151,17 @@ def _wrap_intercal(program: str, width: int) -> str:
 
 
 def _mux(
-    selector: _Expr, zero: _Expr, one: _Expr, negated: "_Expr | None" = None
+    selector: _Expr,
+    zero: _Expr,
+    one: _Expr,
+    negated: "_Expr | None" = None,
+    mask: "_Expr | None" = None,
 ) -> _Expr:
-    """Return ``(~selector & zero) V (selector & one)``, constant halves folded.
-
-    ``negated`` names a variable already holding ``~selector``.
-    """
+    """Select one Boolean child, folding constants before shared-mask use."""
+    if mask is not None:
+        if zero == _ZERO and one == _ONE:
+            return selector
+        return _Expr("select", children=(zero, one, mask))
     if negated is None:
         negated = _Expr("not", children=(selector,))
     if zero == _ZERO:
@@ -161,57 +172,39 @@ def _mux(
         return _Expr("or", children=(negated, one))
     if one == _ONE:
         return _Expr("or", children=(selector, zero))
-    return _unfolded_mux(selector, zero, one, negated)
-
-
-def _unfolded_mux(
-    selector: _Expr, zero: _Expr, one: _Expr, negated: "_Expr | None" = None
-) -> _Expr:
-    """Price the established assignment policy before folding constants.
-
-    Keeping its names preserves the exact execution and workspace bounds;
-    folded expressions only shorten their right-hand sides.
-    """
-    if negated is None:
-        negated = _Expr("not", children=(selector,))
-    left = _Expr("and", children=(negated, zero))
-    return _Expr("or", children=(left, _Expr("and", children=(selector, one))))
+    mask = mask or _Expr("mingle", children=(selector, negated))
+    return _Expr("select", children=(zero, one, mask))
 
 
 def _intercal_shared(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one order's template with repeated subexpressions assigned once.
+    """Name profitable folded expressions after planning selector aliases.
 
-    The Shannon tree is reduced to a diagram (:func:`_diagram`); a node read
-    by two or more parents gets a spare variable, ``.k <- expr``, named
-    wherever it recurs, when its unfolded form is shorter.  The rule weighs
-    that form's inlined text against one statement plus a name per reader.
-    A level's ``~selector`` is assigned once by the same rule. Names start
-    at ``.{n + 2}``: complements, then nodes bottom-up, giving short names
-    to the deep nodes, the most numerous and most often read.
+    Graph readers are lower bounds on rendered uses; unnamed parents can
+    duplicate their children. Both alias and node passes take O(T) work.
     """
     n = _validate_truth_table(truth_table)
     nodes, root = _diagram(truth_table, n)
     selectors = [_Expr("input", n - 1 - perm[level]) for level in range(n)]
-    negated = _negations(nodes, selectors)
+    negated, mask_names = _aliases(nodes, selectors)
+    masks = [
+        None if name is None else _Expr("element", text=f":{name}")
+        for name in mask_names
+    ]
     first = n + 2 + sum(name is not None for name in negated)
     readers = [0] * len(nodes)
     for _level, zero, one in _interior(nodes):
         readers[zero] += 1
         readers[one] += 1
 
-    # Keep the unfolded naming policy; _mux shortens only emitted expressions.
-    frames = [
-        len(_unfolded_mux(selector, _ZERO, _ZERO, _variable(name)).render()) - 4
-        for selector, name in zip(selectors, negated, strict=True)
-    ]
     text = [2, 2] + [0] * (len(nodes) - 2)
     names: dict[int, int] = {}
     for node in range(2, len(nodes)):
         level, zero, one = nodes[node]
-        inline = frames[level] + text[zero] + text[one]
+        inline = _mux_chars(
+            nodes[node], selectors[level], _variable(negated[level]), masks[level], text
+        )
         name = first + len(names)
         spelled = len(f".{name}")
-        # Against what each later reader saves.
         statement = len(f"DO .{name} <- ") + _STATEMENT_OVERHEAD
         count = readers[node]
         if (count - 1) * inline > statement + count * spelled:
@@ -227,13 +220,29 @@ def _intercal_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     for level, zero, one in _interior(nodes):
         low = _reference(names.get(zero), width) or exprs[zero]
         high = _reference(names.get(one), width) or exprs[one]
-        exprs.append(_mux(selectors[level], low, high, complements[level]))
-    assigned = [
+        exprs.append(
+            _mux(selectors[level], low, high, complements[level], masks[level])
+        )
+    assigned: list[tuple[int | str, _Expr]] = [
         (name, _Expr("not", children=(selector,)))
         for selector, name in zip(selectors, negated, strict=True)
         if name is not None
     ]
     assigned.sort(key=lambda pair: pair[0])
+    assigned += [
+        (
+            f":{name}",
+            _Expr(
+                "mingle",
+                children=(
+                    selectors[level],
+                    complements[level] or _Expr("not", children=(selectors[level],)),
+                ),
+            ),
+        )
+        for level, name in enumerate(mask_names)
+        if name is not None
+    ]
     assigned += [(names[node], exprs[node]) for node in names]
     return _program(n, assigned, exprs[root], width)
 
@@ -281,26 +290,111 @@ def _diagram(truth_table: str, n: int) -> tuple[list[_Node], int]:
     return nodes, ids[0]
 
 
-def _negations(nodes: list[_Node], selectors: list[_Expr]) -> list[int | None]:
-    """Name each level's ``~selector`` variable, or ``None`` to inline it.
+def _mux_chars(
+    node: _Node,
+    selector: _Expr,
+    complement: _Expr | None,
+    mask: _Expr | None,
+    text: list[int],
+) -> int:
+    """Price a folded mux without re-rendering either child's subtree."""
+    _, zero, one = node
+    selected = len(selector.render())
+    if mask is not None:
+        if zero == 0 and one == 1:
+            return selected
+        return 6 + len(mask.render()) + text[zero] + text[one]
+    negated = len(complement.render()) if complement is not None else 11 + selected
+    if zero == 0:
+        return selected if one == 1 else 9 + selected + text[one]
+    if one == 0:
+        return negated if zero == 1 else 9 + negated + text[zero]
+    if zero == 1:
+        return 9 + negated + text[one]
+    if one == 1:
+        return 9 + selected + text[zero]
+    frame = 9 + selected + negated
+    return frame + text[zero] + text[one]
 
-    Numbered from the bottom level up, from the first spare ``.{n + 2}``.
-    Naming beats inlining every ``~selector``, and always naming a used
-    level is a near-tie ([ablations.negation_naming]).
+
+class _Usage(NamedTuple):
+    """Fold categories whose local frames respond differently to aliasing."""
+
+    positive: int = 0
+    negative: int = 0
+    complement: int = 0
+    full: int = 0
+
+
+class _AliasCost(NamedTuple):
+    """One level's local prices; no graph state survives the alias choice."""
+
+    uses: _Usage
+    selector: int
+    negated: int
+    raw: int
+    mask: int
+
+    def __call__(self, mode: tuple[bool, bool]) -> tuple[int, int]:
+        neg, named = mode
+        positive, negative, complement, full = self.uses
+        if named:
+            definition = (
+                7 + _STATEMENT_OVERHEAD + self.mask + 3 + self.selector + self.raw
+            )
+            total = definition + (positive + negative) * (8 + self.mask)
+            total += complement * (10 + self.mask) + full * (6 + self.mask)
+        else:
+            child = self.negated if neg else self.raw
+            total = (7 + _STATEMENT_OVERHEAD + self.negated + self.raw) if neg else 0
+            total += positive * (9 + self.selector) + negative * (9 + child)
+            total += complement * child + full * (9 + self.selector + child)
+        return total, int(neg) + int(named)
+
+
+def _aliases(
+    nodes: list[_Node], selectors: list[_Expr]
+) -> tuple[list[int | None], list[int | None]]:
+    """Price inline, negation-only or mask-only local spellings.
+
+    A named mask also shortens constant folds except a bare selector, so its
+    complement is used only once and cannot justify a separate alias.
     """
     n = len(selectors)
-    per_level = [0] * n
-    for level, _zero, _one in _interior(nodes):
-        per_level[level] += 1
+    uses = [_Usage() for _ in range(n)]
+    for level, zero, one in _interior(nodes):
+        current = uses[level]
+        if zero == 0 and one == 1:
+            continue
+        if zero == 1 and one == 0:
+            current = current._replace(complement=current.complement + 1)
+        elif zero == 0 or one == 1:
+            current = current._replace(positive=current.positive + 1)
+        elif one == 0 or zero == 1:
+            current = current._replace(negative=current.negative + 1)
+        else:
+            current = current._replace(full=current.full + 1)
+        uses[level] = current
     negated: list[int | None] = [None] * n
-    name = n + 2
+    masks: list[int | None] = [None] * n
+    count = 0
     for level in range(n - 1, -1, -1):
-        inline = len(_Expr("not", children=(selectors[level],)).render())
-        statement = len(f"DO .{name} <- ") + inline + _STATEMENT_OVERHEAD
-        if per_level[level] * (inline - len(f".{name}")) > statement:
-            negated[level] = name
-            name += 1
-    return negated
+        selector = selectors[level]
+        raw = len(_Expr("not", children=(selector,)).render())
+        scalar = n + 2 + count
+        mask = selector.value + 1
+        prices = _AliasCost(
+            uses[level], len(selector.render()), len(f".{scalar}"), raw, len(f":{mask}")
+        )
+        neg, named = min(
+            ((False, False), (True, False), (False, True)), key=prices.__call__
+        )
+        if neg:
+            negated[level] = scalar
+            count += 1
+        if named:
+            masks[level] = mask
+    return negated, masks
 
 
 def _variable(name: int | None) -> _Expr | None:
@@ -319,8 +413,10 @@ def _spill(top: int) -> int:
     return isqrt(spilled - 1) + 1 if spilled > 0 else 0
 
 
-def _target(name: int, width: int) -> str:
-    """Return the spelling of shared name ``name``: ``.k``, or an array element."""
+def _target(name: int | str, width: int) -> str:
+    """Spell a scalar/shared array target, or preserve a colon-mask target."""
+    if isinstance(name, str):
+        return name
     if name <= _VARIABLE_MAX:
         return f".{name}"
     index = name - _VARIABLE_MAX - 1
@@ -335,12 +431,12 @@ def _reference(name: int | None, width: int) -> _Expr | None:
 
 
 def _program(
-    n: int, assigned: list[tuple[int, _Expr]], result: _Expr, width: int = 0
+    n: int, assigned: list[tuple[int | str, _Expr]], result: _Expr, width: int = 0
 ) -> str:
     """Return the polite template: inputs, arrays, shared names, result, output."""
     statements = [f".{n - i} <- {TEMPLATE_CHAR * 2}" for i in range(n)]
     if width:
-        last = assigned[-1][0]
+        last = max(name for name, _ in assigned if isinstance(name, int))
         arrays = (last - _VARIABLE_MAX - 1) // width + 1
         statements += [f",{j} <- #{width}" for j in range(1, arrays + 1)]
     statements += [
@@ -384,5 +480,5 @@ LANGUAGE = Language(
     empty_program="INTERCAL program is insufficiently or excessively polite (E099)",
     example=Example(pair=PAIR, char=TEMPLATE_CHAR, expected="_\n\n"),
     proof_execution=(execution, True, (3, 4, 5, 6, 7, 8)),
-    proof_workspace=(workspace, True, (3, 4, 5, 6, 7, 8)),
+    proof_workspace=(workspace, True, (1, 2, 3, 4, 5, 6, 7, 8)),
 )

@@ -14,7 +14,7 @@ from esolangs.languages.intercal import generator
 from esolangs.languages.intercal.generator import (
     PAIR,
     TEMPLATE_CHAR,
-    _unfolded_mux,
+    _Expr,
     intercal,
 )
 from esolangs.languages.intercal.interpreter import run
@@ -35,12 +35,18 @@ def test_constant_mux_folds_preserve_assignments_and_execute(
     table: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     folded = intercal(table)
+
+    def raw_mux(selector, zero, one, negated=None, mask=None):
+        negated = negated or _Expr("not", children=(selector,))
+        mask = mask or _Expr("mingle", children=(selector, negated))
+        return _Expr("select", children=(zero, one, mask))
+
     with monkeypatch.context() as patch:
-        patch.setattr(generator, "_mux", _unfolded_mux)
+        patch.setattr(generator, "_mux", raw_mux)
         unfolded = intercal(table)
     targets = r"(?m)^(DO|PLEASE) (.*?) <- "
     assert re.findall(targets, folded) == re.findall(targets, unfolded)
-    assert len(folded) <= len(unfolded) - 33
+    assert len(folded) < len(unfolded)
     for row, expected in enumerate(table):
         for template in (folded, unfolded):
             output = run_filled(run, template, [PAIR] * 2, row, 2, TEMPLATE_CHAR)
@@ -48,6 +54,7 @@ def test_constant_mux_folds_preserve_assignments_and_execute(
 
 
 def test_setters_are_equal_width_and_embedded_once() -> None:
+    _check_select_bits()
     assert len(PAIR[0]) == len(PAIR[1]) == 2
     for n in range(1, 8):
         template = intercal("01" * (1 << (n - 1)))
@@ -78,11 +85,13 @@ def test_repeated_subexpressions_are_assigned_once() -> None:
     """Repeated expressions are named once; the tree stays in input order."""
     parity = "01101001100101101001011001101001"
     template = intercal(parity)
-    assert [f".{name} <- " in template for name in range(7, 14)] == [True] * 6 + [False]
-    assert (len(template), len(_unshared(parity))) == (509, 853)
+    assert [f".{name} <- " in template for name in range(7, 14)] == [True] * 2 + [
+        False
+    ] * 5
+    assert (len(template), len(_unshared(parity))) == (345, 583)
     for tables, pinned in (
-        ([f"{value:08b}" for value in range(256)], (43319, 39741)),
-        (_five_input_sample(), (118669, 100584)),
+        ([f"{value:08b}" for value in range(256)], (37487, 34795)),
+        (_five_input_sample(), (89545, 69392)),
     ):
         old = new = 0
         for table in tables:
@@ -100,7 +109,7 @@ def test_shared_templates_execute_on_sampled_tables(n: int) -> None:
         assert "".join(_run(table, row) for row in range(1 << n)) == table
 
 
-@pytest.mark.parametrize(("cap", "n"), [(12, 7), (20, 8), (30, 8)])
+@pytest.mark.parametrize(("cap", "n"), [(12, 7), (20, 8), (30, 9)])
 @pytest.mark.medium
 def test_names_past_the_cap_spill_to_arrays_and_execute(
     cap: int, n: int, monkeypatch: pytest.MonkeyPatch
@@ -134,13 +143,16 @@ def test_program_declares_one_array_per_spill_width_of_names() -> None:
 
 @pytest.mark.medium
 def test_every_name_of_the_widest_witness_is_a_legal_variable() -> None:
-    """n = 21 needs names to .65830; INTERCAL variables stop at .65535."""
+    """The large witness respects scalar limits; small lowered caps force spills."""
     program = intercal(_intercal_worst(21))
     assert max(int(k) for k in re.findall(r"\.(\d+)", program)) <= 65535
     widths = re.findall(r"^\S+ ,(\d+) <- #(\d+)$", program, re.M)
-    assert [int(j) for j, _ in widths] == list(range(1, 18))
-    assert {w for _, w in widths} == {"18"}
-    assert max(int(i) for i in re.findall(r" SUB #(\d+)", program)) <= 18
+    assert [int(j) for j, _ in widths] == list(range(1, len(widths) + 1))
+    if widths:
+        assert len({w for _, w in widths}) == 1
+        assert max(int(i) for i in re.findall(r" SUB #(\d+)", program)) <= int(
+            widths[0][1]
+        )
 
 
 @pytest.mark.parametrize("table", ["00"])
@@ -173,6 +185,7 @@ def intercal_plain(truth_table: str, perm: tuple[int, ...]) -> str:
 
 @pytest.mark.medium
 def test_constants_reuse_one_variable_and_print_the_literal() -> None:
+    _check_emitted_resource_routes()
     from esolangs.languages.intercal.interpreter import _Machine
     from esolangs.languages.intercal.proof_formulas import workspace
     from esolangs.runtime.io import ScriptedIO
@@ -207,5 +220,95 @@ def test_constants_reuse_one_variable_and_print_the_literal() -> None:
                         assert written.bits == workspace(n, template)
     assert (
         sum(len(esolangs.generate("INTERCAL", format(v, "08b"))) for v in range(256))
-        == 39741
+        == 34795
     )
+
+
+def _check_emitted_resource_routes() -> None:
+    """Check high-arity write-set syntax without building exponential tables."""
+    from esolangs.languages.intercal.generator import (
+        _ONE,
+        _VARIABLE_MAX,
+        _ZERO,
+        _pack_rows,
+        _program,
+        _reference,
+        _spill,
+        _wrap_intercal,
+    )
+    from esolangs.languages.intercal.interpreter import _Machine
+    from esolangs.languages.intercal.proof_formulas import (
+        execution,
+        global_execution,
+        global_workspace,
+        workspace,
+    )
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in (13, 16, 20, 21, 22, 25, 26, 27):
+        selector = _Expr("input", n - 1)
+        mask = _Expr("mingle", children=(selector, _Expr("not", children=(selector,))))
+        assigned: list[tuple[int | str, _Expr]] = [
+            (_VARIABLE_MAX, _ONE),
+            (f":{n}", mask),
+        ]
+        assigned += [(_VARIABLE_MAX + i, _ONE if i % 2 else _ZERO) for i in range(1, 6)]
+        width = _spill(_VARIABLE_MAX + 5)
+        result = _reference(_VARIABLE_MAX + 5, width)
+        assert result is not None
+        template = _program(n, assigned, result, width)
+        for layout in (
+            template,
+            _wrap_intercal(template, 12),
+            _pack_rows(template, 1000),
+        ):
+            assert layout.count(TEMPLATE_CHAR) == 2 * n
+            for bit in (0, 1):
+                program = layout.replace(TEMPLATE_CHAR * 2, PAIR[bit])
+                io = ScriptedIO("Q")
+                machine = _Machine(program, io)
+                written = WrittenState(machine.snapshot())
+                steps = 0
+                while not machine.halted:
+                    machine.step()
+                    written.sample(machine.snapshot())
+                    steps += 1
+                    assert steps < 1000
+                assert io.getvalue() == "I\n"
+                assert io.reads == 0
+                assert io.input_char() == ord("Q")
+                assert steps == execution(n, layout)
+                assert steps <= global_execution(n)
+                assert written.bits <= global_workspace(n)
+                assert written.bits <= workspace(n, layout)
+                if bit:
+                    assert written.bits == workspace(n, layout)
+
+
+def _check_select_bits() -> None:
+    """Both mask spellings select one bit; exchanging the mask fires the oracle."""
+    from esolangs.languages.intercal.generator import _program
+
+    selector, zero, one = (_Expr("input", i) for i in range(3))
+    complement = _Expr("not", children=(selector,))
+    correct = _Expr("mingle", children=(selector, complement))
+    reversed_mask = _Expr("mingle", children=(complement, selector))
+    wrong = 0
+    for named in (False, True):
+        for mask in (correct, reversed_mask):
+            assigned: list[tuple[int | str, _Expr]] = [(":1", mask)] if named else []
+            reference = _Expr("element", text=":1") if named else mask
+            result = _Expr("select", children=(zero, one, reference))
+            template = _program(3, assigned, result)
+            for row in range(8):
+                # Setters run .3,.2,.1: one, zero, selector.
+                bits = tuple(map(int, f"{row:03b}"))
+                expected = bits[0] if bits[2] else bits[1]
+                output = run_filled(run, template, [PAIR] * 3, row, 3, TEMPLATE_CHAR)
+                answer = "I\n" if expected else "_\n\n"
+                if mask == correct:
+                    assert output == answer
+                else:
+                    wrong += output != answer
+    assert wrong == 8

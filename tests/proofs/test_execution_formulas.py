@@ -204,11 +204,11 @@ def _measure(
 
 
 def test_every_formula_cell_is_checked() -> None:
-    """A ``worst`` or ``at most`` Execution clause has a formula here, and back."""
+    """Every bounded or exact Execution clause has a formula here, and back."""
     stated = {
         row.generator
         for row in load_ledger().rows
-        if row.execution_clause.startswith(("worst ", "at most "))
+        if row.execution_clause.startswith(("worst ", "at most ", "exact "))
     }
     unchecked = sorted(stated - set(FORMULAS))
     assert not unchecked, f"{unchecked} state a bound with no FORMULAS row; {CHECK}"
