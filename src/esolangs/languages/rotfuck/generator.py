@@ -19,11 +19,12 @@ A symmetric table sums its bits on the carrier and walks n + 1 entries
 ([ablations.symmetric_count]).  From n = 7 the inputs are read raw and the
 ASCII bias leaves once per digit ([ablations.raw_digits]). Full symmetric
 tables multiply bias and output constants on zero carriers
-([ablations.constant_runs_by_multiplication]).
+([ablations.constant_runs_by_multiplication]). Raw lookup digits use five bits
+([ablations.raw_five_execution_20261103]); normalized digits retain six.
 
 Size:
     O(T): two ``>`` and half a ``+`` per entry, the rest O(n) plus walk
-    strides; n=10 random 1847: 3,165 chars, n=10 and: 281 chars.
+    strides; n=10 random 1847: 3,341 chars, n=10 and: 281 chars.
     Constants: n+26+b chars, n+106+b commands in either rotation, b the answer.
 
 Decisions:
@@ -269,15 +270,18 @@ def _constant(out: _Builder, run: str) -> None:
     out.emit_shortest(tuple(forms))
 
 
-def _groups(width: int) -> list[int]:
-    """Bit counts of the index's base-64 digits, lowest digit first.
+def _groups(width: int, *, raw: bool = False) -> list[int]:
+    """Bit counts of normalized base64 or raw base32 digits, lowest first.
 
     The short digit goes lowest: a digit's walk text is four strides, and
     its stride doubles per bit below it, so a short top digit spent 512
     characters on a 128-cell stride at n = 7 ([ablations.short_digit_low]).
     """
-    short = [width % _RADIX_BITS] if width % _RADIX_BITS else []
-    return short + [_RADIX_BITS] * (width // _RADIX_BITS)
+    # [ablations.raw_five_execution_20261103]: raw byte carries cost more
+    # than their text; five-bit digits halve the triangular walk count.
+    radix = 5 if raw else _RADIX_BITS
+    short = [width % radix] if width % radix else []
+    return short + [radix] * (width // radix)
 
 
 def _strides(groups: list[int]) -> list[int]:
@@ -391,7 +395,7 @@ def _program(truth_table: str, *, rotation: str = "backward") -> str:
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
     raw = n >= _RAW_FROM
     # At one input the lookup already is the sum reader.
-    lookups = [(table, _select(n, used, _groups(len(used)), raw=raw), n == 1)]
+    lookups = [(table, _select(n, used, _groups(len(used), raw=raw), raw=raw), n == 1)]
     if (symmetric := symmetric_weights(truth_table, n)) is not None:
         lookups.append((symmetric[1], _count(n, used, raw=raw), len(used) == n))
     texts = []

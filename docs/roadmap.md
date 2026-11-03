@@ -142,7 +142,9 @@ Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat, Unsquare, What!?.
 <!-- BLIND-REIMPLEMENTATIONS:END -->
 - **Trick prototypes, round 2:** complete. All 325 named proposals from 109 raw
   files have recorded dispositions; five earlier zero-trick generators are
-  also covered. Proof-test arities are preserved. Line, Quassaunt and Stisp
+  also covered. The 2026-11-03 recheck includes both execution gates: six
+  additional rules admitted; Sonata/Minsky variants rejected on measured
+  costs. Proof-test arities are preserved. Line, Quassaunt and Stisp
   source and Suffolk workspace retain explicit upper bounds; their exact
   global maxima remain unproved.
 

@@ -190,6 +190,7 @@ class TestRotfuck:
     def test_raw_digits_shed_the_bias_once_per_digit_from_n_7(self) -> None:
         """Raw parity and zero-carrier multipliers keep native input/output."""
         _check_symmetric_multipliers()
+        _check_raw_five_digits()
         table = "".join(str(bin(row).count("1") & 1) for row in range(128))
         program = boolean.rotfuck(table)
         assert len(program) == 227
@@ -428,3 +429,34 @@ def _check_symmetric_multipliers() -> None:
                 assert io.getvalue() == table[row]
                 assert io.input_char() == ord("Q")
                 assert written.bits <= workspace(n, program)
+
+
+def _check_raw_five_digits() -> None:
+    from esolangs.languages.rotfuck import generator as g
+    from esolangs.languages.rotfuck.generator import _groups
+    from esolangs.languages.rotfuck.interpreter import _Machine
+    from esolangs.languages.rotfuck.proof_formulas import execution
+    from esolangs.runtime.io import ScriptedIO
+
+    assert _groups(8) == [2, 6]
+    assert _groups(8, raw=True) == [3, 5]
+    for n in (7, 8):
+        table = "1" * ((1 << n) - 2) + "01"
+        for rotation in g.ROTFUCK_CYCLES:
+            program = g.rotfuck(table, rotation=rotation)
+            io = ScriptedIO("1" * n + "Q")
+            machine = _Machine(program, io, rotation=rotation)
+            bound = execution(n, program)
+            steps = 0
+            while not machine.halted and steps < bound:
+                steps += 1
+                machine.step()
+                if io.getvalue():
+                    assert io.reads == n
+                if machine.halted:
+                    break
+            assert machine.halted
+            assert steps == bound
+            assert io.getvalue() == "1"
+            assert io.past_end == 0
+            assert io.input_char() == ord("Q")
