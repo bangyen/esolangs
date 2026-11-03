@@ -451,7 +451,10 @@ generators have one.
   A 129-character control instead reads two ASCII bits and prints
   their NAND in 40 instructions for every input pair. It saves both
   inputs in the low bank and routes around the rotated formatter cell.
-  Chaining these gates within the decoder budget remains open.
+  A 127-character control chains two NAND gates in 53 instructions
+  on all four input pairs. Its second gate jumps over the low bank
+  and leaves AND in the accumulator’s low trit. Scaling the wiring
+  to the decoder remains open.
 
   A period-47 rule cannot supply seven meanings either
   (`test_window_classes.py`). Its difference graph has independence 4.
