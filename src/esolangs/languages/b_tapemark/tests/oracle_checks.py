@@ -131,6 +131,8 @@ def check_raw_b_tapemark():
     for source, stdin, dialect in product(corpus, ("", "A -"), ("new", "old")):
         _check(_Machine, source, stdin, dialect)
 
+    _check(_Machine, ">-!", "Ω", "new")
+
     class WrongMarker(_Machine):
         def __init__(self, source, io, *, swap_marker):
             super().__init__(

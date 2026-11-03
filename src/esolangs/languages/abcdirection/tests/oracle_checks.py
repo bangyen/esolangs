@@ -114,6 +114,8 @@ def check_raw_abcdirection():
         for stdin in ("", "Āÿ"):
             _check(_Machine, grid, stdin)
 
+    _check(_Machine, grids[3], "\x01")
+
     class SkippedMovement(_Machine):
         def step(self):
             pass
