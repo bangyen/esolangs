@@ -318,10 +318,17 @@ generators have one.
   a deficit for that construction, not an impossibility bound.
   The shipped cap remains sixteen for general tables.
 
-  Provenance (2026-10-27): `notes/malbolge17-refund/` and `09ab2fad` are
-  in no commit of the repository's history; the `scripts/malbolge17/`
-  archive survives at `b42d79e` (deleted in `0f4b0284`), on the old
-  module layout. Re-derived since: the counting gap (exactly 46,076
+  A scratch arithmetic control (2026-11-03) halves a runtime word with
+  one byte-identical 13,368-character source: 33 native cases pass,
+  including 0 and 59,048; changing the final `p` to `*` fails at 121.
+  Its algebra checks all 59,049 words; native execution is not exhaustive.
+  It reads one word, not seventeen ASCII bits. Character normalization,
+  packed-group addressing, bit selection and the full layout remain unbuilt.
+
+  Provenance: the `scripts/malbolge17/` archive survives at `09ab2fad`
+  and `b42d79e` (deleted in `0f4b0284`), on the old module layout.
+  Its existence does not verify the historical measurements below.
+  Re-derived since: the counting gap (exactly 46,076
   bits), the window conflict graph (independence number 8, chromatic
   number exactly 12), the phase theorem, the three-cell lockstep ceiling
   (137 of 512 clean triples) and the orbit packing (41,949 cells, 2,401
