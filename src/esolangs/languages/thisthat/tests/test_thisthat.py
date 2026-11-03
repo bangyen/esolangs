@@ -1,6 +1,8 @@
 """thisthat instruction and concurrency semantics."""
 
 # ruff: noqa: SLF001 - instruction primitives are the semantic test surface.
+from itertools import product
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -471,10 +473,14 @@ def test_cat_and_kolakoski_wiki_examples() -> None:
 
     pages = ROOT / "src/esolangs/languages/thisthat/tests/fixtures"
     cat = (pages / "thisthat_cat.txt").read_text(encoding="utf-8").splitlines()
-    for bits in ("", "0", "1", "0110"):
-        io = ScriptedIO(bits)
-        run(cat, io)
-        assert io.getvalue() == bits
+    for length in range(6):
+        for values in product("01", repeat=length):
+            expected = "".join(values)
+            supplied = " ".join(values)
+            io = ScriptedIO(supplied)
+            run(cat, io)
+            assert io.getvalue() == expected
+            assert io.position() == len(supplied)
     kolakoski = [1, 2, 2]
     for i in range(2, 200):
         kolakoski += [3 - kolakoski[-1]] * kolakoski[i]
