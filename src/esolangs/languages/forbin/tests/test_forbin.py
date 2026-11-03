@@ -420,7 +420,7 @@ def test_forbin_for_loop_halts_without_a_false_cycle() -> None:
     assert run_until_halt_or_cycle(machine) is True
 
     flip = "flip bit { return !bit; }"
-    for value in (0, 1, 2, 17, 65, 127, 128, 255):
+    for value in range(256):
         names = "a,b,c,d,e,f,g,h"
         inverted_reverse = ",".join(
             f"(flip {bit})" for bit in reversed(names.split(","))
