@@ -431,6 +431,17 @@ generators have one.
   independent points, impossible. Each class needs at least seven points,
   so seven classes need 49 > 47. Period-94 and stateful rules remain open.
 
+  For the parity-conditioned map on even address shifts, the even and odd
+  source offsets project to `{3, 24, 33, 42}` and `{3, 14, 17, 32}`
+  modulo 47. The difference graph of their seven-offset union has
+  independence 4 (`test_window_classes.py`). For a class with `a`
+  equal-label pairs, removing one pair per overlapping incidence leaves
+  at most four disjoint translates. The pairs thus cover at most
+  `6a + 4` shifts. Its `b` unpaired entries cover at most `4b` more.
+  Covering 47 forces `3a + 2b >= 22`. If the sheets disagree at `d`
+  positions, summing over seven classes gives `141 + d >= 154`, so at
+  least thirteen pairs must differ.
+
   Carrying state across groups does not escape it (2026-10-25, audit M5):
   in the one-query architecture the only cross-group state is entry state
   the fold delivers, a function of the group's address, so a stateful

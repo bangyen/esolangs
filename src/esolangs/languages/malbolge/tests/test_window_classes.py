@@ -18,9 +18,11 @@ _CELLS = 94
 _OPS = sorted(_XLAT1.index(op) for op in "ji*p</vo")
 
 
-def _neighbours(cells: int = _CELLS) -> list[int]:
+def _neighbours(
+    cells: int = _CELLS, offsets: tuple[int, ...] = tuple(_OPS)
+) -> list[int]:
     """Bitmask per window cell of the cells some address pairs it with."""
-    differences = {(a - b) % cells for a in _OPS for b in _OPS if a != b}
+    differences = {(a - b) % cells for a in offsets for b in offsets if a != b}
     masks = [0] * cells
     for cell in range(cells):
         for d in differences:
@@ -28,8 +30,10 @@ def _neighbours(cells: int = _CELLS) -> list[int]:
     return masks
 
 
-def _independence_number(cells: int = _CELLS) -> int:
-    masks = _neighbours(cells)
+def _independence_number(
+    cells: int = _CELLS, offsets: tuple[int, ...] = tuple(_OPS)
+) -> int:
+    masks = _neighbours(cells, offsets)
     best = 0
 
     def grow(candidates: int, size: int) -> None:
@@ -74,3 +78,13 @@ def test_period_47_cannot_cover_seven_meanings() -> None:
     witness = (0, 7, 14, 21)
     assert all(not (masks[a] >> b & 1) for a in witness for b in witness if a != b)
     assert _independence_number(cells) == len(witness) == 4
+
+
+def test_parity_sheets_need_thirteen_disagreements() -> None:
+    """A class covers at most 6a + 4b + 4 shifts for a pairs and b singles."""
+    offsets = tuple(sorted({op // 2 for op in _OPS}))
+    assert len(offsets) == 7
+    masks = _neighbours(47, offsets)
+    witness = (0, 2, 4, 6)
+    assert all(not (masks[a] >> b & 1) for a in witness for b in witness if a != b)
+    assert _independence_number(47, offsets) == len(witness) == 4
