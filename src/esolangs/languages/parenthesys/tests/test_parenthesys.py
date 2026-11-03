@@ -96,6 +96,13 @@ def test_numbers_keep_their_text_and_results_are_plain() -> None:
             for value, n in zip(values, range(count, 0, -1), strict=True)
         ), source
 
+    for count in (1, 2, 5):
+        source = f"[{-count}|n]({{[n]|([n])[[+|[n]|1]|n]}})"
+        values = range(-count, 0)
+        assert _run(source) == "".join(map(str, values)) + "".join(
+            f"{n}{n + 1}" for n in values
+        )
+
 
 def test_functions_have_one_namespace_and_see_globals() -> None:
     assert _run("[5|g][f|a|b|[+|[a]|[g]]]([f|2|3])") == "7"
