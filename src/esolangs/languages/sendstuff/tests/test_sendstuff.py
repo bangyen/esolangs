@@ -114,7 +114,7 @@ def test_every_result_reaches_every_target_before_the_next_result() -> None:
         ">(Constant 2 >(CountUp >(OutputNumber) >(Add 5 >(OutputNumber))))"
     ) == ("051627")
 
-    for limit, offset, scale in product(range(6), (0, 2, 11), (0, 1, 3)):
+    for limit, offset, scale in product((*range(6), 10, 12), (0, 2, 11), (0, 1, 3)):
         source = (
             f">(Constant {limit} >(CountDown >(OutputNumber) "
             f">(Add {offset} >(Multiply {scale} >(OutputNumber)))))"
