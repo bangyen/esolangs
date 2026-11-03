@@ -45,7 +45,50 @@ def test_output(program: str, stdin: str, expected: str) -> None:
     assert run_program(run, program, stdin) == expected
 
 
+def _applicative_oracle():
+    """Evaluate finite application trees using ordinary Python closures."""
+    from itertools import product
+
+    def execute(tree, output):
+        if isinstance(tree, tuple):
+            function, argument = tree
+            return execute(function, output)(execute(argument, output))
+        if tree == "i":
+            return lambda value: value
+        if tree == "k":
+            return lambda value: lambda _discard: value
+        if tree == "s":
+            return lambda f: lambda g: lambda x: f(x)(g(x))
+
+        def emit(value):
+            output.append(tree[1:])
+            return value
+
+        return emit
+
+    def encode(tree):
+        if isinstance(tree, tuple):
+            return chr(96) + "".join(map(encode, tree))
+        return tree
+
+    atoms = ("i", "k", ".A", ".B")
+    for f, g, x in product(atoms, repeat=3):
+        for tree in ((("k", f), g), ((("s", f), g), x), (f, (g, x))):
+            output = []
+            execute(tree, output)
+            io = ScriptedIO("unused")
+            machine = _Machine(encode(tree), io)
+            for _ in range(128):
+                if machine.halted:
+                    break
+                machine.step()
+            assert machine.halted
+            assert io.getvalue() == "".join(output), tree
+            assert io.position() == 0
+
+
 def test_the_combinators() -> None:
+    _applicative_oracle()
     assert run_program(run, "`i`.Xi") == "X"
     assert run_program(run, "``k`.Ai`.Bi") == "AB"  # A then B, value is A's
     assert run_program(run, "```s.A.Bi") == "AB"
