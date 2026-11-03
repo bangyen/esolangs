@@ -1,5 +1,7 @@
 """Tests for the Quassaunt interpreter."""
 
+from itertools import product
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -88,6 +90,25 @@ def test_set_operations_and_their_error_messages() -> None:
     duplicate = f"@@a {two} %%Makecontain @@[E] %%Swap %%Store"
     assert _run(duplicate + check) == "set"
     assert _run(f"{duplicate} @@##Errormessage %%Delete{check}") == "empty"
+
+    def construct(members: set[str]) -> str:
+        return "%%Empty" + "".join(
+            f" @@{member} %%Swap %%Makecontain" for member in sorted(members)
+        )
+
+    subsets = [
+        {letter for index, letter in enumerate("abc") if mask & (1 << index)}
+        for mask in range(8)
+    ]
+    for bottom, top in product(subsets, repeat=2):
+        prefix = (
+            f"@@@@T?%%Printtoconsole {construct(bottom)} "
+            f"@@@@F?%%Printtoconsole {construct(top)}"
+        )
+        assert _run(prefix + " %%Ifpropersubset") == ("T" if top < bottom else "F")
+        assert _run(prefix + " %%Ifdisjoint") == (
+            "T" if top.isdisjoint(bottom) else "F"
+        )
 
 
 @pytest.mark.parametrize(
