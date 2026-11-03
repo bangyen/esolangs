@@ -7,18 +7,27 @@ from functools import cache
 _Paths = dict[int, int]
 
 
-def _plain(n: int, band: int) -> int:
-    """The most characters of the plain tree with result cells banded ``band`` levels.
+def _leaf(n: int, result: int, at: int) -> _Paths:
+    """All coefficient subsets, retaining each possible continuation cell."""
+    cells = [result, *range(3 * max(1, n - 3) + 2, 3 * n, 3)]
+    if len(cells) < 4:
+        cells += [3 * k + 1 for k in reversed(range(n))][: 4 - len(cells)]
+    paths = {at: 0}
+    for cell in cells:
+        moved = max(
+            cost + abs(exit_cell - cell) + 1 for exit_cell, cost in paths.items()
+        )
+        paths[cell] = max(paths.get(cell, -1), moved)
+    return paths
 
-    A level-k node tests cell 3k, flags at 3k + 1 and writes into its band's
-    cell.  Its kinds are the generator's: equal halves (pass to one half), a
-    constant lower half (one loop on the bit) and the general split (a flag
-    around two loops); a constant half is a flip of the result or nothing,
-    a nonconstant one a node below, moved into the parent's band when this
-    level owns one.  The pointer entering a child is where the last move
-    ended, so a node returns the most characters per exit cell and the
-    parent continues from each.  Halves are priced independently, which a
-    bottom-level node cannot always realise (n = 4 exhaustive: 319 of 339).
+
+def _plain(n: int, band: int) -> int:
+    """At-most prefix length, preserving every possible continuation cell.
+
+    Equal/constant halves and general splits use the emitter's movements;
+    the retired two-input leaf independently prices all coefficient flips.
+    Independent halves and coefficients make this an upper bound, not an
+    attainable maximum. Band-five movements are bounded per tree edge.
     """
 
     def owner(level: int) -> bool:
@@ -63,6 +72,8 @@ def _plain(n: int, band: int) -> int:
 
     @cache
     def node(level: int, at: int) -> _Paths:
+        if n >= 2 and level == n - 2:
+            return _leaf(n, result(level), at)
         bit, flag = 3 * level, 3 * level + 1
         last = level == n - 1
         upper = (
@@ -84,8 +95,14 @@ def _plain(n: int, band: int) -> int:
 
 
 def _chars(n: int, _: str) -> int:
-    """The shipped text is at most the plain tree at either band width."""
-    return min(_plain(n, 3), _plain(n, 5))
+    """Band-five prefix plus the two-bit Davio tail (at most 20n + 100).
+
+    A coefficient leaf flips any subset of its result and three spare cells.
+    The ordered suffix and weights are adjacent; only two answer transfers
+    cross the tape. Its 27 non-move commands give at most 15n + 30 for n>=4;
+    20n + 100 also covers the flag-backed n=2/3 kernels.
+    """
+    return _plain(n, 5) + (20 * n + 100 if n >= 2 else 0)
 
 
 FORMULAS = {"scaling": (_chars, False, tuple(range(2, 10)))}

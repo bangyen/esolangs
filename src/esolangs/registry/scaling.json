@@ -93,7 +93,7 @@
   "six_five": "linear, time n log: at most N characters: two raced orders over canonical subtree IDs",
   "slashes": "linear: worst F characters: 5T/2+n+83 from n=4; 76/95/107 below",
   "slow_acv_mammalian": "linear: at most V characters",
-  "smallfuck": "linear: at most Q characters: the shorter plain tree, bands 3 or 5",
+  "smallfuck": "linear: at most Q characters: coefficient recurrence plus a 20n+100 tail",
   "smu": "linear: at most C characters to n = 16, 6T+86 after",
   "sonata": "linear: at most T + 4n + 101 - 21min(1,(n-2)^2) characters",
   "sstack": "linear: at most 24T-9 characters: 21 a node, 3 a leaf, 12 prologue",

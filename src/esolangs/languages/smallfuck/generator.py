@@ -1,32 +1,21 @@
-"""Smallfuck Boolean program generator: a decision tree with banded result cells.
+"""Smallfuck Boolean templates: banded prefix and two-input Davio coefficients.
 
-Input ``i`` is stored in cell ``3 i``; each level splits on its bit with a
-flag cell, XORing the answer into one result cell per band of three levels,
-which transfers to the parent band.  Cell 2 holds the answer.  Repeated
-residuals are deferred behind level flags or same-level banks and run after
-the band transfers, and repeated two-input functions share a decoder
-(complements share a three-bit code; a retired zero-arm input holds its high
-bit).
-
-An affine table folds its counted input cells down a chain into cell 2
-([ablations.xor_chain]).
+For suffix inputs y,z, write f=K xor yA xor zB xor yzC.  Prefix leaves
+XOR K into the result and A/B/C into three spare band-five cells; one
+shared tail applies y and z.  Deferred residuals and the complemented
+paired-root decoder share this coefficient engine. Definitions advance in
+depth; an affine table retains its XOR chain.
 
 Size:
-    O(T) for dense tables, linear in n for parity and ``and``; n=10 random
-    1847: 11,076 chars, n=10 parity: 170 chars, n=10 and: 213 chars.
-    Constants: zero 4n chars; one min(7n - 1, 4n + 5) chars.
+    O(T) dense; n=10 random 1847: 9,595 chars, n=10 parity: 170 chars,
+    n=10 and: 365 chars. Constants: zero 4n; one min(7n - 1, 4n + 5).
 
 Decisions:
-    Splits stay in input order: a greedy order saves 1.1% at n=8, under the
-    10% bar.  A tiled n=16 table shrinks 1,747 -> 803 characters (-54%)
-    against the plain tree; the test executes it on 128 rows.  Inline text and
-    the existing command bound guard the admission of deferred residuals.
-    A chain of ifs is cheap and an else is not: the reversed table behind a
-    prologue flipping every input cell once (setters unchanged) is built too
-    and the shorter kept, n=8 or 260 -> 182 chars, nor 238 -> 177, majority
-    1219 -> 1084; random n=8 -0.7%.  The complement behind a closing flip
-    of cell 2 is built too (with and without the input prologue): thr2 n=8
-    601 -> 511, n=10 847 -> 671; random n=8 -0.8%.
+    Two-input Davio saves 32.13/29.84% at n=7/8; small tables grow and
+    execute more commands ([ablations.davio_two_inputs]). Three weights
+    require five-level bands. One-input Davio and local ANF fail admission.
+    Existing input/output polarity twins and the affine chain remain;
+    all candidates use the coefficient engine, never an old-program fallback.
 """
 
 import re
@@ -61,17 +50,8 @@ from esolangs.registry._language import Example, Language
 # Each input cell is fresh; zero needs no clear and one needs one flip.
 PAIR = ("x>>>", "*>>>")
 
-#: Levels sharing one result cell.  No closed form picks it: a leaf node's
-#: result flip travels ~3 band cells while band transfers fall as 1/(2**band-1)
-#: an entry, an interior optimum near 3, but the sharing of deferred residuals
-#: removes leaf flips at n >= 8 and the argmin then depends on the class.
-#: Measured chars an entry over 1..6: random n=3..7 best 3; random n=8..11
-#: best 5 (6.0, 10.2, 10.2, 10.0% under 3); parity n=8, 10, tiled n=10 and
-#: sparse n=10 best 3, and majority n=8 best 3 but n=10 best 4.  The build
-#: is the smaller of the two named bands, so it is never worse than 3;
-#: below n=8, 5 still wins parity n=4..6 (8-14%).
-BAND = 3
-BANDS = (BAND, 5)
+#: Five-level bands leave three top result cells free for Davio coefficients.
+BAND = 5
 
 #: Cells per level: input ``3 i``, flag ``3 k + 1``, band result ``3 k + 2``.
 STRIDE = len(PAIR[0]) - 1
@@ -199,6 +179,7 @@ def _smallfuck_ordered(
     """
     n = len(perm)
     forms = []
+    # Historical pre-Davio measurements.
     # The bank: random 0%, majority +14.1% at n=10; per-level: parity +40-130%.
     plans = dict.fromkeys(
         [(repeated_blocks(table), ()), repeated_bank(table, ranked=False)]
@@ -206,36 +187,34 @@ def _smallfuck_ordered(
     # Paired roots: random +15.9/+20.5/+23.2% at n=9/10/11 (12 tables),
     # +5.7% at n=8, 0% below.
     paired = _paired_roots(table)
-    for band in BANDS:
-        forms.append(
-            _smallfuck_tree(
-                table, perm, band=band, negate=negate, complement=complement
-            )
-        )
-        for blocks, flags in plans:
-            if blocks:
-                forms.append(
-                    _smallfuck_tree(
-                        table,
-                        perm,
-                        shared_blocks=blocks,
-                        flag_levels=flags,
-                        band=band,
-                        negate=negate,
-                        complement=complement,
-                    )
-                )
-        if paired:
+    band = BAND
+    forms.append(
+        _smallfuck_tree(table, perm, band=band, negate=negate, complement=complement)
+    )
+    for blocks, flags in plans:
+        if blocks:
             forms.append(
                 _smallfuck_tree(
                     table,
                     perm,
-                    paired_roots=paired,
+                    shared_blocks=blocks,
+                    flag_levels=flags,
                     band=band,
                     negate=negate,
                     complement=complement,
                 )
             )
+    if paired:
+        forms.append(
+            _smallfuck_tree(
+                table,
+                perm,
+                paired_roots=paired,
+                band=band,
+                negate=negate,
+                complement=complement,
+            )
+        )
     bound = 9 * n * n + 100 * n + 20
     for _, cost in forms:
         if cost > bound:
@@ -298,6 +277,13 @@ class _Tree:
         # The tree retires the last two levels while paired roots decode;
         # the decoder switches the shortcut off before pricing its bodies.
         self.pair_phase = bool(pairs)
+        # Last actual band owner is n-6; these three result cells are untouched.
+        # At n=2/3 the prefix has no deferred guards, so flags supply the rest.
+        self.weights = tuple(_band_cell(k) for k in range(max(1, n - 3), n))
+        if len(self.weights) < 3:
+            self.weights += tuple(_flag_cell(k) for k in reversed(range(n)))[
+                : 3 - len(self.weights)
+            ]
 
     def split(
         self,
@@ -397,6 +383,18 @@ class _Tree:
         cost = self._deferred_residual(level, lo, result, on)
         if cost is not None:
             return cost
+        if level == self.n - 2:
+            # Four independent coefficients, not four searched truth-table cases.
+            start = self.builder.count
+            a, b, c, d = map(int, self.truth_table[lo:hi])
+            if a ^ (on == "0"):
+                self.builder.flip(result)
+            for cell, coefficient in zip(
+                self.weights, (a ^ c, a ^ b, a ^ b ^ c ^ d), strict=True
+            ):
+                if coefficient:
+                    self.builder.flip(cell)
+            return _Cost(self.builder.count - start)
         mid = (lo + hi) // 2
         bit, flag = STRIDE * self.perm[level], _flag_cell(level)
         cost = self._agreed_halves(level, lo, result, on, free, bit, mid)
@@ -710,11 +708,13 @@ def _smallfuck_tree(
     when done, so a flip travels at most ``3 band`` cells and a node costs
     O(1) either way.  An arm whose lower half is constant needs no flag:
     that constant is flipped in first and the upper arm built inverted, so
-    a node over two leaves is ``result ^= bit`` alone.  ``negate`` flips every
-    input cell once first, so the tree sees the complemented inputs;
+    a four-row leaf emits the Davio coefficients instead of splitting its
+    last two inputs. ``negate`` flips every input cell once first;
     ``complement`` flips cell 2 last, so the tree's table is the answer's complement.
     """
     n = _validate_truth_table(truth_table)
+    if band != BAND:
+        raise ValueError("Davio coefficients require five-level bands")
     ids = subtree_ids(truth_table)
     builder = _Builder(STRIDE * n)
     builder.emit(TEMPLATE_CHAR * (len(PAIR[0]) * n))
@@ -722,6 +722,19 @@ def _smallfuck_tree(
         for cell in reversed(range(n)):
             builder.flip(STRIDE * cell)
     head = builder.count
+    if paired_roots and (n < 4 or shared_blocks):
+        raise ValueError(
+            "paired roots need two retired levels and no other definitions"
+        )
+    _check_definitions(n, shared_blocks, flag_levels)
+    all_keys = {(depth, ids[depth][row >> (n - depth)]) for depth, row in shared_blocks}
+    if len(all_keys) != len(shared_blocks):
+        raise ValueError("deferred definitions must name distinct residuals")
+    if n < 4:
+        # The short prefix needs no deferred stage; its weights use level flags.
+        shared_blocks = ()
+        flag_levels = ()
+        paired_roots = ()
     blocks = shared_blocks
     _check_definitions(n, blocks, flag_levels)
     pending_levels = flag_levels or tuple(depth for depth, _ in blocks)
@@ -749,9 +762,36 @@ def _smallfuck_tree(
         band,
         head,
     )
+
+    def tail() -> int:
+        # y adds A and moves C into B; z then adds B. All loops clear on entry.
+        start = builder.count
+        if n >= 2 and len(set(truth_table)) > 1:
+            a, b, c = tree.weights
+            y, z = (STRIDE * perm[-2], STRIDE * perm[-1])
+            builder.loop(y)
+            builder.loop(a)
+            builder.flip(ANSWER)
+            builder.end(a)
+            builder.loop(c)
+            builder.flip(b)
+            builder.end(c)
+            builder.end(y)
+            builder.loop(z)
+            builder.loop(b)
+            builder.flip(ANSWER)
+            builder.end(b)
+            builder.end(z)
+            for cell in (a, b, c):
+                builder.loop(cell)
+                builder.end(cell)
+        return builder.count - start
+
     prefix = tree.arm(-1, 0, len(truth_table), ANSWER, "1")
     if pairs:
-        return _closed(builder, *tree.emit_paired_roots(prefix), complement=complement)
+        _, cost = tree.emit_paired_roots(prefix)
+        cost += tail()
+        return _closed(builder, "".join(builder.code), cost, complement=complement)
     empty_tails = dict.fromkeys([None, *range(len(blocks))], 0)
     cost = head + prefix.evaluate(empty_tails)
     stages = [
@@ -765,6 +805,7 @@ def _smallfuck_tree(
             tails = {target: value + skipped for target, value in tails.items()}
             tails[i] = commands
         cost = head + prefix.evaluate(tails) + 1
+    cost += tail()
     return _closed(builder, "".join(builder.code), cost, complement=complement)
 
 

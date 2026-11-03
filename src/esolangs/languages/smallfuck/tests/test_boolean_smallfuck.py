@@ -47,12 +47,13 @@ def test_source_growth_is_linear() -> None:
 
 
 def test_constant_arms_and_banded_results_shrink_the_tree() -> None:
-    """Pin the three-input total: 57,894 characters before, 20,237 after."""
-    assert smallfuck("0001") == TEMPLATE_CHAR * 8 + "<<<<<<[*>>>[*<*>]<<<]"
-    # XOR takes the chain; the tree it would build still ends this way.
-    tree = in_input_order("0110", _smallfuck_ordered)
-    assert tree.endswith("[*<*>]<<<]>[*>>[*<*>]<<]")
-    assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 20234
+    """Pin the Davio source premium at small arities and execute its mixed term."""
+    assert len(smallfuck("0001")) == 79
+    assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 30627
+    for code in range(256):
+        table = f"{code:08b}"
+        for row, expected in enumerate(table):
+            assert _run(table, row) == expected
 
     table = multiple_tables()[0]
     template = esolangs.generate("Smallfuck", table)
@@ -134,15 +135,20 @@ def test_shared_residual_executes_within_ledger() -> None:
 
 
 def test_complemented_shared_arm_contributes_its_constant_first() -> None:
+    from esolangs.generation.shared_block import repeated_blocks
     from esolangs.languages.smallfuck.generator import _smallfuck_tree
     from tests.support.generator_support import assert_shared_program
 
     table = "1111011001101111"
-    plain, _ = _smallfuck_tree(table, tuple(range(4)))
+    forced, _ = _smallfuck_tree(
+        table, tuple(range(4)), shared_blocks=repeated_blocks(table)
+    )
+    for row, expected in enumerate(table):
+        assert run_filled(run, forced, [PAIR] * 4, row, 4) == expected
     assert_shared_program(
         "Smallfuck",
         table,
-        plain,
+        None,
         564,
         lambda p: len(p) + len(p).bit_length() + (12).bit_length(),
     )
@@ -323,36 +329,30 @@ def test_one_pair_keeps_completed_constant_paths_and_fixed_code_bits(word) -> No
 
 
 @pytest.mark.parametrize("n", [4, 9])
-def test_wide_band_is_never_larger_than_the_narrow_band(
-    n: int, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """The min over bands (3, 5) beats band 3 alone on parity and random n=9."""
-    from esolangs.languages.smallfuck import generator
+def test_davio_weights_use_spare_band_cells(n: int) -> None:
+    """The three Davio weights require the spare cells of a five-level band."""
+    from esolangs.languages.smallfuck.generator import BAND
 
+    assert BAND == 5
     rng = random.Random(8)
-    if n == 4:
-        table = "".join(str(bin(row).count("1") & 1) for row in range(1 << n))
-    else:
-        table = "".join(rng.choice("01") for _ in range(1 << n))
-    # The tree itself: parity takes the XOR chain past it.
-    wide = len(in_input_order(table, _smallfuck_ordered))
-    monkeypatch.setattr(generator, "BANDS", generator.BANDS[:1])
-    narrow = len(in_input_order(table, _smallfuck_ordered))
-    assert wide < narrow
+    table = "".join(rng.choice("01") for _ in range(1 << n))
+    template = in_input_order(table, _smallfuck_ordered)
+    for row in range(0, 1 << n, max(1, (1 << n) // 16)):
+        assert run_filled(run, template, [PAIR] * n, row, n) == table[row]
 
 
 @pytest.mark.parametrize(
     ("table", "size"),
     [
-        (witnesses(4)[5], 204),
-        ("00011011010010111011100101000100", 422),
-        (witnesses(8)[2], 169),
-        (dense(8), 3280),
+        (witnesses(4)[5], 200),
+        ("00011011010010111011100101000100", 361),
+        (witnesses(8)[2], 291),
+        (dense(8), 2394),
     ],
     ids=["n4-banded", "n5-paired", "n8-and", "n8-dense"],
 )
 def test_pinned_template_sizes(table: str, size: int) -> None:
-    """Pin band ownership at the leaves, the paired decoder, and both bands."""
+    """Pin band ownership, the paired decoder and coefficient weights."""
     n = len(table).bit_length() - 1
     template = smallfuck(table)
     assert len(template) == size
