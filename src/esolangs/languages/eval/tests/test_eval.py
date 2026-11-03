@@ -76,6 +76,9 @@ class TestFrames:
     """``!`` runs on a frame stack rather than through Python recursion."""
 
     def test_the_frame_stack_deepens_inside_a_nested_program(self) -> None:
+        from .oracle_checks import check_raw_eval
+
+        check_raw_eval()
         """``ip`` reports the depth, which a bare cursor could not."""
         state = _Machine('"0."!', ScriptedIO(""))
         state.step()  # the literal
