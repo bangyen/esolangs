@@ -96,3 +96,10 @@ saving = 9.81
 seed = "same fixed 200 each 7/8"
 tables = "tight/negated sites with derived 18-character helper break-even; actual native positive and swapped-argument control"
 verdict = "rejected: literal M insertion is incompatible with the old parenthesis sharer, which can name comma argument lists as invalid nullary bodies and split the helper definition as input prefix. Scratch repair interns whole M calls and isolates the header. Repaired source 75470/143220->75470/129172 saves 0/9.81%; fixed analytic E 3238624/7697284->3238624/21132668 grows 0/174.55%. Joint parameter+M source 74949/128545 saves 0.69/10.25%, failing fixed 7, and E 3561015/21733088 grows 9.95/182.35%. All candidates execute exhaustive small and sampled 4..8 correctly after repair; controls demonstrate real M/parameter firing and catch wrong programs. Named M/joint parity grows 132/152->176/206, majority is unchanged at 7 and grows 226->239 at 8; and/or/threshold 3 unchanged. No named family qualifies. No M helper, parameter state, patched argument sharer or old-program race ships."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 0.9273
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: slotted immutable call records. 259 programs, 160 halt cleanly; no structural trace differences, control differs on 251. Step throughput at longest 10/20/40 workload breadths: +1.29%/+0.93%/+1.14%. No production change or global performance conclusion; adoption needs broader validation."

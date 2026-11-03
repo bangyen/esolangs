@@ -101,3 +101,10 @@ verdict = "rejected: race a complemented painted row against the original, with 
 
 [ablations.exact_contract_restoration_20261103]
 verdict = "proof-only repair of the exactness dropped by4b969293c; emitted programs unchanged. Full binary inputs with P=T-1 attain exact source and command maxima; a single zero at rowT-2 prevents the count-reader route and all-one input takes every guard. Original R=1 bytes and exact workspace formula remain through n3. For n>=4 the folded W ceiling is attained: last normalizer has x=c-2,y=3r-2, same bit widths as grid maxima; its counter frame PC=B-21 has bl(B) at n4..6 by direct values149/214/313 and thereafter B=2T+c+5r+25n-1 lies between2T+21 and4T. Seven grid bits above baseline come from ASCII49 and counter6. Existing global witness corpus already includes the off-diagonal zero. Source/E/W exactness and all old verification arities restored; no source, pins, example, runtime state or construction path changes."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -3.4976
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: retain immutable grid on nonwrites. 248 programs, 148 halt cleanly; no structural trace differences, control differs on 136. Step throughput at longest 10/20/40 workload breadths: -2.32%/-3.50%/-2.09%. No production change or global performance conclusion; adoption needs broader validation."

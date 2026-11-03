@@ -102,3 +102,10 @@ saving = 2.344
 seed = "random.Random(1847+n), successive getrandbits(1<<n), first200 tables"
 tables = "400 generic tables; exhaustive small ordering controls; named symmetric functions"
 verdict = "rejected: identity/reverse/greedy race gives canonical156304/248639 ->150940/242810 (3.432%/2.344%), below10%; raw old/race171237/267063 ->165012/260893. Reverse alone156097/248056, .132%/.234%; greedy alone152192/244190,2.631%/1.789%. Greedy tries remaining variables by distinct residual count and is structural search, audit-only regardless of its saving. Probe fires: reversed order differs200/200, greedy159/163 of200 at7/8. Greedy nonconstant node profiles summed over tables: n7[200,400,800,1600,2962,2263,400] vs identity[200,400,800,1600,3092,2445,400]; n8[200,400,800,1600,3199,5719,2679,400] vs[200,400,800,1600,3199,5980,2760,400]. Every trial uses an actually permuted table and matching routes; native ordered-read/sentinel controls pass. Reversing routes without the table computes wrong0010 row1, caught. Named parity/threshold tables are symmetric and gain no characters from these orders at7/8. No production search, routing race or cache added."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 9.0583
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: reuse unchanged memory writes. 245 programs, 222 halt cleanly; no structural trace differences, control differs on 243. Step throughput at longest 10/20/40 workload breadths: +22.37%/+17.47%/+9.06%. No production change or global performance conclusion; adoption needs broader validation."

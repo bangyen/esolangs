@@ -71,3 +71,10 @@ verdict = "rejected: remove %og and store with48+b repetitions of the involution
 arity = 8
 saving = 5.4218043594
 verdict = "rejected replay of the supplied rprime,dprime,u2 opening, l2 store and one-token P/Q; no new search. All X/Y read-prefix, print0/1, P/Q and negation values verify, and2520 native pilot runs compute their bits with restored cube, full read-first and sentinel consumption. But200 seeded n7/8 tables save only5.3929%/5.4218%, below10%; six small root constants grow3 chars. Its searched provenance remains as previously recorded. Neither this rule nor dropping the modulus independently qualifies, so no combined subthreshold bundle ships."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.0143
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: hoist literal regex compilation. 245 programs, 150 halt cleanly; no structural trace differences, control differs on 243. Step throughput at longest 10/20/40 workload breadths: -0.01%/+1.16%/+0.27%. No production change or global performance conclusion; adoption needs broader validation."

@@ -118,3 +118,10 @@ saving = 0.7
 seed = "random.Random(1000*n+i).getrandbits(1<<n)"
 tables = "same fixed20 random and named n7/8 corpus; four no-send rows; exhaustive/sampled native controls"
 verdict = "rejected literal output-fold premise: inject rewrites text and does not print. Removing send t gives no output on four native n5 rows after all five reads, while the matching retained-send programs pass. The valid listed h1 regex refinement retaining send saves only6 chars:14120/18340 ->14000/18220 (0.850/0.654%), tending zero; worst9n+10 commands unchanged. Across four variants8624 public executions and8552 forced-private halving runs pass, with2156 wrong-output controls; all public n3 sources47658 and commands51336 remain identical. Width1, balanced and both banded variants add724 controls; off-by-one prefix mutant fails four rows. Native W5 old3471 bits, truncation2989, overlap3209, final3425, all within unchanged old3471 envelope. Generator, exact proof scopes, pins, anchors and example remain unchanged."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -1.2592
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap; plus nested-block skip or local-function probe"
+verdict = "prototype only: select innermost block without sorting. 250 programs, 249 halt cleanly; no structural trace differences, control differs on 1. Step throughput at longest 10/20/40 workload breadths: -0.96%/-1.26%/-0.31%. No production change or global performance conclusion; adoption needs broader validation."

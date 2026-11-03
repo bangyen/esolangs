@@ -87,3 +87,10 @@ arity = 255
 seed = "closed byte-counter construction; no search"
 tables = "actual encoded program on 255 zero bytes, 255 bytes255, and alternating bytes; sentinel after each"
 verdict = "corrected 2026-11-02: reading n inputs does not force n source commands in Unary generally. The seven-command decoded program -[>,<-] emits 3082847 zero characters and natively halts after exactly 255 reads and 1277 steps on all three controls, leaving the following sentinel untouched. Decrement initializes a byte counter to255; each iteration reads only the adjacent cell and decrements the independent counter, proving the count for every input vector. The max-inputs=9 guard, its behavior and all generated programs remain unchanged, but the module, comment and guard now state that this is the current unrolled construction's restriction. The language-wide worst-source counting bound is a separate claim; no generator expansion or unsupported universal read bound is inferred."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 1.1688
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=1 plus 20 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: validate zero chunks without copying. 39 programs, 10 halt cleanly; no structural trace differences, control differs on 19. Step throughput at longest 10/20/39 workload breadths: +1.17%/+2.97%/+2.24%. No production change or global performance conclusion; adoption needs broader validation."

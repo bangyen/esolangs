@@ -161,3 +161,10 @@ complexity = "One builder flag distinguishes self-contained atomic folds from co
 saving = -30.6666
 arity = 8
 verdict = "generic rejected, named parity kept 2026-11-02: n=3 E 11448 ->15352 with 1872 slower rows and max 9>7, source 183742 ->181660 with 104 larger areas/118 larger character counts; free outer XOR is not synchronized because lo is an ancestor of its gated term. The executable generic repair uses a native outer XOR; fixed 20 Random(184700+n) areas 1486980 ->1852875 /3431392 ->4483684 (growth 24.6066/30.6666%), and three gates per level do not preserve 2n+1. Exhaustive 2120 small rows plus 120 boundary rows of 40 judge tables execute. For strict full parity/negation, every residual lo XOR hi=1, directly yielding an XOR ladder: after admitted M, n=7/8 area 9222 ->124 /12120 ->144 (98.6554/98.8119%). Old input-bus geometry is Omega(n^2), new area 20n-16 is O(n), so marginal saving tends 100%. n=2 flat area 18 beats folded 24; n=3 folded 44 beats flat 48: genuine geometric crossover, no source-min race. Existing affine width helper now emits this ladder for full parity; general nonparity affine support is retained. No independent DAG/race/state added. Native both polarities n=2..6 all rows, selected 7/8, wrong-bias mutants, balanced and old E/W controls pass."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.7325
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap; index keys verified against actual wiring identities, then canonicalized to positions; all snapshot fields unchanged"
+verdict = "prototype only: slotted machine storage. 245 programs, 154 halt cleanly; no structural trace differences, control differs on 245. Step throughput at longest 10/20/40 workload breadths: -0.73%/+0.17%/+1.48%. No production change or global performance conclusion; adoption needs broader validation."

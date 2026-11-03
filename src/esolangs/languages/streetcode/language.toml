@@ -169,3 +169,10 @@ saving = 2.0654
 seed = "same fixed20 corpus; explicit negated-table wrong-digit control"
 tables = "same native corpus and names as read_run_room_prototype"
 verdict = "rejected: one pre-mouth increment does not ensure nonzero under negated fill: answer-1 becomes0, bypassing the room and printingNUL instead of0. The fixed-corpus n8 first table exhibits this; the repaired room uses two pre-mouth increments when negated and47 inside, retaining the original48/49 total. Actual public area84217->81767 /120316->117831 grid cells (2.909/2.065%), fixed-width savings below20% declining. Last-input identity14.530/14.407% also declines below20%. All three repaired layouts jointly pass320 fixed native endpoint runs and128 named runs with read-before-output, exact read counts, sentinels and opposite-answer controls; all1104 small generated programs are byte-identical, with2120 baseline row executions. No new tail, band-room constructor or state retained. Generator/proof code, scopes, pins, Size anchors and example remain unchanged; balanced/width variants are not claimed verified for these rejected prototypes."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -1.0954
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: copy sparse tape only for writes. 245 programs, 95 halt cleanly; no structural trace differences, control differs on 146. Step throughput at longest 10/20/40 workload breadths: +1.85%/-1.10%/+0.31%. No production change or global performance conclusion; adoption needs broader validation."

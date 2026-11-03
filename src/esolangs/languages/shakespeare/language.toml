@@ -70,3 +70,10 @@ verdict = "rejected: increasing packing chunks64->128 executes four rows of50 Ra
 arity = 8
 saving = 0.0
 verdict = "rejected by construction: exact/greedy permutation search and residual selection over2^(m+1) affine masks violate the no-search/four named order rules. Neither search was launched. The separate parity rule has a closed-form detector and only that named function family; it introduces no searched residual or frozen table. No claim that all other Shakespeare constructions are impossible."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 8.1198
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: direct frozen record reconstruction. 247 programs, 145 halt cleanly; no structural trace differences, control differs on 147. Step throughput at longest 10/20/40 workload breadths: +8.73%/+8.12%/+8.36%. No production change or global performance conclusion; adoption needs broader validation."

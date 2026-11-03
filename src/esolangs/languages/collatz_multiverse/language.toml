@@ -129,3 +129,10 @@ saving = 0.0
 seed = "random.Random(1000*n+i)"
 tables = "three tables per n7/10/13, median of three builds each; three native rows n4/6/8"
 verdict = "generation overhead is measured, not a speed win: sums of three per-table median CPU times old ->final are0.608 ->1.248ms at n7,2.421 ->4.189ms at n10,16.120 ->26.475ms at n13; corresponding source totals14693 ->10934,38541 ->34188,212042 ->207387. Growth remains O(T); closure/pad scans add work without a search or cache. Native medians for three rows improve0.754 ->0.593ms,2.367 ->1.711ms,4.771 ->3.699ms at n4/6/8. Controls reject8 wrong constant rows,8 unsafe prefix rows,2 wrong read-order rows and4 missing XOR-half rows; direct-host positive executes. Small/price probes execute16960/1152 rows."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 19.5639
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: binary insertion of sorted registers. 245 programs, 145 halt cleanly; no structural trace differences, control differs on 145. Step throughput at longest 10/20/40 workload breadths: +19.56%/+20.48%/+20.92%. No production change or global performance conclusion; adoption needs broader validation."

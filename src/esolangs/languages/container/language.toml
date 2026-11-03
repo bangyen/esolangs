@@ -114,3 +114,10 @@ saving = 5.2
 seed = "random.Random(1847+n)"
 tables = "20 random per n7/8; all tables/rows n<=3; three random per n4..6 and named n7/8"
 verdict = "kept only canonical unsigned positive deltas: minimal spelling removes redundant plus signs, as the tree already does. Fixed20 chars23962/38194 ->22671/36190 (5.388/5.248%); no new path/state. Generic blocks fail fixed n7: after spelling, existing s=floor((n-2)/2) gives22671/36190 ->21103/28475 (6.916/21.318%); one closed-form half split gives22556/28475 (0.507/21.318%). No width search. Parity block saves24.6% at both but violates the preserved global2n+2 execution bound: native n7 takes24 ticks vs16, exactly2n+2S+2. Blocks remain solely the existing balanced route. Raw split-counter top-latch correction is wrong on low row1; refined unconditional live-tick correction works in sampled controls but grows7.049/4.786%, rejected. No generic candidate/fallback added. Exhaustive n<=3 plus samples4..6:2156paired rows and2156wrong-output positive controls; n3chars82750 ->78589, commands16352 unchanged. All benchmark commands/byrow retained; sizes repinned. E exact3/7 and all W/source scopes retained; source bound removes4n+3+T/2 plus signs from its worst threshold pattern."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.2676
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: single variable lookup. 246 programs, 146 halt cleanly; no structural trace differences, control differs on 145. Step throughput at longest 10/20/40 workload breadths: -0.07%/-0.27%/-0.04%. No production change or global performance conclusion; adoption needs broader validation."

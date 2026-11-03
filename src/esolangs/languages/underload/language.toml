@@ -76,3 +76,10 @@ saving = 10.9991
 seed = 0
 tables = "all256 three-input tables/every row;4096 paired native executions after named terminal cleanup"
 verdict = "kept by independent5% execution gate: uniform five-character(!^:)/(~!^) selectors give61096->54376 commands,17800->16276 actual filled chars, no larger/slower table or row. Zero duplicates its returned bit; copies remain beneath the answer. Constants and narrow short/bit selectors stay unchanged. No search, candidate or old-source race. Seven alternating n3 native batches run .111031->.105386s. E becomes10n+3+2floor((n-1)/2), attained by existing all-one carry witnesses; F replaces7n by5n, original scopes/flags retained. Existing W ceiling holds: generic copies cost at most8n bits; for named tails use D<=3T/2 deleted drops and the original pre-cleanup bound, giving24L+156T+88n-168+bl(2L+13T+10n-14), below the current ceiling from5. All finite named families through4 pass WrittenState.3560 additional native named/layout/sample rows pass; all pins/byrows, anchors and balanced example updated together. Source/build class unchanged. Historical source-only rejection missed this route."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.402
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: slice immutable stack prefix. 264 programs, 151 halt cleanly; no structural trace differences, control differs on 136. Step throughput at longest 10/20/40 workload breadths: -0.15%/+0.06%/-0.40%. No production change or global performance conclusion; adoption needs broader validation."

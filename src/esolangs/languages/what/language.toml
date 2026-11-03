@@ -67,3 +67,10 @@ verdict = "kept by the execution gate: removing the index copy saves eleven comm
 arity = 8
 saving = 0.0
 verdict = "rejected: ??? reads one line, while the contract supplies one input bit per line. The actual prefix-string prototype computes0011 for XOR table0110 on its four encoded inputs; baseline and latch return0110. It also leaves later inputs unread. No input-format or read-first convention change."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.129
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: word wrap bit mask. 245 programs, 169 halt cleanly; no structural trace differences, control differs on 58. Step throughput at longest 10/20/40 workload breadths: -0.13%/-0.05%/+0.55%. No production change or global performance conclusion; adoption needs broader validation."

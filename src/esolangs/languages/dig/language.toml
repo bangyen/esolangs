@@ -162,3 +162,10 @@ tables = "4754 native rows: old/final small, parity both biases2..12, indexed cl
 saving = 0.0
 arity = 12
 verdict = "correctness repair 2026-11-02: inherited indexed W undercounts real states (old parity n7 last4349>4347; n9 5791>5789,n10 7199>7197,n11 7231>7229). Derive class label<=9,stride<=8, stored offset<=72,row count<=81; prefix decoder<=16. All stored cells remain nonnegative<=81 (one byte). Indexed mole/num need at most7+7 bits plus heading2, so replace primitive constant10 with16 only for existing capture opcode ';*$2'. Native10-class controls attain the full+6 correction, not only the observed parity+2. Primitive formula/scopes unchanged. Polynomial route is recognized by its actual twelve-row travel/terminal line and exact existing discard-column grammar, with no marker/state; exact W uses visited coordinates, counter9, signed-mole peak and uniform-token cursors. All old Wn5 exact=True coverage retained; negative two-input special and discard-window boundaries checked natively."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 3.2973
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: construct immutable named tuples through tuple.__new__. 253 programs, 234 halt cleanly; no structural trace differences, control differs on 148. Step throughput at longest 10/20/40 workload breadths: +3.49%/+3.46%/+3.30%. No production change or global performance conclusion; adoption needs broader validation."

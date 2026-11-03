@@ -57,3 +57,10 @@ saving = -16.498
 seed = "Random(1000*n+i), i=0..19"
 tables = "20 generic per n7/8; exhaustive276 tables/2120 rows n<=3; 20 tables/all rows per n4..6"
 verdict = "rejected, completing raw3: add two explicit instructions, set U=old used+2, (base,c)=divmod(U,stride), add c before the final LOAD and remove padding. No layout search or old-program minimum. Actual chars68643->71261 /88849->103507 (-3.814/-16.498%); n3 chars305139->329423, commands53896->57960,254 tables grow and2032 rows slow. Even free removal of ALL padding AND the entire pushed-base instruction can save at most4.368/2.969% at7/8, so distributing c across Horner steps cannot rescue this rule. Native exhaustive/sampled output and short-string zero-padding controls pass; off-by-one c fails8 control rows. All nonconstant programs change, so the negative result is nonvacuous. No production paths/state added; generator, bounds, arities, pins and example unchanged."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 13.4644
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap; all structural fields preserved; float NaN canonicalized across independent module constants"
+verdict = "prototype only: count parsed keywords in C. 249 programs, 150 halt cleanly; no structural trace differences, control differs on 150. Step throughput at longest 10/20/40 workload breadths: +13.46%/+14.00%/+15.94%. No production change or global performance conclusion; adoption needs broader validation."

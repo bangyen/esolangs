@@ -44,3 +44,10 @@ saving = 9.6
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: canonical fixed-output spelling. Read every input into r1, leave fresh answer r2 at zero, optionally increment it, then print. The unused clear disappears without dropping its required operands elsewhere. Exactly 9n+8+9b chars and n+1+b commands, b the answer. Written bits at most 15+max(2,bl(n+b))+bl(2n-1), attained by a row containing a one; all-zero zero-answer runs leave the register component read-only. n=8 zero/one 89/98 -> 80/89 chars; n=12 125/134 -> 116/125. n=3 corpus 77051 -> 77033 chars. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts; CARP owned checks reach its n=14 cap. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources, every read before output and an unread following record. Existing tests expanded without new cases."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 0.0153
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: set opcode membership. 245 programs, 145 halt cleanly; no structural trace differences, control differs on 133. Step throughput at longest 10/20/40 workload breadths: +0.46%/+0.02%/+0.09%. No production change or global performance conclusion; adoption needs broader validation."

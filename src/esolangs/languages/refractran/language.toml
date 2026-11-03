@@ -124,4 +124,4 @@ price = 6.9463
 workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: precompiled fraction validator. 245 programs, 168 halt cleanly, no trace differences; deliberate control differs on 122. Step throughput at longest 10/20/40 workload breadths: +6.95%/+7.42%/+7.47%. Promising; broader corpus and source-size timings required before adoption."
+verdict = "prototype only: precompiled fraction validator. 245 programs, 168 halt cleanly; no structural trace differences, control differs on 122. Step throughput at longest 10/20/40 workload breadths: +6.95%/+7.42%/+7.47%. No production change or global performance conclusion; adoption needs broader validation."

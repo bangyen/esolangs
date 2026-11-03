@@ -104,3 +104,10 @@ saving = 0.0
 seed = 0
 tables = "full-support AND at n=1,2,3,5,6; source formula corpus at every retained rung"
 verdict = "proof-only repair: restore exact source maxima at every old rung1/2/3/5 and retain current6. The inline n1 maximum is65; for n>=2 it is T+4n+70, reached by AND's T-bit packed literal. With m>=2 essential inputs length is at most2**m-4m+8n+70; convexity reduces the maximum to m2 or n, and full support wins for n>=2. Single-essential8n+57 and constants7n+11+b are smaller. All110 witness rows execute correctly; source maxima65/82/90/122/158. No generator path/state or emitted byte changes. The raw-series ceiling was sound but needlessly dropped exactness after the new inline/shared dispatch; this record restores the original contract rather than claiming a policy exception."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 1.0454
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: read heap without generator allocation. 247 programs, 147 halt cleanly; no structural trace differences, control differs on 81. Step throughput at longest 10/20/40 workload breadths: +1.70%/+3.13%/+1.05%. No production change or global performance conclusion; adoption needs broader validation."

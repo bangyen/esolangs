@@ -131,3 +131,10 @@ saving = 52.3810
 seed = "both whole constants;physical arities1..16"
 tables = "480constant default/narrow/balanced native rows;1110nonconstant bytepairs/6880native rows;76pin rows plus saved example"
 verdict = "kept only for whole constants by source admission: one byte-draining definition and one n-target assignment replace the 8n-target read. No returned input bit is needed: the function falls off with default0, and its result goes only to junk. Removing the dead return also preserves the four-column width floor without a separate narrow fallback. Exact default chars16n+40->2n+64 from n=2; n1 would grow10chars and retains its shorter inline read. No old-program race. At7/8 each constant152/168->78/80 saves48.684/52.381%, monotonically approaching87.5%; balanced grid_area153/162->72/78. All8n bitreads precede output and preserve the next record; EOF and seven-bit mutants fire. Default2VMsteps and exact constant76+2bl(n)written bits stay unchanged; completed helper scopes are absent at observable snapshots. Nativewall does grow for zero:200runs n3 .0430->.0685s (1.59x), n8 .1596->.3350s (2.10x), n12 .2901->.7039s (2.43x); this is source admission, no speed claim. Adds only the necessary constant-function/read-spelling branch, no extra live main local; supersedes its repeated inline read from n2 and removes the unused return-bit state. Every nonconstant source is byte-identical, including width/balance. n3chars46726->46690, commands4096 unchanged. All global formulas/exact arities, eight pins/by-row/last-row counts and the example remain valid; constant Size anchor80 replaces168."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.3237
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: slotted machine storage. 249 programs, 146 halt cleanly; no structural trace differences, control differs on 149. Step throughput at longest 10/20/40 workload breadths: -0.16%/+0.37%/-0.32%. No production change or global performance conclusion; adoption needs broader validation."

@@ -108,3 +108,10 @@ saving = 0.09802480027446944
 seed = "same fixed random corpus; exhaustive n<=3; both literal policies and constant values n=1..12"
 tables = "276 small tables, all rows for old/canonical/polarity/cap6; five random n=4..6 and 20 each n=7,8 sampled; constants default/width1/balanced"
 verdict = "kept: CONTRIBUTING minimal-spelling exemption explicitly includes a trailing no-op. Remove the final 0; from both painted and constant main bodies. No other generated statement sets the implicit result, so it remains zero; main has no caller, output and ordered reads are unchanged. No new path/state; one obsolete VALUE command removed. Default n3 78174->77662 characters and 48216->46168 commands, maximum 38->37; each row is exactly one command shorter. Fixed20 n7/n8 24762->24722 /40806->40766 characters (0.1615/0.0980%), tending to zero; percentage admission is not used. Constants now n+2 commands and default W=159+bl(n+1)+2bl(n); generic E envelopes subtract one, generic W in actual L is unchanged, source ceiling subtracts two. All original False flags and E 3/7, W 3/5, source 3..10 rungs retained. Eight size pins use last-row commands, all by-row entries refreshed; Size anchors and the packaged balanced AND2 example regenerated."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 0.758
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: slotted immutable call records. 250 programs, 147 halt cleanly; no structural trace differences, control differs on 150. Step throughput at longest 10/20/40 workload breadths: +1.66%/+0.76%/+0.84%. No production change or global performance conclusion; adoption needs broader validation."

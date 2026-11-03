@@ -88,3 +88,10 @@ saving = 0.0
 seed = 0
 tables = "full-support parity at n=4,6, allrows; retained workspace formula corpus"
 verdict = "proof-only repair: restore both old exact workspace rungs4/6. One-stack lookup peaks at R+n Boolean cells, dual at R+2n, R<=T; dual requires R>=8n+4 and is impossible when T<8n+4. Add the changed active-stack bit and one frame's8L+bl(L) peak. Full-support parity attains every term, with one stack at4 and dual at6, and also reaches the exact source maximum. Constants fit below. The old ceiling overcounted n bits in the new one-stack regime; dropping exactness at6 was unnecessary because the dual regime remains. Native parity attainers run all80 rows, preserving correct output; resource maxima507/1421. No generator path/state or emitted bytes change; this restores the original worst-case contract, not a per-program-policy exception."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.3283
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: slotted machine fields. 249 programs, 179 halt cleanly; no structural trace differences, control differs on 249. Step throughput at longest 10/20/40 workload breadths: -0.33%/-0.03%/+0.33%. No production change or global performance conclusion; adoption needs broader validation."

@@ -90,5 +90,5 @@ verdict = "not retained: the proposal admits it has no full mechanism for shorte
 price = -1.1765
 workload = "constructor plus step; no snapshots timed"
 seed = 0
-tables = "all n<=3 tables/rows where a generator exists, published examples and 300 seeded mutations; 400-step cap"
-verdict = "prototype only: bit mask heading wrap. 2493 programs, 269 halt cleanly, no trace differences; deliberate control differs on 2193. Step throughput at longest 10/20/40 workload breadths: +0.06%/+0.05%/-1.18%. No production change; these workloads establish no useful gain, not a global performance wall."
+tables = "all n<=3 generated tables/rows where supported, examples and 300 seeded mutations; 400-step cap"
+verdict = "prototype only: bit mask heading wrap. 2493 programs, 269 halt cleanly; no structural trace differences, control differs on 2193. Step throughput at longest 10/20/40 workload breadths: +0.06%/+0.05%/-1.18%. No production change or global performance conclusion; adoption needs broader validation."

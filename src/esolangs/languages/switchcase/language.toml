@@ -88,3 +88,10 @@ saving = 0.0
 seed = 0
 tables = "parity at n=1,2,3; first eight unequal-half two-bit functions concatenated at n=5; retained workspace corpus"
 verdict = "proof-only repair: restore exact workspace at old3/5 and retain lower1/2. Let B sum each buffered name's bits plus its6-bit character. Full environment costs B+18, default key! costs8, branch command cursor0 costs1, and case index is at most n+diagram_cap(n); input progress adds bl(n). Other phases have numeric keys or missing buffers, dominating their longer cursors; an ignored read adds5 bits to_ but removes at least22 buffer bits. Global ceiling B+27+bl(n+diagram_cap(n))+bl(n) is attained at the registered exact rungs, not asserted globally infinite. Native52/76/99/145 bits at1/2/3/5,46 correct output rows plus46 resource rows; global upper controls3297 rows across309 tables pass, including allsmall, every sole-essential position4..6, and9/10/12 name-width cases. The constructive n5 witness has17 internal nodes, and allones reaches the first identity node at case22. The old ceiling overcounted independent header/command maxima and maximum name widths; new exact rungs need no policy exception. No generator path/state or emitted byte changes."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 3.9309
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: hoist literal regex compilation. 248 programs, 146 halt cleanly; no structural trace differences, control differs on 148. Step throughput at longest 10/20/40 workload breadths: +3.93%/+4.73%/+4.37%. No production change or global performance conclusion; adoption needs broader validation."

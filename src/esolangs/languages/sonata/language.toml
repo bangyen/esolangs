@@ -99,3 +99,10 @@ saving = 44.8980
 seed = "Random(184700+n), successive getrandbits(1<<n)"
 tables = "20 full generic tables each n7/8, every row, three alternating old/new native batches"
 verdict = "rejected on actual runtime despite qualifying command savings: replace the admitted pair path by four-entry cofactor symbols and fixed Boolean decoding rules, deriving symbols rather than a frozen table. All full generic rows take floor(row/4)+n+1 rewrites versus floor(row/2)+n+2. Fixed7/8 command totals103680->60160 and376320->207360 (41.98/44.90% fewer), but source4140->11034 and5500->12552 chars. End-to-end native medians including normal rule parsing are .284592->.431206s at7 (+51.5%) and1.109985->1.126353s at8 (+1.47%). Parsing many decoder rules erases the walk saving; pre-parsed last-row pilots are faster but do not govern admission.46,080 timed native rows pass output/full-frame checks; all276 small programs remain byte-identical and4240 paired native rows pass,2048 lifted decoder rows cover all16 cofactors, and wrong-length/negative controls pass. This rejects the complete tested quad construction, not every packing design. Shipped generator, proof scopes, bounds, pins and example remain unchanged."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 3.2802
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: predecode replacement capture indices. 248 programs, 148 halt cleanly; no structural trace differences, control differs on 121. Step throughput at longest 10/20/40 workload breadths: +3.70%/+3.63%/+3.28%. No production change or global performance conclusion; adoption needs broader validation."

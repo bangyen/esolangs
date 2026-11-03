@@ -96,3 +96,10 @@ verdict = "superseded by the uniform direction-pair construction, not stacked as
 arity = 8
 saving = 0.0
 verdict = "rejected raw n-way last-variable search: more than four candidates and O(nT) cofactor work violate the construction gate. Executed bounded repair uses identity, last-two swap, last-three rotation and last-three reversal; each has constant displacement and O(T) cofactor permutation. Against the literal-only identity build, minimum-of-four saves0.00% at BOTH7/8 on20 seeded tables (18391->18391 /36186->36186). The probe is live:108 tested tables improve. All9928 native executions across the four orders compute their table, preserve input bits/pointer/direction and leave stdin/sentinel untouched; all-small WrittenState bounds hold. No unrestricted n-way search or additional reorder rule ships."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 7.8442
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: construct immutable named tuples through tuple.__new__. 245 programs, 179 halt cleanly; no structural trace differences, control differs on 179. Step throughput at longest 10/20/40 workload breadths: +8.21%/+7.84%/+8.14%. No production change or global performance conclusion; adoption needs broader validation."

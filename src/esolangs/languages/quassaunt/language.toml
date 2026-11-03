@@ -90,3 +90,10 @@ verdict = "kept 2026-11-02 for source only: the reservoir, dense names and fixed
 
 [ablations.proof_ceiling_review_20261103]
 verdict = "reviewed: node_cap times 170+4u bounds all emitted node kinds; frequency-ranked base89 names have width at most u, and startup/fillers cost below 400+u+6n. Triple fragments need at most 134+4u, leaving deliberate slack. Scaling stays linear in T; all source arities and the at-most flag remain. Admission uses measured emitted source. The optimized global maximum is unproved."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.3235
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: reuse immutable empty set. 245 programs, 145 halt cleanly; no structural trace differences, control differs on 145. Step throughput at longest 10/20/40 workload breadths: +0.80%/+0.21%/-0.32%. No production change or global performance conclusion; adoption needs broader validation."

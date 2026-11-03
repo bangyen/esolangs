@@ -96,5 +96,5 @@ verdict = "kept 2026-11-02: canonical dead-code removal, percentage-exempt. A fo
 price = -0.0192
 workload = "constructor plus step; no snapshots timed"
 seed = 0
-tables = "all n<=3 tables/rows where a generator exists, published examples and 300 seeded mutations; 400-step cap"
-verdict = "prototype only: bit mask heading wrap. 2493 programs, 1397 halt cleanly, no trace differences; deliberate control differs on 2493. Step throughput at longest 10/20/40 workload breadths: -0.02%/+0.40%/+0.45%. No production change; these workloads establish no useful gain, not a global performance wall."
+tables = "all n<=3 generated tables/rows where supported, examples and 300 seeded mutations; 400-step cap"
+verdict = "prototype only: bit mask heading wrap. 2493 programs, 1397 halt cleanly; no structural trace differences, control differs on 2493. Step throughput at longest 10/20/40 workload breadths: -0.02%/+0.40%/+0.45%. No production change or global performance conclusion; adoption needs broader validation."

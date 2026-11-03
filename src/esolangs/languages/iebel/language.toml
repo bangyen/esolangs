@@ -61,3 +61,10 @@ verdict = "no qualifying general-diagram construction established: the two-line 
 arity = 8
 saving = 0.0
 verdict = "no admitted polarity carrier: a concrete merge normalizes complementary nonconstant subtable IDs above the bottom two levels but loses edge polarity. On four-input parity, shipped controls print 0/1 at rows 0/8; the merged diagram prints 0/0. Duplicated bottom blocks alone do not remember which complement entered a shared ancestor. No searched table or unproved polarity mechanism ships; no general impossibility claim."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 2.3169
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: construct immutable named tuples through tuple.__new__. 245 programs, 151 halt cleanly; no structural trace differences, control differs on 151. Step throughput at longest 10/20/40 workload breadths: +2.87%/+2.38%/+2.32%. No production change or global performance conclusion; adoption needs broader validation."

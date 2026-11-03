@@ -90,3 +90,10 @@ verdict = "proof-only precision restoration of the checked exact rungs dropped b
 
 [ablations.source_exact_restoration_20261103]
 verdict = "proof-only actual repricing restores checked exact source arities3..23 dropped by161a7cd63. Main/header costs32+root-name+4; branching definitions name+11, equal/constant definitions name+9; branch references name+4, equal references name+2, constant names unchanged. Original maximal diagram profiles and forced-cover/parent/pair losses apply with these actual prices. The old F+13-6n ceiling used only a minimum n static read sites and was not an exact new maximum. Superseded minimum-read adjustment is removed; the original source witnesses are repriced, not replaced by a source race. No emitter, runtime state, pins or example changes."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 1.6988
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: construct immutable named tuples through tuple.__new__. 250 programs, 148 halt cleanly; no structural trace differences, control differs on 150. Step throughput at longest 10/20/40 workload breadths: +2.88%/+2.21%/+1.70%. No production change or global performance conclusion; adoption needs broader validation."

@@ -123,3 +123,10 @@ saving = 0.0
 seed = "same fixed20 each7/8;four answer-label controls"
 tables = "2120baseline native small rows;fixed20native endpoints;legal single/double-hub controls,EOF and wrong-label mutant"
 verdict = "already implemented, no new saving: n<=15 uses a nonempty short layout, single=True pointers/label seeding and one hub/stub per label. Reapplying this is the current13340-character source, zero marginal saving at7/8. ENTRY420 ends bootstrap storage, not main code. All four answer labels execute in forced single-hub programs; a legal full-store double-hub construction, with its original zero-held reads, also runs correctly at59049chars. That coupled control is not an isolated marginal attribution. A legal wrong-label mutation prints the opposite bit, and EOF identity prints168 from59048 with one past-end read, so probes are not vacuous. No new single-hub path or state ships; the existing construction remains. All source/E/W functions, exact arities, eight pins/by-row/last-row counts, anchors, example and supported domain are unchanged. Only stale prose is corrected: callback bounds6748 at1 and5953 at16, exact2/3/6; closing i5753 at16; inputs are characters, not newline-framed lines."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.0065
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=1 plus 20 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: unroll five fixed crazy digits. 38 programs, 1 halt cleanly; no structural trace differences, control differs on 18. Step throughput at longest 10/20/38 workload breadths: +0.04%/+0.29%/-0.01%. No production change or global performance conclusion; adoption needs broader validation."

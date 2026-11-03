@@ -78,3 +78,10 @@ verdict = "proof-only restoration of old checked arities1..7, lost in678ac5855. 
 
 [ablations.proof_ceiling_review_20261103]
 verdict = "reviewed: each selected inline shrinks the named-diagram text before the fixed 28-character selectors, so F+28 remains a linear global source ceiling. The exact hybrid maximum depends jointly on incoming uses, literal payload at most 2n and identifier widths; it is unproved. All source arities and the at-most flag remain. The predecessor's exact formula is not asserted for the changed construction."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 0.0789
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: reverse paired match worklist once. 247 programs, 168 halt cleanly; no structural trace differences, control differs on 147. Step throughput at longest 10/20/40 workload breadths: +0.17%/+0.32%/+0.08%. No production change or global performance conclusion; adoption needs broader validation."

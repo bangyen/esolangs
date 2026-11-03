@@ -74,3 +74,10 @@ saving = 0.002849
 seed = 1854
 tables = "200 random.Random(1847+n) tables per n=7/8; repeated 1,024-row positive control"
 verdict = "rejected: aligned quads replace pairs only when frequency exceeds their 11-character rule cost. n=7 saves 0% (57,400 unchanged), n=8 0.002849% (70,200 -> 70,198), far below either bar; zero / two rules fire. Native representative random rows and every generic firing execute with one match per state and exact input consumption. Repeated-table positive control fires two rules and shrinks the packed layout 735 -> 501 chars; all four boundary rows execute. Packing therefore works, but the judged corpus does not benefit. No production change."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 0.8558
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: construct immutable named tuples through tuple.__new__. 252 programs, 148 halt cleanly; no structural trace differences, control differs on 152. Step throughput at longest 10/20/40 workload breadths: +0.91%/+0.86%/+1.08%. No production change or global performance conclusion; adoption needs broader validation."

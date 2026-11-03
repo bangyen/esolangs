@@ -102,3 +102,10 @@ verdict = "rejected for stream correctness even though source saves13.01%/13.23%
 arity = 8
 saving = 7.1355411403
 verdict = "rejected: deleting remaining r- pairs can keep the Boolean result while violating consumption. Under both bindings, table0011,input002 prints space after consuming only the first0; baseline consumes both row inputs and leaves2. Positive baseline controls check the read count and following record, not only output. Default root constants are intentionally left on their existing read-first fast path. Twenty-table source17788->16594 /35148->32640 (6.71%/7.14%) also misses the size bar. No weakening of ordered/all-input reads."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 13.0964
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: construct immutable named tuples through tuple.__new__. 245 programs, 162 halt cleanly; no structural trace differences, control differs on 218. Step throughput at longest 10/20/40 workload breadths: +15.66%/+14.07%/+13.10%. No production change or global performance conclusion; adoption needs broader validation."

@@ -116,3 +116,10 @@ saving = 0.0
 seed = "Random(1000*n+i)"
 tables = "20 random per n7..12; namedfunctions7/8; exhaustive<=3,samples4..6; guardedcomplementpositivecontrol"
 verdict = "rejected: working toggle uses three4-instruction copies to swap output cells; this is not a claim that12 is optimal. Share an already-emitted complement only when a bounded local quote exceeds13 new instructions (toggle+jump); resolve ignored tests and retain shared literals. No generic/named7/8 firing or source gain. Positive n7 guarded R/~R fires once and shrinks774→650 chars,128 native rows pass; constructed classes do not admit a rule. The combined layout/complement corpus passes6812 native checks with opposite-answer controls. No toggle state or complement constructor retained; no global impossibility claim."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.0762
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: byte wrap bit mask. 249 programs, 173 halt cleanly; no structural trace differences, control differs on 128. Step throughput at longest 10/20/40 workload breadths: +0.07%/+0.17%/-0.08%. No production change or global performance conclusion; adoption needs broader validation."

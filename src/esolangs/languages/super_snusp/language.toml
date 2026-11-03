@@ -101,3 +101,10 @@ saving = 15.12
 seed = "random.Random(1847+n), successive getrandbits(1<<n)"
 tables = "200 per fixed n=7/8; all tables/rows through3; named/ignored/layout controls4..16"
 verdict = "retained after stack reuse: the existing four short forms remain byte-identical. At n2 all 16 public sources total 421 vs 496 without them (15.12% smaller). The earlier five-form/668-versus832 figures above are historical; no searched form or new table is added."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 17.3817
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: construct immutable named tuples through tuple.__new__. 249 programs, 224 halt cleanly; no structural trace differences, control differs on 249. Step throughput at longest 10/20/40 workload breadths: +18.57%/+17.38%/+17.48%. No production change or global performance conclusion; adoption needs broader validation."

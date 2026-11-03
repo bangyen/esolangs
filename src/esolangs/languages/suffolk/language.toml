@@ -89,3 +89,10 @@ verdict = "mandatory correctness repair in restored old construction: prior prin
 
 [ablations.proof_ceiling_review_20261103]
 verdict = "reviewed: the workspace ceiling combines the old tape envelope with derived storage, scratch and pointer allowances; the NOR route retains its admission cap. These phase ceilings safely bound WrittenState but need not be jointly attained. Workspace stays polynomial in n; all resource arities and the at-most flag remain. No exact optimized maximum is claimed at n=3/5."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -1.2572
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: inline nonnegative clamp. 246 programs, 117 halt cleanly; no structural trace differences, control differs on 164. Step throughput at longest 10/20/40 workload breadths: -1.26%/-1.06%/-1.18%. No production change or global performance conclusion; adoption needs broader validation."

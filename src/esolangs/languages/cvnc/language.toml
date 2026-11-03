@@ -80,4 +80,4 @@ price = -0.3495
 workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: byte wrap bit mask. 450 programs, 152 halt cleanly, no trace differences; deliberate control differs on 157. Step throughput at longest 10/20/40 workload breadths: +0.09%/-0.35%/-0.09%. No production change; these workloads establish no useful gain, not a global performance wall."
+verdict = "prototype only: byte wrap bit mask. 450 programs, 152 halt cleanly; no structural trace differences, control differs on 157. Step throughput at longest 10/20/40 workload breadths: +0.09%/-0.35%/-0.09%. No production change or global performance conclusion; adoption needs broader validation."

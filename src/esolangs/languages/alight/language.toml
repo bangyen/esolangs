@@ -72,3 +72,10 @@ verdict = "rejected by construction: greedy shortest-superstring selection is a 
 arity = 8
 saving = 0.0
 verdict = "rejected as supplied: removing result r and reading discarded suffix inputs into a overwrites a live essential input. Actual prototype saves six chars and computes XOR0110 correctly, but table0011 prints0101 over the four two-input rows instead of0011; unchanged baseline returns0011. A separate scratch register is required for that discarded suffix under this schedule. No ignored-input convention weakening or bundling with the sub-threshold quad rule."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.1105
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: slotted machine storage. 245 programs, 145 halt cleanly; no structural trace differences, control differs on 245. Step throughput at longest 10/20/40 workload breadths: +0.13%/-0.11%/+0.22%. No production change or global performance conclusion; adoption needs broader validation."

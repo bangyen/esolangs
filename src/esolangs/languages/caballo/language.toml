@@ -82,3 +82,10 @@ verdict = "rejected: prototype locally swaps the next two inputs with 2 and hois
 arity = 8
 saving = 0.0
 verdict = "rejected by construction: the proposed greedy variable-sifting search uses n*n candidates rather than at most four named reorder rules. No search launched; no estimate represented as a measurement."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 2.746
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: construct immutable named tuples through tuple.__new__. 245 programs, 172 halt cleanly; no structural trace differences, control differs on 172. Step throughput at longest 10/20/40 workload breadths: +2.75%/+3.36%/+3.09%. No production change or global performance conclusion; adoption needs broader validation."

@@ -43,3 +43,10 @@ saving = 85.2
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: canonical whole constants. Keep the first input byte on queue zero and drain later bytes into queue one. Emit a literal bit from queue two, pop the first byte low bit, and print its fixed seven-bit tail. Exactly L=n+10-2b characters and commands. Written bits max(bl(L-4)+2,bl(L)+1)+8n+7-b-[n=1]+bl(n), b the answer: state, queue/index pairs, one pending output bit and input cursor. n=8 zero/one 114/116 -> 18/16 chars; n=12 158/160 -> 22/20. n=3 corpus 34277 -> 34181 chars. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources, every read before output and an unread following record. Existing tests expanded without adding cases."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 7.8218
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: construct immutable named tuples through tuple.__new__. 245 programs, 167 halt cleanly; no structural trace differences, control differs on 180. Step throughput at longest 10/20/40 workload breadths: +8.61%/+8.40%/+7.82%. No production change or global performance conclusion; adoption needs broader validation."

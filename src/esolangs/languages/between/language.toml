@@ -61,3 +61,10 @@ verdict = "rejected: place a jump first, then the diagram at address1, then inpu
 arity = 8
 saving = 0.0000
 verdict = "rejected: convert tested inputs to integers and use one computed goto for both-placed nodes with positive destination difference; retain ordinary two-line branches for negative differences. All small rows and four rows of20 random tables per judge arity execute. Actual n=7 chars16785->17976 grows7.10%, n=8 28624->29668 grows3.65%; three-input29478->38092. Positive-difference computed nodes really fire:173 at n=7,320 at n=8,150 across three-input tables. A standalone computed-goto control selects both destination leaves. Conversion costs outweigh removed branch lines. No bool-to-integer conversion extension or branch fallback race ships."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -1.3072
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: reuse unchanged variable binding. 251 programs, 146 halt cleanly; no structural trace differences, control differs on 145. Step throughput at longest 10/20/40 workload breadths: -1.28%/-1.03%/-1.31%. No production change or global performance conclusion; adoption needs broader validation."

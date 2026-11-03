@@ -67,3 +67,10 @@ verdict = "kept: minimal spelling, exempt. The documented truth-machine syntax a
 arity = 8
 saving = 0.0
 verdict = "rejected: dropping padding reads violates read-first/full-consumption conventions. A constant-zero mutant prints before its first read and triggers the instrumented positive control; the shipped constant consumes its input before output and preserves the following token. No size gate can admit this IO violation."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 2.5569
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: hoist literal regex compilation. 245 programs, 145 halt cleanly; no structural trace differences, control differs on 108. Step throughput at longest 10/20/40 workload breadths: +3.25%/+2.56%/+2.83%. No production change or global performance conclusion; adoption needs broader validation."

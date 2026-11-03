@@ -70,3 +70,10 @@ saving = 4.744
 seed = "Random(1000*n+i), i=0..19"
 tables = "20 generic per n7/8; all276 tables/2120 rows n<=3; 20 samples/all rows n4..6"
 verdict = "rejected, completing raw3 independently of the broader arithmetic-arms prototype: only literal-one leaf arms use variable addition/subtraction; shared flag calls keep guards and the compiler still reserves its required variable-operand cell. Actual chars20411->19135 /33939->32329 (6.252/4.744%, declining), below the20% bar. n3 chars39327->36597, commands23128 unchanged,348 rows slow; n1/n2 also have1/10 slower rows. Named and/or/parity/strict-majority/threshold3 also fail: the largest savings are majority7.651/5.294%. All native outputs pass. Smaller programs prove the phase fires; failure of the larger arithmetic proposal was not used as evidence for this subset. No production paths/state added; all old proof scopes, pins and example unchanged."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.6159
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: reuse tape after unchanged arithmetic write. 245 programs, 145 halt cleanly; no structural trace differences, control differs on 145. Step throughput at longest 10/20/40 workload breadths: -0.09%/-0.62%/-0.02%. No production change or global performance conclusion; adoption needs broader validation."

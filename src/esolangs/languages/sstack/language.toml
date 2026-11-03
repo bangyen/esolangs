@@ -90,3 +90,10 @@ saving = -1.4134
 seed = "same fixed20 corpus as bottom_pair_reorder"
 tables = "all small tables/rows;sampled4..8;both input bits and enclosing parent arms"
 verdict = "rejected: literal47 rewrite is29chars versus27 for the existing10 node. Input0 uses two fewer commands, input1 two more. Applied to every matching node, fixed20 source34067->34563 /66646->67588 grows1.4560/1.4134%; exhaustive n3 source26748->27182,commands32624 unchanged. The saturation alternative uses two decrements instead of pop/literal and is30chars, not a shorter spelling. The literal and swap variants together pass6801 native checks with opposite-answer controls; both nested arms execute in the exhaustive corpus. No arithmetic rewrite or additional state retained. All generator/proof source, exact scopes, pins, anchors and example remain unchanged."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -2.5837
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: decode stack names by code point. 245 programs, 147 halt cleanly; no structural trace differences, control differs on 145. Step throughput at longest 10/20/40 workload breadths: -1.52%/-1.54%/-2.58%. No production change or global performance conclusion; adoption needs broader validation."

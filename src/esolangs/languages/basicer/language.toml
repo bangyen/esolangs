@@ -49,5 +49,5 @@ verdict = "retained: constants already form n numbered GOTO-next/next menus foll
 price = -1.0529
 workload = "constructor plus step; no snapshots timed"
 seed = 0
-tables = "all n<=3 tables/rows where a generator exists, published examples and 300 seeded mutations; 400-step cap"
-verdict = "prototype only: strip each source row once. 2493 programs, 2196 halt cleanly, no trace differences; deliberate control differs on 2193. Step throughput at longest 10/20/40 workload breadths: -1.05%/+0.64%/+0.39%. No production change; these workloads establish no useful gain, not a global performance wall."
+tables = "all n<=3 generated tables/rows where supported, examples and 300 seeded mutations; 400-step cap"
+verdict = "prototype only: strip each source row once. 2493 programs, 2196 halt cleanly; no structural trace differences, control differs on 2193. Step throughput at longest 10/20/40 workload breadths: -1.05%/+0.64%/+0.39%. No production change or global performance conclusion; adoption needs broader validation."

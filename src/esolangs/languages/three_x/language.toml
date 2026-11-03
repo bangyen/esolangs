@@ -132,3 +132,10 @@ saving = 0.121
 seed = "random.Random(1000*n+i).getrandbits(1<<n), i<200"
 tables = "400 generic tables n7/8; exhaustive276 tables n1..3;24 tables each n4..6; parity/and/or/majority n4..10"
 verdict = "rejected: complement emission and3 R ^3x! decode are correct, but source saves .511%/.121%,262666/489493 ->261325/488899, below20% declining. The tail saves3 chars, not4: x takes[a,b,c] to(c-b)/a, so[3,R,3] computes(3-R)/3. Reversed subtraction[3,3,0] instead prints-1, caught by native algebra control. Unconditional n3 source36866 ->36104, commands251718 ->245622 (2.422%);90 tables grow. Even audit-only best-of-old/complement source race saves1.928%/1.133% at7/8; n3 source35219, commands244476 (2.877%),198 slower rows, failing5% execution admission too. Both polarities execute allsmall and sampled4..10 with ordered reads/sentinel; no production race added, no bounds/pins/anchors/examples changed."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.1956
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: reuse exact default rational. 249 programs, 163 halt cleanly; no structural trace differences, control differs on 28. Step throughput at longest 10/20/40 workload breadths: -0.20%/+0.17%/-0.15%. No production change or global performance conclusion; adoption needs broader validation."

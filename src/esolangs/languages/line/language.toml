@@ -125,3 +125,10 @@ verdict = "Kept by the 25% proved-command-bound route: projected inline reads re
 
 [ablations.proof_ceiling_review_20261103]
 verdict = "reviewed: globally consistent gaps give a source ceiling of 6,283,200/12,756,800 pixels at n=6/7 (unit 20). Independent leaf choices and a potentially smaller complete fold prevent an attainment claim. Scaling stays linear in T; all source arities and the at-most flag remain. All 768 rows of eight rendered/extracted programs pass."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -16.8671
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: slotted machine storage. 244 programs, 144 halt cleanly; no structural trace differences, control differs on 144. Step throughput at longest 10/20/40 workload breadths: -0.11%/+0.16%/-16.87%. No production change or global performance conclusion; adoption needs broader validation."

@@ -72,3 +72,10 @@ verdict = "kept: minimal spelling, exempt. Remove ignored separators and reprice
 arity = 8
 saving = 0.0
 verdict = "rejected: suppressing constant-leaf input drains prints table 0011 after one read instead of two. A read-first positive control rejects the mutant while the shipped program reads both and preserves its following byte. No input-consumption weakening or cross-depth merge based on unread inputs."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 6.4316
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: construct immutable named tuples through tuple.__new__. 245 programs, 145 halt cleanly; no structural trace differences, control differs on 145. Step throughput at longest 10/20/40 workload breadths: +7.02%/+7.30%/+6.43%. No production change or global performance conclusion; adoption needs broader validation."

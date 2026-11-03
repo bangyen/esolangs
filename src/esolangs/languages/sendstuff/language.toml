@@ -109,3 +109,10 @@ saving = -0.224
 seed = "Random(1000*n+i)"
 tables = "20 random per n7/8; native leaf controls and a constant-drain counterexample"
 verdict = "rejected as a general rule. Raw constant terminals violate required consumption: table00000001,input000 prints0 after only1 read. Named terminal01 alone grows fixed20 n7/8 source16707→16767 /26845→26905; rewriting both01/10 grows540chars per arity because branch macros and still-referenced constant terminals already share. Only independently qualifying whole last-input unary families ship; shared terminal definitions in generic diagrams remain. Production exhaustive n3 source49336→48361,commands23680→23632;4456 paired native checks plus layouts/EOF, no table larger/slower. All8 source pins shrink; last-row/per-row command pins stay unchanged."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 0.0268
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: construct immutable named tuples through tuple.__new__. 245 programs, 145 halt cleanly; no structural trace differences, control differs on 145. Step throughput at longest 10/20/40 workload breadths: +0.70%/+0.03%/+0.58%. No production change or global performance conclusion; adoption needs broader validation."

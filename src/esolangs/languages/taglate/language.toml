@@ -95,3 +95,10 @@ verdict = "rejected raw layout: native n3 table00000001 row1 prints1 instead of0
 
 [ablations.resource_exactness_20261103]
 verdict = "restored: literal-seed E=C+56 and W=Q+bl(C)+bl(n) attain all original n3/4/5 scopes; gy/gz count as single commands. Full-support 0001, then zeros, then1111 selects nibble15 at row T-4. Empty-seed narrow/balanced rebuilding has conservative E<=B+C+56 and W<=max(Q,7B,28)+bl(A)+bl(n): the final URL has M<=B ASCII cells, and the affine negative coefficient's final rebuild needs28 bits. No emitter change or source/pin change. Native exhaustive n<=3 and attainers4/5, with width1/balanced controls, pass2424 rows in6.60 CPU-s. Small boundaries n1 E10/W39 and n2 E137/W70 also attain; registered scopes stay3/4/5. Runtime sampling ends at halt, matching WrittenState and the repository benchmark."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 0.4268
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: word wrap bit mask. 247 programs, 203 halt cleanly; no structural trace differences, control differs on 231. Step throughput at longest 10/20/40 workload breadths: +0.54%/+1.01%/+0.43%. No production change or global performance conclusion; adoption needs broader validation."

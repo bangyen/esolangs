@@ -71,3 +71,10 @@ verdict = "rejected: bounded variants rename declared functions after inlining, 
 arity = 8
 saving = 5.1067873017
 verdict = "rejected generic move: digits at top+1/top+2, with Boolean mapping cells48/49 unchanged, save7.2675%/5.1068% over200 seeded n7/8 tables, below10% and declining. 5040 native pilot runs compute every tested answer with full read-first/sentinel consumption and small workspace bounds. AND/OR and their complements save11.23..12.43% at7 and11.98..13.09% at8, but extending this growing named curve through20 gives13.32..14.06% at19 and12.78..13.50% at20, declining below20%; no favorable arity cap. All four named tables execute every row at7/8 under baseline and all five prototype variants (9216 native runs total), including explicit tail-guard traces. A wrong table and a removed print both fire output controls. No generic or named admission and no bundle of subthreshold rules."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -1.2647
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: byte wrap bit mask. 245 programs, 175 halt cleanly; no structural trace differences, control differs on 162. Step throughput at longest 10/20/40 workload breadths: +0.32%/+0.69%/-1.26%. No production change or global performance conclusion; adoption needs broader validation."

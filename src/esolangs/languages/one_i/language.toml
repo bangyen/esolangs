@@ -109,3 +109,10 @@ arity = 8
 saving = 0.0
 tables = "canonical dense7 table lifted into8 inputs at positions0/3/7;468 generic ignored-input native/W rows and3282 parity/projection rows"
 verdict = "kept canonical, exempt: arithmetic tails otherwise lose their two-essential-bit opportunity when the final physical input is ignored (cost226 against real430, violating half). Project the whole tree and interleave B$ drains before/between/after essential reads; local constants still drain all remaining physical inputs with bareB. Lift costs now2/16/57 against430. No input reordering, early print or old-source fallback; all400 generic judge programs byte-identical, so source admission is unpadded. Source overhead<=2h*2^m remains O(T), and each executed path pays atmost2h commands. Exact all-essential S/E/W witnesses still attain the global bounds."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 0.8815
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap; plus two function-call probes and literal sequences of 32/128/512 functions"
+verdict = "prototype only: index literal closing brackets. 250 programs, 154 halt cleanly; no structural trace differences, control differs on 5. Step throughput at longest 10/20/40 workload breadths: +3.76%/+3.84%/+0.88%. No production change or global performance conclusion; adoption needs broader validation."

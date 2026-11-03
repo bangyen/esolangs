@@ -90,3 +90,10 @@ verdict = "rejected raw eight-bit inlining: byte200 survives UTF8 roundtrip and 
 arity = 8
 saving = 0.0
 verdict = "unselected as an additional rule. Standalone 2*&+ in place of &\\2*+ computes the same Horner recurrence and is correct in81140 native rows for this variant (243420 combined old/Horner/nibble rows). By itself default area remains240 at7/8 (positive area change occurs at smaller arities, so this is not a vacuous probe). Standalone n3 area21514->20074,chars12896->12176,commands86128->80368 (6.6877%), with no growing/slower default cases in explicit small-table controls and273 arity/projected-count row controls. That clears the separate5% execution gate before nibble packing. Once the chosen lookup is installed, an additional global rewrite changes only natural projections in the n3 corpus:4096 paired native rows measure45664->45616commands (0.1051%), below5%. Keep existing natural/general/requested-width readers; no global Horner rule is stacked. The new lookup uses its own direct index arithmetic and still clears its source gate without that shortening, as separately executed94/128-cell controls show."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 9.126
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: construct immutable named tuples through tuple.__new__. 271 programs, 158 halt cleanly; no structural trace differences, control differs on 271. Step throughput at longest 10/20/40 workload breadths: +9.13%/+9.96%/+10.19%. No production change or global performance conclusion; adoption needs broader validation."

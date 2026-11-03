@@ -89,3 +89,10 @@ arity = 8
 seed = "Random(184700+n).choices('01'), 200 tables per judge arity"
 tables = "same native corpus as shared_parity_prefix; forced branching on every nonconstant small table"
 verdict = "rejected 2026-11-02: complementing normalized 0/2 by -x gives -4/0 and reverses the arms, but the IA marker is still needed to exit the first loop and skip the other arm. Keeping it costs 18 rather than 16 characters per node: judge totals grow 56796->57996 / 90791->91991. The 15-character marker-elision mutant on table 0110/input00 exceeds a 1000-step guard while growing its stack; it does not yield a valid saving or necessarily a repeated-state cycle. The repaired variant passes 5864 native rows plus 2092 forced small-branch rows. No global optimality or stack-access impossibility inferred; no production change."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 7.5562
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: index static loop partners. 248 programs, 167 halt cleanly; no structural trace differences, control differs on 128. Step throughput at longest 10/20/40 workload breadths: +7.89%/+8.62%/+7.56%. No production change or global performance conclusion; adoption needs broader validation."

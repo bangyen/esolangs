@@ -67,3 +67,10 @@ verdict = "rejected for the unchanged workspace invariant, despite correct sampl
 arity = 8
 saving = 5.52
 verdict = "rejected for input consumption. 2760 native executions compute the right bit, but1338 print before all row inputs are consumed. Table0001,row00 prints0 after only one of two inputs; baseline consumes both and preserves the following7. Twenty-table n7/8 source saves5.61%/5.52%, also below the noncanonical percentage gate. Equal-halves reads and existing root constants are retained in the prototype; neither masks the leaf failure."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 5.2153
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: construct immutable named tuples through tuple.__new__. 245 programs, 176 halt cleanly; no structural trace differences, control differs on 180. Step throughput at longest 10/20/40 workload breadths: +5.68%/+5.22%/+5.37%. No production change or global performance conclusion; adoption needs broader validation."

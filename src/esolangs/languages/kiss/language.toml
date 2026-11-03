@@ -53,3 +53,10 @@ verdict = "retained: the existing skip chain consumes every input before output.
 arity = 8
 saving = 0.0
 verdict = "rejected: the proposed offline term search and frozen bottom table violate the named-rule/no-search construction requirement; no search was launched. Concrete shorter alternatives fail their IO contract: SSK(KK) reads once but prints 00 on input 1, where SS(SKK)(KK) prints 0. Factoring S(PK)(QK) into SPQK halts without reading when P=K; adding the shared K triggers S reduction instead of its two-argument read. 28 actual executions cover both leaf bits, all four P/Q pairs, and a known skip followed by a cat on all two-bit inputs. Positive shipped controls read exactly the required bits and print once. No general minimality claim; unchanged generator, bounds, examples and pins."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 0.3479
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: reuse combinator arity. 247 programs, 156 halt cleanly; no structural trace differences, control differs on 150. Step throughput at longest 10/20/40 workload breadths: +0.35%/+0.61%/+0.52%. No production change or global performance conclusion; adoption needs broader validation."

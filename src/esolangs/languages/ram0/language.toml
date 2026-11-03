@@ -100,4 +100,4 @@ price = 30.3044
 workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: direct immutable state construction. 445 programs, 380 halt cleanly, no trace differences; deliberate control differs on 375. Step throughput at longest 10/20/40 workload breadths: +31.36%/+30.30%/+30.91%. Promising; broader corpus and source-size timings required before adoption."
+verdict = "prototype only: direct immutable state construction. 445 programs, 380 halt cleanly; no structural trace differences, control differs on 375. Step throughput at longest 10/20/40 workload breadths: +31.36%/+30.30%/+30.91%. No production change or global performance conclusion; adoption needs broader validation."

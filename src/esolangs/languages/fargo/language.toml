@@ -143,4 +143,4 @@ price = 1.4003
 workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: slotted immutable dataclasses. 247 programs, 151 halt cleanly, no trace differences; deliberate control differs on 159. Step throughput at longest 10/20/40 workload breadths: +2.00%/+1.40%/+1.49%. No production change; these workloads establish no useful gain, not a global performance wall."
+verdict = "prototype only: slotted immutable dataclasses. 247 programs, 151 halt cleanly; no structural trace differences, control differs on 159. Step throughput at longest 10/20/40 workload breadths: +2.00%/+1.40%/+1.49%. No production change or global performance conclusion; adoption needs broader validation."

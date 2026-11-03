@@ -97,3 +97,10 @@ arity = 8
 seed = "random.Random(184700+n), sequential choice('01')"
 tables = "200 random per n=7,8; exhaustive all tables/rows n<=3; 20 random per n=4..6"
 verdict = "rejected 2026-11-02: removing digit48 while later qe et qe reads remain produces native division by zero (6/0) on 0110,row0. A valid one-cell repair stores 1 at digit49 (digit48 for complemented reads), defaults the other digit to 0, adds 1 to each lookup, and materializes later factors in scratch2 before the pure Horner product. It preserves normal/complemented read selection and the workspace bound, but n=7/8 source grows 128631→165431 (+28.609%) / 165085→208285 (+26.168%); all 200 tables per arity grow. n=3 statements 18352→20048, 254 tables grow and 1744 rows slow. All 3960 repaired native output/IO/workspace controls pass; raw missing-cell and wrong-answer controls fail as intended. No production change."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 3.5273
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: hoist literal regex compilation. 249 programs, 169 halt cleanly; no structural trace differences, control differs on 156. Step throughput at longest 10/20/40 workload breadths: +3.53%/+4.20%/+4.71%. No production change or global performance conclusion; adoption needs broader validation."

@@ -129,3 +129,10 @@ saving = 33.8489
 seed = "constructive worst lone zero, all-one input; both rotations"
 tables = "n7/8 actual old6,pair6 and raw5,pair5; original native small/large corpus retained"
 verdict = "not selected after full execution recheck. Original old6->pair6 at7 saves24.307% backward/17.766% forward, below25; the earlier comparison to extrapolated normalized2..6 bounds was invalid and withdrawn. Against kept raw5 the default backward pair clears25:35095->25332 (27.819%) at7,53990->35715 (33.849%) at8; forward saves23.866/30.399% and also runs faster. Numerical qualification is not the rejection reason after raw5. Supplied uniform radix4 uses less source and fewer commands than pair5 at both arities/cycles without a decoder: backward source847/1310,commands21191/34486 versus pair5 source900/1331,commands25332/35715; forward source911/1390,commands26263/41174 versus pair5 source964/1411,commands33364/44443. Thus the294/302-glyph pair decoder and four scratch carriers add avoidable complexity in the governing metrics. Among the simple qualified radix4/5 alternatives, radix5 is smaller and is kept by size-first policy. Native output/read/sentinel controls and pair wall gains pass; historical pair proof, timings and candidate files remain archived, with no pair construction or resource-witness path in production. No rotation-specific admission policy or old-source race is introduced."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = 0.267
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: byte wrap bit mask. 245 programs, 198 halt cleanly; no structural trace differences, control differs on 215. Step throughput at longest 10/20/40 workload breadths: +0.27%/+0.69%/+0.49%. No production change or global performance conclusion; adoption needs broader validation."

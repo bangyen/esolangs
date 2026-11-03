@@ -105,3 +105,10 @@ saving = 0.0
 seed = 0
 tables = "exact generated coordinate fragments at logical53/56/108-bit indices; forced-threshold small corpus"
 verdict = "mandatory correctness repair2026-11-02, not a size candidate. Fish comma produces binary64. Executed raw packed56-bit x9007199254741518 instead of expected9007199254741519; packed-fold x0 instead of1; ordinary narrow53-bit y9007199254742016 instead of9007199254742015 after height addition. These are exact generated prefixes with tiny stand-in data, stopped before g; no giant truth table or whole large-program claim. Guard every converted intermediate and coordinate against2^53. Unsafe packed row uses existing integer plain lookup; unsafe packed fold uses an unpacked power-of-two fold. If that quotient+height is unsafe too, high/low input-bit Horner accumulators form integer coordinates without division. This is the genuine precision-stop exception, not a source race or arbitrary arity cap; interpreter semantics are unchanged. Source/build remain O(T); balanced source still folds near sqrt(T). Forced threshold0 executes12720 small default/width/balanced rows and changes996 sources; native53/56/108-bit integer coordinate prefixes are exact. For a fold payload C and body L, exact E=L+2floor((L-1)/C)+1. Every balanced route has conservative E<=40n+200, W<=7n+220 bits (three coordinate floats, integer-prefix copies, position/directions/input), in addition to default caps. All8 pins, Size anchors and balanced example updated and executed; [audits].trick_prototype=2026-11-02 verified."
+
+[interpreter_ablations.speedup_prototype_20261103]
+price = -0.4958
+workload = "constructor plus step; no snapshots timed"
+seed = 0
+tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
+verdict = "prototype only: C arithmetic operators. 249 programs, 151 halt cleanly; no structural trace differences, control differs on 90. Step throughput at longest 10/20/40 workload breadths: +0.94%/-0.50%/-0.07%. No production change or global performance conclusion; adoption needs broader validation."
