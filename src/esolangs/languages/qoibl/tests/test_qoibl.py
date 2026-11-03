@@ -95,24 +95,24 @@ class TestQoiblBehaviour:
         with pytest.raises(ValueError, match="malformed Qoibl expression"):
             run(["tt y tt w"], IO())
 
-    @pytest.mark.parametrize("left", range(5))
-    @pytest.mark.parametrize("right", range(6))
-    def test_one_digit_adder(self, left: int, right: int) -> None:
-        code: list[str] = [
-            "we e we yyeeee we",  # var[0] = 2
-            "we y we et ry ey ry qe e qe we",  # var[1] = input - 2
-            "we ye we et ry ey ry qe e qe we",  # var[2] = input - 2
-            "we y we qe y qe ry ee ry qe ye qe we",  # var[1] = var[1] + var[2]
-            "we y we qe y qe ry ee ry qe e qe we",  # var[1] = var[1] + 2
-            "tt qe y qe tt",  # print var[1]
-        ]
+    def test_one_digit_adder(self) -> None:
+        for left in range(5):
+            for right in range(6):
+                code: list[str] = [
+                    "we e we yyeeee we",  # var[0] = 2
+                    "we y we et ry ey ry qe e qe we",  # var[1] = input - 2
+                    "we ye we et ry ey ry qe e qe we",  # var[2] = input - 2
+                    "we y we qe y qe ry ee ry qe ye qe we",  # var[1] = var[1] + var[2]
+                    "we y we qe y qe ry ee ry qe e qe we",  # var[1] = var[1] + 2
+                    "tt qe y qe tt",  # print var[1]
+                ]
 
-        with (
-            patch("builtins.input", return_value=f"{left}{right}"),
-            redirect_stdout(io.StringIO()) as f,
-        ):
-            run(code, IO())
-        assert f.getvalue() == str(left + right)
+                with (
+                    patch("builtins.input", return_value=f"{left}{right}"),
+                    redirect_stdout(io.StringIO()) as f,
+                ):
+                    run(code, IO())
+                assert f.getvalue() == str(left + right)
 
     def test_variable_indices_stay_within_the_256_cell_list(self) -> None:
         from esolangs.exceptions import HaltError

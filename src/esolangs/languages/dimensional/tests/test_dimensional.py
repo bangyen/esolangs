@@ -71,15 +71,13 @@ class TestDimensional:
     def test_prints(self, code: str, expected: str) -> None:
         assert run_and_capture(code) == expected
 
-    @pytest.mark.parametrize("dimension", ["0", "1", "~1"])
-    @pytest.mark.parametrize("delta", [-257, -256, -1, 0, 1, 255, 256, 257])
-    def test_coordinate_read_wraps_and_reset_is_local(
-        self, dimension: str, delta: int
-    ) -> None:
-        move = ">" if delta >= 0 else "<"
-        code = ">2" + (move + dimension) * abs(delta)
-        code += f"?{dimension}.!{dimension}?{dimension}.?2."
-        assert run_and_capture(code) == chr(delta % 256) + "\x00\x01"
+    def test_coordinate_read_wraps_and_reset_is_local(self) -> None:
+        for dimension in ["0", "1", "~1"]:
+            for delta in [-257, -256, -1, 0, 1, 255, 256, 257]:
+                move = ">" if delta >= 0 else "<"
+                code = ">2" + (move + dimension) * abs(delta)
+                code += f"?{dimension}.!{dimension}?{dimension}.?2."
+                assert run_and_capture(code) == chr(delta % 256) + "\x00\x01"
 
     def test_hex_literal(self) -> None:
         assert run_and_capture("=41.") == "A"

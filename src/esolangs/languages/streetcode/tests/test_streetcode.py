@@ -93,13 +93,11 @@ class TestStreetcodeIO:
     def test_newline_input_is_preserved(self) -> None:
         assert run_street("CIO;", inputs=[""]) == chr(10)
 
-    @pytest.mark.parametrize("left", ["A", "z", "é", " "])
-    @pytest.mark.parametrize("right", ["B", "0", "λ", " "])
-    def test_two_cells_print_in_reverse_input_order(
-        self, left: str, right: str
-    ) -> None:
-        expected = right + left
-        assert run_street("CI=IO_O;", inputs=[left + right]) == expected
+    def test_two_cells_print_in_reverse_input_order(self) -> None:
+        for left in ["A", "z", "é", " "]:
+            for right in ["B", "0", "λ", " "]:
+                expected = right + left
+                assert run_street("CI=IO_O;", inputs=[left + right]) == expected
 
     def test_exhausted_input_raises_eof(self) -> None:
         machine = _Machine(["CI;"], ScriptedIO(""))

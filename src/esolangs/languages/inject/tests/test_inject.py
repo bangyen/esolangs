@@ -95,11 +95,11 @@ class TestWikiExamples:
         """A blank line is one empty line; only EOF empties the block."""
         assert _run(CAT, "ab\n\ncd\n") == "ab\n\ncd\n"
 
-    @pytest.mark.parametrize("first", ["", "a b", "loop;", "λ"])
-    @pytest.mark.parametrize("last", ["", "0", "skip", "  "])
-    def test_cat_preserves_line_content_and_order(self, first: str, last: str) -> None:
-        data = f"{first}\n\n{last}\n"
-        assert _run(CAT, data) == data
+    def test_cat_preserves_line_content_and_order(self) -> None:
+        for first in ["", "a b", "loop;", "λ"]:
+            for last in ["", "0", "skip", "  "]:
+                data = f"{first}\n\n{last}\n"
+                assert _run(CAT, data) == data
 
     def test_wiki_truth_machine_is_inverted(self) -> None:
         """The wiki's truth machine halts on 1 and loops on 0 -- backwards."""

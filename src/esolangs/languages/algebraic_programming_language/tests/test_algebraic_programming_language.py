@@ -611,10 +611,13 @@ class TestPureTransition:
         assert printed == ["2\n"]
 
 
-@pytest.mark.parametrize("numerator", [0, 1, 2, 7, 16, 31])
-@pytest.mark.parametrize("denominator", [1, 2, 3, 8])
-def test_rounding_matches_integer_bounds(numerator: int, denominator: int) -> None:
-    fraction = f"{numerator} / {denominator}"
-    lower, residue = divmod(numerator, denominator)
-    assert run_and_capture(f"{FLOOR}\nFLOOR({fraction})") == f"{lower}\n"
-    assert run_and_capture(f"{CEIL}\nCEIL({fraction})") == f"{lower + bool(residue)}\n"
+def test_rounding_matches_integer_bounds() -> None:
+    for numerator in [0, 1, 2, 7, 16, 31]:
+        for denominator in [1, 2, 3, 8]:
+            fraction = f"{numerator} / {denominator}"
+            lower, residue = divmod(numerator, denominator)
+            assert run_and_capture(f"{FLOOR}\nFLOOR({fraction})") == f"{lower}\n"
+            assert (
+                run_and_capture(f"{CEIL}\nCEIL({fraction})")
+                == f"{lower + bool(residue)}\n"
+            )

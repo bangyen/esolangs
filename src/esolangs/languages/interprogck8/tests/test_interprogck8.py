@@ -158,11 +158,11 @@ class TestWikiExamples:
             run(DICE, io, Seeded(seed))
             assert 1 <= _pips(io.getvalue()) <= 6
 
-    @pytest.mark.parametrize("face", range(1, 7))
-    def test_each_dice_face_prints_its_pips(self, face: int) -> None:
-        io = ScriptedIO("")
-        run(DICE, io, FirstDraw(face - 1))
-        assert io.getvalue() == ":" * (face // 2) + "." * (face % 2)
+    def test_each_dice_face_prints_its_pips(self) -> None:
+        for face in range(1, 7):
+            io = ScriptedIO("")
+            run(DICE, io, FirstDraw(face - 1))
+            assert io.getvalue() == ":" * (face // 2) + "." * (face % 2)
 
 
 class TestDiceLiterals:

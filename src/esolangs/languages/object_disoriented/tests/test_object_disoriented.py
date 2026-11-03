@@ -175,7 +175,7 @@ class TestContract(EmptyProgramContract, CycleContract):
     no_cycle_reason = "Object disoriented divergence grows the call frame stack."
 
 
-@pytest.mark.parametrize("byte", range(256))
-def test_object_bits_pack_to_the_corresponding_byte(byte: int) -> None:
-    objects = ["nrpzz" if bit == "1" else "z" for bit in f"{byte:08b}"]
-    assert _run(_bits(*objects)) == chr(byte)
+def test_object_bits_pack_to_the_corresponding_byte() -> None:
+    for byte in range(256):
+        objects = ["nrpzz" if bit == "1" else "z" for bit in f"{byte:08b}"]
+        assert _run(_bits(*objects)) == chr(byte)

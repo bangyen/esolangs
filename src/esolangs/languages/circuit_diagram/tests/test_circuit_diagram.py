@@ -73,10 +73,10 @@ def cold_compile(monkeypatch: pytest.MonkeyPatch) -> _lru_cache_wrapper[_Topolog
 class TestPrimeTester:
     """The page's only worked example, replayed over its whole input space."""
 
-    @pytest.mark.parametrize("value", range(16))
-    def test_exact_output_matches_trial_division(self, value: int) -> None:
-        prime = value >= 2 and all(value % divisor for divisor in range(2, value))
-        assert output_for(PRIME_TESTER, bits_of(value)) == str(int(prime))
+    def test_exact_output_matches_trial_division(self) -> None:
+        for value in range(16):
+            prime = value >= 2 and all(value % divisor for divisor in range(2, value))
+            assert output_for(PRIME_TESTER, bits_of(value)) == str(int(prime))
 
     def test_cached_topology_keeps_run_state_isolated(
         self, cold_compile: _lru_cache_wrapper[_Topology]
