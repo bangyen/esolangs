@@ -74,6 +74,10 @@ write <- result;"""
     )
     assert _run(code) == "\x18"
 
+    from .oracle_checks import check_raw_basicfuck
+
+    check_raw_basicfuck()
+
 
 def test_the_wiki_array_example_addresses_by_offset() -> None:
     """``arr->3`` is ``z``, the cell after the array's last."""
