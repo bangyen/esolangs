@@ -152,6 +152,9 @@ class TestIndirectFamily:
 
 
 def test_sbleq_looping_run_is_detected_as_a_cycle() -> None:
+    from .oracle_checks import check_raw_s_bleq
+
+    check_raw_s_bleq()
     # a=0 b=0 c=2: diff is always 0, so it jumps to mem[2] (address 0) forever
     machine = Sbleq("0 0 0", ScriptedIO(), store="a")
     assert run_until_halt_or_cycle(machine) is False
