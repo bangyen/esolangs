@@ -306,6 +306,9 @@ def test_unsupported_leapfrog_resume_is_rejected_before_execution() -> None:
 
 
 def test_leapfrog_resume_readings_diverge_on_a_searched_witness() -> None:
+    from .oracle_checks import check_raw_slow_acv_mammalian
+
+    check_raw_slow_acv_mammalian()
     from esolangs.languages.slow_acv_mammalian.interpreter import run
     from esolangs.runtime.io import ScriptedIO
 
