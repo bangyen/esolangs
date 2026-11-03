@@ -21,6 +21,7 @@ class TestGrapheme:
     def test_there_is_no_branch_left(self) -> None:
         """Indexing a literal needs no skip: parity emits no ``U``/``V``/``X``."""
         _check_constants()
+        _check_seed()
         parity = boolean.grapheme("01101001")
         assert set("UVX").isdisjoint(parity)
         assert set("UVX").isdisjoint(boolean.grapheme("0" * 8))
@@ -83,7 +84,7 @@ class TestGraphemeTable:
 
 
 @pytest.mark.parametrize("mode", ["between_letters", "after_each_letter"])
-def test_generator_literals_are_exact(mode) -> None:
+def test_generator_literals_are_exact(mode: str) -> None:
     from esolangs.languages.grapheme.generator import grapheme
 
     for n in range(1, 13):
@@ -121,6 +122,7 @@ def _check_constants() -> None:
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Grapheme", bit * (1 << n), **options)
+                assert isinstance(program, str)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(
                         esolangs.encode_inputs("Grapheme", [int(b) for b in row])
@@ -131,3 +133,30 @@ def _check_constants() -> None:
                     assert io.reads == n
                     assert io.past_end == 0
                     assert io.input_char() == ord("7")
+
+
+def _check_seed() -> None:
+    """The first essential factor survives ignored reads and underfeeding."""
+    from esolangs.exceptions import InputExhaustedError
+    from esolangs.languages.grapheme.generator import grapheme
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value: object) -> None:
+            assert self.reads == 3
+            super()._write(value)
+
+    for mode in ("between_letters", "after_each_letter"):
+        for table in ("00001111", "00110011", "01010101", "01101001"):
+            code = grapheme(table, integer_conversion=mode)
+            for row in range(8):
+                bits = f"{row:03b}"
+                io = ReadFirstIO(
+                    "".join("A\n" if bit == "1" else "%\n" for bit in bits) + "Q\n"
+                )
+                run(code, io, integer_conversion=mode)
+                assert io.getvalue() == table[row]
+                assert io.past_end == 0
+                assert io.input_str() == "Q"
+            for prefix in ("", "A\n", "A\nB\n"):
+                with pytest.raises(InputExhaustedError):
+                    run(code, ScriptedIO(prefix), integer_conversion=mode)

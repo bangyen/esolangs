@@ -69,3 +69,10 @@ verdict = "rejected: removing the inner [) ... ] release layer around dispatch s
 arity = 8
 saving = 0.0
 verdict = "no admitted form: the proposal supplies arithmetic identities but no executable two-read schedule. A concrete first-character retention probe replaces the skip drop with a block constructor before the shipped final read; all four two-input executions read twice and print the second bit, so it fails AND on 01. Holding the first value alone does not combine it. A shorter scheduled arithmetic replacement remains unestablished; no searched or frozen bottom table is introduced. Shipped source, bounds, examples and pins unchanged."
+
+[ablations.trick_recheck_20261103_raw3_bit_extraction]
+arity = 2
+saving = 0.0
+seed = 0
+tables = "all 16 two-input tables, all four rows; shipped control plus three fixed trims, 256 native runs"
+verdict = "rejected bounded raw3 refinements beyond release-wrapper removal: in each node delete the final49 and replace its first /~ with ~ (raw ASCII swap count), empty text (no reorder), or %~ (ASCII zero test). No search; native _Machine cap10,000steps with trailingQ. Shipped controls pass64/64 rows, read exactly2 characters, preserveQ and halt within50steps. The three trims fail48/64,48/64,16/64 rows. Table0001,input00 falsifies the first two: output00Q,3reads and1EOF probe,66/63steps against the unchanged50-step cap. Table0001,input11 falsifies %~: output0 instead of1, despite2reads,no EOF probe and50steps. Independent re-execution reproduces all256 runs in0.013CPU-s. These reject only the three explicit extraction trims; they establish neither wrapper nor bit-extraction minimality. Generator source, bounds and pins unchanged."

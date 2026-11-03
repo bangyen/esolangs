@@ -51,7 +51,7 @@
   "forbin": "linear: at most N characters, n = 2..134: two an entry, distinct blocks",
   "fractran": "linear: worst C = \u03a3_{d<n} min(2^d,2^2^(n-d)-2^2^(n-d-1)) states, O(log T) digits",
   "freestajlo": "linear: worst min(T + 4n + 1, \u2308T/6\u2309 + 4n + 19) characters",
-  "grapheme": "linear: at most 17n + 21 + digits(2^T) characters from n=2",
+  "grapheme": "linear: at most 17n + 15 + digits(2^T) characters from n=2",
   "home_row": "linear: worst 6T + 10n + 61 characters past n = 1: pairs",
   "hot": "linear: worst 27T/2 + 73n + 86 characters past n = 1: pairs",
   "hq9_with_headers": "linear: at most one table literal, one read command per input",

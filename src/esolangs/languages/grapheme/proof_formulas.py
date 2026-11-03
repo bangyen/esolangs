@@ -10,12 +10,12 @@ def _digits(n: int) -> int:
 
 
 def execution(n: int, _: str) -> int:
-    """One command a character: 17 an input, a 20-letter frame, ``F…F``.
+    """One command a character: 17 an input, a 14-letter frame, ``F…F``.
 
     The minimal lift has at most ``d + 1`` digits, ``d`` those of 2^T; the
     value 10^(d-1) - 1 needs all of them.
     """
-    return 17 * n + 21 + _digits(n)
+    return 17 * n + 15 + _digits(n)
 
 
 def _lift_bits(n: int) -> int:
@@ -56,8 +56,8 @@ def workspace(n: int, _: str) -> int:
     return (
         16 * d
         + 136 * n
-        + 203
-        + bl(17 * n + d + 6)
+        + 155
+        + bl(17 * n + d)
         + max(t + 14, 2 * _lift_bits(n) + 2)
         + bl(2 * n)
         + bl(n)

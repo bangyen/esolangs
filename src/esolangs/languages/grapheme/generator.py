@@ -7,7 +7,7 @@ fits in 3/4 of the table width (sparse and/or/threshold tables); it has no
 subtrees to fold or share.
 
 Size:
-    O(T) letters; n=10 random 1847: 498 chars, n=16 random 1847: 20,021 chars.
+    O(T) letters; n=10 random 1847: 492 chars, n=16 random 1847: 20,015 chars.
     Constants: 2n + 4 chars and commands in the default dialect.
 """
 
@@ -133,8 +133,15 @@ def _program(
         direct = negate = False
         entries = table
     double = one + "AS" if direct else two + "BS"
-    head = one + "".join(
-        square + read_bit + double if i in reading else drop_unread_line
+    # The first factor multiplies one; seed it directly instead of squaring
+    # and multiplying that identity (six default commands; execution gate).
+    first = used[0]
+    head = "".join(
+        read_bit + double[:-1]
+        if i == first
+        else square + read_bit + double
+        if i in reading
+        else drop_unread_line
         for i in range(n)
     )
     literal = _grapheme_literal(_grapheme_table(entries), dialect)
