@@ -55,6 +55,10 @@ def test_a_painter_ant_is_the_one_that_cannot_be_stepped() -> None:
     ]
     assert unsteppable == ["A Painter Ant"]
 
+    from .oracle_checks import check_raw_a_painter_ant
+
+    check_raw_a_painter_ant()
+
 
 def test_run_read_answer_prints_the_bit_for_a_dump(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
