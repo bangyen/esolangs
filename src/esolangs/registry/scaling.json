@@ -40,7 +40,7 @@
   "dig": "linear: worst A cells past n = 6: the dense table",
   "dimensional": "linear: worst 2T + 20n + 42 characters: two per entry",
   "dinac": "linear: at most 40T + 18n + 120 characters: rarer-answer scan",
-  "egl": "linear: at most 3T+25n+digits(T)+8 characters: original row ceiling",
+  "egl": "linear: worst F characters: full binary layout with T-1 painted ones",
   "eval": "linear: worst S characters past n=3: Gray-indexed table halves",
   "fackward": "linear: worst 43T/2 - 29 characters past n = 1: block per node",
   "false": "linear: at most 9T/2+5n-7 characters past n = 3: to n = 15",
@@ -64,7 +64,7 @@
   "line": "linear: at most F pixels from n=6: projected tree envelope",
   "lol_waht_i_cant_edit_talk_pages": "linear: at most 105T characters: one while-equal loop per branch",
   "malbolge": "measured: worst 13340 characters to n = 13, 19683 at 14, 52480 at 15, then 59049: the 3^10-cell store whole",
-  "minsky_swap": "linear: at most N characters: four fixed leaf targets",
+  "minsky_swap": "linear: worst N characters through n=5; at most beyond",
   "modulous": "linear: worst N characters: T-character literal, one read block an input",
   "monotonic_boolfuck": "linear: worst 53T/2 - 21 characters past n = 1",
   "movesum": "linear: 4T + 6n + 4 commands, 32 characters a row",
@@ -95,7 +95,7 @@
   "slow_acv_mammalian": "linear: at most V characters",
   "smallfuck": "linear: at most Q characters: coefficient recurrence plus a 20n+100 tail",
   "smu": "linear: at most C characters to n = 16, 6T+86 after",
-  "sonata": "linear: at most T + 4n + 101 - 21min(1,(n-2)^2) characters",
+  "sonata": "linear: worst T+4n+101-21min(1,(n-2)^2) characters, n = 1..6; at most beyond",
   "sstack": "linear: at most 24T-9 characters: 21 a node, 3 a leaf, 12 prologue",
   "stisp": "linear: at most F+28 characters past n = 2: named-diagram ceiling plus selectors",
   "streetcode": "linear: worst S cells from n = 2: tree, then the flat street",
@@ -112,5 +112,5 @@
   "unlambda": "linear: at most 169T/8 - 21 characters past n = 3: 315-character halves",
   "unsquare": "linear: worst T + T/2^d + 16\u00b72^d + 10(n-d) + 10 characters",
   "what": "linear: worst S characters: a change point costs 7 and its row's digits",
-  "whitespace": "linear: at most T+4n+70 characters: one literal and shared step"
+  "whitespace": "linear: worst S characters: one literal and shared step"
 }

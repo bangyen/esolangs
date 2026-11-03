@@ -117,6 +117,6 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     empty_program="EGL program must begin with 'width,height:'",
-    proof_workspace=(workspace, False, (3, 5)),
-    proof_execution=(execution, False, (1, 2, 3, 5)),
+    proof_workspace=(workspace, True, (3, 5)),
+    proof_execution=(execution, True, (1, 2, 3, 5)),
 )

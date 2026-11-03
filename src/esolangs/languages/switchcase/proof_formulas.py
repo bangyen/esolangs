@@ -16,12 +16,10 @@ def execution(n: int, _p: str) -> int:
 
 
 def workspace(n: int, _p: str) -> int:
-    """An upper bound including buffered names, character values and IO progress."""
-    name = len(f"x{n - 1}")
-    return (
-        31
-        + n * (8 * name + 6)
-        + (n + 1).bit_length()
-        + (n + diagram_cap(n) + 4).bit_length()
-        + n.bit_length()
-    )
+    """Buffered names/bytes plus a default-arm branch; exact at n=1,2,3,5."""
+    # Full input environment: B+18 bits for buffers, a and _. A branch's
+    # default key costs8, cursor0 costs1, and case index is <=n+node_cap.
+    # Other phases have numeric keys; ignored reads add5 to _ but remove
+    # at least22 buffer bits. Their longer cursors fit the saved arm bits.
+    buffered = sum(8 * len(f"x{i}") + 6 for i in range(n))
+    return buffered + 27 + (n + diagram_cap(n)).bit_length() + n.bit_length()

@@ -60,8 +60,8 @@ verdict = "kept: only opposite bottom leaves print the final input bit (17 chars
 
 
 [formula_arities]
-execution = [1, 2, 3, 5]
-workspace = [1, 2, 3, 5]
+execution = [1, 2, 3, 5, 6]
+workspace = [1, 2, 3, 5, 6]
 
 
 [ablations.garbage_guard_20261103]
@@ -69,7 +69,7 @@ arity = 8
 saving = 17.039
 seed = "Random(1000*n+i), i=0..19"
 tables = "20 generic per n7/8, every row; all276 tables/2120 rows n<=3; 20 samples/all rows n4..6"
-verdict = "kept, completing raw2: ASCII48/49 leaves quotient24 under the bit; one arm appends a fresh zero pair, then pop exposes0 or24 for the zero guard. Fixedchars50517->41989 /101133->83901 (16.881/17.039% sustained), balanced grid_area50855->42330 /101595->84352. Expected random limit17.0584878883%: exact scalar source/general-node recurrences, not a fitted wall; equality probabilities from h11 at most2^-1024, induced limit error below2^-1000. n3 chars33019->28123, commands117008->94544 (19.2%), no larger table or slower row. Native allsmall plus23040 old/raw2/joint rows at7/8 and samples4..6 pass, with read-before-print/sentinel and EOF controls. Wrong pop/guard loses2 control rows. Adds one quotient-guard spelling, removes superseded minus-one/add-one helpers. E worst18n+5, attained by last-row-zero table on all-one input at every n; old scopes3/5 retained and1/2 added. W at most34n+bl(L)+bl(n)+13: READ retains25bits, old one-tail retains7, new tail9 including the negative sign. New tail transient10bits is below old15; +2 per completed level proves the bound from the old envelope. Native n16 uses553bits against false oldcap540, newcap572. Same polynomial class; source39T remains an upper bound. No old-program race/search/frozen table."
+verdict = "kept, completing raw2: ASCII48/49 leaves quotient24 under the bit; one arm appends a fresh zero pair, then pop exposes0 or24 for the zero guard. Fixedchars50517->41989 /101133->83901 (16.881/17.039% sustained), balanced grid_area50855->42330 /101595->84352. Expected random limit17.0584878883%: exact scalar source/general-node recurrences, not a fitted wall; equality probabilities from h11 at most2^-1024, induced limit error below2^-1000. n3 chars33019->28123, commands117008->94544 (19.2%), no larger table or slower row. Native allsmall plus23040 old/raw2/joint rows at7/8 and samples4..6 pass, with read-before-print/sentinel and EOF controls. Wrong pop/guard loses2 control rows. Adds one quotient-guard spelling, removes superseded minus-one/add-one helpers. E worst18n+5, attained by last-row-zero table on all-one input at every n; old scopes1/2/3/6 retained;5 also checked. W at most34n+bl(L)+bl(n)+13: READ retains25bits, old one-tail retains7, new tail9 including the negative sign. New tail transient10bits is below old15; +2 per completed level proves the bound from the old envelope. Native n16 uses553bits above oldcap540, newcap572. Same polynomial class; source39T remains an upper bound. No old-program race/search/frozen table."
 
 [ablations.exit_elision_20261103]
 arity = 8

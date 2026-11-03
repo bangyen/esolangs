@@ -8,10 +8,11 @@ admitted = 2026-09-13T09:46:59-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "a boustrophedon table has three rows per block; binary weights walk horizontally or down whole blocks; symmetric tables retain the count reader"
-scaling = "linear: at most 3T+25n+digits(T)+8 characters: original row ceiling"
-execution = "linear: at most E commands: painting, counters, guards and wrapping no-ops"
-workspace = "linear: at most wh+7+2b(w-1)+2b(h-1)+2b(B)+2b(n) bits: grid, loop and cursors"
-definitions = ["w = declared width", "h = declared height", "B = body characters, including wrapping", "b(x) = max(1,bl(x))", "E = 3T+85n+5; with any newline, 2(3T+85n+5)+1"]
+scaling = "linear: worst F characters: full binary layout with T-1 painted ones"
+execution = "linear: worst E default commands; at most 2E+1 with wrapping newlines"
+workspace = "linear: worst W bits: grid, one counter frame and cursors"
+definitions = ["F = 3T+25n+digits(T)+8 through n=3; 2T+c+5r+25n+digits(c)+digits(3r)+1 beyond; c = 2^min(n,floor((n+3)/2)), r = T/c", "E = 3T+85n+5 through n=3; 2T+c+5r+85n-1 beyond, with c,r as in F", "W = 3T+2n+10+bl(L-d-3)+bl(L-d-9)+2bl(n) through n=3, d = digits(T); wh+7+2b(w-1)+2b(h-1)+2b(B)+2b(n) beyond; w,h declared dimensions, B body length, b(x) = max(1,bl(x))"]
+
 
 [generator_sizes]
 "00000001" = { commands = 270, commands_by_row = { "0" = 261, "1" = 264, "2" = 264, "3" = 267, "4" = 264, "5" = 267, "6" = 267, "7" = 270 }, source_units = 94 }
@@ -96,3 +97,7 @@ saving = 0.26006809909592254
 seed = "random.Random(n).choice"
 tables = 200
 verdict = "rejected: race a complemented painted row against the original, with a fresh row3 cell initialized to1 and the selected bit subtracted into it. Horizontal-only reflection returns the four-row grid to the read origin. Generic7/8 totals101370->101151 (0.2160%) and170340->169897 (0.2601%), below10%; signed named parity, thresholds and projections gain0%. The eleven-character overhead exceeds typical imbalance; this is a limited saving tending to zero, not a sustained one. True3 corpus and steps unchanged.1920 random/named native rows plus all small tables/rows pass; omitting the fresh1 prints0 instead of1 on table1011111111111111,row0. Native7/8 workspace561/1079bits versus baseline433/822: a fourth grid row is a real resource cost. No complement race ships."
+
+
+[ablations.exact_contract_restoration_20261103]
+verdict = "proof-only repair of the exactness dropped by4b969293c; emitted programs unchanged. Full binary inputs with P=T-1 attain exact source and command maxima; a single zero at rowT-2 prevents the count-reader route and all-one input takes every guard. Original R=1 bytes and exact workspace formula remain through n3. For n>=4 the folded W ceiling is attained: last normalizer has x=c-2,y=3r-2, same bit widths as grid maxima; its counter frame PC=B-21 has bl(B) at n4..6 by direct values149/214/313 and thereafter B=2T+c+5r+25n-1 lies between2T+21 and4T. Seven grid bits above baseline come from ASCII49 and counter6. Existing global witness corpus already includes the off-diagonal zero. Source/E/W exactness and all old verification arities restored; no source, pins, example, runtime state or construction path changes."

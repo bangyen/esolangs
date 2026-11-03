@@ -10,8 +10,8 @@ labels = ["linear lookup"]
 qualification = "fixed reversed stack order selects the indexed row"
 scaling = "linear: worst S characters past n=3: Gray-indexed table halves"
 execution = "linear: worst L+1 commands past n=3: unwrapped L<=S; all-one setters skip nothing"
-workspace = "linear: at most 8L+T+2n+1+bl(L) bits past n=3: frame and stack ceiling"
-definitions = ["S = 2T+7n at n=4,5; 7T/4+9n+1 from n=6 (unwrapped)"]
+workspace = "linear: worst W bits past n=3: one frame and staged Boolean cells"
+definitions = ["S = 2T+7n at n=4,5; 7T/4+9n+1 from n=6 (unwrapped)", "W = 8L+T+2n+1+bl(L), minus n when T<8n+4"]
 
 [generator_sizes]
 "00000001" = { commands = 38, commands_by_row = { "0" = 35, "1" = 36, "2" = 36, "3" = 37, "4" = 36, "5" = 37, "6" = 37, "7" = 38 }, source_units = 37 }
@@ -81,3 +81,10 @@ saving = 0.3961830911691666
 seed = "Random(9000+1000n+s).choice"
 tables = 200
 verdict = "rejected both variants. Swapping halves permits the four-character mirrored selector ;~?~, one shorter than ~;~?~. Always swapping grows47/74 of200 tables at7/8; choosing old/swapped by emitted length saves only0.6241%/0.3962%, declining far below20%. The prototype recognizes the new selector; existing eval_setters alone would wrongly return two-wide pairs. Complementing the upper half can be repaired with ?~~backtick before output: XOR the selected bit with the active stack index. It adds four characters; complemented one-run and zero-run counts differ by at most one, so it always grows by at least three characters when active. All200 judged tables grow; choosing old/complemented changes none. N3 corpus/commands unchanged. Each of the always/choice role variants and complemented/choice variants has4040 correct native rows. No swapped selector, marker detection, upper complement or extra candidate ships; these gains are not bundled with orientation carry."
+
+[ablations.workspace_exactness_repair_20261103]
+arity = 6
+saving = 0.0
+seed = 0
+tables = "full-support parity at n=4,6, allrows; retained workspace formula corpus"
+verdict = "proof-only repair: restore both old exact workspace rungs4/6. One-stack lookup peaks at R+n Boolean cells, dual at R+2n, R<=T; dual requires R>=8n+4 and is impossible when T<8n+4. Add the changed active-stack bit and one frame's8L+bl(L) peak. Full-support parity attains every term, with one stack at4 and dual at6, and also reaches the exact source maximum. Constants fit below. The old ceiling overcounted n bits in the new one-stack regime; dropping exactness at6 was unnecessary because the dual regime remains. Native parity attainers run all80 rows, preserving correct output; resource maxima507/1421. No generator path/state or emitted bytes change; this restores the original worst-case contract, not a per-program-policy exception."

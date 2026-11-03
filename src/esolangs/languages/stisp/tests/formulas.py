@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from esolangs.languages.stisp.proof_formulas import workspace
 from tests.proofs._diagram_bounds import (
     capped_level,
     capped_loss,
@@ -131,9 +132,31 @@ def witness(n: int) -> str:
     return worst_diagram(n, lambda node, _: len(str(node)), 1, cover_const=False)
 
 
+def workspace_witness(n: int) -> str:
+    """Named cofactor combinations exposing exactly 2n ASCII head bytes."""
+    if not 1 <= n <= 7:
+        raise ValueError("workspace attainers are proved at n=1..7")
+    if n <= 2:
+        return "".join(str(row.bit_count() & 1) for row in range(1 << n))
+    majority = "".join(str(int(row.bit_count() >= 2)) for row in range(8))
+    parity = "".join(str(row.bit_count() & 1) for row in range(8))
+    if n == 3:
+        return majority
+    if n == 4:
+        return parity * 2
+    if n == 5:
+        return (majority + "0" * 7 + "1") * 2
+    if n == 6:
+        return (majority + majority.translate(str.maketrans("01", "10"))) * 4
+    return (majority + parity) * 8
+
+
 def _hybrid_chars(n: int, program: str) -> int:
     """Each local inline choice saves text; the selectors add 28 characters."""
     return _chars(n, program) + 28
 
 
-FORMULAS = {"scaling": (_hybrid_chars, False, tuple(range(3, 21)))}
+FORMULAS = {
+    "workspace": (workspace, frozenset(range(1, 8)), tuple(range(1, 8))),
+    "scaling": (_hybrid_chars, False, tuple(range(3, 21))),
+}

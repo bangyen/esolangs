@@ -1,12 +1,26 @@
-"""The original EGL row remains a ceiling for the folded layout."""
+"""Exact default source maximum of the complete folded binary table."""
 
 
 def _chars(n: int, _: str) -> int:
-    """3T + 25n + d + 8, d the digits of T.
+    """A non-symmetric all-one table except one off-diagonal zero attains it.
 
-    Header, painted row, n guards of 25 + weight.
+    All inputs are essential and P=T-1. Ignored reads reduce the grid and
+    replace a weighted guard by x; counted tables have only m+1 cells.
     """
-    return 3 * (1 << n) + 25 * n + len(str(1 << n)) + 8
+    size = 1 << n
+    if n <= 3:
+        return 3 * size + 25 * n + len(str(size)) + 8
+    columns = 1 << min(n, (n + 3) // 2)
+    blocks = size // columns
+    return (
+        2 * size
+        + columns
+        + 5 * blocks
+        + 25 * n
+        + len(str(columns))
+        + len(str(3 * blocks))
+        + 1
+    )
 
 
-FORMULAS = {"scaling": (_chars, False, (3, 4, 5))}
+FORMULAS = {"scaling": (_chars, True, (3, 4, 5))}

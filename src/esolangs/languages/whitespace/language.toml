@@ -7,7 +7,8 @@ backlinks = 58
 [proof_status]
 labels = ["linear lookup"]
 qualification = "inputs build 2**index; dividing one packed literal exposes its answer bit"
-scaling = "linear: at most T+4n+70 characters: one literal and shared step"
+scaling = "linear: worst S characters: one literal and shared step"
+definitions = ["S = 65 at n=1; otherwise T+4n+70"]
 execution = "poly n: worst 16 at n=1, otherwise 12n+7 commands: calls never nest"
 workspace = "linear: worst 14 at n=1, otherwise 5T-3+bl(n+17)+bl(n+2)+bl(2n-1) bits: stack, sparse heap and cursors"
 
@@ -96,3 +97,10 @@ saving = 0.834
 seed = "the frozen power-subroutine corpus, random.Random(1000*n+i), i<200"
 tables = 400
 verdict = "kept: canonical removal of the unused swap after end/return, exactly3 chars per nonconstant. Preserving exact command bytes in saved files replaces the old strip workaround. Final source n7/8 45009/71383, n3 22640; final grid_area n7/8 858297/1805405, n3 64437 (trailing command lines included); frozen prototype[:-3] matches final nonconstants, constants identical. Source ceiling T+4n+70, single-essential8n+57; execution and workspace unchanged because the swap never ran. Direct esolangs.run on exact committed example bytes now passes. Earlier raw and joint prototype figures remain historical pre-cleanup measurements."
+
+[ablations.source_exactness_repair_20261103]
+arity = 6
+saving = 0.0
+seed = 0
+tables = "full-support AND at n=1,2,3,5,6; source formula corpus at every retained rung"
+verdict = "proof-only repair: restore exact source maxima at every old rung1/2/3/5 and retain current6. The inline n1 maximum is65; for n>=2 it is T+4n+70, reached by AND's T-bit packed literal. With m>=2 essential inputs length is at most2**m-4m+8n+70; convexity reduces the maximum to m2 or n, and full support wins for n>=2. Single-essential8n+57 and constants7n+11+b are smaller. All110 witness rows execute correctly; source maxima65/82/90/122/158. No generator path/state or emitted byte changes. The raw-series ceiling was sound but needlessly dropped exactness after the new inline/shared dispatch; this record restores the original contract rather than claiming a policy exception."

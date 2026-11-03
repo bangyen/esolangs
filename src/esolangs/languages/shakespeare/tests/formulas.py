@@ -6,4 +6,4 @@ def _steps(n: int, _: str) -> int:
     return 6 if n == 1 else 2 * n + ((1 << n) + 63) // 64 + 6
 
 
-FORMULAS = {"execution": (_steps, True, (1, 2, 3, 7, 8, 10))}
+FORMULAS = {"execution": (_steps, True, (1, 2, 3, 5, 7, 8, 10))}

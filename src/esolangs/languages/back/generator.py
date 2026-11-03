@@ -580,6 +580,6 @@ LANGUAGE = Language(
     empty_program="Back program cannot be empty",
     example=Example(pair=PAIR, expected="1 0 0"),
     proof_execution=(execution, True, (1, 2, 3, 4, 5, 6, 7, 8, 9)),
-    proof_workspace=(workspace, True, (3, 6)),
+    proof_workspace=(workspace, True, (1, 2, 3, 6)),
     grid=True,
 )

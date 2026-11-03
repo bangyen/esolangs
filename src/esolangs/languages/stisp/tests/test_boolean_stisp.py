@@ -33,9 +33,11 @@ def test_every_row_results_in_its_answer(table: str) -> None:
             steps += 1
             assert io.getvalue() == ""
         assert steps == (1 if len(set(table)) == 1 else n)
+        assert written.bits <= workspace(n, program)
+        before_dump = written.bits
         machine.step()
         written.sample(machine.snapshot())
-        assert written.bits <= workspace(n, program)
+        assert written.bits == before_dump + 1
         assert io.getvalue() == table[row]
         assert io.reads == 0
         assert io.input_char() == ord("7")
@@ -85,11 +87,12 @@ def _check_constants() -> None:
                     assert machine.halted
                     assert machine.head == bit
                     assert io.getvalue() == ""
+                    assert written.bits <= 8 * n + 8
+                    peak = max(peak, written.bits)
                     machine.step()
                     written.sample(machine.snapshot())
                     assert io.getvalue() == bit
                     assert io.reads == io.past_end == 0
                     assert io.input_num() == 7
                     assert written.bits <= 8 * n + 9
-                    peak = max(peak, written.bits)
-                assert peak == 8 * n + 9
+                assert peak == 8 * n + 8

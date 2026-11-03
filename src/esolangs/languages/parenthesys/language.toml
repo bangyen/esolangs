@@ -61,3 +61,6 @@ verdict = "kept: decimal abc modulo 8 is 4a+2b+c; ab modulo 8 is 2a+b. Group at 
 arity = 8
 saving = 13.9073
 verdict = "diagnostic only: grouping selector alone saves 13.01%/10.60% at n=7/8; grouping column alone saves 13.01%/13.91%, and declines to 7.07% by n=12. Each misses the 20% declining gate. No alternative race or fallback ships: the admitted single grouped-reader construction is applied uniformly to both indices."
+
+[formula_arities]
+workspace = [4, 5, 7, 8]

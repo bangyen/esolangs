@@ -8,9 +8,10 @@ admitted = 2020-07-25T21:13:52-04:00
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "uniform ++/** runs; weighted stages index higher essential inputs while the last essential input stays in scratch through bounded ignored-tail macros, and a cascade routes row pairs to four fixed leaves; symmetric tables count set inputs"
-scaling = "linear: at most N characters: four fixed leaf targets"
+scaling = "linear: worst N characters through n=5; at most beyond"
 execution = "linear: worst max(T+6n+5,16n-3) commands: unary index or ignored-tail macros; dump follows"
-workspace = "poly n: at most n+3+bl(max(T+6n+12,16n+4)) bits: registers, pointer, cursor"
+workspace = "poly n: at most W bits; equality at n=1,2,3,6: registers, pointer, cursor"
+definitions = ["N = 40n+11 through n=5; global ceiling beyond", "W = n+3+bl(max(T+6n+12,16n+4)), minus 1 from n=3"]
 
 [generator_sizes]
 "00000001" = { commands = 30, commands_by_row = { "0" = 13, "1" = 18, "2" = 18, "3" = 23, "4" = 18, "5" = 23, "6" = 23, "7" = 30 }, source_units = 65 }
@@ -87,3 +88,10 @@ arity = 8
 seed = "random.Random(1000*n), sequential choice('01')"
 tables = "same k=1/k=2 corpora as the two sibling records"
 verdict = "rejected 2026-11-02 as proposed: retaining k=0 only to hide small source losses is a whole-old fallback without a class break. The repaired k=2 candidate fails its own n=7 gate and is larger than k=1 at both n=7/8; a generic argmin adds no admitted large-arity construction. Limiting k to 2 is asserted rather than forced by semantics: the constant number of leaf patterns does not change the O(T) class for any fixed k. Keep only the qualifying k=1 rule, uniformly over its nonsymmetric path, with disclosed low-arity growth. Native repaired sibling controls and raw collision mutants are recorded above."
+
+[ablations.exactness_repair_20261103]
+arity = 6
+saving = 0.0
+seed = 0
+tables = "first-input negation n=1..5, lone zero at row62 at n=6; every retained source/workspace formula rung"
+verdict = "proof-only repair: restore exact source1..5 and workspace3/6, retaining current lower-rung coverage. Source is exactly40n+11 through5, attained by first-input NOT and ignored tails. With m essential inputs, q trailing ignored, K=2**(m-1), delta pairs other than10, the two-digit-target spelling is34+10n+2m+5K+30q-delta. q<=n-m and delta>=1 for m>=2 prove m1 maximal through5; symmetric source<=17+16n and constants are smaller. Keep the previous global source ceiling beyond5. Pair index is at most2**(m-1)-1; held scratch uses2 bits, a tail macro uses3 but removes an essential index bit. Including pointer, this costs at most n+2 bits from3 (n+3 below), one less than the former conservative bound. Cursor is still bounded by commands(n). Native witnesses126 output rows plus126 resource rows attain source51/91/131/171/211 and W9/11/11 at1/2/3, W15 at6; source witnesses at4/5 also execute. Exact W is asserted only at1/2/3/6, not at unproved later arities. No generator path/state or emitted bytes change; the source-only broad ceiling and one-bit workspace slack no longer suppress old exact scopes."

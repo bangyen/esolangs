@@ -297,5 +297,5 @@ LANGUAGE = Language(
     no_wrap="jumps and patches name instruction numbers, so lines stay whole",
     example=Example(setters=crement_setters, expected=""),
     proof_workspace=(workspace, False, (3, 6)),
-    proof_execution=(execution, True, (1, 2, 3, 5)),
+    proof_execution=(execution, True, (1, 2, 3, 5, 6)),
 )

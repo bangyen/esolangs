@@ -9,7 +9,7 @@ remaining frames. For AND:
 
 A bottom-up cost rule inlines cheap private nodes and names shared ones.
 Each literal head carries at most 2n atom bytes, matching the input frames'
-16n-bit payload. Written workspace is at most 32n+1 bits including the dump.
+16n-bit payload. Written workspace is at most 32n bits before the halt dump.
 There are O(T/n) distinct nodes, so their O(n)-character representations
 also build in O(T) time.
 
@@ -17,7 +17,7 @@ Size:
     O(T) text: one or two equations a node of the reduced diagram;
     n=4 parity: 139 chars, n=10 random 1847: 1,964 chars.
     Constants match the input list once: 2n+15 chars (15 at n=1), one rewrite
-    plus the halt dump, and at most 8n+9 written bits.
+    plus the halt dump, and at most 8n+8 written bits before the dump.
 
 Decisions:
     Ids repeat only within a level (:func:`subtree_ids`), so equal subtables

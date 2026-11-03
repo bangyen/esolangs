@@ -8,7 +8,7 @@ admitted = 2026-10-21T23:43:42-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "the essential input bits double a unary row index in one rewrite each, and each index unit strips one entry of the table read at them"
-scaling = "linear: at most T + 4n + 101 - 21min(1,(n-2)^2) characters"
+scaling = "linear: worst T+4n+101-21min(1,(n-2)^2) characters, n = 1..6; at most beyond"
 execution = "linear: worst T + n + 3 - min(1,(n-2)^2) steps: index, strips, halt"
 workspace = "linear: worst 16T + 10 bits: the string at its longest, an index of T - 1 units beside the table"
 
@@ -85,3 +85,10 @@ saving = -119.9
 seed = "random.Random(184700 + n * 1000 + s), s < 200"
 tables = "200 random tables per n=7,8; same native corpus as drop_input_marker; forced quad decoder over all two/three-input tables and rows"
 verdict = "rejected 2026-11-02: one char per quad plus explicit decoder costs 112947 / 130209 chars at n=7/8 versus pair baseline 45600 / 59200 (+147.69/+119.95%); every one of the 400 random programs grows. No old-program min fallback or shifted evaluation window. Below the existing pair threshold it is byte-identical, so it cannot qualify for n=3 execution savings. Forced decoder checks execute all 2112 rows of all two/three-input functions, including all sixteen quad patterns; no semantic failure. No generator change."
+
+[ablations.source_exactness_repair_20261103]
+arity = 5
+saving = 0.0
+seed = 0
+tables = "parity with row1 flipped at n=2,3,5,6; identity at n=1; source formula corpus at every retained rung"
+verdict = "proof-only repair: restore exact source maxima at every old rung1/2/3/5. Full-support nonsymmetric doubling costs T+4n+101, minus21 marker characters when n!=2; identity attains n1 because symmetric_weights excludes fewer than two essential inputs. Parity with one weight-one entry flipped is full-support and nonsymmetric for n>=2, attaining the formula through6 before pair packing starts. Projected doubling costs2**m+2n+2m+80 plus21 at n2, never larger; symmetric counting and constants are shorter. Beyond6 the pair table is at most T/2+4n+115, below the retained ceiling. All110 witness rows execute correctly; maxima86/113/100/132/168. No new generator path/state or emitted byte changes. The raw marker deletion changed the exact maximum but did not require dropping these original exactness scopes."

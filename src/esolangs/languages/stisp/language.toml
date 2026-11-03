@@ -10,7 +10,7 @@ labels = ["parameterized tree"]
 qualification = "n input frames consume once each; heads are named atoms or bounded literal pairs selected by native pattern equations"
 scaling = "linear: at most F+28 characters past n = 2: named-diagram ceiling plus selectors"
 execution = "poly n: worst n rewrites: one frame an input"
-workspace = "poly n: at most 32n+1 bits: frames 16n, head 16n, post-halt flag 1"
+workspace = "poly n: worst 32n bits through n=7, at most beyond: frames/head 16n each; halt dump excluded"
 
 [generator_sizes]
 "00000001" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 69 }
@@ -71,3 +71,7 @@ verdict = "rejected at the frozen normal7/8 verdict arities.200 tables:35 safe s
 arity = 8
 saving = 1.2243449459
 verdict = "rejected: N->s[x]=x is valid when children are0/1 and preserves all frame consumption.2520 native pilot runs pass every small row and sampled random4..8 rows; source never grows and workspace stays within the old cap.200 generic verdict tables save1.8718%/1.2243% at7/8, declining far below20%. All named thresholds/parities/projections and complements execute every7/8 row in the75264-run controls; best projection13.6986%/12.6582% is also declining below20%. No independent identity-equation rule is stacked onto the literal construction."
+
+
+[ablations.workspace_exact_restoration_20261103]
+verdict = "proof-only restoration of old checked arities1..7, lost in678ac5855. Literal heads certify at most2n ASCII atom bytes; every named decimal ID also fits2n bytes. Rewrites select only certified children/definition heads. Initial n frames each contain ASCII s and one bit,16n bits. Thus32n bounds every nonconstant program under the repository benchmark, which stops before the halt dump and excludes its unchanged flag. Named cofactor combinations in owned workspace_witness expose exactly2n reachable head bytes and attain32/64/96/128/160/192/224 bits for n1..7. Constants have exact8n+8. The earlier32n+1/8n+9 ceiling unnecessarily counted the post-halt flag; separate complete-state controls still measure that extra bit after dumping. The old128-bit n7 claim was not disproved by a129-bit post-dump observation: that compared different metrics. Exactness beyond7 is not asserted. Runtime emitter, source/pins/example and original source witnesses are unchanged."

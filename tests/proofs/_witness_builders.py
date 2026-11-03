@@ -258,3 +258,13 @@ def _back_worst(n: int) -> tuple[str, ...]:
         tables += (owner.legacy_witness(n),)
     tables += (owner.witness(n), owner.execution_witness(n))
     return tables
+
+
+def _diagram_witness(
+    stem: str, n: int, top: int = 8, name: str = "witness", *, bottom: int = 3
+) -> tuple[str, ...]:
+    """The language's named table from formulas.py within its supported arities."""
+    if not bottom <= n <= top:
+        return ()
+    owner = importlib.import_module(f"esolangs.languages.{stem}.tests.formulas")
+    return (getattr(owner, name)(n),)

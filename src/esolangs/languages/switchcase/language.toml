@@ -10,7 +10,8 @@ labels = ["tree"]
 qualification = "inputs buffer in stream order; shared residual cases branch on character codes, equal children skip, and constant residuals share printing leaves"
 scaling = "linear: at most N characters: O(T/log T) shared residuals, O(log T) address digits"
 execution = "poly n: worst 6n+8 commands: define buffers, read all inputs, at most n binary branches, print"
-workspace = "poly n: at most W(n) bits: buffered names and characters, case/arm/cursor, input progress"
+workspace = "poly n: at most B+27+bl(n+diagram_cap(n))+bl(n) bits; equality at n=1,2,3,5: buffers and branch"
+definitions = ["B = Σ_{0<=i<n}(8len(x_i)+6)"]
 
 [ablations]
 audited = "2026-11-02"
@@ -80,3 +81,10 @@ arity = 8
 seed = "random.Random(184700+n), sequential choice('01')"
 tables = "200 random per n=7,8; all tables/rows n<=3; 20 random per n=4..6; forced reverse-order asymmetric n=3 controls"
 verdict = "rejected 2026-11-02: greedy significance ordering minimizes decimal-key digit sums by search, contrary to construction policy. Scratch buffered stream-order repair costs source: n=7 193647→199386 (-2.964% saving), n=8 296224→302592 (-2.150%); 187/196 tables grow. The path fires in those 187/196 tables; one-digit keys through n=3 otherwise tie and keep identity. Sampled commands rise 320722→350690 / 599950→709254. All 3960 paired native default controls pass; forced reverse significance executes 1728 asymmetric n=3 rows correctly, while an unbuffered permutation mutant fails. No production search or reordered stream reads retained."
+
+[ablations.workspace_exactness_repair_20261103]
+arity = 5
+saving = 0.0
+seed = 0
+tables = "parity at n=1,2,3; first eight unequal-half two-bit functions concatenated at n=5; retained workspace corpus"
+verdict = "proof-only repair: restore exact workspace at old3/5 and retain lower1/2. Let B sum each buffered name's bits plus its6-bit character. Full environment costs B+18, default key! costs8, branch command cursor0 costs1, and case index is at most n+diagram_cap(n); input progress adds bl(n). Other phases have numeric keys or missing buffers, dominating their longer cursors; an ignored read adds5 bits to_ but removes at least22 buffer bits. Global ceiling B+27+bl(n+diagram_cap(n))+bl(n) is attained at the registered exact rungs, not asserted globally infinite. Native52/76/99/145 bits at1/2/3/5,46 correct output rows plus46 resource rows; global upper controls3297 rows across309 tables pass, including allsmall, every sole-essential position4..6, and9/10/12 name-width cases. The constructive n5 witness has17 internal nodes, and allones reaches the first identity node at case22. The old ceiling overcounted independent header/command maxima and maximum name widths; new exact rungs need no policy exception. No generator path/state or emitted byte changes."

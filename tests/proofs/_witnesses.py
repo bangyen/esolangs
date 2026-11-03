@@ -23,6 +23,7 @@ from tests.proofs._witness_builders import (
     _brainif_worst,
     _codesick_chars_worst,
     _collatz_chars_worst,
+    _diagram_witness,
     _forbin_worst,
     _malbolge_stub,  # noqa: F401 -- re-exported for the formula suites
     _row_one,
@@ -960,7 +961,10 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         "10" if n == 1 else "10" * (2 ** (n - 1) - 1) + "11",
         "10111011" if n == 3 else "0" * (1 << n),
     ),
-    "Minsky Swap": lambda n: _diagram_witness("minsky_swap", n, bottom=1),
+    "Minsky Swap": lambda n: (
+        *_diagram_witness("minsky_swap", n, bottom=1),
+        *_diagram_witness("minsky_swap", n, 5, "source_witness", bottom=1),
+    ),
     "Rubic": lambda n: ("1000",) if n == 2 else _diagram_witness("rubic", n),
     "AddSubJump": lambda n: (_asj_packed_worst(n),) if n >= 6 else (),
     "Dig": lambda n: (_dig_indexed_worst(n),) if 8 <= n <= 12 else (),
@@ -1117,7 +1121,8 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "SendStuff": lambda n: (_sendstuff_worst(n),) if n >= 3 else (),
     "Sonata": lambda n: (_low_one(n),),
     "Stisp": lambda n: (
-        (_unequal_first(n), *_diagram_witness("stisp", n, 20)) if n >= 2 else ()
+        *((_unequal_first(n), *_diagram_witness("stisp", n, 20)) if n >= 2 else ()),
+        *_diagram_witness("stisp", n, 7, "workspace_witness", bottom=1),
     ),
     # From n = 7 the sweep's worst shares; swapped, it ships one shorter.
     "Suffolk": lambda n: (
@@ -1127,7 +1132,10 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         if n >= 3
         else ()
     ),
-    "SwitchCase": lambda n: (_switchcase_worst(n),),
+    "SwitchCase": lambda n: (
+        _switchcase_worst(n),
+        *_diagram_witness("switchcase", n, 5, "workspace_witness", bottom=1),
+    ),
     "Smu": lambda n: (_smu_worst(n),),
     "Modulous": lambda n: (_row_one(n),),
     "Piet": lambda n: (
@@ -1148,16 +1156,6 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     ),
     "Underload": lambda n: (_underload_worst(n),) if n >= 3 else (),
 }
-
-
-def _diagram_witness(
-    stem: str, n: int, top: int = 8, name: str = "witness", *, bottom: int = 3
-) -> tuple[str, ...]:
-    """The language's named table from formulas.py within its supported arities."""
-    if not bottom <= n <= top:
-        return ()
-    owner = importlib.import_module(f"esolangs.languages.{stem}.tests.formulas")
-    return (getattr(owner, name)(n),)
 
 
 # language-owners: ["Piet"]
