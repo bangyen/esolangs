@@ -1,5 +1,7 @@
 """Tests for the Bleh interpreter."""
 
+from itertools import product
+
 import pytest
 
 from esolangs.languages.bleh.interpreter import run
@@ -46,3 +48,24 @@ def test_a_forced_argument_is_read_once() -> None:
     """Call by need: ``x`` is forced by the literal and reused, not reread."""
     code = '^:std::io; main := f(io::next()); f : "a" = 1 : x = io::print(x, x);'
     assert _out(code, "bc") == "bb"
+
+    # The first and last bits must agree. Reprinting the bound middle
+    # checks that the rest pattern consumes precisely the intervening bits.
+    for length in range(6):
+        for parts in product("01", repeat=length):
+            bits = "".join(parts)
+            program = (
+                f"^:std::io; main := f({bits or '[]'}); "
+                "f : [x, middle.., x] = io::debug(middle, middle) "
+                ": _ = io::debug 0;"
+            )
+            expected = "0"
+            if length >= 2 and bits[0] == bits[-1]:
+                expected = bits[1:-1] * 2 or "[]"
+            assert _out(program) == expected, bits
+
+    for char, sentinel in product(("b", "é", "😀"), ("z", "!")):
+        io = ScriptedIO(char + sentinel)
+        run(code, io)
+        assert io.getvalue() == char * 2
+        assert io.position() == 1
