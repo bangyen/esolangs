@@ -55,6 +55,10 @@ def test_a_known_program_prints_its_greeting() -> None:
     """The reference Hello World is the end-to-end check."""
     assert run_program(run, HELLO) == "Hello, world."
 
+    from .oracle_checks import check_raw_malbolge
+
+    check_raw_malbolge(HELLO, CAT)
+
 
 def test_the_snapshot_memory_follows_every_write() -> None:
     """The chunked snapshot rebuilds written chunks and shares the rest."""
