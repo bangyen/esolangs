@@ -223,6 +223,9 @@ def test_malformed(program: str) -> None:
 
 
 def test_input_running_out_raises_eof() -> None:
+    from .oracle_checks import check_raw_collatz_multiverse
+
+    check_raw_collatz_multiverse()
     with pytest.raises(EOFError):
         run_program("x = negativeOne x + input, NOT PRINT.", "")
 
