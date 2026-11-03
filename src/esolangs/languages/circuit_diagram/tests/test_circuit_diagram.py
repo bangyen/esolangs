@@ -49,9 +49,6 @@ FLIP_FLOP = grid("circuit_diagram", "flip_flop.txt")
 # The wiki's "it is possible to produce a constant output" circuit.
 CONSTANT = grid("circuit_diagram", "constant.txt")
 
-PRIMES = frozenset({2, 3, 5, 7, 11, 13})
-
-
 output_for = partial(run_program, run, suppress_eof=False)
 
 
@@ -76,10 +73,10 @@ def cold_compile(monkeypatch: pytest.MonkeyPatch) -> _lru_cache_wrapper[_Topolog
 class TestPrimeTester:
     """The page's only worked example, replayed over its whole input space."""
 
-    def test_the_whole_truth_table_is_primality(self) -> None:
-        """Guard the replay as a set, not just value by value."""
-        detected = {n for n in range(16) if output_for(PRIME_TESTER, bits_of(n)) == "1"}
-        assert detected == PRIMES
+    @pytest.mark.parametrize("value", range(16))
+    def test_exact_output_matches_trial_division(self, value: int) -> None:
+        prime = value >= 2 and all(value % divisor for divisor in range(2, value))
+        assert output_for(PRIME_TESTER, bits_of(value)) == str(int(prime))
 
     def test_cached_topology_keeps_run_state_isolated(
         self, cold_compile: _lru_cache_wrapper[_Topology]
