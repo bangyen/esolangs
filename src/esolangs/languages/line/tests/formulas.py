@@ -1,5 +1,7 @@
 """Independent projected-inline geometry and mixed command bounds."""
 
+from itertools import combinations
+
 from esolangs.languages.line.generator.layout import (
     _FORWARD,
     _TREE_GAP,
@@ -66,33 +68,24 @@ def _maximal(boxes: set[Box]) -> set[Box]:
 
 
 def _pixels(n: int, _: str) -> int:
-    """Bound every projected reader/drain shape, without inspecting the raster."""
-    # Independent stem lengths and drains form a superset of physical gaps.
-    # For k ignored inputs their area is O((k+1)^2 2^(n-k)) = O(2^n).
+    """Bound projected shapes with one globally consistent ignored-input budget."""
+    # A physical ignored read cannot pad several stems and the drain.
+    # This restricts the old envelope, retaining its O(2**n) ceiling.
     nothing: Box = (0, 0, 0, 0)
     boxes = [_chain("i" * n + ">" + "+" * bit + "o", nothing) for bit in (0, 1)]
     for m in range(1, n + 1):
-        k = n - m
-        drains = [""] + [">" + "i" * count + "<" for count in range(1, k + 1)]
-        zero = {
-            _chain(drain + leaf, nothing) for drain in drains for leaf in ("o", "+o")
-        }
-        one = {
-            _chain(drain + leaf, nothing) for drain in drains for leaf in ("o", "-o")
-        }
-        level = _maximal({_fork(a, b) for a in zero for b in one})
-        for _depth in range(m - 1):
-            stems = _maximal(
-                {
-                    _chain(">" + "i" * count, box)
-                    for count in range(1, k + 2)
-                    for box in level
-                }
-            )
-            level = _maximal({_fork(a, b) for a in stems for b in stems})
-        boxes.extend(
-            _chain("i" * count, box) for count in range(1, k + 2) for box in level
-        )
+        for kept in combinations(range(n), m):
+            trailing = n - kept[-1] - 1
+            drain = ">" + "i" * trailing + "<" if trailing else ""
+            zero = {_chain(drain + leaf, nothing) for leaf in ("o", "+o")}
+            one = {_chain(drain + leaf, nothing) for leaf in ("o", "-o")}
+            level = _maximal({_fork(a, b) for a in zero for b in one})
+            for depth in range(m - 2, -1, -1):
+                stem = ">" + "i" * (kept[depth + 1] - kept[depth])
+                stems = _maximal({_chain(stem, box) for box in level})
+                level = _maximal({_fork(a, b) for a in stems for b in stems})
+            boxes.extend(_chain("i" * (kept[0] + 1), box) for box in level)
+    # Leaf choices are independent; the smaller complete fold can still win.
     return max((b[1] - b[0] + 2) * (b[3] - b[2] + 2) for b in boxes) * _UNIT**2
 
 
