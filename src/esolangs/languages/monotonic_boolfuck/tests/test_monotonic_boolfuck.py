@@ -39,6 +39,11 @@ def test_conventions(code: str, stdin: str, expected: str) -> None:
 
 def test_closing_bracket_retests_its_opener() -> None:
     """``]`` is unconditional: the cell it leaves on, not the loop's, decides."""
+    from esolangs.languages.monotonic_boolfuck.tests.oracle_checks import (
+        check_raw_monotonic,
+    )
+
+    check_raw_monotonic()
     assert out("1[>]<;") == "\x01"
     assert out("1[>]>;") == "\x00"
 

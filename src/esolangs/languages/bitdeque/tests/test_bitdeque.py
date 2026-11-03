@@ -42,6 +42,9 @@ class TestBitdeque:
 
     def test_inject_push_and_eject_take_the_right_ends(self) -> None:
         """PUSH appends the back, INJECT the front, EJECT pops the front."""
+        from esolangs.languages.bitdeque.tests.oracle_checks import check_raw_bitdeque
+
+        check_raw_bitdeque()
         assert run_and_capture("INVERT PUSH INVERT INJECT") == "0 1"
         assert run_and_capture("INVERT PUSH PUSH INVERT INJECT") == "0 1 1"
         assert run_and_capture("INVERT PUSH PUSH INVERT PUSH") == "1 1 0"
