@@ -1,5 +1,7 @@
 """Unit tests for the CV(N)(C) interpreter."""
 
+from itertools import product
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -189,6 +191,19 @@ class TestFunction:
         """``a + a * a`` at a == 3 is 12, not 18."""
         program = "do" + "bo" + "do" + "ɡo" + "do" + "su" + "θi"
         assert run_program(program, "3\n") == "12"
+
+        for value, literal in product(range(9), range(1, 6)):
+            # The coda stores a literal. The builder then appends it twice,
+            # consuming one deque entry per occurrence.
+            setup = "ci" * literal + "n" + "cu" + "n"
+            for expression, expected in (
+                ("dobo poɡopo", value + literal * literal),
+                ("ʔodobo poʡoɡopo", (value + literal) * literal),
+                ("doqopo", value // literal),
+                ("potodo", max(0, literal - value)),
+            ):
+                source = setup + expression.replace(" ", "") + "suθi"
+                assert run_program(source, str(value)) == str(expected), source
 
     def test_parentheses_override_precedence(self) -> None:
         """``(a + a) * a`` at a == 3 is 18."""
