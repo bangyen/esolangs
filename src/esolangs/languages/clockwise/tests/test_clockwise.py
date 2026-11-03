@@ -19,6 +19,11 @@ run_and_capture = run_lines(run)
 
 class TestClockwise:
     def test_truth_machine_zero(self) -> None:
+        from esolangs.languages.clockwise.tests.oracle_checks import (
+            check_raw_clockwise,
+        )
+
+        check_raw_clockwise()
         code = ["+-?.;.;.;.;.;.;.;?R", "  R              R", "R                 R"]
         assert run_and_capture(code, inputs=["0"]) == "0"
 

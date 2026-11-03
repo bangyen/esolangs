@@ -47,6 +47,7 @@ from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.brackets import unmatched
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 #: A stack: ``None`` when empty, else ``(top, rest)``.
@@ -96,7 +97,7 @@ def _parse(code: str) -> list[_Op]:
         elif g[5]:
             ops.append((g[6], _NAMES.index(g[7]), 0, 0))
         elif g[9]:
-            ops.append(('"', int(g[10]), _NAMES.index(g[11]), 0))
+            ops.append(('"', parse_integer(g[10]), _NAMES.index(g[11]), 0))
         elif g[12]:
             opens.append((len(ops), where[pos]))
             ops.append(("[", _NAMES.index(g[13]), _NAMES.index(g[14]), 0))
@@ -190,7 +191,8 @@ class _Machine:
             value = _top(self.state[1][x])
             if value > 255:
                 raise HaltError(
-                    f"':{_NAMES[x]}:' prints {value}, which is not a byte",
+                    f"':{_NAMES[x]}:' prints {format_integer(value)}, "
+                    "which is not a byte",
                     hint="keep printed values in 0..255",
                 )
             self.io.print_char(chr(value))

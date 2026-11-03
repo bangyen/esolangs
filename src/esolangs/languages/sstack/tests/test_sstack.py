@@ -16,6 +16,11 @@ def _out(code: str, stdin: str = "") -> str:
 
 
 def test_push_and_print_peek() -> None:
+    from esolangs.languages.sstack.tests.oracle_checks import (
+        check_raw_sstack,
+    )
+
+    check_raw_sstack()
     assert _out('"72/a":a:"105/g":g::g:') == "Hii"
 
 

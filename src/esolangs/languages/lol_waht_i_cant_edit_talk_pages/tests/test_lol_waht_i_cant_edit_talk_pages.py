@@ -60,6 +60,11 @@ def _steps(code: str, stdin: str, count: int) -> str:
 
 
 def test_truth_machine() -> None:
+    from esolangs.languages.lol_waht_i_cant_edit_talk_pages.tests.oracle_checks import (
+        check_raw_lol_waht_i_cant_edit_talk_pages,
+    )
+
+    check_raw_lol_waht_i_cant_edit_talk_pages()
     assert _out(TRUTH, "0") == "0"
     assert _steps(TRUTH, "1", 20).startswith("1111")
 

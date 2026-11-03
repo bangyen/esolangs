@@ -52,6 +52,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 _INTEGER_PATTERN = re.compile("[+-]?[0-9]+")
@@ -116,7 +117,7 @@ def _parse(code: str) -> list[_Op]:
 def _value(env: dict[str, int], token: str) -> int:
     """Read an amount: a literal, ``no``, or a defined variable."""
     if _INTEGER_PATTERN.fullmatch(token):
-        return int(token)
+        return parse_integer(token)
     if token == "no":
         return 0
     if token not in env:
@@ -157,11 +158,12 @@ def _advance(
         value = _value(env, args[0])
         if not 0 <= value <= 0x10FFFF:
             raise HaltError(
-                f"{value} is not a character", hint="print values in 0..0x10FFFF"
+                f"{format_integer(value)} is not a character",
+                hint="print values in 0..0x10FFFF",
             )
         out = chr(value)
     elif kind == "num":
-        out = str(_value(env, args[0]))
+        out = format_integer(_value(env, args[0]))
     elif kind == "say":
         out = args[0]
     elif kind == "halt":
