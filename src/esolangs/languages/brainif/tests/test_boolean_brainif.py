@@ -28,6 +28,7 @@ class TestBrainIf:
 
     def test_one_shared_output_tail(self) -> None:
         """Both answers print from the same two lines."""
+        _check_or_zero_entries()
         program = boolean.brainif("0110")
         assert program.count("output") == 2
 
@@ -118,7 +119,7 @@ class TestBrainIf:
                 unpruned = _brainif_tree(table, None, prune=False)
                 assert len(_brainif_tree(table, None)) <= len(unpruned)
         tables = [format(i, "08b") for i in range(256)]
-        assert sum(len(boolean.brainif(t)) for t in tables) == 270_722
+        assert sum(len(boolean.brainif(t)) for t in tables) == 265_396
         assert sum(len(_brainif_tree(t, None, prune=False)) for t in tables) == 336_716
 
     def test_spatial_lookup_executes_wide_rows(self) -> None:
@@ -290,3 +291,36 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
                 assert io.getvalue() == bit
                 assert io.reads == n
                 assert io.input_char() == ord("Q")
+
+
+def _check_or_zero_entries() -> None:
+    from esolangs.languages.brainif.interpreter import _Machine
+    from esolangs.languages.brainif.proof_formulas import workspace
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    class ReadFirstIO(ScriptedIO):
+        expected: int
+
+        def _write(self, value: object) -> None:
+            assert self.reads == self.expected
+            super()._write(value)
+
+    for n, mask in ((1, 1), (3, 4), (6, 33), (8, 255), (8, 192)):
+        table = "".join(str(int(bool(row & mask))) for row in range(1 << n))
+        program = boolean.brainif(table)
+        for row in (0, 1, (1 << n) // 3, (1 << n) - 1):
+            io = ReadFirstIO(f"{row:0{n}b}Q")
+            io.expected = n
+            machine = _Machine(program.split("\n"), io)
+            written = WrittenState(machine.snapshot())
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                written.sample(machine.snapshot())
+                steps += 1
+                assert steps <= 4 * n + 50
+            assert io.getvalue() == table[row]
+            assert io.past_end == 0
+            assert io.input_char() == ord("Q")
+            assert written.bits <= workspace(n, program)

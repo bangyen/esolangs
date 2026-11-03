@@ -184,9 +184,9 @@ _BRACKET_LITERAL = r"\[[^\]]*\]|."
 _EVAL_UNIT = r'"[^"]*"|\?.|.'
 
 # FALSE ``'`` pushes the *next* character, so ``'0`` is one token and a
-# newline between the two pushes 10 instead of 48.  A ``{comment}`` or
-# ``"string"`` would be a third unit; no generated program has either.
-_FALSE_COMMAND = r"'[\s\S]|[\s\S]"
+# newline between the two pushes 10 instead of 48. Decimal integers must
+# also stay whole. Generated programs have no comments or strings.
+_FALSE_COMMAND = r"'[\s\S]|[0-9]+|[\s\S]"
 
 # Unlambda ``.x`` and ``?x`` take the next character too: a break inside
 # ``.0`` prints a newline, and one inside ``?0`` asks about one.

@@ -13,7 +13,7 @@ a jump enters one token in, and a leaf one is just ``A 2``.  Width 1 through
 three inputs uses unary-address NAND circuits instead.
 
 Size:
-    O(T) tokens, O(n) executed steps; n=10 random 1847: 3,885 chars,
+    O(T) tokens, O(n²) executed steps; n=10 random 1847: 3,885 chars,
     n=10 parity: 557 chars; constants: 4n+1+2b chars, 2n+2+b commands.
 """
 

@@ -145,22 +145,23 @@ Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat, Unsquare, What!?.
   Round 1 covered 111/111. Restart by increasing count of kept ablation
   rules, alphabetically within ties. The zero-trick queue is BASICER,
   CARP, CreativeScript v2, HQ9+ with headers, Qrain; all five are complete.
-  HQ9+ now folds constants. Next: Brainif, FALSE, Freestajlo. Record
+  HQ9+ now folds constants. Next: Piet, Smu, Algebraic Programming Language. Record
   completion as `[audits] trick_prototype = <date>`; retain earlier evidence.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-79 of the 114 generators: ///, 1 + i, 3x, A Painter Ant, ABCDirection,
+84 of the 114 generators: ///, 1 + i, 3x, A Painter Ant, ABCDirection,
 Alight, Aprknia, ArrowQueue, Ascenic, B-tapemark, Balik, BASICER, Basicfuck,
 Befunge, Between, BFStack, Bitdeque, Bitwise Cyclic Tag, bit~, Bleh,
-Blindfolded Arithmetic, Caballo, CARP, Chicken, Circlefuck, Clockwise,
-Codesick, CreativeScript v2, Crement, Cyclic tag, Decleq, DINAC, EGL, Eval,
-Fackward, Fish, Forþ, FRACTRAN, Grapheme, Hot, HQ9+ with headers, IEBEL,
-Interprogck8, Kiss, Line, lol waht i cant edit talk pages, Minsky Swap,
-Modulous, Monotonic Boolfuck, Movesum, Nandypants, NOR machine, NQ, Object
-disoriented, Painfuck, Parenthesys, Pilas, Pointless, Qoibl, Qrain,
-Quassaunt, REFRACTRAN, Retrograde, ROTfuck, Rubic, Shakespeare, Sonata,
-Stisp, Suffolk, Super SNUSP, SwitchCase, Taglate, Thue, Unary, Underload,
-Unlambda, Unsquare, What!?, Whitespace.
+Blindfolded Arithmetic, BrainIf, Caballo, CARP, Chicken, Circlefuck,
+Clockwise, Codesick, CreativeScript v2, Crement, Cyclic tag, Decleq, DINAC,
+EGL, Eval, Fackward, FALSE, Fish, Forþ, FRACTRAN, Freestajlo, Grapheme, Hot,
+HQ9+ with headers, IEBEL, Interprogck8, Kiss, Line, lol waht i cant edit
+talk pages, Minsky Swap, Modulous, Monotonic Boolfuck, Movesum, Nandypants,
+NOR machine, NQ, Object disoriented, Painfuck, Parenthesys, Pilas,
+Pointless, Qoibl, Qrain, Quassaunt, RAM0, REFRACTRAN, Retrograde, ROTfuck,
+Rubic, Shakespeare, SLOW ACV MAMMALIAN, Sonata, Stisp, Suffolk, Super SNUSP,
+SwitchCase, Taglate, Thue, Unary, Underload, Unlambda, Unsquare, What!?,
+Whitespace.
 
 <!-- TRICK-PROTOTYPES:END -->

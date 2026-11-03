@@ -1,19 +1,20 @@
 """BrainIf Boolean program generator: guarded gotos over input cells.
 
-Each input is read with ``if 0 input`` and tested with ``if 49 goto``.  Up to
-four essential inputs the residual DAG shares equal cofactors; beyond that a
-linear spatial lookup stores the table one cell an entry and walks to the
-selected one, its widest levels by loop. Width requests keep the tree.
+Each input is read and tested with guarded commands; the residual DAG shares
+equal cofactors. Width requests retain the tree or
+linear spatial lookup, which stores the table one cell an entry and walks
+to the selected one, its widest levels by loop.
 Whole constants use one read chain and only their own output tail.
 
 Size:
     O(T) lines for the lookup; n=10 parity: 1,628 chars, n=10 random 1847:
-    12,407 chars. Constants: 22n+483 chars for zero, 22n+11 for one;
+    12,407 chars; n=8 or: 598 chars. Constants: 22n+483 chars for zero,
+    22n+11 for one;
     n=8 zero: 659 chars.
 
 Decisions:
     The DAG and constant paths cut the three-input total from 310,116 to
-    270,722 characters and steps from 130,888 to 70,340.  The looped levels follow
+    265,396 characters and steps from 130,888 to 69,509. The looped levels follow
     a cost model (:func:`_top_level`), not a fixed count.  The DAG places a
     node before one of its children (:func:`_chains`), dropping that goto.
 """
@@ -86,9 +87,9 @@ _TREE_LEVELS = 4
 def brainif(truth_table: str, width: int | None = None) -> str:
     """Build BrainIf, reading each input in order.
 
-    The residual DAG reuses one input cell and shares equal cofactors, with
-    no table growing or slowing.  Width requests retain the tree/spatial
-    construction.
+    The residual DAG reuses one input cell and shares equal cofactors.
+    OR skips the zero climb; ignored OR rows can cost seven more commands.
+    Width requests retain the tree/spatial construction.
     """
     n = _validate_truth_table(truth_table)
     if truth_table.count(truth_table[0]) == len(truth_table):
@@ -207,15 +208,23 @@ def _brainif_dag(table: str) -> str:
     An ignored input with an essential one after it has no layer: each node
     of that next layer reads it first and discards it, two lines a node
     against a layer of four-line nodes.  Trailing ones keep their layers,
-    which are at most two nodes wide.  A node placed directly before one of
-    its children drops that child's guarded goto, and the last block falls
-    into ``done`` (:func:`_chains`).
+    which are at most two nodes wide. OR instead keeps its known answer
+    byte while a scratch cell reads trailing ignored inputs. A node placed
+    directly before a child drops that goto; see :func:`_chains`.
     """
     n = _validate_truth_table(table)
     essential = essential_inputs(table, n)
     last = essential[-1] if essential else -1
-    kept = [i for i in range(n) if i in essential or i > last]
-    layers = _residual_layers(read_at(table, kept, n))
+    projected = read_at(table, essential, n)
+    # [ablations.out0_or_20261102]: OR can reach zero only on a final zero.
+    or_family = bool(essential) and projected == "0" + "1" * (len(projected) - 1)
+    trailing = n - last - 1
+    kept = (
+        essential if or_family else [i for i in range(n) if i in essential or i > last]
+    )
+    if not or_family and trailing:
+        projected = read_at(table, kept, n)
+    layers = _residual_layers(projected)
     # Layer ``depth`` reads kept input ``kept[-1 - depth]``, after the
     # dropped ones between it and the kept input before it.
     skips = [b - a - 1 for a, b in pairwise([-1, *kept])][::-1]
@@ -234,18 +243,28 @@ def _brainif_dag(table: str) -> str:
             label = name(depth, node)
             blocks[label] = [f"@{label}", *reads]
             kids[label] = (name(depth - 1, children[0]), name(depth - 1, children[1]))
-    blocks["out_0"] = [
-        "@out_0",
-        f"if {_ASCII_ONE} move right",
-        *_climb("increment"),
-        f"if {_ASCII_ZERO} output",
-        f"if {_ASCII_ZERO} goto @done",
-    ]
-    blocks["out_1"] = [
-        "@out_1",
-        f"if {_ASCII_ZERO} increment",
-        f"if {_ASCII_ONE} output",
-    ]
+    if or_family:
+        blocks["out_0"] = (
+            ["@out_0", "if 48 goto @trailing"]
+            if trailing
+            else ["@out_0", "if 48 output", "if 48 goto @done"]
+        )
+        blocks["out_1"] = ["@out_1", "if 48 increment"] + (
+            [] if trailing else ["if 49 output"]
+        )
+    else:
+        blocks["out_0"] = [
+            "@out_0",
+            f"if {_ASCII_ONE} move right",
+            *_climb("increment"),
+            f"if {_ASCII_ZERO} output",
+            f"if {_ASCII_ZERO} goto @done",
+        ]
+        blocks["out_1"] = [
+            "@out_1",
+            f"if {_ASCII_ZERO} increment",
+            f"if {_ASCII_ONE} output",
+        ]
     lines: list[str] = []
     for label, follows in _chains(name(top, 0), kids):
         lines.extend(blocks[label])
@@ -253,6 +272,26 @@ def _brainif_dag(table: str) -> str:
             for char, child in zip((_ASCII_ZERO, _ASCII_ONE), kids[label], strict=True):
                 if child != follows:
                     lines.append(f"if {char} goto @{child}")
+    if or_family and trailing:
+        # Keep the answer in cell 0; trailing input occupies cell 1.
+        # Split the return so a restored answer cannot fire a second left.
+        lines.extend(
+            ["@trailing", "if 48 move right", "if 49 move right", "if 0 input"]
+        )
+        lines.extend(["if 48 increment", "if 49 input"] * (trailing - 1))
+        lines.extend(
+            [
+                "if 49 goto @from_one",
+                "if 48 move left",
+                "if 48 goto @print",
+                "if 49 goto @print",
+                "@from_one",
+                "if 49 move left",
+                "@print",
+                "if 48 output",
+                "if 49 output",
+            ]
+        )
     lines.append("@done")
     return _resolve(lines)
 

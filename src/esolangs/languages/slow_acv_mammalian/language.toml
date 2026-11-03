@@ -76,6 +76,7 @@ verdict = "removed 2026-10-20 (interpreter candidate I-7): +1.5% run with fully 
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
+trick_prototype = 2026-11-02
 
 [ablations.constant_table_audit_20261101]
 arity = 8
@@ -83,3 +84,25 @@ saving = 80.1
 seed = "both constant values; witnesses(n) at n=4..6"
 tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
 verdict = "kept: canonical whole-constant output. Factor ASCII 48=6*8 and 49=7*7: route to array 5+b using 8-b total SEEDs for answer b, drain every input into array zero, DIGEST the untouched print head and PRONOUNCE. No head wraps in either cell modulus; the same program works in all four cell/I/O dialects. Default zero/one n=8 159/1014 -> 119/114 chars; n=12 187/1042 -> 147/142. Exactly 7n+63-5bit chars and n+11-bit commands. Workspace is 6n+sum(bl(k*(8-bit)),k=1..23)+9+bl(n+11-bit)+bl(n), measured 224/216 bits at n=8. n=3 corpus 6259209 -> 6258269 chars. Generic envelopes and all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs per language through n=3 stay byte-identical. All 24 old balanced constant scores per language improve or match. Both constants n=1..12 execute in default, width=1 and balanced layouts; owned regressions verify consumption and exact native resources, with sentinel preservation for stream readers."
+
+
+[ablations.merge_window_start_20261102]
+arity = 8
+saving = 3.43
+seed = "Random(777000 + 100*n + i), i=0..199"
+tables = "fixed 200 each n 7/8; exhaustive tables/rows through 3; samples 4..6, both I/O moduli and resume readings"
+verdict = "rejected: literal earliest merge fails the next zero-trampoline landing guard in both I/O dialects at n 7. A conservative +255 residue allowance repairs it but grows default source 19.39/10.96%. Faithful local old/earliest cont plus next-stash pricing with exact landing repair saves only 2.02/3.43%: 10628000/14009000 ->10413000/13528000 chars. I/O 256 saves 2.03/1.66%. Default fixed-corpus commands 113574481/254745517 ->140198481/320076717 grow 23.44/25.65%, failing the 25 alternative. n 3 source 6258269->5909029, commands 5378952->6434920. No keeper, production search, source race, added path or state; existing construction/bounds/pins remain. No claim against every other derived window policy."
+
+[ablations.ballast_into_leaf_gap_20261102]
+arity = 8
+saving = 1.83
+seed = "same fixed 200 each n 7/8"
+tables = "all small native; samples 4..6; native raw 2 leaf-entry traces; 1224-row shared-layout count controls"
+verdict = "rejected: the concrete initial-gap variant chooses the earliest valid table-jump target and rebuilds downstream state. Default source 10628000/14009000 ->10880000/13753000 chars (-2.37/+1.83%); I/O 256 +0.019/-2.11%. Default all-row commands 113574481/254745517 ->113625681/234982317 (-0.045/+7.76%) miss 25. n 3 source 6263349, commands 5389288 versus baseline 6258269/5378952. General block interleaving is underspecified: leaves require base+sum(weights), while pad locations are outputs of the chain; no derived matching-address construction is supplied, and no fixpoint search ships. This is not a proof that all future interleavings fail. No added production path/state or changed bounds."
+
+[ablations.shared_return_route_20261102]
+arity = 8
+saving = 0.0
+seed = "same fixed 200 each n 7/8; all small tables, both I/O moduli"
+tables = "scratch finite 256-return-residue control; native allsmall plus samples 4..6; fixed 400 per I/O dialect"
+verdict = "rejected: byte-identical to baseline. Return r and tuning k SEEDs have fixed total C or C+256 for the required head 0; original smallest legal r already achieves the minimum total. All heads depend only on that total, so the proposed congruence sharing saves no commands or source in either I/O dialect. Fusing the zero lead and first stash into one byte cannot retain their 302/303 non-head sum. Default n 3 source 6258269 and commands 5378952 unchanged. Native corpus totals: 8480 exhaustive-small candidate rows, 1080 sampled dialect/resume rows, 1224 shared-layout count controls; answer/read/EOF mutants fire and table-entry traces pass. No searched frozen table, added construction path/state or superseded production path; source/E/W scopes, pins, anchors and example unchanged."

@@ -1033,8 +1033,6 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         "1" + _parity(n)[1:],
         "1" * (2 ** (n - 1) + 1) + "0" * (2 ** (n - 1) - 1),
         "1" * (2 ** (n - 1) - 1) + "0" * 2 ** (n - 1) + "1",
-        # Bypass the parity-only radix: the generic lookup still attains n=5.
-        "1" + _parity(n)[1:],
     ),
     # Every pair differs and half the pairs start with a one: all the planted
     # cells the minority rule leaves, in a table that is not affine.
@@ -1101,7 +1099,6 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Painfuck": lambda n: (
         *(("11101001",) if n == 3 else ()),
         "".join(str((1 + (r >> 1 - n % 2).bit_count()) % 2) for r in range(1 << n)),
-        *(("11101001",) if n == 3 else ()),
     ),
     "Pointless": lambda n: (_pointless_worst(n),) if n >= 2 else (),
     "Bleh": lambda n: _diagram_witness("bleh", n, 23),

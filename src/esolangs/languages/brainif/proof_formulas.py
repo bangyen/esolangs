@@ -2,7 +2,10 @@
 
 
 def workspace(n: int, p: str) -> int:
-    """The stated workspace bound, evaluated for n and the program."""
+    """Default DAG: two ASCII cells and their one-bit pointer cost thirteen bits.
+
+    OR preserves its answer beside trailing ignored inputs in the same envelope.
+    """
     bl = int.bit_length
     lines = p.splitlines()
     cells = (

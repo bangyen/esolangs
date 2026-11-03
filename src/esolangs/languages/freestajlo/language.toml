@@ -66,6 +66,28 @@ verdict = "kept under the named-function rule: a table depending only on how man
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
 blind_reimplementation = 2026-10-27
+trick_prototype = 2026-11-02
+
+[ablations.horner_function]
+arity = 8
+saving = 14.89
+seed = "random.Random(184700 + n)"
+tables = "200 random per n=7,8; four per n=4..6,9..12; five named families separately"
+verdict = "rejected: f{2*;+} saves 3n-10 chars on full-essential packed readers, 15.94%/14.89% at fixed n=7/8 (13800 -> 11600; 18800 -> 16000). Declining to zero, so it fails the 20% gate; peak n=7, 8.70% at n=10 and 3.47% at n=12. Adapting the count reader with f{;+} saves only 4.00%/7.14% on parity/majority/and/or/one-third threshold at n=7/8. The ignored-read g{;#} definition pays at six ignored inputs, not three; a native asymmetric control fires. Calls increase execution, not a command-bound win."
+
+[ablations.horner_loop]
+arity = 8
+saving = 15.96
+seed = "random.Random(184700 + n)"
+tables = "same fixed corpus as horner_function"
+verdict = "rejected: repaired tail ;k@{\\2*;+\\1-}# keeps accumulator below counter, drains reads in physical order and drops zero counter. At k=n-1 it costs 14 chars through n=10, saving 15.94%/15.96% at n=7/8 (13800 -> 11600; 18800 -> 15800), peaks at n=8 then falls to 13.48%/10.00%/4.00% at n=9/10/12 and tends to zero. Both fixed arities fail the 20% declining bar. The count-loop adaptation saves 4.00%/10.71% on the five named families at n=7/8; later growth cannot move the judging range. Ignored-input readers retain their nonuniform fragments. No production change."
+
+[ablations.unicode_word]
+arity = 8
+saving = 26.60
+seed = "random.Random(184700 + n)"
+tables = "same fixed corpus; forced astral literal and UTF-8 round trip"
+verdict = "rejected by the explicit eight-bits-per-character limit: supplementary literals encode 20 bits per code point. Measured little-endian words use 65536+int(group[::-1],2), retaining the six-bit form as a structural candidate. Char savings 14.49%/26.60% at n=7/8 (13800 -> 11800; 18800 -> 13800), 63.07% at n=12, limit 70%; native execution and UTF-8 round trip pass, which does not admit the encoding. All three probes together passed 2934 native row/control groups: exhaustive tables/rows n<=3, seeded n=4..8, balanced samples, all four larger measured programs per n=9..12, forced macro/loop/astral controls, read-first and preserved following record; wrong-fold mutant fails twice. n=3 remains 4938 chars. Only this audit record changes; proof scopes, generators, pins, Size anchors and example remain untouched."
 
 [ablations.constant_table_audit_20261101]
 arity = 8

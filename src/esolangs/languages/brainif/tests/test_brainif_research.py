@@ -43,8 +43,8 @@ def test_brainif_selection_size_and_steps_never_regress() -> None:
             ]
         )
         for table in tables:
-            # The tree is shorter on 5 tables through n = 3, by at most 23
-            # characters; racing it saves 0% on random tables at n = 4..8.
+            # Before OR specialization the tree was shorter on five tables,
+            # by at most 23 characters; racing it saves 0% on random tables at n = 4..8.
             old, new = _brainif_tree(table, None), brainif(table)
             counts = []
             for code in (old, new):
@@ -67,8 +67,8 @@ def test_brainif_selection_size_and_steps_never_regress() -> None:
                 new_total += len(new)
                 old_steps += counts[0]
                 new_steps += counts[1]
-    assert (old_total, new_total) == (310116, 270722)
-    assert (old_steps, new_steps) == (130888, 70340)
+    assert (old_total, new_total) == (310116, 265396)
+    assert (old_steps, new_steps) == (130888, 69509)
 
 
 @pytest.mark.medium

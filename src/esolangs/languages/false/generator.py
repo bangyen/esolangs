@@ -1,29 +1,19 @@
-"""FALSE Boolean program generator: a decision diagram raced with a formula.
+"""FALSE Boolean generator: shared diagram, formula and 32-bit literal lookup.
 
-A node of the diagram reads with ``^``, keeps the bit with ``1&``, and
-runs the matching half as a ``[...]?`` lambda; a leaf prints its bit
-with ``.`` after reading the inputs below it with ``^%``, which a
-caller's next program would otherwise be handed; the leaf a fold
-chain reaches from the root reads bare ``^`` and then prints.
-The reduced diagram (:func:`_shared`) shares repeated halves.
+The diagram reads along a reduced path; its leaves drain unread inputs before
+printing. The formula and lookup read every input first, storing essential
+bits and draining ignored ones. Formulas combine their bits with Boolean
+operators or ``A x;[%B]?``; lookup selects a 32-bit chunk and multiplies the
+wanted bit into its sign position. Both print a normalized answer digit.
 
-The second build (:func:`_expression`) stores each essential input
-and evaluates a Boolean formula over the stored bits, built by
-Shannon decomposition.  It wins where few halves repeat -- on a
-random table the diagram pays some twelve characters a node to
-share halves that never recur -- and the diagram keeps the tables
-whose halves do repeat.  The shorter text wins per table, ties to
-the diagram, so no table grows.  A formula is evaluated whole,
-where the diagram executes one path.  A combine can leave FALSE's
--1 true value on the stack where the answer is 1, so the value is
-masked with ``1&`` before the print: the printed digit is exactly
-the answer bit.  The formula is also built for the complement (closed with
-``~``), since its combines are cheap on a clear cofactor: negated
-thresholds and NAND/NOR fall 18-25%.
+Exact chosen formula residuals may share lambdas. Their keys retain ordered
+input positions, and a command budget preserves the execution cap. Existing
+diagram/formula routes protect structured classes, including linear parity;
+the alphabet bounds both stored-input routes. See the 2026-11-02 ablations.
 
 Size:
     O(n) for parity, O(T) for random tables; n=10 parity: 100 chars,
-    n=10 random 1847: 2,240 chars.
+    n=10 random 1847: 604 chars.
 """
 
 from __future__ import annotations
@@ -82,13 +72,18 @@ def false(truth_table: str, width: int | None = None) -> str:
     ess = essential_inputs(truth_table, n)
     # The expression build names its variables by input position, and
     # FALSE variables are a-z: past the alphabet it cannot be built.
-    if not ess or ess[-1] < len(ascii_lowercase):
+    if ess and ess[-1] < len(ascii_lowercase):
         # The complement build trades 1 char (``~`` on the body) for the
         # cheap polarity of the combines, which favour a clear cofactor.
         for flip_out in (False, True):
             expression = _expression(truth_table, n, ess, flip_out=flip_out)
             if len(expression) < len(program):
                 program = expression
+        # [ablations.literal_lookup_build_trick_20261102]; existing routes
+        # protect their structured classes, including linear parity.
+        literal = _lookup(truth_table, n, ess)
+        if len(literal) < len(program):
+            program = literal
     if width is None:
         return program
     return wrap_program(program, "false", width)
@@ -139,35 +134,73 @@ def _shared(truth_table: str, n: int) -> str:
             use(zero, depth + 1)
             use(one, depth + 1)
 
-    text: dict[Key, str] = {}
+    sizes: dict[Key, int] = {}
     names: dict[Key, str] = {}
     free = iter(ascii_lowercase)
 
-    def half(key: Key) -> str:
-        return names[key] + ";" if key in names else "[" + text[key] + "]"
+    def half_size(key: Key) -> int:
+        return 2 if key in names else 2 + sizes[key]
 
-    def render(key: Key) -> str:
+    # Price bottom-up without copying each ancestor's full text.
+    for key in (key for level in reversed(found) for key in level):
         level, node = key
         if node < 2:
-            return _SKIP * (n - level) + str(node) + "."
-        match nodes[key]:
-            case _Fold(child):
-                return _SKIP + (names[child] + ";!" if child in names else text[child])
-            case _Split(zero, one):
-                return _OPEN + half(one) + _BETWEEN + half(zero) + _CLOSE
-
-    # Deepest first, so a half's text already fetches its stored children.
-    for key in (key for level in reversed(found) for key in level):
-        text[key] = render(key)
-        size = len(text[key])
-        # Each ``[text]`` use becomes ``x;`` (saves size - 2), a bare one
-        # ``x;!`` (saves size - 3); the store ``[text]x:`` costs size + 4.
+            size = 2 * (n - level) + 2
+        else:
+            match nodes[key]:
+                case _Fold(child):
+                    size = 2 + (3 if child in names else sizes[child])
+                case _Split(zero, one):
+                    size = 8 + half_size(one) + half_size(zero)
+        sizes[key] = size
         gain = uses[key] * size - 3 * inner.get(key, 0) - size - 4
         if gain > 0 and (name := next(free, None)):
             names[key] = name
 
-    stores = "".join("[" + text[key] + "]" + name + ":" for key, name in names.items())
+    def render(key: Key) -> str:
+        return _render_diagram(key, n, nodes, names)
+
+    stores = "".join(
+        "[" + render(key) + "]" + name + ":" for key, name in names.items()
+    )
     return stores + _root_text((0, ids[0][0]), nodes, names, render, n)
+
+
+def _render_diagram(
+    key: Key, n: int, nodes: dict[Key, _Fold | _Split], names: dict[Key, str]
+) -> str:
+    """Emit one diagram body without materializing its ancestors."""
+    output: list[str] = []
+
+    def half(key: Key) -> None:
+        if key in names:
+            output.append(names[key] + ";")
+        else:
+            output.append("[")
+            emit(key)
+            output.append("]")
+
+    def emit(key: Key) -> None:
+        level, node = key
+        if node < 2:
+            output.append(_SKIP * (n - level) + str(node) + ".")
+            return
+        match nodes[key]:
+            case _Fold(child):
+                output.append(_SKIP)
+                if child in names:
+                    output.append(names[child] + ";!")
+                else:
+                    emit(child)
+            case _Split(zero, one):
+                output.append(_OPEN)
+                half(one)
+                output.append(_BETWEEN)
+                half(zero)
+                output.append(_CLOSE)
+
+    emit(key)
+    return "".join(output)
 
 
 def _root_text(
@@ -244,14 +277,14 @@ def _expression(
     onto its essential inputs: at each node the cheapest combine
     wins -- a dropped input when the halves agree, the xor collapse
     (``+b&``) for complementary halves, a one-char ``&`` or ``|``
-    step when a cofactor is constant, else the mux sum (``$`` ... ``+b&`` ...
-    ``&+b&``, 10 chars over the two halves).  Variable letters are
+    step when a cofactor is constant, else ``A x;[%B]?`` (six characters
+    over the two halves).  Variable letters are
     the inputs' own positions.  In the combines a bare letter is a
     variable reference, whose integer is its index -- ``a`` is the
     constant 0 and ``b`` the constant 1 -- so ``+b&`` folds a
     fetch into a sum's parity.
 
-    A formula is evaluated whole, where the diagram executes one
+    A formula may skip a conditional half, where the diagram executes one
     path; the race in :func:`false` keeps whichever text is shorter.
     The body's value can be -1 where the answer is 1 (a combine's
     true value), so ``1&`` masks it to the bit before ``.`` prints:
@@ -268,7 +301,35 @@ def _expression(
 
     search = _ExpressionSearch(letters)
     prologue = "".join(f"^1&{letters[i]}:" if i in letters else "^%" for i in range(n))
-    return prologue + search.text(sub, tuple(ess)) + "~" * flip_out + "1&."
+    budget = (
+        (9 * (1 << n)) // 2 + 5 * n - 7 - len(prologue) - 3 - flip_out
+        if n >= 3
+        else None
+    )
+    return (
+        prologue + search.text(sub, tuple(ess), budget=budget) + "~" * flip_out + "1&."
+    )
+
+
+_ExpressionKey = tuple[str, tuple[int, ...]]
+
+
+def _formula_commands(
+    nodes: dict[_ExpressionKey, tuple[str | _ExpressionKey, ...]],
+    order: list[_ExpressionKey],
+    names: dict[_ExpressionKey, str],
+    root: _ExpressionKey,
+) -> int:
+    """A path-independent execution upper bound, including definition setup."""
+    costs: dict[_ExpressionKey, int] = {}
+    for key in order:
+        costs[key] = sum(
+            len(part) - part.count("]")
+            if isinstance(part, str)
+            else costs[part] + (3 if part in names else 0)
+            for part in nodes[key]
+        )
+    return costs[root] + 3 * len(names)
 
 
 class _ExpressionSearch:
@@ -283,7 +344,6 @@ class _ExpressionSearch:
     def __init__(self, letters: dict[int, str]) -> None:
         self._letters = letters
         self._sizes: dict[tuple[str, tuple[int, ...]], int] = {}
-        self._texts: dict[tuple[str, tuple[int, ...]], str] = {}
 
     def size(self, table: str, positions: tuple[int, ...]) -> int:
         """The cheapest body length for ``table`` over ``positions``."""
@@ -310,48 +370,172 @@ class _ExpressionSearch:
                 best = min(best, self.size(b, rest) + 3)
             if b == "1" * len(b):
                 best = min(best, self.size(a, rest) + 3)
-            best = min(best, self.size(a, rest) + self.size(b, rest) + 10)
+            best = min(best, self.size(a, rest) + self.size(b, rest) + 6)
         return best
 
-    def text(self, table: str, positions: tuple[int, ...]) -> str:
-        """The cheapest body text for ``table`` over ``positions``."""
-        key = (table, positions)
-        if key not in self._texts:
-            self._texts[key] = self._build(table, positions)
-        return self._texts[key]
-
-    def _build(self, table: str, positions: tuple[int, ...]) -> str:
-        if table == "0" * len(table):
-            return "0"
-        if table == "1" * len(table):
-            return "1"
-        if len(positions) == 1:
+    def _parts(
+        self, table: str, positions: tuple[int, ...]
+    ) -> tuple[str | _ExpressionKey, ...]:
+        """The first minimum-priced combine, without materializing alternatives."""
+        parts: tuple[str | _ExpressionKey, ...]
+        if len(set(table)) == 1:
+            parts = (table[0],)
+        elif len(positions) == 1:
             fetch = self._letters[positions[0]] + ";"
-            return fetch if table == "01" else "1" + fetch + "-"
-        options: list[tuple[int, str]] = []
-        for j in _splits(table, positions):
-            rest = positions[:j] + positions[j + 1 :]
-            a, b = _cofactor(table, j)
-            fetch = self._letters[positions[j]] + ";"
-            if a == b:
-                options.append((self.size(a, rest), self.text(a, rest)))
+            parts = (fetch if table == "01" else "1" + fetch + "-",)
+        else:
+            options: list[tuple[int, tuple[str | _ExpressionKey, ...]]] = []
+            for j in _splits(table, positions):
+                rest = positions[:j] + positions[j + 1 :]
+                a, b = _cofactor(table, j)
+                ka, kb = (a, rest), (b, rest)
+                fetch = self._letters[positions[j]] + ";"
+                if a == b:
+                    options.append((self.size(a, rest), (ka,)))
+                    continue
+                if b == _complement(a):
+                    options.append((self.size(a, rest) + 5, (ka, fetch + "+b&")))
+                if a == "0" * len(a):
+                    options.append((self.size(b, rest) + 3, (kb, fetch + "&")))
+                if b == "1" * len(b):
+                    options.append((self.size(a, rest) + 3, (ka, fetch + "|")))
+                options.append(
+                    (
+                        self.size(a, rest) + self.size(b, rest) + 6,
+                        (ka, fetch + "[%", kb, "]?"),
+                    )
+                )
+            parts = min(options, key=lambda option: option[0])[1]
+        return parts
+
+    def text(
+        self, table: str, positions: tuple[int, ...], *, budget: int | None = None
+    ) -> str:
+        """Render the chosen formula, extracting identical residual subtrees.
+
+        Keys retain ordered input positions; equal text alone is not a sharing
+        test. A command budget preserves the inherited execution cap. Each
+        accepted store needs one linear reprice, at most 26 times.
+        """
+        nodes: dict[_ExpressionKey, tuple[str | _ExpressionKey, ...]] = {}
+
+        def plan(table: str, positions: tuple[int, ...]) -> _ExpressionKey:
+            key = (table, positions)
+            if key in nodes:
+                return key
+            parts = self._parts(table, positions)
+            for part in parts:
+                if not isinstance(part, str):
+                    plan(*part)
+            nodes[key] = parts
+            return key
+
+        root = plan(table, positions)
+        order = sorted(nodes, key=lambda key: len(key[1]))
+        names: dict[_ExpressionKey, str] = {}
+        free = iter(c for c in ascii_lowercase if c not in self._letters.values())
+
+        def lengths() -> dict[_ExpressionKey, int]:
+            sizes: dict[_ExpressionKey, int] = {}
+            for key in order:
+                sizes[key] = sum(
+                    len(part)
+                    if isinstance(part, str)
+                    else 3
+                    if part in names
+                    else sizes[part]
+                    for part in nodes[key]
+                )
+            return sizes
+
+        def uses() -> dict[_ExpressionKey, int]:
+            counts = {root: 1}
+            for key in reversed(order):
+                factor = 1 if key in names else counts.get(key, 0)
+                for part in nodes[key]:
+                    if not isinstance(part, str):
+                        counts[part] = counts.get(part, 0) + factor
+            return counts
+
+        # Exact residual sharing is canonical; the runtime guard preserves
+        # the original cap ([ablations.formula_subtree_sharing_trick_20261102]).
+        sizes, counts = lengths(), uses()
+        runtime_counts = dict(counts)
+        runtime = _formula_commands(nodes, order, names, root)
+        for key in order:
+            count = counts.get(key, 0)
+            if count * sizes[key] <= 3 * count + sizes[key] + 4:
                 continue
-            if b == _complement(a):
-                text = self.text(a, rest) + fetch + "+b&"
-                options.append((self.size(a, rest) + 5, text))
-            if a == "0" * len(a):
-                options.append(
-                    (self.size(b, rest) + 3, self.text(b, rest) + fetch + "&")
-                )
-            if b == "1" * len(b):
-                options.append(
-                    (self.size(a, rest) + 3, self.text(a, rest) + fetch + "|")
-                )
-            text = (
-                self.text(a, rest) + "$" + self.text(b, rest) + "+b&" + fetch + "&+b&"
-            )
-            options.append((self.size(a, rest) + self.size(b, rest) + 10, text))
-        return min(options, key=lambda pair: pair[0])[1]
+            extra = 3 * (runtime_counts[key] + 1)
+            if budget is not None and runtime + extra > budget:
+                continue
+            letter = next(free, None)
+            if letter is None:
+                break
+            names[key] = letter
+            runtime += extra
+            sizes, counts = lengths(), uses()
+        output: list[str] = []
+
+        def emit(key: _ExpressionKey) -> None:
+            for part in nodes[key]:
+                if isinstance(part, str):
+                    output.append(part)
+                elif part in names:
+                    output.append(names[part] + ";!")
+                else:
+                    emit(part)
+
+        for key in names:
+            output.append("[")
+            emit(key)
+            output.append("]" + names[key] + ":")
+        emit(root)
+        return "".join(output)
+
+
+def _lookup(truth_table: str, n: int, ess: list[int]) -> str:
+    """Select a signed 32-bit chunk and multiply its selected bit into the sign.
+
+    Stored inputs restrict this route to the same alphabet as the formula.
+    The five-factor product wraps only at its exact 2**31 endpoint.
+    """
+    sub = read_at(truth_table, ess, n)
+    letters = {pos: ascii_lowercase[pos] for pos in ess}
+    low = min(len(ess), 5)
+    size = 1 << low
+    chunks = [sub[i : i + size] for i in range(0, len(sub), size)]
+
+    def literal(bits: str) -> str:
+        value = int(bits, 2)
+        return str((~value) & 0xFFFFFFFF) + "~" if value >> 31 else str(value)
+
+    ids = subtree_ids(sub)
+    packet_depth = len(ess) - low
+    selected: list[str] = []
+
+    def select(depth: int, index: int) -> None:
+        if depth == packet_depth:
+            selected.append(literal(chunks[index]))
+            return
+        zero, one = ids[depth + 1][2 * index : 2 * index + 2]
+        select(depth + 1, 2 * index)
+        if zero == one:
+            return
+        selected.append(letters[ess[depth]] + ";[%")
+        select(depth + 1, 2 * index + 1)
+        selected.append("]?")
+
+    select(0, 0)
+
+    prologue = "".join(
+        "^1&" + letters[i] + ":" if i in letters else "^%" for i in range(n)
+    )
+    power = [str(1 << (32 - size))]
+    for j, pos in enumerate(ess[-low:]):
+        weight = 1 << (low - 1 - j)
+        power.append(letters[pos] + ";" + str((1 << weight) - 1) + "*1+*")
+    return prologue + "".join(power) + "".join(selected) + "*0\\>1&."
 
 
 def _balance(_table: str, default: str) -> str:

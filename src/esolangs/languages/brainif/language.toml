@@ -8,7 +8,7 @@ bf_derivative = true
 
 [proof_status]
 labels = ["tree"]
-qualification = "equal cofactors share one layered DAG node, and an ignored input is read by the next layer's nodes; spatial lookup remains a candidate"
+qualification = "equal cofactors share a layered DAG; OR uses a known-zero entry and holds its answer beside trailing input; width requests retain tree/spatial readers"
 scaling = "linear: at most W characters: widest layered DAG, before the fall-through layout"
 execution = "poly n: at most 4n + 50 commands, one DAG path and a tail"
 workspace = "poly n: at most 13 + bl(lines) + bl(n) bits: two cells, a line cursor"
@@ -64,6 +64,7 @@ verdict = "kept 2026-10-27: the narrow lookup walks its widest levels by a loop 
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
+trick_prototype = 2026-11-02
 
 [balance_growth]
 wall = "a line is one guarded command, if <int> <command> [operand] (interpreter.py _parse), carrying O(log L) bits; T table bits need L >= c*T/log T lines, so the side 2*L gives area >= c*T**2/log**2 T (measured T**1.57 from n=10 to 12, 2026-10-29)"
@@ -74,3 +75,31 @@ saving = 59.8
 seed = "both constant values"
 tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
 verdict = "kept: canonical whole-constant output tail and minimal supported inc/right spellings. Read first with one initial input and a normalize/read pair thereafter; zero prints the final 48 or climbs a fresh cell, one normalizes to 49 and prints. Zero/one use 22n+483 / 22n+11 chars and 2n+49 / 2n+1 commands. At n=8, chars 1037/1065 -> 659/187; n=12 1149/1177 -> 747/275. The one-tail workspace is 6+bl(lines)+bl(n), measured 15 bits at n=8; the zero envelope stays unchanged. The 270 nonconstant programs through n=3 are byte-identical. n=3 corpus chars 271918 -> 270722 and row commands 70360 -> 70340; width=1 chars 216498 -> 215828. Both constants at n=1..12 ran in default, width=1 and balanced layouts, with command/workspace checks; sentinels cover n=1,3,4,5,6,8,12."
+
+[ablations.out0_or_20261102]
+seed = "Random(777000+100*n+i), i=0..199"
+arity = 8
+saving = 56.45
+tables = "fixed generic200 at7/8; named OR; all OR input subsets through9,3039 native/W rows; exhaustive small and sampled4..6"
+verdict = "kept named OR only: full OR zeros enter with exactly cell0=48 after the last essential read. Source1303/1373 ->528/598 at7/8 (59.48/56.45%), clearing20 declining; removed49 false move/climb lines save775 chars there. Saving tends0: old/new OR sourceTheta(n log n), removed775..804 chars for n>=2, no arity cap; global saving peak90.88% at n1, exact source formula/native extension through16. Added one semantic OR output path because non-OR zero callers may hold49 and need the old conversion. For trailing ignored inputs, added one scratch input cell beside the held answer; this is necessary to read before print without overwriting it. The helper returns by separate byte guards to avoid two left moves. OR's superseded zero climb and trailing DAG layers are removed, not retained as candidates; projected data is reused for layers. No new runtime fields or old-OR source race; two cells still fit13 bits. E remains<=4n+50, source<=old widest-DAG bound. Final n3 source270722->265396, commands70340->69509;14 rows slower bymax7 on ignored OR, disclosed under source admission. All non-OR/default and width constructions stay unchanged."
+
+[ablations.raw_out0_split_20261102]
+seed = "same fixed200 generic tables each7/8"
+arity = 8
+saving = -0.43
+tables = "153600 paired native baseline/split rows at7/8; allsmall and samples4..6"
+verdict = "rejected generically: source617561/935690 ->622113/939688,183/179 growing tables. Actual all-row commands1200581/2577549 ->888891/1951005 (25.96/24.31%), failing25 alternative at8. n3 source266151 and E45748 are context, not admission: table00000001 grows1007->1048, failing the execution-only no-table-growth condition. Constant00 bottom cofactors also need49-to-zero conversion; absence of10 alone cannot remove climb. No generic split path or state ships; only independently qualified OR construction above."
+
+[ablations.dag_short_spellings_20261102]
+seed = "same fixed200 generic tables each7/8"
+arity = 8
+saving = 16.63
+tables = "current interpreter/native allsmall+samples; primary wiki Instructions checked2026-11-02"
+verdict = "rejected: inc/bare right are deliberate locally accepted aliases (parser commands, tests, limitations.md), but primary BrainIf grammar lists increment/move right/move left and rejects other nonempty instructions (https://esolangs.org/wiki/BrainIf#Instructions). CONTRIBUTING forbids interpreter-extension savings. Existing alias baseline is preserved, no spec-wide rewrite. Even assuming aliases, source617561/935690 ->500881/780100 (18.89/16.63%) misses20 declining; saving6D+293 per all-essential DAG withD nodes is o(T) as goto addresses widen. n3 source187624, commands unchanged70340. Adds no production path/state."
+
+[ablations.maximum_cover_20261102]
+seed = "same fixed200 generic tables each7/8"
+arity = 8
+saving = 1.62
+tables = "linear degree-two graph repair, stable/high-indegree head orders;153600 native matching rows,11050 small/sample variant rows"
+verdict = "rejected: raw Hopcroft-Karp has no required linear build guarantee; a named linear component orientation gives maximum permitted cover while reserving out1 last. Duplicate-target loops are prioritized, then a rooted tree/unicycle assigns each target once. Stable source603068/920951, degree-order603005/920549 versus617561/935690 (best2.36/1.62%); one n7 table grows. Native E1192228/2559799 saves0.70/0.69%, below25; n3 E70104 vs70340 fails5. Two fixed orders only, no old-program min/fallback. Graph positive control increases matched edges1->2; real native rows verify firing. Adds no production path/state; no claim about all possible layouts."

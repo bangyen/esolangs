@@ -23,6 +23,7 @@ def test_false_tests_the_low_bit_and_splits_every_node() -> None:
 def test_false_stores_repeated_halves_and_skips_equal_ones() -> None:
     """The reduced diagram cuts both totals and lengthens no table."""
 
+    _check_lookup_and_cached_formula()
     three = [format(value, "08b") for value in range(256)]
     assert _shared("01101001", 3) == (
         "[^1&$[1.]?0=[0.]?]a:[^1&$[0.]?0=[1.]?]b:^1&$[^1&$a;?0=b;?]?0=[^1&$b;?0=a;?]?"
@@ -137,3 +138,47 @@ def _check_constants() -> None:
                     assert io.reads == n
                     assert io.past_end == 0
                     assert io.input_char() == ord("7")
+
+
+def _check_lookup_and_cached_formula() -> None:
+    from esolangs.languages.false.generator import (
+        LANGUAGE,
+        _balance,
+        _expression,
+        _ExpressionSearch,
+        _lookup,
+    )
+    from esolangs.languages.false.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for table in ("1" + "0" * 31, "0" * 31 + "1", "1" * 32, "01" * 16):
+        program = _lookup(table, 5, list(range(5)))
+        assert LANGUAGE.wrap is not None
+        for source in (program, _balance(table, program), LANGUAGE.wrap(program, 1)):
+            for row, expected in enumerate(table):
+                io = ScriptedIO(f"{row:05b}7")
+                run(source, io)
+                assert io.getvalue() == expected
+                assert io.reads == 5
+                assert io.past_end == 0
+                assert io.input_char() == ord("7")
+    for source, expected in (
+        ("' .", "32"),
+        ("'\n.", "10"),
+        ("123456789.", "123456789"),
+    ):
+        for width in (1, 2, 7):
+            io = ScriptedIO("")
+            run(LANGUAGE.wrap(source, width), io)
+            assert io.getvalue() == expected
+    table = "".join(str(int(row.bit_count() >= 3)) for row in range(128))
+    program = _expression(table, 7, list(range(7)))
+    assert ";!" in program
+    assert ";!" not in _ExpressionSearch(dict(enumerate("abcdefg"))).text(
+        table, tuple(range(7)), budget=0
+    )
+    for row, expected in enumerate(table):
+        io = ScriptedIO(f"{row:07b}")
+        run(program, io)
+        assert io.getvalue() == expected
+        assert io.reads == 7

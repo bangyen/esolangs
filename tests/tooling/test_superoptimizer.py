@@ -138,23 +138,11 @@ def test_audit_space_accounting() -> None:
 
 
 def test_audit_false_corpus() -> None:
-    """The corpus alphabet covers every char the generator emits at
-    small arity, and the n=1 sizes are the measured shipped sizes.
-    Restated 2026-10-21 for the current tree: candidate #23's removal
-    stands and its capped restore was retired again (5e57525c2), so
-    the pair tables ship 16 while the constant tables ship the
-    3-char spellings the v2 audit once reported as gaps.  Restated
-    again the same day for the expression-form landing: the pair
-    tables now ship the expression spellings, 10 and 12 (11 once the
-    complement build landed: `^1&a:a;~1&.`, which brings ~ into the
-    alphabet; the negated-combine ``a=|`` took ``=`` out again)."""
+    """Pin measured leaf sizes and the three-input conditional-mux alphabet."""
     corpus = corpus_for(AUDIT_LANGUAGE)
     assert corpus.sizes[1] == {"00": 3, "01": 10, "10": 11, "11": 3}
-    # The pair spelling's ' and _ left the emitted alphabet with it;
-    # the expression landing took the lambda chars [ ] ? ! out of the
-    # small-arity corpus and brought the formula chars + - | and the
-    # third input's letter c in.
-    assert set(corpus.alphabet) == set("$&%+-.01:;^abc|~")
+    # The six-character mux uses lambdas and retains A without duplicating it.
+    assert set(corpus.alphabet) == set("%&+-.01:;?[]^abc|~")
 
 
 @pytest.mark.medium  # ~8k interpreter executions through the public API
