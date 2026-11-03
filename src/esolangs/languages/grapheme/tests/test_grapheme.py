@@ -1,6 +1,7 @@
 """Unit tests for the Grapheme interpreter."""
 
 from functools import partial
+from itertools import product
 
 import pytest
 
@@ -272,6 +273,21 @@ def test_integer_conversion_shifts_only_between_letters(letters, value) -> None:
 
 def test_spec_truth_machine_zero_branch() -> None:
     assert run_program("HFAFYHWJUZFZFY", "Z") == "0"
+
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    for parts, mode in product(
+        product("ABYZ", repeat=3), ("between_letters", "after_each_letter")
+    ):
+        letters = "".join(parts)
+        digits = [(alphabet.index(letter) + 1) % 26 for letter in letters]
+        value = sum(digit * 10**position for position, digit in enumerate(digits[::-1]))
+        if mode == "after_each_letter":
+            value *= 10
+        for code in (f"F{letters}FY", f"E{letters}EJY", f"HF{letters}FYHI"):
+            io = ScriptedIO("unused")
+            run(code, io, integer_conversion=mode)
+            assert io.getvalue() == str(value)
+            assert io.position() == 0
 
 
 def test_an_empty_z_body_repeats_while_the_stack_is_live() -> None:
