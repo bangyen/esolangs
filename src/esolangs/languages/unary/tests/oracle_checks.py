@@ -113,6 +113,7 @@ def check_raw_unary():
     for count in (0, 1, 8, 9, 10, 11, 12, 13, 14, 15, 63, 64, 108, 511, 512, 1024):
         raw = " \n".join(["0" * (count // 2), "0" * (count - count // 2)])
         results += [_agrees(_Machine, raw, stdin, compressed=True) for stdin in inputs]
+    results.append(_agrees(_Machine, "00000000x", "", compressed=True))
     results.append(_agrees(_Machine, _source("-[-]."), "", cap=600))
     assert {error for error, _ in results} == {None, "syntax"}
     assert any(not trace[-1][1] for error, trace in results if error is None)
