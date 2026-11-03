@@ -104,7 +104,12 @@ class TestPrimeTester:
 
     def test_missing_input_bits_read_as_zero(self) -> None:
         """An exhausted stdin fills the remaining wires with zero bits."""
-        assert output_for(PRIME_TESTER, "") == "0"
+        for width in range(4):
+            for prefix in range(1 << width):
+                supplied = bits_of(prefix)[2 * (4 - width) :]
+                value = prefix << (4 - width)
+                prime = value >= 2 and all(value % d for d in range(2, value))
+                assert output_for(PRIME_TESTER, supplied) == str(int(prime))
 
     def test_as_drawn_the_page_prints_nothing(self) -> None:
         """The unrepaired diagram is silent, for every input."""
