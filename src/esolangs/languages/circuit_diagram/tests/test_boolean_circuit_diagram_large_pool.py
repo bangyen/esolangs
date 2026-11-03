@@ -138,18 +138,22 @@ def test_compete_binds_no_patched_name() -> None:
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    ("family", "arities"),
-    [(dense, (8, 10, 12)), (dense, (9, 11, 13)), (nested_dense, (8, 10, 12))],
+    ("family", "arities", "caps"),
+    [
+        (dense, (8, 10, 12), (52_057, 287_892, 2_667_702)),
+        (dense, (9, 11, 13), (106_751, 845_725, 6_095_641)),
+        (nested_dense, (8, 10, 12), (46_723, 271_684, 2_913_235)),
+    ],
 )
-def test_public_growth_executes_positive_controls(family, arities) -> None:
-    sizes = []
-    for n in arities:
+def test_public_growth_executes_positive_controls(family, arities, caps) -> None:
+    # Independent rung caps catch growth without penalizing a smaller early
+    # fold when the larger rung still selects a primitive layout.
+    for n, cap in zip(arities, caps, strict=True):
         table = family(n)
         code = circuit_diagram(table)
         rows = sorted({0, len(table) - 1, *range(0, len(table), len(table) // 32)})
         _execute(table, code, rows)
-        sizes.append(len(code))
-    assert 0 < sizes[2] - sizes[1] <= 4.4 * (sizes[1] - sizes[0])
+        assert len(code) <= cap, n
 
 
 def test_large_pool_parks_an_ignored_input_port() -> None:

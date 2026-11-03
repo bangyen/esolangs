@@ -1,4 +1,4 @@
-"""Counted mask gates admit sparse classes beyond the pessimistic bound."""
+"""Sparse class and prefix controls beyond the pessimistic bank bound."""
 
 from itertools import combinations, islice
 
@@ -17,13 +17,14 @@ def _sparse_classes():
 
 
 @pytest.mark.slow
-def test_counted_mask_banks_execute_class_and_prefix_boundaries() -> None:
+def test_sparse_classes_execute_at_class_and_prefix_boundaries() -> None:
     table, pairs = _sparse_classes()
     old_bound = 202 * (211 + 114 + 2) - 1
     assert old_bound > 2 * len(table) + 8 * 15 + 111
     code = circuit_diagram(table)
     lines = code.splitlines()
-    assert len(lines) * max(map(len, lines)) == 5_953_673
+    # The native mux fold wins this witness over the primitive layout.
+    assert len(lines) * max(map(len, lines)) == 3_203_191
     rows = sorted(
         {
             0,
@@ -39,4 +40,4 @@ def test_counted_mask_banks_execute_class_and_prefix_boundaries() -> None:
             ),
         }
     )
-    assert _execute(table, code, rows) == 26
+    assert _execute(table, code, rows) == 18

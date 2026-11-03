@@ -434,6 +434,7 @@ class TestCircuitDiagramLayoutGuards:
         """Forgetting a carried signal hands its column away while it is live."""
 
         from esolangs.languages.circuit_diagram.generator import _Builder
+        from tests.support.witness_tables import dense
 
         module = importlib.import_module("esolangs.languages.circuit_diagram.generator")
         original = getattr(_Builder, "_band")  # noqa: B009 - SLF001 otherwise
@@ -442,7 +443,8 @@ class TestCircuitDiagramLayoutGuards:
             original(self)
             self.live.clear()
 
-        table = "".join(str(bin(i).count("1") % 2) for i in range(32))
+        # Full parity now takes the XOR ladder and never enters a band.
+        table = dense(6)
         monkeypatch.setattr(_Builder, "_band", forgetful)
         with pytest.raises(AssertionError, match="two signals run vertical"):
             module.circuit_diagram(table, 40)

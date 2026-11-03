@@ -81,7 +81,8 @@ def test_saved_program_executes_in_a_fresh_process(language, tmp_path) -> None:
         )
         return
     else:
-        path.write_text(str(source), encoding="utf-8")
+        # Match the CLI's file terminator so Path loading keeps source newlines.
+        path.write_text(str(source) + "\n", encoding="utf-8")
     assert (
         _evaluate(language, path, inputs=len(table).bit_length() - 1, isolated=True)
         == table
