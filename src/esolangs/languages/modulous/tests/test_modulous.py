@@ -401,6 +401,12 @@ def test_modulous_reset_loops_and_end_halts() -> None:
         assert io.getvalue() == "".join(map(str, expected))
         assert io.position() == len(str(a)) + 1
 
+    for value, threshold in product((-7, 0, 12), repeat=2):
+        source = f"[PSH INT {value}][JMP F 2 NIF {threshold}][PRT INT][END]"
+        io = ScriptedIO("")
+        run(source, io)
+        assert io.getvalue() == (str(value) if value == threshold else "")
+
 
 def test_modulous_forks_every_value_rnd_could_draw() -> None:
     """``RND n`` opens exactly ``n`` outcomes, one per drawable value."""
