@@ -474,6 +474,9 @@ def test_w_copies_the_right_neighbour_from_a_middle_cell() -> None:
             result % 256
         )
 
+    for value in (-257, -256, -1, 255, 256, 257):
+        assert run_program("ioue", f"{value}\n") == str(value) + chr(value % 256)
+
 
 def test_v_and_y_as_the_last_command_end_the_program() -> None:
     assert run_program("pv") == ""
