@@ -8,8 +8,8 @@ def _tests(n: int) -> int:
     )
 
 
-#: Decode-part code addresses past the 8n read instructions: 44 branch targets
-#: and the self-modified load (instruction 14).
+#: Original decode-part C addresses past the 8n reads, before zeroing output C,
+#: plus the self-modified load operand (instruction 14).
 _CODE = (
     13, 2, 3, 4, 5, 7, 0, 8, 9, 10, 11, 12, 0, 14, 15, 16, 17, 18, 19, 20, 21, 22,
     32, 24, 25, 30, 27, 28, 29, 22, 31, 32, 33, 40, 35, 36, 37, 38, 39, 20, 41, 42,
@@ -26,6 +26,9 @@ def _packed(n: int, _: str) -> int:
     -(2^w - 1), w = n or T mod n for the last; row 0 clear costs no digit.
     Equals the decoder on 0 followed by ones, n = 2..14.
     """
+    # I/O targets at read instructions 8i and output 8n+43 are ignored.
+    dead = sum(len(str(3 * (8 * i + 1))) - 1 for i in range(n))
+    dead += len(str(3 * (8 * n + 44))) - 1
     code = 8 * n + 45
     width = len(str(3 * code + 17))
     full, rest = divmod(1 << n, n)
@@ -37,6 +40,7 @@ def _packed(n: int, _: str) -> int:
         + 20 + 2 * len(str(n))
         + full * (1 + len(str((1 << n) - 1)))
         + (1 + len(str((1 << rest) - 1)) if rest else 0)
+        - dead
     )  # fmt: skip
 
 
@@ -71,8 +75,8 @@ def _chars(n: int, p: str) -> int:
     Witness (`_subleq_packed_worst` in test_execution_formulas): every chunk's top
     k rows one (k = 3; 6 at n = 10, where 896 has fewer digits than 1023), so
     each chunk keeps its top digit count, and the other rows a multiplicative
-    hash, so the tree loses to P: n = 9..14 measured 1683, 2111, 2709, 3735,
-    5563, 10069 = P.
+    hash, so the tree loses to P: n = 9..14 measured 1666, 2092, 2688, 3712,
+    5538, 10042 = P.
     """
     return min(_packed(n, p), _tree(n, p))
 

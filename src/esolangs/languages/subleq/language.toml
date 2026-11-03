@@ -6,21 +6,21 @@ backlinks = 82
 
 [proof_status]
 labels = ["finite lookup"]
-qualification = "shared direct-jump residual DAG or packed decoder with interned chunk payloads"
+qualification = "shared direct-jump residual DAG or packed-table decoder; unused byte-I/O targets are zero"
 scaling = "linear: worst min(P, H) characters at n = 9..14, at most elsewhere"
 execution = "linear: worst 8T+(7n+5)(⌊T/n⌋-1)+23n-8 steps past n = 8: the packed decoder"
 workspace = "linear: worst I + R + P + bl(n) bits: image, rewritten cells, pc, cursor"
 definitions = ["I = the program's cell bits: bl(|v|) plus one per zero or negative cell", "R = 6n + 5 on a tree, 4 on a constant; packed, its worst read, advance or halving row", "P = the pc: bl(Q-3) on a tree, bl(Q) on a constant, bl(D-3) packed; Q cells, D decoder cells"]
 
 [generator_sizes]
-"00000001" = { commands = 15, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 15, "5" = 15, "6" = 16, "7" = 15 }, source_units = 155 }
-"00001100" = { commands = 14, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 14, "5" = 14, "6" = 14, "7" = 14 }, source_units = 134 }
-"00110110" = { commands = 15, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 16, "5" = 15, "6" = 16, "7" = 15 }, source_units = 169 }
-"0110" = { commands = 11, commands_by_row = { "0" = 11, "1" = 11, "2" = 12, "3" = 11 }, source_units = 123 }
-"01101001" = { commands = 15, commands_by_row = { "0" = 15, "1" = 15, "2" = 16, "3" = 15, "4" = 17, "5" = 16, "6" = 15, "7" = 15 }, source_units = 169 }
-"0110100110010110" = { commands = 19, commands_by_row = { "0" = 19, "1" = 19, "2" = 20, "3" = 19, "4" = 21, "5" = 20, "6" = 19, "7" = 19, "8" = 22, "9" = 21, "10" = 20, "11" = 20, "12" = 19, "13" = 19, "14" = 20, "15" = 19 }, source_units = 219 }
-"1101001101101101" = { commands = 19, commands_by_row = { "0" = 18, "1" = 18, "2" = 19, "3" = 19, "4" = 19, "5" = 19, "6" = 18, "7" = 18, "8" = 20, "9" = 20, "10" = 20, "11" = 19, "12" = 18, "13" = 18, "14" = 19, "15" = 19 }, source_units = 226 }
-"11111110" = { commands = 15, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 15, "5" = 15, "6" = 16, "7" = 15 }, source_units = 155 }
+"00000001" = { commands = 15, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 15, "5" = 15, "6" = 16, "7" = 15 }, source_units = 150 }
+"00001100" = { commands = 14, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 14, "5" = 14, "6" = 14, "7" = 14 }, source_units = 129 }
+"00110110" = { commands = 15, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 16, "5" = 15, "6" = 16, "7" = 15 }, source_units = 164 }
+"0110" = { commands = 11, commands_by_row = { "0" = 11, "1" = 11, "2" = 12, "3" = 11 }, source_units = 119 }
+"01101001" = { commands = 15, commands_by_row = { "0" = 15, "1" = 15, "2" = 16, "3" = 15, "4" = 17, "5" = 16, "6" = 15, "7" = 15 }, source_units = 164 }
+"0110100110010110" = { commands = 19, commands_by_row = { "0" = 19, "1" = 19, "2" = 20, "3" = 19, "4" = 21, "5" = 20, "6" = 19, "7" = 19, "8" = 22, "9" = 21, "10" = 20, "11" = 20, "12" = 19, "13" = 19, "14" = 20, "15" = 19 }, source_units = 213 }
+"1101001101101101" = { commands = 19, commands_by_row = { "0" = 18, "1" = 18, "2" = 19, "3" = 19, "4" = 19, "5" = 19, "6" = 18, "7" = 18, "8" = 20, "9" = 20, "10" = 20, "11" = 19, "12" = 18, "13" = 18, "14" = 19, "15" = 19 }, source_units = 220 }
+"11111110" = { commands = 15, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 15, "5" = 15, "6" = 16, "7" = 15 }, source_units = 150 }
 
 [schemes]
 folds_without_tree = true
@@ -69,6 +69,7 @@ arity = 12
 verdict = "kept: canonical, exempt. Inside the packed build: an ignored input is read into TMP and never joins the index, and the table is packed over the essential inputs only. Removing projection costs +34.98% on one-ignored and +66.52% on two-ignored tables at n=12 (direct: the unprojected build still ships); on three-ignored tables it grows past the tree, so the routed price caps at +22.52%. It is 0.00% wherever every input is essential"
 
 [audits]
+trick_prototype = 2026-11-03
 plain_rewrite = 2026-10-27
 
 [formula_arities]
@@ -87,3 +88,31 @@ saving = 1.6
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: minimal fixed-output spelling, exempt from the percentage gate. At n>=3 store the ASCII answer in the first input instruction unused third cell; input always falls through, and every read only overwrites the already executed cell 0. Output reads address 2 rather than a two-digit trailing address. n=1..2 retain their equal-length spelling and balanced layouts; the S*bleq helper remains byte-identical at n=1..100. L=7n+7 chars, E=n+1 commands. Written bits equal the loaded image bits plus 4+bl(3n+3)+bl(n), as in the unchanged registered proof: cell 0 grows from -1 to an ASCII bit. n=7 57 -> 56 chars; n=8 64 -> 63 chars, commands stay 9, written bits 58 -> 55; n=12 92 -> 91 chars. n=3 corpus 39372 -> 39370 chars. Each language passed 5656 paired old/new row executions; all 270 nonconstant default programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. A separate 1120-run native probe per language covers every row through n=8. All 24 balanced scores per language match or improve; all 24 benchmark size/command pins across the batch remain unchanged. Owned regressions check exact resources, every read before output, no EOF probes and a preserved following record. No new collected cases."
+
+[ablations.ignored_io_targets]
+arity = 8
+saving = 1.001
+seed = "Random(1000*n+i)"
+tables = "20 random per n7/8; every table/row n<=3; samples4..8; alloriginalsourceexactrungs9..14"
+verdict = "kept: canonical minimal spelling. Subleq byte I/O advances unconditionally; its unused third operand is zero. Only the direct tree/packed emitters change, no extra path/state/flags. Constant constructors retain their literal-bearing third cells. Fixed20 n7/8 source15055→14846 /23980→23740 chars; n3 source39370→38100,commands29396unchanged. All8 source pins shrink; last-row/per-row commands unchanged. 4330 paired native outputs/read-first/sentinel checks pass;873 directFalse programs are byte-identical and execute, including S*bleq normal/flipped trees and packed decoder. Packed source bound subtracts only its all-essential nread+output ignored targets; instruction/data injection proves it still bounds projections, with enough full n-bit chunks for every projected partial chunk. Old source exact9..14 and workspace exact3/5/9 scopes/flags retained. FullslowW9 case timed out45s; constructive rows4/8/502/503 plus immutable-image delta proof pass: row503 E8035,W3536→3479 exactly. Both source-worst witnesses also reach their formulas. The timeout is not a passed fullslowcase."
+
+[ablations.packed_leaf_hybrid_prototype]
+arity = 8
+saving = -52.827
+seed = "Random(1000*n+i)"
+tables = "20 random per n7/8; allsmalltables/rows<=3; samples4..6; namedfunctionsseparate"
+verdict = "rejected: three fixed k2/3/4 variants, no old/new whole-program minimum. Hoisted reads form the bottom index; prefix DAG selects one interned payload via a3-instruction self-modified load stub. Even removing unreachable chunk-selection leaves32 shared decode instructions, not20–40cells as estimated. Source n7 baseline14846 vs34958/33490/25982; n8 baseline23740 vs47867/51274/36281. All named AND/OR/parity/thresholds also grow. 4315 native checks pass, plus63 named representative programs. Standalone k4 also violates the preserved global execution cap: n9 repeated16-row0111…111 payload still runs after8036steps, beyond8035. No claim that all other possible decoders fail; this existing-decoder refinement is not retained."
+
+[ablations.low_address_layout_prototype]
+arity = 8
+saving = 1.436
+seed = "Random(1000*n+i)"
+tables = "20 random per n7..12; namedfunctions7/8; exhaustive<=3,samples4..6"
+verdict = "rejected: baseline data already follows a3-cell entry, below code. Hot-data ranking alone saves4.850/5.510% at7/8. Adding one fixed in-degree block order with explicit fall-through repair changes14846→14923 /23740→23399 chars (-0.519/1.436%). Named gains stay below2.8%. Random allvariants are unchanged at9..12, where packed wins; observed ranking peak8. No old/new layout race or search. A non-I/O-C0 mutant consumes17bytes in50steps instead of2: arithmetic targets are not harmless."
+
+[ablations.complement_residual_sharing_prototype]
+arity = 8
+saving = 0.0
+seed = "Random(1000*n+i)"
+tables = "20 random per n7..12; namedfunctions7/8; exhaustive<=3,samples4..6; guardedcomplementpositivecontrol"
+verdict = "rejected: working toggle uses three4-instruction copies to swap output cells; this is not a claim that12 is optimal. Share an already-emitted complement only when a bounded local quote exceeds13 new instructions (toggle+jump); resolve ignored tests and retain shared literals. No generic/named7/8 firing or source gain. Positive n7 guarded R/~R fires once and shrinks774→650 chars,128 native rows pass; constructed classes do not admit a rule. The combined layout/complement corpus passes6812 native checks with opposite-answer controls. No toggle state or complement constructor retained; no global impossibility claim."

@@ -3,10 +3,11 @@
 Hoisted reads normalize bytes before direct branches. Equal residuals share
 one entry; constant subtrees and ignored tests disappear. O(T/n) distinct
 residuals have O(n)-digit addresses. Packed chunks remain the source-size floor.
+Unused byte-I/O branch operands are zero; literal-bearing constant cells stay.
 
 Size:
-    O(T) text either way, the shorter of the two; n=10 random 1847: 1,997
-    chars, n=10 parity: 552 chars. Constants use 7n+7 chars and n+1 commands;
+    O(T) text either way, the shorter of the two; n=10 random 1847: 1,981
+    chars, n=10 parity: 537 chars. Constants use 7n+7 chars and n+1 commands;
     written bits are loaded-image bits + 4 + bl(3n+3) + bl(n).
 """
 

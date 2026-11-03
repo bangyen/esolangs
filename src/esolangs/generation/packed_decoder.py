@@ -258,10 +258,11 @@ def _direct_layout(
             if target == "next"
             else (-1 if target == "halt" else 3 * asm.labels[target])
         )
+        # Byte I/O falls through, so its unused target is zero.
         if b == "INPUT":
-            triple = [-1, operand(a), c]
+            triple = [-1, operand(a), 0]
         elif a == "OUTPUT":
-            triple = [operand(b), -1, c]
+            triple = [operand(b), -1, 0]
         else:
             triple = [operand(b), operand(a), c]
         memory[3 * i : 3 * i + 3] = triple

@@ -130,12 +130,13 @@ def _direct_tree(instructions: list[tuple[int, int, str, int]], n: int) -> str:
     cells = [0, 0, code_base, -_ASCII_ONE, _ASCII_ZERO, _ASCII_ONE, 0] + [0] * n
     for index, (a, b, kind, arg) in enumerate(instructions):
         if kind == "nxt":
+            # Byte I/O ignores its third cell; zero is the minimal spelling.
             # the reader takes +byte; negate it before the tree tests 49-byte.
             value = data_base + a
             pc = address(index)
-            cells += [-1, 6, pc + 3, value, value, pc + 6, 6, value, pc + 9]
+            cells += [-1, 6, 0, value, value, pc + 6, 6, value, pc + 9]
         elif kind == "out":
-            cells += [data_base + b, -1, address(index + 1)]
+            cells += [data_base + b, -1, 0]
         elif kind == "halt":
             cells += [0, 0, -1]
         elif kind == "jump":
