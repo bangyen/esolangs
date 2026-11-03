@@ -46,6 +46,12 @@ def test_calculate_mingle_select_unary_and_output() -> None:
         machine.step()
         assert sorted(machine.memory) == sorted((int(bits, 2), int(selected or "0", 2)))
 
+    for left in (0, 32767, 32768, 65535):
+        source = f'PLEASE .2 <- "#{left}$#0"~"#32768$#0"\nDO GIVE UP\nDO .1 <- #0'
+        machine = _Machine(source, ScriptedIO(""))
+        machine.step()
+        assert machine.memory == [int(left >= 32768)]
+
 
 def test_written_number_words_are_read() -> None:
     source = "PLEASE WRITE IN .1\nDO READ OUT .1\nDO GIVE UP"
