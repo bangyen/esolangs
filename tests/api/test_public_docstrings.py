@@ -116,8 +116,27 @@ def _portable(settings: dict[str, object]) -> str:
 
 
 R = REFERENCE
+type _Setup = Callable[[pytest.MonkeyPatch], None]
+type _Probe = tuple[Callable[[], object], _Setup | None]
+
 #: ``(function, exception, call, setup)``: ``call`` must raise ``exception``.
-TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], object]] = [
+TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]] = [
+    (
+        "save_program",
+        x.ProgramError,
+        lambda: esolangs.save_program("+.", _MISSING),
+        None,
+    ),
+    (
+        "save_program",
+        x.MissingDependencyError,
+        lambda: _without_pillow(
+            lambda: esolangs.save_program(
+                esolangs.generate(_first("raster"), "01"), _MISSING
+            )
+        ),
+        None,
+    ),
     (
         "generate",
         x.UnknownLanguageError,
@@ -335,25 +354,32 @@ def test_every_raises_entry_has_a_trigger() -> None:
     assert missing == set()
 
 
+def _grouped_triggers() -> list[object]:
+    groups: dict[tuple[str, type[Exception]], list[_Probe]] = {}
+    for function, exception, call, setup in TRIGGERS:
+        groups.setdefault((function, exception), []).append((call, setup))
+    return [
+        pytest.param(function, exception, probes, id=f"{function}-{exception.__name__}")
+        for (function, exception), probes in groups.items()
+    ]
+
+
 @pytest.mark.medium
-@pytest.mark.parametrize(
-    ("function", "exception", "call", "setup"),
-    TRIGGERS,
-    ids=[f"{fn}-{exc.__name__}-{i}" for i, (fn, exc, _, _) in enumerate(TRIGGERS)],
-)
+@pytest.mark.parametrize(("function", "exception", "probes"), _grouped_triggers())
 def test_the_documented_error_is_raised(
     function: str,
     exception: type[Exception],
-    call: Callable[[], object],
-    setup: Callable[[pytest.MonkeyPatch], None] | None,
+    probes: list[_Probe],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Each trigger raises the exception its function's ``Raises:`` names."""
     assert exception.__name__ in _raises(function)
-    if setup is not None:
-        setup(monkeypatch)
-    with pytest.raises(exception):
-        call()
+    for call, setup in probes:
+        with monkeypatch.context() as patch:
+            if setup is not None:
+                setup(patch)
+            with pytest.raises(exception):
+                call()
 
 
 def test_describe_returns_documents_every_key() -> None:

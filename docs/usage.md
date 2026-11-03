@@ -152,6 +152,7 @@ Functions:
 - `esolangs.load_program` -- restore version-1 JSON as tagged source for the requested language
 - `esolangs.read_answer` -- return the answer bit, `"0"` or `"1"`, a program's `output` carries
 - `esolangs.run` -- execute `program` and return its output
+- `esolangs.save_program` -- write a program as a native source file
 
 Types:
 

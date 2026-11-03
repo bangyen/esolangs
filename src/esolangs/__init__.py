@@ -7,7 +7,8 @@ Public operations split by who supplies the program:
 * Caller-supplied: ``run`` executes source the caller supplies.
   Stepping and debugging live in :mod:`esolangs.debugger`.
 * Contract adapters: ``encode_inputs`` spells input bits as stdin,
-  ``read_answer`` extracts an answer bit from output, and
+  ``read_answer`` extracts an answer bit from output,
+  ``save_program`` writes native source files, and
   ``dump_program``/``load_program`` preserve source in portable JSON.
 * Catalog: ``describe`` and ``list_languages`` provide registry facts.
 
@@ -59,7 +60,7 @@ from esolangs.generation.wrap import (
     wrap_program,
 )
 from esolangs.generation.wrap import takes_width as _takes_width
-from esolangs.portable import dump_program, load_program
+from esolangs.portable import dump_program, load_program, save_program
 from esolangs.raster import Raster
 from esolangs.registry import (
     LANGUAGES,
@@ -186,6 +187,7 @@ __all__ = [
     "load_program",
     "read_answer",
     "run",
+    "save_program",
 ]
 
 

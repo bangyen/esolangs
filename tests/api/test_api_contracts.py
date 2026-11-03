@@ -172,6 +172,7 @@ SIGNATURES = {
     "esolangs.load_program": "(language: 'str', document: 'str') -> 'Program'",
     "esolangs.read_answer": "(language: str, output: str) -> str",
     "esolangs.run": "(language: str, program: ProgramSource, *, stdin: InputSource = '', timeout: float | None = None, seed: int | None = None, isolated: bool = False, max_steps: int | None = None, scale: int | None = None, max_output: int | None = None, max_memory: int | None = None, settings: esolangs.settings.DialectSettings | None = None) -> str",  # noqa: E501
+    "esolangs.save_program": "(program: 'Program', path: 'str | PathLike[str]') -> 'None'",  # noqa: E501
     "esolangs.debugger.make_debugger": "(language: 'str', program: 'ProgramSource', *, stdin: 'InputSource' = '', scale: 'int | None' = None, settings: 'DialectSettings | None' = None) -> 'Debugger'",  # noqa: E501
     "esolangs.debugger.make_vm": "(language: 'str', program: 'ProgramSource', *, stdin: 'InputSource' = '', scale: 'int | None' = None, settings: 'DialectSettings | None' = None) -> 'VM'",  # noqa: E501
     "Language.__init__": "(self, name: str) -> None",

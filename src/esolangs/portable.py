@@ -1,10 +1,13 @@
-"""Versioned JSON programs retaining dialect and template provenance."""
+"""Native source files and versioned JSON programs."""
 
 from __future__ import annotations
 
 import base64
 import json
 from dataclasses import asdict
+from os import PathLike
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 
 from esolangs.compressed import CompressedText, TextLimits
@@ -16,6 +19,38 @@ from esolangs.settings import DialectSettings, dialect_options, effective_settin
 from esolangs.tagged import _Tagged, _Template
 
 _FORMAT = "esolangs.program"
+
+
+def save_program(program: Program, path: str | PathLike[str]) -> None:
+    """Write a program as a native source file.
+
+    Text is UTF-8 with one file terminator, compressed source stays gzip,
+    and rasters are PNG. An existing file is replaced after encoding and
+    writing succeed. Use :func:`dump_program` for a portable document that
+    preserves dialect settings and template setters.
+
+    Raises:
+        ProgramError: The source cannot be encoded or the file cannot be written.
+        MissingDependencyError: A raster needs ``esolangs[image]`` for PNG.
+    """
+    try:
+        if isinstance(program, CompressedText):
+            source = program.to_gzip()
+        elif isinstance(program, Raster):
+            source = program.to_png()
+        elif isinstance(program, str):
+            source = (program + "\n").encode("utf-8")
+        else:
+            raise ProgramError("expected text, compressed source, or a raster")
+        target = Path(path)
+        with TemporaryDirectory(dir=target.parent) as temporary:
+            staged = Path(temporary) / "source"
+            staged.write_bytes(source)
+            staged.replace(target)
+    except ProgramError:
+        raise
+    except (OSError, TypeError, ValueError) as exc:
+        raise ProgramError(f"cannot save program to {path!s}: {exc}") from exc
 
 
 def dump_program(

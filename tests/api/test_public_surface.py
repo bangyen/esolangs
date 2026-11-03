@@ -57,6 +57,7 @@ class TestPackageSurface:
             "load_program",
             "read_answer",
             "run",
+            "save_program",
         ]
 
     def test_the_signatures_are_pinned(self) -> None:

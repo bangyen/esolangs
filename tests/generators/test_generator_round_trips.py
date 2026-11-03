@@ -65,11 +65,7 @@ def test_saved_program_executes_in_a_fresh_process(language, tmp_path) -> None:
     table = probe_table(language, "00101101")
     source = esolangs.generate(language, table)
     path = tmp_path / "program"
-    if isinstance(source, Raster):
-        path.write_bytes(source.to_png())
-    elif isinstance(source, esolangs.CompressedText):
-        path.write_bytes(source.to_gzip())
-    elif esolangs.describe(language)["parameterized"]:
+    if esolangs.describe(language)["parameterized"]:
         source = esolangs.load_program(
             language, esolangs.dump_program(language, source)
         )
@@ -80,9 +76,7 @@ def test_saved_program_executes_in_a_fresh_process(language, tmp_path) -> None:
             == table
         )
         return
-    else:
-        # Match the CLI's file terminator so Path loading keeps source newlines.
-        path.write_text(str(source) + "\n", encoding="utf-8")
+    esolangs.save_program(source, path)
     assert (
         _evaluate(language, path, inputs=len(table).bit_length() - 1, isolated=True)
         == table
