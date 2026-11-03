@@ -188,7 +188,8 @@ def check_raw_ascenic():
         _agrees(_Machine, _source(((2, 1), (6, 99), (1, arg))), "9" * 4300)
         for arg in (100, 101)
     ]
-    results.append(_agrees(_Machine, _source(((2, 1), (1, 2))), "55296"))
+    for value in ("55296", "1114111", "1114112"):
+        results.append(_agrees(_Machine, _source(((2, 1), (1, 2))), value))
     assert {error for error, _ in results} == {
         None,
         "syntax",

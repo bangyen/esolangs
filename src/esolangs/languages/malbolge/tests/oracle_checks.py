@@ -111,6 +111,9 @@ def check_raw_malbolge(hello, cat):
         for stdin in ("", "Hi!"):
             compare(_Machine, code, stdin)
 
+    # Output masks the accumulator, but input must retain the full code point.
+    compare(_Machine, "ubO", "Ā")
+
     class WrongCipher(_Machine):
         def step(self):
             if not self.halted:

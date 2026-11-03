@@ -114,6 +114,7 @@ def check_raw_nandypants():
         "ignored",
         "02 ^v 2",
         "03^3v03",
+        "1^1v3",
         "1^1v1",
         "0^v0^0",
         "^" + "\\" * 11,

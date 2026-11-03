@@ -140,6 +140,9 @@ def check_raw_hot():
     for code, stdin in product(corpus, ("", "0", "1", "01\nX", "X")):
         _check(_Machine, code, stdin)
 
+    # A second read after the terminator must leave trailing input untouched.
+    _check(_Machine, "A (K (A K))", "\nX")
+
     class MissingMarker(_Machine):
         def _read(self):
             return int(self.io.input_char() == ord("1"))
