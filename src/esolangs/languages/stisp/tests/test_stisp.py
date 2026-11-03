@@ -40,6 +40,13 @@ def test_list_sugar_prints_as_a_list() -> None:
                 "YES" if values == values[::-1] else "NO"
             )
 
+    for first, last in product(("(A)", "(B)"), repeat=2):
+        source = f"({first} X {last})"
+        expected = "YES" if first == last else "NO"
+        assert (
+            _result(rules + source + f" -> reverse[()] -> same[{source}]") == expected
+        )
+
 
 def test_deep_data_parses_and_prints_without_recursion() -> None:
     deep = "(" * 5000 + "A" + ")" * 5000
