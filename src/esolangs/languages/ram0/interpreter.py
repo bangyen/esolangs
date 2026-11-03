@@ -104,6 +104,7 @@ def _advance(state: _State, op: str, index: _Index) -> _State:
 
     ``C`` skips the next token when ``z`` is zero; a digit is a 1-based goto.
     """
+    # Avoid reflective replacement; [interpreter_ablations.direct_state_construction].
     ind = state.ind
     if op.isdigit():
         if not int(op):
@@ -111,11 +112,11 @@ def _advance(state: _State, op: str, index: _Index) -> _State:
                 f"goto {op} at command {ind + 1}: commands count from 1",
                 hint="jump to a command number of 1 or more",
             )
-        return state._replace(ind=int(op) - 1)
+        return _State(int(op) - 1, state.z, state.n, state.ram, state.dumped)
     z, n, ram = change(state.z, state.n, state.ram, op, index)
     if op == "C" and not z:
         ind += 1
-    return state._replace(ind=ind + 1, z=z, n=n, ram=ram)
+    return _State(ind + 1, z, n, ram, state.dumped)
 
 
 class _Machine:
@@ -214,7 +215,8 @@ class _Machine:
         if ind >= self.size:
             if not dumped:
                 self._dump(z, n, ram)
-                self.state = self.state._replace(dumped=True)
+                state = self.state
+                self.state = _State(state.ind, state.z, state.n, state.ram, dumped=True)
             return
         op = self.tokens[ind]
         self.state = _advance(self.state, op, self._index)

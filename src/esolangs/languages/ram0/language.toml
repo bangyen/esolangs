@@ -100,4 +100,11 @@ price = 30.3044
 workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: direct immutable state construction. 445 programs, 380 halt cleanly; no structural trace differences, control differs on 375. Step throughput at longest 10/20/40 workload breadths: +31.36%/+30.30%/+30.91%. No production change or global performance conclusion; adoption needs broader validation."
+verdict = "prototype only: direct immutable state construction. 445 programs, 380 halt cleanly; no structural trace differences, control differs on 375. Step throughput at longest 10/20/40 workload breadths: +31.36%/+30.30%/+30.91%. Adopted after full-corpus and three-size run validation; see direct_state_construction."
+
+[interpreter_ablations.direct_state_construction]
+price = 21.6923
+workload = "complete run, including constructor and final dump"
+seed = 0
+tables = "5193 full tracediff programs: all tables/rows through n=3, examples, 3000 seeded mutations; arithmetic and store/load sources at 32/128/512 units"
+verdict = "kept: construct the same five-field immutable state directly instead of reflective _replace. Full native traces: 4673 clean halts, zero differences, 4765 mutant detections; step throughput +29%. Complete-run savings across three source sizes: arithmetic 26.71%/28.26%/28.42%; store/load 21.69%/21.79%/22.60% Equal final output at every size; state fields, snapshot grouping, post-halt dump and growth rates preserved. No generator change."
