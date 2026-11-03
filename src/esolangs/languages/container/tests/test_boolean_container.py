@@ -293,6 +293,10 @@ def test_threshold_proof_executes_wide_inputs() -> None:
 
     check_l4((7,))
 
+    from .oracle_checks import check_raw_container
+
+    check_raw_container()
+
 
 def _swept_balance(table: str, default: str) -> str:
     """The retired balance: narrow at every rule-fit and decimal-budget threshold."""
