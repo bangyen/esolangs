@@ -8,7 +8,7 @@ backlinks = 130
 labels = ["exception"]
 qualification = "constants read every input before building ASCII 48/49; finite source space rules out some 18-input tables; the shipped build folds the first n - 1 inputs into a positional address, three input bits per two-trit digit, so no row collides, and the answer stub reads the last; at seventeen it also builds tables constant on Hamming-weight classes, whose first fold group reads four inputs into a popcount digit; below sixteen the unused reads are held at 0; the cap is sixteen for general tables, and seventeen is open ([summary](#malbolge-bound))"
 scaling = "measured: worst 13340 characters to n = 13, 19683 at 14, 52480 at 15, then 59049: the 3^10-cell store whole"
-execution = "unmeasured: worst 6,486 commands at n=1 to 5,686 at n=16: main code through closing i, then the longest stub (199..200)"
+execution = "unmeasured: at most 6,748 commands at n=1 and 5,953 at n=16: main plus longest stub; exact at n=2,3,6"
 workspace = "poly n: at most B + E + 10(P+S) + 49 + bl(n) bits: a bit a step, ten a write"
 definitions = ["B = the initial memory's bits, the source's cells then the fill", "E = the Execution bound", "P = the `*` and `p` cells before closing i, or in all constant code", "S = zero for constants; otherwise the longest stub, 199 commands (200 at fourteen inputs)"]
 
@@ -88,6 +88,7 @@ workload = "run"
 verdict = "candidate: unmeasurable; the fill is ~55 ms per source against multi-second executions"
 
 [audits]
+trick_prototype = 2026-11-02
 plain_rewrite = 2026-10-29
 
 [ablations.source_storage_prototype]
@@ -101,3 +102,24 @@ verdict = "Not shipped: removing trailing address-correct no-op source finds no 
 arity = 17
 tables = "both constants at every n=1..17; zero, one and alternating input rows"
 verdict = "kept: canonical constant output, percentage gate exempt. Read every input, then build ASCII 48/49 directly, without indexing or stubs. At n=8 zero/one source and command counts are 632/625; at n=17, 639/632. Generic programs through n=13 use 13340 characters under the read-before-output contract. Sampled n=8 written peaks are 646886/646910 bits; fixed store remains 59049 cells and program-dependent workspace bounds cover its fill. The seventeen-input last-ignored projection now saves the preceding essential read, drains the ignored byte, restores the saved value and enters non-reading stubs; all output follows all input. This replaces the incompatible print-first prototype and post-output drain. Existing generic size pins remain unchanged."
+
+[ablations.low_arity_hub_relocation_20261102]
+arity = 8
+saving = 1.5517
+seed = "Random(1000*n+i),i=0..19;fixed7/8 before judging"
+tables = "all tables/everyrow n<=3;10sampled4..6;20each7/8;nativecollision/algebra controls"
+verdict = "rejected: using the existing canonical placement on each actual arity, with the actual table ceiling and all collision guards, yields13133 vs13340chars at both7/8 (266800->262660 over20), only1.5517%. n3source3389603->3337025 but commands13474720->13647440:85extra commands per nonconstant row. Fixedfloor6561 and seedable0/2trits force the first four hubs13122/13124/13128/13130, hence at least13133sourcecells. The premise that main ends at420 is false: closing i is6323/6294 at7/8, tables9478..9549/9478..9711. A separate loopless low-hub recipe g=80-18b0-27b1, chainK0 K2 rot², does reach6552+2b0+6b1; its rot⁵ stub recipe also reaches low addresses. But its main cursors7266/7237 overlap stub6683 and datum6554, so assembly correctly aborts. This is a concrete failed refinement, not an impossibility claim. No new search, arity path, seed table or state ships; existing generation-time exception remains."
+
+[ablations.digit_order_compaction_20261102]
+arity = 8
+saving = -112.4738
+seed = "same fixed20 each7/8;four named cyclic digit rotations"
+tables = "all small tables/rows for legal rotation4;10sampled4..6;fixed20source/native7/8;collision controls"
+verdict = "rejected: retaining current hubs/stubs leaves a13340-character floor regardless of table compaction. Rotations1/2/3 collide with main: minimum table addresses1054/118/14. Rotation4 is native-correct but grows13340->26886/28344chars at7/8 (101.54/112.47%); fixed20totals266800->537720/566880. It rotates the accumulator too, not merely the painted table, and every input remains ordered. n3source3389603->6718273 and commands13474720->13539744, so no execution gate. The existing semantic nonoverlap checks remain; the counterfactual uses its actual table ceiling. A combination with the failed low-hub recipe has no valid program or admitted increment. No permutation, alternate layout, fallback race or added state ships; no global permutation impossibility is claimed."
+
+[ablations.single_hub_labels_low_n_20261102]
+arity = 8
+saving = 0.0
+seed = "same fixed20 each7/8;four answer-label controls"
+tables = "2120baseline native small rows;fixed20native endpoints;legal single/double-hub controls,EOF and wrong-label mutant"
+verdict = "already implemented, no new saving: n<=15 uses a nonempty short layout, single=True pointers/label seeding and one hub/stub per label. Reapplying this is the current13340-character source, zero marginal saving at7/8. ENTRY420 ends bootstrap storage, not main code. All four answer labels execute in forced single-hub programs; a legal full-store double-hub construction, with its original zero-held reads, also runs correctly at59049chars. That coupled control is not an isolated marginal attribution. A legal wrong-label mutation prints the opposite bit, and EOF identity prints168 from59048 with one past-end read, so probes are not vacuous. No new single-hub path or state ships; the existing construction remains. All source/E/W functions, exact arities, eight pins/by-row/last-row counts, anchors, example and supported domain are unchanged. Only stale prose is corrected: callback bounds6748 at1 and5953 at16, exact2/3/6; closing i5753 at16; inputs are characters, not newline-framed lines."

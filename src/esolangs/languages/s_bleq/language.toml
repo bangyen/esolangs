@@ -14,14 +14,14 @@ workspace = "linear: at most B + 6n + bl(3C) + bl(n) + 1 bits: the self-modified
 definitions = ["B = the program cells' bits, a sign one more", "C = the program's cell count"]
 
 [generator_sizes]
-"00000001" = { commands = 9, commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 8, "5" = 8, "6" = 9, "7" = 9 }, source_units = 144 }
-"00001100" = { commands = 8, commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 124 }
-"00110110" = { commands = 9, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 10, "5" = 9, "6" = 10, "7" = 9 }, source_units = 168 }
-"0110" = { commands = 7, commands_by_row = { "0" = 7, "1" = 7, "2" = 8, "3" = 7 }, source_units = 128 }
-"01101001" = { commands = 9, commands_by_row = { "0" = 9, "1" = 9, "2" = 10, "3" = 9, "4" = 11, "5" = 10, "6" = 9, "7" = 9 }, source_units = 171 }
-"0110100110010110" = { commands = 11, commands_by_row = { "0" = 11, "1" = 11, "2" = 12, "3" = 11, "4" = 13, "5" = 12, "6" = 11, "7" = 11, "8" = 14, "9" = 13, "10" = 12, "11" = 12, "12" = 11, "13" = 11, "14" = 12, "15" = 11 }, source_units = 214 }
-"1101001101101101" = { commands = 11, commands_by_row = { "0" = 10, "1" = 10, "2" = 11, "3" = 11, "4" = 11, "5" = 11, "6" = 10, "7" = 10, "8" = 12, "9" = 12, "10" = 12, "11" = 11, "12" = 10, "13" = 10, "14" = 11, "15" = 11 }, source_units = 222 }
-"11111110" = { commands = 9, commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 8, "5" = 8, "6" = 9, "7" = 9 }, source_units = 144 }
+"00000001" = { commands = 9, commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 8, "5" = 8, "6" = 9, "7" = 9 }, source_units = 122 }
+"00001100" = { commands = 8, commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 103 }
+"00110110" = { commands = 9, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 10, "5" = 9, "6" = 10, "7" = 9 }, source_units = 144 }
+"0110" = { commands = 7, commands_by_row = { "0" = 7, "1" = 7, "2" = 8, "3" = 7 }, source_units = 106 }
+"01101001" = { commands = 9, commands_by_row = { "0" = 9, "1" = 9, "2" = 10, "3" = 9, "4" = 11, "5" = 10, "6" = 9, "7" = 9 }, source_units = 147 }
+"0110100110010110" = { commands = 11, commands_by_row = { "0" = 11, "1" = 11, "2" = 12, "3" = 11, "4" = 13, "5" = 12, "6" = 11, "7" = 11, "8" = 14, "9" = 13, "10" = 12, "11" = 12, "12" = 11, "13" = 11, "14" = 12, "15" = 11 }, source_units = 190 }
+"1101001101101101" = { commands = 11, commands_by_row = { "0" = 10, "1" = 10, "2" = 11, "3" = 11, "4" = 11, "5" = 11, "6" = 10, "7" = 10, "8" = 12, "9" = 12, "10" = 12, "11" = 11, "12" = 10, "13" = 10, "14" = 11, "15" = 11 }, source_units = 197 }
+"11111110" = { commands = 9, commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 8, "5" = 8, "6" = 9, "7" = 9 }, source_units = 122 }
 
 [ablations]
 audited = "2026-10-20"
@@ -72,6 +72,7 @@ arity = 26
 verdict = "recorded: where the proved bound _tree_min_chars exceeds the packed text's length, the generator returns the packed build directly, skipping the tree build. Size-neutral — the bound charges the tree's emission cell by cell, so past it the tree cannot win the race, and a corpus differential of 66,197 dumped programs against the unskipped build is byte-identical. The skip only saves build cost: on the worst-case witness, generation at n=25 falls from 29.9 s at a 2.95 GB peak to 16.3 s at 1.69 GB, and at n=26 from 86.7 s at 5.81 GB to 55.1 s at 3.35 GB. Plain-rewrite re-measure: with the skip off, 0 of the 10 to 200 tables per arity at n=3..12 change (byte-identical)"
 
 [audits]
+trick_prototype = 2026-11-02
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
 blind_reimplementation = 2026-10-27
@@ -89,3 +90,31 @@ saving = 1.6
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: minimal fixed-output spelling, exempt from the percentage gate. At n>=3 put the ASCII answer in the first read instruction third cell and print from address 2, shortening the output address by one digit at n=3..12. Every read subtracts cell 0 (-2) from the ASCII bit at the discarded input destination, so its positive result never uses the third-cell branch address. n=1..2 keep their equal-length spelling and balanced layouts. The direct Subleq helper stays byte-identical at n=1..100. L=7n+7 chars, E=n+1, W=bl(3n+3)+bl(n) written bits. n=7 57 -> 56 chars; n=8 64 -> 63, commands/workspace stay 9/9; n=12 92 -> 91. n=3 corpus 38332 -> 38330 chars. A separate 1120-run native probe covers every row through n=8. Each language passed 5656 paired old/new row executions; 270 nonconstant default programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language match or improve; all 26 benchmark size/command pins across the batch remain unchanged. Owned regressions check reads before output, no EOF probes and a preserved following record, without adding collected cases."
+
+[ablations.compact_tree_data]
+arity = 8
+saving = 2.207
+seed = "Random(1000*n+i)"
+tables = "200 random per n=7/8; exhaustive all tables/rows n<=3; random/named sampled n=4..8"
+verdict = "kept: canonical minimal spelling. Replace the nine-cell bootstrap with one entry instruction and its target; halt through the immutable -49 literal, remove unreferenced data, and relocate addresses while preserving data order and contiguous code. No ranking state or extra contestant. Fixed200 source n7/8 147737→142316 /237637→232392 chars (3.669/2.207%). Existing global polarities may choose differently: n3 exhaustive public source38330→32524, commands17186→17174; this is not an execution qualification. All9040 prototype/control native checks pass, followed by2306 whole-generator checks plus width1/balanced controls; reads precede output, sentinel remains unread, complemented answers are rejected. E=3n+2 scopes/exactness and original source/workspace upper envelopes remain; the tree-skip lower bound now charges one-digit operands and13 chars per leaf pair. All8 source pins shrink; last-row and per-row commands unchanged. O(P) compaction state is necessary to remove inert cells and relocate indirect targets; shared decoder and packed path unchanged."
+
+[ablations.hot_cells_low_addresses_prototype]
+arity = 8
+saving = 6.752
+seed = "Random(1000*n+i)"
+tables = "200 random per n=7/8; and/or/parity/majority separately; native corpus above"
+verdict = "rejected: ranking data by operand frequency after canonical compaction saves142316→132905 /232392→216701 chars (6.613/6.752%). Raw premise was partly false: baseline already places data before code, with shared target cells. Named n7/8 savings at most4.15%; no qualifying independent path."
+
+[ablations.per_node_polarity_prototype]
+arity = 8
+saving = 0.438
+seed = "Random(1000*n+i)"
+tables = "200 random per n=7/8; and/or/parity/majority separately; native corpus above"
+verdict = "rejected: one fixed DFS rule falls through to an unplaced child of highest DAG reuse, paying flipped constants only at used levels. Marginal after canonical compaction142316→142052 /232392→231375 chars (0.186/0.438%). Majority7.34/7.77%, other named families<=0.87% or grow. No new polarity constructor retained."
+
+[ablations.sifted_variable_order_prototype]
+arity = 8
+saving = 2.765
+seed = "Random(1000*n+i)"
+tables = "200 random per n=7/8; named families separately; native corpus above"
+verdict = "rejected: supplied multi-position sifting is search, not a loop-less construction. One fixed reverse-order control preserves physical reads and computes all native rows checked, but marginal source142316→137985 /232392→225966 chars (3.043/2.765%) misses the fixed window; named gains<=0.31%. No whole-program fallback race or favorable arity cap. Earlier reverse record remains historical baseline evidence."

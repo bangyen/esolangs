@@ -9,7 +9,7 @@ Package : IO {
   While d Do { DECR d ; INCR i
   ; INCR i ; } charGet ( c ) ;
   If c ^ 48 Then { INCR i ; }
-  INCR t(3);charPut(48^t(i));0;
+  INCR t(3);charPut(48^t(i));
   }
 } truthTable;
 

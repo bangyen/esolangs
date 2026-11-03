@@ -9,18 +9,18 @@ admitted = 2026-09-08T20:07:30-04:00
 labels = ["linear lookup"]
 qualification = "one 128-row array block, painted inside the `If` that selects it"
 scaling = "linear: at most N characters: one write per differing row"
-execution = "linear: at most 19T/2 - n - 4 steps for n = 3..7, then 3T/64 + 1206 - n"
+execution = "linear: at most 19T/2 - n - 5 steps for n = 3..7, then 3T/64 + 1205 - n"
 workspace = "poly n: at most min(T,128) + 2n + min(n,7) + 192 + 16[n>7] + bl(L) + 2bl(n) bits: one frame, array"
 
 [generator_sizes]
-"00000001" = { commands = 35, commands_by_row = { "0" = 12, "1" = 13, "2" = 18, "3" = 19, "4" = 28, "5" = 29, "6" = 34, "7" = 35 }, source_units = 299 }
-"00001100" = { commands = 17, commands_by_row = { "0" = 10, "1" = 10, "2" = 11, "3" = 11, "4" = 16, "5" = 16, "6" = 17, "7" = 17 }, source_units = 243 }
-"00110110" = { commands = 38, commands_by_row = { "0" = 15, "1" = 16, "2" = 21, "3" = 22, "4" = 31, "5" = 32, "6" = 37, "7" = 38 }, source_units = 329 }
-"0110" = { commands = 17, commands_by_row = { "0" = 10, "1" = 11, "2" = 16, "3" = 17 }, source_units = 242 }
-"01101001" = { commands = 38, commands_by_row = { "0" = 15, "1" = 16, "2" = 21, "3" = 22, "4" = 31, "5" = 32, "6" = 37, "7" = 38 }, source_units = 329 }
-"0110100110010110" = { commands = 81, commands_by_row = { "0" = 22, "1" = 23, "2" = 28, "3" = 29, "4" = 38, "5" = 39, "6" = 44, "7" = 45, "8" = 58, "9" = 59, "10" = 64, "11" = 65, "12" = 74, "13" = 75, "14" = 80, "15" = 81 }, source_units = 443 }
-"1101001101101101" = { commands = 79, commands_by_row = { "0" = 20, "1" = 21, "2" = 26, "3" = 27, "4" = 36, "5" = 37, "6" = 42, "7" = 43, "8" = 56, "9" = 57, "10" = 62, "11" = 63, "12" = 72, "13" = 73, "14" = 78, "15" = 79 }, source_units = 422 }
-"11111110" = { commands = 35, commands_by_row = { "0" = 12, "1" = 13, "2" = 18, "3" = 19, "4" = 28, "5" = 29, "6" = 34, "7" = 35 }, source_units = 299 }
+"00000001" = { commands = 34, commands_by_row = { "0" = 11, "1" = 12, "2" = 17, "3" = 18, "4" = 27, "5" = 28, "6" = 33, "7" = 34 }, source_units = 297 }
+"00001100" = { commands = 16, commands_by_row = { "0" = 9, "1" = 9, "2" = 10, "3" = 10, "4" = 15, "5" = 15, "6" = 16, "7" = 16 }, source_units = 241 }
+"00110110" = { commands = 37, commands_by_row = { "0" = 14, "1" = 15, "2" = 20, "3" = 21, "4" = 30, "5" = 31, "6" = 36, "7" = 37 }, source_units = 327 }
+"0110" = { commands = 16, commands_by_row = { "0" = 9, "1" = 10, "2" = 15, "3" = 16 }, source_units = 240 }
+"01101001" = { commands = 37, commands_by_row = { "0" = 14, "1" = 15, "2" = 20, "3" = 21, "4" = 30, "5" = 31, "6" = 36, "7" = 37 }, source_units = 327 }
+"0110100110010110" = { commands = 80, commands_by_row = { "0" = 21, "1" = 22, "2" = 27, "3" = 28, "4" = 37, "5" = 38, "6" = 43, "7" = 44, "8" = 57, "9" = 58, "10" = 63, "11" = 64, "12" = 73, "13" = 74, "14" = 79, "15" = 80 }, source_units = 441 }
+"1101001101101101" = { commands = 78, commands_by_row = { "0" = 19, "1" = 20, "2" = 25, "3" = 26, "4" = 35, "5" = 36, "6" = 41, "7" = 42, "8" = 55, "9" = 56, "10" = 61, "11" = 62, "12" = 71, "13" = 72, "14" = 77, "15" = 78 }, source_units = 420 }
+"11111110" = { commands = 34, commands_by_row = { "0" = 11, "1" = 12, "2" = 17, "3" = 18, "4" = 27, "5" = 28, "6" = 33, "7" = 34 }, source_units = 297 }
 
 [schemes]
 folds_without_tree = true
@@ -69,6 +69,7 @@ arity = 10
 verdict = "kept: _BLOCK = 7 caps the painted block at 128 rows, which is termination machinery (a 512-row array did not terminate in 30 s; the Char index wraps). The value is flat as the comment claims: block sizes 5/6/8 against 7 on random tables at n=10 measure +1.2% / -1.2% / +3.0% (claimed +1.2% / -1.2% / +2.7%). Six would win random by 1.2% but loses 14.9% on 90%-dense tables at n=10; eight is the reverse, so seven is a measured compromise, not a leftover"
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
 
@@ -84,4 +85,26 @@ arity = 8
 saving = 20.8
 seed = "both constant values; witnesses(n) at n=4..6"
 tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
-verdict = "kept: canonical whole constants. A Char scratch receives all n reads, then charPut prints the literal and the function returns zero; no array or index registers. Existing literal conversion, token wrapping and balancing also serve this path. At n=7 both bits 201 -> 157 chars; n=8 212 -> 168; n=12 259 -> 215. Exactly n+3 commands; default written workspace 159+bl(n+2)+2bl(n), measured 171 bits at n=8. All 24 old balanced scores improve or match. n=3 corpus 78262 -> 78174 chars, commands remain 48216. Generic envelopes and all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 are byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts within their resource bounds. Owned regressions require all reads before output and retain a following record; both Packlang literal policies execute."
+verdict = "kept: canonical whole constants; these are historical 2026-11-01 measurements before trailing_value_drop. A Char scratch receives all n reads, then charPut prints the literal and the function returns zero; no array or index registers. Existing literal conversion, token wrapping and balancing also serve this path. At n=7 both bits 201 -> 157 chars; n=8 212 -> 168; n=12 259 -> 215. Exactly n+3 commands; default written workspace 159+bl(n+2)+2bl(n), measured 171 bits at n=8. All 24 old balanced scores improve or match. n=3 corpus 78262 -> 78174 chars, commands remain 48216. Generic envelopes and all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 are byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts within their resource bounds. Owned regressions require all reads before output and retain a following record; both Packlang literal policies execute."
+
+
+[ablations.input_polarity_relabel]
+arity = 8
+saving = 1.6533385664524336
+seed = "random.Random(1847+n), sequential choice('01')"
+tables = "20 fixed random each n=7,8; and/or/parity/majority and every threshold n=7..10; exhaustive tables/rows n<=3; five random n=4..6"
+verdict = "rejected: raw greedy input-mask race is search and O(T log T) construction, not an admissible named rule. Scratch-only actual emit-and-execute audit against canonical trailing-value removal: 24722->24309 / 40766->40092 characters (1.6706/1.6533%), far below the fixed-window size bar; no 200-table escalation needed. Parity/majority unchanged; every named threshold remains below 2.3% through n=10. Positive AND7 relabelling shrinks 569->568 and passes every row; restoring the original input test while retaining relabelled paint fails. All small and sampled programs preserve output, input order and sentinel. No production mask, search, remapping path or state added."
+
+[ablations.split_index_offset]
+arity = 8
+saving = 0.9910219300397372
+seed = "random.Random(1847+n), sequential choice('01'); parity timing rows random.Random(99)"
+tables = "same fixed 20 n=7,8; same named n=7..10; small and sampled native controls; one whole-table generic pilot each n=7,8; twelve parity rows n=10..13, median three runs"
+verdict = "rejected unbounded: XOR q^5 is not an additive offset and offers no shorter absolute write. Valid cap6 refinement emits 25001/40394 characters versus canonical 24722/40766 (-1.1285/+0.9125%); adding it to the old source race gains only 0.1658/0.9910%. Positive table13 at n=7 shrinks 1276->1260 and all 128 rows run. Command-only lead is real: whole-table pilot sums 68672->35136 /178560->87808, with lower native wall time. A coarse cap6 ceiling 7B+629-n, B=2^(n-6), improves the old fixed7/8 ceilings by more than 25%, but cannot justify an unbounded keeper: native parity n=12 source 6421->16517 and twelve-row median wall .0561->.0880s; n=13 commands 7603->7778 and wall .1047->.1995s. AND8 row128 rises 27->31 commands (not itself a whole-table rejection). No 44-second broad all-row sweep launched after this slowdown. A bounded rule remains future work: an analytical generic crossover is unproved; a global cap 10 inferred only from parity 11 would be arbitrary. It is not admitted, and no new block candidate, cutoff, registers or fallback ships."
+
+[ablations.trailing_value_drop]
+arity = 8
+saving = 0.09802480027446944
+seed = "same fixed random corpus; exhaustive n<=3; both literal policies and constant values n=1..12"
+tables = "276 small tables, all rows for old/canonical/polarity/cap6; five random n=4..6 and 20 each n=7,8 sampled; constants default/width1/balanced"
+verdict = "kept: CONTRIBUTING minimal-spelling exemption explicitly includes a trailing no-op. Remove the final 0; from both painted and constant main bodies. No other generated statement sets the implicit result, so it remains zero; main has no caller, output and ordered reads are unchanged. No new path/state; one obsolete VALUE command removed. Default n3 78174->77662 characters and 48216->46168 commands, maximum 38->37; each row is exactly one command shorter. Fixed20 n7/n8 24762->24722 /40806->40766 characters (0.1615/0.0980%), tending to zero; percentage admission is not used. Constants now n+2 commands and default W=159+bl(n+1)+2bl(n); generic E envelopes subtract one, generic W in actual L is unchanged, source ceiling subtracts two. All original False flags and E 3/7, W 3/5, source 3..10 rungs retained. Eight size pins use last-row commands, all by-row entries refreshed; Size anchors and the packaged balanced AND2 example regenerated."

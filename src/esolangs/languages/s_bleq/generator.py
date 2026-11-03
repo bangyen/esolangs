@@ -5,8 +5,8 @@ larger ones also build the packed decoder and keep the shorter.  A constant
 consumes all inputs before printing.
 
 Size:
-    n=10 random 1847: 2,974 chars, n=10 parity: 487 chars,
-    n=10 and: 334 chars. Constants use 7n+7 chars,
+    n=10 random 1847: 2,974 chars, n=10 parity: 461 chars,
+    n=10 and: 312 chars. Constants use 7n+7 chars,
     n+1 commands and bl(3n+3)+bl(n) written bits.
 """
 
@@ -59,10 +59,42 @@ def _tree(truth_table: str) -> str:
     complement-input twin NOR); the flipped test costs one constant cell an
     input.
     """
+    n = len(truth_table).bit_length() - 1
     return min(
-        in_input_order(truth_table, _sbleq_hoisted),
-        in_input_order(truth_table, partial(_sbleq_hoisted, flip=True)),
+        _compact_tree(in_input_order(truth_table, _sbleq_hoisted), n),
+        _compact_tree(
+            in_input_order(truth_table, partial(_sbleq_hoisted, flip=True)), n
+        ),
         key=len,
+    )
+
+
+def _compact_tree(program: str, n: int) -> str:
+    """Remove inert cells; halt through the immutable -49 test literal.
+
+    The entry subtracts cell zero from itself before jumping, so zero
+    remains the relay cell. All value cells stay below contiguous code.
+    """
+    cells = list(map(int, program.split()))
+    code = cells[6]
+    # Shared hoisted layout: cell9 is immutable -49, usable as a halt target.
+    for at in range(code, len(cells), 3):
+        if cells[at : at + 3] == [0, 0, 3]:
+            cells[at + 2] = 9
+    referenced = set(cells[code:])
+    data = [6, *(at for at in range(9, code) if at in referenced)]
+    relocated = {old: new for new, old in enumerate(data, 3)}
+    delta = 3 + len(data) - code
+
+    def address(old: int) -> int:
+        return relocated.get(old, old + delta if old >= code else old)
+
+    # Reader pointers start at13+n; later flip literals are negative, unchanged.
+    values = [
+        address(cells[at]) if at == 6 or at >= 13 + n else cells[at] for at in data
+    ]
+    return " ".join(
+        map(str, [0, 0, relocated[6], *values, *map(address, cells[code:])])
     )
 
 
@@ -78,7 +110,7 @@ def _tree_min_chars(truth_table: str, n: int) -> int:
     emission's forced minimum digit width (the read block, branch
     operands, target cells).  A bound past the packed text's length
     proves the packed text wins the race, so the tree need not be
-    built: on the scaling witness the tree's text is 3.65x the packed
+    built. Before compaction, the scaling tree text was 3.65x the packed
     at n = 21 and its build peaks at 2.8 GB at n = 25, against the
     packed build's 1.6 GB.
     """
@@ -129,14 +161,14 @@ def _tree_min_chars(truth_table: str, n: int) -> int:
 
     # Either polarity may ship (see _tree), so the floor takes the fewer.
     targets = min(targets, flipped, key=len)
-    code_base = 13 + 2 * n + len(targets)
+    code_base = 7 + 2 * n + len(targets)
     return (
-        branches * (6 + digits(13 + 2 * n))
+        branches * 6
         + len(targets) * (digits(code_base + 3 * n) + 1)
         + n * (digits(code_base + 3) + 1)
-        + n * (9 + digits(13 + n))
-        + 30
-        + 14 * leaf_bits.bit_count()
+        + n * 9
+        + 16
+        + 13 * leaf_bits.bit_count()
         + digits(code_base)
     )
 

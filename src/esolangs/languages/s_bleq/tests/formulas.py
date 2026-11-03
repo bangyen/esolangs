@@ -67,7 +67,9 @@ def _distinct(n: int, d: int) -> int:
 def tree_chars(n: int, _: str = "") -> int:
     """Bound on the hoisted tree route: n + 2K + 3 instructions, K distinct tests.
 
-    Each test is placed once; its zero edge falls through or jumps (one
+    Compaction only removes cells and lowers addresses; this original
+    envelope still bounds either polarity. Each test is placed once; its
+    zero edge falls through or jumps (one
     instruction), its one edge is a data cell; two leaf pairs.  Every
     instruction cell is at most the widest data address.
     """

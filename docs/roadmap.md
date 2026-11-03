@@ -150,7 +150,7 @@ Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-104 of the 114 generators: ///, 1 + i, 3x, A Painter Ant, ABCDirection,
+107 of the 114 generators: ///, 1 + i, 3x, A Painter Ant, ABCDirection,
 AddSubJump, Algebraic Programming Language, Alight, Aprknia, ArrowQueue,
 Ascenic, B-tapemark, Back, Balik, BASICER, Basicfuck, Befunge, Between,
 BFStack, Bitdeque, Bitwise Cyclic Tag, bit~, Bleh, Blindfolded Arithmetic,
@@ -160,11 +160,11 @@ v2, Crement, CV(N)(C), Cyclic tag, Decleq, Dig, Dimensional, DINAC, EGL,
 Eval, Fackward, FALSE, Fargo, Fish, Flowchart, Forbin, Forþ, FRACTRAN,
 Freestajlo, Grapheme, Home Row, Hot, HQ9+ with headers, IEBEL, Inject,
 INTERCAL, Interprogck8, Kiss, LaserFuck, Line, lol waht i cant edit talk
-pages, Minsky Swap, Modulous, Monotonic Boolfuck, Movesum, Nandypants, NOR
-machine, NQ, Object disoriented, Painfuck, Parenthesys, Piet, Pilas,
-Pointless, Qoibl, Qrain, Quassaunt, RAM0, REFRACTRAN, Retrograde, ROTfuck,
-Rubic, Shakespeare, SLOW ACV MAMMALIAN, Smu, Sonata, Stisp, Suffolk, Super
-SNUSP, SwitchCase, Taglate, Thue, Unary, Underload, Unlambda, Unsquare,
-What!?, Whitespace.
+pages, Malbolge, Minsky Swap, Modulous, Monotonic Boolfuck, Movesum,
+Nandypants, NOR machine, NQ, Object disoriented, Packlang, Painfuck,
+Parenthesys, Piet, Pilas, Pointless, Qoibl, Qrain, Quassaunt, RAM0,
+REFRACTRAN, Retrograde, ROTfuck, Rubic, S*bleq, Shakespeare, SLOW ACV
+MAMMALIAN, Smu, Sonata, Stisp, Suffolk, Super SNUSP, SwitchCase, Taglate,
+Thue, Unary, Underload, Unlambda, Unsquare, What!?, Whitespace.
 
 <!-- TRICK-PROTOTYPES:END -->

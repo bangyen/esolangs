@@ -18,8 +18,8 @@ grew as T^2 (74x105 at n=10).
 
 Size:
     O(T) characters; whole constants use one byte and n reads;
-    n=8 constant zero: 168 chars; n=8 and: 661 chars, n=10 and: 798 chars,
-    n=10 random 1847: 6,679 chars.
+    n=8 constant zero: 166 chars; n=8 and: 659 chars, n=10 and: 796 chars,
+    n=10 random 1847: 6,677 chars.
 
 Decisions:
     The complement painted and printed as ``49 ^ t`` races the direct paint;
@@ -122,7 +122,9 @@ def packlang(
 def _constant_program(n: int, bit: int) -> str:
     """Read into one byte, then print the constant without an array."""
     # [ablations.constant_table_audit_20261101].
-    body = ["charGet(c);"] * n + [f"charPut({_ASCII_ZERO + bit});", "0;"]
+    # main has no caller; its implicit zero result needs no trailing expression.
+    # [ablations.trailing_value_drop].
+    body = ["charGet(c);"] * n + [f"charPut({_ASCII_ZERO + bit});"]
     statements = "".join(f"  {line}\n" for line in _folded(body))
     return (
         "Package : IO {\n  Char c;\n  Integer main {\n"
@@ -239,7 +241,8 @@ def _painted(
         painted, index, span, blocks, n - low, runs=runs
     )
     body += remaps + painting
-    body += [f"charPut({_ASCII_ZERO + flip}^t({low_index}));", "0;"]
+    # No expression statements: main already has its implicit zero result.
+    body += [f"charPut({_ASCII_ZERO + flip}^t({low_index}));"]
 
     names = ["i", "d", "c"] + (["q"] if filled else [])
     declarations = "".join(f"  Char {name};\n" for name in names)

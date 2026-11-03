@@ -9,7 +9,7 @@ import esolangs
 from esolangs.generation.branch_decoder import hoisted_tree
 from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.languages import generators as boolean
-from esolangs.languages.s_bleq.generator import _tree_min_chars
+from esolangs.languages.s_bleq.generator import _compact_tree, _tree_min_chars
 from esolangs.languages.s_bleq.interpreter import _Machine
 from esolangs.languages.s_bleq.tests.formulas import below_eleven, tree_chars
 from esolangs.runtime.io import ScriptedIO
@@ -77,6 +77,7 @@ class TestSbleq:
 
     def test_shared_tree_executes_wide_rows(self) -> None:
         """A seeded seven-input table, every row, through the shared tree."""
+        _check_compacted_trees()
         n = 7
         table = format(random.Random(7).getrandbits(2**n), f"0{2**n}b")
         program = boolean.s_bleq(table)
@@ -97,7 +98,7 @@ def test_tree_min_chars_never_passes_the_tree_it_prices(n: int) -> None:
     seeded = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
     for table in (*_tables("S*bleq", n), seeded, _sbleq_worst(n)):
         for flip in (False, True):
-            tree = hoisted_tree(table, tuple(range(n)), flip=flip)
+            tree = _compact_tree(hoisted_tree(table, tuple(range(n)), flip=flip), n)
             assert _tree_min_chars(table, n) <= len(tree), (table, flip)
 
 
@@ -115,7 +116,9 @@ def test_parity_still_runs_the_race_and_ships_the_tree() -> None:
     n = 12
     table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
     assert _tree_min_chars(table, n) <= len(packed_decoder(table))
-    assert boolean.s_bleq(table) == hoisted_tree(table, tuple(range(n)))
+    assert boolean.s_bleq(table) == _compact_tree(
+        hoisted_tree(table, tuple(range(n))), n
+    )
 
 
 @pytest.mark.parametrize("n", [3, 4, 5, 8, 10])
@@ -177,3 +180,35 @@ def _check_constants() -> None:
                         peak = max(peak, written.bits)
                 if not options:
                     assert peak == (3 * n + 3).bit_length() + n.bit_length()
+
+
+def _check_compacted_trees() -> None:
+    """Relocated targets stay disjoint from destructive inputs and code."""
+    for table in ("0110", "00001100", "01101001", "1101001101101101"):
+        n = len(table).bit_length() - 1
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for flip in (False, True):
+            old = hoisted_tree(table, tuple(range(n)), flip=flip)
+            program = _compact_tree(old, n)
+            initial = list(map(int, program.split()))
+            literal = initial.index(-49)
+            assert len(program) < len(old)
+            for row in range(1 << n):
+                io = ReadFirstIO(f"{row:0{n}b}!")
+                machine = _Machine(program, io)
+                steps = 0
+                while not machine.halted:
+                    machine.step()
+                    assert machine.mem[literal] == -49
+                    steps += 1
+                    assert steps <= 3 * n + 2
+                assert io.getvalue() == table[row]
+                assert io.past_end == 0
+                assert io.input_char() == ord("!")

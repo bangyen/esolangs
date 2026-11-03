@@ -164,14 +164,14 @@ def test_binary_digits_small_tables_run(table) -> None:
 def test_binary_digits_block_bounds_cost_their_binary_digits() -> None:
     """Four blocks of 16 rows declare their counters as ``Integer(0,11,...)``."""
     table = _bits("655d655d0791655d", 6)
-    assert len(boolean.packlang(table, literal_policy="binary_digits")) == 819
+    assert len(boolean.packlang(table, literal_policy="binary_digits")) == 817
 
 
 @pytest.mark.parametrize(
     ("hexed", "size"),
     [
-        ("0000080000001000820024000002402982002400000240290000080000001000", 852),
-        ("0100000000010000084f24082187e201084f24082187e2010100000000010000", 971),
+        ("0000080000001000820024000002402982002400000240290000080000001000", 850),
+        ("0100000000010000084f24082187e201084f24082187e2010100000000010000", 969),
     ],
 )
 def test_an_alias_is_taken_exactly_when_it_is_cheaper(hexed, size) -> None:
@@ -186,7 +186,7 @@ def test_balance_keeps_the_widest_square_candidate() -> None:
     table = _bits("2aa42a2aa4a42aa42a2aa4a42a2aa42aa42aa42a2aa42a2aa42aa42a2aa4a4a4", 8)
     program = esolangs.generate("Packlang", table, balance=True)
     rows = program.rstrip("\n").split("\n")
-    assert (max(map(len, rows)), len(rows), len(program)) == (72, 34, 1648)
+    assert (max(map(len, rows)), len(rows), len(program)) == (72, 34, 1646)
 
 
 def test_balance_of_random_n10_refolds_the_body() -> None:
@@ -196,7 +196,7 @@ def test_balance_of_random_n10_refolds_the_body() -> None:
     rng = random.Random(5)
     table = "".join(rng.choice("01") for _ in range(1024))
     program = str(esolangs.generate("Packlang", table, balance=True))
-    assert balance_score(program) == (134, 6295, 115)
+    assert balance_score(program) == (134, 6293, 115)
 
 
 @pytest.mark.medium
@@ -237,11 +237,11 @@ def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
                             steps += 1
                         assert machine.halted
                         assert io.getvalue() == bit
-                        assert steps == n + 3
+                        assert steps == n + 2
                         assert io.input_char() == ord("Q")
     assert (
         sum(len(esolangs.generate("Packlang", format(v, "08b"))) for v in range(256))
-        == 78174
+        == 77662
     )
 
 

@@ -1,6 +1,6 @@
 """Malbolge Boolean program generator: one source cell per row pair.
 
-``malbolge(truth_table)`` reads one ``0``/``1`` line per input.  The first
+``malbolge(truth_table)`` reads one ``0``/``1`` character per input.  The first
 ``n - 1`` inputs are folded positionally into a readout word, three bits per
 two-trit digit (:mod:`esolangs.languages.malbolge.generator.digits`), so
 every row pair owns a distinct table cell; that cell holds a source

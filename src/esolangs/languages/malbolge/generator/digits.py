@@ -620,8 +620,8 @@ def _allocate_cells(layout: _Layout | None = None) -> _DCells:
     through an unwritten cell lands, so a back jump is a short walk.  ``g``
     has period 94, so a value has one cell there.  The rest take walked
     cells ``128..``, past the operand cells.  With every cell walked the
-    main line would end past the tables; as allocated, n=1's ends at
-    6,548 and n=16's at 5,499.
+    main line would end past the tables. Its closing ``i`` is at 6,548
+    for n=1 and 5,753 for n=16.
     """
     operands = _operand_cells()
     used = {*_T_LOW, *(cell for cells in operands.values() for cell in cells)}
