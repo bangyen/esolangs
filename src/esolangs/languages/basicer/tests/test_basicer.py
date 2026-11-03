@@ -56,6 +56,9 @@ def _sums(stdin: str) -> str:
 
 
 def test_adder_adds_least_significant_first() -> None:
+    from esolangs.languages.basicer.tests.oracle_checks import check_raw_basicer
+
+    check_raw_basicer()
     # 1 + 1 = 10 and 3 + 1 = 100, low bits first.
     assert _sums("2\n2\n3\n") == "01"
     assert _sums("2\n2\n2\n1\n3\n") == "001"

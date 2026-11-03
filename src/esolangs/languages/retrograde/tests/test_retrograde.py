@@ -7,6 +7,9 @@ from esolangs.runtime.io import ScriptedIO
 
 
 def check_instruction_semantics() -> None:
+    from esolangs.languages.retrograde.tests.oracle_checks import check_raw_retrograde
+
+    check_raw_retrograde()
     for pointer in (-1, 0, 1):
         for direction in (-1, 1):
             for bit in (0, 1):

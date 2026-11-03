@@ -36,6 +36,9 @@ TRUTH = """0:0 0 -3
 
 
 def test_hello_world() -> None:
+    from esolangs.languages.iebel.tests.oracle_checks import check_raw_iebel
+
+    check_raw_iebel()
     io = ScriptedIO()
     run(HELLO, io)
     assert io.getvalue() == "HELLO WORLD"
