@@ -1,6 +1,7 @@
 """6-5 Boolean program generator: a decision tree of ``7V`` tests.
 
-:func:`six_five` routes a decision tree that folds constant subtrees,
+:func:`six_five` emits AND with one shared zero exit; other tables use a
+decision tree that folds constant subtrees,
 jumps to its repeated subtrees where that is shorter, shares duplicates
 past the label budget (35), falls back to a positional walk
 (:func:`_six_five_walk`) when the distinct subtrees overflow, and past 35
@@ -8,7 +9,7 @@ inputs uses conditional strides (:func:`_six_five_guarded`), so it is total.
 
 Size:
     O(T) worst case, small for structured tables; n=10 parity: 207 chars,
-    n=10 and: 145 chars, n=10 random 1847: 3,236 chars.
+    n=10 and: 118 chars, n=10 random 1847: 3,236 chars.
     Constants: n + 10/11 chars and commands.
 
 Decisions:
@@ -94,10 +95,13 @@ def six_five(truth_table: str) -> str:
     Node and leaf shapes: ``_NodeEmitter.emit``, :func:`_six_five_leaf`.
     """
     n = _validate_truth_table(truth_table)
-    if truth_table.count(truth_table[0]) == len(truth_table):
+    ones = truth_table.count("1")
+    if ones in (0, len(truth_table)):
         return (
             "B" * n + "1" + ("66666666" if truth_table[0] == "0" else "666655555") + "A"
         )
+    if ones == 1 and truth_table[-1] == "1":
+        return _six_five_and(n)
     # Identity and reverse: random n=7 10.8% (200 tables), parity/and/or 12-14%;
     # n >= 8 random exceeds the label budget either way, so 0%.
     best = _six_five_chosen(truth_table, _six_five_orders(truth_table))
@@ -109,6 +113,18 @@ def six_five(truth_table: str) -> str:
         best = _six_five_walk(truth_table)
     # The last leaf ends the program, which halts at its end anyway.
     return best.removesuffix("0")
+
+
+def _six_five_and(n: int) -> str:
+    """Read all inputs, then test backward through one shared zero leaf.
+
+    [ablations.fallthrough_one_arm]: AND alone clears the fixed-window bar.
+    The fresh one arm falls through under ``7W``; two labels suffice at
+    every arity. No table-dependent search or generic layout flag is needed.
+    """
+    # Jump operand 2, then the shared zero marker; n=1 needs only label 1.
+    root = "24" if n > 1 else "1"
+    return "B13" * (n - 1) + "B9927V8" + root + "665A04" + "39927W81" * (n - 1) + "665A"
 
 
 def _six_five_orders(truth_table: str) -> dict[tuple[int, ...], None]:

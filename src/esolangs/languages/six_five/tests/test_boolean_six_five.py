@@ -334,7 +334,34 @@ class TestSixFiveSharing:
         """AND's 0 leaves are one: each later test jumps to the first."""
         program = boolean.six_five("0" * 15 + "1")
         assert program.count("665A0") == 1
-        assert _markers(program) == 5
+        assert _markers(program) == 2
+        _check_and_label_boundary()
+
+
+def _check_and_label_boundary() -> None:
+    from esolangs.languages.six_five.generator import _six_five_and
+    from esolangs.languages.six_five.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in (1, 7, 8, 35, 36, 64):
+        source = _six_five_and(n)
+        assert len(source) == 11 * n + 7 + (n > 1)
+        assert _markers(source) == min(n, 2)
+        for bits in (
+            "1" * n,
+            "0" * n,
+            *("1" * at + "0" + "1" * (n - at - 1) for at in range(n)),
+        ):
+            stream = ScriptedIO(bits + "Q")
+            machine = _Machine(source, stream)
+            commands = 0
+            while not machine.halted:
+                machine.step()
+                commands += 1
+                assert commands <= len(source)
+            assert stream.getvalue() == str(int("0" not in bits))
+            assert stream.reads == n
+            assert stream.input_char() == ord("Q")
 
 
 def test_the_walk_carries_a_table_when_no_tree_order_fits(

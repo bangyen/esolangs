@@ -7,13 +7,13 @@ admitted = 2026-08-14T00:27:50-04:00
 
 [proof_status]
 labels = ["finite lookup"]
-qualification = "past 35 inputs the positional walk loops on sixteen labels: each bit advances the pointer to the first row whose 2-adic valuation mark reads zero, and one pass per bit shifts the marks"
+qualification = "shared trees within the label budget, positional or guarded walks otherwise; AND has one shared zero exit"
 scaling = "linear, time n log: at most N characters: two raced orders over canonical subtree IDs"
 execution = "linear: at most L + 6T + 3n commands: the walk's home loop reruns 3 commands a cell; other routes loop-free"
 workspace = "linear: worst 2T + 6n + 6 + bl(n) + bl(L) bits past n = 6: a tape of 2T cells"
 
 [generator_sizes]
-"00000001" = { commands = 28, commands_by_row = { "0" = 17, "1" = 23, "2" = 17, "3" = 29, "4" = 17, "5" = 23, "6" = 17, "7" = 28 }, source_units = 47 }
+"00000001" = { commands = 26, commands_by_row = { "0" = 17, "1" = 23, "2" = 17, "3" = 28, "4" = 17, "5" = 23, "6" = 17, "7" = 26 }, source_units = 41 }
 "00001100" = { commands = 17, commands_by_row = { "0" = 22, "1" = 22, "2" = 17, "3" = 17, "4" = 23, "5" = 23, "6" = 17, "7" = 17 }, source_units = 39 }
 "00110110" = { commands = 28, commands_by_row = { "0" = 25, "1" = 28, "2" = 25, "3" = 28, "4" = 25, "5" = 28, "6" = 25, "7" = 28 }, source_units = 66 }
 "0110" = { commands = 19, commands_by_row = { "0" = 18, "1" = 19, "2" = 19, "3" = 19 }, source_units = 46 }
@@ -87,6 +87,7 @@ tables = 200
 verdict = "kept: the walk returns home by a loop left to a sentinel 5 at cell 0 (7 characters) instead of one 3 per cell (2 per row); 36.4% at n=8, 38.0% / 38.9% at n=9 / 10 (200 tables), 39.4% / 39.7% at n=11 / 12 (40 tables); 5.54 -> 3.52 chars per row at n=8. Parity/and/or unchanged (the tree wins); majority n=12 19,765 -> 11,558. n <= 7 byte-identical (exhaustive n <= 3, 200 random each at n=4..7). All 200 changed n=8 programs, 6 at n=9 and 2 at n=10 executed on every row, 0 wrong; a wrong table is flagged"
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
 
@@ -103,3 +104,25 @@ saving = 5.1
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "kept: canonical constant folding and minimal spelling, exempt. Root constants need one right-two move to a fresh cell, without the following left move; reads still overwrite the input cell n times. Chars and commands n+10/11: n=7 18/19->17/18 (5.4%), n=8 19/20->18/19 (5.1%), n=12 23/24->22/23. n=8 written workspace unchanged at 24 bits. n=3 corpus chars 13835->13833. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged; global resource caps unchanged. Owned raw IO checks preserve all input reads and following record; Smallfuck retains fixed-width slots, executes straight-line setters and dumps only after the program."
+
+
+[ablations.fallthrough_one_arm]
+arity = 8
+saving = 17.94871794871795
+seed = "random.Random(184700+n), sequential choice('01'); deterministic full-input AND"
+tables = "20 fixed random each n=7,8; and/or/parity/majority n=7..10; all small tables/rows; AND public source/native n=1..15, native grammar kernels at 34/35/36/64"
+verdict = "kept only for full-input AND: generic branch inversion is not a canonical no-op. Generic 20 source 7105 -> 6923 /18146 -> 18146 (2.5616/0%), so no generic admission. AND 103 -> 85 /117 -> 96 at n=7/8 (17.4757/17.9487%), growing through 215 -> 173 at 15. Shared-regime sizes 14n+5 versus 11n+8 (n>=2), with 21.4286% coefficient limit. Actual old public route needs n+1 shared markers, then a plain 35-marker tree at 35, guarded 5T+4n+15 beyond 35; new rule has 2markers, so actual asymptotic saving tends to 100%. Native old shared 34/plain 35 and new 35/36/64 grammar controls validate the transitions without giant tables. O(T) detector counts exactly one 1 and requires it in the final row; emit the tested AND grammar directly inO(n), no search, cutoff, layout flag or old-program race. Generic _Layout is unchanged. All reads precede reverse tests; values 31/32 branch via 7V/7W into one shared zero leaf. No emitted state added. Global source/E/W ceilings, exactness flags and all old arities retained; AND is loop-free and below them. Current n=3 source 13833 -> 13827 and commands 49364 -> 49361; all non-AND corpus bytes unchanged. Generic raw 1 n=3 saves only 0.296% commands and slows 14rows, failing 5%; named source admission is independent. Majority 11.9760/11.8812% declines below 20%, rejected despite the later bump; no window cap. One exploratory majority 15 native extension was interrupted for tuple-tape cost; no native 15/16 majority claim."
+
+[ablations.walk_packed_rows]
+arity = 8
+saving = 12.234101179323265
+seed = "same fixed random.Random(184700+n) corpus"
+tables = "20 fixed each n=7/8; all small public variants; forced old/packed walk every small table/row; lowered 3/4-label kernels; sampled 4..8"
+verdict = "rejected: generic source 7105 -> 7105 /18146 -> 15926 characters (0/12.2341%), failing fixed 7. No 200 escalation: both results are more than 2 points from their relevant bar. Valid scratch layout uses two parity preloads and two sentinel homes; each branch stride halves, last bit uses 13. Reads at 2k+prefix remain below selected 2n+row. Homes traverse only 0/1 and sentinel 5; literal rewinds replace homes when labels run out, and the original guarded class remains above 35 physical inputs. Forced 4304 native row controls and wrong-table mutant fire. With both loops, exact size savingT/2-n-9, tending structurally to 16.6667% before label-budget transitions; not claimed an unbounded public limit. Command saving at fixed 7/8 is at mostT/2 against at least 8T-8 baseline commands, well below 25%; default n=3 unchanged. No packed builder, extra home loop, label state or candidate ships."
+
+[ablations.packed_walk_with_fallthrough]
+arity = 8
+saving = 12.234101179323265
+seed = "same fixed random.Random(184700+n) corpus"
+tables = "same 20 fixed n=7/8; all small rows and bounded 4..8 native programs for all four variants"
+verdict = "rejected generic bundle: joint source 7105 -> 6923 /18146 -> 15926 (2.5616/12.2341%), still fails 7. Marginals are raw 1 on the tree and packed rows on the walk; neither may inherit the other's isolated arity. The admitted AND rule uses no walk, so packing adds 0% on its named class; generic packed 7 remains 0 after AND admission. No extra branch/state retained. Positive emitted changes and exact-output/read/sentinel controls pass; no whole-old-source fallback."

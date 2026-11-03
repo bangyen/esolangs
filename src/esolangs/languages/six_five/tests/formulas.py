@@ -20,6 +20,7 @@ def _chars(n: int, _: str) -> int:
     11T + 6n - 9 (reads 6n - 2, 5 a node and a leaf, 1 a move) and shared
     6n + 22 + _names(n) (<= 4 leaf codes of 6, <= 27 labels); N is their min.
     """
+    # The named AND has 11n+8 chars (18 at n=1), below these global ceilings.
     t = 1 << n
     if n > 35:
         return 7 * t + 4 * n + 11  # guarded walk: every row's cell, one label

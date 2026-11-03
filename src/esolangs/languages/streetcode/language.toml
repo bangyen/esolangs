@@ -123,6 +123,7 @@ workload = "run()"
 verdict = "kept: run() skips revalidating identical geometry"
 
 [audits]
+trick_prototype = 2026-11-03
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-18
@@ -147,3 +148,24 @@ saving = 69.6
 seed = "both constant values"
 tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
 verdict = "kept: a whole constant needs only an enclosed two-lane corridor. Read n characters into cell 0, move to fresh cell 1, increment 48+bit times, print and halt. No wall-free extension or junction convention is used. Default area is 4(n+54+bit) cells, chars 4n+219+4bit, commands n+52+bit, workspace 27+bl(n+52+bit)+2bl(n). At n=7 area 812/819 -> 244/248; n=8 819/826 -> 248/252; n=12 847/854 -> 264/268, sustaining about 70% savings. A clockwise turn gives a four-column constant floor. Balance retains the old loop shapes for their squarer small constants (side 29/33/38/43/48 at n=1..5); without those candidates the new corridor grew the side to 49/49/49/49-50/50. No measured balanced constant grows at n=1..12. All 270 nonconstant programs through n=3 are byte-identical; n=3 totals 227776 -> 227464 chars and 228946 -> 228570 cells. Both constants n=1..12 ran with default, width=1 and balance=True; sentinels cover n=1,3,4,5,6,8,12."
+
+[ablations.fill_hairpin_room_prototype]
+arity = 8
+saving = -1.2683
+seed = "Random(184700+n),20 sequential choice('01') tables each7/8"
+tables = "native cycle and baseline controls;fixed20 two rows each;named families;allsmall default byte equality"
+verdict = "rejected: the seven-row shared-kerb fill room enters a zero-valued merge incorrectly. Forced flat table01101001,input000 cycles atCP0 before any read (drive states9 and13 repeat); its unmodified baseline prints0. A two-bit room happens to work, so the probe is not universally blocked. Keeping the unshared nine-row stalk repairs the tested corpus but grows public grid area84217->92583 /120316->121842 cells (-9.934/-1.268% saving) at fixed7/8. Each measured program executes both endpoint rows; no invalid seven-row size is claimed as an optimization. No fill room, new height/cut policy or fallback ships; other possible room geometries are not ruled out."
+
+[ablations.read_run_room_prototype]
+arity = 8
+saving = 6.2835
+seed = "same fixed20 corpus as fill_hairpin_room_prototype"
+tables = "fixed7/8,namedand/or/parity/majority/threshold2/3,last-input identity and ignored-last parity"
+verdict = "rejected: a24-column room runs47 decrements, rejoins nonzero, then one street decrement normalizes the bit. Separating it from the preceding level room requires the next mouth gap max(32+ignored, nextroom+29), not simply replacing49 by30. Actual public area84217->72877 /120316->112756 grid cells (13.465/6.283%), clearly declining below20%. Named ordinary families fail; identity16.239/16.102% and ignored-last parity20.000/13.344% also decline and fail. No named window shift, read-room state or reflow path retained."
+
+[ablations.tail_lift_room_prototype]
+arity = 8
+saving = 2.0654
+seed = "same fixed20 corpus; explicit negated-table wrong-digit control"
+tables = "same native corpus and names as read_run_room_prototype"
+verdict = "rejected: one pre-mouth increment does not ensure nonzero under negated fill: answer-1 becomes0, bypassing the room and printingNUL instead of0. The fixed-corpus n8 first table exhibits this; the repaired room uses two pre-mouth increments when negated and47 inside, retaining the original48/49 total. Actual public area84217->81767 /120316->117831 grid cells (2.909/2.065%), fixed-width savings below20% declining. Last-input identity14.530/14.407% also declines below20%. All three repaired layouts jointly pass320 fixed native endpoint runs and128 named runs with read-before-output, exact read counts, sentinels and opposite-answer controls; all1104 small generated programs are byte-identical, with2120 baseline row executions. No new tail, band-room constructor or state retained. Generator/proof code, scopes, pins, Size anchors and example remain unchanged; balanced/width variants are not claimed verified for these rejected prototypes."

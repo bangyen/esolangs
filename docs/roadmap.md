@@ -150,7 +150,7 @@ Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-109 of the 114 generators: ///, 1 + i, 3x, A Painter Ant, ABCDirection,
+111 of the 114 generators: ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection,
 AddSubJump, Algebraic Programming Language, Alight, Aprknia, ArrowQueue,
 Ascenic, B-tapemark, Back, Balik, BASICER, Basicfuck, Befunge, Between,
 BFStack, Bitdeque, Bitwise Cyclic Tag, bit~, Bleh, Blindfolded Arithmetic,
@@ -164,7 +164,8 @@ pages, Malbolge, Minsky Swap, Modulous, Monotonic Boolfuck, Movesum,
 Nandypants, NOR machine, NQ, Object disoriented, Packlang, Painfuck,
 Parenthesys, Piet, Pilas, Pointless, Qoibl, Qrain, Quassaunt, RAM0,
 REFRACTRAN, Retrograde, ROTfuck, Rubic, S*bleq, SendStuff, Shakespeare, SLOW
-ACV MAMMALIAN, Smu, Sonata, SStack, Stisp, Suffolk, Super SNUSP, SwitchCase,
-Taglate, Thue, Unary, Underload, Unlambda, Unsquare, What!?, Whitespace.
+ACV MAMMALIAN, Smu, Sonata, SStack, Stisp, Streetcode, Suffolk, Super SNUSP,
+SwitchCase, Taglate, Thue, Unary, Underload, Unlambda, Unsquare, What!?,
+Whitespace.
 
 <!-- TRICK-PROTOTYPES:END -->
