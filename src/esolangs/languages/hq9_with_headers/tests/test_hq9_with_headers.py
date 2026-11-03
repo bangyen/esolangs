@@ -98,7 +98,7 @@ def test_wiki_hq9_example_prints_its_title() -> None:
     # despite their opposite order in the source program.
     operations = {"ADD": add, "SUB": sub, "MUL": mul, "DIV": floordiv}
     for (name, evaluate), left, right in product(
-        operations.items(), (0, 7, 11), (0, 2, 13)
+        operations.items(), (0, 7, 11, 2**55 + 1), (0, 2, 13)
     ):
         source = _source(
             "2,1",
