@@ -48,6 +48,9 @@ def test_four_quarter_turns_restore_the_cube(face: str) -> None:
 
 
 def test_the_middle_slice_turns_as_r() -> None:
+    from .oracle_checks import check_raw_rubic
+
+    check_raw_rubic()
     """``m`` carries the white centre to the back, whose middle column is
     white and the rest blue; turned as ``l`` it would show six green."""
     assert _run("m .wg !") == "\x00"
