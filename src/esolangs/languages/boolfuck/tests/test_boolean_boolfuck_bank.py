@@ -70,7 +70,8 @@ def test_banked_residuals_execute_and_match_command_price(kind, table) -> None:
             assert (
                 written.bits
                 <= 2 * n
-                + 6
+                # One byte inverse temporarily has value255, before its clear.
+                + 7
                 + (2 * n).bit_length()
                 + n.bit_length()
                 + len(program).bit_length()

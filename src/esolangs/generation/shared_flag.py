@@ -32,6 +32,8 @@ class FlagDialect:
     #: flag's ``one`` and ``decrement`` (a result preset to 1, cleared by leaves).
     leaf: str = ""
     unleaf: str = ""
+    #: Make a zero bit a live guard; ``one`` clears it before entering the side.
+    inverse: str = ""
 
 
 def _tape_dialect(*, flip: bool) -> FlagDialect:
@@ -44,6 +46,8 @@ def _tape_dialect(*, flip: bool) -> FlagDialect:
         closer="]",
         decrement="-",
         retest=flip,
+        # Byte wrapping gives 0 -> 255 and 1 -> 0; + then clears 255.
+        inverse="" if flip else "-",
     )
 
 
@@ -209,12 +213,16 @@ class _FlagTree:
         # value == "0": the leaf emits nothing
         return _Cost(self.count - start)
 
-    def guarded(self, cell: int, i: int, combo: int) -> tuple[int, _Cost[int], int]:
+    def guarded(
+        self, cell: int, i: int, combo: int, *, inverse: bool = False
+    ) -> tuple[int, _Cost[int], int]:
         """Emit ``[clear side]`` on ``cell``: its span, side cost and start."""
         self.move(cell)
+        if inverse:
+            self.emit(self.spelling.inverse)
         self.emit(self.spelling.opener)
         side_start = self.count
-        self.emit(self.spelling.zero)
+        self.emit(self.spelling.one if inverse else self.spelling.zero)
         body_start = self.count
         cost = self.branch(i, combo)
         flat = self.count - body_start
@@ -236,10 +244,13 @@ class _FlagTree:
             return self.branch(i, combo)  # halves agree: bit i cannot matter
         if self.binary_leaves and i == self.n - 1:
             return self.binary_leaf(combo, start)
-        if self.fold_zero and self.constant(i + 1, combo) == "0":
-            span, one_cost, one_start = self.guarded(2 * self.perm[i], i, one)
-            common = one_start - start
-            return _Cost(0, (_Cost(common + span, (one_cost,)), _Cost(common)))
+        inverse = bool(self.spelling.inverse) and self.constant(i + 1, one) == "0"
+        if self.fold_zero and (self.constant(i + 1, combo) == "0" or inverse):
+            span, side_cost, side_start = self.guarded(
+                2 * self.perm[i], i, combo if inverse else one, inverse=inverse
+            )
+            common = side_start - start
+            return _Cost(0, (_Cost(common + span, (side_cost,)), _Cost(common)))
         return self.two_sided(i, combo, one, start)
 
     def binary_leaf(self, combo: int, start: int) -> _Cost[int]:

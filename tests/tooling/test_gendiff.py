@@ -1,6 +1,7 @@
 """The generator diff: silent on an unchanged tree, loud on a mutant."""
 
 import importlib
+import shutil
 from pathlib import Path
 
 import pytest
@@ -35,13 +36,23 @@ def test_differences_include_a_missing_request() -> None:
 
 @pytest.mark.medium  # three generator processes and a copy of src: ~3 s
 def test_an_unchanged_tree_matches_and_a_mutant_is_caught(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    def snapshot(ref: str, scratch: Path) -> Path:
+        assert ref == "snapshot"
+        # Generator optimizations legitimately differ from HEAD before commit.
+        return shutil.copytree(
+            REPO_ROOT / "src",
+            scratch / "src",
+            ignore=shutil.ignore_patterns("__pycache__"),
+        )
+
+    monkeypatch.setattr(gendiff, "_checkout", snapshot)
     module = importlib.import_module(LANGUAGES[REFERENCE].boolean.__module__)
     mutant = tmp_path / "mutant.py"
     mutant.write_text(Path(module.__file__ or "").read_text() + _MUTATION)
-    argv = [REFERENCE, "--old", "HEAD", "--max-n", "1", "--mutant", str(mutant)]
+    argv = [REFERENCE, "--old", "snapshot", "--max-n", "1", "--mutant", str(mutant)]
     assert gendiff.main(argv) == 0
     out = capsys.readouterr().out
-    assert "0 differ from HEAD" in out
+    assert "0 differ from snapshot" in out
     assert "control: mutant differs on 24" in out

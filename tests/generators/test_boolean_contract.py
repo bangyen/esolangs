@@ -168,25 +168,45 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
     """``perm`` reaches the emission in exactly one place, and it shows."""
     from itertools import permutations
 
+    from esolangs.generation.helpers import permute_truth_table
     from esolangs.languages.brainfuck.generator import _bf_ordered
+    from esolangs.languages.brainfuck.interpreter import _Machine
 
     lengths = {
         perm: len(_bf_ordered("00010111", perm)) for perm in permutations(range(3))
     }
     assert lengths == {
-        (0, 1, 2): 299,
-        (0, 2, 1): 313,
-        (1, 0, 2): 309,
-        (1, 2, 0): 317,
-        (2, 0, 1): 313,
-        (2, 1, 0): 311,
+        (0, 1, 2): 270,
+        (0, 2, 1): 286,
+        (1, 0, 2): 280,
+        (1, 2, 0): 290,
+        (2, 0, 1): 286,
+        (2, 1, 0): 286,
     }
 
     # One and two inputs, where the tape is short enough that an off-by-one
     # in the move would still land inside it.
-    assert len(_bf_ordered("01", (0,))) == 115
-    assert len(_bf_ordered("0110", (0, 1))) == 205
-    assert len(_bf_ordered("0110", (1, 0))) == 211
+    assert len(_bf_ordered("01", (0,))) == 108
+    assert len(_bf_ordered("0110", (0, 1))) == 186
+    assert len(_bf_ordered("0110", (1, 0))) == 198
+
+    # Include an asymmetric table: majority and parity alone hide wrong maps.
+    for table in ("01", "0110", "00010111", "00110110"):
+        n = len(table).bit_length() - 1
+        for perm in permutations(range(n)):
+            source = _bf_ordered(permute_truth_table(table, perm), perm)
+            for row, expected in enumerate(table):
+                io = ScriptedIO(f"{row:0{n}b}Q")
+                machine = _Machine(source, io)
+                commands = 0
+                while not machine.halted:
+                    machine.step()
+                    commands += 1
+                    assert commands <= 2_000
+                assert io.getvalue() == expected
+                assert io.reads == n
+                assert io.past_end == 0
+                assert io.input_char() == ord("Q")
 
 
 # The shape each generator's construction takes (its LANGUAGE's ``shape=``)

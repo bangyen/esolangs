@@ -1,7 +1,8 @@
 """brainfuck Boolean program generator: a flag-guarded tree or an affine stream.
 
-Input bits sit at cells ``2i`` with flags at ``2i+1``; branches clear both and
-one final print reads the result.  Equal sibling halves merge; repeated
+Input bits sit at cells ``2i`` with flags at ``2i+1``; zero arms omit their
+flag and body, and one final print reads the result. Equal sibling halves
+merge; repeated
 residuals use one unused flag per level and emit once in depth order within
 the command bound.  Affine tables stream through three cells instead, at
 most 66 commands per selected input.  Tree inputs are read with their ASCII
@@ -10,8 +11,8 @@ and disjunctions share a two-pass ASCII subtraction counter.
 
 Size:
     O(T) for dense tables, O(n) for affine ones; n=10 parity: 760 chars,
-    n=12 parity: 902 chars, n=10 and: 589 chars,
-    n=10 random 1847: 10,792 chars. Constants from n=2: n+22+b chars,
+    n=12 parity: 902 chars, n=10 and: 501 chars,
+    n=10 random 1847: 9,648 chars. Constants from n=2: n+22+b chars,
     n+82+b commands and 16+bl(n+22+b)+bl(n) written bits, b the answer.
 
 Decisions:
@@ -29,11 +30,10 @@ from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     affine_form,
-    decision_tree_body,
     in_input_order,
     move_text,
 )
-from esolangs.generation.shared_flag import shared_flag_tree
+from esolangs.generation.shared_flag import flag_tree_body, shared_flag_tree
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -142,8 +142,10 @@ def _tree_for(truth_table: str, perm: tuple[int, ...], tail: str) -> str:
     pos = 2 * max(n - 1, 0)
     tree_start = pos
 
-    # The tree itself.
-    body, pos = decision_tree_body(truth_table, _RIGHT, _LEFT, perm, pos)
+    # Canonical zero arms share the deferred body's emitter. The byte dialect
+    # supplies the inverse guard ([ablations.zero_arms]).
+    body, _ = flag_tree_body(truth_table, perm, pos, 2 * n, fold_zero=True)
+    pos = 2 * n
     cells.append(body)
 
     # A shared print pays the ASCII offset once rather than at every leaf.

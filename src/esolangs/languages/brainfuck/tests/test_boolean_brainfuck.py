@@ -12,6 +12,7 @@ def test_affine_stream_all_small_coefficients_within_ledger() -> None:
     from scripts.benchmark import WrittenState
 
     _check_constants()
+    _check_zero_guards()
     admitted = 0
     for n in range(1, 6):
         for mask in range(1 << n):
@@ -122,14 +123,14 @@ def test_literal_counter_consumes_inputs_within_revised_bounds(n: int) -> None:
                 vm = make_vm(REFERENCE, source, stdin=f"{row:0{n}b}")
                 written = WrittenState(vm.snapshot())
                 commands = 0
-                while not vm.halted and commands <= 81 * n + 47:
+                while not vm.halted and commands <= 75 * n + 49:
                     vm.step()
                     written.sample(vm.snapshot())
                     commands += 1
                 assert vm.halted
                 assert vm.output == expected
                 assert vm.snapshot()[-1] == n
-                assert commands <= 81 * n + 47
+                assert commands <= 75 * n + 49
                 assert written.bits <= (
                     max(7 * n, 2 * n + 7)
                     + (2 * n).bit_length()
@@ -161,25 +162,72 @@ def _check_constants() -> None:
                         "brainfuck", list(map(int, f"{row:0{n}b}"))
                     )
                     io = ReadFirstIO(stdin + "Q")
-                    machine = _Machine("".join(program.split()), io)
+                    machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     steps = 0
                     while not machine.halted:
+                        command = machine.code[machine.ind]
                         machine.step()
                         written.sample(machine.snapshot())
-                        steps += 1
+                        steps += int(command in "+-<>[],.")
                         assert steps <= n + 82 + int(bit)
                     assert steps == n + 82 + int(bit)
                     assert io.getvalue() == bit
                     assert (
-                        written.bits
-                        == 16 + (n + 22 + int(bit)).bit_length() + n.bit_length()
+                        written.bits == 16 + len(program).bit_length() + n.bit_length()
                     )
                     assert io.input_char() == ord("Q")
     assert (
         sum(len(esolangs.generate("brainfuck", f"{v:08b}")) for v in range(256))
-        == 70418
+        == 64098
     )
+
+
+def _check_zero_guards() -> None:
+    import esolangs
+    from esolangs.languages.brainfuck.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    class ReadFirstIO(ScriptedIO):
+        expected = 0
+
+        def _write(self, value):
+            assert self.reads == self.expected
+            super()._write(value)
+
+    inverted = False
+    for n, used in ((3, (0, 1, 2)), (5, (1, 3)), (7, (0, 4, 6))):
+        table = "".join(
+            str(int(any((row >> (n - i - 1)) & 1 for i in used)))
+            for row in range(1 << n)
+        )
+        for options in ({}, {"width": 1}, {"balance": True}):
+            source = esolangs.generate("brainfuck", table, **options)
+            inverted |= "-[+" in "".join(source.split())
+            for row in (0, 1, (1 << n) - 1):
+                io = ReadFirstIO(f"{row:0{n}b}Q")
+                io.expected = n
+                machine = _Machine(source, io)
+                written = WrittenState(machine.snapshot())
+                commands = 0
+                while not machine.halted:
+                    command = machine.code[machine.ind]
+                    machine.step()
+                    written.sample(machine.snapshot())
+                    commands += int(command in "+-<>[],.")
+                    assert commands <= 75 * n + 49
+                assert io.getvalue() == table[row]
+                assert io.reads == n
+                assert io.past_end == 0
+                assert io.input_char() == ord("Q")
+                assert written.bits <= (
+                    max(7 * n, 2 * n + 7)
+                    + (2 * n).bit_length()
+                    + n.bit_length()
+                    + len(source).bit_length()
+                )
+    assert inverted
 
 
 def _check_shared_body_must_be_strictly_shorter(monkeypatch) -> None:

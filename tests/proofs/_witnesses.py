@@ -951,6 +951,7 @@ _SPARSE_BAND = {
 
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
 _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
+    "brainfuck": lambda n: ("0" + "1" * ((1 << n) - 1),) if n >= 3 else (),
     "///": lambda n: (
         "10" if n == 1 else "10" * (2 ** (n - 1) - 1) + "11",
         "10111011" if n == 3 else "0" * (1 << n),

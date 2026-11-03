@@ -2,7 +2,7 @@
 
 
 def _chars(n: int, _: str) -> int:
-    """35T/2 + 55n + 25: the plain tree on parity (n >= 1).
+    """35T/2 + 55n + 25: the inherited tree envelope before zero-arm pruning.
 
     Reads and the print are 49n + 2(n - 1) + 2(n - 1) + 2n + 49.  A test node is
     12 commands plus its arms; a leaf arm moves to the answer cell and back
@@ -12,7 +12,7 @@ def _chars(n: int, _: str) -> int:
     only drops nodes; the shared-flag tree and the affine stream are conditional
     and never counted.  A recurrence over (level, flag the child leaves the
     pointer on) matches this closed form n = 1..16 and the plain tree exactly
-    on every table n <= 4.
+    on every table n <= 4 before the zero-arm and redundant-move cleanup.
     """
     return 35 * 2**n // 2 + 55 * n + 25
 
