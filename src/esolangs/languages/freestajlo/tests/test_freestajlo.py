@@ -37,7 +37,7 @@ def test_a_function_runs_where_it_is_named() -> None:
 
 
 def test_signed_quotient_and_remainder() -> None:
-    for dividend in [-13, -6, -1, 0, 1, 6, 13]:
+    for dividend in [-(2**55 + 1), -13, -6, -1, 0, 1, 6, 13, 2**55 + 1]:
         for divisor in [-4, -3, 3, 4]:
             left = str(abs(dividend)) + "_" * (dividend < 0)
             right = str(abs(divisor)) + "_" * (divisor < 0)
