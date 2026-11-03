@@ -169,6 +169,12 @@ definition was attempted and its preservation form is closed:
   the native out-and-back routes reuse those pointers in 20 or 10
   instructions, respectively, at all 94 instruction phases. A bank
   layout that covers the generator's full address range remains open.
+  Rotations and the three existing constant-accumulator operations
+  reach 28 pointer words for destinations 6,561–6,999 from printable
+  seeds. The chain from glyph 35 to pointer 6,560 uses two rotations
+  and three crazy operations. A legal return glyph at cell 70
+  lets a 57-instruction native fragment synthesize and use that
+  pointer with preloaded constants.
 
 - Navigation (`emitter.py` `goto`) is a deterministic bounded
   heuristic, the chain-valued scan-greedy -- not a closed form.  From
