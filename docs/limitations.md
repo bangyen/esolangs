@@ -424,6 +424,13 @@ generators have one.
   any aligned four-trit window of three such maps carries at least 96 of
   its 81 values, so no three are disjoint.
 
+  A period-47 rule cannot supply seven meanings either
+  (`test_window_classes.py`). Its difference graph has independence 4.
+  A six-point class covering all 47 translates has 48 incidences;
+  deleting one point from the sole doubled translate leaves five
+  independent points, impossible. Each class needs at least seven points,
+  so seven classes need 49 > 47. Period-94 and stateful rules remain open.
+
   Carrying state across groups does not escape it (2026-10-25, audit M5):
   in the one-query architecture the only cross-group state is entry state
   the fold delivers, a function of the group's address, so a stateful

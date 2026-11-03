@@ -16,20 +16,20 @@ from esolangs.languages.malbolge.interpreter import _XLAT1
 
 _CELLS = 94
 _OPS = sorted(_XLAT1.index(op) for op in "ji*p</vo")
-_DIFFERENCES = sorted({(a - b) % _CELLS for a in _OPS for b in _OPS if a != b})
 
 
-def _neighbours() -> list[int]:
+def _neighbours(cells: int = _CELLS) -> list[int]:
     """Bitmask per window cell of the cells some address pairs it with."""
-    masks = [0] * _CELLS
-    for cell in range(_CELLS):
-        for d in _DIFFERENCES:
-            masks[cell] |= 1 << ((cell + d) % _CELLS)
+    differences = {(a - b) % cells for a in _OPS for b in _OPS if a != b}
+    masks = [0] * cells
+    for cell in range(cells):
+        for d in differences:
+            masks[cell] |= 1 << ((cell + d) % cells)
     return masks
 
 
-def _independence_number() -> int:
-    masks = _neighbours()
+def _independence_number(cells: int = _CELLS) -> int:
+    masks = _neighbours(cells)
     best = 0
 
     def grow(candidates: int, size: int) -> None:
@@ -40,7 +40,7 @@ def _independence_number() -> int:
             candidates &= ~(1 << cell)
             grow(candidates & ~masks[cell], size + 1)
 
-    grow((1 << _CELLS) - 1, 0)
+    grow((1 << cells) - 1, 0)
     return best
 
 
@@ -59,3 +59,18 @@ def test_eight_classes_cannot_be_distinct_everywhere() -> None:
     """At most eight cells share a class, so eight classes cover 64 < 94 cells."""
     assert _independence_number() == 8
     assert 8 * _independence_number() < _CELLS
+
+
+def test_period_47_cannot_cover_seven_meanings() -> None:
+    """Each covering class needs seven points, so seven classes need 49 > 47.
+
+    Six points give 48 incidences across 47 translates: covering all leaves
+    one doubled translate. Removing one endpoint leaves five independent
+    points, contradicting alpha=4. Smaller classes cannot cover 47 at all.
+    """
+    cells = _CELLS // 2
+    assert len({op % cells for op in _OPS}) == 8
+    masks = _neighbours(cells)
+    witness = (0, 7, 14, 21)
+    assert all(not (masks[a] >> b & 1) for a in witness for b in witness if a != b)
+    assert _independence_number(cells) == len(witness) == 4
