@@ -77,3 +77,10 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: direct frozen record reconstruction. 247 programs, 145 halt cleanly; no structural trace differences, control differs on 147. Step throughput at longest 10/20/40 workload breadths: +8.73%/+8.12%/+8.36%. No production change or global performance conclusion; adoption needs broader validation."
+
+[interpreter_ablations.speedup_adoption_20261103]
+price = 4.0010
+workload = "complete run; source parsing and final output included"
+seed = 0
+tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
+verdict = "kept: direct frozen record reconstruction. 5195 paired native traces, 2193 clean halts, no differences; changed-site mutant differs on 2195. Complete-run savings 4.00\u201311.84%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."

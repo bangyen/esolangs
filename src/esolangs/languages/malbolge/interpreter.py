@@ -70,11 +70,13 @@ type _Effect = int | None
 
 def _crazy(x: int, y: int) -> int:
     """Return the crazy operation on ``x`` and ``y``, five di-trits wide."""
-    result, place = 0, 1
-    for _ in range(5):
-        result += _CRAZY[(y // place) % 9][(x // place) % 9] * place
-        place *= 9
-    return result
+    return (
+        _CRAZY[(y // 1) % 9][(x // 1) % 9] * 1
+        + _CRAZY[(y // 9) % 9][(x // 9) % 9] * 9
+        + _CRAZY[(y // 81) % 9][(x // 81) % 9] * 81
+        + _CRAZY[(y // 729) % 9][(x // 729) % 9] * 729
+        + _CRAZY[(y // 6561) % 9][(x // 6561) % 9] * 6561
+    )
 
 
 def _op(cell: int, c: int) -> str | None:

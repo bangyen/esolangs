@@ -35,6 +35,7 @@ Decisions:
 from __future__ import annotations
 
 import re
+from bisect import bisect_left
 from typing import cast
 
 from esolangs.runtime._drive import drive
@@ -74,8 +75,9 @@ def _reg_get(regs: _Regs, name: str) -> int:
 
 def _reg_set(regs: _Regs, name: str, value: int) -> _Regs:
     """Return ``regs`` with ``name`` set to ``value``, in name order."""
-    kept = tuple((k, v) for k, v in regs if k != name)
-    return tuple(sorted((*kept, (name, value))))
+    at = bisect_left(regs, (name,))
+    end = at + (at < len(regs) and regs[at][0] == name)
+    return (*regs[:at], (name, value), *regs[end:])
 
 
 def _arr_get(arrays: _Arrays, name: str, index: int) -> int:

@@ -28,18 +28,9 @@ Decisions:
 
 from __future__ import annotations
 
-from collections.abc import Callable
-
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
-
-#: The three commands that change the accumulator; ``o`` and ``h`` do not.
-_ARITHMETIC: dict[str, Callable[[int], int]] = {
-    "i": lambda value: value + 1,
-    "d": lambda value: value - 1,
-    "s": lambda value: value * value,
-}
 
 #: Reset from exactly these two; a range check is the C comment's bug.
 _TRAPS = (-1, 256)
@@ -59,8 +50,12 @@ def _advance(state: _State, code: str) -> tuple[_State, str | None]:
     command = code[ind]
     if command == "h":
         return (ind, value, True), None
-    if command in _ARITHMETIC:
-        value = _ARITHMETIC[command](value)
+    if command == "i":
+        value += 1
+    elif command == "d":
+        value -= 1
+    elif command == "s":
+        value *= value
     if value in _TRAPS:
         value = 0
     return (ind + 1, value, False), f"{value}\n" if command == "o" else None

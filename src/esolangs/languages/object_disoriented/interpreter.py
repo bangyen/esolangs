@@ -337,8 +337,11 @@ def _advance(
         callee = 0 if held == 0 else held[0]  # type: ignore[index]
         caller: _Frame = (code, pc, self_ref, param, base, pending, stack[:-2])
         entered: _Frame = (callee, 0, target, given, size, None, ())  # type: ignore[assignment]
-        return _State(
-            ((entered, (caller, rest))), append(store, 0), size + 1, in_bits, out_bits
+        # Skip the Python constructor wrapper.
+        # [interpreter_ablations.speedup_adoption_20261103]
+        return tuple.__new__(
+            _State,
+            ((entered, (caller, rest)), append(store, 0), size + 1, in_bits, out_bits),
         ), None
     elif op == "copy":
         if arg == "s":
@@ -360,17 +363,21 @@ def _advance(
             store = _write(store, self_ref, pending)
         store = _truncate(store, base)
         if rest is None:
-            return _State(None, store, base, in_bits, out_bits), None
+            return tuple.__new__(_State, (None, store, base, in_bits, out_bits)), None
         (c, p, s, q, b, w, st), outer = rest
-        return _State(
-            ((c, p, s, q, b, w, (*st, value)), outer), store, base, in_bits, out_bits
+        return tuple.__new__(
+            _State,
+            (((c, p, s, q, b, w, (*st, value)), outer), store, base, in_bits, out_bits),
         ), None
-    return _State(
-        ((code, pc, self_ref, param, base, pending, stack), rest),
-        store,
-        size,
-        in_bits,
-        out_bits,
+    return tuple.__new__(
+        _State,
+        (
+            ((code, pc, self_ref, param, base, pending, stack), rest),
+            store,
+            size,
+            in_bits,
+            out_bits,
+        ),
     ), out
 
 
@@ -385,10 +392,10 @@ class _Machine:
         compiler.function(((), ("z",)))  # z's body: code 0
         one = compiler.function(((("x", ("f", ("v", "p"), ("z",))),), ("z",)))
         boot = compiler.function(((("x", ("f", ("l", "main"), ("z",))),), ("z",)))
-        self.program = _Program(tuple(compiler.codes), (one, 0, 0))
+        self.program = tuple.__new__(_Program, (tuple(compiler.codes), (one, 0, 0)))
         # The boot call runs ``flmain.z``; its self and parameter are its ``t``.
-        self.state = _State(
-            (((boot, 0, 0, 0, 0, None, ())), None), chunked([0]), 1, (), ()
+        self.state = tuple.__new__(
+            _State, ((((boot, 0, 0, 0, 0, None, ())), None), chunked([0]), 1, (), ())
         )
 
     @property

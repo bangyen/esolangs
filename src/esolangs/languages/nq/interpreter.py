@@ -110,7 +110,9 @@ def _parse(source: str, *, guard_binding: str = "opcode") -> tuple[_Instruction,
                 commands[start] = commands[start]._replace(target=len(commands))
         elif c in "+l":
             values, cursor = _operand(source, cursor)
-            commands.append(_Instruction(c, values, -1, offset))
+            # Skip the Python constructor wrapper.
+            # [interpreter_ablations.speedup_adoption_20261103]
+            commands.append(tuple.__new__(_Instruction, (c, values, -1, offset)))
         elif c == ">":
             while cursor < len(source) and source[cursor].isspace():
                 cursor += 1
@@ -121,14 +123,18 @@ def _parse(source: str, *, guard_binding: str = "opcode") -> tuple[_Instruction,
             while cursor < len(source) and source[cursor].isspace():
                 cursor += 1
             grouped = cursor < len(source) and source[cursor] == "("
-            commands.append(_Instruction(c, (value,), -1 if grouped else -2, offset))
+            commands.append(
+                tuple.__new__(
+                    _Instruction, (c, (value,), -1 if grouped else -2, offset)
+                )
+            )
             if grouped:
                 groups.append(len(commands) - 1)
                 cursor += 1
             else:
                 owners[len(commands) - 1] = groups[-1] if groups else -1
         elif c in "-rRWH":
-            commands.append(_Instruction(c, (), -1, offset))
+            commands.append(tuple.__new__(_Instruction, (c, (), -1, offset)))
     if groups:
         raise syntax_error("unclosed guard group", "close each >N( with )")
     return _targets(commands, owners, guard_binding=guard_binding)
@@ -192,7 +198,7 @@ def _advance(
         stopped = True
     if cursor >= length:
         cursor, first = cursor % length, False
-    return _State(cursor, flag, first, stopped), effect
+    return tuple.__new__(_State, (cursor, flag, first, stopped)), effect
 
 
 def _trits(text: str) -> tuple[int, ...]:

@@ -85,7 +85,9 @@ def _parse(code: str) -> tuple[_Op, ...]:
                 f"line {line} has a field out of range: {a} {b} {c}",
                 "keep a and b in 0-255 and c at -5 or above",
             )
-        ops.append(_Op(a, b, c, line))
+        # Skip the Python constructor wrapper.
+        # [interpreter_ablations.speedup_adoption_20261103]
+        ops.append(tuple.__new__(_Op, (a, b, c, line)))
     return tuple(ops)
 
 

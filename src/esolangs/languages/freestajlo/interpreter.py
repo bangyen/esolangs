@@ -376,7 +376,9 @@ def _advance(
     else:  # return
         assert calls is not None
         ip, calls = calls
-    return _State(ip, stack, transfer, calls, funcs), effect
+    # Skip the Python constructor wrapper.
+    # [interpreter_ablations.speedup_adoption_20261103]
+    return tuple.__new__(_State, (ip, stack, transfer, calls, funcs)), effect
 
 
 class _Machine:
@@ -389,7 +391,9 @@ class _Machine:
         self.io = io
         self.ops = _parse(code)
         self.end = len(code)
-        self.state = _State(0, _EMPTY, _EMPTY, None, (-1,) * len(_LETTERS))
+        self.state = tuple.__new__(
+            _State, (0, _EMPTY, _EMPTY, None, (-1,) * len(_LETTERS))
+        )
         self.index = 0
         #: The inactive stacks by index; the current one lives in ``state``.
         self.others: dict[int, _Stack] = {}

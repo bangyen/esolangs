@@ -251,7 +251,11 @@ def _advance(
             case "@":
                 done = True
     col, row = (col + dx) % len(grid[0]), (row + dy) % len(grid)
-    return _State((col, row, dx, dy), grid, stack, string, done), effect
+    # Skip the Python constructor wrapper.
+    # [interpreter_ablations.speedup_adoption_20261103]
+    return tuple.__new__(
+        _State, ((col, row, dx, dy), grid, stack, string, done)
+    ), effect
 
 
 class _Machine:

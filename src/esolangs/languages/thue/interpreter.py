@@ -204,7 +204,7 @@ class _Text:
             rule += 1
         group, k = _locate(self.groups[rule], k)
         block, k = _locate(self.counts[rule][group * _GROUP : (group + 1) * _GROUP], k)
-        return _Slot(rule, group * _GROUP + block, k)
+        return tuple.__new__(_Slot, (rule, group * _GROUP + block, k))
 
     def first(self) -> _Match | None:
         """Return the first occurrence as ``(rule, offset)``, or ``None``."""

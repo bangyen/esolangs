@@ -272,7 +272,11 @@ def _advance(
             mole = char
             num -= 1
     elif num:
-        code, mole = _work_command(_Work(code, row, col, char, size, mole, value))
+        # Skip the Python constructor wrapper.
+        # [interpreter_ablations.speedup_adoption_20261103]
+        code, mole = _work_command(
+            tuple.__new__(_Work, (code, row, col, char, size, mole, value))
+        )
         num -= 1
     elif char in "^>'<":
         move = "^>'<".find(char)

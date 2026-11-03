@@ -115,7 +115,7 @@ class _Machine:
                 "provide a nonempty grid; * halts immediately",
             )
         self.io = io
-        self.size = max(len(line) for line in code)
+        self.size = max(map(len, code))
         self.code = tuple(line.ljust(self.size) for line in code)
         # Top-left heading right; (a, b) is (d_row, d_col).
         self.state: _State = (0, 0, 0, 1, (0,), 0, False)

@@ -127,3 +127,10 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: C-level width reduction. 247 programs, 183 halt cleanly; no structural trace differences, control differs on 141. Step throughput at longest 10/20/40 workload breadths: -0.22%/+0.26%/+0.40%. No production change or global performance conclusion; adoption needs broader validation."
+
+[interpreter_ablations.speedup_adoption_20261103]
+price = 2.1688
+workload = "complete run; parsing and final output included"
+seed = 0
+tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
+verdict = "kept: C-level width reduction; 5195 paired native traces, 3359 clean halts, zero differences; changed-site control detected on 3850. Complete-run wall savings 2.17\u20132.86%, including parsing and final I/O. Snapshot fields and grouping preserved."

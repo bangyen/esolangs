@@ -57,22 +57,21 @@ _NEEDS = {"A": 1, "o": 1, "S": 2}
 type _State = tuple[int, int, tuple[int, ...], tuple[int, ...]]
 
 
-def _forward(code: str, ind: int) -> int | None:
-    """Return the position of the ``<`` matching the ``>`` at ``ind``, or ``None``."""
-    depth = 1
-    while depth:
-        ind += 1
-        if ind >= len(code):
-            return None
-        if code[ind] == ">":
-            depth += 1
-        elif code[ind] == "<":
-            depth -= 1
-    return ind
+def _partners(code: str) -> dict[int, int | None]:
+    """Map openers to their closer, retaining lazy unmatched errors."""
+    pairs: dict[int, int | None] = {}
+    opens: list[int] = []
+    for at, char in enumerate(code):
+        if char == ">":
+            opens.append(at)
+            pairs[at] = None
+        elif char == "<" and opens:
+            pairs[opens.pop()] = at
+    return pairs
 
 
 # :func:`_advance` is pure and total over an immutable ``_State``: ``_NEEDS`` lets the
-# shell reject an underflow first and :func:`_forward` returns ``None`` for an
+# shell reject an underflow first and :func:`_partners` retains ``None`` for an
 # unmatched ``>``.
 def _advance(
     state: _State,
@@ -126,6 +125,7 @@ class _Machine:
         """Start with empty stacks, a zero accumulator, at the first token."""
         self.io = io
         self.code = code
+        self._partners = _partners(code)
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(code)
@@ -217,7 +217,7 @@ class _Machine:
         target = None
         byte = None
         if char == ">":
-            target = _forward(self.code, ind)
+            target = self._partners[ind]
             if target is None:
                 self.state = (self.size, acc, stack, jumps)
                 raise HaltError(

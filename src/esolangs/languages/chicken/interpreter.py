@@ -201,7 +201,7 @@ def _parse(code: str) -> list[int]:
                 f"Chicken line {number} holds something other than 'chicken'",
                 "write only the word chicken, separated by spaces",
             )
-        counts.append(sum(word == "chicken" for word in words))
+        counts.append(words.count("chicken"))
     return counts
 
 

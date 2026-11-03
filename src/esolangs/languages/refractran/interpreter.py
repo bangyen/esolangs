@@ -33,6 +33,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
+_FRACTION = re.compile("([0-9]+)/([0-9]+)")
+
 
 class _State(NamedTuple):
     cursor: int
@@ -54,7 +56,7 @@ def _parse(code: str) -> tuple[int, tuple[tuple[int, int], ...], tuple[int, ...]
         initial *= int(match[1]) ** int(match[2] or "1")
     fractions = []
     for token in tokens[1:]:
-        match = re.fullmatch(r"([0-9]+)/([0-9]+)", token[0])
+        match = _FRACTION.fullmatch(token[0])
         if match is None or int(match[1]) <= 0 or int(match[2]) <= 0:
             raise syntax_error("invalid fraction", "use positive numerator/denominator")
         a, b = int(match[1]), int(match[2])

@@ -44,28 +44,28 @@ from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Cmd:
     """A one-character command, as a term and as the value it evaluates to."""
 
     name: str
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Print:
     """``.x``, and what ``|`` hands over: printing is applying it."""
 
     char: str
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Query:
     """``?x``, which applies its argument to ``i`` or to ``v``."""
 
     char: str
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Partial:
     """A combinator that has some of its arguments: ``k1``, ``s1``, ``s2``."""
 
@@ -73,7 +73,7 @@ class _Partial:
     args: tuple[_Value, ...]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Promise:
     """What ``d`` made: a term held unevaluated until something applies it."""
 
@@ -123,14 +123,14 @@ class _Kont:
         return hash(self.frames())
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Cont:
     """A continuation ``c`` captured; applying it abandons the current one."""
 
     kont: _Kont | None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _App:
     """An application, the language's one syntactic form."""
 
@@ -138,35 +138,35 @@ class _App:
     a: _Term
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Val:
     """A value standing in for a term, so ``s`` can re-apply what it holds."""
 
     value: _Value
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Arg:
     """Waiting for the function's value, holding the argument's term."""
 
     term: _Term
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Fun:
     """Holding the function's value while the argument is evaluated."""
 
     value: _Value
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Eval:
     """Evaluate a term."""
 
     term: _Term
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Apply:
     """Apply one value to another."""
 
@@ -174,7 +174,7 @@ class _Apply:
     a: _Value
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Ret:
     """Hand a finished value back to the continuation."""
 

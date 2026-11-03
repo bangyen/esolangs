@@ -57,7 +57,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from math import factorial, isqrt
 
 from esolangs.exceptions import HaltError
@@ -197,7 +197,7 @@ def _stage(state: _State, op: Op) -> _State:
         if any(who not in stage for who in leaving):
             raise HaltError("Shakespeare exeunt of a character not on stage")
         stage = tuple(who for who in stage if who not in leaving)
-    return replace(state, stage=stage)
+    return _State(state.pc, state.values, state.stacks, stage, state.flag)
 
 
 def _advance(
@@ -207,19 +207,19 @@ def _advance(
 
     Pure: a read arrives as ``value``, a write leaves as the return value.
     """
-    state = replace(state, pc=state.pc + 1)
+    state = _State(state.pc + 1, state.values, state.stacks, state.stage, state.flag)
     if op.speaker < 0:
         return _stage(state, op), None
     if not _active(state, op):
         return state, None
     kind, speaker = op.kind, op.speaker
     if kind == "goto":
-        return replace(state, pc=op.a), None
+        return _State(op.a, state.values, state.stacks, state.stage, state.flag), None
     if kind == "ask":
         left = _eval(op.a, state, speaker)
         right = _eval(op.b, state, speaker)
         result = {"gt": left > right, "lt": left < right, "eq": left == right}[op.c]
-        return replace(state, flag=result), None
+        return _State(state.pc, state.values, state.stacks, state.stage, result), None
     target = _listener(state, speaker)
     if kind == "set" or kind in _READS:
         if kind == "set":
@@ -227,7 +227,13 @@ def _advance(
         else:
             assert value is not None  # the shell reads before a read command
             new = value
-        return replace(state, values=_put(state.values, target, new)), None
+        return _State(
+            state.pc,
+            _put(state.values, target, new),
+            state.stacks,
+            state.stage,
+            state.flag,
+        ), None
     if kind == "num_out":
         return state, str(state.values[target])
     if kind == "chr_out":
@@ -235,7 +241,13 @@ def _advance(
     if kind == "push":
         top = _eval(op.a, state, speaker)
         pushed: _Stack = (top, state.stacks[target])
-        return replace(state, stacks=_put(state.stacks, target, pushed)), None
+        return _State(
+            state.pc,
+            state.values,
+            _put(state.stacks, target, pushed),
+            state.stage,
+            state.flag,
+        ), None
     cell = state.stacks[target]
     if cell is None:
         raise HaltError(
@@ -243,8 +255,8 @@ def _advance(
             hint="Remember a value before recalling",
         )
     values = _put(state.values, target, cell[0])
-    return replace(
-        state, values=values, stacks=_put(state.stacks, target, cell[1])
+    return _State(
+        state.pc, values, _put(state.stacks, target, cell[1]), state.stage, state.flag
     ), None
 
 

@@ -107,7 +107,7 @@ from esolangs.runtime.io import IO
 # reasoning ``grapheme.py`` records.
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Frame:
     """One call frame: the function, its cursor, and its own variables.
 

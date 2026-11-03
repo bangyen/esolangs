@@ -93,7 +93,7 @@ def _dice(value: int) -> str:
     return ":" * (value // 2) + "." * (value % 2)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _State:
     """One instant of a run.
 

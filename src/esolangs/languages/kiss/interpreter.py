@@ -118,8 +118,9 @@ def _advance(state: _State, bit: int | None) -> tuple[_State | int, int | None]:
     Pure: ``bit`` is the input bit when the head is ``S`` with two arguments.
     """
     head, args = state
-    depth = _count(args, ARITY[head])
-    if depth == ARITY[head]:
+    arity = ARITY[head]
+    depth = _count(args, arity)
+    if depth == arity:
         assert args is not None
         assert args[1] is not None
         if head == "K":

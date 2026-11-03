@@ -57,8 +57,17 @@ def _advance(state: _State, command: str, bit: int, brackets: dict[int, int]) ->
     elif command == "[" and not bit:
         pc = brackets[pc]
     elif command == "]":
-        return state._replace(pc=brackets[pc])
-    return state._replace(pc=pc + 1, ptr=ptr)
+        return _State(
+            brackets[pc],
+            state.ptr,
+            state.incoming,
+            state.remaining,
+            state.outgoing,
+            state.used,
+        )
+    return _State(
+        pc + 1, ptr, state.incoming, state.remaining, state.outgoing, state.used
+    )
 
 
 class _Machine:
@@ -126,7 +135,14 @@ class _Machine:
             full = flush_byte((outgoing, used))
             if full is not None:
                 self.io.print_char(chr(full))
-            self.state = self.state._replace(outgoing=0, used=0)
+            self.state = _State(
+                self.state.pc,
+                self.state.ptr,
+                self.state.incoming,
+                self.state.remaining,
+                0,
+                0,
+            )
 
 
 def run(code: str, io: IO) -> None:

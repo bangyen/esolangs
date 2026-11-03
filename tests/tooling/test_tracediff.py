@@ -28,6 +28,21 @@ def test_a_copy_matches_and_a_mutant_is_caught(tmp_path: Path) -> None:
     mutant = tracediff._load(broken, "tracediff_mutant")  # noqa: SLF001
     assert tracediff.differences(same, mutant, programs)
 
+    # Independent NaNs compare by bits; altered values remain detectable.
+    nan_source = _DRAWING.replace("return self.drawn", "return self.drawn, NAN")
+    nan_source += '\nNAN = float("nan")\n'
+    nan_path = tmp_path / "nan.py"
+    nan_path.write_text(nan_source)
+    before = tracediff._load(nan_path, "nan_before")  # noqa: SLF001
+    after = tracediff._load(nan_path, "nan_after")  # noqa: SLF001
+    assert tracediff.differences(before, after, [("", "")]) == []
+    nan_path.write_text(nan_source.replace('NAN = float("nan")', "NAN = 0"))
+    changed = tracediff._load(nan_path, "nan_changed")  # noqa: SLF001
+    assert tracediff.differences(before, changed, [("", "")])
+    assert tracediff._plain(float("nan"), {}) != tracediff._plain(  # noqa: SLF001
+        -float("nan"), {}
+    )
+
 
 def test_speed_sees_a_slowed_copy(tmp_path: Path) -> None:
     """Deadfish's rewrite lost a third of its step rate and nothing said so."""

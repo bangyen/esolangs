@@ -100,7 +100,7 @@ from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import syntax_error
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Frame:
     """One call in progress: its body, its bindings, and its cursor.
 
@@ -150,7 +150,7 @@ def _frozen[T](mapping: Mapping[str, T]) -> Mapping[str, T]:
     )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _State:
     """Every changing value in an Algebraic Programming Language run.
 

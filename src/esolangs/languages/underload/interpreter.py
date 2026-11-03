@@ -62,7 +62,7 @@ def _advance(state: _State) -> tuple[_State, _Effect]:
             "Underload stack underflow",
             hint="leave enough stack entries for the operation to consume",
         )
-    *rest, top = stack
+    rest, top = stack[:-1], stack[-1]
     printed = None
     match command:
         case "~":  # swap
@@ -70,16 +70,16 @@ def _advance(state: _State) -> tuple[_State, _Effect]:
         case ":":  # duplicate
             stack = (*stack, top)
         case "!":  # drop
-            stack = tuple(rest)
+            stack = rest
         case "*":  # concatenate, the lower string first
             stack = (*rest[:-1], rest[-1] + top)
         case "a":  # enclose in parentheses
             stack = (*rest, f"({top})")
         case "^":  # run: splice the string in right after this command
-            stack = tuple(rest)
+            stack = rest
             program = program[: at + 1] + top + program[at + 1 :]
         case _:  # "S": print
-            stack, printed = tuple(rest), top
+            stack, printed = rest, top
     return (program, at + 1, stack), printed
 
 

@@ -106,7 +106,10 @@ def _advance(
     out = None
     write: tuple[int, int] | None
     if command is None:
-        write = (0, sum(array.get(k, 0) for k in (1, 2, 3, 4)))
+        write = (
+            0,
+            array.get(1, 0) + array.get(2, 0) + array.get(3, 0) + array.get(4, 0),
+        )
     elif command[0] < 0:
         write = (command[1], value) if command[1] >= 0 and value is not None else None
     elif command[1] < 0:

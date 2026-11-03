@@ -229,7 +229,7 @@ type _State = tuple[int, bool, int]
 #: What a command wants done to the tape.  Every Dimensional command makes
 #: at most one such change, so this is the single-effect shape
 #: rather than the list other languages need.
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Move:
     """Step one place along ``dim``; ``None`` means the current value."""
 
@@ -237,28 +237,28 @@ class _Move:
     delta: int
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _SetValue:
     """Write a value into the addressed byte."""
 
     value: int
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _AddValue:
     """Add to the addressed byte."""
 
     delta: int
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _FromCoord:
     """Write a coordinate into the addressed byte, as a byte."""
 
     dim: int
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Clear:
     """Forget the position along ``dim``."""
 
@@ -268,7 +268,7 @@ class _Clear:
 type _Effect = _Move | _SetValue | _AddValue | _FromCoord | _Clear
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Context:
     """Everything one command's handler may read about the run.
 

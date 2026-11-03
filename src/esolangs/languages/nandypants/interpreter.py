@@ -76,13 +76,45 @@ def _advance(state: _State, token: str, nand: int, program: _Program) -> _State:
     """Advance control and pointers; tape writes and byte I/O are shell effects."""
     pc = state.pc + 1
     if token == "{":
-        return state._replace(pc=pc, a_ptr=state.a_ptr - 1)
+        return _State(
+            pc,
+            state.a_ptr - 1,
+            state.b_ptr,
+            state.incoming,
+            state.remaining,
+            state.outgoing,
+            state.used,
+        )
     if token == "}":
-        return state._replace(pc=pc, a_ptr=state.a_ptr + 1)
+        return _State(
+            pc,
+            state.a_ptr + 1,
+            state.b_ptr,
+            state.incoming,
+            state.remaining,
+            state.outgoing,
+            state.used,
+        )
     if token == "<":
-        return state._replace(pc=pc, b_ptr=state.b_ptr - 1)
+        return _State(
+            pc,
+            state.a_ptr,
+            state.b_ptr - 1,
+            state.incoming,
+            state.remaining,
+            state.outgoing,
+            state.used,
+        )
     if token == ">":
-        return state._replace(pc=pc, b_ptr=state.b_ptr + 1)
+        return _State(
+            pc,
+            state.a_ptr,
+            state.b_ptr + 1,
+            state.incoming,
+            state.remaining,
+            state.outgoing,
+            state.used,
+        )
     if token.isdigit():
         number = int(token)
         if number % 2 == 0:
@@ -90,7 +122,15 @@ def _advance(state: _State, token: str, nand: int, program: _Program) -> _State:
                 pc = program.first[number]
         elif state.pc != program.last[number] and nand == 1:
             pc = program.last[number]
-    return state._replace(pc=pc)
+    return _State(
+        pc,
+        state.a_ptr,
+        state.b_ptr,
+        state.incoming,
+        state.remaining,
+        state.outgoing,
+        state.used,
+    )
 
 
 def _set(tape: set[int], ptr: int, bit: int) -> None:
@@ -156,18 +196,42 @@ class _Machine:
                 incoming, remaining = self.io.input_char() % 256, 8
             (incoming, remaining), bit = take_bit((incoming, remaining))
             _set(self.b_ones, state.b_ptr, bit)
-            state = state._replace(incoming=incoming, remaining=remaining)
+            state = _State(
+                state.pc,
+                state.a_ptr,
+                state.b_ptr,
+                incoming,
+                remaining,
+                state.outgoing,
+                state.used,
+            )
         elif token == "\\":
             (outgoing, used), full = put_bit((state.outgoing, state.used), a)
             if full is not None:
                 self.io.print_char(chr(full))
-            state = state._replace(outgoing=outgoing, used=used)
+            state = _State(
+                state.pc,
+                state.a_ptr,
+                state.b_ptr,
+                state.incoming,
+                state.remaining,
+                outgoing,
+                used,
+            )
         self.state = _advance(state, token, nand, self.program)
         if self.state.pc >= len(self.program.tokens):
             full = flush_byte((self.state.outgoing, self.state.used))
             if full is not None:
                 self.io.print_char(chr(full))
-            self.state = self.state._replace(outgoing=0, used=0)
+            self.state = _State(
+                self.state.pc,
+                self.state.a_ptr,
+                self.state.b_ptr,
+                self.state.incoming,
+                self.state.remaining,
+                0,
+                0,
+            )
 
 
 def run(code: str, io: IO) -> None:

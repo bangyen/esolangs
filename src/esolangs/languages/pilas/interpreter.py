@@ -113,7 +113,9 @@ def _advance(
         out, stk = chr(stk[-1]), stk[:-1]
     new_ips = (ip + 1, ips[1]) if me == 0 else (ips[0], ip + 1)
     new_stks = (stk, other) if me == 0 else (other, stk)
-    return _State(new_ips, new_stks, 1 - me), out
+    # Skip the Python constructor wrapper.
+    # [interpreter_ablations.speedup_adoption_20261103]
+    return tuple.__new__(_State, (new_ips, new_stks, 1 - me)), out
 
 
 class _Machine:
@@ -133,7 +135,7 @@ class _Machine:
         self.lines = (first, second)
         self.jumps = (_braces(first), _braces(second))
         self.io = io
-        self.state = _State((0, 0), ((), ()), 0)
+        self.state = tuple.__new__(_State, ((0, 0), ((), ()), 0))
 
     @property
     def ip(self) -> tuple[int, int]:

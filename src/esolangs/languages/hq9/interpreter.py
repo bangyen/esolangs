@@ -58,12 +58,13 @@ class _Machine:
 
     def __init__(self, code: str, io: IO) -> None:
         self.code = code
+        self.size = len(code)
         self.io = io
         self.state: _State = (0, 0)
 
     @property
     def halted(self) -> bool:
-        return self.state[0] >= len(self.code)
+        return self.state[0] >= self.size
 
     @property
     def ip(self) -> int:

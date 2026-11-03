@@ -596,9 +596,9 @@ class _State(NamedTuple):
 def _force(at: int, heap: _Heap, kont: _Kont, fresh: int) -> _State:
     cell = heap[at]
     if isinstance(cell, str):
-        return _State(_Ret(cell), kont, fresh)
+        return tuple.__new__(_State, (_Ret(cell), kont, fresh))
     expr, env = cell
-    return _State(_Eval(expr, env), (_Update(at), kont), fresh)
+    return tuple.__new__(_State, (_Eval(expr, env), (_Update(at), kont), fresh))
 
 
 def _advance(state: _State, heap: _Heap, funcs: _Funcs) -> tuple[_State, _Writes]:
@@ -613,7 +613,9 @@ def _advance(state: _State, heap: _Heap, funcs: _Funcs) -> tuple[_State, _Writes
         assert kont is not None
         if isinstance(kont[0], _Update):
             # A forced thunk keeps its bits: call by need.
-            return _State(control, kont[1], fresh), ((kont[0].at, control.value),)
+            return tuple.__new__(_State, (control, kont[1], fresh)), (
+                (kont[0].at, control.value),
+            )
         return _return(control.value, kont, fresh), ()
     assert isinstance(control, _Try)
     branches = funcs[control.func]
@@ -623,11 +625,11 @@ def _advance(state: _State, heap: _Heap, funcs: _Funcs) -> tuple[_State, _Writes
     except _Need as need:
         return _force(need.at, heap, (control, kont), fresh), ()
     if env is not None:
-        return _State(_Eval(body, env), kont, fresh), ()
+        return tuple.__new__(_State, (_Eval(body, env), kont, fresh)), ()
     if control.branch + 1 == len(branches):
         raise HaltError(f"no branch of Bleh function {control.func} matches")
     retry = _Try(control.func, control.args, control.branch + 1)
-    return _State(retry, kont, fresh), ()
+    return tuple.__new__(_State, (retry, kont, fresh)), ()
 
 
 def _eval(
@@ -640,20 +642,22 @@ def _eval(
         if isinstance(val, int):
             return _force(val, heap, kont, fresh), ()
         if isinstance(val, str):
-            return _State(_Ret(val), kont, fresh), ()
+            return tuple.__new__(_State, (_Ret(val), kont, fresh)), ()
         expr = _Join(tuple(_Slot(part) for part in val.parts))
     if isinstance(expr, _Bits):
-        return _State(_Ret(expr.value), kont, fresh), ()
+        return tuple.__new__(_State, (_Ret(expr.value), kont, fresh)), ()
     if isinstance(expr, (_Join, _Seq)):
         if not expr.parts:
-            return _State(_Ret(""), kont, fresh), ()
+            return tuple.__new__(_State, (_Ret(""), kont, fresh)), ()
         return _part(expr, 0, env, "", kont, fresh), ()
     if expr.func.startswith("io."):
         builtin = expr.func[3:]
         if not expr.args:
-            return _State(_Do(builtin, ()), kont, fresh), ()
+            return tuple.__new__(_State, (_Do(builtin, ()), kont, fresh)), ()
         frame = _Arg(builtin, expr.args, 0, env, ())
-        return _State(_Eval(expr.args[0], env), (frame, kont), fresh), ()
+        return tuple.__new__(
+            _State, (_Eval(expr.args[0], env), (frame, kont), fresh)
+        ), ()
     args: list[_Val] = []
     writes: list[tuple[int, _Cell]] = []
     for arg in expr.args:
@@ -666,7 +670,9 @@ def _eval(
             writes.append((fresh, (arg, env)))
             args.append(fresh)
             fresh += 1
-    return _State(_Try(expr.func, tuple(args), 0), kont, fresh), tuple(writes)
+    return tuple.__new__(_State, (_Try(expr.func, tuple(args), 0), kont, fresh)), tuple(
+        writes
+    )
 
 
 def _part(
@@ -674,9 +680,9 @@ def _part(
 ) -> _State:
     """Start part ``at`` of a join or block; a block's last runs as a tail."""
     if isinstance(expr, _Seq) and at == len(expr.parts) - 1:
-        return _State(_Eval(expr.parts[at], env), kont, fresh)
+        return tuple.__new__(_State, (_Eval(expr.parts[at], env), kont, fresh))
     frame = _Part(expr, at, env, acc)
-    return _State(_Eval(expr.parts[at], env), (frame, kont), fresh)
+    return tuple.__new__(_State, (_Eval(expr.parts[at], env), (frame, kont), fresh))
 
 
 def _return(value: str, kont: _Kont, fresh: int) -> _State:
@@ -685,16 +691,18 @@ def _return(value: str, kont: _Kont, fresh: int) -> _State:
     if isinstance(frame, _Part):
         acc = frame.acc + value if isinstance(frame.expr, _Join) else ""
         if frame.at + 1 == len(frame.expr.parts):
-            return _State(_Ret(acc), rest, fresh)
+            return tuple.__new__(_State, (_Ret(acc), rest, fresh))
         return _part(frame.expr, frame.at + 1, frame.env, acc, rest, fresh)
     if isinstance(frame, _Arg):
         values = (*frame.values, value)
         if frame.at + 1 == len(frame.args):
-            return _State(_Do(frame.builtin, values), rest, fresh)
+            return tuple.__new__(_State, (_Do(frame.builtin, values), rest, fresh))
         nxt = _Arg(frame.builtin, frame.args, frame.at + 1, frame.env, values)
-        return _State(_Eval(frame.args[frame.at + 1], frame.env), (nxt, rest), fresh)
+        return tuple.__new__(
+            _State, (_Eval(frame.args[frame.at + 1], frame.env), (nxt, rest), fresh)
+        )
     assert isinstance(frame, _Try)  # ``_advance`` pops updates itself
-    return _State(frame, rest, fresh)  # retry the branch
+    return tuple.__new__(_State, (frame, rest, fresh))  # retry the branch
 
 
 class _Machine:
@@ -708,7 +716,7 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
         self.funcs = _parse(code)
-        self.state = _State(_Try("main", (), 0), None, 0)
+        self.state = tuple.__new__(_State, (_Try("main", (), 0), None, 0))
         self.heap: dict[int, _Cell] = {}
         #: A character ``io::hasNext`` read ahead, ``""`` past EOF, or None.
         self.ahead: str | None = None

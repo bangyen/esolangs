@@ -89,3 +89,10 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: slotted immutable dataclasses. 255 programs, 151 halt cleanly; no structural trace differences, control differs on 156. Step throughput at longest 10/20/40 workload breadths: +1.63%/+1.53%/+1.31%. No production change or global performance conclusion; adoption needs broader validation."
+
+[interpreter_ablations.speedup_adoption_20261103]
+price = 1.1500
+workload = "complete run; parsing and final output included"
+seed = 0
+tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
+verdict = "kept: slotted immutable dataclasses; 5203 paired native traces, 2253 clean halts, zero differences; changed-site control detected on 2258. Complete-run wall savings 1.15\u20132.53%, including parsing and final I/O. Snapshot fields and grouping preserved."

@@ -53,7 +53,7 @@ Decisions:
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.hq9.interpreter import _SONG
@@ -238,9 +238,23 @@ class _Compiler:
         self.emit(bytes.fromhex(then).decode("latin-1"), line)
         skip = len(self.ops)
         self.ops.append(_Op("jump", line))
-        self.ops[test] = replace(self.ops[test], target=len(self.ops))
+        self.ops[test] = _Op(
+            self.ops[test].kind,
+            self.ops[test].line,
+            self.ops[test].args,
+            self.ops[test].text,
+            self.ops[test].value,
+            len(self.ops),
+        )
         self.emit(bytes.fromhex(other).decode("latin-1"), line)
-        self.ops[skip] = replace(self.ops[skip], target=len(self.ops))
+        self.ops[skip] = _Op(
+            self.ops[skip].kind,
+            self.ops[skip].line,
+            self.ops[skip].args,
+            self.ops[skip].text,
+            self.ops[skip].value,
+            len(self.ops),
+        )
 
 
 def _sections(roots: list[_Node]) -> dict[str, _Node]:
@@ -320,7 +334,14 @@ def parse(code: str) -> tuple[list[_Op], int]:
     for at, number in jumps:
         if number not in starts:
             raise _fail(ops[at].line, f"no command {number} to jump to")
-        ops[at] = replace(ops[at], target=starts[number])
+        ops[at] = _Op(
+            ops[at].kind,
+            ops[at].line,
+            ops[at].args,
+            ops[at].text,
+            ops[at].value,
+            starts[number],
+        )
     return ops, len(compiler.slots)
 
 

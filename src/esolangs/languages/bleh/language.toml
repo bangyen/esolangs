@@ -97,3 +97,10 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: construct immutable named tuples through tuple.__new__. 250 programs, 148 halt cleanly; no structural trace differences, control differs on 150. Step throughput at longest 10/20/40 workload breadths: +2.88%/+2.21%/+1.70%. No production change or global performance conclusion; adoption needs broader validation."
+
+[interpreter_ablations.speedup_adoption_20261103]
+price = 0.3935
+workload = "complete run; parsing and final output included"
+seed = 0
+tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
+verdict = "kept: construct immutable named tuples through tuple.__new__; 5198 paired native traces, 2196 clean halts, zero differences; changed-site control detected on 2198. Complete-run wall savings 0.39\u20131.19%, including parsing and final I/O. Snapshot fields and grouping preserved."

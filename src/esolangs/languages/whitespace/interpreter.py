@@ -91,7 +91,10 @@ _OPERATIONS: dict[str, Callable[[int, int], int]] = {
 
 
 def _read_heap(heap: _Heap, address: int) -> int:
-    return next((value for index, value in heap if index == address), 0)
+    for index, value in heap:
+        if index == address:
+            return value
+    return 0
 
 
 def _write_heap(heap: _Heap, address: int, value: int) -> _Heap:

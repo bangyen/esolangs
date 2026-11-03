@@ -28,7 +28,7 @@ Decisions:
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
 from esolangs.exceptions import HaltError, ProgramError
 from esolangs.runtime._drive import drive
@@ -213,8 +213,9 @@ def _advance(state: _State) -> _State:
         )
     if target < len(program):
         value = instruction.data + instruction.polarity
-        changed = replace(
-            program[target],
+        changed = _Instruction(
+            opcode=program[target].opcode,
+            polarity=program[target].polarity,
             address=value if instruction.opcode == "A" else program[target].address,
             data=value if instruction.opcode == "D" else program[target].data,
         )

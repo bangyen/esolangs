@@ -53,7 +53,7 @@ type _Token = tuple[str, str]
 class _Rule:
     pattern: re.Pattern[str]
     #: Literal runs and variable names, in order: ``(is_variable, text)``.
-    rhs: tuple[tuple[bool, str], ...]
+    rhs: tuple[tuple[int | None, str], ...]
 
 
 def _side(text: str, line: str, *, stop_at_arrow: bool) -> tuple[list[_Token], int]:
@@ -99,12 +99,12 @@ def _rule(line: str) -> _Rule:
             )
         names[text] = len(names) + 1
         parts.append("(.)" if kind == "^" else "(.*?)")
-    out: list[tuple[bool, str]] = []
+    out: list[tuple[int | None, str]] = []
     for kind, text in rhs:
         if kind == "=":
-            out.append((False, text))
+            out.append((None, text))
         elif text in names:
-            out.append((True, str(names[text])))
+            out.append((names[text], ""))
         else:
             raise syntax_error(
                 f"Sonata variable {text!r} is not bound on the left of {line!r}",
@@ -123,8 +123,8 @@ def _advance(rules: tuple[_Rule, ...], text: str) -> str | None:
         match = rule.pattern.fullmatch(text)
         if match is not None:
             return "".join(
-                match.group(int(part)) if variable else part
-                for variable, part in rule.rhs
+                match.group(group) if group is not None else part
+                for group, part in rule.rhs
             )
     return None
 

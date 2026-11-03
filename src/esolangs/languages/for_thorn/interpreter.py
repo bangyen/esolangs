@@ -54,7 +54,7 @@ _BINARY: dict[str, Callable[[int, int], int]] = {
 }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Frame:
     """One active scope: its code, cursor, and whether it is a ``[`` loop body."""
 

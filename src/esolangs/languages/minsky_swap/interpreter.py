@@ -26,6 +26,9 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
+_TRADITIONAL_START = re.compile(r"(inc|swap|decnz)\(")
+_NUMBERS = re.compile(r"\d+")
+
 #: One instant of a run: ``(ind, ptr, reg, dumped)`` -- the cursor, the
 #: register pointer, both registers, and whether the end-of-run dump has
 #: been printed.  A value, not a record: every transition below returns a
@@ -72,7 +75,7 @@ def _parse(code: str) -> tuple[str, list[int]]:
     prog = ""
     nums: list[int] = []
 
-    if re.search(r"(inc|swap|decnz)\(", code):
+    if _TRADITIONAL_START.search(code):
         pattern = re.compile(r"(inc|swap|decnz)\((\d*)\);")
         for line in code.splitlines():
             if not (line := line.strip()):
@@ -94,7 +97,7 @@ def _parse(code: str) -> tuple[str, list[int]]:
         first, *rest = code.split("\n")
         prog = re.sub("[^+~*]", "", first)
         if rest:
-            nums = [int(k) for k in re.findall(r"\d+", rest[0])]
+            nums = [int(k) for k in _NUMBERS.findall(rest[0])]
 
     return prog, nums
 

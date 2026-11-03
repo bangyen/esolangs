@@ -39,8 +39,10 @@ _MOVE: dict[_Heading, tuple[int, int]] = {
 # Derived from _MOVE so validation matches what the move branch looks up.
 _INSTRUCTIONS = "".join(h + h.upper() for h in _MOVE) + "pP"
 
-# Headings keyed by spelling, so the move branch needs no assert.
-_HEADING: dict[str, _Heading] = {h: h for h in _MOVE}
+# Decode direction and case together.
+_DECODE: dict[str, tuple[int, int, bool]] = {
+    c: (*delta, c.isupper()) for h, delta in _MOVE.items() for c in (h, h.upper())
+}
 
 
 #: The shell's grid is borrowed read-only; freezing it per step turned a
@@ -68,15 +70,15 @@ def _advance(state: _State, grid: _Grid, program: str) -> _Move:
     if command == "P":
         return (x, y, ip, ((x, y), 1))
 
-    # Only a move if the lowercased character is a heading.
-    heading = _HEADING.get(command.lower())
+    # Only a movement spelling is present in the decoder.
+    heading = _DECODE.get(command)
     if heading is None:  # pragma: no cover - _INSTRUCTIONS admits no other
         raise syntax_error(
             f"unknown command {command!r}",
             "use only n/e/s/w or N/E/S/W to move, and p/P to paint",
         )
-    dx, dy = _MOVE[heading]
-    if (grid.get((x + dx, y + dy), 0) == 1) == command.isupper():
+    dx, dy, white = heading
+    if (grid.get((x + dx, y + dy), 0) == 1) == white:
         return (x + dx, y + dy, ip, None)
     return (x, y, ip, None)
 

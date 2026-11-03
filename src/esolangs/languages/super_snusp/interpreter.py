@@ -352,15 +352,20 @@ def _advance(
             is_letter = "A" <= command <= "Z" or "a" <= command <= "z"
             handler = _letter if is_letter else _no_op
         outcome = handler(
-            _Context(
-                command,
-                value,
-                values,
-                pointer,
-                heading,
-                char_input,
-                number_input,
-                random_offset,
+            # Skip the Python constructor wrapper.
+            # [interpreter_ablations.speedup_adoption_20261103]
+            tuple.__new__(
+                _Context,
+                (
+                    command,
+                    value,
+                    values,
+                    pointer,
+                    heading,
+                    char_input,
+                    number_input,
+                    random_offset,
+                ),
             )
         )
     if outcome.done:
@@ -377,8 +382,8 @@ def _advance(
     row += d_row * outcome.steps
     col += d_col * outcome.steps
     done = not (0 <= row < len(code) and 0 <= col < len(code[0]))
-    return _State(
-        (row, col, heading), (pointer, cells), values, outcome.digit, done
+    return tuple.__new__(
+        _State, ((row, col, heading), (pointer, cells), values, outcome.digit, done)
     ), outcome.effect
 
 

@@ -96,7 +96,9 @@ def _advance(state: _State, code: str, pairs: tuple[int, ...]) -> _State:
     elif c in "{}" and _bit(state):
         cursor = pairs[cursor]
         direction = -direction
-    return _State(cursor + direction, pointer, direction, left, right)
+    # Skip the Python constructor wrapper.
+    # [interpreter_ablations.speedup_adoption_20261103]
+    return tuple.__new__(_State, (cursor + direction, pointer, direction, left, right))
 
 
 class _Machine:
@@ -104,7 +106,7 @@ class _Machine:
 
     def __init__(self, code: str, io: IO) -> None:
         self.code, self.pairs, self.offsets = _parse(code)
-        self.state = _State(0, 0, 1, 0, 0)
+        self.state = tuple.__new__(_State, (0, 0, 1, 0, 0))
         self.io = io
         self.printed = False
 

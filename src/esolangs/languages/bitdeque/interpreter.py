@@ -78,7 +78,7 @@ def _advance(state: _State, sym: str) -> _State:
                 hint="GOTO 1 jumps to the first command",
             )
         ind = target - 2
-    return state._replace(ind=ind + 1, reg=reg, deq=deq)
+    return _State(ind + 1, reg, deq, state.rendered)
 
 
 def _reject_stray_text(code: str) -> None:

@@ -172,36 +172,43 @@ def _advance(state: _State, program: _Program) -> _State:
     node = body[cast(int, at)]
     frames = (*frames[:-1], ("seq", seq, cast(int, at) + 1))
     if not mapping:
-        return _State(frames, mapping)  # every command is a no-op
+        # Skip the Python constructor wrapper.
+        # [interpreter_ablations.speedup_adoption_20261103]
+        return tuple.__new__(_State, (frames, mapping))  # every command is a no-op
     if isinstance(node, str):
-        return _State(frames, _command(node, mapping))
+        return tuple.__new__(_State, (frames, _command(node, mapping)))
     kind, parts = node
     group: _Frame = (
         ("sum", parts, 1, mapping, ()) if kind == "sum" else ("loop", parts[0], mapping)
     )
-    return _State((*frames, group, ("seq", parts[0], 0)), mapping)
+    return tuple.__new__(_State, ((*frames, group, ("seq", parts[0], 0)), mapping))
 
 
 def _finish(frames: tuple[_Frame, ...], mapping: _Mapping) -> _State:
     """Hand a finished sequence's mapping to the group that ran it."""
     if not frames:
-        return _State((), mapping)
+        return tuple.__new__(_State, ((), mapping))
     frame, rest = frames[-1], frames[:-1]
     if frame[0] == "sum":
         _, branches, k, base, acc = frame
         parts, k = cast(tuple[int, ...], branches), cast(int, k)
         total = _add(cast(_Mapping, acc), mapping)
         if k == len(parts):
-            return _State(rest, total)
-        return _State(
-            (*rest, ("sum", parts, k + 1, base, total), ("seq", parts[k], 0)),
-            cast(_Mapping, base),
+            return tuple.__new__(_State, (rest, total))
+        return tuple.__new__(
+            _State,
+            (
+                (*rest, ("sum", parts, k + 1, base, total), ("seq", parts[k], 0)),
+                cast(_Mapping, base),
+            ),
         )
     _, body, acc = frame
     total = _add(cast(_Mapping, acc), mapping)
     if not mapping:
-        return _State(rest, total)
-    return _State((*rest, ("loop", body, total), ("seq", body, 0)), mapping)
+        return tuple.__new__(_State, (rest, total))
+    return tuple.__new__(
+        _State, ((*rest, ("loop", body, total), ("seq", body, 0)), mapping)
+    )
 
 
 def _read_stack(text: str) -> _Stack:
@@ -238,7 +245,7 @@ class _Machine:
         # The input is the initial state, not a command's read, so it is
         # taken here and every step after is a pure transition.
         stack = _read_stack(io.input_all())
-        self.state = _State((("seq", 0, 0),), ((stack, 1),))
+        self.state = tuple.__new__(_State, ((("seq", 0, 0),), ((stack, 1),)))
 
     @property
     def halted(self) -> bool:
@@ -278,7 +285,9 @@ class _Machine:
         if done:
             return (cast(tuple[object, ...], state),)
         moved = _advance(
-            _State(cast(tuple[_Frame, ...], frames), cast(_Mapping, mapping)),
+            tuple.__new__(
+                _State, (cast(tuple[_Frame, ...], frames), cast(_Mapping, mapping))
+            ),
             self.program,
         )
         return ((*moved, not moved.frames, progress),)

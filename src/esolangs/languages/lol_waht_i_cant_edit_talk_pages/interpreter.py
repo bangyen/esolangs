@@ -54,6 +54,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
+_INTEGER_PATTERN = re.compile("[+-]?[0-9]+")
+
 _NAME = r"(\S+)"
 _PATTERNS = (
     ("def", re.compile(r"user:" + _NAME, re.I)),
@@ -113,7 +115,7 @@ def _parse(code: str) -> list[_Op]:
 
 def _value(env: dict[str, int], token: str) -> int:
     """Read an amount: a literal, ``no``, or a defined variable."""
-    if re.fullmatch(r"[+-]?[0-9]+", token):
+    if _INTEGER_PATTERN.fullmatch(token):
         return int(token)
     if token == "no":
         return 0

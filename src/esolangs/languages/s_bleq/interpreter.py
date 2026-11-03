@@ -132,7 +132,16 @@ def _advance(
 
     diff = _read(mem, ip, a, byte) - _read(mem, ip, b, byte)
     writes: list[tuple[int, int]] = []
-    for addr in {"a": (a,), "ab": (a, b), "b": (b,)}[store]:
+    targets: tuple[int, ...]
+    if store == "ab":
+        targets = (a, b)
+    elif store == "a":
+        targets = (a,)
+    elif store == "b":
+        targets = (b,)
+    else:
+        raise KeyError(store)
+    for addr in targets:
         if addr >= len(mem):
             check_address(addr, "S*bleq")
         if addr >= 0:

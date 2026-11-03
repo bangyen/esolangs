@@ -127,7 +127,7 @@ class _Def:
     code: tuple[str, ...]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Frame:
     """One expression evaluation in progress.
 
@@ -217,7 +217,7 @@ def _parse_definition(
     return _Def(name, tuple(params), tuple(rest[index:]))
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _State:
     """Every changing value in a Fargo run.
 

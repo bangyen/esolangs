@@ -98,17 +98,18 @@ def _settle(term: _Term, args: _Args) -> _State:
     """Return ``term`` applied to ``args`` as a head with enough arguments."""
     while not isinstance(term, str):
         term, args = term[0], (term[1], args)
+    arity = ARITY[term]
     depth, rest = 0, args
-    while rest is not None and depth < ARITY[term]:
+    while rest is not None and depth < arity:
         depth, rest = depth + 1, rest[1]
-    if depth < ARITY[term]:
+    if depth < arity:
         # Appending at the far end: the stack has fewer than three cells.
         cells: list[_Term] = []
         while args is not None:
             cells.append(args[0])
             args = args[1]
         args = None
-        for cell in reversed([*cells, *"F" * (ARITY[term] - depth)]):
+        for cell in reversed([*cells, *"F" * (arity - depth)]):
             args = (cell, args)
     return term, args
 

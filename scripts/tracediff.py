@@ -25,6 +25,7 @@ import itertools
 import math
 import random
 import re
+import struct
 import subprocess
 import sys
 import tempfile
@@ -153,6 +154,7 @@ def _repr(value: object) -> str:
 
 
 _SLOTS: dict[type, tuple[str, ...]] = {}
+_NAN_TAG = object()
 
 
 def _slots(cls: type) -> tuple[str, ...]:
@@ -172,6 +174,8 @@ def _plain(value: object, memo: dict[int, object]) -> object:
     maps ``id`` to result: Unlambda's terms and continuations are shared from
     step to step, and without it the walk ran its tracediff 6x slower.
     """
+    if isinstance(value, float) and math.isnan(value):
+        return (_NAN_TAG, struct.pack("!d", value))
     if value is None or isinstance(value, int | float | str | bytes):
         return value
     key = id(value)

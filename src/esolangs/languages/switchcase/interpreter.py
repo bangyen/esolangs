@@ -51,6 +51,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
+_NAME_PATTERN = re.compile("[A-Za-z_][A-Za-z0-9_]*")
+
 #: ``(op, argument)``: op one of ``+ - , # . @ ' =``.
 type _Command = tuple[str, int | str]
 #: The variables, sorted by name: a value, so a step returns a new one.
@@ -100,7 +102,7 @@ def _parse(code: str) -> tuple[_Case, ...]:
         if not line:
             continue
         if line.startswith("$"):
-            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", line[1:]):
+            if not _NAME_PATTERN.fullmatch(line[1:]):
                 raise syntax_error(
                     f"a SwitchCase case needs a variable name: {line!r}",
                     "write $name, for example $_",

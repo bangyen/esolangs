@@ -10,3 +10,10 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: cache immutable source length. 102 programs, 102 halt cleanly; no structural trace differences, control differs on 102. Step throughput at longest 10/20/40 workload breadths: +0.58%/+0.12%/+0.39%. No production change or global performance conclusion; adoption needs broader validation."
+
+[interpreter_ablations.speedup_adoption_20261103]
+price = 7.2222
+workload = "complete run; source parsing and final output included"
+seed = 0
+tables = "3002 native corpus programs; two finite instruction profiles at 32/128/512 units"
+verdict = "kept: cache immutable source length. 3002 paired native traces, 3002 clean halts, no differences; changed-site mutant differs on 3002. Complete-run savings 7.22\u201313.20%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."

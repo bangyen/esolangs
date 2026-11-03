@@ -61,7 +61,9 @@ def _advance(
         ptr -= 1
     elif (command == "[" and not front) or (command == "]" and front):
         pc = brackets[pc]
-    return _State(pc + 1, ptr)
+    # Skip the Python constructor wrapper.
+    # [interpreter_ablations.speedup_adoption_20261103]
+    return tuple.__new__(_State, (pc + 1, ptr))
 
 
 class _Machine:
@@ -73,7 +75,7 @@ class _Machine:
         self.code = code
         self.io = io
         self.brackets = match_brackets(code)
-        self.state = _State(0, 0)
+        self.state = tuple.__new__(_State, (0, 0))
         self.queues: dict[int, deque[int]] = {}
         self.out: deque[int] = deque()
 

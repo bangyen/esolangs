@@ -36,6 +36,8 @@ from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import syntax_error
 
+_COMMAND_WORD = re.compile("[ey]+")
+
 INSTRUCTIONS = frozenset({"tt", "we", "qe", "et", "yr", "ry", "rr"})
 OPERATORS = frozenset({"ee", "ey", "ye", "yy"})
 _VARIABLES = 256
@@ -184,7 +186,7 @@ class _Reading:
             return tokens[hi - 1] == op and self.at(lo + 1, hi - 1)
         if op == "et":
             return hi - lo == 1
-        return bool(re.fullmatch("[ey]+", op)) and hi - lo == 1
+        return bool(_COMMAND_WORD.fullmatch(op)) and hi - lo == 1
 
 
 @functools.lru_cache(maxsize=32)

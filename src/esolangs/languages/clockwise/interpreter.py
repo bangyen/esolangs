@@ -59,7 +59,7 @@ def move(
     o = code[row][col]
     c = (o == "R") or (o == "?" and acc != 0) or (o == "!" and acc == 0)
 
-    r = (r + c) % 4
+    r = (r + c) & 3
     return row + ROW[r], col + COL[r], r, o
 
 

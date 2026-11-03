@@ -104,3 +104,10 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: hoist literal regex compilation. 249 programs, 169 halt cleanly; no structural trace differences, control differs on 156. Step throughput at longest 10/20/40 workload breadths: +3.53%/+4.20%/+4.71%. No production change or global performance conclusion; adoption needs broader validation."
+
+[interpreter_ablations.speedup_adoption_20261103]
+price = 3.5069
+workload = "complete run; source parsing and final output included"
+seed = 0
+tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
+verdict = "kept: hoist literal regex compilation. 5197 paired native traces, 2912 clean halts, no differences; changed-site mutant differs on 2396. Complete-run savings 3.51\u20134.38%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
