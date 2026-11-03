@@ -58,6 +58,9 @@ def test_bottom_zeros_vanish_and_swaps_reach_them() -> None:
 
 
 def test_equal_results_add_their_weights() -> None:
+    from .oracle_checks import check_raw_caballo
+
+    check_raw_caballo()
     machine = _machine("(1+1)")
     while not machine.halted:
         machine.step()
