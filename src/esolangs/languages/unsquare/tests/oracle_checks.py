@@ -91,7 +91,7 @@ def check_raw_unsquare():
         ), (code, stdin)
 
     corpus = ["".join(chars) for chars in product("OIAS+-xPoi><?", repeat=3)]
-    corpus += ["+>><-<", "+>-<Po", "++><", "OIA>i<o", "iAxxPo", "-Po", "io"]
+    corpus += ["+>><-<", "+>-<Po", "++><", "OIA>i<o", "iAxxPo", "-Po", "io", "OOIS"]
     for code, stdin in product(corpus, ("", "😀\n", "\ud800")):
         check(_Machine, code, stdin)
 
