@@ -35,6 +35,9 @@ def test_the_null_program_is_a_cat_that_reads_in_pairs() -> None:
 
 
 def test_results_are_pushed_in_written_order() -> None:
+    from .oracle_checks import check_raw_fackward
+
+    check_raw_fackward()
     # ``~`` pushes 66 then 65, and the next pass reads 65 first; the other
     # order would push what moving 65 and 66 does, printing "BA".
     assert _run(")[H]~65 66") == "AB"
