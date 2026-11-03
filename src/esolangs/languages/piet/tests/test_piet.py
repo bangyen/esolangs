@@ -87,6 +87,15 @@ def test_arithmetic_and_output() -> None:
         image = raster(top, middle, bottom, *tail[: max(0, extra - 1)])
         assert execute(image) == str(3 + extra + second)
 
+        subtraction = (*middle[:-2], LIGHT_YELLOW, RED)
+        image = raster(
+            (*top[:-1], RED),
+            subtraction,
+            (*bottom[:-1], RED),
+            *tail[: max(0, extra - 1)],
+        )
+        assert execute(image) == str(3 + extra - second)
+
 
 def test_white_slide_executes_no_transition() -> None:
     program = raster(
