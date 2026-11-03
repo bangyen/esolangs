@@ -206,6 +206,9 @@ def test_a_decimal_escape_takes_ascii_digits_only() -> None:
 
 
 def test_halting_on_at_changes_the_snapshot() -> None:
+    from .oracle_checks import check_raw_circlefuck
+
+    check_raw_circlefuck()
     """Pins ``done`` in the snapshot: ``@`` changes nothing else."""
     from esolangs.languages.circlefuck.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
