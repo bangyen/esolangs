@@ -14,14 +14,14 @@ workspace = "T log T: at most end-state registers, arrays A and D, ip, input cou
 definitions = ["m = min(16, T/4), the distinct four-row cells", "K = the constants closure: 30 for n = 6..8, 2n + 14 past n = 8", "A = the cell array, an (index, value) pair per entry", "D = the decoder array, one entry per set bit of the m cells"]
 
 [generator_sizes]
-"00000001" = { commands = 41, commands_by_row = { "0" = 41, "1" = 41, "2" = 41, "3" = 41, "4" = 41, "5" = 41, "6" = 41, "7" = 41 }, source_units = 1106 }
-"00001100" = { commands = 33, commands_by_row = { "0" = 33, "1" = 33, "2" = 33, "3" = 33, "4" = 33, "5" = 33, "6" = 33, "7" = 33 }, source_units = 913 }
-"00110110" = { commands = 41, commands_by_row = { "0" = 41, "1" = 41, "2" = 41, "3" = 41, "4" = 41, "5" = 41, "6" = 41, "7" = 41 }, source_units = 1145 }
-"0110" = { commands = 32, commands_by_row = { "0" = 32, "1" = 32, "2" = 32, "3" = 32 }, source_units = 902 }
-"01101001" = { commands = 41, commands_by_row = { "0" = 41, "1" = 41, "2" = 41, "3" = 41, "4" = 41, "5" = 41, "6" = 41, "7" = 41 }, source_units = 1145 }
-"0110100110010110" = { commands = 46, commands_by_row = { "0" = 46, "1" = 46, "2" = 46, "3" = 46, "4" = 46, "5" = 46, "6" = 46, "7" = 46, "8" = 46, "9" = 46, "10" = 46, "11" = 46, "12" = 46, "13" = 46, "14" = 46, "15" = 46 }, source_units = 1262 }
-"1101001101101101" = { commands = 52, commands_by_row = { "0" = 52, "1" = 52, "2" = 52, "3" = 52, "4" = 52, "5" = 52, "6" = 52, "7" = 52, "8" = 52, "9" = 52, "10" = 52, "11" = 52, "12" = 52, "13" = 52, "14" = 52, "15" = 52 }, source_units = 1423 }
-"11111110" = { commands = 41, commands_by_row = { "0" = 41, "1" = 41, "2" = 41, "3" = 41, "4" = 41, "5" = 41, "6" = 41, "7" = 41 }, source_units = 1115 }
+"00000001" = { commands = 33, commands_by_row = { "0" = 33, "1" = 33, "2" = 33, "3" = 33, "4" = 33, "5" = 33, "6" = 33, "7" = 33 }, source_units = 771 }
+"00001100" = { commands = 27, commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27, "4" = 27, "5" = 27, "6" = 27, "7" = 27 }, source_units = 631 }
+"00110110" = { commands = 31, commands_by_row = { "0" = 31, "1" = 31, "2" = 31, "3" = 31, "4" = 31, "5" = 31, "6" = 31, "7" = 31 }, source_units = 766 }
+"0110" = { commands = 25, commands_by_row = { "0" = 25, "1" = 25, "2" = 25, "3" = 25 }, source_units = 547 }
+"01101001" = { commands = 31, commands_by_row = { "0" = 31, "1" = 31, "2" = 31, "3" = 31, "4" = 31, "5" = 31, "6" = 31, "7" = 31 }, source_units = 670 }
+"0110100110010110" = { commands = 37, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 37, "5" = 37, "6" = 37, "7" = 37, "8" = 37, "9" = 37, "10" = 37, "11" = 37, "12" = 37, "13" = 37, "14" = 37, "15" = 37 }, source_units = 793 }
+"1101001101101101" = { commands = 40, commands_by_row = { "0" = 40, "1" = 40, "2" = 40, "3" = 40, "4" = 40, "5" = 40, "6" = 40, "7" = 40, "8" = 40, "9" = 40, "10" = 40, "11" = 40, "12" = 40, "13" = 40, "14" = 40, "15" = 40 }, source_units = 995 }
+"11111110" = { commands = 35, commands_by_row = { "0" = 35, "1" = 35, "2" = 35, "3" = 35, "4" = 35, "5" = 35, "6" = 35, "7" = 35 }, source_units = 823 }
 
 [catalogue]
 sharing_exempt = "indexed packed cells, one line each, with no subtable branch; only its at most 15 cell decoders are shared (B C C B 0.72x at n=6, 0.93x at n=8)"
@@ -82,6 +82,7 @@ verdict = "kept 2026-10-28 by contract: the balance hook rebuilds the program at
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
+trick_prototype = 2026-11-02
 
 [balance_growth]
 wall = "a line is one assignment of identifiers only (interpreter.py _LINE fullmatch), so it carries O(log L) bits; T table bits need L >= c*T/log T lines, so the side 2*L gives area >= c*T**2/log**2 T (measured T**1.50 from n=10 to 12, 2026-10-29)"
@@ -91,7 +92,7 @@ saving = 22.01
 arity = 8
 seed = "random.Random(1847+n); final corpus random.Random(1847)"
 tables = "20 random per n=4..16; and/or/parity and complements n=1..16; exhaustive n<=3"
-verdict = "kept for endpoint products and parity, including complements, from seven essential inputs: eight-row cells halve the table while keeping at most two codes. n=8 and/or 2,938/2,947 -> 2,350/2,359 chars (20.0%), parity 3,380 -> 2,636 (22.0%); n=16 and/or 314,695/314,704 -> 159,052/159,061 (49.5%), parity 421,217 -> 212,378 (49.6%). Random eight-row builds lose 38.5% / 104.0% at n=7/8 and still lose 22.9% at n=14, so other families keep four-row cells. Final builds: 10,868 baseline/candidate/width-1/balanced executions correct, all rows through n=6, boundary rows thereafter; 5,344 complemented controls rejected. All 256 n=3 tables remain byte-identical (281,500 chars); 54 VM measurements at n=7/8/10/12/14/16 fit unchanged command and written-workspace bounds. The eight-row decoder has at most 16 lines, code <=8, fewer table cells and a constant closure contained in the old envelope"
+verdict = "historical: parity and its complement are superseded by the positive affine stream (tricks_affine_20261102); eight-row cells remain for endpoint products, including complements, from seven essential inputs: eight-row cells halve the table while keeping at most two codes. n=8 and/or 2,938/2,947 -> 2,350/2,359 chars (20.0%), parity 3,380 -> 2,636 (22.0%); n=16 and/or 314,695/314,704 -> 159,052/159,061 (49.5%), parity 421,217 -> 212,378 (49.6%). Random eight-row builds lose 38.5% / 104.0% at n=7/8 and still lose 22.9% at n=14, so other families keep four-row cells. Final builds: 10,868 baseline/candidate/width-1/balanced executions correct, all rows through n=6, boundary rows thereafter; 5,344 complemented controls rejected. All 256 n=3 tables remain byte-identical (281,500 chars); 54 VM measurements at n=7/8/10/12/14/16 fit unchanged command and written-workspace bounds. The eight-row decoder has at most 16 lines, code <=8, fewer table cells and a constant closure contained in the old envelope"
 
 [ablations.constant_table_audit_20261101]
 arity = 8
@@ -99,3 +100,32 @@ saving = 49.5
 seed = "both constant values"
 tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
 verdict = "kept for whole constants: reuse one discard register, then build the ASCII byte with signed halving m=2b+d, b odd and -1<=d<=2, reusing one accumulator instead of copying each precursor. This is a derived rule, not a searched table. At n=7, chars 796/796 -> 389/409; n=8 835/835 -> 412/432; n=12 993/993 -> 504/524. Both n=7/8 clear 20% for declining savings. Default constants use 23n+228+20bit chars, n+10 commands and 132+bl(n+11)+bl(2n-1) written bits (141 at n=8). The line-number builder remains necessary for the 27-column floor; it also reuses its discard register. All 270 nonconstant programs through n=3 are byte-identical; n=3 corpus chars 281500 -> 280834. Default, width=1 and balanced constants n=1..12 execute; sentinels cover n=1,3,4,5,6,8,12, and all 256 helper byte values execute."
+
+
+[ablations.tricks_constants_20261102]
+arity = 8
+saving = 5.0
+seed = "random.Random(1000*n+i)"
+tables = "all tables/rows n<=3; 20 random and named functions n7/8"
+verdict = "kept: canonical compact spelling and z-based copies first (n3 chars280834 ->240914, commands81120 unchanged). Capturing k1/k2 at their own first two line numbers replaces four bootstrap lines with two: n3 commands81120 ->77056 (5.010%), no table larger or slower. Independent after the affine stream,80424 ->76360 (5.053%), again none larger/slower. Two fixed bootstrap captures replace the old bootstrap, adding no construction choice or state. Full numbered constants reject: n3 source390072 and commands147104,2032 rows slower; direct-only hosting duplicates the compact baseline (240914/81120), so it is superseded by transitive hosting. Alias prefix rejects:241956 chars and85184 commands,2032 rows slower."
+
+[ablations.pad_constants]
+arity = 3
+saving = 15.5
+seed = "random.Random(1000*n+i)"
+tables = "all tables/rows n<=3; 20 random and named functions n7/8"
+verdict = "kept after bootstrap and affine: host missing constants or their transitive plan parents in decoder/cell pads before first use, then omit satisfied chain lines and prune dead ancestor captures. n3 commands76360 ->64536 (15.485%), chars221722 ->194290; no table larger or slower. One pending closure set tracks initialization across the two existing phases, replacing eager constant emission; no parallel direct-only route. The narrow constant builder remains for its27-column floor. Prefix aliasing is disabled for numbered captures because shifting lines changes their values. Existing numerical E/W envelopes and proof rungs remain conservative."
+
+[ablations.tricks_affine_20261102]
+arity = 8
+saving = 37.0
+seed = "both parity biases; exhaustive small tables"
+tables = "parity and complement n7/8/10; every table/row n<=3;6396 native rows"
+verdict = "kept positive affine stream: parity/complement chars1754/1754 ->1162/1182 at n7 (33.751/32.611%) and2240/2071 ->1285/1305 at n8 (42.634/36.987%); n10 4890/4730 ->1531/1551 (68.691/67.209%). Each selected bit applies the positive-coefficient XOR identity through two registers; ignored bits are read in place. This O(n) reader replaces the parity eight-row path rather than racing the packed source. Affine recognition uses the existing O(T) helper; constants retain their own reader. Commands n+5m+13+bias and workspace273+bl(n+5m+15)+bl(2n-1) fit preserved global envelopes for n>=3; old small proof scopes remain checked."
+
+[ablations.tricks_cost_20261102]
+arity = 13
+saving = 0.0
+seed = "random.Random(1000*n+i)"
+tables = "three tables per n7/10/13, median of three builds each; three native rows n4/6/8"
+verdict = "generation overhead is measured, not a speed win: sums of three per-table median CPU times old ->final are0.608 ->1.248ms at n7,2.421 ->4.189ms at n10,16.120 ->26.475ms at n13; corresponding source totals14693 ->10934,38541 ->34188,212042 ->207387. Growth remains O(T); closure/pad scans add work without a search or cache. Native medians for three rows improve0.754 ->0.593ms,2.367 ->1.711ms,4.771 ->3.699ms at n4/6/8. Controls reject8 wrong constant rows,8 unsafe prefix rows,2 wrong read-order rows and4 missing XOR-half rows; direct-host positive executes. Small/price probes execute16960/1152 rows."

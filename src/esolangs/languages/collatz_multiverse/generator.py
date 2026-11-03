@@ -1,20 +1,21 @@
 """Collatz Multiverse Boolean program generator: a coded cell table and a decoder.
 
-Each input is read into a register; the essential ones are summed into an
+Packed builds read inputs into registers; the essential ones are summed into an
 address that indexes an array ``A`` of packed cells; the last two or three
-inputs select a bit inside the decoded cell.  A constant table reads every input and
+inputs select a bit inside the decoded cell. Affine tables stream through
+two registers instead. A constant table reads every input and
 prints one constant, deriving its ASCII byte by signed halving with odd
 precursors. The shortest build over the essential inputs wins.
 
 Size:
-    O(T): at most one line per four rows plus a bounded decoder.
-    n=10 parity: 5,481 chars, n=10 and: 4,571 chars,
-    n=10 random 1847: 12,825 chars. Constants use 23n+228+20bit chars;
+    O(T) for packed tables, O(n) for affine ones.
+    n=10 parity: 1,531 chars, n=10 and: 3,689 chars,
+    n=10 random 1847: 11,408 chars. Constants use 23n+228+20bit chars;
     n=8 zero: 412 chars.
 
 Decisions:
-    Eight-row cells serve endpoint products and parity from seven inputs;
-    other tables pay for too many distinct decoders
+    Eight-row cells serve endpoint products from seven inputs; other
+    packed tables pay for too many distinct decoders
     ([ablations.eight_row_cells]).
     A decoder indexed by cell value rather than code, and the empty cell on
     top code, lose or fall under the 10% bar
@@ -28,6 +29,7 @@ from collections.abc import Iterable
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
+    affine_form,
     essential_inputs,
     grid_width,
     read_at,
@@ -164,19 +166,47 @@ def _cm_build(
         *(address_scale * chunk * code for code, _ in stored),
     }
     needed.update(address_scale * (1 << j) for j in range(len(order) - high))
-    lines = _cm_emit_constants(needed, narrow=narrow)
+    # Decoder/cell pads can capture constants before their first use. Keep the
+    # odd-index narrow reader for its column floor ([ablations.pad_constants]).
+    pending = set(_cm_chain(needed)) if not narrow else set()
+    lines = _cm_narrow_constants(needed) if narrow else _cm_constants(())
     names = {value: f"k{address_scale * chunk * code}" for code, value in stored}
+    start = len(lines)
     _cm_emit_decoder(lines, codes, narrow=narrow, chunk=chunk)
+    if not narrow:
+        _cm_host_constants(lines, start, pending)
+        lines += _cm_constants({chunk * code for code, _ in stored}, pending=pending)
+    start = len(lines)
     _cm_emit_cells(lines, chunks, names, narrow=narrow)
+    if not narrow:
+        _cm_host_constants(lines, start, pending)
+        lines += _cm_constants(needed, pending=pending)
     _cm_emit_address(lines, n, order, high, address_scale, invert=invert)
+    if not narrow:
+        _cm_prune_captures(lines)
     return "\n".join(lines)
 
 
-def _cm_emit_constants(needed: set[int], *, narrow: bool) -> list[str]:
-    """Constants phase: return the lines building every needed constant."""
-    if narrow:
-        return _cm_narrow_constants(needed)
-    return _cm_constants(needed)
+def _cm_host_constants(lines: list[str], start: int, pending: set[int]) -> None:
+    """Replace pads by useful numbered constants, recording their availability."""
+    for index in range(start, len(lines)):
+        value = index + 1
+        if lines[index] == _CM_PAD and value in pending:
+            lines[index] = f"k{value}=z x+lineNumber,NOT PRINT."
+            pending.remove(value)
+
+
+def _cm_prune_captures(lines: list[str]) -> None:
+    """Restore a pad where capturing a child made its captured ancestor dead."""
+    reads = {
+        name
+        for line in lines
+        for name in re.findall(r"\bk\d+\b", line.partition("=")[2])
+    }
+    for index, line in enumerate(lines):
+        name, _, rhs = line.partition("=")
+        if name.startswith("k") and "x+lineNumber," in rhs and name not in reads:
+            lines[index] = _CM_PAD
 
 
 def _cm_emit_decoder(
@@ -257,7 +287,8 @@ def _cm_layout(program: str, width: int) -> str:
         return compact
     # Generated names exclude '_'.  Captured lineNumber addresses shift
     # together; two prefix lines keep the odd capture used by weighted sums.
-    if "negativeOne" in compact:
+    # Numbered constants cannot shift, including after a bijective rename.
+    if "negativeOne" in compact and "x+lineNumber," not in compact:
         aliased = "_=z x+negativeOne,NOT PRINT.\n" + "z=z x+z,NOT PRINT.\n"
         aliased += compact.replace("negativeOne", "_")
         if grid_width(aliased) < grid_width(compact):
@@ -328,28 +359,52 @@ def _cm_narrow_choice(fitted: str, layouts: list[str]) -> str:
 
 
 def _cm_chunk(table: str) -> int:
-    """Use eight-row cells for endpoint products and parity from seven inputs."""
+    """Use eight-row cells for endpoint products from seven inputs."""
     if len(table) < 128:
         return _CM_CHUNK
     ones = table.count("1")
     if ones in (1, len(table) - 1) and table[0] != table[-1]:
         return 8
-    bias = int(table[0])
-    if all(int(bit) == (row.bit_count() & 1) ^ bias for row, bit in enumerate(table)):
-        return 8
     return _CM_CHUNK
+
+
+def _cm_affine_program(table: str, n: int) -> str | None:
+    """Stream XOR through two registers, using only positive coefficients."""
+    form = affine_form(table, n)
+    if form is None or not any(form[1]):
+        return None
+    bias, coefficients = form
+    lines = _cm_constants({_ASCII_ZERO})
+    if bias:
+        lines.append("a=z x+k1,NOT PRINT.")
+    for selected in coefficients:
+        lines.append("r=z x+input,NOT PRINT.")
+        if selected:
+            # (2a+1)(2r+1)+1 is 2/4/10. Halving then zeroing odd values
+            # yields XOR's 0/1/0. r stays odd until its next input overwrite.
+            lines += [
+                "a=k2 x+k1,NOT PRINT.",
+                "r=k2 x+k1,NOT PRINT.",
+                "a=r x+k1,NOT PRINT.",
+                "a=z x+z,NOT PRINT.",
+                "a=z x+z,NOT PRINT.",
+            ]
+    lines.append("a=k1 x+k48,DO PRINT.")
+    return "\n".join(lines)
 
 
 def _cm_candidates(
     truth_table: str, n: int, *, narrow: bool, expanded: bool
 ) -> list[str]:
-    """Return every build: one for a constant, else per order."""
+    """Return one constant/affine stream, otherwise the selector orders."""
     if len(set(truth_table)) == 1:
         # A constant table needs no evaluation, but the reads are the
         # interface: skipping them strands the caller's bits and the prompts.
         return [
             _cm_constant_program(n, _ASCII_ZERO + int(truth_table[0]), narrow=narrow)
         ]
+    if (affine := _cm_affine_program(truth_table, n)) is not None:
+        return [affine]
     orders = _cm_orders(essential_inputs(truth_table, n), expanded=expanded)
     chunk = _cm_chunk(read_at(truth_table, orders[0], n))
     return [
@@ -406,7 +461,7 @@ def _cm_plan(m: int) -> tuple[int, int]:
 
     ``v = a x + b`` applies the Collatz rule to ``v``: odd or zero becomes
     ``v * a + b``, even halves.  A fresh register copies ``b`` with
-    ``v = negativeOne x + b``; ``b`` odd then makes ``b * k2 + c``.  Since
+    ``v = z x + b``; ``b`` odd then makes ``b * k2 + c``.  Since
     ``2 b`` is 2 mod 4, ``c = (m - 2) mod 4`` forces ``b`` odd, so a constant
     needs its halving chain plus k3: O(log m) lines, within ~2 lines of the
     minimal exhaustive plan (test oracle).  Needs ``m >= 3``.
@@ -415,35 +470,43 @@ def _cm_plan(m: int) -> tuple[int, int]:
     return (m - c) // 2, c
 
 
-def _cm_chain(need: Iterable[int]) -> dict[int, tuple[int, int]]:
-    """Map every constant above 2 that building ``need`` takes to its ``(b, c)``."""
+def _cm_chain(
+    need: Iterable[int], *, pending: set[int] | None = None
+) -> dict[int, tuple[int, int]]:
+    """Map missing constants above 2 to their odd-halving ``(b, c)`` plan."""
     plan: dict[int, tuple[int, int]] = {}
     todo = [n for n in need if n > 2]
     while todo:
         m = todo.pop()
-        if m not in plan:
+        if m not in plan and (pending is None or m in pending):
             plan[m] = _cm_plan(m)
             todo += [v for v in plan[m] if v > 2]
     return plan
 
 
-def _cm_constants(needed: Iterable[int]) -> list[str]:
+def _cm_constants(
+    needed: Iterable[int], *, pending: set[int] | None = None
+) -> list[str]:
     """Lines building Collatz Multiverse constants for the values in ``needed``.
 
-    ``k1``/``k2`` bootstrap from ``negativeOne``; the rest use
-    :func:`_cm_plan`'s two-line trick.  Only referenced constants are built.
+    Without ``pending``, start at line 1 with captures of k1/k2. Otherwise
+    consume only its uninitialized members using :func:`_cm_plan`.
     """
-    plan = _cm_chain(needed)
-    lines = [
-        "k1 = negativeOne x + negativeOne, NOT PRINT.",
-        "k1 = negativeOne x + zero, NOT PRINT.",
-        "k2 = negativeOne x + negativeOne, NOT PRINT.",
-        "k2 = negativeOne x + k1, NOT PRINT.",
-    ]
+    plan = _cm_chain(needed, pending=pending)
+    lines = (
+        [
+            "k1=z x+lineNumber,NOT PRINT.",
+            "k2=z x+lineNumber,NOT PRINT.",
+        ]
+        if pending is None
+        else []
+    )
     for n, (b, c) in sorted(plan.items()):
-        lines.append(f"k{n} = negativeOne x + k{b}, NOT PRINT.")
+        lines.append(f"k{n}=z x+k{b},NOT PRINT.")
         addend = f"k{c}" if c else "zero"
-        lines.append(f"k{n} = k2 x + {addend}, NOT PRINT.")
+        lines.append(f"k{n}=k2 x+{addend},NOT PRINT.")
+    if pending is not None:
+        pending.difference_update(plan)
     return lines
 
 

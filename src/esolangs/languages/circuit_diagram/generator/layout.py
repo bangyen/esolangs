@@ -34,6 +34,7 @@ class _Layout:
         """Start an empty layout."""
         # Runs are half-open interior intervals keyed by the fixed axis:
         # row -> [(x0, x1, signal)] and column -> [(y0, y1, signal)].
+        self.prefix = ""
         self.horizontal: dict[int, list[tuple[int, int, int]]] = {}
         self.vertical: dict[int, list[tuple[int, int, int]]] = {}
         self.junctions: dict[tuple[int, int], int] = {}
@@ -249,7 +250,7 @@ class _Layout:
             rows[y][x] = ord(".")
         for (x, y), char in self.glyphs.items():
             rows[y][x] = ord(char)
-        return "\n".join(row.decode("ascii") for row in rows)
+        return self.prefix + "\n".join(row.decode("ascii") for row in rows)
 
 
 class _RoutingLayout(_Layout):
@@ -439,6 +440,9 @@ class _RoutingLayout(_Layout):
 def _layout_area(layout: _Layout) -> int:
     """Return the bounding-box area, the model-selection metric."""
     height, width = layout.bounds()
+    if layout.prefix:
+        height += layout.prefix.count("\n")
+        width = max(width, max(map(len, layout.prefix.splitlines())))
     return height * width
 
 

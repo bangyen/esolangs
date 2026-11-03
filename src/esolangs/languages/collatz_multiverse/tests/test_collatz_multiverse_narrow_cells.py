@@ -63,6 +63,6 @@ def test_alias_prefix_is_not_inserted_when_it_cannot_narrow() -> None:
 def test_xor_floor_and_numbered_constant_source_size() -> None:
     source = collatz_multiverse("0110", 1)
     assert max(map(len, source.splitlines())) == 27
-    assert len(source) == 1336
+    assert len(source) == 499
     for table in ("00", "11"):
         assert max(map(len, collatz_multiverse(table, 1).splitlines())) == 27

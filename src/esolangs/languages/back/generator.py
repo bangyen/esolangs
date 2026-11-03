@@ -1,22 +1,18 @@
 r"""Back Boolean program generator: a decision tree over a loaded tape.
 
-A load column embeds each input once into its tape cell (a primer ``-``
-plus the input's run, two rows for either bit, so the height cannot leak an
-input); cells ``0..n-1`` hold the inputs, cell ``n`` the answer.  Each tree
-node ``+\>`` tests the current cell (``+`` skips the ``\`` when it is 0,
-``\`` reflects the beam down when it is 1, ``>`` advances); both branches
-advance once, so a leaf at depth ``d`` has the pointer at cell ``d``.  It
-walks to cell ``n``, flips it with ``-`` for a 1 and halts; the halt dump
-prints the cell's value, not the head position.  Fall-through sharing reuses
-an equal zero-side subtree, and ``width`` selects a descending layout (loader
-above the tree, two entry columns fewer) or, for an unfitting parity table, a
-one-column accumulator in cell ``n`` (earlier cells stay scratch).
+A load column embeds each input once, with a primer/run pair of fixed height.
+The last tested input is held in answer cell ``n``; earlier tested cells feed
+``+\>`` branches. Equal halves advance without a test. Pair leaves then
+preserve, complement, clear or set the held bit. The halt dumps cell ``n`` as
+the answer; earlier cells are input storage or scratch, not a preserved input
+copy. Fall-through sharing and the H-tree fold operate on this shorter tree.
+Width requests retain the descending layout or one-column full parity reader.
 
 Size:
-    O(T) cells; n=8 constant zero: 25 chars; n=8 random 1847: 2,443 chars,
-    n=10 random 1847: 7,807 chars.
-    Area, rows x longest row: the comb's is Theta(nT) (3n + 5 wide, 3T/4 + 1
-    tall); a smaller folded build (``_back_htree``) caps it at 27.5T from n=6.
+    O(T) cells; n=8 constant zero: 25 chars; n=8 random 1847: 2,000 chars,
+    n=10 random 1847: 12,341 chars.
+    Area, rows x longest row: the comb is at most (3n+5)max(6n+1,T/2).
+    The fold's limit is 15.625T; derived Rudin-Shapiro witnesses attain the caps.
 
 Decisions:
     Popcount-symmetric tables reverse the comb's input cells: the drawing
@@ -66,6 +62,8 @@ _Grid = dict[tuple[int, int], str]
 #: Finisher for a cell primed to 1: ``-`` flips it to 0, ``+`` is inert.
 #: Both are one grid cell, so a run is the exact width of its program.
 PAIR = ("-", "+")
+#: Pair leaves act on the input bit already held in the answer cell.
+_PAIR_FINISHERS = {"01": "*", "10": "-*", "00": "+-*", "11": "+--*"}
 _BACK_INPUT = TEMPLATE_CHAR
 #: Subtrees this short stay combs; taller ones fold (25-28 cells per leaf).
 _FOLD_BASE = 5
@@ -171,17 +169,18 @@ def _back_htree(table: str, weights: list[int], base: int = _FOLD_BASE) -> str:
     transposed root.  Every wire crosses only blank cells, so the beam
     executes nothing off its path.
     """
-    levels = len(table).bit_length() - 1
+    levels = len(table).bit_length() - 2
     n = len(weights)
     essential = [i for i, weight in enumerate(weights) if weight]
     cells = [levels] * n
     for level, i in enumerate(essential):
-        cells[i] = level
+        cells[i] = n if level == levels else level
     units = _back_load(list(range(n)), cells, weights, levels, n)
     constant = constant_span_test(table)
+    ids = subtree_ids(table)
 
     def leaf(level: int, lo: int) -> bool:
-        return level == levels or constant(lo, lo + (1 << (levels - level)))
+        return level == levels or constant(lo, lo + (1 << (levels - level + 1)))
 
     # (width, height, entry row) of a subtree drawn heading east from its
     # west edge; a comb block enters at its top-left.
@@ -189,9 +188,15 @@ def _back_htree(table: str, weights: list[int], base: int = _FOLD_BASE) -> str:
 
     def measure(level: int, lo: int) -> tuple[int, int, int]:
         if leaf(level, lo):
-            box = (n - level + 1 + (table[lo] == "1"), 1, 0)
+            box = (n - level + len(_PAIR_FINISHERS[table[lo : lo + 2]]), 1, 0)
         else:
-            half = 1 << (levels - level - 1)
+            half = 1 << (levels - level)
+            block = lo // (2 * half)
+            if ids[level + 1][2 * block] == ids[level + 1][2 * block + 1]:
+                w, h, entry = measure(level + 1, lo)
+                box = (1 + w, h, entry)
+                dims[level, lo] = box
+                return box
             w0, h0, _ = measure(level + 1, lo)
             w1, h1, _ = measure(level + 1, lo + half)
             if levels - level <= base:
@@ -216,11 +221,16 @@ def _back_htree(table: str, weights: list[int], base: int = _FOLD_BASE) -> str:
             emit(level + 1, child, *at, swap=swap != turn)
 
         if leaf(level, lo):
-            code = ">" * (n - level) + ("-" if table[lo] == "1" else "") + "*"
+            code = ">" * (n - level) + _PAIR_FINISHERS[table[lo : lo + 2]]
             for k, char in enumerate(code):
                 put(0, k, char)
             return
-        half = 1 << (levels - level - 1)
+        half = 1 << (levels - level)
+        block = lo // (2 * half)
+        if ids[level + 1][2 * block] == ids[level + 1][2 * block + 1]:
+            put(dims[level + 1, lo][2], 0, ">")
+            sub(lo, 0, 1, turn=False)
+            return
         _, _, m = dims[level, lo]
         _, h0, m0 = dims[level + 1, lo]
         _, _, m1 = dims[level + 1, lo + half]
@@ -300,7 +310,7 @@ def _back_load(
     levels: int,
     n: int,
 ) -> list[str]:
-    """Load the inputs in ``order``, then open the answer cell and home.
+    """Load the inputs in ``order``, then visit the answer cell and home.
 
     ``cells[i]`` is the tape cell input ``i`` loads into and ``weights[i]``
     is zero for an ignored input.
@@ -329,7 +339,7 @@ def _back_load(
 
 @dataclass
 class _BackContext:
-    """One build's context: table geometry, its plan, and its draw state.
+    """One build's tested levels (one less than the table), plan and draw state.
 
     A single context is threaded through both phases instead of passing the
     table, its geometry, and the plan from helper to helper: ``plan`` fills
@@ -349,8 +359,8 @@ class _BackContext:
 
     def leaf(self, level: int, value: str, row: int, col: int) -> None:
         """Emit a leaf finisher at ``(row, col)``."""
-        # Walk to cell n, flip it (starts 0) for a 1-leaf, halt.
-        code = ">" * (self.n - level) + ("-" if value == "1" else "") + "*"
+        # Walk to the held input; the pair finisher computes its unary function.
+        code = ">" * (self.n - level) + _PAIR_FINISHERS[value]
         if self.vertical:
             # Reserved DFS rows turn leaf finishers down without widening the tree.
             self.grid[(row, col)] = "\\"
@@ -362,15 +372,20 @@ class _BackContext:
                 self.grid[(row, col + k)] = ch
 
     def emit(self, level: int, lo: int, hi: int, row: int, col: int) -> None:
-        """Emit the subtree over rows ``[lo, hi)``, node mirror at ``(row, col)``."""
+        """Emit rows ``[lo, hi)``; pass wires retain the fall columns' alignment."""
         if level == self.levels or self.constant(lo, hi):
-            self.leaf(level, self.truth_table[lo], row, col)
+            self.leaf(level, self.truth_table[lo : lo + 2], row, col)
             return
         mid = lo + (hi - lo) // 2
+        block = lo // (hi - lo)
+        # Canonical equal halves do not test or draw a one-edge.
+        if self.ids[level + 1][2 * block] == self.ids[level + 1][2 * block + 1]:
+            self.grid[row, col] = ">"
+            self.emit(level + 1, lo, mid, row, col + 3)
+            return
         self.grid[(row, col)] = "+"
         self.grid[(row, col + 1)] = "\\"
         self.grid[(row, col + 2)] = ">"
-        block = lo >> (self.levels - level)
         self.where[level, block] = (row, col + 1)
         self.emit(level + 1, lo, mid, row, col + 3)  # zero (bit=0) straight
         if (level, block) in self.shared:
@@ -390,7 +405,7 @@ class _BackContext:
         """
         self.grid, self.where, self.next_row = {}, {}, 1
         # Tree root at column 1, the beam arriving rightward.
-        self.emit(0, 0, 2**self.levels, 0, 1)
+        self.emit(0, 0, len(self.truth_table), 0, 1)
         return self.grid, self.where
 
     def level_events(
@@ -400,18 +415,25 @@ class _BackContext:
 
         A level-``k`` node is its block number; ``None`` is a horizontal leaf
         shallower than ``k`` whose finisher runs through the column (it ends
-        at column ``2 * level + n + 1 + bit``).  One-subtrees of ``shared``
+        at column ``2 * level + n + len(finisher)``).  One-subtrees of ``shared``
         nodes are cut, and nothing deeper than ``k`` reaches the column.
         Rows are numbered in this order, so a beam falling down the column
         meets the events in it.
         """
-        size = 2 ** (self.levels - level)
+        size = 2 ** (self.levels + 1 - level)
         low = block * size
         if level == self.levels or self.constant(low, low + size):
             if not self.vertical and (
-                2 * level + self.n + 1 + int(self.truth_table[low]) >= 3 * k + 2
+                2 * level
+                + self.n
+                + len(_PAIR_FINISHERS[self.truth_table[low : low + 2]])
+                >= 3 * k + 2
             ):
                 events.append(None)
+            return
+        if self.ids[level + 1][2 * block] == self.ids[level + 1][2 * block + 1]:
+            if level < k:
+                self.level_events(events, level + 1, 2 * block, k)
             return
         if level == k:
             events.append(block)
@@ -456,35 +478,36 @@ def _back_ordered(
     frame; ``perm`` only picks the cell each input loads into.
 
     A node tests the current cell, *then* advances, so level ``k`` tests cell
-    ``k`` and input ``perm[k]`` must load there -- one cell lower than
-    another language's halls and a raster one's ``>#v)``, which test cell ``k + 1``.
+    ``k`` and input ``perm[k]`` must load there, except the held final bit.
+    Other next-cell halls test cell ``k + 1`` instead.
     Getting it wrong computes a different function.
 
     The load runs the inputs in name order (run k *is* input k) and walks the
-    pointer to cell ``perm.index(i)``, the inverse permutation; reading
-    ``perm`` forward computes a different function.  Filling in cell order
-    needs no walk and screens 12.0% against 9.15% here, but breaks name
-    order.  The walk is ``4n - 2`` moves, 10 of the 236 characters at n=3.
+    pointer to cell ``perm.index(i)`` (the inverse), or cell ``n`` for the
+    final selector; reading ``perm`` forward computes a different function.
+    Filling in cell order would reorder the slots. With all inputs essential
+    and identity order, the reflected loader walks ``4n`` moves (``2n`` for one
+    input); reversal shortens it to ``2n``. All walks precede their input pair.
     A ``-``/run pair is never split, so both bits still cost two rows.
 
     ``weights`` names the stream inputs, zero for an ignored one: the table
     indexes the rest, and the answer cell stays at the stream's input count.
     An ignored input's run lands on the empty cell the next load fills and
     a ``-`` follows it: a zero's ``-`` sets the cell and the ``-`` clears it,
-    a one's ``+`` meets the empty cell and skips the ``-``.  Two rows, no
-    walk, and the cell is empty again.
+    a one's ``+`` meets the empty cell and skips the ``-``. Two fixed rows,
+    with the borrowed cell empty again.
     """
     levels = _validate_truth_table(truth_table)
     if weights is None:
         weights = [1] * levels
     n = len(weights)
 
-    # Level c tests cell c and input perm[c], so input i lives at cell
-    # perm.index(i).
+    # Invert the input order; the final selector is held in the answer cell.
     essential = [i for i, weight in enumerate(weights) if weight]
     cells = [levels] * n
     for level, i in enumerate(perm):
-        cells[essential[i]] = level
+        # [ablations.answer_cell_preload_20261102]: the final bit is a leaf input.
+        cells[essential[i]] = n if level == levels - 1 else level
 
     constant = constant_span_test(truth_table)
     ids = subtree_ids(truth_table)
@@ -493,7 +516,7 @@ def _back_ordered(
         """Plan then draw one layout, both phases sharing one context."""
         context = _BackContext(
             truth_table=truth_table,
-            levels=levels,
+            levels=levels - 1,
             n=n,
             constant=constant,
             vertical=vertical,
@@ -504,14 +527,14 @@ def _back_ordered(
 
     grid = build(vertical=False)
     if width is not None and width > 0 and max(c for _, c in grid) + 3 > width:
-        down = _back_load(list(range(n)), cells, weights, levels, n)
+        down = _back_load(list(range(n)), cells, weights, levels - 1, n)
         # The vertical layout was strictly narrower than the horizontal one on
         # all 6,892 width builds (tables n<=8, widths 1-1000); only it is built.
         return _descending_back(build(vertical=True), down)
 
     # Reverse name order: the load is drawn bottom-up in column 0, so this
     # emits input 0 first.
-    units = _back_load(list(range(n - 1, -1, -1)), cells, weights, levels, n)
+    units = _back_load(list(range(n - 1, -1, -1)), cells, weights, levels - 1, n)
     # Height is max(tree 2**n, load units + 1).  Past n=3 load rows share with
     # tree rows; safe only because a run is one character for either bit.
     rows, tree_width = _extent(grid)
@@ -550,13 +573,13 @@ LANGUAGE = Language(
     contract=BooleanContract(
         answer_mode="dump",
         note="Back has no output instruction and dumps its tape at halt; "
-        "the answer is cell n, past the n input cells",
+        "the answer is cell n; earlier cells are input storage or scratch",
     ),
     balance=_balance,
     no_wrap="the beam path and embedded input occupy fixed grid coordinates",
     empty_program="Back program cannot be empty",
     example=Example(pair=PAIR, expected="1 0 0"),
-    proof_execution=(execution, True, (3, 5, 6, 7, 8, 9)),
+    proof_execution=(execution, True, (1, 2, 3, 4, 5, 6, 7, 8, 9)),
     proof_workspace=(workspace, True, (3, 6)),
     grid=True,
 )

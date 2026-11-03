@@ -336,6 +336,9 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
     example = EXAMPLE_BY_ID[language.id]
     relaid = 0
     tables = _HONOUR_TABLES
+    if name == "circuit_diagram":
+        # Parity now fits every tested width; keep a non-affine banding probe.
+        tables = {**tables, "nonaffine4": "0011011001011001"}
     if name == "inject":
         tables = {**tables, "parity5": parity(5)}
     if name == "thue":

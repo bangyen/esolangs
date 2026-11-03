@@ -22,19 +22,19 @@ def _three_classes(n):
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("n", [9, 10])
+@pytest.mark.parametrize("n", [9, pytest.param(10, marks=pytest.mark.slow)])
 def test_repeated_classes_execute_every_row(n) -> None:
     table = _three_classes(n)
     _execute(table, circuit_diagram(table))
 
 
-@pytest.mark.medium
+@pytest.mark.slow
 def test_public_abba_class_bank_executes_every_row() -> None:
     a, b = dense(8, b"bank-a"), dense(8, b"bank-b")
     table = a + b + b + a
     code = circuit_diagram(table)
     lines = code.splitlines()
-    assert len(lines) * max(map(len, lines)) == 453_285
+    assert len(lines) * max(map(len, lines)) == 152_100
     _execute(table, code)
 
 

@@ -138,7 +138,7 @@ don't edit by hand.
 - **a-painter-ant** -- A Painter Ant has no output: it paints a grid and the answer is the colour of the cell the ant rests on, shown by 'o' (on black, a zero) or '@' (on white, a one)
 - **algebraic-programming-language** -- an executed line prints its result, so the answer ends in a newline
 - **arrowqueue** -- ArrowQueue answers by termination -- it halts for a 0 result and loops forever for a 1, so only the halting branch is committed.  The headings printed are its interpreter-only queue dump, which the verdict does not read: the answer is that the program halted at all
-- **back** -- Back has no output instruction and dumps its tape at halt; the answer is cell n, past the n input cells
+- **back** -- Back has no output instruction and dumps its tape at halt; the answer is cell n; earlier cells are input storage or scratch
 - **bitdeque** -- Bitdeque has no output instruction and dumps its deque at halt; the generator leaves exactly one bit on it, so the whole dump is the answer and there is no position to name
 - **bitwise-cyclic-tag** -- Bitwise Cyclic Tag has no I/O vocabulary at all: the inputs are bits of the initial data-string, and the answer is the bit the last 0 deletes, which the interpreter prints alone -- so the output is the answer and there is no position to name
 - **blindfolded-arithmetic** -- the input must be a positive integer, so the committed input is the row index plus one

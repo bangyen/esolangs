@@ -4,7 +4,9 @@ Each of ``n`` inputs arrives on its own line as a ``-`` input port (not one
 ``-n-`` multi-wire, which would need a ``<`` splitter tree back to rails).
 A left-to-right binary-carry fold combines adjacent cofactors: equal ones
 share a signal, ``0/1`` is the selector itself, the rest use a one- or
-three-gate mux rule. The answer prints through ``:``. Whole constants use
+atomic mux rule. Its one shared function definition contains the native
+NOT/AND/AND/OR circuit and counts toward source area. The answer prints
+through ``:``. Whole constants use
 native ``(``/``)`` sources after isolated input ports; subtrees still use
 self-fed ``x``/``X`` gates. A
 (negated) projection is one direct wire instead: every port is drawn,
@@ -33,7 +35,7 @@ negated (``A``, ``O``); physical ports retain read order.
 
 Size:
     One pass over the table, fewer than three gates per entry; n=8 and:
-    1,207 chars, n=10 parity: 37,788 chars, n=10 random 1847: 782,908 chars.
+    1,207 chars, n=10 parity: 211 chars, n=10 random 1847: 300,724 chars.
     Constants use 3(n+1) cells and 2n+3 chars; n=8 zero: 19 chars.
 
 Decisions:
@@ -43,6 +45,7 @@ Decisions:
 """
 
 from collections.abc import Iterator
+from functools import cache
 from typing import Any, Literal, NamedTuple
 
 from esolangs.generation.helpers import (
@@ -91,6 +94,8 @@ class _Builder:
     by any number of gates.  A gate occupies a three-row band and leaves its
     result on a fresh bus.
     """
+
+    atomic_mux = False
 
     def __init__(self, *, narrow: bool = False) -> None:
         """Start an empty build."""
@@ -313,6 +318,32 @@ class _Builder:
         self._read(right)
         return signal
 
+    def function_mux(self, selector: int, zero: int, one: int, *, flip: bool) -> int:
+        """Route three isolated pins into one atomic mux; count its definition."""
+        first, column, row = self._gate_placement(selector, zero, one)
+        row += 1
+        self.next_row += 2
+        self._tap(selector, column - 2, row - 2)
+        self._tap(zero, column - 1, row)
+        self._tap(one, column - 2, row + 2)
+        self.layout.glyph(column - 1, row - 1, "\\")
+        self.layout.glyph(column - 1, row + 1, "/")
+        self.layout.glyph(column, row, "M")
+        self.layout.prefix = _mux_prefix()
+        result = self._drive(column + 1, row)
+        self.stride_of[result] = first
+        if self.limit is not None:
+            self.live.append(result)
+        for signal in (selector, zero, one):
+            self._read(signal)
+        if not flip:
+            return result
+        inverted = self.invert(result)
+        # _finish_fold distinguishes an already-negated gate from a bare rail.
+        self.stride_of[inverted] = self.buses[inverted][0] - _COL_STEP - 1
+        self._read(result)
+        return inverted
+
     def constant(self, source: int, kind: _ConstGlyph) -> int:
         """Return a constant signal, from one bus fed to both gate inputs.
 
@@ -410,6 +441,8 @@ def _mux(
         return builder.gate(_glyph("a", flip=flip), selector, _signal(one))
     if one == "1":
         return builder.gate(_glyph("o", flip=flip), selector, _signal(zero))
+    if builder.atomic_mux and isinstance(zero, int) and isinstance(one, int):
+        return builder.function_mux(selector, zero, one, flip=flip)
     negated = selectors[1]
     if negated is None:  # pragma: no cover - built before the fold
         raise AssertionError("selector has no complemented rail")
@@ -419,7 +452,9 @@ def _mux(
         return builder.gate(_glyph("a", flip=flip), negated, _signal(zero))
     if zero == "1":
         return builder.gate(_glyph("o", flip=flip), negated, _signal(one))
-    return _three_gate_mux(builder, selector, negated, zero, one, flip=flip)
+    return _three_gate_mux(
+        builder, selector, negated, _signal(zero), _signal(one), flip=flip
+    )
 
 
 def _glyph(kind: Literal["a", "o"], *, flip: bool) -> _GateGlyph:
@@ -436,10 +471,20 @@ def _three_gate_mux(
     *,
     flip: bool = False,
 ) -> int:
-    """Return the full mux: ``(~selector AND zero) OR (selector AND one)``."""
+    """Keep the primitive basis for copied multi-output suffix forests."""
     off = builder.gate("a", negated, zero)
     on = builder.gate("a", selector, one)
     return builder.gate(_glyph("o", flip=flip), off, on)
+
+
+@cache
+def _mux_prefix() -> str:
+    """Define the atomic mux with the same three native primitive gates."""
+    builder = _Builder()
+    selector, zero, one = [builder.input_bus() for _ in range(3)]
+    negated = builder.invert(selector)
+    builder.output(_three_gate_mux(builder, selector, negated, zero, one))
+    return "{M\n" + builder.layout.render() + "\n}\n"
 
 
 class _Dag(NamedTuple):
@@ -575,7 +620,7 @@ def _projection_wire(truth_table: str, inputs: int) -> str | None:
 
 def _circuit_diagram_at(truth_table: str, limit: int | None) -> str:
     """Render the folded circuit inside an optional gate-column limit."""
-    return _circuit_diagram_model(truth_table, limit).render()
+    return _circuit_diagram_model(truth_table, limit, atomic_mux=True).render()
 
 
 def _circuit_diagram_model(
@@ -585,6 +630,7 @@ def _circuit_diagram_model(
     input_order: list[int] | None = None,
     port_inputs: int | None = None,
     invert: bool = False,
+    atomic_mux: bool = False,
 ) -> _Layout:
     """Build a Circuit Diagram program computing the given truth table.
 
@@ -606,6 +652,7 @@ def _circuit_diagram_model(
     _validate_truth_table(truth_table)
 
     builder = _Builder(narrow=limit is not None)
+    builder.atomic_mux = atomic_mux
     n = len(truth_table).bit_length() - 1
     order, port_inputs = _resolve_order(input_order, n, port_inputs, "fold")
     # Every input keeps its ``-`` row (the read order), but the fold uses
@@ -616,7 +663,16 @@ def _circuit_diagram_model(
     rails = [ports[order[i]] for i in used]
 
     dag = _dag(table, len(used))
-    selectors = builder.selectors(rails, dag.needed)
+    needed = (
+        {
+            len(used) - 1 - level
+            for level, zero, one, _ in dag.ops
+            if (zero <= 1 or one <= 1) and zero != 0 and one != 1
+        }
+        if atomic_mux
+        else dag.needed
+    )
+    selectors = builder.selectors(rails, needed)
     builder.band_start = builder.next_column
     builder.limit = limit
 
@@ -628,14 +684,21 @@ def _linear_shared_layout(table: str, inputs: int, models: list[_Layout]) -> Non
     """Append the natural and complement folds to ``models`` for the race."""
     used, projected = _essential_table(table, inputs)
     models.append(
-        _circuit_diagram_model(projected, None, input_order=used, port_inputs=inputs)
+        _circuit_diagram_model(
+            projected, None, input_order=used, port_inputs=inputs, atomic_mux=True
+        )
     )
     # Output polarity: a table costs 3.2x its complement when only the
     # complement is a plain-rail chain (NAND vs AND): fold it, negate the root gate.
     flipped = projected.translate(_COMPLEMENT)
     models.append(
         _circuit_diagram_model(
-            flipped, None, input_order=used, port_inputs=inputs, invert=True
+            flipped,
+            None,
+            input_order=used,
+            port_inputs=inputs,
+            invert=True,
+            atomic_mux=True,
         )
     )
 
@@ -687,6 +750,13 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     wire = _projection_wire(truth_table, inputs)
     if wire is not None and (width is None or grid_width(wire) <= width):
         return wire
+    from .balance import parity_circuit  # affine helpers import the builder
+
+    parity = parity_circuit(
+        truth_table, folded=inputs >= 3 or (width is not None and width < 6)
+    )
+    if parity is not None:
+        return parity
     # Constants need only the scalar clock gate, not a minterm lattice.
     if (
         width is None
@@ -732,7 +802,7 @@ LANGUAGE = Language(
     # invariants.
     scaling_rungs=(8, 9),
     boolean=circuit_diagram,
-    documented_sizes=(147_264, 302_032, 2.05),
+    documented_sizes=(52_057, 106_751, 2.05),
     split=True,
     contract=BooleanContract(
         input_shape="char_stream",

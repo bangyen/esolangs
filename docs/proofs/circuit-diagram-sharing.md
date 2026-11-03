@@ -44,7 +44,10 @@ $M<T$ and $\log_2(M+n)<16$, which supplies a uniform constant bound for
 the finite initial band. Projection cannot increase this count: extending
 the projected order with ignored inputs gives the same reduced graph.
 
-Each residual emits at most three binary gates. In the unbanded builder,
+Complete-fold residuals use a native mux where needed. Its fixed definition
+is derived from NOT/AND/AND/OR gates; copied banks retain their primitive
+three-gate muxes. Each residual still emits at most three outer gates.
+In the unbanded builder,
 gate rows increase, and a tap extends a bus from its last reached row.
 Consequently each column's new vertical interval follows its previous
 interval. A column is recycled only after the counted last read, and every
@@ -66,6 +69,9 @@ which bank copies can retain, contribute no cells. Horizontal endpoints,
 junctions and glyphs supply the other row maxima. A row ending at column
 $x$ contributes $x+1$ characters; an empty row contributes zero. Adding
 height minus one counts exactly the newlines inserted by the renderer.
+Complete folds also count the derived mux definition: 330 characters,
+23 rows and width 31. Rectangle area includes those rows and takes the
+maximum of body and definition widths.
 
 A complete model has $O(M+n)$ intervals, points and rows. The sweep therefore
 costs $O((M+n)\log(M+n))=O(T)$ without expanding vertical runs. Unbanded
@@ -85,12 +91,17 @@ $G\le14+3(T/4-1)+n\le T+n$ for $n\ge6$. The scalar wiring values and
 two-input latches use at most $3G+n+2$ written bits, which is below
 $7T+2n-9$ for $n\ge8$. A reduced projection only decreases the gate count.
 The longest gate path is at most $2n-1$; output and the quiet halt add two
-commands, below the existing $2n+2$ contract. The fallback keeps its existing
-gate and clock admission checks. Constants and arities below eight retain
-the original generator and its stronger bounds.
+commands, preserving the $2n+1$ contract. Replacing a primitive mux with one
+native mux node cannot lengthen that path, including a complemented root.
+Its internal definition runs within the node; the written-state ledger counts
+outer latches, as before. Copied banks retain their primitive gates and existing
+clock admission checks. Full parity uses a derived XOR ladder: execution is
+$n+1$ and written scalar values require at most $3n$ bits. Constants and every
+previous finite proof scope retain their existing bounds.
 
 ## Executed evidence
 
+The following large-layout measurements predate native mux nodes.
 The 17-input spread-pair witness contains 513 distinct seven-input classes.
 Its three complete drawings, measured before the transposes were retired, emit 56,113,416, 34,953,320 and 30,802,168 characters;
 the smallest occupies 24,101 by 1,463 cells and executes zero/one controls

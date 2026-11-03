@@ -22,7 +22,19 @@ def _threshold(n: int, _: str) -> int:
     counter += sum(6 + d(2**j) for j in range(n))
     steps = 6 + 6 * (2**n - 2) + _digits(2**n - 1)
     tail = 25 + 2 * d(2 * n + 1)
-    return pulse + window + counter + steps + tail + 9 * n + 12 + 2**n
+    # The alternating-step witness is nondegenerate from n=2; keep the
+    # old one-input envelope, where projection changes that witness.
+    return (
+        pulse
+        + window
+        + counter
+        + steps
+        + tail
+        + 9 * n
+        + 12
+        + 2**n
+        - ((4 * n + 3 + 2 ** (n - 1)) if n >= 2 else 0)
+    )
 
 
 FORMULAS = {"scaling": (_threshold, False, (2, 3, 4, 5))}

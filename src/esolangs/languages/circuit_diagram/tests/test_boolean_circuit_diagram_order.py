@@ -75,7 +75,7 @@ def test_named_orders_avoid_literal_expander_routing_within_existing_bounds(
     _execute(table, code, rows)
 
 
-@pytest.mark.medium
+@pytest.mark.slow
 def test_projected_fold_preserves_original_read_order() -> None:
     core = _margulis_cofactors(1)
     kept = [0, 2, 3, 4, 6, 7, 8, 10, 11]

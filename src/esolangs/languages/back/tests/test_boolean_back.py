@@ -8,7 +8,6 @@ from esolangs.generation.helpers import TEMPLATE_CHAR, permute_truth_table, runs
 from esolangs.languages.back.generator import _back_ordered
 from esolangs.runtime._evaluate import _evaluate
 from tests.generators.test_boolean_parameterized_contract import _drawing
-from tests.support.generator_support import assert_an_ignored_input_costs
 from tests.support.witness_tables import row_bits, witnesses
 
 
@@ -69,7 +68,7 @@ class TestParameterizedBack:
 
         table = "0" * 63 + "1"
         template = generate("Back", table)
-        assert template.startswith("-")  # a nonconstant loader, not a flat constant
+        assert "\\" in template  # a nonconstant beam layout, not a flat constant
         commands = bits = 0
         for row, expected in enumerate(table):
             source = instantiate("Back", template, row_bits(row, 6))
@@ -84,9 +83,10 @@ class TestParameterizedBack:
             assert read_answer("Back", machine.output) == expected
             commands = max(commands, steps)
             bits = max(bits, written.bits)
-        assert (commands, bits) == (69, 22)
+        assert (commands, bits) == (52, 24)
         assert commands <= execution(6, template)
         assert bits <= workspace(6, template)
+        _check_exact_preload_bounds()
 
     def test_a_falling_beam_reuses_the_next_zero_subtree(self) -> None:
         """A one-edge onto an equal zero side draws no rows, and still answers."""
@@ -146,6 +146,7 @@ class TestParameterizedBack:
         from esolangs.runtime.io import ScriptedIO
         from scripts.benchmark import WrittenState
 
+        _check_held_input_and_dump()
         for n in range(1, 13):
             for bit in "01":
                 for options in ({}, {"width": 1}, {"balance": True}):
@@ -182,7 +183,7 @@ class TestParameterizedBack:
                             )
         assert (
             sum(len(esolangs.generate("Back", format(v, "08b"))) for v in range(256))
-            == 57123
+            == 61542
         )
 
     def test_tree_uses_tape_decision_nodes(self) -> None:
@@ -332,7 +333,7 @@ def test_vertical_leaf_finish_preserves_every_small_table() -> None:
                 )
                 assert runner.run_back(code, n) == expected
     assert max(map(len, esolangs.generate("back", "0110", width=1).splitlines())) == 1
-    assert max(map(len, esolangs.generate("back", "0110", width=8).splitlines())) == 8
+    assert max(map(len, esolangs.generate("back", "0110", width=8).splitlines())) == 5
 
 
 @pytest.mark.parametrize("width", [1, 4, 7, 10, 80])
@@ -364,8 +365,20 @@ def test_parity_accumulator_keeps_public_slots_and_provenance(
 
 @pytest.mark.medium
 def test_an_ignored_input_is_read_and_dropped() -> None:
-    """Two load rows on a borrowed cell; each leaf walks one more."""
-    assert_an_ignored_input_costs("Back", 6, 121)
+    """Borrowed loads preserve all three physical positions around the held bit."""
+    from esolangs.languages.back.generator import back
+
+    n = 6
+    inner = "".join(str(int(row.bit_count() == 1)) for row in range(1 << n))
+    for at, cost in ((0, 209), (3, 117), (6, 117)):
+        low = n - at
+        table = "".join(
+            inner[row >> (low + 1) << low | row & ((1 << low) - 1)]
+            for row in range(2 * len(inner))
+        )
+        program = back(table)
+        assert len(program) - len(back(inner)) == cost
+        assert _evaluate("Back", program, inputs=n + 1) == table
 
 
 @pytest.mark.slow  # builds every permuting generator over several tables
@@ -409,7 +422,10 @@ def _drawn_plan(table, levels, n, vertical):
 
     def walk(order, level, block, k, shared):
         size = 2 ** (levels - level)
-        if level == levels or constant(block * size, (block + 1) * size):
+        if level == levels - 1 or constant(block * size, (block + 1) * size):
+            return
+        if ids[level + 1][2 * block] == ids[level + 1][2 * block + 1]:
+            walk(order, level + 1, 2 * block, k, shared)
             return
         if level == k:
             order.append(block)
@@ -418,7 +434,7 @@ def _drawn_plan(table, levels, n, vertical):
             walk(order, level + 1, 2 * block + 1, k, shared)
 
     shared = set()
-    for k in range(levels):
+    for k in range(levels - 1):
         order = []
         walk(order, 0, 0, k, shared)
         follower = dict(pairwise(order))
@@ -431,11 +447,12 @@ def _drawn_plan(table, levels, n, vertical):
             continue
         grid, where = _BackContext(
             truth_table=table,
-            levels=levels,
+            levels=levels - 1,
             n=n,
             constant=constant,
             vertical=vertical,
             shared=shared | tried,
+            ids=ids,
         ).draw()
         height, column = _extent(grid)[0], 3 * k + 2
         owner = {cell: node for node, cell in where.items()}
@@ -471,7 +488,7 @@ def test_the_landing_rule_matches_drawing_the_tree() -> None:
         for vertical in (False, True):
             rule = _BackContext(
                 truth_table=table,
-                levels=levels,
+                levels=levels - 1,
                 n=levels,
                 constant=constant_span_test(table),
                 vertical=vertical,
@@ -479,10 +496,10 @@ def test_the_landing_rule_matches_drawing_the_tree() -> None:
             ).plan()
             assert rule == _drawn_plan(table, levels, levels, vertical)
             kept += len(rule)
-    assert kept > 500  # positive control: the corpus shares nodes
+    assert kept == 369  # fewer tests/pair leaves; the full old corpus still fires
 
 
-@pytest.mark.parametrize(("n", "side"), [(7, 78), (8, 99)])
+@pytest.mark.parametrize(("n", "side"), [(7, 66), (8, 82)])
 def test_balance_races_the_folded_tree(n: int, side: int) -> None:
     """The comb wins area but the fold, at its best comb base, is the smaller square."""
     import random
@@ -495,3 +512,69 @@ def test_balance_races_the_folded_tree(n: int, side: int) -> None:
     balanced = esolangs.generate("Back", table, balance=True)
     assert balance_score(balanced)[0] == side < balance_score(comb)[0]
     assert _evaluate("Back", balanced, inputs=n) == table
+
+
+def _check_held_input_and_dump() -> None:
+    import esolangs
+    from esolangs.languages.back.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    for n, used in ((1, (0,)), (3, (0, 2)), (8, (0, 2, 6)), (8, (1, 3, 7))):
+        table = "".join(
+            str(
+                ((row >> (n - 1 - used[0])) & (row >> (n - 1 - used[-1])) & 1)
+                ^ sum((row >> (n - 1 - bit)) & 1 for bit in used[1:-1]) % 2
+            )
+            for row in range(1 << n)
+        )
+        for options in ({}, {"width": 1}, {"balance": True}):
+            template = esolangs.generate("Back", table, **options)
+            for row in (0, (1 << n) // 3, (1 << n) - 1):
+                source = esolangs.instantiate("Back", template, row_bits(row, n))
+                io = ScriptedIO("Q")
+                machine = _Machine(source.splitlines(), io)
+                steps = 0
+                while not machine.halted:
+                    machine.step()
+                    steps += 1
+                    assert steps < 5000
+                machine.step()
+                assert len(machine.tape) == n + 1
+                assert io.getvalue().split()[n] == table[row]
+                assert io.position() == 0
+                assert io.input_char() == ord("Q")
+    # Non-answer cells are storage/scratch; only cell n is the answer contract.
+    template = esolangs.generate("Back", "0001")
+    source = esolangs.instantiate("Back", template, [1, 0])
+    assert esolangs.run("Back", source) == "0 0 0"
+
+
+def _check_exact_preload_bounds() -> None:
+    import esolangs
+    from esolangs.debugger import make_vm
+    from esolangs.generation.helpers import grid_area
+    from esolangs.languages.back.proof_formulas import execution, workspace
+    from esolangs.languages.back.tests.formulas import (
+        _cells,
+        execution_witness,
+        witness,
+    )
+    from scripts.benchmark import WrittenState
+    from tests.proofs.deep.execution import run_to_answer
+
+    for n in (1, 2, 3, 4, 5, 6, 7, 8, 9):
+        area_table = witness(n)
+        template = esolangs.generate("Back", area_table)
+        assert grid_area(template) == _cells(n, template)
+        table = execution_witness(n)
+        template = esolangs.generate("Back", table)
+        source = esolangs.instantiate("Back", template, [1] * n)
+        machine = make_vm("Back", source)
+        assert run_to_answer(machine) == execution(n, template)
+        machine.step()
+        assert esolangs.read_answer("Back", machine.output) == table[-1]
+        if n in (3, 6):
+            machine = make_vm("Back", source)
+            state = WrittenState(machine.snapshot())
+            run_to_answer(machine, sample=state.sample)
+            assert state.bits == workspace(n, template)

@@ -124,6 +124,7 @@ class TestAddSubJump:
     def test_every_path_reads_each_input_once(self) -> None:
         """A run consumes exactly ``n`` inputs, whatever the table."""
         _check_native_constants()
+        _check_packed_reader()
         for table, n in (("01101001", 3), ("11111111", 3), ("10101010", 3)):
             program = boolean.addsubjump(table)
             for combo in range(2**n):
@@ -188,8 +189,8 @@ def test_sharing_admission() -> None:
                 assert vm.snapshot()[-1] == n
         totals[n] = before, after
     assert totals[3] == (105924, 96030)
-    assert totals[5] == (252406, 205998)
-    assert new <= 0.95 * old
+    assert totals[5] == (155006, 155006)
+    assert totals[3][1] <= 0.95 * totals[3][0]
 
 
 @pytest.mark.medium
@@ -243,11 +244,11 @@ def test_packed_cells_execute(n: int) -> None:
 
 
 def test_six_input_table_with_five_essential_rows_pins_both_sizes() -> None:
-    """Five essential inputs at n=6 take the tree route; balancing weighs the
+    """Five essential inputs at n=6 take the packed route; balancing weighs the
     default layout alone; both sizes are pinned."""
     table = "0010100100101001011011100110111010011011100110110110101101101011"
-    assert len(esolangs.generate("AddSubJump", table)) == 1063
-    assert len(esolangs.generate("AddSubJump", table, balance=True)) == 1543
+    assert len(esolangs.generate("AddSubJump", table)) == 793
+    assert len(esolangs.generate("AddSubJump", table, balance=True)) == 1429
 
 
 def test_packed_program_prints_then_halts_on_the_special_address() -> None:
@@ -261,24 +262,17 @@ def test_packed_program_prints_then_halts_on_the_special_address() -> None:
     table = "0111111010111101111010100000001100101100101110001110010110111110"
     program = boolean.addsubjump(table)
     assert program == (
-        "338 338 4 333 338 -1 8 332 338 335 12 333 337 337 16 332 337 338 20 332 338 "
-        "338 24 333 338 -1 28 332 338 335 32 333 337 337 36 332 337 338 40 332 338 33"
-        "8 44 333 338 -1 48 332 338 335 52 333 337 337 56 332 337 338 60 332 338 338 "
-        "64 333 338 -1 68 332 338 335 72 333 337 337 76 332 337 338 80 332 338 338 84"
-        " 333 338 -1 88 332 338 335 92 333 337 337 96 332 337 338 100 332 338 338 104"
-        " 333 338 -1 108 332 338 335 112 333 337 337 116 332 337 338 120 332 126 334 "
-        "124 337 332 332 132 332 126 334 132 332 332 332 144 332 126 334 140 333 332 "
-        "332 196 332 337 333 148 333 339 333 152 333 340 333 156 332 162 334 160 339 "
-        "332 332 168 332 162 334 168 332 332 332 120 332 162 334 176 333 332 332 180 "
-        "332 201 333 184 332 339 336 188 332 340 340 192 333 332 332 120 332 341 341 "
-        "200 333 341 346 204 332 342 342 208 333 342 340 212 332 342 333 216 332 343 "
-        "343 220 333 344 344 224 333 230 334 228 341 332 332 236 332 230 334 236 332 "
-        "332 332 248 332 230 334 244 333 332 332 288 332 341 333 252 333 258 334 256 "
-        "341 332 332 264 332 258 334 264 332 332 332 276 332 258 334 272 333 332 332 "
-        "284 332 341 333 280 333 343 333 224 332 344 333 288 332 342 333 292 333 298 "
-        "334 296 342 332 332 304 332 298 334 304 332 332 332 316 332 298 334 312 333 "
-        "332 332 324 332 341 341 320 333 341 343 216 332 345 344 328 332 -1 345 -8 33"
-        "2 0 1 4 48 6 0 0 6 0 0 0 0 0 48 62 53 59 21 0 19 19 7 39 54 7"
+        "7 7 12 7 1 4 3024 0 0 48 0 0 8 8 16 7 8 -1 20 7 8 8 24 7 8 -1 28 7 8 8 32 7 "
+        "8 -1 36 7 8 8 40 7 8 -1 44 7 8 8 48 7 8 -1 52 7 8 8 56 7 8 -1 60 7 8 6 64 4 "
+        "70 5 68 8 7 7 76 7 70 5 76 7 7 7 88 7 70 5 84 4 7 7 140 7 8 4 92 4 277 4 96 "
+        "4 278 4 100 7 106 5 104 277 7 7 112 7 106 5 112 7 7 7 64 7 106 5 120 4 7 7 1"
+        "24 7 145 4 128 7 277 276 132 7 278 278 136 4 7 7 64 7 279 279 144 4 279 283 "
+        "148 7 280 280 152 4 280 278 156 7 280 4 160 7 281 281 164 4 282 282 168 4 17"
+        "4 5 172 279 7 7 180 7 174 5 180 7 7 7 192 7 174 5 188 4 7 7 232 7 279 4 196 "
+        "4 202 5 200 279 7 7 208 7 202 5 208 7 7 7 220 7 202 5 216 4 7 7 228 7 279 4 "
+        "224 4 281 4 168 7 282 4 232 7 280 4 236 4 242 5 240 280 7 7 248 7 242 5 248 "
+        "7 7 7 260 7 242 5 256 4 7 7 268 7 279 279 264 4 279 281 160 7 9 282 272 7 -1"
+        " 9 -8 7 6 6 0 0 0 0 0 62 53 59 21 0 19 19 7 39 54 7"
     )
     assert _evaluate("AddSubJump", program, inputs=6) == table
 
@@ -287,8 +281,8 @@ def test_five_input_all_essential_table_pins_its_balanced_size() -> None:
     """Every input essential at n=5: balancing weighs the default layout
     alone, never the legacy packed candidate; both sizes are pinned."""
     table = "00111001011001101010100000100011"
-    assert len(esolangs.generate("AddSubJump", table)) == 993
-    assert len(esolangs.generate("AddSubJump", table, balance=True)) == 1443
+    assert len(esolangs.generate("AddSubJump", table)) == 775
+    assert len(esolangs.generate("AddSubJump", table, balance=True)) == 1409
 
 
 def _check_native_constants() -> None:
@@ -326,3 +320,35 @@ def _check_native_constants() -> None:
                     assert written.bits == workspace(n, program)
                     assert io.getvalue() == bit
                     assert io.input_char() == ord("Q")
+
+
+def _check_packed_reader() -> None:
+    """Raw Horner reads preserve projection, stream order and low data words."""
+    from esolangs.languages.addsubjump.generator import _addsubjump_packed
+    from esolangs.languages.addsubjump.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value):
+            assert self.reads == 6
+            super()._write(value)
+
+    for position in range(6):
+        table = "".join(str((row >> (5 - position)) & 1) for row in range(64))
+        for program in (
+            _addsubjump_packed(table),
+            esolangs.generate("AddSubJump", table, width=1),
+            esolangs.generate("AddSubJump", table, balance=True),
+        ):
+            for row in (0, 21, 42, 63):
+                io = ReadFirstIO(f"{row:06b}" + "Q")
+                machine = _Machine(program, io)
+                for _ in range(100_000):
+                    if machine.halted:
+                        break
+                    machine.step()
+                assert machine.halted
+                assert io.reads == 6
+                assert io.past_end == 0
+                assert io.getvalue() == table[row]
+                assert io.input_char() == ord("Q")

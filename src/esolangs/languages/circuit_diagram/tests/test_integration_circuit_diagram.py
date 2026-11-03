@@ -85,8 +85,9 @@ class TestAFailedRowSaysWhichRow:
     ) -> None:
         """Not only the stand-in: the path a caller actually hits."""
         from esolangs.languages.circuit_diagram import interpreter as circuit_diagram
+        from tests.support.witness_tables import dense
 
-        table = "".join(str(bin(r).count("1") & 1) for r in range(128))
+        table = dense(9)
         # A warm compile cache (another test, same worker) beats 5 ms a row.
         # A fresh cache, not cache_clear(): freeing the worker's cached
         # circuits took a 1 ms Circuit Diagram test to 3.19 s on CI.
@@ -95,4 +96,4 @@ class TestAFailedRowSaysWhichRow:
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
             evaluate_generated("Circuit Diagram", table, timeout=0.005)
         note = "\n".join(getattr(caught.value, "__notes__", []))
-        assert "row 0 of 128" in note
+        assert "row 0 of 512" in note

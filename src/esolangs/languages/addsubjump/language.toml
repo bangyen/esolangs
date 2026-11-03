@@ -12,9 +12,9 @@ admitted = 2026-08-14T07:18:25-04:00
 
 [proof_status]
 labels = ["finite lookup"]
-qualification = "packed `n`-bit cells selected by a self-modified operand"
+qualification = "essential raw-byte Horner index; fixed hot data slots; packed cells selected by a self-modified operand"
 scaling = "linear: worst P characters past n = 5, at most min(P, R) below"
-execution = "linear: worst (11n+4)⌊T/n⌋ + 11T + 13n - 17 past n = 5, one more from n = 10"
+execution = "linear: worst (11n+4)⌊T/n⌋ + 11T + 10n - 15 past n = 5, one more from n = 10"
 workspace = "linear: at most Σ_{a<M} bl(a) + C(n + bl(B+13+C)) + 3n + 5bl(n) + Q bits: program cells, T/n packed"
 definitions = ["C = ⌈T/n⌉, I = 5n + 54, B = 4I, M = B + 14 + 2C", "Q = I·bl(B) + (3I-2)bl(B+13) + 2bl(M-1) + bl(20n+212) + 23"]
 
@@ -85,6 +85,7 @@ verdict = "kept: canonical, exempt; the packed build's projection onto essential
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
+trick_prototype = 2026-11-02
 
 [ablations.reverse_tree_prototype]
 saving = 0.0
@@ -99,3 +100,11 @@ saving = 21.1
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: canonical whole-constant folding. Read all bytes into one accumulating scratch cell, then print a literal and halt. Cell zero holds the positive scratch address, so reads subtract into scratch; no tree header or auxiliary data blocks remain. Exactly n+1 commands and 4n+6 cells. Workspace is initial sparse address/value bits plus bl(4n+4)+bl(49n)+1+max(5,bl(4n))+bl(n), attained by all-one input. n=8 128 -> 101 chars; n=12 172 -> 145. n=3 corpus 96084 -> 96030 chars. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources and every embedded slot or stream read; stream output follows all reads and leaves a sentinel unread."
+
+
+[ablations.packed_reader_20261102]
+arity = 8
+saving = 23.3
+seed = "random.Random(1847+n)"
+tables = "20 random tables per n=7/8; two per n=7..10,12,14; all tables/rows n<=3"
+verdict = "kept, two independent declining marginals: fixed six hot slots in two skipped data words save 23.963/23.313% at n7/8 (29212/31914 -> 22212/24474 chars); raw-byte Horner plus one bias subtraction saves a further 22.511/23.290% (->17212/18774). Hot savings fall through n14 to 6.15%; reader peaks near n8 and falls to 6.45%, both limit zero: removed O(n log n) spelling against Theta(T) chunk digits. Minimal one-word constants fail: fixed200 292094/319017 ->235694/260217, 19.309/18.432%. Direct branch selection executes four commands just as the old six-word trampoline does; 9.52/8.71% standalone source saving, rejected. Canonical dead ignored-read clearing is subsumed. Two aligned skipped words are needed for six one-digit hot cells; spare cells10/11 stay zero. INDEX/OUT move into hot slots, TABLE receives ignored bytes until its existing clear; TMP and separate normalizer disappear. No added candidate, cache, layout state or whole-program fallback. Exact source scopes6..9, exact E6, all eight size/row-command pins and old W envelope retained. 2156 paired public rows plus5416 private controls; n3 chars96030 and commands41528 unchanged. Native source-formula controls through n14; projected reads preserve physical order, sentinel and output-after-read."

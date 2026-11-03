@@ -12,7 +12,7 @@ adds a third route, :func:`_container_blocks`, with ``O(sqrt T)`` lines.
 
 Size:
     Tree up to 2**n lines in the worst case, threshold one line per table
-    step; n=8 constant zero: 88 chars; n=6 random 1847: 835 chars,
+    step; n=8 constant zero: 88 chars; n=6 random 1847: 790 chars,
     n=10 parity: 2,241 chars.
 """
 
@@ -398,10 +398,10 @@ def _threshold_steps(
 
 def _threshold_pulse_lines(n: int) -> list[str]:
     """Return the tick pulse and the unmatched ``IN`` declaration."""
-    lines = ["T:", "+1 T>=T", ":", "+1 T>=0", "-2 T>=1"]
+    lines = ["T:", "1 T>=T", ":", "1 T>=0", "-2 T>=1"]
     for k in range(1, n):
-        lines.extend((f"+2 T>={2 * k}", f"-2 T>={2 * k + 1}"))
-    lines.append(f"+1 T>={2 * n}")  # cancels the pulse, so there is no n+1th read
+        lines.extend((f"2 T>={2 * k}", f"-2 T>={2 * k + 1}"))
+    lines.append(f"1 T>={2 * n}")  # cancels the pulse, so there is no n+1th read
     lines.append("IN=50:")  # a value no real byte matches
     return lines
 
@@ -419,10 +419,10 @@ def _threshold_window_lines(
             (
                 f"{window}=65:",
                 f"-16 T>={2 * k}",
-                f"+32 T>={2 * k + 1}",
+                f"32 T>={2 * k + 1}",
                 f"-16 T>={2 * k + 2}",
                 f"{latches[k]}:",
-                f"+1 IN>={window}",
+                f"1 IN>={window}",
             )
         )
     return lines
@@ -442,13 +442,13 @@ def _threshold_counter_lines(
     lines = [
         f"{gate}=2:",
         f"-1 T>={2 * n - 1}",
-        f"+2 T>={2 * n}",
+        f"2 T>={2 * n}",
         f"-1 T>={2 * n + 1}",
         f"{counter}:",
     ]
     for k, weight in enumerate(weights):
         if weight:
-            lines.append(f"+{weight} {latches[k]}>={gate}")
+            lines.append(f"{weight} {latches[k]}>={gate}")
     return lines
 
 
@@ -457,8 +457,8 @@ def _threshold_output_lines(
 ) -> list[str]:
     """Return ``OUT`` with its step rules, then ``PRINT`` and ``EXIT``."""
     lines = [f"OUT={_ASCII_ZERO + deltas[0]}:"]
-    lines.extend(f"{delta:+d} {counter}>={row}" for row, delta in steps)
-    lines.extend(("PRINT:", f"+1 T>={2 * n + 1}", "EXIT=1:", f"-1 T>={2 * n + 1}"))
+    lines.extend(f"{delta} {counter}>={row}" for row, delta in steps)
+    lines.extend(("PRINT:", f"1 T>={2 * n + 1}", "EXIT=1:", f"-1 T>={2 * n + 1}"))
     return lines
 
 
@@ -577,20 +577,20 @@ def _container_blocks(table: str) -> str:
     lines += [
         f"{gate}=2:",
         f"-1 T>={2 * n - 1}",
-        f"+2 T>={2 * n}",
+        f"2 T>={2 * n}",
         f"-1 T>={2 * n + 1}",
     ]
     # The balanced caller starts at n=4, where n-s >= 3.
     lines.append(f"{high}:")
-    lines += [f"+{1 << (n - s - 1 - k)} {latches[k]}>={gate}" for k in range(n - s)]
+    lines += [f"{1 << (n - s - 1 - k)} {latches[k]}>={gate}" for k in range(n - s)]
     lines.append(f"-{blocks} T>={2 * n + 1}")  # live for tick 2n + 1 only
     lines.append(f"{low}:")
-    lines += [f"+{2 << (n - 1 - k)} {latches[k]}>={gate}" for k in range(n - s, n)]
+    lines += [f"{2 << (n - 1 - k)} {latches[k]}>={gate}" for k in range(n - s, n)]
     lines.append(f"-1 T>={2 * n + 1}")
     words = [_block_word(table, h, size) for h in range(blocks)]
     lines.append(f"{word}={words[0]}:")
     lines += [
-        f"{words[h] - words[h - 1]:+d} {high}>={h}"
+        f"{words[h] - words[h - 1]} {high}>={h}"
         for h in range(1, blocks)
         if words[h] != words[h - 1]
     ]
@@ -598,14 +598,14 @@ def _container_blocks(table: str) -> str:
     for i, name in enumerate(stages):
         lines += [
             f"-{1 << (size - 2 - i)} {name}>=1",
-            f"+{1 << (size - 1 - i)} {name}>=2",
+            f"{1 << (size - 1 - i)} {name}>=2",
         ]
     for i, name in enumerate(stages):
         tick = 2 * n + 2 + 2 * i
         lines += [
             f"{name}:",
-            f"+1 {word}>={thr}",
-            f"+1 T>={tick}",
+            f"1 {word}>={thr}",
+            f"1 T>={tick}",
             f"-5 T>={tick + 1}",
             f"-2 T<={tick - 1}",
             f"-3 {low}<=0",
@@ -613,13 +613,13 @@ def _container_blocks(table: str) -> str:
     end = 2 * n + 2 * size
     lines += [
         f"{fin}:",
-        f"+1 {word}>={thr}",
+        f"1 {word}>={thr}",
         f"-2 T<={end - 1}",
         f"-2 T>={end + 1}",
         "OUT=48:",
-        f"+1 {fin}>=1",
+        f"1 {fin}>=1",
         "PRINT:",
-        f"+1 T>={end + 1}",
+        f"1 T>={end + 1}",
         "EXIT=1:",
         f"-1 T>={end + 1}",
     ]

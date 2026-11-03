@@ -12,11 +12,18 @@ def execution(n: int, p: str) -> int:
     """The stated execution bound, evaluated for n and the program."""
     if _native(n, p):
         return n + 1
-    return (11 * n + 4) * ((1 << n) // n) + 11 * (1 << n) + 13 * n - 17 + (n >= 10)
+    # One entry jump and 2n+1 raw-reader commands replace the old 5n reads.
+    return (11 * n + 4) * ((1 << n) // n) + 11 * (1 << n) + 10 * n - 15 + (n >= 10)
 
 
 def _add_sub_jump(n: int, _: str) -> int:
-    """Every program address's bits, the T/n packed cells, Q the rest."""
+    """Retain the legacy tree bound and a conservative packed envelope.
+
+    I=5n+54 also covers the new 2n+57 words. The large bias and raw INDEX
+    fit the spare bits charged for short -1 read operands. TABLE's discarded
+    reads need at most n+6 bits; the seven named cells and progress use at
+    most 2n+5bl(n)+12, below the retained 3n+5bl(n)+23 allowance.
+    """
     bl = int.bit_length
     c = -(-(1 << n) // n)
     i = 5 * n + 54

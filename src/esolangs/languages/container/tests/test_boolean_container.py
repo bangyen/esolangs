@@ -185,7 +185,7 @@ class TestContainer:
                 )
         tables = [format(i, "08b") for i in range(256)]
         # The threshold sum wins 215 of them: 114,994 for the tree alone.
-        assert sum(len(boolean.container(t)) for t in tables) == 82_750
+        assert sum(len(boolean.container(t)) for t in tables) == 78_589
         assert sum(len(_container_tree(t, prune=False)) for t in tables) == 164_976
 
     def test_no_line_restores_what_nothing_reads(self) -> None:
@@ -256,7 +256,7 @@ class TestContainerSharing:
 @pytest.mark.medium
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """Its latch and window, no weight (the threshold route starts at seven)."""
-    assert_an_ignored_input_costs("Container", 7, 66)
+    assert_an_ignored_input_costs("Container", 7, 63)
 
 
 @pytest.mark.parametrize("table", ["01" * 64])
@@ -273,7 +273,7 @@ def test_balanced_parity_is_the_block_program() -> None:
 
     table = "".join(str(row.bit_count() & 1) for row in range(256))
     balanced = esolangs.generate("Container", table, balance=True)
-    assert balance_score(balanced) == (348, 1392, 9)
+    assert balance_score(balanced) == (348, 1322, 9)
     assert _evaluate("Container", balanced, inputs=8) == table
 
 
@@ -282,7 +282,9 @@ def test_threshold_proof_keeps_ignored_latches(table: str, weights: list[int]) -
     from esolangs.languages.container.generator import _container_threshold
     from esolangs.languages.container.tests.proof_container import parse
 
-    assert parse(_container_threshold(table))[1] == weights
+    program = _container_threshold(table)
+    assert "+" not in program
+    assert parse(program)[1] == weights
 
 
 @pytest.mark.medium
@@ -402,5 +404,5 @@ def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
                     assert io.input_char() == ord("Q")
     assert (
         sum(len(esolangs.generate("Container", format(v, "08b"))) for v in range(256))
-        == 82750
+        == 78589
     )

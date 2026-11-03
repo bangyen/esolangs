@@ -16,14 +16,14 @@ execution = "poly n: worst 2n + 2 commands, either build"
 workspace = "linear: at most Σ (8|name| + bl(peak)) bits over containers + 2bl(2n+2) + bl(EXIT): peak ≤ start + (2n+2)Σ⁺deltas"
 
 [generator_sizes]
-"00000001" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 313 }
+"00000001" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 296 }
 "00001100" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 257 }
-"00110110" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 337 }
-"0110" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6 }, source_units = 252 }
-"01101001" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 345 }
-"0110100110010110" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 10, "9" = 10, "10" = 10, "11" = 10, "12" = 10, "13" = 10, "14" = 10, "15" = 10 }, source_units = 458 }
-"1101001101101101" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 10, "9" = 10, "10" = 10, "11" = 10, "12" = 10, "13" = 10, "14" = 10, "15" = 10 }, source_units = 458 }
-"11111110" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 313 }
+"00110110" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 319 }
+"0110" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6 }, source_units = 239 }
+"01101001" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 326 }
+"0110100110010110" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 10, "9" = 10, "10" = 10, "11" = 10, "12" = 10, "13" = 10, "14" = 10, "15" = 10 }, source_units = 433 }
+"1101001101101101" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 10, "9" = 10, "10" = 10, "11" = 10, "12" = 10, "13" = 10, "14" = 10, "15" = 10 }, source_units = 433 }
+"11111110" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 297 }
 
 [catalogue]
 sharing_exempt = "the shared tree races a threshold sum, one line per table step with no subtable drawn, which wins most tables from n=3 (repeated B C C B tables included)"
@@ -91,6 +91,7 @@ verdict = "kept: balanced area (balance_score(p)[0]**2, mean of 2 seeded tables)
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
+trick_prototype = 2026-11-02
 
 [ablations.reverse_counter_prototype]
 saving = 0.03133
@@ -105,3 +106,11 @@ saving = 59.0
 seed = "both constant values; witnesses(n) at n=4..6"
 tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
 verdict = "kept: canonical whole constants. A named pulse P alternates 1/0, the empty read port follows it and countdown T decrements on its active ticks. Read n occurs at tick 2n-1; PRINT and EXIT fire at tick 2n, after all input. Constant source is 87+digits(n) chars and exactly 2n ticks, workspace at most 145+3bl(n) bits for the fixed port names, ASCII IN/OUT, countdown and two cursors. At n=8 zero/one 211/218 -> 88/88 chars; n=12 279/286 -> 89/89. All 24 old balanced scores improve or match; return this native layout without constructing unused block programs. n=3 corpus 82827 -> 82750 chars. Generic envelopes and all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 are byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts within their resource bounds. Owned regressions require all reads before output and retain a following record; both Packlang literal policies execute."
+
+
+[ablations.tricks_20261102]
+arity = 8
+saving = 5.2
+seed = "random.Random(1847+n)"
+tables = "20 random per n7/8; all tables/rows n<=3; three random per n4..6 and named n7/8"
+verdict = "kept only canonical unsigned positive deltas: minimal spelling removes redundant plus signs, as the tree already does. Fixed20 chars23962/38194 ->22671/36190 (5.388/5.248%); no new path/state. Generic blocks fail fixed n7: after spelling, existing s=floor((n-2)/2) gives22671/36190 ->21103/28475 (6.916/21.318%); one closed-form half split gives22556/28475 (0.507/21.318%). No width search. Parity block saves24.6% at both but violates the preserved global2n+2 execution bound: native n7 takes24 ticks vs16, exactly2n+2S+2. Blocks remain solely the existing balanced route. Raw split-counter top-latch correction is wrong on low row1; refined unconditional live-tick correction works in sampled controls but grows7.049/4.786%, rejected. No generic candidate/fallback added. Exhaustive n<=3 plus samples4..6:2156paired rows and2156wrong-output positive controls; n3chars82750 ->78589, commands16352 unchanged. All benchmark commands/byrow retained; sizes repinned. E exact3/7 and all W/source scopes retained; source bound removes4n+3+T/2 plus signs from its worst threshold pattern."

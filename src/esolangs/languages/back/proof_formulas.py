@@ -1,37 +1,40 @@
-"""Executed command bounds.
-
-Popcount-symmetric tables may reverse input cells: the comb drawing stays
-fixed and the shorter loader only lowers this bound. The nonsymmetric
-worst-case witnesses retain the original layout.
-"""
+"""Default pair-tree execution caps and the preserved global workspace bound."""
 
 
 def _constant(n: int, program: str) -> bool:
     """Whether ``program`` is the compact constant build.
 
-    That build is one fixed template -- ``($-)^n`` input runs, a ``>^n``
-    walk to the answer cell, an extra ``-`` flip for the one constant and
-    the closing ``*`` -- and only it matches in full. The first character
-    cannot select it: a comb program's loader opens with the same ``-$``
-    pairs (the AND, NAND and NOR programs start ``-$>-``), so a
-    first-char test charges comb programs the constant bounds.
+    The complete compact template distinguishes it from mirrored nonconstant
+    and width layouts; a first-character test confuses their loader primers.
     """
     return program == "$-" * n + ">" * n + ("-*" if program.endswith("-*") else "*")
 
 
 def execution(n: int, program: str) -> int:
-    """Shared one-edges cap the tree at 3T/4 + 1 rows (n=3,4 exhaustive).
+    """Exact through n=9; the original global envelope remains above that.
 
-    At n = 17 every row of the eleven corpus tables was run once:
-    worst 7,654 commands, no output wrong, none over this bound.
+    Pair leaves cap the comb at T/2 rows. At n=8/9 the folded-area comparison
+    restricts selected combs to 114/218 rows; owned geometric witnesses attain it.
     """
     if _constant(n, program):
         return 3 * n + 2 + program.endswith("-*")
+    if n < 3:
+        return 13 if n == 1 else 27
+    if n <= 7:
+        pairs = 1 << (n - 1)
+        return max(pairs, 6 * n + 1) + pairs + 3 * n + 6
+    if n in (8, 9):
+        # Fold area limits a selected full-width comb to 114/218 rows.
+        return 258 if n == 8 else 469
     return max(3 * (1 << n) // 4 + 1, 6 * n - 1) + 3 * (1 << n) // 4 + 1 + 3 * n + 6
 
 
 def workspace(n: int, program: str) -> int:
-    """A constant's tape, column and cell pointer; otherwise the comb."""
+    """Global bit envelope, still attained at the original n=3/6 proof rungs.
+
+    Default area is below 16T from n=6, so beam-counter bit widths sum to at most
+    n+5, within the old envelope. Small loaders cross no old bit threshold.
+    """
     if _constant(n, program):
         bit = program.endswith("-*")
         return n + 1 + (3 * n + bit).bit_length() + n.bit_length()

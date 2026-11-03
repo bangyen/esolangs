@@ -241,7 +241,7 @@ def _row_one(n: int) -> str:
 
 
 def _back_worst(n: int) -> tuple[str, ...]:
-    """Back's comb-worst tables: Rudin-Shapiro, and from n = 7 the slot witness."""
+    """Retain Back's old fixtures and append derived source/execution witnesses."""
     width = 1 << n
     # Rudin-Shapiro (parity of 11 pairs in the row), complemented at odd n
     # and with row 1 flipped: the most rows its one-edges cannot share.
@@ -253,10 +253,8 @@ def _back_worst(n: int) -> tuple[str, ...]:
     if n == 2:
         # The symmetric loader shrinks; a lone penultimate zero keeps its height.
         tables += ("1" * (width - 2) + "01",)
+    owner = importlib.import_module("esolangs.languages.back.tests.formulas")
     if n >= 7:
-        tables += (
-            importlib.import_module("esolangs.languages.back.tests.formulas").witness(
-                n
-            ),
-        )
+        tables += (owner.legacy_witness(n),)
+    tables += (owner.witness(n), owner.execution_witness(n))
     return tables

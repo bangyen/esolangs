@@ -4,7 +4,8 @@
 def _cells(n: int, _: str) -> int:
     """F: the pool's reserved square plus the port margin, n >= 9.
 
-    The race keeps the smaller of the pool and every rival, so its area is
+    Complete folds include their atomic definition in the race metric.
+    Copied pool atoms retain primitive gates and dimensions. The winner is
     at most the pool's.  The pool takes atoms of k = 7 (odd n) or 8 inputs
     at the leaves; a leaf is 8 * ((4G + 10k + 59) // 8) square, G = 14 +
     3(2^(k-2) - 1) + k, and each two prefix levels double the side and add a

@@ -1,28 +1,21 @@
-"""Back's emitted cells: the comb, then the smaller of it and the fold.
-
-The shorter symmetric loader stays within the same rectangle; the recorded
-nonsymmetric witnesses keep the old loader and reach the envelope.
-"""
+"""Pair-comb/fold area bounds and derived witnesses; legacy corpus retained."""
 
 
 def _comb(n: int) -> int:
-    """3n + 5 load columns by max(6n - 1, 3T/4 + 1) rows (Rudin-Shapiro's tree)."""
-    return (3 * n + 5) * max(6 * n - 1, 3 * (1 << n) // 4 + 1)
+    """Preloaded comb: at most T/2 pair rows, a six-n loader and 3n+5 columns."""
+    return (3 * n + 5) * max(6 * n + 1, 1 << (n - 1))
 
 
 def _fold(n: int) -> int:
-    """The H-tree fold's rectangle under the load row; parity reaches it.
-
-    Five-level combs at the leaves; a node is 3 + max(H0, H1) wide and
-    W0 + W1 + 2 tall, children transposed.
-    """
-    width, height, entry = 17, 32, 0  # the five-level comb, 3 * 5 + 2 wide
-    for _ in range(6, n + 1):
+    """Pair-leaf fold: five tested levels, width20/height32 at physical n=6."""
+    width, height, entry = 20, 32, 0
+    for _ in range(7, n + 1):
         width, height, entry = 3 + height, 2 * width + 2, width + 1
     return (1 + width) * (max(0, 4 * n - entry) + height)
 
 
-#: Annealed n = 6 blocks: 0-5 have 48-49 comb rows, 6-8 are full-fold (45-47).
+#: Legacy searched regression corpus, retained unchanged, not production data.
+#: n=6 blocks:0-5 had48-49 comb rows,6-8 full-fold45-47.
 _BLOCKS = (
     "0111010001010010111000011010000111001010011110000100101000100010",
     "0111010010100100010111011110010111001010010010100111101001010010",
@@ -38,7 +31,7 @@ _BLOCKS = (
 #: these picks of the 48-49-row blocks reach its rows with the fold above.
 #: Searched (4590e0c49), not derived: 8 of 81 block pairs reach 2,522 cells
 #: at n = 7, 35 of 6,561 quadruples 5,597 at 8; kept picks also reach the
-#: execution formula on every row.  A layout change re-runs that search.
+#: old execution formula on every row; retained as coverage, not re-searched.
 _COMB_ORDERS = {
     7: (0, 2),
     8: (0, 1, 2, 3),
@@ -75,8 +68,8 @@ def _order(n: int) -> list[int]:
     ]
 
 
-def witness(n: int) -> str:
-    """Concatenated n = 6 blocks: n = 7-9 keep the fold above the comb.
+def legacy_witness(n: int) -> str:
+    """Legacy n=6 blocks; at n=7-9 they kept the old fold above the comb.
 
     From n = 10 the comb outruns the fold (752 rows against 749 at n = 10), and
     the full-fold slots make F the fold.  For every n >= 10 the comb has
@@ -90,15 +83,51 @@ def witness(n: int) -> str:
     return "".join(_BLOCKS[i] for i in _order(n))
 
 
+def witness(n: int) -> str:
+    """Rudin-Shapiro pair states keep every tested split and reach both boxes."""
+    if n == 1:
+        return "10"
+    if n == 2:
+        return "1011"
+    return "".join(
+        str((row & (row >> 1)).bit_count() % 2 ^ (n % 2)) for row in range(1 << n)
+    )
+
+
+def execution_witness(n: int) -> str:
+    """Keep the final pair11; prune only fold-dimension-inactive rectangles."""
+    if n < 3:
+        return witness(n)
+    table = list("".join(str(1 - int(bit)) for bit in witness(n)))
+    table[-1] = "1"
+    if n in (8, 9):
+        block = 1 << 5  # pair slots in a five-level comb base
+        quarter = block // 4
+        deficit = (1 << (n - 1)) - _fold(n) // (3 * n + 5)
+        if n == 8:
+            assert deficit == 2 * (quarter - 1)
+            # Blocks0/3 keep both required heights; block2 keeps root width.
+            cuts = ((block, quarter, "0"), (block + 2 * quarter, quarter, "1"))
+        else:
+            assert deficit == block - 1 + quarter - 1
+            # Blocks0/2 keep heights,4/5 width,7 the final all-one path.
+            cuts = (((1 << (n - 6)) - 2) * block, block, "0"), (block, quarter, "1")
+        for start, length, bit in cuts:
+            table[2 * start : 2 * (start + length)] = bit * (2 * length)
+    return "".join(table)
+
+
 def _cells(n: int, _: str) -> int:
-    """F: the comb to n = 5, then min(comb, fold), under 27.5T."""
-    return _comb(n) if n <= 5 else min(_comb(n), _fold(n))
+    """Exact pair-comb/fold envelope; the folded limit is15.625T."""
+    if n < 3:
+        return 30 if n == 1 else 143
+    return _comb(n) if n <= 7 else _fold(n)
 
 
 FORMULAS = {
     "scaling": (
         _cells,
         True,
-        (3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17),
+        (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17),
     )
 }

@@ -16,36 +16,33 @@ _TAIL = 53
 
 
 def _packed(n: int, _: str = "") -> int:
-    """Packed decoder, exact: 5n + 53 instructions, 14 named cells, T/n chunks.
+    """Packed full-input decoder: 2n+57 words, seven names, T/n chunks.
 
-    Spaces: one fewer than the cells.  Digits: every named operand is 4I + k
-    (I instructions, k < 14) so one width w; -1 (n + 1 times) and -8 are two
-    characters; each ``c`` is 4 times its target (reads fall through, the
-    tail follows ``_BRANCHES`` and ``_JUMPS``); each branch names its own
-    ``c`` + 2 three times; the chunk pointer is 4(tail + 20) + 1.  Named
-    values total 14 + 2 digits of n (N and COUNT); a chunk is at most
-    2^n - 1, the last one 2^(T - n(C - 1)) - 1.  Exact for n <= 36, where
-    4I + 14 keeps the width of 4I.  Equals the generator's all-ones build,
-    the widest chunks, at n = 2..14.
+    Count each operand's digits independently: one-digit hot cells, named
+    addresses, five reusable jumps and the patched chunk-pointer operand.
+    The data words hold bias 48(T-1), INDEX=0 and OUT=48. Chunk digit maxima
+    are attained by the same tables as before; sharing choices are unchanged.
     """
-    start = 5 * n
+    start = 2 * n + 4
     ins = start + _TAIL
-    width = len(str(4 * ins + 14))
+    base = 4 * ins
     target = {t: t + 1 for t in range(_TAIL - 1)} | _JUMPS
     for b, pos, zero in _BRANCHES:
         target |= {b + 1: b + 3, b + 3: pos, b + 5: zero}
-    code = sum(len(str(4 * j)) for j in range(1, start + 1))
-    code += sum(len(str(4 * (start + u))) for u in target.values())
-    code += sum(3 * len(str(4 * (start + b + 1) + 2)) for b, _p, _z in _BRANCHES)
-    code += len(str(4 * (start + 20) + 1))
+    reads = 7 * n + 3 + sum(len(str(4 * j)) for j in range(4, start + 1))
+    jumps = sum(3 * (len(str(4 * (start + b + 1) + 2)) - 1) for b, _, _ in _BRANCHES)
+    pointer = len(str(4 * (start + 20) + 1)) - 1
+    named = {0: 1, 1: 3, 2: 4, 3: 10, 4: 6, 5: 4, 6: 4, 7: 1}
+    operands = 160 + jumps + pointer
+    operands += sum(
+        count * (len(str(base + offset)) - 1) for offset, count in named.items()
+    )
+    targets = sum(len(str(4 * (start + u))) for u in target.values()) + 2
     chunks = -(-(1 << n) // n)
     last = (1 << n) - (chunks - 1) * n
-    return (
-        4 * ins + 14 + chunks - 1
-        + width * (3 * ins - n - 17) + 2 * (n + 1) + 2 + code
-        + 14 + 2 * len(str(n))
-        + (chunks - 1) * len(str((1 << n) - 1)) + len(str((1 << last) - 1))
-    )  # fmt: skip
+    data = 13 + len(str(48 * ((1 << n) - 1))) + 5 + 2 * len(str(n))
+    data += (chunks - 1) * len(str((1 << n) - 1)) + len(str((1 << last) - 1))
+    return 4 * ins + 7 + chunks - 1 + reads + operands + targets + data
 
 
 def _shared(n: int, _: str) -> int:
@@ -72,7 +69,7 @@ def _shared(n: int, _: str) -> int:
 
 
 # Past n = 5 the packed decoder is the worst; below, min(P, _shared) is only a
-# bound (never reached), so those arities are not listed.
+# upper bound; exactness below n=6 is not claimed.
 def _chars(n: int, p: str) -> int:
     """The shorter build is at most either one; from n = 6 R exceeds P."""
     return min(_packed(n, p), _shared(n, p))

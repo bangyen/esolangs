@@ -1,9 +1,14 @@
 """Executed command and snapshot-bit bounds.
 
-Eight-row endpoint/parity cells have at most two codes from n=7: at most
+Eight-row endpoint cells have at most two codes from n=7: at most
 16 decoder lines, half as many table cells, code values at most 8, and a
 constant closure contained in the four-row envelope. Their extra selector
 replaces one address bit; each snapshot part stays below that envelope.
+
+Hosting only removes chain lines, and its array bases move earlier. The
+envelope includes the two superseded bootstrap lines. Affine streams use
+n+5m+13+bias lines and at most 273+bl(n+5m+15)+bl(2n-1) bits, dominated by
+the same bounds for n>=3; m<=n counts selected inputs.
 """
 
 
@@ -25,7 +30,8 @@ def _constants(n: int) -> set[int]:
 def execution(n: int, program: str) -> int:
     """Lines of an all-essential table with min(16, T/4) distinct cells.
 
-    No line branches, so every line runs once: constants 4 + 2K, the decoder
+    No line branches, so every line runs once. A conservative unhosted layout
+    has constants 4 + 2K, the decoder
     1 + 4m, a parity pad, the cells 1 + T/4 and the address 3n + 3.  K is the
     closure of 48, 4c (0 < c < m) and the weights 2^j under k -> (k - c)/2,
     c = (k - 2) mod 4, as ``_cm_plan`` splits a constant.  Both terms grow

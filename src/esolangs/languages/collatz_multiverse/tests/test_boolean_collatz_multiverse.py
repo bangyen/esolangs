@@ -22,7 +22,7 @@ class TestCollatzMultiverse:
 
     def test_cells_are_addressed_by_line_number(self) -> None:
         """The table sits in cells the writing line's own number addresses."""
-        table = "01101001" * 8
+        table = "00110110" * 8
         program = boolean.collatz_multiverse(table)
         subscripted = [line for line in program.splitlines() if "[" in line]
         placed = [line for line in subscripted if "[lineNumber]=" in line]
@@ -30,6 +30,8 @@ class TestCollatzMultiverse:
         # What is left is the reader: one indexed read of each array, by a
         # register the inputs summed rather than by a walked pointer.
         assert len(subscripted) - len(placed) == 2
+        for row, expected in enumerate(table):
+            assert run_collatz_multiverse(program, row_bits(row, 6)) == expected
 
     def test_constant_tables_collapse_but_still_read(self) -> None:
         """A constant table collapses to one output but still reads its inputs."""
@@ -42,6 +44,8 @@ class TestCollatzMultiverse:
     @pytest.mark.medium
     def test_sampled_wider_tables(self, n: int) -> None:
         """Every row of sampled tables, with ignored inputs among them."""
+        if n == 4:
+            _check_affine_stream()
         rng = random.Random(n)
         for _ in range(4):
             table = "".join(rng.choice("01") for _ in range(2**n))
@@ -63,14 +67,14 @@ class TestCollatzMultiverse:
         assert codes[0] == 1
         assert codes[1] == 2
 
-    def test_numbered_cells_halve_the_three_input_total(self) -> None:
-        """The plain build against the shipped one over every varied table."""
+    def test_value_coded_and_public_three_input_totals(self) -> None:
+        """Pin the value-coded oracle and every varied public program."""
         from esolangs.languages.collatz_multiverse.generator import _cm_build
 
         varied = [t for v in range(256) if len(set(t := format(v, "08b"))) > 1]
         plain = sum(len(_cm_build(t, 3, [0, 1, 2], numbered=False)) for t in varied)
         built = sum(len(boolean.collatz_multiverse(t)) for t in varied)
-        assert (plain, built) == (513929, 280220)
+        assert (plain, built) == (360799, 193676)
 
     def test_numbering_never_grows_a_program(self) -> None:
         """Numbered cells beat the retired value-as-code size oracle."""
@@ -177,7 +181,15 @@ def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
     from esolangs.languages.collatz_multiverse.generator import _cm_constants
 
     lines = _cm_constants([1, 2])
-    assert len(lines) == 4
+    assert len(lines) == 2
+    from esolangs.languages.collatz_multiverse.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    machine = _Machine("\n".join(lines), ScriptedIO(""))
+    while not machine.halted:
+        machine.step()
+    assert machine.registers["k1"] == 1
+    assert machine.registers["k2"] == 2
     assert all(line.endswith("NOT PRINT.") for line in lines)
     assert _cm_constants([]) == lines
 
@@ -283,17 +295,17 @@ def test_balance_scores_the_spellings_without_a_threshold_sweep() -> None:
         (
             "0100001010101000011000010000010010111100100010000000101100100001",
             30,
-            2590,
+            2200,
         ),
         # A width request tries a rotated selector order from three inputs.
-        ("01000010", 30, 897),
+        ("01000010", 30, 695),
         # Three essential inputs exactly: the rotated order starts here.
         ("00000111", 1, 1545),
         # A wide table of long zero runs and dense blocks, pinned end to end.
         (
             "00000000000000000000011100000111011101110111011101110111011101110000011100000000000000000111011101110111011100000111011100000111",
             None,
-            2392,
+            1887,
         ),
     ],
 )
@@ -303,7 +315,7 @@ def test_layout_sizes(table: str, width: int | None, size: int) -> None:
 
 @pytest.mark.parametrize("family", ["and", "or", "parity"])
 @pytest.mark.parametrize("invert", [False, True])
-def test_eight_row_named_cells(family: str, *, invert: bool) -> None:
+def test_named_routes_improve_the_four_row_lookup(family: str, *, invert: bool) -> None:
     from esolangs.languages.collatz_multiverse.generator import _cm_build
 
     n = 7
@@ -360,5 +372,54 @@ def test_three_input_corpus_size() -> None:
             len(esolangs.generate("Collatz Multiverse", format(value, "08b")))
             for value in range(256)
         )
-        == 280834
+        == 194290
     )
+
+
+def _check_affine_stream() -> None:
+    from esolangs.languages.collatz_multiverse.interpreter import _Machine
+    from esolangs.languages.collatz_multiverse.proof_formulas import (
+        execution,
+        workspace,
+    )
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 6):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for mask in range(1 << n):
+            for bias in (0, 1):
+                table = "".join(
+                    str((row & mask).bit_count() % 2 ^ bias) for row in range(1 << n)
+                )
+                program = boolean.collatz_multiverse(table)
+                if mask:
+                    assert "negativeOne" not in program
+                expected_commands = (
+                    n + 5 * mask.bit_count() + 13 + bias if mask else n + 10
+                )
+                for row, expected in enumerate(table):
+                    io = ReadFirstIO(" ".join(f"{row:0{n}b}") + " Q")
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    commands = 0
+                    while not machine.halted:
+                        machine.step()
+                        commands += 1
+                        written.sample(machine.snapshot())
+                        assert commands <= expected_commands
+                    assert commands == expected_commands
+                    assert io.getvalue() == expected
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_token() == "Q"
+                    if n >= 3:
+                        assert commands <= execution(n, program)
+                        assert written.bits <= workspace(n, program)

@@ -167,9 +167,8 @@ class TestCircuitDiagramLayoutGuards:
             table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
             drawing = boolean.circuit_diagram(table)
             widths[n] = max(len(row) for row in drawing.splitlines())
-        assert widths == {3: 67, 4: 87, 5: 125, 6: 145}
-        # A shared output alternates the step (20, 38); two inputs still cost
-        # at most the 64 columns two unshared levels did.
+        assert widths == dict.fromkeys((3, 4, 5, 6), 4)
+        # Full parity uses a constant-width native XOR ladder.
         steps = [widths[n + 2] - widths[n] for n in (3, 4)]
         assert max(steps) <= 64, steps
 
@@ -414,11 +413,12 @@ class TestCircuitDiagramLayoutGuards:
         assert builder.next_signal == 0
 
     def test_banding_brings_every_arity_inside_eighty(self) -> None:
-        """Which is the point: unbanded, parity clears 80 columns at n == 4."""
+        """Dense folds exceed eighty columns while their bands still fit."""
         from esolangs.languages.circuit_diagram.generator import circuit_diagram
+        from tests.support.witness_tables import dense
 
-        for n in (4, 5, 6):
-            table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
+        for n in (6, 7, 8):
+            table = dense(n)
             flat = circuit_diagram(table)
             banded = circuit_diagram(table, 80)
             assert max(len(row) for row in flat.splitlines()) > 80, n
@@ -478,7 +478,7 @@ class TestCircuitDiagram:
             ("0001", 0),  # AND: ``0/x`` and ``0/1`` read plain rails only
             ("01", 0),  # identity: likewise
             ("10", 1),  # NOT is the complemented selector
-            ("0110", 2),  # XOR: both inputs appear negated and plain
+            ("0110", 0),  # Native XOR needs no complemented selector
         ],
     )
     def test_only_needed_complements_are_built(self, table: str, tildes: int) -> None:
@@ -542,7 +542,7 @@ class TestCircuitDiagram:
         """Each bit arrives on its own line, which the spec makes an input."""
         from esolangs.languages.circuit_diagram.generator import circuit_diagram
 
-        rows = circuit_diagram("00010111").split("\n")
+        rows = circuit_diagram("00010111").rsplit("\n}\n", 1)[-1].split("\n")
         starts = [row for row in rows if row.startswith("-")]
         assert len(starts) == 3
 
@@ -621,7 +621,9 @@ def test_a_repeated_subtree_is_drawn_once_and_still_computes() -> None:
     from esolangs.languages.circuit_diagram.generator import circuit_diagram
     from esolangs.runtime._evaluate import _evaluate
 
-    gates = lambda t: sum(map(str(circuit_diagram(t)).count, "aox"))  # noqa: E731
+    def gates(t):
+        return sum(map(str(circuit_diagram(t)).rsplit("\n}\n", 1)[-1].count, "aoxM"))
+
     tiled, distinct = "0110111010010011" * 2, "01101110100100110011101011000101"
     assert gates(tiled) < gates(distinct)
     assert (
@@ -843,7 +845,7 @@ def test_three_input_corpus_size() -> None:
             len(esolangs.generate("Circuit Diagram", format(value, "08b")))
             for value in range(256)
         )
-        == 183742
+        == 144382
     )
 
 

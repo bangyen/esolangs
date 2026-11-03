@@ -596,9 +596,7 @@ requires a construction exemption rather than a sub-gate bound.
   (`_strip_tree`, `_stream_tree`) are gated to at most three essential inputs
   (seven nodes) or two inputs, where a fold cannot pay.
 - Back has 18.3% repeated-node potential at n=5; its admission tests support
-  its construction exemption. It admits one bend: every route crosses
-  column 1, so a second path meets the first's cells. Admission is bounded
-  to 6..12 essential inputs without a width (16 of 96 controls improved).
+  its construction exemption.
 - Dig has 10.9% repeated-node potential at n=5; its admission tests support
   its construction exemption. Its shared pool is 2..10 unique 64-row classes
   indexed by one decimal digit over 1..6 prefix bits; a larger pool needs a
@@ -729,8 +727,11 @@ exact range (2026-10-23, counted from the ledger):
 
 - Route race: the shipped program is the shortest of several forms or
   layouts, so the worst table is a maximum over a minimum and switches
-  with the winner. Back execution past n = 9 (the fold ships whenever the comb has 769 rows:
-  26,208 cells against 26,915 at n = 10);
+  with the winner. Back execution past n = 9: at n = 8 the full pair comb
+  takes 3,712 cells against the fold's 3,312. The area comparison limits a
+  selected comb to 114 rows at n = 8 and 218 at n = 9. Geometric subtree
+  cuts attain the exact execution caps 258 and 469; later execution retains
+  the global upper bound;
   ArrowQueue execution (proved 11T + 32n + 92), Polynomial execution (C - 2
   at n = 3, 4 over every table; C minus the doubling levels, 60, 95, 131, 198,
   329, 588 at n = 5-10, witnessed),
@@ -774,8 +775,8 @@ exact range (2026-10-23, counted from the ledger):
   a joint optimisation. Algebraic Programming Language execution (a
   random half beside complemented (n-1)-parity runs 296 > 293, the parity
   path, at n = 9: executed definitions K add to the longest path);
-  Circuit Diagram execution (2n + 1 is derived and reached to n = 20, but
-  a bank can beat the fold that reaches it); ABCDirection, Algebraic Programming Language,
+  Circuit Diagram execution (2n + 1 is derived; native mux nodes and
+  competing banks need not attain it); ABCDirection, Algebraic Programming Language,
   FALSE (1.3x past n = 8, per route), For Thorn, Object Disoriented (1.7x,
   per level) and Packlang workspace; Polynomial workspace; SStack execution (exact at n = 5 and 8
   only); Unlambda execution and workspace; RAM0 scaling (a repeat goto

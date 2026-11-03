@@ -151,7 +151,7 @@ def test_every_definition_names_a_symbol_its_cells_use() -> None:
     from scripts.docs.proof_status import load as load_status
 
     for row in load_status()[0]:
-        cells = f"{row.execution} {row.workspace}"
+        cells = f"{row.scaling} {row.execution} {row.workspace}"
         for definition in row.definitions:
             symbol = re.split(r"[ (]", definition, maxsplit=1)[0]
             assert re.search(rf"(?<![A-Za-z]){re.escape(symbol)}(?![A-Za-z])", cells), (

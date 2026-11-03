@@ -18,6 +18,45 @@ from esolangs.languages.circuit_diagram.generator.layout import _Layout
 _XOR2_FLAT_WIDTH = 6
 
 
+def parity_circuit(table: str, *, folded: bool) -> str | None:
+    """Return a four/six-column ladder for full parity, otherwise None."""
+    n = len(table).bit_length() - 1
+    if n < 2:
+        return None
+    parity = bias = int(table[0])
+    for row, value in enumerate(table):
+        if int(value) != parity:
+            return None
+        carry = row
+        while carry & 1:
+            parity ^= 1
+            carry >>= 1
+        parity ^= 1
+    layout = _Layout()
+    for k in range(n):
+        row = 0 if k == 0 else 2 if k == 1 else 5 * k - 3
+        layout.input_port(row, 1, k)
+    for k in range(n - 1):
+        row = 1 + 5 * k
+        signal = n + k
+        layout.glyph(2, row, "X" if k == 0 and bias else "x")
+        layout.junction(3, row, signal)
+        if k < n - 2 or folded:
+            layout.junction(3, row + 3, signal)
+            layout.run_vertical(3, row, row + 3, signal)
+            layout.junction(1, row + 3, signal)
+            layout.run_horizontal(1, 3, row + 3, signal)
+            layout.junction(1, row + 4, signal)
+            layout.run_vertical(1, row + 3, row + 4, signal)
+    if folded:
+        layout.glyph(2, row + 4, "-")
+        layout.glyph(3, row + 4, ":")
+    else:
+        layout.glyph(4, row, "-")
+        layout.glyph(5, row, ":")
+    return layout.render()
+
+
 def affine_circuit(table: str, width: int) -> str | None:
     """Return a direct XOR chain if binary-carry parity verifies the table."""
     n = _validate_truth_table(table)
@@ -36,22 +75,8 @@ def affine_circuit(table: str, width: int) -> str | None:
             bit += 1
         if bit < n:
             parity ^= coefficients[bit]
-    if n == 2 and all(coefficients):
-        if width < _XOR2_FLAT_WIDTH:
-            # Return the output below both inputs, then left. Two rows
-            # isolate its final junction from the colon's diagonal pin.
-            gate = "X" if constant else "x"
-            return f"-.\n  {gate}.\n-. |\n   .\n  .\n .\n |\n .-:"
-        # Adjacent input rows feed the two diagonal gate pins directly.
-        layout = _Layout()
-        for signal, row in enumerate((0, 2)):
-            layout.glyph(0, row, "-")
-            layout.junction(1, row, signal)
-        layout.glyph(2, 1, "X" if constant else "x")
-        layout.junction(3, 1, 2)
-        layout.glyph(4, 1, "-")
-        layout.glyph(5, 1, ":")
-        return layout.render()
+    if n >= 2 and all(coefficients):
+        return parity_circuit(table, folded=width < _XOR2_FLAT_WIDTH or n >= 3)
     builder = _Builder(narrow=True)
     rails = [builder.input_bus() for _ in range(n)]
     selected = [rail for bit, rail in enumerate(reversed(rails)) if coefficients[bit]]

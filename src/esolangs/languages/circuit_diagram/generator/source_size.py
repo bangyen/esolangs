@@ -38,7 +38,7 @@ def layout_source_size(model: _Layout) -> int:
 
     active: dict[int, int] = {}
     heap: list[int] = []
-    size = height - 1
+    size = height - 1 + len(model.prefix)
     for row in range(height):
         # A run's bottom row is already past it, so close first and open
         # second; a column whose runs touch there stays active throughout.

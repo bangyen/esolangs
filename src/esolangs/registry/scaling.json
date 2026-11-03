@@ -8,7 +8,7 @@
   "arrowqueue": "linear: worst A cells: the least-area cascade or fold, T - 1 leaves",
   "ascenic": "lower bound: worst N characters from n = 2: generated \u0398(T**2), N the size of the alternating table with its first pair flipped ([summary](#ascenic-bound))",
   "b_tapemark": "linear: worst A cells past n = 1: the least-area of four layouts",
-  "back": "linear: worst F cells: the smaller of the comb and the H-tree fold",
+  "back": "linear: worst F cells: pair comb through n=7, folded pair tree from n=8",
   "balik": "linear: nested boxes, odd inner levels side by side",
   "basicer": "linear: at most T + 2 lines: one menu per diagram node",
   "basicfuck": "linear: at most 14T + 16n + 43 characters: the plain tree",

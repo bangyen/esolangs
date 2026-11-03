@@ -23,8 +23,8 @@ BAND = "by-hand"
 COST = 4.0
 
 _ASCII_ZERO = 48
-_STEP = re.compile(r"([+-]\d+) (\w+)>=(\d+)")
-_WEIGHT = re.compile(r"\+(\d+) (\w+)>=(\w+)")
+_STEP = re.compile(r"([+-]?\d+) (\w+)>=(\d+)")
+_WEIGHT = re.compile(r"\+?(\d+) (\w+)>=(\w+)")
 
 
 def parse(program: str) -> tuple[int, list[int], list[tuple[int, int]]]:
@@ -133,9 +133,9 @@ def check_l3(max_n: int = 12) -> list[str]:
         assert latches == n, f"n={n}: {latches} latches for {n} inputs"
         assert len(weights) == n, f"n={n}: {len(weights)} weight lines"
         assert f"-1 T>={2 * n - 1}" in emitted, f"n={n}: the gate never dips"
-        assert f"+2 T>={2 * n}" in emitted, f"n={n}: the gate never lifts"
-        assert f"+1 T>={2 * n}" in emitted, f"n={n}: an n+1th read is not cancelled"
-        assert f"+1 T>={2 * n + 1}" in emitted, f"n={n}: PRINT fires at the wrong tick"
+        assert f"2 T>={2 * n}" in emitted, f"n={n}: the gate never lifts"
+        assert f"1 T>={2 * n}" in emitted, f"n={n}: an n+1th read is not cancelled"
+        assert f"1 T>={2 * n + 1}" in emitted, f"n={n}: PRINT fires at the wrong tick"
         assert len(steps) <= 1 << n, f"n={n}: more steps than rows"
         lines.append(
             f"  n={n:2d}: {windows} windows, {latches} latches, {len(weights)} "
