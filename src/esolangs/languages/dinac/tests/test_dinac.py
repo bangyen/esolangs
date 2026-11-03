@@ -246,6 +246,15 @@ def test_functions_overload_recurse_and_loop() -> None:
         source = add + inc + f"OUT inc(add({a:02X},{b:02X}))\nOUT inc('{c})"
         assert out(source) == f"{(a + b + 1) % 256:02X}" + chr((ord(c) + 1) % 128)
 
+    decrement = (
+        inc.replace("inc", "dec")
+        .replace("GIVE n+", "GIVE n-")
+        .replace("GIVE c+", "GIVE c-")
+    )
+    for value in (0, 1, 127):
+        source = decrement + f"OUT dec({value:02X})\nOUT dec('{chr(value)})"
+        assert out(source) == f"{(value - 1) % 256:02X}" + chr((value - 1) % 128)
+
 
 @pytest.mark.parametrize(
     ("code", "match"),
