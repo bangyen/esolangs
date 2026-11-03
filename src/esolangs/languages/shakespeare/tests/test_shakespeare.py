@@ -1,5 +1,6 @@
 """Tests for the Shakespeare interpreter."""
 
+from itertools import product
 from pathlib import Path
 
 import pytest
@@ -38,6 +39,22 @@ def test_the_page_fragment_prints_minus_two_then_hamlet_plus_two() -> None:
         "You are as lovely as the sum of Hamlet and a brave tree. Open thy heart."
     )
     assert out == "-22"
+
+    def noun(sign: int, adjectives: int) -> str:
+        return "a " + "big " * adjectives + ("rose" if sign > 0 else "coward")
+
+    for sa, sb, na, nb in product((-1, 1), (-1, 1), range(4), range(4)):
+        a, b = sa * 2**na, sb * 2**nb
+        body = (
+            f"You are {noun(sa, na)}!\n"
+            f"Juliet:\nYou are {noun(sb, nb)}!\n"
+            "You are the sum of Romeo and Juliet! Open your heart!\n"
+            "Romeo:\nYou are the product of Romeo and Juliet! Open your heart!"
+        )
+        io = ScriptedIO("unused")
+        run(_play(body), io)
+        assert io.getvalue() == f"{a + b}{a * (a + b)}"
+        assert io.position() == 0
 
 
 def test_truth_machine_halts_on_zero_and_repeats_one() -> None:
