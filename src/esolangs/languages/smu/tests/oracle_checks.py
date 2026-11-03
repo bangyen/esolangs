@@ -108,6 +108,8 @@ def check_raw_smu():
     ):
         _check(_Machine, source, expanded, "A")
 
+    _check(_Machine, "()()()", "()()()", "Ā")
+
     class MissingOutput(_Machine):
         def _write(self, _text):
             pass
