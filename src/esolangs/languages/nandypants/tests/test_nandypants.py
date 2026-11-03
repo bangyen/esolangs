@@ -23,6 +23,9 @@ def test_the_pages_cat_copies_input_until_eof() -> None:
 
 
 def test_input_is_reduced_modulo_256() -> None:
+    from .oracle_checks import check_raw_nandypants
+
+    check_raw_nandypants()
     assert _run(CAT, "Ł") == ("A", True)
 
 
