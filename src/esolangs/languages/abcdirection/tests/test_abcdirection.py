@@ -57,6 +57,9 @@ def test_each_command_by_heading(
 
 
 def test_the_pointer_wraps_around_the_grid():
+    from .oracle_checks import check_raw_abcdirection
+
+    check_raw_abcdirection()
     state, _ = _advance(_State(0, 0, LEFT, 0), ("BB", "BB"), 0, 0, (0, 0), None)
     assert (state.x, state.y) == (1, 0)
 
