@@ -2,6 +2,7 @@
 
 import contextlib
 from functools import partial
+from itertools import product
 from typing import Any, ClassVar
 
 import pytest
@@ -81,6 +82,11 @@ class TestLiteralBase:
     def test_rebasing_that_example_gives_the_wikis_stated_output(self) -> None:
         """Its *logic* is right; only the base its literals were written in."""
         assert _run(DEPENDENCY_REBASED) == "0110"
+
+        for a, b in product((0, 1, 7, 16, 255), repeat=2):
+            source = DEPENDENCY_REBASED.replace("equals(5, 3)", f"equals({a}, {b})")
+            source = source.replace("equals(1, 1)", f"equals({b}, {a})")
+            assert _run(source) == ("1100" if a == b else "0011")
 
     def test_a_pure_binary_reading_cannot_lex_four_examples(self) -> None:
         """The literals that refute reading every number as binary."""
