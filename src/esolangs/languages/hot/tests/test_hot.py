@@ -13,6 +13,10 @@ def test_a_starved_head_gets_f_appended() -> None:
     machine.step()
     assert machine.stack == ["F", "F"]
 
+    from .oracle_checks import check_raw_hot
+
+    check_raw_hot()
+
 
 def test_an_unmatched_close_is_refused() -> None:
     with pytest.raises(ValueError, match="no matching"):
