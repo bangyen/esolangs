@@ -276,7 +276,8 @@ def test_spec_truth_machine_zero_branch() -> None:
 
     alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     for parts, mode in product(
-        product("ABYZ", repeat=3), ("between_letters", "after_each_letter")
+        (*product("ABYZ", repeat=3), "YABZY", "ZZYABZY"),
+        ("between_letters", "after_each_letter"),
     ):
         letters = "".join(parts)
         digits = [(alphabet.index(letter) + 1) % 26 for letter in letters]
