@@ -192,7 +192,7 @@ class TestFunction:
         program = "do" + "bo" + "do" + "ɡo" + "do" + "su" + "θi"
         assert run_program(program, "3\n") == "12"
 
-        for value, literal in product(range(9), range(1, 6)):
+        for value, literal in product((*range(9), 2**32), range(1, 6)):
             # The coda stores a literal. The builder then appends it twice,
             # consuming one deque entry per occurrence.
             setup = "ci" * literal + "n" + "cu" + "n"
