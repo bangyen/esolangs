@@ -37,6 +37,11 @@ def test_the_pages_equality_program_needs_floor_division(
 
 
 def test_say_prints_the_rest_of_the_line_and_a_plus_b_adds() -> None:
+    from esolangs.languages.creativescript_v2.tests.oracle_checks import (
+        check_raw_creativescript_v2,
+    )
+
+    check_raw_creativescript_v2()
     assert output("say! Hello world!") == "Hello world!"
     assert output("in! a\nin! b\nadd! a b c\nout! c", "2\n40\n") == "42"
 

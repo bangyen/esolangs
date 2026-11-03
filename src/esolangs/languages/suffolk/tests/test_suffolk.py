@@ -45,6 +45,11 @@ class TestSuffolk:
 
     def test_a_repeated_state_ends_the_run(self) -> None:
         """``run`` stops on a proof, not a count."""
+        from esolangs.languages.suffolk.tests.oracle_checks import (
+            check_raw_suffolk,
+        )
+
+        check_raw_suffolk()
         assert run_and_capture("!<.<<!") == "\x00"
 
     def test_cell_clamps_and_the_accumulator_subtracts(self) -> None:

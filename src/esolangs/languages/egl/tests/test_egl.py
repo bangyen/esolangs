@@ -26,6 +26,11 @@ def test_output(code: str, expected: str) -> None:
 
 
 def test_character_input() -> None:
+    from esolangs.languages.egl.tests.oracle_checks import (
+        check_raw_egl,
+    )
+
+    check_raw_egl()
     assert execute("1,1:x=", "42\n") == "52"
 
 
