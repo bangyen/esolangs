@@ -61,6 +61,7 @@ def test_literal_product_keeps_ignored_inputs(table: str, width: int | None) -> 
 @pytest.mark.medium
 def test_every_three_input_function_executes_through_png() -> None:
     _check_constants()
+    _check_majority()
     total = 0
     for encoded in range(256):
         truth_table = f"{encoded:08b}"
@@ -83,7 +84,8 @@ def test_every_three_input_function_executes_through_png() -> None:
     # Parent table lookup emitted 38,997 codels over this exhaustive corpus.
     # The halved lookup (retired 2026-10-28) held this at 34,062; storing the
     # complement past half zeros brings it to 33,882.
-    assert total == 33_870
+    # Majority and its complement now count their inputs.
+    assert total == 33_633
 
 
 @pytest.mark.slow
@@ -250,7 +252,7 @@ def test_compact_folds_execute_without_growing() -> None:
                 total += score(image)[1]
     # 40,868 under |width - height| first; max(width, height) first: 40,574.
     # The sum form and complemented lookup (2026-10-28): 40,256.
-    assert total == 40_244
+    assert total == 39_965
 
 
 @pytest.mark.parametrize("width", [13, 19, 30])
@@ -262,7 +264,77 @@ def test_compact_turns_and_halt_execute(width: int) -> None:
 
 def test_compact_majority_is_smaller() -> None:
     image = esolangs.generate("Piet", "00010111", balance=True)
-    assert (len(image.rows[0]), len(image.rows)) == (20, 9)
+    assert (len(image.rows[0]), len(image.rows)) == (13, 3)
+
+
+def _check_majority() -> None:
+    from esolangs.languages.piet.interpreter import _Machine
+    from esolangs.languages.piet.tests.formulas import _codels, _steps, _written
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(3, 9):
+        for inverted in (False, True):
+            table = "".join(
+                str(int((row.bit_count() > n // 2) ^ inverted)) for row in range(1 << n)
+            )
+            for options in ({}, {"width": 13}, {"balance": True}, {"scale": 3}):
+                image = esolangs.generate("Piet", table, **options)
+                assert isinstance(image, Raster)
+                image = Raster.from_png(image.to_png())
+                scale = 3 if options == {"scale": 3} else 1
+                for row in (0, 1, (1 << n) // 3, (1 << n) - 1):
+
+                    class ReadFirstIO(ScriptedIO):
+                        expected = n
+
+                        def _write(self, value):
+                            assert self.reads == self.expected
+                            super()._write(value)
+
+                    io = ReadFirstIO("\n".join(f"{row:0{n}b}") + "\n7\n")
+                    machine = _Machine(image, io, scale=scale)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps < 10_000
+                    assert io.getvalue() == table[row]
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_token() == "7"
+                    if not options:
+                        assert len(image.rows) * len(image.rows[0]) <= _codels(n, "")
+                        assert steps <= _steps(n, "")
+                        assert written.bits <= _written(n, "")
+    # Ignored reads before, between and after the five essential positions.
+    selected = (1, 2, 4, 6, 7)
+    table = "".join(
+        str(int(sum((row >> (8 - i)) & 1 for i in selected) > 2)) for row in range(512)
+    )
+    for options in ({}, {"width": 13}, {"balance": True}):
+        image = esolangs.generate("Piet", table, **options)
+        assert isinstance(image, Raster)
+        for row in (0, 1, 170, 511):
+
+            class ProjectedIO(ScriptedIO):
+                def _write(self, value):
+                    assert self.reads == 9
+                    super()._write(value)
+
+            io = ProjectedIO("\n".join(f"{row:09b}") + "\n7\n")
+            machine = _Machine(image, io, scale=1)
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                steps += 1
+                assert steps < 10_000
+            assert io.getvalue() == table[row]
+            assert io.reads == 9
+            assert io.past_end == 0
+            assert io.input_token() == "7"
 
 
 def _check_constants() -> None:

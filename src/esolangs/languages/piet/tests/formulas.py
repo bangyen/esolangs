@@ -7,6 +7,8 @@ sizes ``[1] * (T + z)`` then a tail that depends on n only.
 So the shipped area is a function of (n, z): the worst is its maximum over z.
 Past half zeros the complement is stored instead, T - z zeros and a ``not`` on
 the selected entry, so the worst z is the middle one.
+Majority and its complement count their inputs in O(n) operations instead.
+They stay below these bounds; unchanged generic witnesses attain the maxima.
 From n = 8 a colour clash can cost a row (+32 codels at n = 8, in 53 of 1,277
 tables), the rows depend on the bit pattern, and only the fold's bound holds.
 """

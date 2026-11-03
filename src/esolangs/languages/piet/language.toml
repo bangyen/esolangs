@@ -6,7 +6,7 @@ backlinks = 65
 
 [proof_status]
 labels = ["finite lookup"]
-qualification = "each table entry is pushed and an input index selects its output; literal products replace conjunction tables"
+qualification = "a table stack and row index, literal conjunction products, or projected majority/complement counts"
 scaling = "linear: worst F codels for n = 2..7, then at most F"
 execution = "linear: worst F steps for n = 2..7, then at most 5T + 11n + 31: blocks plus turns"
 workspace = "linear: worst F bits for n = 2..7, then at most S: the stack"
@@ -74,6 +74,36 @@ verdict = "kept under the named-function rule: a literal product also races its 
 
 [audits]
 plain_rewrite = 2026-10-28
+trick_prototype = 2026-11-02
+
+[ablations.repeated_zero]
+arity = 8
+saving = 11.46
+seed = "random.Random(184700 + n)"
+tables = "200 random per n=7,8; named functions separately; majority/complement n=7..15"
+verdict = "superseded by majority_count under the complexity rule. Uniform DUP fails 200 random n=7/8: 8.495%/7.996% area (104038 -> 95200; 156398 -> 143892). Restricted majority and complement each save 12.069%/11.462% (522 -> 459; 759 -> 672), a sustained oscillation tending to 1/3; n=13/14/15 save 24.543%/19.783%/25.625% (inverse n=14 19.656%). Both clear the named-family bar, but storing T bits and passing a family flag through all render paths is unnecessary: the subsequent count reader uses O(n) operations. All new DUP plumbing and its family path are removed. Native extension completed both families through n=15 in 53.48 combined CPU-seconds; stopped before n=16 completed, no n=16 claim. Historical probe and isolated old helpers remain scratch only."
+
+[ablations.majority_count]
+seed = 0
+arity = 8
+saving = 88.54
+tables = "strict majority and complement independently at fixed n=7,8; exhaustive tables/rows n<=3; native projected/layout/scale controls"
+verdict = "kept: sum essential bits, seed from the first read, drain ignored reads, subtract floor(m/2) using push1/subtract pairs, push zero and compare greater; invert only for the complement. Actual scale-1 codel areas majority 522 -> 75 and 759 -> 87 (85.632%/88.538%), complement 522 -> 78 and 759 -> 90 (85.057%/88.142%). Independently against the already qualifying DUP reader the savings are 83.660%/87.054% and 83.007%/86.607%. A strip has A=3(2n+2floor(m/2)+5+b), commands 2n+2floor(m/2)+4+b; from n=7, saving >=1-(9n+18)/2^n increases toward 1 against either lookup. Added construction is one O(T) projected-family recognition/count helper and the existing greater opcode; transient seeded/invert flags and an O(log n)-bit runtime accumulator replace the T-entry stack. No new integer builder, cache, layout, source race or per-render family flag. The old majority lookup and new DUP implementation are superseded. Other functions keep their existing path. Generic exact proof witnesses and all scopes/coefficients, eight pins, AND example and parity/AND anchors stay unchanged. New n=8 majority anchor 87 codels. n=3 default corpus 33870 -> 33633, balanced 40244 -> 39965. Native checks cover both biases, physical input order and drain, PNG/default/narrow/balance/scale3, resources and following record; no large count run is needed for the elementary increasing lower bound."
+
+
+[ablations.chunked_entry_push]
+arity = 8
+saving = -34.91
+seed = "random.Random(184700 + n)"
+tables = "200 random per n=7,8; native exhaustive n<=3 and sampled n=4..8"
+verdict = "rejected: little-endian triples store sum(bit_i*2^i), retain row below the chunks using explicit depth rolls, select floor(row/3), and divide by q(q+1)/2+1 for q=row mod 3, then mod 2. Actual scale-1 codel area grows 34.061%/34.912% (104038 -> 139474; 156398 -> 211000). Blocks 3..7 do not always fit the packed lane room; the bounded variant spells every integer above 2 exactly in binary, since the old power-of-two-only doubling would silently miscompile chunk depths/values. This needs an additional integer-construction path, retained-row state and extraction operations without a qualifying saving; none ships."
+
+[ablations.pair_chunk_lookup]
+arity = 8
+saving = -6.73
+seed = "random.Random(184700 + n)"
+tables = "same corpus as chunked_entry_push"
+verdict = "rejected: little-endian pairs use the same retained-row selection, with divisor (row mod 2)+1. Actual codel area grows 11.069%/6.730% (104038 -> 115554; 156398 -> 166923), 200/193 tables grow. The extra depth rolls and exact bounded integer construction consume the entry saving. An old-whole-program fallback is not retained. The three uniform prototypes together passed 2249 native PNG row/control groups, including odd/even rows and every table/row n<=3; all probes fire, wrong-table control fails 8/8. No pair/triple production paths or persistent state remain."
 
 [ablations.packing_offsets_prototype]
 saving = 0.7404

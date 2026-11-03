@@ -27,6 +27,7 @@ _ADD = (1, 0)
 _SUBTRACT = (1, 1)
 _MULTIPLY = (1, 2)
 _NOT = (2, 2)
+_GREATER = (3, 0)
 _POINTER = (3, 1)
 _DUPLICATE = (4, 0)
 _ROLL = (4, 1)
@@ -90,8 +91,37 @@ def _literal_product(
     return operations
 
 
+def _majority_count(
+    table: str, essential: list[int], inputs: int
+) -> list[_Operation] | None:
+    """Count essential bits for majority or its complement, draining other reads."""
+    invert = table[0] == "1"
+    if any(
+        (bit == "1") != ((row.bit_count() > len(essential) // 2) ^ invert)
+        for row, bit in enumerate(table)
+    ):
+        return None
+    operations = []
+    seeded = False
+    for cell in range(inputs):
+        operations.append(_Operation(_IN_NUMBER))
+        if cell not in essential:
+            operations.append(_Operation(_POP))
+        elif seeded:
+            operations.append(_Operation(_ADD))
+        else:
+            seeded = True
+    for _ in range(len(essential) // 2):
+        operations.extend((_push(1), _Operation(_SUBTRACT)))
+    operations.extend((_push(1), _Operation(_NOT), _Operation(_GREATER)))
+    if invert:
+        operations.append(_Operation(_NOT))
+    operations.append(_Operation(_OUT_NUMBER))
+    return operations
+
+
 def _candidates(truth_table: str, inputs: int) -> list[list[_Operation]]:
-    """Return the lookups worth comparing: a literal product, else the plain one.
+    """Return literal products, a majority count, or the plain lookup.
 
     Every input is read, but only the essential ones index the table: an
     ignored input is popped, and the stored table is projected onto the rest.
@@ -116,6 +146,8 @@ def _candidates(truth_table: str, inputs: int) -> list[list[_Operation]]:
     ]
     if direct:
         return direct
+    if (majority := _majority_count(truth_table, essential, inputs)) is not None:
+        return [majority]
     # An entry is 1 codel for a 1 and 2 for a 0: the complemented table is
     # also stored, with a ``not`` on the selected entry.
     complement = "".join("10"[int(bit)] for bit in truth_table)

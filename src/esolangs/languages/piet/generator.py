@@ -2,10 +2,12 @@
 
 Pushes one entry per row, reads the inputs into a row number, and ``roll``
 brings the entry to the top to print.  A one-hot or one-cold table is a
-product of literals instead; see :mod:`esolangs.generation.raster_lookup`.
+product of literals instead; majority and its complement sum and compare
+the essential inputs. See :mod:`esolangs.generation.raster_lookup`.
 
 Size:
     O(T) codels; n=10 parity: 2,226 codels, n=10 and: 66 codels.
+    n=8 majority: 87 codels (scale 1), counting its essential inputs.
     Constant strips use 6n+12-3b codels (scale 1), 2n+3-b steps and
     4+bl(2n+3-b)+bl(2n-1)+bl(n) written bits; packing can reduce the area.
 """
