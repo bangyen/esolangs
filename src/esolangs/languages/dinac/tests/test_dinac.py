@@ -1,5 +1,7 @@
 """Tests for the DINAC interpreter, pinned to the wiki's examples."""
 
+from itertools import product
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -237,6 +239,12 @@ def test_functions_overload_recurse_and_loop() -> None:
     assert out(deep) == "07"
     nested = AND + "OUT and(and(01,01),~and(01,00))"
     assert out(nested) == "01"
+
+    # The overloaded function increments according to the argument's type.
+    inc = "DEF/00 inc n:00\n    GIVE n+\nDEF/\\0 inc c:\\0\n    GIVE c+\n"
+    for a, b, c in product((0, 1, 127, 254, 255), (0, 1, 4), ("A", "~", "\x7f")):
+        source = add + inc + f"OUT inc(add({a:02X},{b:02X}))\nOUT inc('{c})"
+        assert out(source) == f"{(a + b + 1) % 256:02X}" + chr((ord(c) + 1) % 128)
 
 
 @pytest.mark.parametrize(
