@@ -113,3 +113,10 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: byte wrap bit mask. 452 programs, 86 halt cleanly; no structural trace differences, control differs on 411. Step throughput at longest 10/20/40 workload breadths: +0.67%/+0.17%/+0.75%. No production change or global performance conclusion; adoption needs broader validation."
+
+[interpreter_ablations.bitmask_runtime_recheck]
+price = -0.2248
+workload = "complete public run, parsing and final output included"
+seed = 1847
+tables = "random/parity at n=3/5/7; seed 1847+n; four asymmetric rows; five interleaved pairs at 0.2s per lap"
+verdict = "not adopted: byte masks remain mixed on complete runs (-0.22% at n=3 random; other minimum-lap savings 0.29–0.69%). Longer laps do not establish a consistent gain. The earlier expanded native timeout is not counted as a passing audit; production is unchanged."

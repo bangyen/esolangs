@@ -176,3 +176,10 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: copy sparse tape only for writes. 245 programs, 95 halt cleanly; no structural trace differences, control differs on 146. Step throughput at longest 10/20/40 workload breadths: +1.85%/-1.10%/+0.31%. No production change or global performance conclusion; adoption needs broader validation."
+
+[interpreter_ablations.immutable_shell_tape]
+price = 17.4850
+workload = "complete public run; existing geometry cache warm"
+seed = 0
+tables = "all generated tables/rows through n=3 plus 3000 seeded raw programs; random/parity complete runs at n=3/5/7, seed 1847+n, four asymmetric rows"
+verdict = "kept: retain the pure transition's frozen private tape in the shell instead of copying it back to a dict. Preserve the immutable input proxy, including the first transition. Complete-run savings 17.48\u201335.11%; cold geometry batches also checked. 5193 native traces through the production factory match, 224 clean halts, 2267 changed-site controls; 48 uncached/cached constructor comparisons match. Expanded native check takes 38.2s. The original copy-only-on-write proposal aliases mutable transition inputs and is rejected; the pure transition still copies every input tape."

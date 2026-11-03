@@ -58,6 +58,7 @@ from esolangs.runtime.io import IO
 _FUNCTIONS = frozenset("+-*/%:~!$(<)H")
 _NUMERIC = {"+": 2, "-": 1, "*": 2, "/": 2, "%": 1}
 _ANY = {":": 1, "~": 2, "!": 1, "(": 1}
+_SPECIAL_ARITY = {"$": 2, "<": 2, ")": 1, "H": 0}
 
 #: A number, a function's character, or a block.
 type _Value = int | str | Block
@@ -156,7 +157,7 @@ def _arguments(name: str, forward: _Stack) -> list[_Value] | None:
         args = _take(forward, _ANY[name])
         ok = args is not None
     else:
-        args = _take(forward, {"$": 2, "<": 2, ")": 1, "H": 0}[name])
+        args = _take(forward, _SPECIAL_ARITY[name])
         ok = args is not None and (
             (name == "$" and type(args[0]) is int)
             or (name in "<)" and isinstance(args[0], Block))

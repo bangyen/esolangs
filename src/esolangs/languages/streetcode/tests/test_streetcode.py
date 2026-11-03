@@ -290,7 +290,8 @@ class TestPureTransition:
 
         machine = _Machine(street("C^O;"), ScriptedIO())
         before = machine.snapshot()
-        run = (machine._state, machine.cp, machine.cells, machine._done)  # noqa: SLF001
+        cells = {0: 5}
+        run = (machine._state, machine.cp, cells, machine._done)  # noqa: SLF001
         first = _advance(run, machine.grid, machine._graph)  # noqa: SLF001
         second = _advance(run, machine.grid, machine._graph)  # noqa: SLF001
         # The run and the machine are both untouched, and nothing was written.
@@ -298,6 +299,8 @@ class TestPureTransition:
         assert machine.io.getvalue() == ""
         assert first == second
         assert first[1] is None
+        cells[0] = 9
+        assert first[0][2][0] == 5
 
     def test_output_is_returned_not_written(self) -> None:
         from esolangs.languages.streetcode.interpreter import _advance

@@ -375,7 +375,8 @@ class _Machine:
             self._graph,
             value,
         )
-        self.cells = dict(frozen)
+        # The transition already owns and freezes a private tape copy.
+        self.cells = frozen
         if output is not None:
             self.io.print_char(chr(output))
 
