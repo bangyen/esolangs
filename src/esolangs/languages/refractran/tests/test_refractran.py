@@ -11,6 +11,9 @@ from esolangs.runtime.io import ScriptedIO
 
 def test_fraction_search() -> None:
     """Directions, malformed sources and serialized templates."""
+    from esolangs.languages.refractran.tests.oracle_checks import check_raw_refractran
+
+    check_raw_refractran()
     check_serialized_narrow_template_and_vm()
     cases = [
         ("2 3/2", "11"),

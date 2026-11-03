@@ -51,6 +51,9 @@ def test_empty_rule_and_queue() -> None:
 
 
 def test_queue_transition_and_cyclic_schedule() -> None:
+    from esolangs.languages.cyclic_tag.tests.oracle_checks import check_raw_cyclic_tag
+
+    check_raw_cyclic_tag()
     machine = _Machine("11;0,10", ScriptedIO())
     machine.step()
     assert machine.live == "011"

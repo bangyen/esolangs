@@ -72,6 +72,11 @@ class TestTheOtherWikiExamples:
 
 class TestBitwiseCyclicTag:
     def test_the_answer_is_the_last_deletion(self) -> None:
+        from esolangs.languages.bitwise_cyclic_tag.tests.oracle_checks import (
+            check_raw_bitwise_cyclic_tag,
+        )
+
+        check_raw_bitwise_cyclic_tag()
         assert run_program(run, "0,1") == "1"
         assert run_program(run, "0,0") == "0"
         # Two deletions, and the second one is what is reported.
