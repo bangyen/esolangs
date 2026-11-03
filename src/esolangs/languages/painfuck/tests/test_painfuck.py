@@ -1,6 +1,7 @@
 """Unit tests for the Painfuck interpreter."""
 
 import importlib
+from itertools import product
 
 import pytest
 
@@ -462,6 +463,16 @@ def test_branching_limit_admits_exactly_its_outcomes() -> None:
 def test_w_copies_the_right_neighbour_from_a_middle_cell() -> None:
     # Cells 2 and 4 hold 4 and 6; from cell 3, w takes 6, not the left 4.
     assert run_program("rpprppplwo") == "6"
+
+    # Start with the input at the origin, copy it from the left at cell 1,
+    # then square and halve before emitting both representations.
+    for value, subtract, coin in product((-19, 0, 5, 257), range(4), (0, 1)):
+        commands = "irlq" + "s" * subtract + "khypoue"
+        squared = (value - subtract) ** 2 // 2
+        result = squared + (0 if coin else 2)
+        assert run_program(commands, f"{value}\n", coin) == str(result) + chr(
+            result % 256
+        )
 
 
 def test_v_and_y_as_the_last_command_end_the_program() -> None:
