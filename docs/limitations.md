@@ -448,7 +448,10 @@ generators have one.
   tail synthesize zero, and the next tail word seeds a low trit of
   two. Four `p` operations then compute NAND on the low trits of
   source operands. All four input pairs halt in 200–229 steps.
-  Wiring runtime values through the gate remains open.
+  A 129-character control instead reads two ASCII bits and prints
+  their NAND in 40 instructions for every input pair. It saves both
+  inputs in the low bank and routes around the rotated formatter cell.
+  Chaining these gates within the decoder budget remains open.
 
   A period-47 rule cannot supply seven meanings either
   (`test_window_classes.py`). Its difference graph has independence 4.
