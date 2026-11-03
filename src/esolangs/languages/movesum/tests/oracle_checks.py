@@ -164,6 +164,7 @@ def check_raw_movesum():
     corpus += [
         "1=42 2=42\nsum\nmove 0 -1\nmove 0 0",
         "0=42\nmove 0 -1\nmove 0 1\nmove 2 1",
+        "0=042\nmove 0 -1",
         "42=1 42=2\nmove 0 -1",
         "0=0\nmove -1 -1",
         "\u0661=\u0662\nsum",

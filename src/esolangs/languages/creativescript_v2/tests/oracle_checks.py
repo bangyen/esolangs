@@ -161,6 +161,7 @@ def check_raw_creativescript_v2():
     corpus += [
         "say!",
         " \t say!  a\t b\r",
+        "set! a 1\nset! A 2\nout! a\nout! A",
         "set! c -0\nset! b c\nout! b",
         "set! 1_0 4\nout! 1_0",
         "set! \u0663 5\nout! \u0663",

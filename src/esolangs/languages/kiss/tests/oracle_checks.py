@@ -155,6 +155,7 @@ def check_raw_kiss():
     corpus.append("S(SKK)(SKK)(S(SKK)(SKK))")
     inputs = ("", "0", "1\nextra", "\n1", "x", " 0")
     results = [_agrees(_Machine, code, stdin) for code in corpus for stdin in inputs]
+    results.append(_agrees(_Machine, "S (S K S) K", "01"))
     assert {error for error, _ in results} == {None, "syntax", "input", "argument"}
     assert any(not trace[-1][1] for error, trace in results if error is None)
     assert _model("S (K K) (S K)", "0")[1][-1][2] == "0"
