@@ -17,6 +17,9 @@ def test_the_page_minsky_increment_runs() -> None:
 
 
 def test_a_jump_skips_the_rest_of_its_arm() -> None:
+    from .oracle_checks import check_raw_switchcase
+
+    check_raw_switchcase()
     assert _output("$_\n0?'3@\n$_\n0?+1\n$_\n0?@") == "0"
 
 
