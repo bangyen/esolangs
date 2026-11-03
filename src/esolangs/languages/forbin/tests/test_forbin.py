@@ -419,6 +419,19 @@ def test_forbin_for_loop_halts_without_a_false_cycle() -> None:
     machine = Forbin("main { for i:0..1 { x = 0; } }", ScriptedIO())
     assert run_until_halt_or_cycle(machine) is True
 
+    flip = "flip bit { return !bit; }"
+    for value in (0, 1, 2, 17, 65, 127, 128, 255):
+        names = "a,b,c,d,e,f,g,h"
+        inverted_reverse = ",".join(
+            f"(flip {bit})" for bit in reversed(names.split(","))
+        )
+        source = f"{flip} main {{ {names} = (in 0); out {inverted_reverse}; }}"
+        io = ScriptedIO(chr(value) + "unused")
+        run(source, io)
+        reversed_byte = int(f"{value:08b}"[::-1], 2)
+        assert io.getvalue() == chr(255 - reversed_byte)
+        assert io.position() == 1
+
 
 class TestPureTransition:
     """``_advance`` is a function of its arguments, and only of them."""
