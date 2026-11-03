@@ -108,6 +108,9 @@ def check_raw_collatz_multiverse():
     ):
         program = (("x", "x", "input", False), (dest, factor, addend, True))
         _check(_Machine, program, stdin)
+    _check(
+        _Machine, (("x", "x", "input", False), ("x", "x", "negativeOne", True)), "-4"
+    )
     _check(_Machine, (), "")
     _check(_Machine, (("x", "x", "lineNumber", True),), "")
 
