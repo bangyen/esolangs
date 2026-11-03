@@ -40,7 +40,7 @@ tables = "30 random at n<=8, 20 at n=9..10; parity, majority, and, or, thr3 with
 verdict = "replaced by a rule, 2026-10-30: the race (min of the plain tree and the complement's, counting down and closing with += 49) saved 0.72% on 200 random tables at n=8, 0.46% at n=10, but 26-29% on OR and NAND at n=10 (410 -> 303, 411 -> 293). Per the bar's named-function clause the race goes and a rule for that family stays: build the complement when ones outnumber zeros. The rule keeps every named gain (OR, NAND, thr2 662 -> 563, thr3 853 -> 779) except !majority at n=9 (859 vs 852), and saves 0.48% at n=8, 0.36% at n=10 on random; it builds one tree instead of two"
 
 [audits]
-trick_prototype = 2026-11-01
+trick_prototype = 2026-11-03
 blind_reimplementation = 2026-10-29
 plain_rewrite = 2026-10-29
 
@@ -55,3 +55,18 @@ verdict = "kept: canonical whole-constant folding. Reuse read cell a and leave a
 arity = 8
 saving = 18.246665
 verdict = "rejected: straight-line bit arithmetic for leaf/flag arms, with revised sharing costs and one reserved compiler cell, passes 76800 paired all-row executions on 100 random tables per n=7,8 (one Random(7) stream), without table growth. Characters 101364->85378 (15.77%) and 169209->138334 (18.25%); n=3 total 39327->36597. A larger-arity probe disproves sustained savings: ten tables per n=9..14 give 19.14,19.22,20.48,20.90,21.05,21.10%; three per n=15..18 give 24.04,18.87,10.95,7.96%. Each larger table ran old/new rows 0,1,floor(T/3),T-1; Random(184900) streams for each sweep. The fixed n=7,8 corpus misses the 20% declining gate. No arbitrary arity cap or candidate fallback; shipped generator, bounds and pins unchanged."
+
+
+[ablations.two_char_flag_names_20261103]
+arity = 8
+saving = 0.0
+seed = "Random(1000*n+i), i=0..19"
+tables = "20 generic per n7/8; exhaustive n<=3; 20 samples/all rows n4..6; firing controls n11/12"
+verdict = "rejected, completing raw2: give one-character names to the highest-saving flags; surplus flags require (m-1)*body >6m+11 before receiving two-character names. Preserve depth-ordered block emission, no whole-program min. Fixed7/8 actualchars20411/33939 unchanged, no cap fires; allsmall source/commands unchanged. Positive controls n11/n12 really allocate26/105 two-character flags and execute native endpoint rows; deleting those calls is rejected on9 sampled n11 rows. Named and/or/parity/strict-majority/threshold3 sources also remain unchanged at7/8. No production paths/state added, no searched name table. Existing bounds, arities, pins and example unchanged."
+
+[ablations.leaf_only_arithmetic_20261103]
+arity = 8
+saving = 4.744
+seed = "Random(1000*n+i), i=0..19"
+tables = "20 generic per n7/8; all276 tables/2120 rows n<=3; 20 samples/all rows n4..6"
+verdict = "rejected, completing raw3 independently of the broader arithmetic-arms prototype: only literal-one leaf arms use variable addition/subtraction; shared flag calls keep guards and the compiler still reserves its required variable-operand cell. Actual chars20411->19135 /33939->32329 (6.252/4.744%, declining), below the20% bar. n3 chars39327->36597, commands23128 unchanged,348 rows slow; n1/n2 also have1/10 slower rows. Named and/or/parity/strict-majority/threshold3 also fail: the largest savings are majority7.651/5.294%. All native outputs pass. Smaller programs prove the phase fires; failure of the larger arithmetic proposal was not used as evidence for this subset. No production paths/state added; all old proof scopes, pins and example unchanged."

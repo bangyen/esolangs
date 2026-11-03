@@ -145,12 +145,12 @@ Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat, Unsquare, What!?.
   Round 1 covered 111/111. Restart by increasing count of kept ablation
   rules, alphabetically within ties. The zero-trick queue is BASICER,
   CARP, CreativeScript v2, HQ9+ with headers, Qrain; all five are complete.
-  HQ9+ now folds constants. Next: Piet, Smu, Algebraic Programming Language. Record
+  All 114 audit markers are recorded; proof-coverage review remains. Record
   completion as `[audits] trick_prototype = <date>`; retain earlier evidence.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-113 of the 114 generators: ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection,
+114 of the 114 generators: ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection,
 AddSubJump, Algebraic Programming Language, Alight, Aprknia, ArrowQueue,
 Ascenic, B-tapemark, Back, Balik, BASICER, Basicfuck, Befunge, Between,
 BFStack, Bitdeque, Bitwise Cyclic Tag, bit~, Bleh, Blindfolded Arithmetic,
@@ -165,7 +165,7 @@ Nandypants, NOR machine, NQ, Object disoriented, Packlang, Painfuck,
 Parenthesys, Piet, Pilas, Pointless, Qoibl, Qrain, Quassaunt, RAM0,
 REFRACTRAN, Retrograde, ROTfuck, Rubic, S*bleq, SendStuff, Shakespeare, SLOW
 ACV MAMMALIAN, Smallfuck, Smu, Sonata, SStack, Stisp, Streetcode, Subleq,
-Suffolk, Super SNUSP, SwitchCase, Taglate, Thue, Unary, Underload, Unlambda,
-Unsquare, What!?, Whitespace.
+Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat, Thue, Unary, Underload,
+Unlambda, Unsquare, What!?, Whitespace.
 
 <!-- TRICK-PROTOTYPES:END -->

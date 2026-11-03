@@ -53,7 +53,7 @@ def test_every_kept_level_is_tested_at_every_node() -> None:
 
     def tests(table: str) -> int:
         program = _tree(table)
-        return sum(map(program.count, "◐◑◒"))
+        return _pops(program)
 
     assert tests("00001111") == 1  # the first input alone
     assert tests("01010101") == 1  # the last input alone
@@ -61,9 +61,36 @@ def test_every_kept_level_is_tested_at_every_node() -> None:
     # The second input is tested under both values of the first.
     assert tests("00010101") == 6
     assert "⬒" not in _tree("00010101")
+    _check_literal_leaf_outputs()
     for table in ("00110011", "00010101", "01011010"):
         for row, expected in enumerate(table):
             assert _run(table, row) == (expected, 3)
+
+
+def _check_literal_leaf_outputs() -> None:
+    from esolangs.languages.thisthat.interpreter import _Machine
+    from esolangs.languages.thisthat.proof_formulas import execution
+
+    for table in ("01", "10", "01010101", "10101010", "11110000"):
+        n = len(table).bit_length() - 1
+        source = thisthat(table)
+        assert "◧" in source
+        for row, expected in enumerate(table):
+            stream = ScriptedIO(format(row, f"0{n}b") + "\nQ")
+            machine = _Machine(source.splitlines(), stream)
+            cycles = 0
+            while not machine.halted:
+                machine.step()
+                cycles += 1
+                assert len(machine.pointers) <= 1
+                assert all(
+                    p.channel != "data" or p.value in (0, 1) for p in machine.pointers
+                )
+            assert stream.getvalue() == expected
+            assert stream.reads == n
+            assert stream.input_char() == 10
+            assert stream.input_char() == ord("Q")
+            assert cycles <= execution(n, source)
 
 
 @pytest.mark.medium
@@ -75,8 +102,8 @@ def test_pruning_never_grows_a_table() -> None:
             size = len(thisthat(table))
             assert size <= len(_tree(table, prune=False))
     tables = [f"{value:08b}" for value in range(256)]
-    assert sum(len(thisthat(table)) for table in tables) == 77_116
-    assert sum(len(_tree(table, prune=False)) for table in tables) == 199_936
+    assert sum(len(thisthat(table)) for table in tables) == 47_482
+    assert sum(len(_tree(table, prune=False)) for table in tables) == 188_416
 
 
 @pytest.mark.medium
@@ -199,10 +226,14 @@ def test_shared_residual_buses_execute_within_ledger() -> None:
     def area(source):
         return len(source.splitlines()) * max(map(len, source.splitlines()))
 
-    assert (area(plain), area(program)) == (12995, 5537)
+    assert (area(plain), area(program)) == (11413, 2343)
     shared = shared_tree(table)
     assert shared is not None
     assert shared[1] == 335
+    for row, expected in enumerate(table):
+        io = ScriptedIO(f"{row:08b}")
+        run(shared[0].splitlines(), io)
+        assert (io.getvalue(), io.reads) == (expected, 8)
     assert_shared_program(
         "thisthat",
         table,
@@ -272,7 +303,11 @@ def test_shared_unequal_bus_banks_execute_all_rows() -> None:
     rng = random.Random(15)
     parts = ["".join(rng.choice("01") for _ in range(16)) * 4 for _ in range(3)]
     table = "".join(parts[i] for i in (0, 1, 2, 0, 2, 1, 0, 2))
-    source = thisthat(table)
+    from esolangs.languages.thisthat.generator import _coalesce, shared_tree
+
+    shared = shared_tree(table)
+    assert shared is not None
+    source = _coalesce(shared[0])
     area = len(source.splitlines()) * max(map(len, source.splitlines()))
     assert area == 13065 < 14283  # Preceding equal-bank emitted area.
     for row, expected in enumerate(table):
@@ -318,15 +353,21 @@ def test_balance_matches_the_old_one_column_narrowing_search() -> None:
 
 
 def test_a_dag_over_the_cycle_bound_is_refused() -> None:
-    """The shared form is smaller here but runs past 32 * 2^(n/2) - 29 cycles."""
+    """An over-bound DAG stays inadmissible after literal leaves shrink the tree."""
+    from esolangs.languages.thisthat.generator import _admit_shared, shared_tree
+
     table = "0000111011101111"
     source = esolangs.generate("thisthat", table)
-    assert len(source) == 799
+    assert len(source) == 395
+    shared = shared_tree(table)
+    assert shared is not None
+    assert shared[1] > 32 * 2**2 - 29
+    assert not _admit_shared(_tree(table), shared[0], shared[1], 4)
     assert evaluate_generated("thisthat", table) == table
 
 
 @pytest.mark.parametrize(
-    ("n", "side"), [(6, 106), pytest.param(8, 218, marks=pytest.mark.medium)]
+    ("n", "side"), [(6, 69), pytest.param(8, 138, marks=pytest.mark.medium)]
 )
 def test_balance_races_the_flat_tree(n: int, side: int) -> None:
     """Contracted flat trees retain their balanced size pins."""
@@ -402,5 +443,5 @@ def _check_constants() -> None:
                     assert io.reads == n
                     assert io.input_char() == ord("1")
     assert (
-        sum(len(esolangs.generate("thisthat", f"{v:08b}")) for v in range(256)) == 77116
+        sum(len(esolangs.generate("thisthat", f"{v:08b}")) for v in range(256)) == 47482
     )

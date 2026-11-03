@@ -7,6 +7,7 @@ def _cells(n: int, _: str) -> int:
     Levels pitch 8 * 2^((n - l - 1) // 2) (span + 2 router steps); even l span
     the width, odd l the height (+ 2 for the loader row).
     """
+    # Literal pairs stay within the old trunk/router/child footprint.
     if n % 2 == 0:
         side = 16 * ((1 << n // 2) - 1)
         return (side + 1) * (side + 3)

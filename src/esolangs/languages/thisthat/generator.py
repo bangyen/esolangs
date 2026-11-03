@@ -1,13 +1,14 @@
 """thisthat Boolean program generator: a bistack-routed planar decision tree.
 
 A loader reads each input and pushes essential bits to the bistack; each node
-pops one and routes by a ``◒``/``◑`` router, ignored inputs only read.  Every
+pops one and routes by a ``◒``/``◑`` router; a final mixed pair emits
+its bit or NOT directly. Ignored inputs only read. Every
 kept input is tested at every node.  A bounded DAG replaces the tree when
 smaller; narrow widths try rotation, strips and streaming trees.
 
 Size:
     Linear area in T for the plain tree; n=8 parity: 6,139 chars, n=10 and:
-    3,015 chars, n=10 random 1847: 66,063 chars. Constants: 2n+5 cells
+    2,367 chars, n=10 random 1847: 36,199 chars. Constants: 2n+5 cells
     and cycles; the balanced chain folds without adding transit cells.
 
 Decisions:
@@ -23,6 +24,7 @@ from typing import Literal, NamedTuple
 from esolangs.generation.helpers import (
     _validate_truth_table,
     grid_area,
+    grid_rank,
     grid_width,
     narrowest_grid,
     read_at,
@@ -302,6 +304,26 @@ class _LayoutTree(_TreeEmitter):
         self._flat = flat
         self._axes = ((1, 0), (0, 1))
 
+    def run(self, level: int, lo: int, hi: int, point: _Point, context: _Point) -> None:
+        """Pop mixed leaf pairs directly into their identity or NOT output."""
+        if hi - lo != 2 or self._table[lo] == self._table[lo + 1]:
+            super().run(level, lo, hi, point, context)
+            return
+        builder = self._builder
+        builder.node(point, "◧")
+        end = self._exit(point, context)
+        builder.connect(_path(point, end, self._leaf_axis(context)), "double")
+        if self._table[lo] == "0":
+            builder.node(end, "◇")
+            return
+        # Bend into the old positive-child footprint: a straight NOT exit
+        # enlarged small diagrams. See [ablations.literal_leaf_pair].
+        builder.node(end, "□")
+        axis = self._axes[level % 2]
+        output = (end[0] + 2 * axis[0], end[1] + 2 * axis[1])
+        builder.node(output, "◇")
+        builder.connect(_path(end, output, self._child_axis(level)), "double")
+
     def _span(self, level: int) -> int:
         # ``flat`` halves the vertical pitch: a 2:1 (columns:rows) block.
         vertical = not self._axes[level % 2][0]
@@ -415,7 +437,12 @@ def _diagram(truth_table: str, width: int | None = None) -> str:
         # Top-to-bottom update order reads the first input first; the result
         # returns along the lower wire to its input node, which now prints.
         return "▣\n│\n◇\n║\n▦\n║\n◇\n│\n▣"
-    plain = _tree(truth_table)
+    # Reuse the balanced pitch: 7.12% fewer exhaustive n=3 commands after
+    # literal leaves, without larger or slower tables. See [ablations.default_flat].
+    plain = min(
+        (_coalesce(_tree(truth_table)), _coalesce(_tree(truth_table, flat=True))),
+        key=grid_rank,
+    )
     program = plain
 
     shared = shared_tree(truth_table)

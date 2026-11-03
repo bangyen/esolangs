@@ -4,7 +4,7 @@
   "addsubjump": "linear: worst P characters past n = 5, at most min(P, R) below",
   "algebraic_programming_language": "linear: at most F characters: 10T + 4n + 6, n = 2..14",
   "alight": "linear: worst T/2 + 16n + 61 + digits(48(T/2-1)) characters: one literal",
-  "aprknia": "linear: at most 39T characters: one 30-command node per branch",
+  "aprknia": "linear: at most 39T characters: one at-most22-command node per branch",
   "arrowqueue": "linear: worst A cells: the least-area cascade or fold, T - 1 leaves",
   "ascenic": "lower bound: worst N characters from n = 2: generated \u0398(T**2), N the size of the alternating table with its first pair flipped ([summary](#ascenic-bound))",
   "b_tapemark": "linear: worst A cells past n = 1: the least-area of four layouts",
