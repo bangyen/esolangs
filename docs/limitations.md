@@ -424,6 +424,13 @@ generators have one.
   any aligned four-trit window of three such maps carries at least 96 of
   its 81 values, so no three are disjoint.
 
+  An address-aware decoder can distinguish all eight loader symbols.
+  For character value `x` at address `a`, the residue
+  `(x - 33 + a) % 47` takes eight distinct values. All 752
+  symbol-phase pairs round-trip through the loader. This packs 131,072
+  bits into 43,691 source characters. Native address selection and
+  residue decoding remain open.
+
   A period-47 rule cannot supply seven meanings either
   (`test_window_classes.py`). Its difference graph has independence 4.
   A six-point class covering all 47 translates has 48 incidences;
