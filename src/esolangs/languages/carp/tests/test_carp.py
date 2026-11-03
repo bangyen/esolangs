@@ -29,6 +29,9 @@ def test_page_addition_program(a: int, b: int) -> None:
 
 
 def test_inc_at_15_jumps_without_wrapping() -> None:
+    from esolangs.languages.carp.tests.oracle_checks import check_raw_carp
+
+    check_raw_carp()
     code = "INC r1 1\n" * 15 + "INC r1 18\nOUT r1 0\nOUT r1 0\nCLR r1 0\nOUT r1 0"
     assert _run(code) == "150"  # line 17 skipped, no wrap to 0
 

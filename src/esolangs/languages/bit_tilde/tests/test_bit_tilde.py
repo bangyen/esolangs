@@ -84,6 +84,9 @@ class TestBitTilde:
         assert len(machine.tape) == 10  # two moves right, eight bits of window
 
     def test_input_flips_rather_than_overwrites(self) -> None:
+        from esolangs.languages.bit_tilde.tests.oracle_checks import check_raw_bit_tilde
+
+        check_raw_bit_tilde()
         """The spec says ``)`` flips its window by the code: ``A ^ B`` is 3."""
         assert run_scripted("))(", "AB") == "\x03"
 
