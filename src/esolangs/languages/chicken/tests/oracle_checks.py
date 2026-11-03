@@ -38,6 +38,8 @@ def check_raw_chicken():
     for condition, offset in product((0, 1), (0, 1)):
         expected = "0" if condition and offset else "chicken"
         _output_case((10 + condition, 10 + offset, 8, 1), "", expected)
+    # Jump over the output arm, then jump back to it with offset -7.
+    _output_case((11, 12, 8, 1, 0, 11, 10, 17, 3, 8), "", "chicken")
     _output_case((11, 15, 7, 10), "", "chicken")
     _output_case((12, 6, 0, 10, 2), "", "12")
 
