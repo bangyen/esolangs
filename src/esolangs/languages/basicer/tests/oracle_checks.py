@@ -158,6 +158,7 @@ def check_raw_basicer():
     ]
     inputs = ("", "1\n2\n", " 2\r\n1\n", "0\n", "x\n", "+1\n", "--1\n", "²\n")
     results = [_agrees(_Machine, code, stdin) for code in corpus for stdin in inputs]
+    results.append(_agrees(_Machine, "GOTO 2 3 4\nPRINT a\nPRINT b\nPRINT c", "3\n"))
     invalid = (
         "PRINT\tx",
         "clear",
