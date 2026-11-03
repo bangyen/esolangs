@@ -117,7 +117,7 @@ def check_raw_fackward():
         _ARITY, (0, 1, 65, "!", (66,)), (0, 2, ()), ("", "xyZ")
     ):
         _check(_Machine, (op, a, b, "H"), stdin)
-    for program in ((), (":", ":"), ("-", 1, "$", "H"), (0xD800,)):
+    for program in ((), (":", ":"), ("-", 1, "$", "H"), (0xD800,), (256,)):
         _check(_Machine, program, "abc")
 
     class SkippedStep(_Machine):
