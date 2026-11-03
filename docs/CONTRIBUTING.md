@@ -184,6 +184,11 @@ at the largest measured arity; cite that measurement. Minimal spelling
 Size counts characters. Packed literals may carry at most 8 bits per
 character or grid cell; code points above U+00FF merely hide wider UTF-8.
 
+For each new or revised optimization, record added construction paths and
+state in its ablation record and explain why each is necessary. Remove
+superseded paths and state. Numerical qualification does not excuse
+avoidable complexity.
+
 Other size optimizations must meet all these rules:
 
 - **Saving:** at least 10% sustained or 20% declining at both of the two
