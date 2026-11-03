@@ -15,6 +15,8 @@ from __future__ import annotations
 from functools import cache
 from itertools import combinations, combinations_with_replacement
 
+import pytest
+
 from esolangs.languages.malbolge.interpreter import _XLAT1
 
 _CELLS = 94
@@ -51,7 +53,7 @@ def _independence_number(
     return best
 
 
-def test_every_address_pairs_its_characters() -> None:
+def _every_address_pairs_its_characters() -> None:
     """Each address's eight window cells are pairwise in conflict."""
     masks = _neighbours()
     for h in range(_CELLS):
@@ -62,13 +64,21 @@ def test_every_address_pairs_its_characters() -> None:
                 assert a == b or masks[a] >> b & 1
 
 
-def test_eight_classes_cannot_be_distinct_everywhere() -> None:
+@pytest.mark.medium
+def test_window_class_constraints() -> None:
+    _every_address_pairs_its_characters()
     """At most eight cells share a class, so eight classes cover 64 < 94 cells."""
     assert _independence_number() == 8
     assert 8 * _independence_number() < _CELLS
+    _period_47_cannot_cover_seven_meanings()
+    _parity_sheets_need_thirteen_disagreements()
+    _parity_conditioned_meaning_needs_thirteen_entries()
+    _shifted_relabeling_fixed_colors_need_eight_entries()
+    _equal_steps_force_alternating_sheet_swaps()
+    _alternating_seven_class_orbit_cannot_cover()
 
 
-def test_period_47_cannot_cover_seven_meanings() -> None:
+def _period_47_cannot_cover_seven_meanings() -> None:
     """Each covering class needs seven points, so seven classes need 49 > 47.
 
     Six points give 48 incidences across 47 translates: covering all leaves
@@ -83,7 +93,7 @@ def test_period_47_cannot_cover_seven_meanings() -> None:
     assert _independence_number(cells) == len(witness) == 4
 
 
-def test_parity_sheets_need_thirteen_disagreements() -> None:
+def _parity_sheets_need_thirteen_disagreements() -> None:
     """A class covers at most 6a + 4b + 4 shifts for a pairs and b singles."""
     offsets = tuple(sorted({op // 2 for op in _OPS}))
     assert len(offsets) == 7
@@ -93,7 +103,7 @@ def test_parity_sheets_need_thirteen_disagreements() -> None:
     assert _independence_number(47, offsets) == len(witness) == 4
 
 
-def test_parity_conditioned_meaning_needs_thirteen_entries() -> None:
+def _parity_conditioned_meaning_needs_thirteen_entries() -> None:
     """Twelve four-shift blocks would cover 47 shifts with one overlap."""
     cells = _CELLS // 2
     offsets = [tuple(op // 2 for op in _OPS if op % 2 == sheet) for sheet in (0, 1)]
@@ -127,7 +137,7 @@ def test_parity_conditioned_meaning_needs_thirteen_entries() -> None:
     assert not any(tiles(full ^ (a | b)) for a, b in roots)
 
 
-def test_shifted_relabeling_fixed_colors_need_eight_entries() -> None:
+def _shifted_relabeling_fixed_colors_need_eight_entries() -> None:
     """A fixed color must cover the union of the shifted offset sets."""
     cells = _CELLS // 2
     full = (1 << cells) - 1
@@ -173,7 +183,7 @@ def test_shifted_relabeling_fixed_colors_need_eight_entries() -> None:
             assert not covers(offsets, 8)
 
 
-def test_equal_steps_force_alternating_sheet_swaps() -> None:
+def _equal_steps_force_alternating_sheet_swaps() -> None:
     """Three vacancies force occupied pairs at distances d and 7-d."""
     cells = _CELLS // 2
     checked = 0
@@ -203,7 +213,7 @@ def test_equal_steps_force_alternating_sheet_swaps() -> None:
     assert checked == 105
 
 
-def test_alternating_seven_class_orbit_cannot_cover() -> None:
+def _alternating_seven_class_orbit_cannot_cover() -> None:
     """A thirteen-point shape has thirteen gaps of seven plus three extras."""
     cells = _CELLS // 2
     offsets = [tuple(op // 2 for op in _OPS if op % 2 == sheet) for sheet in (0, 1)]
