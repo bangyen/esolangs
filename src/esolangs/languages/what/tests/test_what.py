@@ -58,6 +58,9 @@ def test_output_and_operator_runs_split_greedily() -> None:
 
 
 def test_arithmetic_uses_the_slot_to_the_left_and_wraps() -> None:
+    from .oracle_checks import check_raw_what
+
+    check_raw_what()
     assert _run("6.7*!!") == "42"
     assert _run("6.7-!!") == "1"
     assert _run("7.6-!!") == "65535"
