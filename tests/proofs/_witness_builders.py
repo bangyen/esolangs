@@ -8,6 +8,7 @@ cuts on, exactly as in the parent module.
 """
 
 import importlib
+import random
 from itertools import islice
 
 
@@ -268,3 +269,11 @@ def _diagram_witness(
         return ()
     owner = importlib.import_module(f"esolangs.languages.{stem}.tests.formulas")
     return (getattr(owner, name)(n),)
+
+
+def _false_tiled(n: int) -> str:
+    """Six random (n - 4)-input subtables, each top-input row one of them."""
+    rnd = random.Random(1)
+    width = 1 << (n - 4)
+    subs = ["".join(rnd.choice("01") for _ in range(width)) for _ in range(6)]
+    return "".join(rnd.choice(subs) for _ in range(16))

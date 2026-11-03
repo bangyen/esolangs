@@ -1,9 +1,10 @@
-"""Original diagram ceiling, tightened by the short alias's minimum read savings."""
+"""Exact alias-priced diagram sizes and scoped workspace attainers."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 
+from esolangs.languages.bleh.proof_formulas import workspace
 from tests.proofs._diagram_bounds import (
     capped_level,
     capped_loss,
@@ -28,32 +29,27 @@ def _widths(top: int, count: int) -> int:
 
 
 def _bound(n: int) -> int:
-    """Bound on the characters, per level k of the reduced diagram.
+    """Per-level node/reference ceiling at the actual short-call prices.
 
-    A branching function is ``<name>:"0"=<ref>:"1"=<ref>;`` (11 + name), an
-    equal-halved or constant one ``<name>:={a::next();<ref>};`` (15 + name).
-    A reference is the child's name and ``a::next()`` (10), or ``()`` (2)
-    for an equal-halved or constant child, or ``a::print"b"`` (11) at the
-    leaves.  Ids of a level run up to ``top`` (profile): a function's own id
-    costs at most the letters of the highest ids, each child is referenced
-    once at its own cost and the other slots at the dearest.  A constant is
-    ``z``/``o`` and its level, so a missing one is never cheaper.
+    Branching definitions cost name+11; equal/constant definitions name+9.
+    Branch references add4, equal references2, and leaf prints11. A level's
+    first child references cover its IDs; remaining slots use the dearest.
     """
     branching, equal, constants, top = profile(n)
     name = [1 + len(str(k)) for k in range(n)]
-    total = 19 + _width(top[0]) + 10
+    total = 32 + _width(top[0]) + 4
     for k in range(n):
         nodes = branching[k] + equal[k]
-        total += _widths(top[k], nodes) + 11 * branching[k] + 15 * equal[k]
-        total += constants[k] * (name[k] + 15)
+        total += _widths(top[k], nodes) + 11 * branching[k] + 9 * equal[k]
+        total += constants[k] * (name[k] + 9)
         slots = 2 * branching[k] + equal[k] + constants[k]
         if k + 1 == n:
             total += 11 * slots
         else:
             below = branching[k + 1] + equal[k + 1]
-            widest = _width(top[k + 1]) + 10
+            widest = _width(top[k + 1]) + 4
             total += _widths(top[k + 1], below)
-            total += 10 * branching[k + 1] + 2 * equal[k + 1]
+            total += 4 * branching[k + 1] + 2 * equal[k + 1]
             total += constants[k + 1] * (name[k + 1] + 2)
             total += max(0, slots - below - constants[k + 1]) * widest
     return total
@@ -65,37 +61,19 @@ def _prices(
     """A reference's characters: name and call, a constant's, the dearest."""
     top = profile(n)[3]
     return (
-        lambda node, equal: (2 if equal else 10) + _width(node),
+        lambda node, equal: (2 if equal else 4) + _width(node),
         lambda level: 3 + len(str(level)),
-        lambda level: _width(top[level]) + 10,
+        lambda level: _width(top[level]) + 4,
     )
 
 
 def _chars(n: int, _: str) -> int:
-    """Worst characters, n = 3..23: the bound less what its last levels cannot reach.
+    """Exact source at n=3..23 after forced-cover and ordered-pair losses.
 
-    The bound prices every reference past the first at the dearest call.
-    The 14 four-row subtables a level up are all there is, so their
-    references are fixed (:func:`capped_loss`): 36 short at n = 5, 108 from 6.
-    Above them the wide ids run out of pairs from n = 9, and from n = 10 the
-    equal-halved ids cost to name (:func:`parent_loss`).  From n = 11 the 240 + 14
-    pairs of those 16 objects are fixed too.  The parents name the 256 level
-    n - 3 objects once, the rest of their slots at the dearest id (n = 12: 256
-    parents, 512 slots, wide ids pair freely), so nothing more is lost until
-    n = 19: its 32,768 parents out-run the 172 wide ids' 29,412 pairs, and
-    :func:`pair_loss` prices the 3,356 pairs left to the narrow ids.  At
-    n = 20 the capped level holds all 65,534 sixteen-row subtables, so the
-    parents are a permutation of them and the 256 eight-row objects' 130,560
-    spare references are fixed too (:func:`capped_loss`).  At n = 21 the
-    capped level holds the same subtables one level higher: its nodes are
-    every ordered pair of the 256 eight-row objects, so the same term
-    closes the bound, and the 65,536 parents above it pair the wide ids
-    freely (the wide ids' pairs outnumber the spare slots, as at n = 12).
-    At n = 22 and 23 nothing changes in kind: the capped level stays at n - 4
-    with the same capped_loss (117,660, as at 20 and 21), the parent and
-    pair losses stay 0, and the parents' fill quota (98,303 past the
-    consecutive pairing) stays inside the widest tier's pairs, as at
-    n = 12 -- the shipped terms are the rule for the whole n - 4 era.
+    The original diagram extremizers remain valid at the actual alias
+    prices: branch references still dominate equal ones, while complete
+    capped levels force all child species. Shared loss helpers accept
+    these prices directly, including newly tied constant/branch references.
     """
     prices = _prices(n)
     return (
@@ -130,16 +108,19 @@ def _tenth() -> str:
 
 
 def witness(n: int) -> str:
-    """Stress the original diagram ceiling: every subtable, dear references first."""
+    """Attain the alias-priced diagram maximum: all subtables, dear refs first."""
     ref, const, _ = _prices(n)
     if n == 10:
         return _tenth()
     return worst_diagram(n, ref, const(capped_level(n)))
 
 
-def _alias_ceiling(n: int, program: str) -> int:
-    """The old ceiling plus the helper, less six per at-least-n read sites."""
-    return (_bound(n) if n < 3 else _chars(n, program)) + 13 - 6 * n
+def workspace_witness(n: int) -> str:
+    """A full forced-thunk path, then a literal print and its argument frame."""
+    return "1" * ((1 << n) - 2) + "01"
 
 
-FORMULAS = {"scaling": (_alias_ceiling, False, tuple(range(3, 24)))}
+FORMULAS = {
+    "scaling": (_chars, frozenset(range(3, 24)), tuple(range(3, 24))),
+    "workspace": (workspace, frozenset(range(1, 8)), tuple(range(1, 8))),
+}

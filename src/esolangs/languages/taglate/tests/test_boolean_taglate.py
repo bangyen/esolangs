@@ -17,8 +17,9 @@ def run_taglate(program: str, inputs: list[str]) -> str:
 def test_execution_bound_is_one_form() -> None:
     from esolangs.languages.taglate.proof_formulas import execution
 
-    assert execution(4, "") == 339
-    assert execution(5, "") == 498
+    assert execution(4, "") == 329
+    assert execution(5, "") == 484
+    _check_resource_layouts()
 
 
 @pytest.mark.parametrize("n", [1, 3, 8])
@@ -257,3 +258,34 @@ def _check_packed_leaves() -> None:
     io = ScriptedIO("00")
     run(mutant.splitlines(), io)
     assert io.getvalue() != "0"
+
+
+def _check_resource_layouts() -> None:
+    from esolangs.languages.taglate.interpreter import _Machine
+    from esolangs.languages.taglate.proof_formulas import execution, workspace
+    from esolangs.languages.taglate.tests.formulas import resource_witness
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in (1, 2, 3, 4, 5):
+        table = resource_witness(n)
+        for options in ({}, {"width": 1}, {"balance": True}):
+            program = str(esolangs.generate("Taglate", table, **options))
+            row = (1 << n) - 4 if n >= 2 else 0
+            io = ScriptedIO(f"{row:0{n}b}!")
+            machine = _Machine(program.splitlines(), io)
+            written = WrittenState(machine.snapshot())
+            steps = 0
+            bound = execution(n, program)
+            while not machine.halted:
+                machine.step()
+                written.sample(machine.snapshot())
+                steps += 1
+                assert steps <= bound
+            assert io.getvalue() == table[row]
+            assert io.reads == n
+            assert io.input_char() == ord("!")
+            assert written.bits <= workspace(n, program)
+            if not options:
+                assert steps == execution(n, program)
+                assert written.bits == workspace(n, program)

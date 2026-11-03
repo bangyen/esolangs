@@ -18,7 +18,7 @@
   "bit_tilde": "linear: worst 3T+19n+115 characters past n = 3: minority planting",
   "bitdeque": "linear: at most B characters: the shared tree's token bound",
   "bitwise_cyclic_tag": "linear: worst 13T/2+2n+3 characters: seven per two-row cell, reads six a unit",
-  "bleh": "linear: at most F+13-6n characters for n>=3: shortened read sites",
+  "bleh": "linear: worst F characters, n=3..23; at most beyond: actual alias read prices",
   "blindfolded_arithmetic": "linear: worst 3T + 6\u2308T/3\u2309 + 48n + 53 characters: six an instruction",
   "boolfuck": "linear: worst C characters at n = 3, then at most C",
   "brainfuck": "linear: at most 35T/2 + 55n + 25 characters: the plain tree",

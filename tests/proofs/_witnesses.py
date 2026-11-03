@@ -24,6 +24,7 @@ from tests.proofs._witness_builders import (
     _codesick_chars_worst,
     _collatz_chars_worst,
     _diagram_witness,
+    _false_tiled,
     _forbin_worst,
     _malbolge_stub,  # noqa: F401 -- re-exported for the formula suites
     _row_one,
@@ -1111,7 +1112,13 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         "".join(str((1 + (r >> 1 - n % 2).bit_count()) % 2) for r in range(1 << n)),
     ),
     "Pointless": lambda n: (_pointless_worst(n),) if n >= 2 else (),
-    "Bleh": lambda n: _diagram_witness("bleh", n, 23),
+    "Bleh": lambda n: (
+        *_diagram_witness("bleh", n, 23),
+        *_diagram_witness("bleh", n, 7, "workspace_witness", bottom=1),
+    ),
+    "Taglate": lambda n: _diagram_witness(
+        "taglate", n, 5, "resource_witness", bottom=3
+    ),
     "Quassaunt": lambda n: (
         _quassaunt_worst(n),
         *((_quassaunt_stack(n),) if n >= 3 else ()),
@@ -1186,11 +1193,3 @@ def _streetcode_worst(n: int) -> str:
     if n < 5:
         return _parity(n)
     return "1" + _parity(n)[1:]
-
-
-def _false_tiled(n: int) -> str:
-    """Six random (n - 4)-input subtables, each top-input row one of them."""
-    rnd = random.Random(1)
-    width = 1 << (n - 4)
-    subs = ["".join(rnd.choice("01") for _ in range(width)) for _ in range(6)]
-    return "".join(rnd.choice(subs) for _ in range(16))

@@ -12,8 +12,9 @@ admitted = 2026-08-07T14:43:11-04:00
 labels = ["tree"]
 qualification = "—"
 scaling = "linear: worst 3T+12n²+17n+12 characters past n = 2: nibble leaves"
-execution = "linear: at most 5T/2+12n²+11n+63 past n = 2"
-workspace = "linear: at most 3T+42n+24+bl(n)+bl(L) bits past n = 2"
+execution = "linear: worst C+56 commands past n = 2: literal seed; bootstrap at most B+C+56"
+workspace = "linear: worst Q+bl(C)+bl(n) bits past n = 2: literal seed; bootstrap at most max(Q,7B,28)+bl(A)+bl(n)"
+definitions = ["C = 5T/2+12n²+7n+13 literal-seed command tokens", "Q = 7T/4+17n+20 queue bits after all reads", "B = bootstrap setup tokens before the first h", "A = total bootstrap-layout command tokens"]
 
 [generator_sizes]
 "00000001" = { commands = 162, commands_by_row = { "0" = 132, "1" = 132, "2" = 132, "3" = 132, "4" = 190, "5" = 174, "6" = 166, "7" = 162 }, source_units = 195 }
@@ -91,3 +92,6 @@ verdict = "superseded by packed leaves, not stacked. Direct NUL/SOH slots need a
 arity = 8
 saving = 0.0
 verdict = "rejected raw layout: native n3 table00000001 row1 prints1 instead of0 after the first level loses the input-first arrangement. Direct cyclic-conjugation repair restores that arrangement after each level and executes508 rows across2..8 correctly, but adds exactly2n+6 source characters; return rotations cancel the proposed saving. These tests reject the supplied proposal and this repair, not every possible input-first construction."
+
+[ablations.resource_exactness_20261103]
+verdict = "restored: literal-seed E=C+56 and W=Q+bl(C)+bl(n) attain all original n3/4/5 scopes; gy/gz count as single commands. Full-support 0001, then zeros, then1111 selects nibble15 at row T-4. Empty-seed narrow/balanced rebuilding has conservative E<=B+C+56 and W<=max(Q,7B,28)+bl(A)+bl(n): the final URL has M<=B ASCII cells, and the affine negative coefficient's final rebuild needs28 bits. No emitter change or source/pin change. Native exhaustive n<=3 and attainers4/5, with width1/balanced controls, pass2424 rows in6.60 CPU-s. Small boundaries n1 E10/W39 and n2 E137/W70 also attain; registered scopes stay3/4/5. Runtime sampling ends at halt, matching WrittenState and the repository benchmark."

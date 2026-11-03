@@ -213,8 +213,8 @@ def balance_taglate(_table: str, default: str) -> str:
 LANGUAGE = Language(
     "Taglate",
     "taglate",
-    proof_execution=(execution, False, (3, 4, 5)),
-    proof_workspace=(workspace, False, (3, 4, 5)),
+    proof_execution=(execution, True, (3, 4, 5)),
+    proof_workspace=(workspace, True, (3, 4, 5)),
     category="queue_based",
     boolean=taglate,
     split=True,

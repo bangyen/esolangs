@@ -8,9 +8,9 @@ admitted = 2026-10-20T08:59:29-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "shared-node functions match their input; short nullary read aliases preserve forcing order; constants use a flat read/print block"
-scaling = "linear: at most F+13-6n characters for n>=3: shortened read sites"
+scaling = "linear: worst F characters, n=3..23; at most beyond: actual alias read prices"
 execution = "poly n: worst 10n+5 steps: two extra alias transitions per read"
-workspace = "poly n: at most H+C(w)+K(w)+2bl(n) bits: heap, control, continuation and two cursors"
+workspace = "poly n: worst H+C(w)+K(w)+2bl(n) bits through n=7; at most beyond"
 definitions = ["H = 64n+1+Σ_{0<a<n} bl(a)", "w = max(ceil((n+1)/5),1+digits10(n-1))", "C = max(128,8w+16,8w+bl(n)+1)", "K = max(105,8w+17,8w+2bl(n)+1)"]
 
 [generator_sizes]
@@ -82,3 +82,11 @@ verdict = "rejected: wildcard second branch saves5.6598%/5.7040% on200 generic7/
 arity = 8
 saving = 0.5075111652456332
 verdict = "rejected: a last-level identity leaf binds x and prints x. Raw savings1.2752%/0.7417% on200 generic7/8 tables; EOF halts with empty output instead of HaltError on table01. Pattern x[_,..] restores the underfed contract and saves0.8725%/0.5075%, declining far below20%. Signed parity, every threshold and projection families give at most7.3034%/6.5990%, below10%. Each pilot variant has4040 correct binary native runs and1512 fresh-parser controls; an additional96328 controls cover signed named families/all rows, both constant constructors and timing. No wildcard or identity rule ships; independent failed rules are not bundled into alias savings."
+
+
+[ablations.workspace_exact_restoration_20261103]
+verdict = "proof-only precision restoration of the checked exact rungs dropped by161a7cd63. Through n7 the width bound is at most2, so C=128 and K=105. A full forced-thunk path stores n eight-character ASCII bitstrings: H=64n+1+sum bl(a), addresses1..n-1 plus address0. Literal print control is _Eval(_Call(io.print,_Bits(eightbits)),emptyenv),128bits; its print argument frame is40+64+1=105bits. Fresh/input cursors both attain bl(n). The nonsymmetric single-zero-at-T-2 witness on all-one input attains300/367/433/501/568/635/702bits atn1..7 under the repository prehalt metric. Current ceiling already bounds other routes; exactness beyond7 is not asserted because independent identifier-width maxima have not been proved jointly attainable there. Source/emitter, numeric workspace ceiling, pins, examples and old source witnesses unchanged; new owned workspace witness is appended separately."
+
+
+[ablations.source_exact_restoration_20261103]
+verdict = "proof-only actual repricing restores checked exact source arities3..23 dropped by161a7cd63. Main/header costs32+root-name+4; branching definitions name+11, equal/constant definitions name+9; branch references name+4, equal references name+2, constant names unchanged. Original maximal diagram profiles and forced-cover/parent/pair losses apply with these actual prices. The old F+13-6n ceiling used only a minimum n static read sites and was not an exact new maximum. Superseded minimum-read adjustment is removed; the original source witnesses are repriced, not replaced by a source race. No emitter, runtime state, pins or example changes."
