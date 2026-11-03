@@ -13,16 +13,15 @@ of entries shares one cell (:func:`_packed`) where that is shorter: random and
 parity tables, not the looped runs of and, or and thresholds.
 
 Size:
-    O(T) for dense tables, O(n) for and; n=10 random 1847: 1,997 chars,
-    n=10 and: 372 chars, n=10 majority: 1,861 chars.
+    O(T) for dense tables, O(sqrt(T)+n) for and; n=10 random 1847: 1,981 chars,
+    n=10 and: 362 chars, n=10 majority: 1,845 chars.
     Constants use n+3 chars, n+2 steps and 6+bl(n+3)+bl(2n-1) written bits;
     width 1 at n<=2 clears/increments because a literal needs two columns.
 
 Decisions:
     The bare leaf-coordinate form (width 1, n<=2) is 97-217 characters against
-    the shared index form's 82-106, kept only because the index form wraps no
-    narrower than two columns.  Skipping the first read's doubling saves 16
-    characters, 2.2% at n=8: not worth the special case.
+    the shared index form's 66-90, kept only because the index form wraps no
+    narrower than two columns.
 """
 
 import re
@@ -49,9 +48,6 @@ _INDEX, _PLANE = 1, 3
 # Double on the return pass: 9 steps per unit instead of 13.
 _DOUBLE = "{1<1>2}{2<2>1>1}"
 _COUNTER, _SPARE = 4, 5
-_COUNT_DOUBLE = (
-    f"{{{_COUNTER}<{_COUNTER}>{_SPARE}>{_SPARE}}}{{{_SPARE}<{_SPARE}>{_COUNTER}}}"
-)
 _READ = "d>!0"
 _FLIP = str.maketrans("01", "10")
 # Move the painted bit c onto a fresh cell as -c; 49 more then prints 1 - c.
@@ -89,8 +85,7 @@ def _program(truth_table: str, width: int | None = None) -> str:
         return wrap_program(_dimensional_bare(truth_table, n), "dimensional", width)
     # An ignored input is a bare ``d``: the next read overwrites its byte.
     weights, truth_table = input_weights(truth_table, n)
-    reads = (_DOUBLE + _READ if weight else "d" for weight in weights)
-    index = "".join(reads)
+    index = _index_reads(weights)
     painted = _paint(truth_table)
     flipped = _paint(truth_table.translate(_FLIP))
     # Zero runs loop and ones do not, so a ones-heavy table is painted as its
@@ -104,6 +99,15 @@ def _program(truth_table: str, width: int | None = None) -> str:
     if packed is not None and len(packed) < len(program):
         program = packed
     return wrap_program(program, "dimensional", width)
+
+
+def _index_reads(weights: list[int]) -> str:
+    """Read in order; the first essential bit needs no zero-index doubling."""
+    first = next((i for i, weight in enumerate(weights) if weight), None)
+    return "".join(
+        (_READ if i == first else _DOUBLE + _READ) if weight else "d"
+        for i, weight in enumerate(weights)
+    )
 
 
 def _packed(truth_table: str, weights: list[int]) -> str | None:
@@ -125,10 +129,10 @@ def _packed(truth_table: str, weights: list[int]) -> str | None:
         for run in ["".join(map(str, group))]
     ]
     painted = f">{_PLANE}" + "".join(cells) + f"+!{_INDEX}<{_PLANE}"
-    reads = (_DOUBLE + _READ if weight else "d" for weight in weights[:-1])
+    index = _index_reads(weights[:-1])
     return (
         painted
-        + "".join(reads)
+        + index
         + f">{_PLANE}"
         + _UNPACK
         + "d"
@@ -155,17 +159,6 @@ def _paint(truth_table: str) -> str:
     return f">{_PLANE}" + "".join(cells) + f"+!{_INDEX}<{_PLANE}"
 
 
-def _count(count: int) -> str:
-    """Return commands making dimension 4 hold ``count``, doubling through 5."""
-    # Doubling saves nothing on random tables, but grows with n on long
-    # counts ([ablations.count_doubling]).
-    unary = f">{_COUNTER}" * count
-    if count < 2:
-        return unary
-    doubled = _count(count // 2) + _COUNT_DOUBLE + f">{_COUNTER}" * (count & 1)
-    return min(unary, doubled, key=len)
-
-
 def _advance(length: int) -> str:
     """Move along dimension 1 using unary, counted, or balanced-stride commands."""
     bare = f">{_INDEX}" * length
@@ -178,7 +171,7 @@ def _advance(length: int) -> str:
     def counted(stride: int) -> str:
         count, rest = divmod(length, stride)
         return (
-            _count(count)
+            f">{_COUNTER}" * count
             + f"{{{_COUNTER}<{_COUNTER}"
             + f">{_INDEX}" * stride
             + "}"

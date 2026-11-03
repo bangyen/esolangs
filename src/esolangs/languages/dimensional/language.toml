@@ -11,19 +11,19 @@ admitted = 2022-05-09T19:20:51-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "a bare `>` takes its dimension from the byte it stands on, so `d>` is a pointer displacement by the bit read: the index is a coordinate, doubled between reads by a two-loop `{`/`}` gadget, and it addresses one painted cell an entry along dimension 1"
-scaling = "linear: worst 2T + 20n + 58 characters: two per entry"
-execution = "linear: worst 11T + ⌊(2T+1)/5⌋ - 4n + 45 commands past n = 3: zero runs of nine loop"
-workspace = "T log T: worst Σ_{k≤T} bl(k) + 5T + n(n-1)/2 + 4n + 11 + bl(2T+20n+56) + bl(2n-1) bits"
+scaling = "linear: worst 2T + 20n + 42 characters: two per entry"
+execution = "linear: worst 11T + ⌊(2T+1)/5⌋ - 4n + 43 commands past n = 3: zero runs of nine loop"
+workspace = "T log T: worst Σ_{k≤T} bl(k) + 5T + n(n-1)/2 + 4n + 11 + bl(2T+20n+40) + bl(2n-1) bits"
 
 [generator_sizes]
-"00000001" = { commands = 114, commands_by_row = { "0" = 78, "1" = 78, "2" = 87, "3" = 87, "4" = 105, "5" = 105, "6" = 114, "7" = 114 }, source_units = 134 }
-"00001100" = { commands = 79, commands_by_row = { "0" = 70, "1" = 70, "2" = 70, "3" = 70, "4" = 79, "5" = 79, "6" = 79, "7" = 79 }, source_units = 107 }
-"00110110" = { commands = 117, commands_by_row = { "0" = 81, "1" = 81, "2" = 90, "3" = 90, "4" = 108, "5" = 108, "6" = 117, "7" = 117 }, source_units = 134 }
-"0110" = { commands = 79, commands_by_row = { "0" = 70, "1" = 70, "2" = 79, "3" = 79 }, source_units = 106 }
-"01101001" = { commands = 117, commands_by_row = { "0" = 81, "1" = 81, "2" = 90, "3" = 90, "4" = 108, "5" = 108, "6" = 117, "7" = 117 }, source_units = 134 }
-"0110100110010110" = { commands = 197, commands_by_row = { "0" = 98, "1" = 98, "2" = 107, "3" = 107, "4" = 125, "5" = 125, "6" = 134, "7" = 134, "8" = 161, "9" = 161, "10" = 170, "11" = 170, "12" = 188, "13" = 188, "14" = 197, "15" = 197 }, source_units = 170 }
-"1101001101101101" = { commands = 199, commands_by_row = { "0" = 100, "1" = 100, "2" = 109, "3" = 109, "4" = 127, "5" = 127, "6" = 136, "7" = 136, "8" = 163, "9" = 163, "10" = 172, "11" = 172, "12" = 190, "13" = 190, "14" = 199, "15" = 199 }, source_units = 170 }
-"11111110" = { commands = 120, commands_by_row = { "0" = 84, "1" = 84, "2" = 93, "3" = 93, "4" = 111, "5" = 111, "6" = 120, "7" = 120 }, source_units = 134 }
+"00000001" = { commands = 112, commands_by_row = { "0" = 76, "1" = 76, "2" = 85, "3" = 85, "4" = 103, "5" = 103, "6" = 112, "7" = 112 }, source_units = 118 }
+"00001100" = { commands = 77, commands_by_row = { "0" = 68, "1" = 68, "2" = 68, "3" = 68, "4" = 77, "5" = 77, "6" = 77, "7" = 77 }, source_units = 91 }
+"00110110" = { commands = 115, commands_by_row = { "0" = 79, "1" = 79, "2" = 88, "3" = 88, "4" = 106, "5" = 106, "6" = 115, "7" = 115 }, source_units = 118 }
+"0110" = { commands = 77, commands_by_row = { "0" = 68, "1" = 68, "2" = 77, "3" = 77 }, source_units = 90 }
+"01101001" = { commands = 115, commands_by_row = { "0" = 79, "1" = 79, "2" = 88, "3" = 88, "4" = 106, "5" = 106, "6" = 115, "7" = 115 }, source_units = 118 }
+"0110100110010110" = { commands = 195, commands_by_row = { "0" = 96, "1" = 96, "2" = 105, "3" = 105, "4" = 123, "5" = 123, "6" = 132, "7" = 132, "8" = 159, "9" = 159, "10" = 168, "11" = 168, "12" = 186, "13" = 186, "14" = 195, "15" = 195 }, source_units = 154 }
+"1101001101101101" = { commands = 197, commands_by_row = { "0" = 98, "1" = 98, "2" = 107, "3" = 107, "4" = 125, "5" = 125, "6" = 134, "7" = 134, "8" = 161, "9" = 161, "10" = 170, "11" = 170, "12" = 188, "13" = 188, "14" = 197, "15" = 197 }, source_units = 154 }
+"11111110" = { commands = 118, commands_by_row = { "0" = 82, "1" = 82, "2" = 91, "3" = 91, "4" = 109, "5" = 109, "6" = 118, "7" = 118 }, source_units = 118 }
 
 [catalogue]
 folding_constant_local = "_program"  # reads and literal output
@@ -52,7 +52,7 @@ verdict = "kept: a zero run of nine or more is spelled as a counter loop at a ba
 [ablations.count_doubling]
 saving = 12.9
 arity = 12
-verdict = "kept: inside a counted loop the count is spelled by whichever of unary and doubling through the spare dimension is shorter, so it never makes a program larger. 0.00% on random tables and most named tables; on AND, the longest-count class, 4.3% at n=10 rising to 12.9% at n=12 and 25.9% at n=14. The in-code shares (11.4% at n=12 and 20.6% at n=14 on AND, 13.4% on a threshold at n=14, share of the plainer build) all reproduce. Plain-rewrite audit 2026-10-28: 0.0% on 20 random tables and every named function at n=7 / 8 (and/nor 4.1% / 6.7% / 11.4% / 20.5% at n=10 / 11 / 12 / 14, balanced 6.8% / 6.0% / 11.4% / 18.1%; popcount>=2 0.9% / 2.8% / 5.4% / 13.3%). Kept as a judgment call: nil at n=7..8 but rising, and without it AND leaves O(n) for O(2^(n/2)) (a unary count of sqrt(T)), the class its Size anchor states"
+verdict = "historical measurements, retired 2026-11-02: inside a counted loop the count was spelled by whichever of unary and doubling through the spare dimension is shorter, so it never makes a program larger. 0.00% on random tables and most named tables; on AND, the longest-count class, 4.3% at n=10 rising to 12.9% at n=12 and 25.9% at n=14. The in-code shares (11.4% at n=12 and 20.6% at n=14 on AND, 13.4% on a threshold at n=14, share of the plainer build) all reproduce. Plain-rewrite audit 2026-10-28: 0.0% on 20 random tables and every named function at n=7 / 8 (and/nor 4.1% / 6.7% / 11.4% / 20.5% at n=10 / 11 / 12 / 14, balanced 6.8% / 6.0% / 11.4% / 18.1%; popcount>=2 0.9% / 2.8% / 5.4% / 13.3%). The historical O(n)-versus-sqrt(T) class rationale was false: the spelled stride is sqrt(T) either way. Fixed n7/8 fails admission; the current build uses unary counts"
 
 [ablations.trailing_zero_skip]
 saving = 0.1
@@ -67,11 +67,12 @@ verdict = "kept: the table or its complement is painted, whichever paints shorte
 [ablations.pair_packing]
 saving = 17.7
 arity = 12
-verdict = "kept: from n=7 two entries share one painted cell when that is shorter (values 0-3 for (low, high); the last input is not read into the index but decoded by `[->4+<4[->5+<5[->4-<4]]]` onto dimension 4 or 5 and stepped onto by `d++++>`). Random tables (Random(1000n+s), 200 at n=8, 20 at n=7 / 9 / 10 / 11, 10 at n=12) 7.5% / 11.6% / 13.6% / 15.7% / 17.2% / 17.7% at n=7..12, rising toward the cap; 0 of 300 random tables lose from n=7 and 8 of 300 at n=6, which is why it starts at 7 (n=7 misses the bar, n=8 clears it). Balanced area 7.6% / 11.3% / 13.2% / 15.1% at n=7 / 8 / 9 / 10. Named: parity 4.8% / 7.4% / 9.4% / 10.7% / 11.9% and majority 1.1% / 4.8% / 3.9% / 6.7% / 7.3% at n=7 / 8 / 9 / 10 / 12, and/or/threshold 0-5% (they loop their runs; the plain build stays the shorter and keeps them O(n)). Every changed program executed through the interpreter: all rows of 200 random tables at n=8 and 20 at n=7 plus parity and majority, 0 wrong; a complemented-table program fails all rows"
+verdict = "kept: from n=7 two entries share one painted cell when that is shorter (values 0-3 for (low, high); the last input is not read into the index but decoded by `[->4+<4[->5+<5[->4-<4]]]` onto dimension 4 or 5 and stepped onto by `d++++>`). Random tables (Random(1000n+s), 200 at n=8, 20 at n=7 / 9 / 10 / 11, 10 at n=12) 7.5% / 11.6% / 13.6% / 15.7% / 17.2% / 17.7% at n=7..12, rising toward the cap; 0 of 300 random tables lose from n=7 and 8 of 300 at n=6, which is why it starts at 7 (n=7 misses the bar, n=8 clears it). Balanced area 7.6% / 11.3% / 13.2% / 15.1% at n=7 / 8 / 9 / 10. Named: parity 4.8% / 7.4% / 9.4% / 10.7% / 11.9% and majority 1.1% / 4.8% / 3.9% / 6.7% / 7.3% at n=7 / 8 / 9 / 10 / 12, and/or/threshold 0-5% (they loop their runs; the plain build stays shorter on their looped runs). Every changed program executed through the interpreter: all rows of 200 random tables at n=8 and 20 at n=7 plus parity and majority, 0 wrong; a complemented-table program fails all rows"
 
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
+trick_prototype = 2026-11-02
 
 [ablations.constant_table_audit_20261101]
 arity = 8
@@ -79,3 +80,33 @@ saving = 81.5
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: fixed character literal after every input. Read into the origin, overwrite it with :0 or :1, print; no fresh plane or 48/49 increments are needed. L=n+3 chars, E=n+2 steps, W=6+bl(n+3)+bl(2n-1) written bits in the default. A literal cannot fit one column, so width=1 at n<=2 retains the one-column contract with clear/increment at the origin; all nonconstant layouts remain unchanged. n=7 zero/one 58/59 -> 10/10 chars (82.9% combined); n=8 59/60 -> 11/11 (81.5%), 58/59 -> 10/10 steps, 23 -> 14 written bits; n=12 63/64 -> 15/15 chars. Both evaluation arities exceed the declining-savings gate. n=3 corpus 33035 -> 32938 chars. Owned checks retain exact width floors and written-state bounds even with layout newlines. Each language passed 5656 paired old/new row executions; 270 nonconstant default programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. Separate 1120-run native probes per language include every row through n=8. All 24 balanced scores per language match or improve; all 24 benchmark size/command pins across the batch remain unchanged. Owned regressions check reads before output, no EOF probe and a preserved following record, without adding collected cases."
+
+
+[ablations.initial_zero_double_20261102]
+arity = 8
+saving = 2.5
+seed = "random.Random(1000*n+i)"
+tables = "all tables/rows n<=3; three random per n4..6; scattered projections n7 and proof witnesses"
+verdict = "kept canonical no-op removal: the first essential read sees index/spare coordinates zero, so both doubling loops are inert. Omit them in one shared reader used by plain and packed builds, replacing duplicate reader comprehensions; ignored prefix reads do not move either coordinate. No new construction path or persistent state. Each nonconstant indexed program loses16 chars and two commands; constants and width-one bare leaves remain unchanged. n3 source32938 ->28874 and commands193928 ->189864;2156 paired native rows plus2156 wrong-output controls. All eight pins are repinned including every row and the last; source worst2T+20n+42, execution worst11T+floor((2T+1)/5)-4n+43, workspace IP termbl(2T+20n+40). Original proof arities/exactness retained; nine focused proof cases pass."
+
+[ablations.tricks_20261102]
+arity = 8
+saving = 10.2
+seed = "random.Random(1000*n+i).getrandbits(1<<n)"
+tables = "fixed200 random per n7/8 after canonical spelling; and/or/parity/majority/threshold-third separately; private packing exhaustive n<=3 and samples4..6"
+verdict = "near misses, not shipped. Consistent negative codes painted255/0/1/2 for00/10/11/01 then incremented before the existing decoder: fixed200 canonical80116/125750 ->73849/112976 chars (7.822/10.158%), fails fixed n7. Group runs count values, not their decimal spelling; pair00 wrap255 ->0 leaves both decoded bits zero. Before canonical, two-table n10/12 savings13.26/15.15% approach about15.4% expected paint saving; this does not move the judged arities. Unguarded alternating-axis indexing is correct: a one lands at2prefix+1, greater than every previously visited read-plane prefix, so a clear guard is unnecessary. Native landing checks fire15 times. After canonical first read, fixed200 axis75095/117950 (6.267/6.203%); O(n) source savings against O(T) painting tend to zero, failing20%. Before canonical, n3 axis commands201928 exceed193928 and six tables grow, so execution admission fails too. No named family clears both fixed arities. Guarded-axis variant is larger, superseded only in scratch."
+
+[ablations.decoded_input_20261102]
+arity = 8
+saving = 0.0
+seed = "random.Random(1000*n+i)"
+tables = "fixed200 random per n7/8; named functions; asymmetric row001 of00110110"
+verdict = "rejected: trying every decoded input is a search, and merely permuting its table while feeding physical-order inputs computes the wrong function (swapping the final inputs fails row001; the original positive control passes). No buffered-order construction is claimed. Legal fixed complement-only packing preserves order but grows2.664/1.482% after canonical spelling, totals82250/127613; named threshold-third318/401 ->291/350 saves8.491/12.718%, failing n7. Plain/packed, negative, guarded and unguarded-axis controls total10780 public and9855 forced-private executions through n3 plus samples4..6;2156 wrong-output controls fire. No candidate, alphabet race, reorder state or old-whole-program minimum is added."
+
+
+[ablations.count_doubling_retirement_20261102]
+arity = 8
+saving = 0.0
+seed = "random.Random(1000*n+i)"
+tables = "20 random per n7/8; and/or/parity/majority/threshold-third/threshold-two n7/8/10/12/14"
+verdict = "retired: recursive doubling is an alternative arithmetic construction, not omission of redundant syntax or a no-op. Its marginal is0.00% on random and every named family at both fixed n7/8. Positive controls before/after removal: AND n10 356 ->362 chars, n12 481 ->526; OR372 ->388 and492 ->556. The old class reason was false: both builds have a sqrt(T) spelled stride, while unary count also costs sqrt(T) and binary count O(n); binary's limiting saving can approach50%, not zero, but future gains do not change the fixed corpus. Remove _count and _COUNT_DOUBLE; the existing stride loop now receives a direct unary count, no replacement path/state. Maximal zero-run-nine witnesses and all old proof scopes/exactness remain; the global source cap still follows from the unchanged min with bare painting. Source IP remains within that cap, coordinate workspace cannot grow, and unary initialization executes no more steps. Small pins and example unchanged; n10 AND anchor362."

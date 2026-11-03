@@ -73,6 +73,8 @@ def test_other_widths_preserve_the_established_build(width: int | None) -> None:
 
 @pytest.mark.parametrize("n", [4, 6])
 def test_larger_tables_keep_the_established_index(n: int) -> None:
+    if n == 4:
+        _check_first_essential_read()
     table = "".join(str((row * 73 + row // 3) & 1) for row in range(1 << n))
     program = generate("Dimensional", table, width=1)
     for row in (0, 1, len(table) // 2, len(table) - 1):
@@ -230,3 +232,46 @@ def _check_constants() -> None:
                         written.bits
                         == 6 + len(program).bit_length() + (2 * n - 1).bit_length()
                     )
+
+
+def _check_first_essential_read() -> None:
+    """Ignored prefixes preserve zero coordinates before the first indexed read."""
+    from esolangs.generation.helpers import input_weights
+    from esolangs.languages.dimensional.generator import _packed
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value):
+            assert self.reads == 7
+            super()._write(value)
+
+    for selected in ((0, 1, 6), (2, 4, 6), (0, 3, 5)):
+        table = "".join(
+            "00110110"[
+                sum(
+                    ((row >> (6 - position)) & 1) << (2 - bit)
+                    for bit, position in enumerate(selected)
+                )
+            ]
+            for row in range(128)
+        )
+        programs = [
+            generate("Dimensional", table),
+            generate("Dimensional", table, width=1),
+            generate("Dimensional", table, balance=True),
+        ]
+        weights, projected = input_weights(table, 7)
+        if (packed := _packed(projected, weights)) is not None:
+            programs.append(packed)
+        for program in programs:
+            for row in (0, 1, 21, 63, 127):
+                io = ReadFirstIO(" ".join(f"{row:07b}") + " 7")
+                machine = _Machine(program, io)
+                for _ in range(10_000):
+                    if machine.halted:
+                        break
+                    machine.step()
+                assert machine.halted
+                assert io.getvalue() == table[row]
+                assert io.reads == 7
+                assert io.past_end == 0
+                assert io.input_num() == 7
