@@ -6,7 +6,6 @@ import pytest
 
 from esolangs.languages.thue import interpreter as thue
 from esolangs.languages.thue.interpreter import (
-    _advance,
     _Machine,
     _matches,
     _parse,
@@ -151,23 +150,41 @@ def test_the_branching_protocol_reports_the_state_it_searches() -> None:
 def test_the_block_index_steps_as_the_whole_string_would(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The machine indexes occurrences per block; :func:`_matches` and
-    :func:`_advance` rescan the whole string.  Tiny blocks put rewrites
-    across every boundary, and ``bb``'s side outgrows two blocks."""
+    """Rescan overlaps independently, including matches across tiny blocks."""
     monkeypatch.setattr(thue, "_BLOCK", 3)
     monkeypatch.setattr(thue, "_GROUP", 2)
-    program = "ab::=ba\nba::=\nbb::=abababababab\naab::=b\nbab::=a\n::=\n" + "ab" * 40
-    machine = _Machine(program, ScriptedIO(""), Seeded(4))
-    rules, state = _parse(program)
-    reference = Seeded(4)
-    for _ in range(400):
-        found = _matches(state, rules)
+    rules = (
+        ("ab", "ba"),
+        ("ba", ""),
+        ("bb", "abababababab"),
+        ("aab", "b"),
+        ("bab", "a"),
+    )
+    for seed in range(8):
+        state = "ab" * 40
+        program = "\n".join([*(f"{a}::={b}" for a, b in rules), "::=", state])
+        io = ScriptedIO("unused")
+        machine = _Machine(program, io, Seeded(seed))
+        reference = Seeded(seed)
+        for _ in range(400):
+            matches = [
+                (rule, offset)
+                for rule, (lhs, _) in enumerate(rules)
+                for offset in range(len(state))
+                if state.startswith(lhs, offset)
+            ]
+            assert machine.state == state
+            assert machine.ip == (matches[0] if matches else ())
+            assert machine.halted == (not matches)
+            if not matches:
+                break
+            rule, offset = matches[reference.randbelow(len(matches))]
+            lhs, rhs = rules[rule]
+            state = state[:offset] + rhs + state[offset + len(lhs) :]
+            machine.step()
         assert machine.state == state
-        assert machine.ip == (found[0] if found else ())
-        if not found:
-            break
-        state = _advance(state, rules, found[reference.randbelow(len(found))])[0]
-        machine.step()
+        assert io.position() == 0
+        assert io.getvalue() == ""
 
 
 @pytest.mark.medium
