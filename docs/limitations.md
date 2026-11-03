@@ -442,6 +442,13 @@ generators have one.
   positions, summing over seven classes gives `141 + d >= 154`, so at
   least thirteen pairs must differ.
 
+  Each meaning in that parity-conditioned map also needs at least
+  thirteen entries. Twelve four-shift blocks could cover 47 shifts only
+  with one overlap. Translate it to zero and choose the two blocks that
+  meet there. None of the twenty choices leaves a region tiled by ten
+  disjoint blocks (`test_window_classes.py`). Seven meanings therefore
+  occupy at least 91 of the 94 entries.
+
   Carrying state across groups does not escape it (2026-10-25, audit M5):
   in the one-query architecture the only cross-group state is entry state
   the fold delivers, a function of the group's address, so a stateful

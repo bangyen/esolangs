@@ -12,6 +12,8 @@ classes: eight classes, three bits per cell, are impossible.
 
 from __future__ import annotations
 
+from itertools import combinations
+
 from esolangs.languages.malbolge.interpreter import _XLAT1
 
 _CELLS = 94
@@ -88,3 +90,37 @@ def test_parity_sheets_need_thirteen_disagreements() -> None:
     witness = (0, 2, 4, 6)
     assert all(not (masks[a] >> b & 1) for a in witness for b in witness if a != b)
     assert _independence_number(47, offsets) == len(witness) == 4
+
+
+def test_parity_conditioned_meaning_needs_thirteen_entries() -> None:
+    """Twelve four-shift blocks would cover 47 shifts with one overlap."""
+    cells = _CELLS // 2
+    offsets = [tuple(op // 2 for op in _OPS if op % 2 == sheet) for sheet in (0, 1)]
+    blocks = [
+        sum(1 << ((index - op) % cells) for op in sheet)
+        for sheet in offsets
+        for index in range(cells)
+    ]
+    containing = [[block for block in blocks if block >> i & 1] for i in range(cells)]
+
+    def tiles(remaining: int) -> bool:
+        if not remaining:
+            return True
+        choices = min(
+            (
+                [block for block in containing[i] if block & remaining == block]
+                for i in range(cells)
+                if remaining >> i & 1
+            ),
+            key=len,
+        )
+        return any(tiles(remaining ^ block) for block in choices)
+
+    assert blocks[0] & blocks[1] == 0
+    assert tiles(blocks[0] | blocks[1])
+    # Translate the sole overlap to zero. The other ten blocks must tile
+    # the remaining forty shifts exactly.
+    full = (1 << cells) - 1
+    roots = [(a, b) for a, b in combinations(containing[0], 2) if a & b == 1]
+    assert len(roots) == 20
+    assert not any(tiles(full ^ (a | b)) for a, b in roots)
