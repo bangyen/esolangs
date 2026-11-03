@@ -1,5 +1,7 @@
 """Unit tests for Dig interpreter."""
 
+from itertools import product
+from operator import add, floordiv, mul, sub
 from typing import ClassVar
 
 import pytest
@@ -241,25 +243,40 @@ def test_repeated_runs_keep_stores_private() -> None:
     assert _Machine(rows, ScriptedIO("")).code == (("@",),)
 
 
-def test_overground_data_steps_match_the_transition() -> None:
-    from esolangs.languages.dig.interpreter import _advance, _Machine
+def test_overground_data_steps_follow_the_heading() -> None:
+    from esolangs.languages.dig.interpreter import _Machine
 
-    for char in (" ", "é", ";", ":", "~", "7", 12, -3):
-        for move in range(4):
-            for row in range(3):
-                for col in range(3):
-                    machine = _Machine(["   ", "   ", "  @"], ScriptedIO(""))
-                    grid = [[" "] * 3 for _ in range(3)]
-                    grid[row][col] = char
-                    machine.code = tuple(map(tuple, grid))
-                    machine.row, machine.col, machine.move = row, col, move
-                    machine.mole = 17
-                    expected = _advance(machine._state, machine.size)  # noqa: SLF001
-                    machine.step()
-                    assert machine._state == expected  # noqa: SLF001
-                    if machine.halted:
-                        machine.step()
-                        assert machine._state == expected  # noqa: SLF001
+    directions = ((-1, 0), (0, 1), (1, 0), (0, -1))
+    for char, move, row, col in product(
+        (" ", "é", ";", ":", "~", "7", 12, -3), range(4), range(3), range(3)
+    ):
+        io = ScriptedIO("unused")
+        machine = _Machine(["   ", "   ", "  @"], io)
+        grid = [[" "] * 3 for _ in range(3)]
+        grid[row][col] = char
+        machine.code = tuple(map(tuple, grid))
+        machine.row, machine.col, machine.move = row, col, move
+        machine.mole = 17
+        dr, dc = directions[move]
+        destination = row + dr, col + dc
+        halted = any(not 0 <= coordinate < 3 for coordinate in destination)
+        machine.step()
+        assert (machine.row, machine.col) == destination
+        assert (machine.move, machine.mole, machine.num) == (move, 17, 0)
+        assert machine.halted == halted
+        assert io.position() == 0
+        assert io.getvalue() == ""
+        if halted:
+            machine.step()
+            assert (machine.row, machine.col) == destination
+
+    operations = dict(zip("+-*/", (add, sub, mul, floordiv), strict=True))
+    for left, right, (op, evaluate) in product(
+        range(10), range(1, 10), operations.items()
+    ):
+        value = evaluate(left, right)
+        expected = str(value) if value < 10 else chr(value)
+        assert run_and_capture([f">$ {left}{op}::", f" 5  {right}  "]) == expected + "0"
 
 
 def _machine(code: object) -> object:
