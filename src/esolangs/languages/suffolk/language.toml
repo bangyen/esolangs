@@ -86,3 +86,6 @@ arity = 11
 saving = 0.0
 tables = "n10/11/12, five generic and six projected tables each, balanced bytes and repeated records; original n11 seed2026 first table"
 verdict = "mandatory correctness repair in restored old construction: prior print accumulator prevents initial ! from setting countdown1, and three step counters retain previous answers. Add one0 after initial! and cancel/reset counters3/4/5 before sweep: +38 lookup chars and +40 executed commands. Old n11 records0/2047/682 print010 instead of011; repaired source prints011. Cutoff chooses by physical n, including projected tables; no source race. Constants and existing DAG programs unchanged; E remains exact L+R (R153 for full old-reader frames), W old bound fromn11."
+
+[ablations.proof_ceiling_review_20261103]
+verdict = "reviewed: the workspace ceiling combines the old tape envelope with derived storage, scratch and pointer allowances; the NOR route retains its admission cap. These phase ceilings safely bound WrittenState but need not be jointly attained. Workspace stays polynomial in n; all resource arities and the at-most flag remain. No exact optimized maximum is claimed at n=3/5."

@@ -140,13 +140,11 @@ SendStuff, SLOW ACV MAMMALIAN, Smu, Sonata, SStack, Stisp, Streetcode,
 Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- BLIND-REIMPLEMENTATIONS:END -->
-- **Trick prototypes, round 2:** one admissible size rule per generator,
-  executed with a control, shipped or recorded against CONTRIBUTING's gate.
-  Round 1 covered 111/111. Restart by increasing count of kept ablation
-  rules, alphabetically within ties. The zero-trick queue is BASICER,
-  CARP, CreativeScript v2, HQ9+ with headers, Qrain; all five are complete.
-  All 114 audit markers are recorded; proof-coverage review remains. Record
-  completion as `[audits] trick_prototype = <date>`; retain earlier evidence.
+- **Trick prototypes, round 2:** complete. All 325 named proposals from 109 raw
+  files have recorded dispositions; five earlier zero-trick generators are
+  also covered. Proof-test arities are preserved. Line, Quassaunt and Stisp
+  source and Suffolk workspace retain explicit upper bounds; their exact
+  global maxima remain unproved.
 
 <!-- TRICK-PROTOTYPES:START -->
 
