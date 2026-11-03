@@ -14,6 +14,9 @@ def out(code: str, stdin: str = "") -> str:
 
 
 def test_unchanged_compares_values_not_keys() -> None:
+    from esolangs.languages.movesum.tests.oracle_checks import check_raw_movesum
+
+    check_raw_movesum()
     """Writing 0 to a fresh cell is no change: the truth machine halts on 0."""
     assert out("0=0\nmove 0 -1\nmove 0 7") == "0"
     assert out("0=42\nmove 0 -1\nmove 0 1\nmove 2 1", "0\n") == "0"

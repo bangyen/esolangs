@@ -13,6 +13,9 @@ def _out(code: str, stdin: str = "") -> str:
 
 
 def test_arithmetic_pops_a_then_b() -> None:
+    from esolangs.languages.pilas.tests.oracle_checks import check_raw_pilas
+
+    check_raw_pilas()
     # 9 6 - is b - a = 3, printed as '3' after adding 48.
     assert _out("96-6:+:+:++.\n0{0}") == "3"
 

@@ -44,7 +44,8 @@ from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 
-_TOKEN = re.compile(r'"((?:\\"|[^"])*)"|([^\s;"]+)|(;)|(\S)')
+# Keep an escaped quote from backtracking into the closing delimiter.
+_TOKEN = re.compile(r'"((?:\\"|\\(?!")|[^"\\])*)"|([^\s;"]+)|(;)|(\S)')
 _KEYWORDS = frozenset({"codesick", "in", "out"})
 
 #: A parsed argument: a string, or a bare keyword as a 1-tuple.

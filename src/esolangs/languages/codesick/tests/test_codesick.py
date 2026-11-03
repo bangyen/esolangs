@@ -23,6 +23,9 @@ def _steps(code: str, stdin: str, count: int) -> tuple[_Machine, ScriptedIO]:
 
 
 def test_wiki_hello_world_and_xkcd() -> None:
+    from esolangs.languages.codesick.tests.oracle_checks import check_raw_codesick
+
+    check_raw_codesick()
     assert _run('codesick out "Hello, world!" * *;') == "Hello, world!"
     assert _run("codesick out 4 * *;") == "4"
 
