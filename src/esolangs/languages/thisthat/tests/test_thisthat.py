@@ -476,7 +476,7 @@ def test_cat_and_kolakoski_wiki_examples() -> None:
     for length in range(6):
         for values in product("01", repeat=length):
             expected = "".join(values)
-            supplied = " ".join(values)
+            supplied = " \t".join(values)
             io = ScriptedIO(supplied)
             run(cat, io)
             assert io.getvalue() == expected
