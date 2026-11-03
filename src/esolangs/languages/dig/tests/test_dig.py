@@ -278,6 +278,10 @@ def test_overground_data_steps_follow_the_heading() -> None:
         expected = str(value) if value < 10 else chr(value)
         assert run_and_capture([f">$ {left}{op}::", f" 5  {right}  "]) == expected + "0"
 
+    for magnitude, divisor in product(range(1, 10), range(1, 10)):
+        source = [">$ 0-/:", f" 5  {magnitude}{divisor} "]
+        assert run_and_capture(source) == f"{-magnitude // divisor}"
+
 
 def _machine(code: object) -> object:
     from esolangs.languages.dig.interpreter import _Machine
