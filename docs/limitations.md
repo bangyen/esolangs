@@ -261,6 +261,10 @@ definition was attempted and its preservation form is closed:
   computes the optimal first step, remains open in both
   directions: a proof would need non-product or non-uniform
   relations (unpriced), and no such term has been exhibited.
+  A fresh, in-place `o`/`p`/`*` startup cannot deposit words 127..419:
+  accumulator trits 4..8 remain equal in `{0, 1}`, and encryption of a
+  printable result stays printable. Separating `C` and `D` or revisiting
+  modified operands falls outside this obstruction.
 - Short-layout seeds and stubs (`digits.py` `_short_layout`, n <= 15) are
   a construction, the canonical-action rule: a chain's action on a
   pointer-region value is fully determined by `(r, F)` -- `r` its number
@@ -500,18 +504,20 @@ generators have one.
     65,416 classes and is out on the count; D17 counts 32,896 and is
     out on wiring, an invariant digit readout's image holding at most
     10 values against its 32,896 classes.
-  - Marching, data-initialized decoders close in every screened form:
-    operand freedom was solved on exhibit, but placement growth is
-    intrinsic -- at the most generous grouping the bodies plus fixed
-    lines alone total 11,170 cells before any data. Behind that is the
-    phase theorem, generalised: a re-executed cell never repeats an
-    instruction at any two distinct phases, at any stride, so every
-    repeated action in a loop must be carried by a different cell each
-    pass. The theorem binds any looping read path in full; the
-    archived fold, the archived decoder's straight-line read path and
-    the shipped generator's output are not bound.
+  - Marching, data-initialized decoders were recorded at 11,170 cells
+    before data in the screened layouts. This is not a universal loop
+    bound: encryption cycles return, and `i` encrypts its destination,
+    leaving its own instruction unchanged. A native 178-character control
+    (2026-11-03) halts after 105 steps with `p`, no-op, `p` at cell 86.
+    Its layout is `j@30`, `p@86`, `i@91`, `v@93`, source words 85 at
+    165/171 and 92 at 177, all other cells `o`. The `p`-to-`o` mutant
+    makes the same three passes without writing the two payload cells.
+    A paid bootstrap extends this to 27 passes and 14 `p` reads in
+    5,415 characters and 5,470 steps, including the return-pointer setup;
+    a source mutation installing rotation instead of the `p` opcode fails.
+    These establish finite instruction reuse, not a general decoder loop.
 
-  One route is open: a decoder variant whose field-read landing is
+  An open route is a decoder variant whose field-read landing is
   word-mediated -- the continuation address borne by a setup-deposited
   word, not a source character -- exhibited at single-case scale in
   the shipped interpreter at a measured 21 cells per deposited word.
