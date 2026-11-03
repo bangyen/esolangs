@@ -5,6 +5,8 @@
 import random
 import re
 import sys
+from fractions import Fraction
+from itertools import product
 
 import pytest
 
@@ -133,6 +135,40 @@ def test_the_first_matching_fraction_wins() -> None:
     second = _Machine("6 7/3 5/2", ScriptedIO(""))
     second.step()
     assert second.value == 14
+
+    # Rational arithmetic handles cancellation without the interpreter's parser
+    # or factor index. The source retains unreduced numerators and denominators.
+    ratios = ((1, 2), (6, 4), (3, 9), (7, 6), (2, 3), (101, 101))
+    for start, left, right in product((1, 2, 6, 12, 101), ratios, ratios):
+        tokens = [str(start), f"{left[0]}/{left[1]}", f"{right[0]}/{right[1]}"]
+        source = " ".join(tokens)
+        offsets = (len(tokens[0]) + 1, len(tokens[0]) + len(tokens[1]) + 2)
+        fractions = tuple(Fraction(*pair) for pair in (left, right))
+        io = ScriptedIO("unused")
+        machine = _Machine(source, io)
+        current = start
+        for _ in range(12):
+            candidates = (current * fraction for fraction in fractions)
+            selected = next(
+                (
+                    (offset, value.numerator)
+                    for offset, value in zip(offsets, candidates, strict=True)
+                    if value.denominator == 1
+                ),
+                None,
+            )
+            assert machine.value == current
+            assert machine.ip == (selected[0] if selected else None)
+            assert io.getvalue() == ""
+            machine.step()
+            if selected is None:
+                assert machine.halted
+                machine.step()
+                assert io.getvalue() == str(current)
+                break
+            current = selected[1]
+            assert not machine.halted
+        assert io.position() == 0
 
 
 def test_primegame_passes_through_the_primes() -> None:
