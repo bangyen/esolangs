@@ -1,5 +1,8 @@
 """Fish instruction semantics."""
 
+from itertools import product
+from operator import add, eq, gt, lt, mod, mul, sub
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -92,6 +95,21 @@ def test_literals_arithmetic_comparison_and_output() -> None:
     assert _run("22=n;") == "1"
     assert _run("'iH'oo;") == "Hi"
     assert _run('"iH"oo;') == "Hi"
+
+    operations = {"+": add, "-": sub, "*": mul, "%": mod, "(": lt, ")": gt, "=": eq}
+    for left, right, (opcode, evaluate) in product(
+        (0, 1, 7, 15), (1, 2, 11, 15), operations.items()
+    ):
+        source = f"{left:x}{right:x}{opcode}n;"
+        assert _run(source) == str(int(evaluate(left, right)))
+
+    # Write a character into a second row, retrieve it and then read a byte.
+    for char, column in product(("A", "Ω", "i"), (0, 3, 9)):
+        io = ScriptedIO("z!")
+        source = f"'{char}'{column}1p{column}1goio;"
+        run([source], io)
+        assert io.getvalue() == char + "z"
+        assert io.position() == 1
 
 
 def test_input_returns_minus_one_at_eof() -> None:
