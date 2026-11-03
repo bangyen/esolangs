@@ -66,7 +66,8 @@ class TestBuiltins:
                 f"% {index:b} {symbol} {left >> index & 1} {right >> index & 1}"
                 for index in (2, 0, 1)
             ]
-            source = "\n".join([*writes, "$"])
+            preset = [f"% {index:b} | 1 0" for index in range(3)]
+            source = "\n".join([*preset, *writes, "$"])
             assert run_program(source) == str(evaluate(left, right))
 
     def test_binary_operators_read_both_arguments(self) -> None:
