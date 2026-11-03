@@ -32,6 +32,9 @@ def test_wiki_snippets(snippet: str, value: str) -> None:
 
 
 def test_division_truncates_and_zero_divides_to_zero() -> None:
+    from esolangs.languages.aprknia.tests.oracle_checks import check_raw_aprknia
+
+    check_raw_aprknia()
     # -1 / 2 is 0 and -1 mod 2 is -1; 1 / 0 and 1 mod 0 are both 0.
     minus_one = "11*!!!~!1*!!!~!"
     assert _out(minus_one + "11*!!!!*!~!~!~!" + _PRINT) == "0"

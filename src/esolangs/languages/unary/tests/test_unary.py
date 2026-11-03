@@ -16,6 +16,9 @@ def _source(brainfuck: str) -> str:
 
 
 def test_wiki_echo_and_command_order() -> None:
+    from esolangs.languages.unary.tests.oracle_checks import check_raw_unary
+
+    check_raw_unary()
     assert decode("0" * 108) == ",."
     assert run_program(run, "0" * 108, "Z") == "Z"
     assert run_program(run, "0" * 84) == "\x01"

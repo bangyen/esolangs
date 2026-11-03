@@ -16,6 +16,11 @@ run_and_capture = partial(run_printing, run)
 
 class TestArrowQueue:
     def test_noop_ignored_until_off_grid(self) -> None:
+        from esolangs.languages.arrowqueue.tests.oracle_checks import (
+            check_raw_arrowqueue,
+        )
+
+        check_raw_arrowqueue()
         assert run_and_capture(["   "]) == ""
 
     def test_the_dump_goes_to_the_caller_s_io(self) -> None:
