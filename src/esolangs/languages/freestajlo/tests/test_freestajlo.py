@@ -34,3 +34,15 @@ def test_stacks_are_separate_and_the_transfer_stack_carries_values() -> None:
 
 def test_a_function_runs_where_it_is_named() -> None:
     assert _out("f{'a.}ff") == "aa"
+
+
+@pytest.mark.parametrize("dividend", [-13, -6, -1, 0, 1, 6, 13])
+@pytest.mark.parametrize("divisor", [-4, -3, 3, 4])
+def test_signed_quotient_and_remainder(dividend: int, divisor: int) -> None:
+    left = str(abs(dividend)) + "_" * (dividend < 0)
+    right = str(abs(divisor)) + "_" * (divisor < 0)
+    quotient = abs(dividend) // abs(divisor)
+    if (dividend < 0) != (divisor < 0):
+        quotient = -quotient
+    assert _out(f"{left} {right}/:") == str(quotient)
+    assert _out(f"{left} {right}%:") == str(dividend % divisor)
