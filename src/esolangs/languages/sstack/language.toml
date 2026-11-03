@@ -60,6 +60,7 @@ arity = 12
 verdict = "kept: 0.0% race marginal on random tables at every arity n=4..12 (both seed sets) and on dense, mosaic and half-constant corpora; stays under the named-function rule -- 71.0% on parity at n=8 rising to 95.6% at n=16, a share growing with arity, and 26.5% on majority at n=10; its class is a level whose residuals repeat across the whole level"
 
 [audits]
+trick_prototype = 2026-11-03
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-21
 
@@ -69,3 +70,23 @@ saving = 15.4
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "kept: canonical constant folding and minimal spelling, exempt. Root constants retain only their output literal after n reads onto d; nested subtrees keep the two-literal prologue. Chars 3n+9 and commands n+2: n=7 36->30 (16.7%), n=8 39->33 (15.4%), n=12 51->45. n=8 commands 11->10, written workspace 68->62 bits; native bound 6n+6+bl(n+2)+bl(n). n=3 corpus chars 26760->26748. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute in default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged, global resource caps unchanged. Owned read-first checks preserve exact input count and following byte."
+
+[ablations.unread_tail_leaf_prototype]
+arity = 3
+saving = 0.0
+tables = "native table00000001,input000; current full-consumption baseline"
+verdict = "rejected: skipping constant-leaf drains prints0 after only1 of3 required reads. Interpreter acceptance of trailing input does not relax the Boolean input-consumption contract. No new path or weakened resource contract."
+
+[ablations.bottom_pair_reorder_prototype]
+arity = 8
+saving = 4.761
+seed = "Random(184700+n),20 sequential random tables each7/8"
+tables = "all tables/rows n<=3;3samples each4..6;20each7/8;and/or/parity/every threshold7/8"
+verdict = "rejected: buffer both inputs, test the later byte, then move the earlier byte from d to a. Deriving all14 nonconstant two-bit forms leaves three profitable swaps:0010/1011 save16chars,0011 saves13. Fully reprice the tree/shared ContinuationCost, binary inline/prefix metrics and render assertions; fixed20 source34067->32414 /66646->63473 chars (4.8522/4.7610%). Named families0%. Repricing is active: an n4 positive control changes the selected form relative to merely rewriting the old winner. All4660 native before/after checks pass, with ordered reads/sentinels, opposite-answer controls, E<=7n+3 and old written-workspace bounds. Exhaustive n3 source26748->25353,commands32624->31984 (1.9617%,below5%); the size gate also fails. No pair hook, alternate read order, bank metric or state ships; not an impossibility claim for other constructions."
+
+[ablations.ten_pair_increment_prototype]
+arity = 8
+saving = -1.4134
+seed = "same fixed20 corpus as bottom_pair_reorder"
+tables = "all small tables/rows;sampled4..8;both input bits and enclosing parent arms"
+verdict = "rejected: literal47 rewrite is29chars versus27 for the existing10 node. Input0 uses two fewer commands, input1 two more. Applied to every matching node, fixed20 source34067->34563 /66646->67588 grows1.4560/1.4134%; exhaustive n3 source26748->27182,commands32624 unchanged. The saturation alternative uses two decrements instead of pop/literal and is30chars, not a shorter spelling. The literal and swap variants together pass6801 native checks with opposite-answer controls; both nested arms execute in the exhaustive corpus. No arithmetic rewrite or additional state retained. All generator/proof source, exact scopes, pins, anchors and example remain unchanged."

@@ -2,8 +2,15 @@
 
 
 def workspace(n: int, program: str) -> int:
-    """A pending Input frame per 1 taken, at the largest node indices N_d."""
-    if program.startswith(">(Input>"):
+    """Pending frames at N_d; unary readers hold one frame at n or n+2.
+
+    Anonymous roots preserve parser order, hence every other snapshot index.
+    """
+    text = "".join(program.split())
+    if text.startswith(">(Input>"):
+        if "Constant" not in text:
+            last = n + 2 if "Divide48" in text else n
+            return 10 + last.bit_length() + n.bit_length()
         return 10 + (n + 1).bit_length() + n.bit_length()
     bl = int.bit_length
 
@@ -20,5 +27,10 @@ def workspace(n: int, program: str) -> int:
 
 
 def execution(n: int, program: str) -> int:
-    """A constant is n inputs, a literal and output; other tables branch."""
-    return n + 2 if program.startswith(">(Input>") else 4 * n + 2
+    """Readers add zero, one or two unary sends; other tables branch."""
+    text = "".join(program.split())
+    if text.startswith(">(Input>"):
+        if "Constant" in text:
+            return n + 2
+        return n + 3 if "Divide48" in text else n + 1
+    return 4 * n + 2

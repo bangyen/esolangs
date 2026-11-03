@@ -7,21 +7,21 @@ admitted = 2026-10-15T12:02:36-04:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "each distinct subtable is one named node reached by reference; an Input node sends a 1 through `Subtract 49` and a 0 through `Divide 48`, `Subtract 1`; equal halves and constant chains read their bits unbranched"
+qualification = "distinct subtables share named nodes, with an anonymous single-use root; an Input node sends a 1 through `Subtract 49` and a 0 through `Divide 48`, `Subtract 1`; equal halves and constant chains read their bits unbranched; last-input identity/negation share the constant reader with a unary tail"
 scaling = "linear: at most C characters: one definition a distinct subtable, longest ids"
-execution = "poly n: worst 4n + 2 steps: four sends a level, root and leaf one each"
+execution = "poly n: worst 4n+2 steps past n=1, 4 at n=1; unary readers n+1/n+3, constants n+2"
 workspace = "poly n: worst 10n + 12 + bl(n) + Σ_{d<n} bl(N_d) bits past n = 2, N_d by V_j: pending frames"
 definitions = ["N_d = 1 + Σ_{j>d} V_j + V_d - 4, the node index of the last depth-d Input", "V_j = 4b + min(2^j - b, 2^(s/2)), b = min(2^j, 2^s - 2^(s/2)), s = 2^(n-j)"]
 
 [generator_sizes]
-"00000001" = { commands = 14, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 11, "5" = 11, "6" = 14, "7" = 14 }, source_units = 185 }
-"00001100" = { commands = 11, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 11, "5" = 11, "6" = 11, "7" = 11 }, source_units = 184 }
-"00110110" = { commands = 14, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 14, "5" = 14, "6" = 14, "7" = 14 }, source_units = 213 }
-"0110" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10 }, source_units = 159 }
-"01101001" = { commands = 14, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 14, "5" = 14, "6" = 14, "7" = 14 }, source_units = 185 }
-"0110100110010110" = { commands = 18, commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 18, "5" = 18, "6" = 18, "7" = 18, "8" = 18, "9" = 18, "10" = 18, "11" = 18, "12" = 18, "13" = 18, "14" = 18, "15" = 18 }, source_units = 211 }
-"1101001101101101" = { commands = 18, commands_by_row = { "0" = 15, "1" = 15, "2" = 18, "3" = 18, "4" = 15, "5" = 15, "6" = 15, "7" = 15, "8" = 18, "9" = 18, "10" = 18, "11" = 18, "12" = 15, "13" = 15, "14" = 18, "15" = 18 }, source_units = 253 }
-"11111110" = { commands = 14, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 11, "5" = 11, "6" = 14, "7" = 14 }, source_units = 185 }
+"00000001" = { commands = 14, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 11, "5" = 11, "6" = 14, "7" = 14 }, source_units = 182 }
+"00001100" = { commands = 11, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 11, "5" = 11, "6" = 11, "7" = 11 }, source_units = 181 }
+"00110110" = { commands = 14, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 14, "5" = 14, "6" = 14, "7" = 14 }, source_units = 210 }
+"0110" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10 }, source_units = 156 }
+"01101001" = { commands = 14, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 14, "5" = 14, "6" = 14, "7" = 14 }, source_units = 182 }
+"0110100110010110" = { commands = 18, commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 18, "5" = 18, "6" = 18, "7" = 18, "8" = 18, "9" = 18, "10" = 18, "11" = 18, "12" = 18, "13" = 18, "14" = 18, "15" = 18 }, source_units = 208 }
+"1101001101101101" = { commands = 18, commands_by_row = { "0" = 15, "1" = 15, "2" = 18, "3" = 18, "4" = 15, "5" = 15, "6" = 15, "7" = 15, "8" = 18, "9" = 18, "10" = 18, "11" = 18, "12" = 15, "13" = 15, "14" = 18, "15" = 18 }, source_units = 250 }
+"11111110" = { commands = 14, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 11, "5" = 11, "6" = 14, "7" = 14 }, source_units = 182 }
 
 [ablations]
 audited = "2026-10-19"
@@ -57,6 +57,7 @@ arity = 10
 verdict = "kept: canonical (an ignored input at one node), exempt. Plain-rewrite audit 2026-10-29, 20 random tables per arity, branching to both children instead: +0.99% chars / +1.08% area at n=10 (+1.75 / +1.22 at n=8, max +6.67% chars at n=3); named functions 0.00% at n=3..10. All plain-rewrite programs executed: n <= 3 exhaustive (276 tables, three builds), n=4..6 sampled, wrong-table control fails every row"
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
@@ -66,3 +67,45 @@ saving = 55.6
 seed = "both constant values; witnesses(n) at n=4..6"
 tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
 verdict = "kept: canonical whole constants. An anonymous chain of n single-send Input nodes reaches Constant 48/49 and Output; branch macros and node names are unnecessary. Exactly 8n+23 chars and n+2 sends, workspace 10+bl(n+1)+bl(n) bits for one active frame and input cursor. At n=8 both bits 196 -> 87 chars; n=12 254 -> 119. n=3 corpus 49504 -> 49336 chars; all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 are byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts; all 24 old balanced constant scores improve or match. Owned regressions enforce all reads before output, preserve a sentinel and check resource bounds."
+
+[ablations.anonymous_root]
+arity = 8
+saving = 0.373
+seed = "Random(1000*n+i)"
+tables = "20 random per n=7/8; every table/row n<=3; samples4..6"
+verdict = "kept: canonical minimal spelling. The root is defined last and referenced once; replace |id(body)>id with >(body), saving2len(id)+1 chars. Parsed commands, parameters and targets are identical on every non-unary checked table, so generic E/W indices and exact scopes remain unchanged. Fixed20 n7/8 source16707→16607 /26845→26745. No new construction state, fallback or retained named-root path."
+
+[ablations.last_input_identity]
+arity = 8
+saving = 64.39
+seed = "named last-physical-input identity, independently judged"
+tables = "both unary families all rows n1..8; representative native rows9/10/12/16/20; default,width1,balanced"
+verdict = "kept only this named family: 01 repeated, consumed in physical order by the existing constant reader with Output as its tail. Marginal after anonymous-root n7/8 source194→65 /205→73 chars (66.49/64.39%). Exactly8n+9 chars,E=n+1,W=10+2bl(n), all rows. New path is only a tail selector in the existing Input-chain constructor; no lookup/DP/unused nodes. Curve initially declines (n20 canonical baseline363,new169), not monotonic globally: baseline9n+2Σ_{k=2..n}digits(k)+4digits(n)+115, hence saving eventually tends1. No arity cap."
+
+[ablations.last_input_negation]
+arity = 8
+saving = 54.146
+seed = "named last-physical-input negation, independently judged"
+tables = "same native corpus as identity; other input positions stay on the diagram"
+verdict = "kept only this named family: 10 repeated, same reader with Divide48,Add48,Output tail. Independent marginal n7/8 source194→86 /205→94 chars (55.67/54.15%). Exactly8n+30 chars,E=n+3,W=10+bl(n+2)+bl(n), all rows. At n1 the true global worst becomes4 rather than6; original proof arities/True flags retained with the honest unary formulas. Same eventual source-saving limit1, no claim of global monotonicity."
+
+[ablations.inline_single_parent_prototype]
+arity = 8
+saving = 0.206
+seed = "Random(1000*n+i)"
+tables = "20 random per n7/8; and/or/parity/majority separately; exhaustive<=3,samples4..6"
+verdict = "rejected. Raw colon parameters terminate at first semicolon; nested branch macros additionally trigger recursive-active-macro rejection. !y also forwards its argument through !o, losing the colon boundary. Repaired fixed two-state DP requires macro-free anonymous arguments and Input!o for anonymous one-edges. Marginal to all keepers16607→16553 /26745→26690 chars (0.325/0.206%); named gains<=1.04%. No DP/refcounts/expanded-branch constructor retained."
+
+[ablations.dense_ranked_decimal_names_prototype]
+arity = 8
+saving = 1.118
+seed = "Random(1000*n+i)"
+tables = "same corpus as inline prototype; native wrapped controls included"
+verdict = "rejected: decimal names ranked by reference count save16607→16435 /26745→26446 chars (1.036/1.118%). Combining with repaired inline rule saves1.385/1.324%; independent ranking after inline1.063/1.120%. Named gains<=2.13%. No ranking map or second constructor retained. 7152 native checks pass,738 programs differ from keeper, complemented answers fail; wrappers preserve names."
+
+[ablations.terminal_collapse_prototype]
+arity = 8
+saving = -0.224
+seed = "Random(1000*n+i)"
+tables = "20 random per n7/8; native leaf controls and a constant-drain counterexample"
+verdict = "rejected as a general rule. Raw constant terminals violate required consumption: table00000001,input000 prints0 after only1 read. Named terminal01 alone grows fixed20 n7/8 source16707→16767 /26845→26905; rewriting both01/10 grows540chars per arity because branch macros and still-referenced constant terminals already share. Only independently qualifying whole last-input unary families ship; shared terminal definitions in generic diagrams remain. Production exhaustive n3 source49336→48361,commands23680→23632;4456 paired native checks plus layouts/EOF, no table larger/slower. All8 source pins shrink; last-row/per-row command pins stay unchanged."

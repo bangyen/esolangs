@@ -42,11 +42,18 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
                 assert self.reads == self.expected
                 super()._write(value)
 
-        for bit in "01":
+        for table in (
+            "0" * (1 << n),
+            "1" * (1 << n),
+            "01" * (1 << (n - 1)),
+            "10" * (1 << (n - 1)),
+        ):
+            identity = table[:2] == "01"
+            negation = table[:2] == "10"
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("SendStuff", bit * (1 << n), **options)
+                program = esolangs.generate("SendStuff", table, **options)
                 if not options and n == 8:
-                    assert len(program) == 87
+                    assert len(program) == (73 if identity else 94 if negation else 87)
                 rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
                 for row in rows:
                     stdin = esolangs.encode_inputs(
@@ -61,11 +68,11 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
                         written.sample(machine.snapshot())
                         steps += 1
                     assert machine.halted
-                    assert io.getvalue() == bit
-                    assert steps == n + 2
+                    assert io.getvalue() == table[row]
+                    assert steps == n + (1 if identity else 3 if negation else 2)
                     assert written.bits <= workspace(n, program)
                     assert io.input_char() == ord("Q")
     assert (
         sum(len(esolangs.generate("SendStuff", format(v, "08b"))) for v in range(256))
-        == 49336
+        == 48361
     )
