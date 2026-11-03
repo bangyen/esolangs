@@ -42,14 +42,15 @@ def check_raw_what():
         source = f'1.{count}("x"-)!!!.?!!'
         assert _output(_Machine, source, value) == "x" * count + str(ord(value))
     for literal, current, op in product(
-        (0, 2, 9), (0, 3, 9), (":", "<", ">", ":;", "<>")
+        (0, 2, 9), (0, 3, 9), (":", "<", ">", ";", ":;", "<>")
     ):
         tests = {
             ":": literal == current,
             "<": literal < current,
             ">": literal > current,
         }
-        holds = any(tests[t] for t in op if t != ";") != (";" in op)
+        comparisons = op.replace(";", "") or ":"
+        holds = any(tests[t] for t in comparisons) != (";" in op)
         source = f'{current}[{literal}{op}"yes"]"end"!!!'
         assert _output(_Machine, source) == ("yes" if holds else "") + "end"
 
