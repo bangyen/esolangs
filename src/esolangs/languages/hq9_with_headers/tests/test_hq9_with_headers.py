@@ -1,5 +1,8 @@
 """Tests for the HQ9+ with headers interpreter."""
 
+from itertools import product
+from operator import add, floordiv, mul, sub
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -90,6 +93,37 @@ def _steps(code: str, stdin: str, count: int) -> _Machine:
 def test_wiki_hq9_example_prints_its_title() -> None:
     # Labelled 'Print "Hello, World!QHQQHQ"': flow 2,1,3 runs H, Q, Q.
     assert _run(_HQ) == "Hello, World!QHQQHQ"
+
+    # Startup supplies the operands. Flow executes the arithmetic before print
+    # despite their opposite order in the source program.
+    operations = {"ADD": add, "SUB": sub, "MUL": mul, "DIV": floordiv}
+    for (name, evaluate), left, right in product(
+        operations.items(), (0, 7, 11), (0, 2, 13)
+    ):
+        source = _source(
+            "2,1",
+            {"P": ["p(Vz)"], "A": [f"[{name} x y z]"]},
+            [f"x = {left}", f"y = {right}"],
+            "PA",
+        )
+        if name == "DIV" and not right:
+            with pytest.raises(HaltError, match="DIV by 0"):
+                _run(source)
+        else:
+            assert _run(source) == str(evaluate(left, right))
+
+    for value, tail in product(("", "0", "0007", "42"), ("", "x", "\nZ")):
+        source = _source(
+            "2,'JZx#3,1,'H,3",
+            {"P": ["p(Vx)"], "R": ["[>>. x]"], "Z": ['p("zero")']},
+            ["p()"],
+            "PRZ",
+        )
+        io = ScriptedIO(value + tail)
+        run(source, io)
+        number = int(value or "0")
+        assert io.getvalue() == (str(number) if number else "zero")
+        assert io.position() == len(value) + bool(tail)
 
 
 def test_wiki_truth_machine_jumps_to_command_numbers() -> None:
