@@ -115,9 +115,17 @@ class TestKolakoski:
         assert bits(run_steps(KOLAKOSKI, "", 400))[:20] == "01101100110011001100"
 
     def test_the_current_wiki_program_prints_the_kolakoski_sequence(self) -> None:
-        """1221121221221121122121121221121121221221121 as bits 0 and 1."""
-        expected = "0110010110110010011010010110010010110110010"
-        assert bits(run_steps(WIKI_KOLAKOSKI, "", 1500))[: len(expected)] == expected
+        """Derive the run-length sequence independently of the grid."""
+        sequence = [1, 2, 2]
+        run_index = 2
+        symbol = 1
+        while len(sequence) < 96:
+            sequence.extend([symbol] * sequence[run_index])
+            symbol = 3 - symbol
+            run_index += 1
+        expected = "".join(str(value - 1) for value in sequence[:96])
+        actual = bits(run_steps(WIKI_KOLAKOSKI, "", 4000))
+        assert actual[:96] == expected
 
 
 class TestParsing:
