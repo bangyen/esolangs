@@ -12,7 +12,7 @@ classes: eight classes, three bits per cell, are impossible.
 
 from __future__ import annotations
 
-from itertools import combinations
+from itertools import combinations, combinations_with_replacement
 
 from esolangs.languages.malbolge.interpreter import _XLAT1
 
@@ -124,3 +124,72 @@ def test_parity_conditioned_meaning_needs_thirteen_entries() -> None:
     roots = [(a, b) for a, b in combinations(containing[0], 2) if a & b == 1]
     assert len(roots) == 20
     assert not any(tiles(full ^ (a | b)) for a, b in roots)
+
+
+def test_equal_steps_force_alternating_sheet_swaps() -> None:
+    """Three vacancies force occupied pairs at distances d and 7-d."""
+    cells = _CELLS // 2
+    checked = 0
+    for a, b in combinations_with_replacement(range(cells), 2):
+        vacancies = [0] * cells
+        for i in (0, a, b):
+            vacancies[i] += 1
+        if vacancies[0] == 3:
+            continue
+        # Subtract adjacent seven-column occupancy sums.
+        counts = [0] * cells
+        for k in range(1, cells):
+            i = 7 * k % cells
+            counts[i] = counts[(i - 7) % cells] + vacancies[i - 1] - vacancies[i]
+        offset, remainder = divmod(13 - sum(counts), cells)
+        counts = [count + offset for count in counts]
+        if remainder or min(counts) < 0 or max(counts) > 2:
+            continue
+        assert max(counts) == 1
+        distances = {
+            d
+            for d in range(1, 7)
+            if any(counts[i] and counts[(i + d) % cells] for i in range(cells))
+        }
+        assert any(7 - d in distances for d in distances)
+        checked += 1
+    assert checked == 105
+
+
+def test_alternating_seven_class_orbit_cannot_cover() -> None:
+    """A thirteen-point shape has thirteen gaps of seven plus three extras."""
+    cells = _CELLS // 2
+    offsets = [tuple(op // 2 for op in _OPS if op % 2 == sheet) for sheet in (0, 1)]
+
+    full = (1 << cells) - 1
+
+    def mask(points: list[int], step: int, sheet: int, ops: tuple[int, ...]) -> int:
+        return sum(
+            1 << i
+            for i in {
+                (point * step - op) % cells
+                for point in points
+                if point % 2 == sheet
+                for op in ops
+            }
+        )
+
+    def shift(bits: int, distance: int) -> int:
+        return ((bits << distance) | (bits >> (cells - distance))) & full
+
+    assert all(
+        mask(list(range(_CELLS)), 1, s, ops) == full for s in (0, 1) for ops in offsets
+    )
+    assert shift(1 << (cells - 1), 1) == 1
+    assert len({7 * i + k for i in range(13) for k in range(7)}) == 91
+    for extra in combinations_with_replacement(range(13), 3):
+        points = [0]
+        for i in range(12):
+            points.append(points[-1] + 7 + extra.count(i))
+        for step in range(1, cells):
+            ea, eb = (mask(points, step, s, offsets[0]) for s in (0, 1))
+            oa, ob = (mask(points, step, s, offsets[1]) for s in (0, 1))
+            assert not any(
+                ea | shift(ob, delta) == full and eb | shift(oa, delta) == full
+                for delta in range(cells)
+            )

@@ -449,6 +449,23 @@ generators have one.
   disjoint blocks (`test_window_classes.py`). Seven meanings therefore
   occupy at least 91 of the 94 entries.
 
+  Seven equally spaced translates of one shape, even with sheet swaps,
+  cannot cover. The shape has thirteen entries, so the translates leave
+  three vacancies. In units of the translation step, the column counts
+  satisfy `m(i) - m(i-7) = vacancy(i-1) - vacancy(i)`. Normalizing one
+  vacancy to zero gives 105 feasible profiles. Each has occupied pairs
+  at distances `d` and `7-d` for some `d` in 1..6. Disjointness requires
+  the swap-bit XOR to be constant at each distance. Along the seven-cycle
+  of stride `d`, these constraints force constant or alternating swaps.
+  Constant swaps would need 49 entries on one sheet. Alternating swaps
+  place the shape on a 94-cycle with thirteen gaps of at least seven.
+  None of the 455 distributions of the three extra gaps covers both
+  orientations at any of the 46 nonzero steps, even after shifting the
+  odd sheet by any residue. That last shift also covers a fixed swap
+  generator with unequal increments: conjugate by a sheet shift to use
+  their average step. A zero average gives order two
+  (`test_window_classes.py`).
+
   Carrying state across groups does not escape it (2026-10-25, audit M5):
   in the one-query architecture the only cross-group state is entry state
   the fold delivers, a function of the group's address, so a stateful
