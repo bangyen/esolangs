@@ -17,8 +17,8 @@ from scripts.benchmark import WrittenState
 
 def _execute(table: str, program: str, rows: range | list[int]) -> int:
     n = len(table).bit_length() - 1
-    # The ledger's execution clause: the tree's bound, or the count
-    # build's exact worst where a symmetric table streams its count.
+    # Raw count controls include alternating bits; affine streaming
+    # undercuts that raw maximum in the public generator.
     command_bound = max(2 * n * n + 27 * n + 8, 4 * n * n + 30 * n + 15)
     workspace = (
         (len(program) - 1).bit_length()
@@ -77,25 +77,34 @@ def test_cap_affine_stream_uses_constant_space(bias: int) -> None:
 
 
 @pytest.mark.parametrize("n", [2])
-def test_public_and_still_attains_the_tree_execution_bound(n: int) -> None:
-    # Where the tree still wins AND, its all-ones row attains the bound
-    # the ledger's first term states.
+def test_public_two_input_and_executes_the_guarded_tree_at_exact_cost(n: int) -> None:
+    # Every guard consumes its one bit; no zero child needs a flag.
     table = "0" * ((1 << n) - 1) + "1"
-    assert _execute(table, boolfuck(table), [(1 << n) - 1]) == 2 * n * n + 27 * n + 8
+    assert _execute(table, boolfuck(table), [(1 << n) - 1]) == 2 * n * n + 20 * n + 10
 
 
 @pytest.mark.parametrize("n", [3, 4, 5, 6, 9, 10, 16])
-def test_public_and_executes_the_count_build_at_its_exact_cost(n: int) -> None:
-    # Where the count build wins AND, its all-ones row costs the read
-    # phase at full popcount plus the one flip at count n.
+def test_public_and_selects_guarded_tree_then_count_at_exact_cost(n: int) -> None:
+    from esolangs.languages.boolfuck.generator import _boolfuck_tree
+
+    # Guarded AND has 2n²+19n+10 chars; count has 29n+18, crossing at n=6.
     table = "0" * ((1 << n) - 1) + "1"
-    assert _execute(table, boolfuck(table), [(1 << n) - 1]) == 3 * n * n + 26 * n + 19
+    program = boolfuck(table)
+    if n <= 5:
+        assert program == _boolfuck_tree(table)
+        assert len(program) == 2 * n * n + 19 * n + 10
+        expected = 2 * n * n + 20 * n + 10
+    else:
+        assert program == popcount_stream(table)
+        assert len(program) == 29 * n + 18
+        expected = 3 * n * n + 26 * n + 19
+    assert _execute(table, program, [(1 << n) - 1]) == expected
 
 
 @pytest.mark.parametrize("n", [3, 6, 9, 12])
 def test_count_build_attains_the_restated_execution_bound(n: int) -> None:
     # The alternating-bits table flips at every count with f[0] set:
-    # the count build's worst row, attaining the ledger's second term.
+    # the raw count build's worst row, undercut publicly by affine streaming.
     table = "".join(str((row.bit_count() + 1) & 1) for row in range(1 << n))
     program = popcount_stream(table)
     assert program is not None

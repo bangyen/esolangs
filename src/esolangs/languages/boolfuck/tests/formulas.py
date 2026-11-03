@@ -2,16 +2,14 @@
 
 
 def _chars(n: int, _: str) -> int:
-    """C = 35T/2 + 2n^2 + 12n - 23 to n = 7; the tree's own maximum, -11, at n = 8.
+    """The finite three-input maximum, then the inherited upper envelopes.
 
-    The -11 tree is parity, which the affine stream undercuts (n = 4..7: 95..127
-    characters).  The next tables are 12 short, a parity with row 5 flipped,
-    reached at n = 3 only: from n = 4 every candidate within the ledger's
-    execution clause is admitted, and the gates undercut the tree's maximum
-    (n = 4, all 65,536 tables: 266 against 337).  From n = 9
-    the gates are always built (2n^2 + 25n + 26 commands) and span at most
-    85T/8 + 2n^2 + 10n + 39 (n = 9: 5,731 against 9,219).
+    Zero-child pruning lowers the exhaustive n=3 maximum to 162, reached by
+    parity with row 6 flipped. Larger arities retain their old nonexact caps;
+    the unchanged normalized gate route supplies the envelope from n=9.
     """
+    if n == 3:
+        return 162
     if n >= 9:
         return 85 * (1 << n) // 8 + 2 * n * n + 10 * n + 39
     return 35 * (1 << n) // 2 + 2 * n * n + 12 * n - (23 if n <= 7 else 11)

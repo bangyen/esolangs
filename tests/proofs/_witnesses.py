@@ -1023,6 +1023,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Bitdeque": lambda n: (_bitdeque_worst(n), _bitdeque_tokens(n)) if n >= 3 else (),
     # Parity with row 0 flipped: a symmetric count table, one flip short.
     "Boolfuck": lambda n: (
+        *(("01101011",) if n == 3 else ()),
         "1" + _parity(n)[1:],
         *(("0000000010010110",) if n == 4 else ()),
         *((_boolfuck_flip(n),) if n >= 3 else ()),

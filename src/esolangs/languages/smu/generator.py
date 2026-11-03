@@ -21,8 +21,8 @@ each use.
 
 Size:
     O(T) worst case, never longer than the plain tree; O(n) steps, one run
-    per input bit.  n=10 parity: 228 chars, n=10 and: 186 chars, n=10
-    random 1847: 1,194 chars. Constants: n=8: 77 chars; 55n+5 commands.
+    per input bit.  n=10 parity: 224 chars, n=10 and: 182 chars, n=10
+    random 1847: 1,190 chars. Constants: n=8: 75 chars; 55n+5 commands.
 
 Decisions:
     Inlining a kept macro never saves: its test only gets easier as its
@@ -49,7 +49,9 @@ from esolangs.registry._language import Language
 _SKIP = "k((())=())k"
 _NODE = "n(+)=(|)=()+kkkkkkk()n"
 _PAD = "m(+)=(+)()+(|)=()+kkkkkkk()m"
-_LEAVES = ("z(())=(||||++||)z", "o(())=(+|||++||)o")
+# A leaf is terminal, so its discarded input may overwrite the empty name.
+# Skip runs retain their nonempty target: another program follows them.
+_LEAVES = ("z()=(||||++||)z", "o()=(+|||++||)o")
 _MACROS = _SKIP + _NODE + _PAD + "".join(_LEAVES)
 
 #: Delimiter macros, each defined only where its uses pay the 4 characters.

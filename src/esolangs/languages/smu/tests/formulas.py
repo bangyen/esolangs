@@ -2,31 +2,32 @@
 
 
 def _chars(n: int, _: str) -> int:
-    """C: 107 + per level 3 a node, 2 a pad, plus 2D + E or 3(E - D) of macro names.
+    """C: 103 + per level 3 a node, 2 a pad, plus 2D + E or 3(E - D) of macro names.
 
+    Terminal leaf targets save four fixed characters; sharing is unchanged.
     Exact at n = 3, 5, 9, 10, 11 (n = 7: no table reaches it, the 4 level-5 pads
     used twice stay inline, 3 < 4).  From n = 12 it is the price before
-    the delimiter macros, an upper bound only (witness 4,256 at n = 12, 42,532
-    at n = 16, against 6,267 and 59,330): the old constants no longer fit
+    the delimiter macros, an upper bound only (witness 4,252 at n = 12, 42,528
+    at n = 16, against 6,263 and 59,326): the old constants no longer fit
     and the exact worst case is open.  Before them, from n = 12 the 256
     eight-bit subtables are each named, one-letter names going to the most
     used; exact to n = 15.  From n = 16 (32 uses, above the
     4-bit tables' 31) the 8-bit tables outrank the lower macros: 47 get
     one-letter names, the rest and every 4- and 2-bit macro two letters, so
-    5T/8 + 465T/2048 + 3490, exact at n = 16 only.  Past n = 16 that price
+    5T/8 + 465T/2048 + 3486, exact at n = 16 only.  Past n = 16 that price
     charges every subtable once per distinct parent; a level n - 4 pair
     repeated twice under a three-letter name fails the macro test
     ((2 - 1) * 9 <= (2 + 2) * 3) and is written out at both places, so its
     subtables collect two references per parent while names still rank by
     parents.  Keeping the 47 one-letter subtables' pairs distinct and
     repeating the 209 two-letter subtables' pairs beats it (n = 17
-    116,224 > 115,170; n = 19 454,881 > 450,210; n = 20 905,770 > 896,930),
-    so 6T + 90 bounds past n = 16.
+    116,220 > 115,166; n = 19 454,877 > 450,206; n = 20 905,766 > 896,926),
+    so 6T + 86 bounds past n = 16.
     """
     if n > 16:
-        return 6 * (1 << n) + 90
+        return 6 * (1 << n) + 86
     if n > 15:
-        return 5 * (1 << (n - 3)) + 465 * (1 << (n - 11)) + 3490
+        return 5 * (1 << (n - 3)) + 465 * (1 << (n - 11)) + 3486
     if n > 11:
         uses = 1 << (n - 11)  # parents of each eight-bit subtable
         # Names go by use: the 4-bit tables (31 uses) first; the 2-bit tables
@@ -43,11 +44,11 @@ def _chars(n: int, _: str) -> int:
 
         lower = 8 * tail + 22 + 104 + 28 * tail  # the 2- and 4-bit macros
         named = 16 * pad(1) + (short - 16) * unequal(1) + (256 - short) * unequal(2)
-        return 95 + 5 * ((1 << (n - 3)) - 1) + lower + named
-    # 107 = 95 + the X, Y, W delimiter macros (4 each), a delimiter defined
+        return 91 + 5 * ((1 << (n - 3)) - 1) + lower + named
+    # 103 = 91 + the X, Y, W delimiter macros (4 each), a delimiter defined
     # only past 4 uses: with 6 or fewer pads (n <= 5) W is not, and each pad
     # is one character longer.
-    total, edges, pads_all = 107, 1, 0
+    total, edges, pads_all = 103, 1, 0
     for j in range(n):
         s = 1 << (n - j)
         nodes = min(1 << j, 1 << s)

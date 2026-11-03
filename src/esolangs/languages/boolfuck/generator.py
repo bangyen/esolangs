@@ -9,7 +9,7 @@ the zero-side only if the flag survived.  Every flag is 0 again on return.
 An ignored input is read into scratch and the tree and the gates run over
 the essential ones.  Constant subtrees fold to a leaf as in
 ``helpers.decision_tree_body``; a ``"1"`` leaf flips R, and one leaf executes,
-so R flips at most once.  At n>=6,
+so R flips at most once.  From n=4,
 two-input cofactors normalize to shared AND/XOR gates; input flips and output
 bias distinguish their functions without extra flags.  Affine tables stream
 through two data cells, toggling the accumulator once per selected bit.
@@ -22,7 +22,7 @@ Size:
     Affine tables are O(n), other tables O(T); n=10 parity: 175 chars,
     n=10 random 1847: 7,353 chars, n=16 random 1847: 462,301 chars.
     A symmetric table costs the count build's 25n read phase plus its
-    decision walk: n=12 majority: 356 chars, against the tree's 26,656.
+    decision walk: n=12 majority: 356 chars, against the tree's 23,917.
 
 Decisions:
     Deferring repeated residuals to unused level flags was retired: it paid
@@ -123,8 +123,9 @@ def popcount_stream(table: str) -> str | None:
     phase costs 3p^2 + 11p + 13n + 14 (the m-th set bit scans an
     m-cell prefix out and back), a flip at count j costs 2j + 5 when
     it fires and 1 when skipped, and a set f[0] costs 1; the worst is
-    the all-ones row of the alternating-bits table, 4n^2 + 30n + 15,
-    past the tree's bound -- the ledger states the max of the two.
+    the all-ones row of the alternating-bits table, 4n^2 + 30n + 15.
+    Affine streaming undercuts that table; the public count maximum omits
+    the count-one flip and is 4n^2 + 30n + 8.
     """
     n = _validate_truth_table(table)
     bits = _decision_bits(table, n)
@@ -355,7 +356,7 @@ def normal_gates(table: str) -> str | None:
     weights, table = input_weights(table, real)
     n = len(table).bit_length() - 1
     # Prefix forks cost at most 15 commands per input. The AND/XOR tails
-    # give 2*n*n + 25*n + 26, within the admission bound from n=3; each
+    # give 2*n*n + 25*n + 26, within the admission bound from n=9; each
     # table's count is still checked.  Native extreme paths attain it at n=9
     # (413) and n=16 (938).  Workspace holds from n=4
     # (docs/proofs/boolfuck-gates.md), so the race starts there: the gates
@@ -414,13 +415,15 @@ def _boolfuck_tree(truth_table: str) -> str:
 
     out.read_inputs(weights)
 
-    # Decision tree over the stored bits.
+    # A zero child needs no flag or body. Its skipped input cells are dead;
+    # the omitted flag stays zero, including the printer's carrier at cell 1.
     body, _ = flag_tree_body(
         projected,
         tuple(range(essential)),
         out.pos,
         out.result,
         flip=True,
+        fold_zero=True,
     )
     out.emit(body)
     out.pos = out.result
@@ -441,6 +444,6 @@ LANGUAGE = Language(
     ),
     wrap=wrap_chars,
     eof="EOF supplies zero bits",
-    # Six to eight reach the AND/XOR gates (docs/proofs/boolfuck-gates.md).
+    # Four to eight reach the AND/XOR gates (docs/proofs/boolfuck-gates.md).
     proof_workspace=(workspace, False, (3, 4, 6, 7, 8)),
 )

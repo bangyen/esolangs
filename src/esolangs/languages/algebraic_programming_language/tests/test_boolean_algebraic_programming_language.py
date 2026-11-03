@@ -68,13 +68,14 @@ class TestAlgebraicProgrammingLanguage:
 
     def test_every_value_stays_zero_or_one(self) -> None:
         """The program prints a bit, not an arbitrary truth value."""
+        _check_arithmetic_twins()
         program = boolean.algebraic_programming_language("0110")
         for combo in range(4):
             assert self._run(program, 2, combo).strip() in {"0", "1"}
 
     def test_the_complement_operator_is_the_wikis_own(self) -> None:
         """The header is the wiki's ``!x`` definition, spaces aside."""
-        program = boolean.algebraic_programming_language("0001")
+        program = boolean.algebraic_programming_language("1110")
         assert program.startswith("!x={\nx&$0\n$1\n}\n")
 
     def test_a_one_entry_table_is_refused(self) -> None:
@@ -213,7 +214,7 @@ class TestAlgebraicProgrammingLanguageShapes:
         )
 
         tail = {
-            "0110": "!a&b|a&!b",
+            "0110": "(a+b)%2",
             "0001": "a&b",
             "0111": "a|b",
             "1101": "!a|b",
@@ -234,15 +235,15 @@ class TestAlgebraicProgrammingLanguageShapes:
         )
 
         assert boolean.algebraic_programming_language("00011110").endswith(
-            "a&b&c&0|!a&b&c|a&!(b&c)"
+            "a&b&c&0|(a+(b&c))%2"
         )
         assert boolean.algebraic_programming_language("0101010100110011").endswith(
             "a&b&c&d&0|!a&d|a&c"
         )
         three = [f"{value:08b}" for value in range(256)]
         for tables, before, after in (
-            (three, 18201, 9183),
-            (five_input_sample(), 47399, 21733),
+            (three, 18201, 8592),
+            (five_input_sample(), 47399, 20863),
         ):
             inline = [
                 len(_apl_tree_ordered(t, tuple(range(len(t).bit_length() - 1))))
@@ -376,7 +377,7 @@ def test_default_reuses_emitted_frames() -> None:
     table = corpus(8)["tiled"]
     plain = _apl_reduced_ordered(table, tuple(range(8)))
     program = boolean.algebraic_programming_language(table)
-    assert (len(plain), len(program)) == (1019, 310)
+    assert (len(plain), len(program)) == (1019, 341)
     assert (
         execute("Algebraic Programming Language", program, table, {}, all_rows=True)
         == 256
@@ -425,3 +426,32 @@ def _check_constants() -> None:
                     assert io.reads == n
                     assert io.past_end == 0
                     assert io.input_num() == 7
+
+
+def _check_arithmetic_twins() -> None:
+    class ReadFirstIO(ScriptedIO):
+        def print_str(self, text: str) -> None:
+            assert self.position() == 2 * inputs - 1
+            super().print_str(text)
+
+    for inputs, used in ((2, (0, 1)), (4, (0, 3)), (6, (2, 4)), (8, (1, 7))):
+        table = "".join(
+            str(sum((row >> (inputs - 1 - bit)) & 1 for bit in used) % 2)
+            for row in range(1 << inputs)
+        )
+        source = boolean.algebraic_programming_language(table)
+        assert "%2" in source
+        for row in (0, 1, (1 << inputs) - 1):
+            bits = format(row, f"0{inputs}b")
+            io = ReadFirstIO(" ".join(bits) + " Q")
+            machine = _Machine(source, io)
+            while not machine.halted:
+                machine.step()
+            assert io.getvalue() == table[row] + "\n"
+            assert io.input_token() == "Q"
+    mutant = boolean.algebraic_programming_language("0110").replace("%2", "%3")
+    io = ScriptedIO("1 1")
+    machine = _Machine(mutant, io)
+    while not machine.halted:
+        machine.step()
+    assert io.getvalue() == "2\n"

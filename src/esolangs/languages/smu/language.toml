@@ -8,20 +8,20 @@ admitted = 2026-10-07T12:46:28-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "a node stores its halves under the input bit's own names and pushes the one the bit names as the next run's program, above seven skip runs for the byte's other bits; a node with equal halves is a pad; five macros and up to three delimiter macros carry the repeated text, and a subtree two parents reach is one more when that is shorter"
-scaling = "linear: at most C characters to n = 16, 6T+90 after"
+scaling = "linear: at most C characters to n = 16, 6T+86 after"
 execution = "poly n: worst 55n + 5 commands, one tree path of eight runs a level"
 workspace = "linear: worst 24E - 1214 + bl(E) + bl(n) bits for n ≥ 2: code, stack, variables"
-definitions = ["E = 95T - 80, the macro-expanded program with no constant subtree"]
+definitions = ["E = 93T - 80, the macro-expanded program with no constant subtree"]
 
 [generator_sizes]
-"00000001" = { commands = 164, commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 164, "7" = 164 }, source_units = 123 }
-"00001100" = { commands = 166, commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 166, "7" = 166 }, source_units = 120 }
-"00110110" = { commands = 164, commands_by_row = { "0" = 166, "1" = 166, "2" = 166, "3" = 166, "4" = 164, "5" = 164, "6" = 164, "7" = 164 }, source_units = 130 }
-"0110" = { commands = 111, commands_by_row = { "0" = 111, "1" = 111, "2" = 111, "3" = 111 }, source_units = 114 }
-"01101001" = { commands = 164, commands_by_row = { "0" = 164, "1" = 164, "2" = 164, "3" = 164, "4" = 164, "5" = 164, "6" = 164, "7" = 164 }, source_units = 130 }
-"0110100110010110" = { commands = 217, commands_by_row = { "0" = 217, "1" = 217, "2" = 217, "3" = 217, "4" = 217, "5" = 217, "6" = 217, "7" = 217, "8" = 217, "9" = 217, "10" = 217, "11" = 217, "12" = 217, "13" = 217, "14" = 217, "15" = 217 }, source_units = 144 }
-"1101001101101101" = { commands = 217, commands_by_row = { "0" = 219, "1" = 219, "2" = 217, "3" = 217, "4" = 219, "5" = 219, "6" = 219, "7" = 219, "8" = 217, "9" = 217, "10" = 217, "11" = 217, "12" = 219, "13" = 219, "14" = 217, "15" = 217 }, source_units = 151 }
-"11111110" = { commands = 164, commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 164, "7" = 164 }, source_units = 123 }
+"00000001" = { commands = 164, commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 164, "7" = 164 }, source_units = 119 }
+"00001100" = { commands = 166, commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 166, "7" = 166 }, source_units = 116 }
+"00110110" = { commands = 164, commands_by_row = { "0" = 166, "1" = 166, "2" = 166, "3" = 166, "4" = 164, "5" = 164, "6" = 164, "7" = 164 }, source_units = 126 }
+"0110" = { commands = 111, commands_by_row = { "0" = 111, "1" = 111, "2" = 111, "3" = 111 }, source_units = 110 }
+"01101001" = { commands = 164, commands_by_row = { "0" = 164, "1" = 164, "2" = 164, "3" = 164, "4" = 164, "5" = 164, "6" = 164, "7" = 164 }, source_units = 126 }
+"0110100110010110" = { commands = 217, commands_by_row = { "0" = 217, "1" = 217, "2" = 217, "3" = 217, "4" = 217, "5" = 217, "6" = 217, "7" = 217, "8" = 217, "9" = 217, "10" = 217, "11" = 217, "12" = 217, "13" = 217, "14" = 217, "15" = 217 }, source_units = 140 }
+"1101001101101101" = { commands = 217, commands_by_row = { "0" = 219, "1" = 219, "2" = 217, "3" = 217, "4" = 219, "5" = 219, "6" = 219, "7" = 219, "8" = 217, "9" = 217, "10" = 217, "11" = 217, "12" = 219, "13" = 219, "14" = 217, "15" = 217 }, source_units = 147 }
+"11111110" = { commands = 164, commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 164, "7" = 164 }, source_units = 119 }
 
 [ablations]
 audited = "2026-10-29"
@@ -66,6 +66,35 @@ verdict = "kept: proof machinery, below the size bar. Naming by use fixes which 
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+trick_prototype = 2026-11-02
+
+[ablations.delimiter_digrams]
+arity = 8
+saving = 9.24
+seed = "random.Random(4242+n), successive choice('01')"
+tables = "200 per fixed n=7,8; five named families separately; two-table curves n=9,10,12,14,16"
+verdict = "rejected: six fixed pairs YX/YY/WX/WY/YW/((, reserved V/U/T/S/R/Q, structural-body-only substitution and recomputed sharing profitability. No definition-boundary substitution, search or old-output minimum. Random chars 65679 -> 62009 and 95191 -> 86395 (5.588%/9.240%); after independently kept terminal spelling 64879 -> 61209 and 94391 -> 85595 (5.657%/9.319%), still failing fixed n=7. Named savings at n=7/8 are at most 1.19%. Two-table curve saves 12.79/15.28/20.75/16.59/18.85% at n=9/10/12/14/16: observed peak at 12, later rebound below it, no global peak or shifted judging range claimed. Added six names, a profitability pass and a second render are not retained."
+
+[ablations.bare_constant_leaf]
+arity = 8
+saving = 4.23
+seed = "random.Random(4242+n), successive choice('01')"
+tables = "same fixed corpus; native constant contract controls at n=1,7"
+verdict = "invalid: raw bare leaves save 5.311%/4.234% at n=7/8 but skip the required pad/read chain. A seven-input constant prints correctly after reading only one byte; a one-input constant loses the existing EOF probe. Both controls execute in five steps with one successful read and no EOF probe, versus the unchanged full-input contract. Correct output does not admit either violation; no bare-leaf production path."
+
+[ablations.fused_node_delimiters]
+arity = 8
+saving = 3.78
+seed = "random.Random(4242+n), successive choice('01')"
+tables = "same fixed corpus; five named families at n=7,8"
+verdict = "rejected independently of the terminal spelling: factor the common node/pad tail into s, omit n/m aliases where Y/W carries their bodies, and retain the existing constant-root spelling where tail factoring loses. Expanded programs remain identical. Chars 65679 -> 62088 and 95191 -> 91591 (5.468%/3.782%); after terminal spelling 64879 -> 61288 and 94391 -> 90791 (5.535%/3.814%). Named maximum AND/OR 11.25%/10.65%, declining toward zero; fixed prelude savings fail the 20% declining bar. Reserving s eventually costs more names: the two-table n=16 sample grows 0.052%. No tail macro, naming state or alternate construction is retained."
+
+[ablations.terminal_leaf_target]
+arity = 8
+saving = 0.84
+seed = "same fixed corpus"
+tables = "all tables/rows n<=3; seeded n=4..6; both constants n=1..12; generic resource witnesses n=2,4"
+verdict = "kept as minimal terminal spelling, independent of failed fusion: only leaf (())= becomes ()=; skip targets remain nonempty because another program follows. The empty-name store is dead at halt, with both operands explicit. It adds one dead dictionary entry, necessary for the shortest assignment target, and no construction path/helper/cache. Generic component peaks for E=93T-80 are code E, stack E-78 and variables E-75 bytes; W=24E-1214+bl(E)+bl(n), exact scopes 2/4 retained. Constant E=84n+13, W=2688n-1158+8[n=1]+bl(E)+bl(n); the extra eight bits at n=1 honestly count the terminal entry. Native W=1546 at n=1 constants, 4228/9606 at n=2/4 constants, 5805/32592 at n=2/4 parity. Every nonconstant source loses four chars, constants two; sharing choices and all original source/exactness rungs remain unchanged apart from C-4. n=3 corpus 32096 -> 31076, five-input sample 36687 -> 35887. All eight source pins lose four chars; every row-command pin remains executed and unchanged. Three Size anchors and owned example refreshed. Production 2168 paired native row groups preserve outputs, steps, successful reads and the existing single EOF probe; with a following QR the same Q byte is consumed and R remains. Owned helper checks default/width1/balance, terminal-only mutation, all 8n+1 runs, resources and records without adding a collected case. Uniform probes pass 2186 groups plus forced digram and wrong-table 8/8 controls; native curve endpoints complete through n=16 (source 0.30 CPU-s, native 7.12 CPU-s, stopping further extension after the last arity exceeded its estimate)."
 
 [ablations.constant_table_audit_20261101]
 arity = 8

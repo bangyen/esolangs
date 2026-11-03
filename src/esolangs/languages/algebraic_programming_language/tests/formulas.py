@@ -2,10 +2,18 @@
 
 from math import ceil
 
+from esolangs.languages.algebraic_programming_language.generator import (
+    _NOT_TIGHT,
+    _reads,
+)
+
 
 def execution(n: int, program: str) -> int:
     """Initialize K definitions; a selected level enters at most three split frames."""
-    definitions = program.count("=") - 1
+    prefix = _reads(n, "&")
+    if program in (prefix, prefix + "|1"):
+        return 4 * n + 3 + 4 * program.endswith("|1")
+    definitions = program.count("=") - program.startswith(_NOT_TIGHT)
     return (
         max(21, ceil(65 * n / 2) - 21) + definitions + 2 * min(definitions, 3 * n + 1)
     )
@@ -14,12 +22,14 @@ def execution(n: int, program: str) -> int:
 def workspace(n: int, program: str) -> int:
     """Count serials, typed values and function metadata in the snapshot."""
     bl = int.bit_length
-    if program.count("=") == 1:
+    if program.count("=") == program.startswith(_NOT_TIGHT):
         f = 2 * n + 7
         v = sum(bl(s) + bl(s + 1) + bl(s + 5) for s in range(2 * n + 15, 9 * n - 5, 7))
         w = bl(2 * n - 1) + bl(2 * n + 3) + bl(2 * n + 13)
         w += bl(f) + 2 * bl(f + 1) + bl(f + 2) + bl(f + 4)
         return 179 * n + 400 + v + w
+    # Arithmetic twins add no frame and at most three pending nodes a level;
+    # their values stay in 0..3, within the existing tagged-number allowance.
     # A selected cofactor contributes <=3 split frames and one NOT frame.
     # Splitting moves pending expression nodes between frames; it duplicates none.
     frames, pending = 4 * n + 3, 6 * n + 5

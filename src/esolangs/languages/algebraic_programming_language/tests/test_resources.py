@@ -77,10 +77,11 @@ def test_shared_expressions_obey_bounds_for_every_small_table(
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [4, 5, 6])
-def test_public_parity_selects_shared_frames(n) -> None:
+def test_public_parity_uses_arithmetic_twins(n) -> None:
     table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
     source = esolangs.generate(NAME, table)
-    assert source.count("=") > 1
+    assert "%2" in source
+    assert "()=" not in source
 
 
 @pytest.mark.medium

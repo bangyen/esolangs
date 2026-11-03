@@ -9,6 +9,8 @@ def test_program_stays_within_the_command_bound(table) -> None:
     from esolangs.debugger import make_vm
     from esolangs.languages.boolfuck.generator import _command_bound, boolfuck
 
+    if table == "01101001":
+        _check_zero_guard()
     if table == "00000000":
         _check_constants()
     program, bound = boolfuck(table), _command_bound(3)
@@ -45,13 +47,14 @@ def _check_constants() -> None:
                 program = esolangs.generate("Boolfuck", bit * (1 << n), **options)
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     io = ReadFirstIO(f"{row:0{n}b}" + "Q")
-                    machine = _Machine("".join(program.split()), io)
+                    machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     steps = 0
                     while not machine.halted:
+                        command = machine.code[machine.state.pc]
                         machine.step()
                         written.sample(machine.snapshot())
-                        steps += 1
+                        steps += int(command in "><+[],;")
                         assert steps <= commands
                     assert steps == commands
                     assert written.bits == workspace(n, program)
@@ -60,5 +63,45 @@ def _check_constants() -> None:
                     assert io.getvalue() == bit
                     assert io.input_char() == ord("Q")
     assert (
-        sum(len(esolangs.generate("Boolfuck", f"{v:08b}")) for v in range(256)) == 33305
+        sum(len(esolangs.generate("Boolfuck", f"{v:08b}")) for v in range(256)) == 30652
     )
+
+
+def _check_zero_guard() -> None:
+    from esolangs.languages.boolfuck.generator import _boolfuck_tree, _command_bound
+    from esolangs.languages.boolfuck.interpreter import _Machine
+    from esolangs.languages.boolfuck.proof_formulas import workspace
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    fixtures = (
+        "00000001",
+        "01101011",
+        "".join("00110110"[(r >> 1) & 7] for r in range(32)),
+    )
+    dead_input_survived = False
+    for table in fixtures:
+        n = len(table).bit_length() - 1
+        program = _boolfuck_tree(table)
+        for row, expected in enumerate(table):
+            io = ScriptedIO(f"{row:0{n}b}Q")
+            machine = _Machine(program, io)
+            written = WrittenState(machine.snapshot())
+            commands = prints = 0
+            while not machine.halted:
+                prints += machine.code[machine.state.pc] == ";"
+                machine.step()
+                written.sample(machine.snapshot())
+                commands += 1
+                assert commands <= _command_bound(n)
+            assert io.getvalue() == expected
+            assert io.reads == n
+            assert io.past_end == 0
+            assert machine.state.remaining == 0
+            assert prints == 8
+            assert io.input_char() == ord("Q")
+            assert written.bits <= workspace(n, program)
+            assert 1 not in machine.ones
+            if table == "00000001" and row == 1:
+                dead_input_survived = 4 in machine.ones
+    assert dead_input_survived

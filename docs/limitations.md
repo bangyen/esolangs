@@ -611,7 +611,7 @@ requires a construction exemption rather than a sub-gate bound.
   recovery would save nothing anyway: at n=12 the indexed leaf decoder
   emits 11-22x less area than every shared layout, which `generate` never
   picks there.
-- Boolfuck has sub-gate repeated-node potential: 2.3% of emitted size at n=5,
+- Boolfuck has sub-gate repeated-node potential: 2.5% of emitted size at n=5,
   pinned in `tests/generators/test_boolean_boolfuck.py`.
 - Home Row is a lookup that names no decision-tree node.
 - ROTfuck is a lookup that names no decision-tree node.

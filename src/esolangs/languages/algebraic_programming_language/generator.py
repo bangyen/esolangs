@@ -2,20 +2,22 @@
 
 A zero-valued reads prefix names every input in order, since a variable is
 bound by appearing on an executed line; the rest is a reduced decision
-diagram selecting subtrees with ``x`` and ``!x``, so every value stays 0 or
-1.  Default is spaceless and parenthesizes only where ``&`` (tighter than
-``|``) needs it ([ablations.minimal_parentheses]).  Default compares the
-diagram with its repeated expressions named once;
+diagram selecting subtrees with ``x`` and ``!x``, so every result stays 0 or
+1 (an arithmetic XOR temporarily reaches 3). Default is spaceless and
+parenthesizes only where ``&`` (tighter than ``|``) needs it
+([ablations.minimal_parentheses]). Default compares the diagram with its
+repeated expressions named once. Complementary halves use arithmetic XOR,
+so the child is written once;
 with ``width`` the tree splits into definitions, since APL cannot
 continue an expression across lines.
 
 Size:
-    O(T) chars.  n=10 parity: 192 chars, n=10 and: 56 chars, n=10 random
-    1847: 2,498 chars. Constants: 2n + 1/3 chars and 4n + 3/7 steps.
+    O(T) chars.  n=10 parity: 77 chars, n=10 and: 41 chars, n=10 random
+    1847: 2,517 chars. Constants: 2n + 1/3 chars and 4n + 3/7 steps.
 
 Decisions:
     A greedy input order saves 4.8% at n=8, under the 10% bar, so the order
-    stays the identity.  The inline tree stays a candidate beside the
+    stays the identity. Width layouts retain the inline tree beside the
     reduced diagram since ``!`` sharing grew XOR-like n=3 tables by 1-3
     characters.
 """
@@ -80,7 +82,10 @@ def _apl_shared_ordered(table: str, perm: tuple[int, ...]) -> str:
     tables (n=2..10; random, ignored, tiled, sparse, threshold, named): retired.
     """
     plain = _apl_reduced_ordered(table, perm, lean=True)
-    return min(plain, _apl_repeated_expressions(plain), key=len)
+    program = min(plain, _apl_repeated_expressions(plain), key=len)
+    # Arithmetic twins can remove the last NOT call; do not retain its state.
+    body = program.removeprefix(_NOT_TIGHT + "\n")
+    return program if "!" in body else body
 
 
 def _render_dag(
@@ -288,6 +293,22 @@ def _apl_reduced_ordered(
             out.append(f"{lit}{op}" if lean else f"{lit} {op} ")
             emit(one if high >= 2 else zero, out, tight=lean and op == "&")
             out.append(")" * wrap)
+        elif lean and one == flip(zero):
+            # [ablations.arithmetic_xor_twin_20261102]: one child, no old-build race.
+            # Boolean children need grouping under +; emit into the flat list.
+            _, child_zero, child_one = split[zero[0]]
+            literal = child_zero[0][1] < 2 and child_one[0][1] < 2
+            arithmetic = (
+                child_zero[0][1] >= 2
+                and child_one[0][1] >= 2
+                and child_one == flip(child_zero)
+            )
+            grouped = not (zero[1] or literal or arithmetic)
+            out.append(f"({name}+")
+            out.append("(" * grouped)
+            emit(zero, out)
+            out.append(")" * grouped)
+            out.append(("+1" if negated else "") + ")%2")
         elif lean:
             wrap = negated or tight
             out.append(f"{bang}(" * wrap)

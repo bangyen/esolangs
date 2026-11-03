@@ -150,18 +150,18 @@ Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-85 of the 114 generators: ///, 1 + i, 3x, A Painter Ant, ABCDirection,
-Alight, Aprknia, ArrowQueue, Ascenic, B-tapemark, Balik, BASICER, Basicfuck,
-Befunge, Between, BFStack, Bitdeque, Bitwise Cyclic Tag, bit~, Bleh,
-Blindfolded Arithmetic, BrainIf, Caballo, CARP, Chicken, Circlefuck,
-Clockwise, Codesick, CreativeScript v2, Crement, Cyclic tag, Decleq, DINAC,
-EGL, Eval, Fackward, FALSE, Fish, Forþ, FRACTRAN, Freestajlo, Grapheme, Hot,
-HQ9+ with headers, IEBEL, Interprogck8, Kiss, Line, lol waht i cant edit
-talk pages, Minsky Swap, Modulous, Monotonic Boolfuck, Movesum, Nandypants,
-NOR machine, NQ, Object disoriented, Painfuck, Parenthesys, Piet, Pilas,
-Pointless, Qoibl, Qrain, Quassaunt, RAM0, REFRACTRAN, Retrograde, ROTfuck,
-Rubic, Shakespeare, SLOW ACV MAMMALIAN, Sonata, Stisp, Suffolk, Super SNUSP,
-SwitchCase, Taglate, Thue, Unary, Underload, Unlambda, Unsquare, What!?,
-Whitespace.
+88 of the 114 generators: ///, 1 + i, 3x, A Painter Ant, ABCDirection,
+Algebraic Programming Language, Alight, Aprknia, ArrowQueue, Ascenic,
+B-tapemark, Balik, BASICER, Basicfuck, Befunge, Between, BFStack, Bitdeque,
+Bitwise Cyclic Tag, bit~, Bleh, Blindfolded Arithmetic, Boolfuck, BrainIf,
+Caballo, CARP, Chicken, Circlefuck, Clockwise, Codesick, CreativeScript v2,
+Crement, Cyclic tag, Decleq, DINAC, EGL, Eval, Fackward, FALSE, Fish, Forþ,
+FRACTRAN, Freestajlo, Grapheme, Hot, HQ9+ with headers, IEBEL, Interprogck8,
+Kiss, Line, lol waht i cant edit talk pages, Minsky Swap, Modulous,
+Monotonic Boolfuck, Movesum, Nandypants, NOR machine, NQ, Object
+disoriented, Painfuck, Parenthesys, Piet, Pilas, Pointless, Qoibl, Qrain,
+Quassaunt, RAM0, REFRACTRAN, Retrograde, ROTfuck, Rubic, Shakespeare, SLOW
+ACV MAMMALIAN, Smu, Sonata, Stisp, Suffolk, Super SNUSP, SwitchCase,
+Taglate, Thue, Unary, Underload, Unlambda, Unsquare, What!?, Whitespace.
 
 <!-- TRICK-PROTOTYPES:END -->

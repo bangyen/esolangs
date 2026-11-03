@@ -7,20 +7,20 @@ admitted = 2026-09-02T10:34:05-04:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "bounded shared frames; base-26 names are unbounded"
+qualification = "bounded shared frames and arithmetic complement twins; base-26 names are unbounded"
 scaling = "linear: at most F characters: 10T + 4n + 6, n = 2..14"
 execution = "linear: at most max(21,ceil(65n/2)-21)+K+2min(K,3n+1) commands: definitions initialize once and execute at most once"
 workspace = "poly n: at most 179n+400+V+W if K=0, else A(198+8d+3b)+Q(b+114)+65n+d+bl(2n-1) bits: frame/global state"
 definitions = ["K = shared uppercase definitions, excluding NOT", "A = 4n+3, active split and NOT frames", "Q = 6n+5, pending nodes across frames", "b = bl(2L+2), serial widths for AST nodes and functions", "d = bl(L), bounding function-name length and the line cursor", "V = Σ_{1≤j≤n-2} (bl(s) + bl(s+1) + bl(s+5)), s = 2n+8+7j, three serials per level", "W = bl(2n-1) + bl(2n+3) + bl(2n+13) + bl(F) + 2bl(F+1) + bl(F+2) + bl(F+4), F = 2n+7"]
 
 [generator_sizes]
-"00000001" = { commands = 28, commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 22, "5" = 22, "6" = 26, "7" = 28 }, source_units = 28 }
+"00000001" = { commands = 27, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 21, "5" = 21, "6" = 25, "7" = 27 }, source_units = 13 }
 "00001100" = { commands = 33, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 30, "5" = 30, "6" = 31, "7" = 33 }, source_units = 27 }
-"00110110" = { commands = 67, commands_by_row = { "0" = 34, "1" = 34, "2" = 30, "3" = 30, "4" = 55, "5" = 51, "6" = 66, "7" = 67 }, source_units = 41 }
-"0110" = { commands = 44, commands_by_row = { "0" = 32, "1" = 28, "2" = 43, "3" = 44 }, source_units = 30 }
-"01101001" = { commands = 77, commands_by_row = { "0" = 54, "1" = 46, "2" = 59, "3" = 62, "4" = 65, "5" = 60, "6" = 75, "7" = 77 }, source_units = 52 }
-"0110100110010110" = { commands = 112, commands_by_row = { "0" = 79, "1" = 67, "2" = 80, "3" = 87, "4" = 84, "5" = 83, "6" = 96, "7" = 92, "8" = 90, "9" = 81, "10" = 94, "11" = 98, "12" = 100, "13" = 96, "14" = 111, "15" = 112 }, source_units = 72 }
-"1101001101101101" = { commands = 75, commands_by_row = { "0" = 60, "1" = 60, "2" = 69, "3" = 61, "4" = 55, "5" = 55, "6" = 51, "7" = 51, "8" = 77, "9" = 69, "10" = 82, "11" = 85, "12" = 70, "13" = 70, "14" = 73, "15" = 75 }, source_units = 71 }
+"00110110" = { commands = 47, commands_by_row = { "0" = 34, "1" = 34, "2" = 30, "3" = 30, "4" = 43, "5" = 43, "6" = 45, "7" = 47 }, source_units = 37 }
+"0110" = { commands = 23, commands_by_row = { "0" = 19, "1" = 19, "2" = 21, "3" = 23 }, source_units = 13 }
+"01101001" = { commands = 35, commands_by_row = { "0" = 29, "1" = 29, "2" = 29, "3" = 29, "4" = 31, "5" = 31, "6" = 33, "7" = 35 }, source_units = 21 }
+"0110100110010110" = { commands = 47, commands_by_row = { "0" = 39, "1" = 39, "2" = 39, "3" = 39, "4" = 39, "5" = 39, "6" = 39, "7" = 39, "8" = 41, "9" = 41, "10" = 41, "11" = 41, "12" = 43, "13" = 43, "14" = 45, "15" = 47 }, source_units = 29 }
+"1101001101101101" = { commands = 75, commands_by_row = { "0" = 60, "1" = 60, "2" = 69, "3" = 61, "4" = 55, "5" = 55, "6" = 51, "7" = 51, "8" = 65, "9" = 61, "10" = 61, "11" = 65, "12" = 70, "13" = 70, "14" = 73, "15" = 75 }, source_units = 67 }
 "11111110" = { commands = 55, commands_by_row = { "0" = 28, "1" = 28, "2" = 28, "3" = 28, "4" = 41, "5" = 41, "6" = 54, "7" = 55 }, source_units = 31 }
 
 [ablations]
@@ -59,6 +59,7 @@ verdict = "kept: `&` binds tighter than `|`, so the default drops the spaces and
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
+trick_prototype = 2026-11-02
 
 [ablations.constant_table_audit_20261101]
 arity = 8
@@ -66,3 +67,32 @@ saving = 47.1
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "kept: canonical constant folding and minimal spelling, exempt. Native constants omit the unused NOT definition; zero ends at the zero-valued ordered reads prefix, one adds |1. Default chars 2n+1/3, commands 4n+3/7: n=7 32/32->15/17 (50.0%), n=8 34/34->17/19 (47.1%), n=12 42/42->25/27. n=8 commands 40/40->35/39, workspace 791/791->786/790 bits. A requested width that cannot fit the native line retains the established definition/operator layout; fitting widths retain the native line. n=3 corpus chars 9215->9183. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged and global resource caps unchanged. Owned raw read-first checks verify exact read count and preserve the following input record."
+
+
+[ablations.arithmetic_xor_twin_20261102]
+arity = 3
+saving = 5.30
+seed = "all 256 three-input tables; Random(5150 + 100*n + i), i=0..199 for fixed 7/8"
+tables = "all tables/rows through 3; fixed 200 each 7/8; samples 4..6; extension 20 each 9..12"
+verdict = "kept by 5% execution gate after canonical unused-NOT baseline: n 3 source 8988->8592, commands 82488->78116 (-5.3002%), zero growing tables or slower rows in 4096 paired native runs. Raw arithmetic alone versus original gives source 9183->8907/E 82592->78284 (-5.216%). Replace complementary full Shannon arms by (selector+child)%2, adding 1 for a complemented result; one child is emitted once into the flat list. No helper/frame/runtime field, searched table or old-whole-program fallback is added. Superseded twin guard/duplicate-child emission is removed, and unused NOT state is separately removed below. Primary syntax/operators: https://esolangs.org/wiki/Algebraic_Programming_Language. Fixed 200 at 7/8 source 75470/143220->74307/143214 (+1.54/+0.004% saving), 40/95 larger tables; size admission is not claimed. Exact analytic fixed-corpus E 3238624/7697284->3154815/7526530 saves 2.59/2.22%, declining from the n 3 gate; the model is checked against all 2120 current small native rows and 36 large controls. Extension 20 at 9..12 source 27476/50964/93737/166066->27562/51139/94025/167263, with 1/3/1/2 slower sampled rows; disclosed beyond the n 3 execution gate. Balanced 20 grid_area 17740/33257 unchanged, as are parity/and/or/majority/threshold 3 balanced areas. Old O(T) build/source and numerical E/W caps/arities remain: flat emission, no extra frame, at most 3 pending binary nodes a level, integer temporaries 0..3. 2260 native WrittenState rows cover every old proof arity; final 3410 public rows and read/sentinel/EOF/modulus controls pass."
+
+[ablations.unused_not_20261102]
+arity = 3
+saving = 2.12
+seed = "every three-input table; named functions 7/8"
+tables = "13 old and 21 arithmetic n 3 programs have no NOT use; constants already omit it"
+verdict = "kept canonical dead-definition removal, exempt: remove the 15-character header and its one initialization command iff the final default body contains no NOT use. Old baseline alone source 9183->8988/E 82592->82488; arithmetic cleanup source 8907->8592/E 78284->78116. Fixed generic 7/8 never fires, so it cannot pad their source gate. Named AND/OR source 44/48->29/33 at 7/8. Balanced 20 grid_area 17740/33257 and all named areas unchanged. No new construction path/state; unused definition state is removed. K counts actual uppercase definitions whether NOT is present; constant E uses the existing exact 4n+3/7 formula, and no old global cap or proof arity is weakened. Width-request constructions retain their established reader."
+
+[ablations.parameter_let_sharing_20261102]
+arity = 8
+saving = 3.01
+seed = "same fixed 200 each 7/8"
+tables = "profitable local parameter regions; native small/sample controls and 8552 native transition-count validations"
+verdict = "rejected: bind repeated nullary calls once as eager parameters only when exact local header/call overhead is repaid; no whole-source min. Source 75470/143220->74949/138912 saves 0.69/3.01%, n 3 unchanged. Fixed-corpus exact analytic E 3238624/7697284->3561015/10039772 grows 9.95/30.43%; the evaluator-count model matches 8480 exhaustive-small native rows plus 72 fixed-corpus controls. A hand-built 10-use region fires and a wrong eager argument flips the answer. After arithmetic, marginal source saves only 0.24/1.74% and E grows 2.46/17.10%; it is unchanged on named parity/majority/and/or/threshold 3. No parameter wrapper path, locals or superseded source path enters production; no universal impossibility claim."
+
+[ablations.mux_function_20261102]
+arity = 8
+saving = 9.81
+seed = "same fixed 200 each 7/8"
+tables = "tight/negated sites with derived 18-character helper break-even; actual native positive and swapped-argument control"
+verdict = "rejected: literal M insertion is incompatible with the old parenthesis sharer, which can name comma argument lists as invalid nullary bodies and split the helper definition as input prefix. Scratch repair interns whole M calls and isolates the header. Repaired source 75470/143220->75470/129172 saves 0/9.81%; fixed analytic E 3238624/7697284->3238624/21132668 grows 0/174.55%. Joint parameter+M source 74949/128545 saves 0.69/10.25%, failing fixed 7, and E 3561015/21733088 grows 9.95/182.35%. All candidates execute exhaustive small and sampled 4..8 correctly after repair; controls demonstrate real M/parameter firing and catch wrong programs. Named M/joint parity grows 132/152->176/206, majority is unchanged at 7 and grows 226->239 at 8; and/or/threshold 3 unchanged. No named family qualifies. No M helper, parameter state, patched argument sharer or old-program race ships."
