@@ -1,5 +1,7 @@
 """Tests for the Parenthesys interpreter."""
 
+from itertools import product
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -83,6 +85,16 @@ def test_numbers_keep_their_text_and_results_are_plain() -> None:
     assert _run("([/|1|3])") == "0." + "3" * 28
     assert _run("([^|2|-2])([^|0|0])([^|2|100])") == "0.251" + str(2**100)
     assert _run("([%|-7|3])([%|7|-3])") == "2-2"
+
+    # A loop prints each signed affine result and also concatenates the
+    # values returned by those prints. The enclosing print emits that join.
+    for count, factor, offset in product(range(6), (-3, 0, 7), (-2, 0, 4)):
+        source = f"[{count}|n]({{[n]|([+|[*|[n]|{factor}]|{offset}])[[-|[n]|1]|n]}})"
+        values = [str(n * factor + offset) for n in range(count, 0, -1)]
+        assert _run(source) == "".join(values) + "".join(
+            value + str(n - 1)
+            for value, n in zip(values, range(count, 0, -1), strict=True)
+        ), source
 
 
 def test_functions_have_one_namespace_and_see_globals() -> None:
