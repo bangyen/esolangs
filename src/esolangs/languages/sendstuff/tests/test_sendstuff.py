@@ -1,5 +1,7 @@
 """Tests for the SendStuff interpreter."""
 
+from itertools import product
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -111,6 +113,16 @@ def test_every_result_reaches_every_target_before_the_next_result() -> None:
     assert _run(
         ">(Constant 2 >(CountUp >(OutputNumber) >(Add 5 >(OutputNumber))))"
     ) == ("051627")
+
+    for limit, offset, scale in product(range(6), (0, 2, 11), (0, 1, 3)):
+        source = (
+            f">(Constant {limit} >(CountDown >(OutputNumber) "
+            f">(Add {offset} >(Multiply {scale} >(OutputNumber)))))"
+        )
+        expected = "".join(
+            f"{value}{(value + offset) * scale}" for value in range(limit, -1, -1)
+        )
+        assert _run(source) == expected
 
 
 def test_a_nodes_less_than_targets_come_first() -> None:
