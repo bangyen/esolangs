@@ -1,5 +1,7 @@
 """Execution tests for the Whitespace interpreter."""
 
+from itertools import product
+
 import pytest
 
 from esolangs.exceptions import HaltError, InputExhaustedError, ProgramError
@@ -85,6 +87,37 @@ def test_arithmetic_takes_the_first_pushed_as_left() -> None:
     assert wrun(push(-7) + push(2) + DIV + OUT_NUM + END) == "-3"
     assert wrun(push(-7) + push(2) + MOD + OUT_NUM + END) == "-1"
     assert wrun(push(4) + push(5) + ADD + OUT_NUM + END) == "9"
+
+    label = T + S
+    for a, b in product((-257, -7, 0, 3, 256), (-11, -2, 1, 5)):
+        quotient = abs(a) // abs(b) * (-1 if (a < 0) != (b < 0) else 1)
+        for opcode, result in (
+            (ADD, a + b),
+            (SUB, a - b),
+            (MUL, a * b),
+            (DIV, quotient),
+            (MOD, a - b * quotient),
+        ):
+            # A call writes the result to the heap. The caller retrieves it
+            # after returning and prints both decimal and byte views.
+            address = -17
+            source = (
+                push(address)
+                + call(label)
+                + push(address)
+                + RETRIEVE
+                + DUP
+                + OUT_NUM
+                + OUT_CHAR
+                + END
+                + mark(label)
+                + push(a)
+                + push(b)
+                + opcode
+                + STORE
+                + RETURN
+            )
+            assert wrun(source) == str(result) + chr(result % 256)
 
 
 def test_stack_manipulation() -> None:
