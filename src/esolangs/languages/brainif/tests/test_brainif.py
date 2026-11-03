@@ -184,6 +184,9 @@ class TestStepMachine:
 
 
 def test_a_blank_line_is_skipped() -> None:
+    from .oracle_checks import check_raw_brainif
+
+    check_raw_brainif()
     """A line with nothing on it advances the counter and does no work."""
     assert run_and_capture(["if 0 increment", "", "if 1 output"]) == "\x01"
     assert run_and_capture(["if 0 increment", "", "   ", "if 1 output"]) == "\x01"
