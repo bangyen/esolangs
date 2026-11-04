@@ -5,7 +5,6 @@ from __future__ import annotations
 from fractions import Fraction
 from typing import Literal, NamedTuple
 
-from esolangs.exceptions import HaltError
 from esolangs.languages.alight.interpreter._dialect import (
     expression_syntax as validate_expression_syntax,
 )
@@ -85,56 +84,8 @@ class _Call(NamedTuple):
     args: list[_Expr]
 
 
-#: A parsed expression tree.  NamedTuple nodes rather than plain tuples:
-#: immutable like tuples -- so a snapshot can still carry one, and equal to
-#: the old ``("tag", ...)`` spelling -- with typed fields instead of
-#: positional casts.  The tag stays the first field, so tuple equality with
-#: the legacy spelling keeps working.
+#: Typed expression nodes remain immutable tuples in snapshots.
 type _Expr = _Num | _Val | _SpecialNode | _Var | _List | _Not | _Bin | _Call
-
-
-#: Every AST node type, for the legacy-tuple conversion below.
-_NODE_TYPES: tuple[type[_Expr], ...] = (
-    _Num,
-    _Val,
-    _SpecialNode,
-    _Var,
-    _List,
-    _Not,
-    _Bin,
-    _Call,
-)
-
-
-def _as_node(expr: object) -> _Expr:
-    """Return ``expr`` as a typed AST node.
-
-    The parser builds nodes; a hand-built plain tuple in the legacy
-    ``("tag", ...)`` spelling is converted recursively, so tuple-spelled
-    trees keep working wherever these helpers accept them.
-    """
-    if isinstance(expr, _NODE_TYPES):
-        return expr
-    if not isinstance(expr, tuple) or not expr:
-        raise HaltError(f"not an expression: {expr!r}")
-    tag = expr[0]
-    if tag == "num":
-        return _Num("num", expr[1])
-    if tag == "val":
-        return _Val("val", expr[1])
-    if tag == "special":
-        return _SpecialNode("special", expr[1])
-    if tag == "var":
-        return _Var("var", expr[1])
-    if tag == "list":
-        return _List("list", [_as_node(item) for item in expr[1]])
-    if tag == "not":
-        return _Not("not", _as_node(expr[1]))
-    if tag == "bin":
-        return _Bin("bin", expr[1], _as_node(expr[2]), _as_node(expr[3]))
-    if tag == "call":
-        return _Call("call", expr[1], [_as_node(arg) for arg in expr[2]])
-    raise HaltError(f"not an expression: {expr!r}")
 
 
 #: Reserved words a variable may not be named.  The wiki says variable names
@@ -360,46 +311,44 @@ def _command_expr(
 
 def _replace_first(expr: _Expr, value: _Value) -> tuple[_Expr, bool]:
     """Return ``expr`` with its first call replaced, and whether one was."""
-    node = _as_node(expr)
-    if isinstance(node, (_Num, _Val, _SpecialNode, _Var)):
-        return node, False
-    if isinstance(node, _Not):
-        inner, done = _replace_first(node.operand, value)
+    if isinstance(expr, (_Num, _Val, _SpecialNode, _Var)):
+        return expr, False
+    if isinstance(expr, _Not):
+        inner, done = _replace_first(expr.operand, value)
         return _Not("not", inner), done
-    if isinstance(node, _Bin):
-        left, done = _replace_first(node.left, value)
+    if isinstance(expr, _Bin):
+        left, done = _replace_first(expr.left, value)
         if done:
-            return _Bin("bin", node.op, left, node.right), True
-        right, done = _replace_first(node.right, value)
-        return _Bin("bin", node.op, left, right), done
-    items = node.items if isinstance(node, _List) else node.args
+            return _Bin("bin", expr.op, left, expr.right), True
+        right, done = _replace_first(expr.right, value)
+        return _Bin("bin", expr.op, left, right), done
+    items = expr.items if isinstance(expr, _List) else expr.args
     # A copy: replacing in place up to the first call keeps the unprocessed
     # tail, which an early return must not drop.
     children = list(items)
     for i, child in enumerate(children):
         children[i], done = _replace_first(child, value)
         if done:
-            if isinstance(node, _List):
+            if isinstance(expr, _List):
                 return _List("list", children), True
-            return _Call("call", node.name, children), True
-    if isinstance(node, _List):
+            return _Call("call", expr.name, children), True
+    if isinstance(expr, _List):
         return _List("list", children), False
     return _Val("val", value), True
 
 
 def _first_call_or_none(expr: _Expr, name: str) -> _Call | None:
     """Return the leftmost ``call`` to ``name``, or None if there is none."""
-    node = _as_node(expr)
-    if isinstance(node, (_Num, _Val, _SpecialNode, _Var)):
+    if isinstance(expr, (_Num, _Val, _SpecialNode, _Var)):
         return None
-    if isinstance(node, _Not):
-        children = [node.operand]
-    elif isinstance(node, _Bin):
-        children = [node.left, node.right]
+    if isinstance(expr, _Not):
+        children = [expr.operand]
+    elif isinstance(expr, _Bin):
+        children = [expr.left, expr.right]
     else:
-        children = node.items if isinstance(node, _List) else node.args
+        children = expr.items if isinstance(expr, _List) else expr.args
     for child in children:
         found = _first_call_or_none(child, name)
         if found is not None:
             return found
-    return node if isinstance(node, _Call) and node.name == name else None
+    return expr if isinstance(expr, _Call) and expr.name == name else None

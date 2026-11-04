@@ -72,13 +72,6 @@ saving = 0.0
 arity = 10
 verdict = "kept 2026-10-27: canonical, exempt; its size price is 0.0% at every arity and the emitted program is byte-identical with and without it on all 200 ignored-input tables at n=8 — the tree folds an ignored input anyway. It is build-time machinery, as its comment states (0.115 s against 0.972 s at n=12 with two ignored inputs), not a size mechanism"
 
-[ablations.complement_copy]
-saving = 7.7
-arity = 14
-seed = "random.Random(1000 * n + s)"
-tables = 30
-verdict = "retired 2026-10-27 (plain-rewrite audit): a span equal to a bit's complement was one copy of a stored complement (_COMPLEMENT, the NOT keys); it saved -14.1% / -6.2% / 1.7% / 4.1% / 6.1% / 7.3% / 7.7% / 7.5% at n=4/6/7/8/10/12/14/16 on random tables (5 tables; 7.4% over 30 at n=12), peaking under the 10% bar, and 3.3-4.2% on parity at n=12..16, 0.0% on and, or and majority; at n <= 6 it cost more than it saved. Removing it shrinks the n=4 and n=6 corpora and grows n=10 random 6.5% (43,114 to 45,922 characters over 5 tables)"
-
 [ablations.top_tracking]
 saving = 12.9
 arity = 12

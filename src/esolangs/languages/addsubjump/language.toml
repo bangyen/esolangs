@@ -71,11 +71,6 @@ saving = 0.0
 arity = 8
 verdict = "removed 2026-10-27 (plain-rewrite audit): the unshared tree beside the shared build never ships smaller. Deleting it grows no table and shrinks none on random, one- to five-essential, half-constant, constant, threshold, parity, AND/OR and majority tables at n=3..8 (20 tables per class at n=3..8; 0 LARGER of 4,054 tables compared against the old build, 289 programs differ in bytes at equal length -- ties the old min kept as the tree -- the changed programs ran on every row to n=6 and a fifth of them above). The one visible cost is a step tie-break: table 00110110 rows 6 and 7 now run 24 commands against 23 (size pin unchanged, baseline re-recorded). The n=5 branch (shared against packed, no tree) and the one-essential-input branch of the packed builder went with it: both byte-identical in length on 200 random tables at n=5 and the named classes, 0.00%"
 
-[ablations.balance_legacy_packed]
-saving = 0.0
-arity = 8
-verdict = "removed 2026-10-27 (plain-rewrite audit): balancing also tried the full-table packed layout when an input is ignored. It changed the balanced program on five-essential tables only: -8.83% of area on 4 tables at n=6 (7.02% on 20), -2.80% on 4 at n=7 (2.46% on 20), 0.00% on 4 at n=8, and 0.00% on random, one- to four-essential, half-constant, constant and named tables at n=5..8 -- under 10% and falling. The balanced n=6 five-essential pin moves 1,427 -> 1,543 characters; the test that compared the balanced score with the legacy layout went with it"
-
 [ablations.essential_projection]
 saving = 10.7
 arity = 8

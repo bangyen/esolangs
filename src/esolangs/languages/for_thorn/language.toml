@@ -38,11 +38,6 @@ saving = 255.9
 arity = 12
 verdict = "kept: canonical, exempt. A repeated subtree is emitted once; a later scope subtracts its distance back and calls the twin. Deleting every twin call costs +132.46% at n=8, +187.82% at n=10 and +255.92% at n=12 on random tables, +14,911.36% on parity and +3,310.39% on majority at n=12"
 
-[ablations.subtree_floor]
-saving = 0.0
-arity = 12
-verdict = "retired 2026-10-29 (plain-rewrite audit): a twin call was kept only when shorter than a dispatch plus two scopes (17 characters). It never bound: the no-floor build is byte-identical on all 744 tables checked to n=12 and on random, parity and majority at n=14 and 16 (a floor of 0 does change output, 16,575 -> 57,838 at n=12), so balanced area is unchanged too. A call outgrows 17 characters only for twins 15**4 or more back, where keeping it could only stop the canonical sharing"
-
 [ablations.constant_fold]
 saving = 39.3
 arity = 12

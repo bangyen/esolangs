@@ -3,7 +3,6 @@
 from typing import overload
 
 from esolangs.languages.alight.interpreter._parse import (
-    _NODE_TYPES,
     _Bin,
     _Call,
     _Expr,
@@ -14,6 +13,17 @@ from esolangs.languages.alight.interpreter._parse import (
     _Val,
     _Value,
     _Var,
+)
+
+_NODE_TYPES: tuple[type[_Expr], ...] = (
+    _Num,
+    _Val,
+    _SpecialNode,
+    _Var,
+    _List,
+    _Not,
+    _Bin,
+    _Call,
 )
 
 

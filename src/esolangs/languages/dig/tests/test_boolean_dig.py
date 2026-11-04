@@ -1,29 +1,54 @@
 """dig generator tests."""
 
 import importlib
+import random
+from collections.abc import Iterable
 
 import pytest
 
 import esolangs
 from esolangs.languages import generators as boolean
 from esolangs.languages.dig.generator import _DIG_BRANCH, _DIG_STRIDE
+from esolangs.languages.dig.interpreter import _Machine
 from esolangs.runtime._evaluate import _evaluate
+from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
 from tests.support.witness_tables import row_bits
 
 run_dig = _runner("dig", lines=True, newline=True)
 
 
+def _blocks(count: int) -> tuple[str, ...]:
+    rng = random.Random(2026)
+    return tuple("".join(rng.choice("01") for _ in range(64)) for _ in range(count))
+
+
+def _check_rows(
+    rows: list[str], table: str, limit: int, indices: Iterable[int] | None = None
+) -> int:
+    n = len(table).bit_length() - 1
+    worst = 0
+    for row in range(len(table)) if indices is None else indices:
+        io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= limit:
+            machine.step()
+            steps += 1
+        assert machine.halted, (row, steps)
+        assert (io.getvalue(), io.reads) == (table[row], n)
+        worst = max(worst, steps)
+    return worst
+
+
 class TestDig:
     def test_four_input_parity_keeps_the_compact_layout(self) -> None:
         """Polynomial complements retain exact command and workspace accounting."""
-        from esolangs.languages.dig.interpreter import _Machine
         from esolangs.languages.dig.proof_formulas import (
             _parity_chain,
             execution,
             workspace,
         )
-        from esolangs.runtime.io import ScriptedIO
         from scripts.benchmark import WrittenState
 
         for n in (4, 5):
@@ -116,7 +141,6 @@ class TestDig:
 
         At n=10: at n=7 both tables take the indexed decoder (540 cells each).
         """
-        import random
 
         rng = random.Random(3)
         half = "".join(rng.choice("01") for _ in range(512))
@@ -136,7 +160,6 @@ class TestDig:
 
     def test_a_repeated_flat_leaf_is_shared_and_still_computes(self) -> None:
         """Quarters A B B A hold two leaves' worth of text, not four."""
-        import random
 
         rng = random.Random(5)
         a, b, c, d = ("".join(rng.choice("01") for _ in range(64)) for _ in range(4))
@@ -148,7 +171,6 @@ class TestDig:
 
     def test_unmatched_leaf_groups_still_answer(self) -> None:
         """Three-leaf nine-input groups can use the indexed body."""
-        import random
 
         rng = random.Random(262)
         blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(3)]
@@ -161,7 +183,6 @@ class TestDig:
     def test_unaligned_leaf_chains_seven_input_reads(self) -> None:
         """A folded flat leaf needs two windows beyond its six-read tail."""
         from esolangs.languages.dig.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         for expected in "01":
             program = boolean.dig(expected * 128, 1000)
@@ -208,7 +229,6 @@ class TestDig:
 
     def test_xor_polynomial_uses_four_operand_columns(self) -> None:
         from esolangs.languages.dig.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         # Every width up to 7 builds this same program.
         program = esolangs.generate("Dig", "0110", width=1)
@@ -370,14 +390,10 @@ def test_narrow_balance_regime_edge_executes(table) -> None:
 @pytest.mark.parametrize("width", [35, 40, 10_000])
 def test_wide_requests_admit_the_unshared_alternating_grid(width: int) -> None:
     """The repeated-leaf case fits 35 columns and keeps the 220-step bound."""
-    import random
 
     from esolangs.languages.dig.generator import _dig_grid
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
-    rng = random.Random(2026)
-    a, b = ("".join(rng.choice("01") for _ in range(64)) for _ in range(2))
+    a, b = _blocks(2)
     table = a + b + b + a
     program = boolean.dig(table, width, share=False)
     rows = program.splitlines()
@@ -385,17 +401,7 @@ def test_wide_requests_admit_the_unshared_alternating_grid(width: int) -> None:
     assert len(rows) * max(map(len, rows)) == 1925
     banded = _dig_grid(table, 8, 5).splitlines()
     assert len(banded) * max(map(len, banded)) == 11250
-    worst = 0
-    for row, expected in enumerate(table):
-        io = ScriptedIO("\n".join(format(row, "08b")) + "\n")
-        machine = _Machine(rows, io)
-        steps = 0
-        while not machine.halted and steps <= 220:
-            machine.step()
-            steps += 1
-        assert machine.halted
-        assert (io.getvalue(), io.reads) == (expected, 8)
-        worst = max(worst, steps)
+    worst = _check_rows(rows, table, 220)
     assert worst == 220
 
 
@@ -404,28 +410,13 @@ def test_wide_requests_admit_the_unshared_alternating_grid(width: int) -> None:
 def test_shared_routes_keep_the_execution_bound(
     width: int | None,
 ) -> None:
-    import random
 
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
-    rng = random.Random(2026)
-    a, b = ("".join(rng.choice("01") for _ in range(64)) for _ in range(2))
+    a, b = _blocks(2)
     table = a + b + b + a
     program = boolean.dig(table, width)
     rows = program.splitlines()
     assert (len(rows), max(map(len, rows)), len(program)) == (44, 15, 521)
-    worst = 0
-    for row, expected in enumerate(table):
-        io = ScriptedIO("\n".join(format(row, "08b")) + "\n")
-        machine = _Machine(rows, io)
-        steps = 0
-        while not machine.halted and steps <= 220:
-            machine.step()
-            steps += 1
-        assert machine.halted
-        assert (io.getvalue(), io.reads) == (expected, 8)
-        worst = max(worst, steps)
+    worst = _check_rows(rows, table, 220)
     assert worst == 217
 
 
@@ -434,7 +425,6 @@ def test_shared_routes_keep_the_execution_bound(
 def test_indexed_pair_reads_ignored_and_constant_leaf_inputs(a: str, b: str) -> None:
     from esolangs.languages.dig.generator._shared import _dig_indexed_shared
     from esolangs.languages.dig.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     table = a + b + b + a
     program = _dig_indexed_shared(table, 8)
@@ -448,54 +438,27 @@ def test_indexed_pair_reads_ignored_and_constant_leaf_inputs(a: str, b: str) -> 
 @pytest.mark.medium
 @pytest.mark.parametrize("pattern", [format(mask, "04b") for mask in range(16)])
 def test_two_leaf_prefixes_keep_the_execution_ledger(pattern: str) -> None:
-    import random
 
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
-    rng = random.Random(2026)
-    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(2)]
+    blocks = _blocks(2)
     table = "".join(blocks[int(bit)] for bit in pattern)
     rows = boolean.dig(table).splitlines()
-    for row, expected in enumerate(table):
-        io = ScriptedIO("\n".join(format(row, "08b")) + "\n")
-        machine = _Machine(rows, io)
-        steps = 0
-        while not machine.halted and steps <= 220:
-            machine.step()
-            steps += 1
-        assert machine.halted, (pattern, row, steps)
-        assert (io.getvalue(), io.reads) == (expected, 8)
+    _check_rows(rows, table, 220)
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("ignored", [0, 1, 2])
 def test_column_routes_consume_ignored_prefix_inputs(ignored: int) -> None:
-    import random
 
     from esolangs.languages.dig.generator import _dig_lane_shared
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
-    rng = random.Random(2026)
-    a, b = ("".join(rng.choice("01") for _ in range(64)) for _ in range(2))
+    a, b = _blocks(2)
     table = (a + b + b + a) * (1 << ignored)
     n = 8 + ignored
     program = _dig_lane_shared(table, n)
     assert program is not None
     rows = program.splitlines()
     assert len(rows) * max(map(len, rows)) == 1155
-    worst = 0
-    for row, expected in enumerate(table):
-        io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
-        machine = _Machine(rows, io)
-        steps = 0
-        while not machine.halted and steps <= 208:
-            machine.step()
-            steps += 1
-        assert machine.halted
-        assert (io.getvalue(), io.reads) == (expected, n)
-        worst = max(worst, steps)
+    worst = _check_rows(rows, table, 208)
     assert worst == 208
 
 
@@ -507,14 +470,10 @@ def test_column_routes_consume_ignored_prefix_inputs(ignored: int) -> None:
 def test_multiple_copies_merge_along_one_column(
     pattern: str, expected_steps: int
 ) -> None:
-    import random
 
     from esolangs.languages.dig.generator import _dig_lane_shared
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
-    rng = random.Random(2026)
-    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(2)]
+    blocks = _blocks(2)
     table = "".join(blocks[int(bit)] for bit in pattern)
     program = _dig_lane_shared(table, 10)
     assert program is not None
@@ -523,31 +482,17 @@ def test_multiple_copies_merge_along_one_column(
     assert len(rows) * max(map(len, rows)) < 0.7 * len(unshared) * max(
         map(len, unshared)
     )
-    worst = 0
-    for row, expected in enumerate(table):
-        io = ScriptedIO("\n".join(format(row, "010b")) + "\n")
-        machine = _Machine(rows, io)
-        steps = 0
-        while not machine.halted and steps <= 312:
-            machine.step()
-            steps += 1
-        assert machine.halted
-        assert (io.getvalue(), io.reads) == (expected, 10)
-        worst = max(worst, steps)
+    worst = _check_rows(rows, table, 312)
     assert worst == expected_steps
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("ignored", [0, 1, 2])
 def test_vertical_leaves_share_a_spare_row(ignored: int) -> None:
-    import random
 
     from esolangs.languages.dig.generator import _dig_lane_shared
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
-    rng = random.Random(2026)
-    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(2)]
+    blocks = _blocks(2)
     table = "".join(blocks[int(bit)] for bit in "01101001") * (1 << ignored)
     n = 9 + ignored
     program = _dig_lane_shared(table, n)
@@ -558,43 +503,20 @@ def test_vertical_leaves_share_a_spare_row(ignored: int) -> None:
         36 + ignored,
         2252 + 67 * ignored,
     )
-    worst = 0
-    for row, expected in enumerate(table):
-        io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
-        machine = _Machine(rows, io)
-        steps = 0
-        while not machine.halted and steps <= 251 + 3 * ignored:
-            machine.step()
-            steps += 1
-        assert machine.halted
-        assert (io.getvalue(), io.reads) == (expected, n)
-        worst = max(worst, steps)
+    worst = _check_rows(rows, table, 251 + 3 * ignored)
     assert worst == 251 + 3 * ignored
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("width", [None, 1, 8, 40])
 def test_spare_row_routes_reach_every_width_path(width: int | None) -> None:
-    import random
 
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
-    rng = random.Random(2026)
-    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(2)]
+    blocks = _blocks(2)
     table = "".join(blocks[int(bit)] for bit in "01101001")
     program = boolean.dig(table, width)
     rows = program.splitlines()
     assert (len(rows), max(map(len, rows)), len(program)) == (48, 15, 554)
-    for row, expected in enumerate(table):
-        io = ScriptedIO("\n".join(format(row, "09b")) + "\n")
-        machine = _Machine(rows, io)
-        steps = 0
-        while not machine.halted and steps <= 251:
-            machine.step()
-            steps += 1
-        assert machine.halted
-        assert (io.getvalue(), io.reads) == (expected, 9)
+    _check_rows(rows, table, 251)
 
 
 @pytest.mark.medium
@@ -605,68 +527,37 @@ def test_spare_row_routes_reach_every_width_path(width: int | None) -> None:
 def test_disjoint_and_interleaved_groups_choose_the_indexed_route(
     pattern: str, expected_steps: int, expected_area: int
 ) -> None:
-    import random
 
     from esolangs.languages.dig.generator import _dig_lane_shared
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
-    rng = random.Random(2026)
-    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
+    blocks = _blocks(4)
     table = "".join(blocks[int(bit)] for bit in pattern)
     assert _dig_lane_shared(table, 10) is not None
     program = boolean.dig(table)
     rows = program.splitlines()
     assert len(rows) * max(map(len, rows)) == expected_area
-    worst = 0
-    for row, expected in enumerate(table):
-        io = ScriptedIO("\n".join(format(row, "010b")) + "\n")
-        machine = _Machine(rows, io)
-        steps = 0
-        while not machine.halted and steps <= 312:
-            machine.step()
-            steps += 1
-        assert machine.halted
-        assert (io.getvalue(), io.reads) == (expected, 10)
-        worst = max(worst, steps)
+    worst = _check_rows(rows, table, 312)
     assert worst == expected_steps
 
 
 @pytest.mark.medium
 def test_seventeen_input_mosaic_executes() -> None:
-    import random
 
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
-    rng = random.Random(2026)
-    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
+    blocks = _blocks(4)
     base = "".join(blocks[int(bit)] for bit in "1230301230121230")
     # A four-class mosaic seen through seven ignored prefix inputs.
     table = "".join(base[((row >> 15) << 8) | (row & 255)] for row in range(1 << 17))
     rows = boolean.dig(table).splitlines()
-    for row in (0, table.index("1"), len(table) - 1):
-        io = ScriptedIO("\n".join(format(row, "017b")) + "\n")
-        machine = _Machine(rows, io)
-        steps = 0
-        while not machine.halted and steps <= 2176:
-            machine.step()
-            steps += 1
-        assert machine.halted
-        assert (io.getvalue(), io.reads) == (table[row], 17)
+    _check_rows(rows, table, 2176, (0, table.index("1"), len(table) - 1))
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("ignored", [1, 2])
 def test_ignored_prefix_keeps_the_smallest_shared_grid(ignored: int) -> None:
-    import random
 
     from esolangs.languages.dig.generator import _dig_build, _dig_discards
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
-    rng = random.Random(2026)
-    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(2)]
+    blocks = _blocks(2)
     base = "".join(blocks[int(bit)] for bit in "01101001")
     table = base * (1 << ignored)
     n = 9 + ignored
@@ -680,15 +571,7 @@ def test_ignored_prefix_keeps_the_smallest_shared_grid(ignored: int) -> None:
     previous = integrated.splitlines()
     assert area < len(previous) * max(map(len, previous))
     bound = 312 if n == 10 else 384
-    for row, expected in enumerate(table):
-        io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
-        machine = _Machine(rows, io)
-        steps = 0
-        while not machine.halted and steps <= bound:
-            machine.step()
-            steps += 1
-        assert machine.halted
-        assert (io.getvalue(), io.reads) == (expected, n)
+    _check_rows(rows, table, bound)
 
 
 def test_balance_considers_the_discard_wrapper() -> None:
@@ -714,8 +597,6 @@ def test_constant_columns_use_grid_area_and_read_every_input(
     n: int, value: str
 ) -> None:
     from esolangs.languages.dig.generator import _dig_build
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     if n == 1 and value == "0":
         _check_constants()
@@ -753,14 +634,10 @@ def test_constant_columns_use_grid_area_and_read_every_input(
 def test_indexed_sharing_admits_full_input_controls(
     pattern: str, area: int, commands: int
 ) -> None:
-    import random
 
     from esolangs.languages.dig.generator._shared import _dig_indexed_shared
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
-    rng = random.Random(2026)
-    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
+    blocks = _blocks(4)
     table = "".join(blocks[int(c)] for c in pattern)
     n = (len(table) - 1).bit_length()
     program = _dig_indexed_shared(table, n)
@@ -768,17 +645,7 @@ def test_indexed_sharing_admits_full_input_controls(
     assert boolean.dig(table) == program
     rows = program.splitlines()
     assert len(rows) * max(map(len, rows)) == area
-    worst = 0
-    for row, expected in enumerate(table):
-        io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
-        machine = _Machine(rows, io)
-        steps = 0
-        while not machine.halted and steps <= commands:
-            machine.step()
-            steps += 1
-        assert machine.halted
-        assert (io.getvalue(), io.reads) == (expected, n)
-        worst = max(worst, steps)
+    worst = _check_rows(rows, table, commands)
     assert worst == commands
 
 
@@ -798,25 +665,13 @@ def test_indexed_prefix_decoders_execute_every_row(
     n: int, area: int, commands: int
 ) -> None:
     from esolangs.languages.dig.generator._shared import _dig_indexed_shared
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     table = "".join(str(row.bit_count() % 2) for row in range(1 << n))
     program = _dig_indexed_shared(table, n)
     assert program is not None
     rows = program.splitlines()
     assert len(rows) * max(map(len, rows)) == area
-    worst = 0
-    for row, expected in enumerate(table):
-        io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
-        machine = _Machine(rows, io)
-        steps = 0
-        while not machine.halted and steps <= commands:
-            machine.step()
-            steps += 1
-        assert machine.halted
-        assert (io.getvalue(), io.reads) == (expected, n)
-        worst = max(worst, steps)
+    worst = _check_rows(rows, table, commands)
     assert worst == commands
 
 
@@ -830,33 +685,19 @@ def test_indexed_sharing_builds_four_classes_at_eleven_inputs() -> None:
 @pytest.mark.medium
 def test_indexed_six_bit_decoder_runs_four_classes() -> None:
     from esolangs.languages.dig.generator._shared import _dig_indexed_shared
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     blocks = ("01" * 32, "0011" * 16, "00001111" * 8, "0" * 64)
     table = "".join(blocks) * 16
     program = _dig_indexed_shared(table, 12)
     assert program is not None
     rows = program.splitlines()
-    worst = 0
-    for row, expected in enumerate(table):
-        io = ScriptedIO("\n".join(format(row, "012b")) + "\n")
-        machine = _Machine(rows, io)
-        steps = 0
-        while not machine.halted and steps <= 417:
-            machine.step()
-            steps += 1
-        assert machine.halted
-        assert (io.getvalue(), io.reads) == (expected, 12)
-        worst = max(worst, steps)
+    worst = _check_rows(rows, table, 417)
     assert worst == 417
 
 
 @pytest.mark.medium
 def test_indexed_sharing_builds_seven_and_eight_classes_at_twelve_inputs() -> None:
     from esolangs.languages.dig.generator._shared import _dig_indexed_shared
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     blocks = ["".join(str((row >> bit) & 1) for row in range(64)) for bit in range(6)]
     blocks.append("".join(str(row.bit_count() % 2) for row in range(64)))
@@ -864,17 +705,7 @@ def test_indexed_sharing_builds_seven_and_eight_classes_at_twelve_inputs() -> No
     program = _dig_indexed_shared(table, 12)
     assert program is not None
     rows = program.splitlines()
-    worst = 0
-    for row, expected in enumerate(table):
-        io = ScriptedIO("\n".join(format(row, "012b")) + "\n")
-        machine = _Machine(rows, io)
-        steps = 0
-        while not machine.halted and steps <= 489:
-            machine.step()
-            steps += 1
-        assert machine.halted
-        assert (io.getvalue(), io.reads) == (expected, 12)
-        worst = max(worst, steps)
+    worst = _check_rows(rows, table, 489)
     assert worst == 489
     blocks.append("0" * 64)
     assert _dig_indexed_shared("".join(blocks) * 8, 12) is not None
@@ -924,32 +755,19 @@ def test_compaction_keeps_the_line_between_a_reader_and_a_digit(axis: int) -> No
 def test_shared_leaves_around_constant_spans_keep_the_execution_bound() -> None:
     """A shared layout's constant read rows count toward the 220-step ledger."""
     from esolangs.languages.dig.generator import _dig_lane_shared
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     leaf = "01101001" * 8
     table = "0" * 64 + leaf + leaf + "0" * 64
     program = _dig_lane_shared(table, 8)
     assert program is not None
     rows = program.splitlines()
-    worst = 0
-    for row, expected in enumerate(table):
-        io = ScriptedIO("\n".join(format(row, "08b")) + "\n")
-        machine = _Machine(rows, io)
-        steps = 0
-        while not machine.halted and steps <= 220:
-            machine.step()
-            steps += 1
-        assert machine.halted
-        assert (io.getvalue(), io.reads) == (expected, 8)
-        worst = max(worst, steps)
+    worst = _check_rows(rows, table, 220)
     assert worst <= 220
 
 
 def _check_constants() -> None:
     import esolangs
     from esolangs.languages.dig.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
 

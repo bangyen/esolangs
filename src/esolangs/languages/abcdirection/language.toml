@@ -34,11 +34,6 @@ saving = 46.9
 arity = 10
 verdict = "kept: canonical, exempt; projecting the table onto its essential inputs earns 35.7% with one ignored input at n=8 and 46.9% at n=10 (position-independent: lead, mid and trailing totals identical), 65.7% / 87.5% with half the inputs ignored, 51.3% / 70.4% with two scattered, and 78.6% / 92.4% on constants, which collapse to one cell through it; 0.0% on random tables, where it has nothing to act on"
 
-[ablations.tooth_packing]
-saving = 1.5
-arity = 12
-verdict = "removed 2026-10-20 (retirement candidate #14): packing two reads per tooth priced 19.6% on random tables at n=5 in clear decline to 2.6% at n=11 and 1.5% at n=12 — the read block is O(n) columns against an O(2^n) table, so the share tends to zero. The absolute saving still grew (~484 cells a program at n=12) and on half-ignored tables, where the reads dominate, it earned 26.9-28.2%; the dispute is recorded in the candidates file. Reads now go one to a tooth in both the flat layout and the balance helix, which share _teeth. Restored 2026-10-20 capped at n <= 3: 10.1% / 16.8% / 16.2% by area at n=1/2/3 on exhaustive small tables, and reverted the same day: a cap chosen where a trick still pays is judged at n=7..8 (CONTRIBUTING)"
-
 [ablations.split_runs]
 saving = 85.7
 arity = 10

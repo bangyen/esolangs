@@ -48,11 +48,6 @@ saving = 0.2
 arity = 12
 verdict = "kept by the split decision on candidate #15: storing codes instead of values in the cells, with the decoder spanning the codes, prices 0.36% / 0.20% on random tables at n=11/12, 9.7% -> 3.2% on the few-distinct class it is built for, and declines through the bar on majority, and and or; parity holds 22.2% / 20.4%, the named-function case that keeps it. Inside the assignment, the top-code choice prices 0.27% / 0.16% on random tables. Re-priced 2026-10-28 (20 seeded tables, seed 1000n + i; chars / balanced area): without codes random +5.9% / +13.7% at n=7 and +1.1% / +0.8% at n=8, parity +44.1 / +38.3 / +34.4 / +32.2 / +31.1 / +30.6% chars at n=7..12 (+103.6% falling to +6.9% balanced), majority +42.7% falling to +5.2%, threshold >= n//3 +21.9% to +4.2%, and/nand +30.8% to +2.4%: clears 10% on parity at every arity, kept for that family. The empty-cell code-0 preference is removed: it priced -0.6% to -1.6% on every corpus, so code 0 now follows the frequency ranking among the cells that do not take the top code"
 
-[ablations.aliases]
-saving = 5.14
-arity = 14
-verdict = "removed (retirement candidate #16): one-letter aliases for stored constants re-price at 4.71% / 5.14% on random tables at n=13/14, level at the second judged arity and capped near 6% by the fixed fifteen-name pool, under the 10% bar"
-
 [ablations.trailing_pad_drop]
 saving = 0.21
 arity = 12
@@ -67,11 +62,6 @@ verdict = "kept: building only the referenced constants (plus their plan chain) 
 saving = 63.8
 arity = 12
 verdict = "kept 2026-10-28: the complemented table is also built (printing 49 - bit) and the shorter kept, since an empty cell is a pad line. Without it: random +0.16% / 0.00% chars at n=7/8 and 0.0% balanced area; or +22.1 / +30.7 / +40.7 / +50.3 / +58.2 / +63.8% chars at n=7..12, threshold >= n//3 +14.0 / +23.3 / +22.2 / +35.6 / +48.4 / +43.1%, nand +3.3% falling to +0.3%, and, parity, nor, majority 0.0%. Clears 10% on or and the thresholds at every arity, kept for those families; balanced area 0.0% (the width sets the side)"
-
-[ablations.zero_spelling]
-saving = 0.05
-arity = 8
-verdict = "retired 2026-10-28: the constants phase spelled the zero register `z` (the shortest never-written name) instead of `zero`: 0.07% / 0.05% chars on 20 seeded random tables at n=7/8, 0.13% falling to 0.01% on named tables at n=7..12 (a fixed ~3 chars a constant line), 0.0% balanced area. The constants now spell it `zero`, the rest keep `z`. Executed: 680 default and balanced programs (every n<=3 table, random n=7/8, named n=7..9) all correct, a wrong table fails"
 
 [ablations.balance_candidates]
 saving = 5.55

@@ -51,13 +51,6 @@ seed = "random.Random(184700 + n)"
 tables = 200
 verdict = "kept: the default is the strip or the least-area of three short-bridge packed layouts (2026-10-28 plain-rewrite audit: the fold as packing ceiling and the plain and duplicated lane kinds never won, area and balanced side identical on every table at n=1..10, seed 4242), with no black ceiling (the strip on a tie); that dropped the ceiling and cut total area on 54-260 seeded random tables a size by 0.2-3.5% (n=4 exhaustive 1.0%, never larger on any of 65,536), at up to 40 more steps on n=4 parity. Total area over 200 random tables falls 38.3% at n=6, 51.8% at n=7, 61.7% at n=8 and 71.5% at n=10 (22.0% at n=5, 1.2% at n=4, none at n=3, where no fold is smaller); every program is executed, exhaustively through n=3 and sampled through n=7. Execution bound, derived: steps = blocks entered, one per operation of the bounded list (at most 2T+6n+14 blocks, push(T) rebuilt by doubling) plus 2 for the halt, plus a turn gadget per extra lane, 6 blocks emitted and 5 packed (four gadget blocks and the landing; white is crossed in the step that leaves the landing). Lanes: a folded image is strictly smaller than the strip (width at most 3T+5n+16, 3 rows), every extra lane costs one row packed and two emitted, and a multi-lane image is 16 (packed) or 11 (emitted) wide, because the first lane stops within 2 cells of its room. So lanes less one are at most H-5 packed and (H-3)/2 emitted for height H < 3(3T+5n+16)/W, and the extra steps are below 15(3T+5n+16)/16, giving 5T+11n+31. Measured worst steps 7, 30, 42, 107, 158, 290, 404 against 2T+4n+14 of the old strip bound (n=1..7), all within the new bound. Workspace: the same stack plus at most 4 bits of gadget operands, the position bl(x)+bl(y) with x < the strip width and y < 3/11 of it, dp 2 and cc 2 bits"
 
-[ablations.balance_dense_and_repack]
-saving = 0.0
-arity = 10
-seed = "random.Random(4242 + n)"
-tables = "20 random per n=3..8, 6 at n=9..10, every table at n=1,2, plus parity/majority/and/or/nand/nor/threshold-2/threshold-(n-1)"
-verdict = "retired 2026-10-28 (plain-rewrite audit): balance's dense two-row-bend plan and its closing repack of the default never changed the balanced side on any table at n=1..10; the default is already packed. Every program ran (0 bad)"
-
 [ablations.balance_strip_seed]
 saving = 24.4
 arity = 7
@@ -76,13 +69,6 @@ verdict = "kept under the named-function rule: a literal product also races its 
 plain_rewrite = 2026-10-28
 trick_prototype = 2026-11-02
 
-[ablations.repeated_zero]
-arity = 8
-saving = 11.46
-seed = "random.Random(184700 + n)"
-tables = "200 random per n=7,8; named functions separately; majority/complement n=7..15"
-verdict = "superseded by majority_count under the complexity rule. Uniform DUP fails 200 random n=7/8: 8.495%/7.996% area (104038 -> 95200; 156398 -> 143892). Restricted majority and complement each save 12.069%/11.462% (522 -> 459; 759 -> 672), a sustained oscillation tending to 1/3; n=13/14/15 save 24.543%/19.783%/25.625% (inverse n=14 19.656%). Both clear the named-family bar, but storing T bits and passing a family flag through all render paths is unnecessary: the subsequent count reader uses O(n) operations. All new DUP plumbing and its family path are removed. Native extension completed both families through n=15 in 53.48 combined CPU-seconds; stopped before n=16 completed, no n=16 claim. Historical probe and isolated old helpers remain scratch only."
-
 [ablations.majority_count]
 seed = 0
 arity = 8
@@ -98,13 +84,6 @@ seed = "random.Random(184700 + n)"
 tables = "historical200 source; revised20 fixed per7/8,4 per4..6,exhaustive<=3;2 tables/allrows/3 timing passes per7/8"
 verdict = "kept 2026-11-03 by the 25% command alternative. Historical area-selected triples grew34.061/34.912%; their extra binary integer builder is rejected. Instead one three-row strip pushes each0..7 chunk directly, preserves the row below the stack, selects floor(row/3), divides by q(q+1)/2+1 then mod2. Choose source-min polarity, commands only on a source tie. No pair route, bounded builder, whole-old source comparison or runtime decision state. Constants/products/majority keep O(n) layouts. From m4 essential inputs the worst-command bound crosses: old n3 maximum40 versus triple upper58 (native00011111 loses39->56), old n4 maximum96 versus triple68 (-29.167%). Old n5/6/7 maxima131/200/317 become82/108/154 (-37.405/46.000/51.420%); n8 bound244. Small projections and named readers remain below these global bounds. All old source/E/W exact scopes and flags are retained, with constructive new n4..7 maxima source333/468/723/1218 and W43/62/95/157. Some n4 tables slow (0111100111100011:54->64 on all16 rows); this is not the 5% no-table-regression route. Nevertheless native whole-table batch wall medians4..6 improve .02241->.02046 / .06592->.05000 / .19771->.13182s. Fixed20 actual scale1 codel area7/8 grows10393->21825 /15638->39228 (109.997/150.850%); four asymmetric rows per table commands24980->9476 /42772->13664 (-62.066/68.054%), zero slower rows there. Whole-table wall medians7/8 .3161->.1980s /1.0970->.6814s. Every table/row1..3 and four fixed all-row tables4..6 pass ordered reads, sole output, following record and halt; n3 source33633/E68104 unchanged. Command schedules are input-independent. From n8 old parity takes at least3T/2+4n+16, while new global bound2ceil(T/3)+4n+40 improves it by at least25%, approaching at least55.556%. Six pins and AND example unchanged; both four-input pins refreshed (parity96->63 commands,asymmetric54->62) with last-row/by-row counts; native anchors n10 parity6477 (was2226), AND66 and n8 majority87. Added state is one retained row and extraction operands replacing the T-entry stack, O(T) source/build, fixed byte-valued RGB palette. Existing narrow/balance feasibility remains; no source admission claim."
 
-
-[ablations.pair_chunk_lookup]
-arity = 8
-saving = -6.73
-seed = "random.Random(184700 + n)"
-tables = "historical200 per7/8; original2249 native PNG/control groups; revised60 raw strip/packed checks"
-verdict = "superseded by the admitted triple strip, not rejected solely for source. Historical bounded pairs grew11.069/6.730% (104038->115554;156398->166923),200/193 tables grow. The unbounded strip refinement also reduces commands, but its worst T+4m+2q+34 exceeds triple2ceil(T/3)+4m+2q+40 from the admitted m4 crossover; its worst leading area coefficient is also larger (11T/4 versus5T/2 columns). Both retain the same row and decode by division/mod; pairs add no class protection. Original all-small/firing/wrong-table controls and revised raw pair/triple strip controls execute correctly. Only the stronger triple construction ships; no pair builder, integer-construction path or source race remains."
 
 [ablations.packing_offsets_prototype]
 saving = 0.7404

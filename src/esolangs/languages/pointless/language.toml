@@ -35,11 +35,6 @@ saving = 35.4
 arity = 12
 verdict = "kept: each function is pasted into its callers unless declaring it wins the cost model (uses times size against declaration plus call costs). 18.5% at n=6 rising to 36.0% at n=10 and 35.4% at n=12 on random tables; the docstring's 26% share at n=10 and its 8,558-char declaring-everything anchor both reproduce. Re-measured 2026-10-29 against declaring every function, 20 random tables per n: 10.3% n=3, 18.5% n=7, 27.0% n=10; named functions (AND/OR/majority/threshold-2 and complements) 9.5-15.3% n=3..10 (majority 9.7% at n=10), parity 6.0% at n=3 falling to 2.8% at n=10 (its tables share every level, so little is pasted); a rule on usage count, not a race, so no build is duplicated"
 
-[ablations.constant_functions]
-saving = -1.0
-arity = 12
-verdict = "removed 2026-10-20 (retirement candidate #27): a constant subtable got one shared body per (bit, depth) that read all its remaining characters, moved to the print cell and back. Building constant subtables through the general machinery instead (descending level by level to the printing leaf) makes programs smaller almost everywhere: random tables -2.1% at n=10 and -1.0% at n=12, AND -8.7% / -14.0%, OR -6.8% / -12.2%, majority -7.6% / -10.7%; only constant tables themselves cost more (+21.1% / +24.4%). The shipped body re-paid the away-and-back moves, proportional to depth, at every depth where a constant occurred; the descent pays them once, at the leaf. Constant subtables now descend through the general machinery"
-
 [audits]
 trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30

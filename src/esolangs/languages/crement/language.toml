@@ -36,11 +36,6 @@ saving = 2.3
 arity = 12
 verdict = "kept: canonical family, exempt. A node whose halves agree is skipped: the parent names the surviving child directly and no tester test is spent. With sharing kept, 4.6% at n=8 declining to 3.4% at n=10 and 2.3% at n=12 on random tables; 0.0% on parity, AND, OR, majority and constant tables, whose agreeing nodes sit over constant spans"
 
-[ablations.relative_operand_spelling]
-saving = 1.0
-arity = 12
-verdict = "removed 2026-10-20 (retirement candidate #24): a child emitted after its node was written as a relative @+k operand in the node's patches, an earlier child or gadget by its absolute line; every operand now takes the absolute line. Always-absolute spelling measured -2.2% at n=8 and -1.2% at n=10 against the shipped rule on random tables (the rule cost size), +1.0% at n=12; on parity -4.0% / -4.1% / -4.2%, on AND and OR -2.2% / -2.3% / -2.3%. Under the bar at both verdict arities and negative on every named corpus"
-
 [ablations.decisions_figures]
 saving = 0.0
 arity = 5

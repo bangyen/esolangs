@@ -230,9 +230,7 @@ class _Expressions:
         built by the parser, by ``_Expressions.reduce`` (folds resolved calls
         into values, rebuilds nodes with reduced children), and by
         ``_parse._replace_first`` (rebuilds the path to a replaced call).  A
-        node is still an immutable tuple underneath, so a snapshot can carry
-        one, with the tag first, keeping the legacy ``("tag", ...)`` spelling
-        working.
+        node is an immutable tuple, so a snapshot can carry one.
         """
         if isinstance(expr, _Num):
             return expr.value

@@ -30,11 +30,6 @@ saving = 49.7
 arity = 10
 verdict = "kept: canonical, exempt from the bar; saving on its trailing-ignored class (45.1% mid-ignored, 2.8% leading-ignored, where the same-halves descent covers the root); 0.0% on random tables, whose area is a fixed stencil per arity"
 
-[ablations.same_halves_prune]
-saving = 0.0
-arity = 10
-verdict = "removed 2026-10-20: 0.0% by area on every corpus at n>=8 (0.2-0.9% by chars on random and ignored classes, 5.6-7.5% by chars on mosaic/tiled) -- failed the bar as a separate mechanism. Removal verified on 4,068 corpus records (155,440 executions, 0 mismatches): area identical except two stencil-edge records at +3.4%, shipped chars +0.85% at most per class. A second seeded corpus found one tiled n=9 table at +17.8% area (2,295 -> 2,703) and +20.5% chars over the 256 three-input tables (area unchanged). The width path's streaming tree keeps its own copy, unpriced and untouched"
-
 [ablations.constant_span_fold]
 saving = 13.7
 arity = 10
@@ -44,13 +39,6 @@ verdict = "kept: canonical, exempt; saving on the half-constant class (13.1% at 
 saving = 92.8
 arity = 12
 verdict = "kept: canonical sharing, exempt; saving on its mosaic-2 class (88.0% at n=10, 92.3% at n=11, 200 tables); parity 98.7% at n=12, tiled 32.7% at n=11; 0.0% on random tables; mosaic-4 admission earns 0.0% at n=9/10 and 28.7% only at n=12"
-
-[ablations.dag_equal_halves]
-saving = 0.0
-arity = 10
-seed = 184700
-tables = "40 each of tiled, mosaic-2, mosaic-4 and equal-halves mosaic-2 at n=7, 8 and 10, plus parity, and, or, majority"
-verdict = "removed 2026-10-27: the DAG's single-arm router (⬒, one wire when a node's halves share a child) saves 0.00% by area on every class at n=7..10 (the grid's rectangle is set by columns and 8 rows per node, not by the second wire) and at most 0.08% by chars, on the equal-halves class built to exercise it; it never fired on parity, and, or or majority. Every program that changed (28, 28 and 26 equal-halves tables at n=7, 8, 10; 13 mosaic-2 at n=10) was executed on every row against the plain two-wire router, 0 wrong"
 
 [ablations.dag_column_banks]
 saving = 51.6

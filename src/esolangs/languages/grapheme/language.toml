@@ -35,16 +35,6 @@ saving = 349.5
 arity = 12
 verdict = "kept: canonical, exempt. The packed table is read on its essential inputs only; an ignored input is read and dropped with WM. The price is 0.00% on random tables at every arity; on its class the deletion costs at n=10/12: one ignored input +52.70 / +78.14%, two +112.83 / +195.67%, three +174.86 / +349.53%, constant tables +807.55 / +2,415.79%"
 
-[ablations.key_store]
-saving = 1.7
-arity = 12
-verdict = "removed 2026-10-20 (retirement candidate #31): 65 is spelled inline at each read (WFEFFMFSBT); the key-9 store (FEFFMFS pushed once, loaded by every read as WFIFDBT) netted 3 chars per essential input less the 11-char store block -- deletion cost +3.95% at n=10 and +1.74% at n=12 on random tables, linear in n against a 2^n program, so the share declines toward zero; where nothing reads the value the block was pure waste (constant tables: the removal is 19.30-24.44% smaller at every arity). Removed with no conditional-store repair"
-
-[ablations.table_lift]
-saving = -0.15
-arity = 12
-verdict = "removed 2026-10-20 (retirement candidate #32): _grapheme_table now lifts by the smallest multiple of 2^k whose sum with the packed value leads with 1, replacing the fixed target [10^(d+1), 10^(d+1) + 2^k) that made the literal always d+2 digits. The minimal lift was execution-gated clean in the audit and smaller on every corpus measured: -0.35% at n=10 and -0.15% at n=12 on random tables, -1.89 / -1.75% on constant tables; the fixed target overshot by a fixed ~2 letters a program, a fixed amount whose share tends to zero. The workspace proof formula still states the fixed lift's bound -- restatement pending the corpus pass"
-
 [ablations.digit_borrow]
 saving = 0.0
 arity = 12

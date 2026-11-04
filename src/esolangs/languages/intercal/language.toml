@@ -116,13 +116,6 @@ tables = "three tables per n7/10/13, median of three builds each; native three r
 verdict = "sum of per-table median CPU old/new:0.822/0.680ms at n7,4.092/3.114ms at n10,24.393/17.695ms at n13; wall0.819/0.679,4.089/3.111,24.395/17.693ms. Source totals4555/2414,24847/10076,141518/54512. Native CPU medians1.158/0.959ms,3.282/2.022ms,8.323/4.406ms at n4/6/8. Explicit n18 and20 representative probes cost2.073 and8.859CPU-s; n20 emits4192599 ->1505391 chars and executes17741 ->5046 statements. No n21/27 extension was launched for this trend."
 
 
-[ablations.positive_select_final_20261102]
-arity = 8
-saving = 0.0
-seed = "random.Random(1000*n+i)"
-tables = "fixed20 n7/8; both biases of and/or/parity/majority/third/threshold3/threshold-n-minus-one"
-verdict = "superseded, not retained: the fully repriced positive-select counterfactual names profitable #1$selector masks and applies its shorter constant folds. It still grows generic source13.527/19.178% versus the final negative-select policy. Marginal named savings at n7/8: parity6.061/6.699%, majority3.340/1.743%, third7.937/8.126%; the largest complemented threshold case8.861/8.993%, still below10%. Named sizes are deterministic, not sampling estimates. And/or0%; complements and fixed thresholds also fail. Its n3 commands12272 versus final12288 improve only0.130%, far below5%. No mixed encoding mode or second constructor is kept for the small wins. Final positive and all keeper variants execute10780 small/sampled rows; uniform setter and wrong-output controls remain active."
-
 [interpreter_ablations.speedup_prototype_20261103]
 price = -0.3806
 workload = "constructor plus step; no snapshots timed"

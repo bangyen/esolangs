@@ -56,11 +56,6 @@ saving = 99.1
 arity = 12
 verdict = "kept: clears on its named-function class (parity at n=12; 58.8-99.1% across parity/and/or/majority/threshold2 at n=12, growing with n); 0.0% on random tables at n>=8"
 
-[ablations.projected_streaming_fold]
-saving = 9.2
-arity = 12
-verdict = "removed (retirement candidate #4, executed 2026-10-20): 1.9-3.8% marginal on cores, 0.0-0.2% on the one-ignored corpus, ~0% on random and named tables; on tiled tables, its best class, the share plateaued under the bar -- 9.2% at n=12, 8.00%/8.96% at n=14 on the two seed sets"
-
 [ablations.residual_sharing]
 saving = 9.9
 arity = 12

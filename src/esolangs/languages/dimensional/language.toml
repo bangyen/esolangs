@@ -54,11 +54,6 @@ saving = 12.9
 arity = 12
 verdict = "historical measurements, retired 2026-11-02: inside a counted loop the count was spelled by whichever of unary and doubling through the spare dimension is shorter, so it never makes a program larger. 0.00% on random tables and most named tables; on AND, the longest-count class, 4.3% at n=10 rising to 12.9% at n=12 and 25.9% at n=14. The in-code shares (11.4% at n=12 and 20.6% at n=14 on AND, 13.4% on a threshold at n=14, share of the plainer build) all reproduce. Plain-rewrite audit 2026-10-28: 0.0% on 20 random tables and every named function at n=7 / 8 (and/nor 4.1% / 6.7% / 11.4% / 20.5% at n=10 / 11 / 12 / 14, balanced 6.8% / 6.0% / 11.4% / 18.1%; popcount>=2 0.9% / 2.8% / 5.4% / 13.3%). The historical O(n)-versus-sqrt(T) class rationale was false: the spelled stride is sqrt(T) either way. Fixed n7/8 fails admission; the current build uses unary counts"
 
-[ablations.trailing_zero_skip]
-saving = 0.1
-arity = 12
-verdict = "removed 2026-10-20 (retirement candidate #26): painting stopped at the last one, since unvisited cells read 0. Deletion cost on random tables fell 1.29% at n=6 to 0.17% at n=10 and 0.05% at n=12; on its own classes (support in the first half / first quarter) 8.1% / 4.5% and 17.1% / 11.8% at n=10/12, both in clear decline — with the skip removed the trailing run is painted by the counter-loop spelling, whose cost grows slower than the program, so the saved share tended to zero on every class. The whole table is now painted. Re-priced 2026-10-28: random 0.9%/0.6% at n=7/8; named <=0.6% at n=7..10; NOR 24-41% at n=7..12 but NOR already costs what AND does (377 chars at n=10), so it stays retired"
-
 [ablations.complement_paint]
 saving = 93.7
 arity = 12

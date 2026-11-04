@@ -38,13 +38,6 @@ saving = 51.0
 arity = 10
 verdict = "kept: canonical, exempt; the lookup is built over the essential inputs only and ignored inputs land on a dead cell. 0.0% on random tables (nothing to project), 20.0% / 65.5% on tables ignoring one or two inputs of 8, 33.4% / 51.0% at n=10, 79.3% / 89.7% on 16-row tiled tables at n=8/10, 95.8% / 97.4% on constant tables"
 
-[ablations.skip_race]
-saving = 0.0
-arity = 10
-seed = "random.Random(i * 1000 + n), i < 20"
-tables = 20
-verdict = "retired 2026-10-28 (plain-rewrite audit): the carried-count crossing of zero runs changes 0 of 20 random tables at n=7..10 (0.0%), and no named function at n=7..12 -- parity, majority, and, or, nand, nor, thresholds 2 and 3, not-majority all 0.0%, balanced too, because the symmetric count shadows AND (with it off AND would save 29.9% / 58.6% at n=8/10). What remained was the zero-upper-half class (5.4 / 11.2 / 18.2 / 25.4% at n=7..10, an ad-hoc class that keeps nothing); removed, plain steps only"
-
 [ablations.radix_bits]
 saving = 0.0
 arity = 10

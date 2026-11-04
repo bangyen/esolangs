@@ -49,26 +49,6 @@ saving = 100.0
 arity = 11
 verdict = "kept: canonical, exempt; a constant table is one literal row of 2n+3 chars instead of the copied-table walk. 99.996% by area on constant tables at n=11 (25 cells against 628,218 per program), 99.99% at n=9/10; 0.0% elsewhere, where the branch is never taken"
 
-[ablations.blank_compaction]
-saving = 0.0
-arity = 12
-verdict = "retired 2026-10-28: the render dropped wholly blank rows and columns and never fired: 0.0% default and balanced area, byte-identical, on 20 seeded tables at n=7/8 (seed 1000n + i), the parity, majority, and, or, nand, nor and threshold tables at n=7..12, 3,216 builds over n=1..7 at widths none/1/9/12/20/40/80, every ignored-input class tried and the constants. The render is the bounding box, shifted to the origin"
-
-[ablations.narrow_candidate]
-saving = 0.0
-arity = 8
-verdict = "retired 2026-10-28: the narrow staircase as a default and balanced candidate never wins at n>=6: 0.0% default and balanced area on 20 seeded tables at n=7/8, on the named tables at n=7..12, on 100 tables at n=6, and on the constants. It won only at n<=5 (default area +22.9% / +60.7% / +109.4% / +131.2% / +68.4% without it, exhaustive n=1..4 and 100 tables at n=5; balanced area 0.0% at every n) and on tables ignoring inputs (+13% to +230% default area at n=7/8 with two to five ignored; balanced 0.0%), which the bar does not count. Tables at n=9..11 ignoring one or two inputs keep the same areas. width=1 still builds the staircase. The n=3 pins move (e.g. 01101001: 304 -> 364 chars, 211 -> 134 steps)"
-
-[ablations.run_unfolded_candidate]
-saving = 0.0
-arity = 12
-verdict = "retired 2026-10-28: the closed-form folds also tried run = T (unfolded weight runs) beside run = 3c - 12; the second alone matches it everywhere: 0.0% default and balanced area at n=7..12 on random and named tables (the T runs alone cost +4.2% / +59.7% / +145% / +277% / +477% default area at n=8..12), and on the n<=4, ignored and constant classes"
-
-[ablations.balance_extra_candidates]
-saving = 0.0
-arity = 8
-verdict = "retired 2026-10-28: balance also raced the reflected flat strip (width = the strip's own) and, for constants, the width-1 vertical form; neither ever wins on balanced area: 0.0% on 20 seeded tables at n=7/8, the named tables at n=7..12, every table at n<=4, and the constants at n=1..12 (the reflection only breaks character-count ties at n<=5)"
-
 [ablations.copy_17_20]
 saving = 16.9
 arity = 8

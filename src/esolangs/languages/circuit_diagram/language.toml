@@ -82,11 +82,6 @@ saving = 0.0
 arity = 9
 verdict = "retired 2026-10-30: the two block transposes (last three / four inputs first) saved 9.1% / 4.0% of default area on 20 random tables at n=7 / 8 (random.Random(1000 + 100n + j).getrandbits(2**n); 15 / 13 tables changed, max 28.8% / 17.8%) and 11.3% / 5.3% balanced (declining, below the 10% bar), and 0.00% on parity, majority, and, or, nand, nor, thr2, thr3 at n=7..10 (default and balanced). The constructed Margulis cofactor witness (test_named_orders_avoid_literal_expander_routing_within_existing_bounds) grew 4.9x / 7.9x / 16.1x at n=9 / 12 / 14 (10,114 -> 49,354, 91,312 -> 724,736, 443,276 -> 7,134,540 chars): a constant-factor cost under the pool / bank fallback cap, not a class change; constructed families keep nothing. Dense n=8 / 9 grow 136,120 / 298,272 -> 147,264 / 302,032 chars, the sparse 202-class n=15 table 3,961,697 -> 5,953,673 cells. n=7, 8 programs (56 each, default and balanced) and n=9, 10 named (16 each) run on all 2^n inputs, a wrong table fails"
 
-[ablations.bank_candidates]
-saving = 0.0
-arity = 17
-verdict = "retired 2026-10-28 (random + named bar): the folded and sparse class banks, guarded to n >= 17 (mask prefix past eight), build nothing below it and leave the area unchanged at n=17 on 3 seeded random tables and parity, majority, and, or and a threshold (0.00%); they won only on repeated-class tables (14.7% under bundled at 3 classes, n=17), a class drawn to show them, and the pool caps the Scaling class where they built. Kept in the race: the pool (the only candidate at n <= 8) and bundled (leave-one-out 40.74% / 60.74% of area on 20 random tables at n=12 / 14; 0.00% at n <= 10). The residual bank was retired 2026-10-28: area saved on parity 3.87% / 8.31% / 14.40% at n=10 / 11 / 12 then 0.00% at n=13..16 (a peak and a fall to zero, not a share that holds); majority, and, or and a threshold 0.00% at n=10..16; 20 random tables 0.00% at n=8, 10, 11, 12 and 1.16% mean at n=9 (0.8-5.5% on 9 of 20). Its chars were larger on parity (+16.5% at n=12); removing it grows dense n=9 from 258,216 to 298,272 chars and 3-class n=10 tables by up to 17% area, inside the pool's Scaling class; balanced area (max(rows, cols) squared) within 5% across the retiring commit on parity, majority, and, or, thr2, their complements and 10 random tables at n=7, 8, 10"
-
 [ablations.output_polarity]
 saving = 68.4
 arity = 8
@@ -145,11 +140,6 @@ seed = "both constant values"
 tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
 verdict = "kept: canonical native constant source after n isolated input-port dashes. Input loading precedes sources and generations; the program still reads every input before printing. Both constants use 2n+3 characters, 3(n+1) cells, exactly two generations, and n+2 written bits (discarded port/source events plus halt). Area n=7 357 -> 24 cells; n=8 437 -> 27; n=12 837 -> 39. The width floor is three. Native sources also win all 24 old balance scores at n=1..12; return the native default for constants instead of constructing unused H lattices (the n=12 regression otherwise took 2.92s). All 270 nonconstant programs through n=3 are byte-identical; n=3 corpus chars 183838 -> 183742, area 359684 -> 359474 cells. Default, width=1 and balanced constants n=1..12 execute, with sentinel and read-before-output regressions."
 
-
-[ablations.wired_xor_mux_join_prototype]
-saving = 6.4781
-arity = 8
-verdict = "superseded 2026-11-02: wire components have zero generation latency, so the raw one-cell delay is invalid. Executed three/five-row wire controls print the same two pulses. An executable repair joins only equal-depth AND terms, retains primitive OR/NOR for skewed or complemented nodes, and reserves four isolating rows. Fixed Random(184700+n), sequential choice('01'), 20 tables each: area 1486980 -> 1398486 at n=7 (5.9513%), 3431392 -> 3209102 at n=8 (6.4781%); below 10% source bar. Standalone n=3 outer E 11448 ->10720 (6.3592%), N 183742 ->174888, no larger-area table/no slower row: the repaired rule independently qualifies for 5% execution. Admitted M is stronger (E 9496,N 145854) and removes every eligible full primitive OR join from complete folds, so no marginal site remains; hybrid two-AND joins replace one atomic call and add source/depth. Exhaustive all 276 tables/2120 rows through n=3 pass, plus selected n=4..8 native controls. Audit-only eager interval-owner relabel is not a production O(T) construction; no broad layout impossibility claim. No production join state added."
 
 [ablations.mux_function_block]
 saving = 62.3043

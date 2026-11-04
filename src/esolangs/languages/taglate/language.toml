@@ -45,13 +45,6 @@ saving = 100.0
 arity = 12
 verdict = "kept: canonical, exempt. A constant table is one seed char, one read per input, and the print: 99.94% at n=10 and 99.98% at n=12 against the full layout it would otherwise pay. The docstring's 451 -> 7 is the n=4 full layout against the shortcut; 11110000 goes 278 -> 16 chars at n=3"
 
-[ablations.paired_inputs]
-saving = 27.3
-arity = 8
-seed = "random.Random(1847 + n)"
-tables = "5 random per n=7..8, 3 for balance; parity, and, or, majority and threshold (size does not depend on the table)"
-verdict = "superseded 2026-11-02 by packed leaves with six-cell input groups; historical measurements follow. Previously kept: each input travels with a ghost cell, so the group ahead of the value slots is even at every level and every reduce is the cheap even one (the odd reduce's full-queue j/swap passes, 14P against 4P, are gone, and with them the odd-n spare cell, the j fold and its rotation); the read converts 48-bit to 0/1 with one b per input. Against the odd/even build it saves 27.0% / 27.3% / 28.7% / 29.0% at n=7 / 8 / 9 / 10 (2,918 to 2,131; 5,499 to 4,000; 10,760 to 7,669; 21,025 to 14,930), identical on parity, and, or, majority and threshold; balance area 1.4% / 1.0% at n=7 / 8 (the bootstrapped seed dominates it). The 2n ghost constants cost the smallest arities: n=2 grows 121 to 130, 10 of 16 tables, 30 of 256 at n=3 and 60 of 65,536 at n=4 (at most +13). Exhaustive n <= 4 (65,536 tables at n=4) ran on every row, 0 bad; random and projected tables at n=5..9 ran on every row, 0 bad; a wrong table fails"
-
 [ablations.crossing_bracket]
 saving = 0.98
 arity = 6
@@ -82,11 +75,6 @@ verdict = "retained: already canonical read-then-literal paths. A one-character 
 arity = 16
 saving = 78.23696377108129
 verdict = "kept: four low-first truth bits per printable 32+v cell; select reversed leaf slots with the first n-2 inputs, then divide by 1+3A and 1+B and take parity in at most15 native iterations. Six-cell input groups keep every power-of-two stride off other input cells; two-cell repair fails n3 table00000001 row6. No search, frozen programs, old-source race or cutoff. Full source3T+12n\u00b2+17n+12 vsold14T+4n\u00b2+17n+24; generation/source O(T). Commands <=5T/2+12n\u00b2+11n+63 and written workspace <=3T+42n+24+bl(n)+bl(L); both remain linear in T.20 seeded Random(1000*n+k).choice tables plus parity/and/or/threshold run all rows through8 and boundary rows9/10:28768 old/new native runs including bootstraps;4840 more verify full snapshots, exact reads, following7 and print-after-input. Native peaks7/8:376/619 written bits.396 independent default/disabled byte comparisons pass. N3 source53146->46242; commands278864->302304 (+8.406%). Generic source7:2131->1103 (48.2403%),8:4000->1684 (57.9%). Measure rising savings through16:78.2370%; fresh native boundary rows9..16. The exact saving fraction increases for n>=3 to11/14=78.5714%, so there is no later finite peak or declining tail. Three-run median native all-row20-table batches n7/8/9:2.13884/11.9428/81.4734s ->0.314570/0.890285/2.43186s. Eleven-build generation medians20tables0.392/0.653/1.308ms ->0.571/1.079/2.002ms (1.5-1.7x slower).42 width1/balanced native controls pass; parity balanced areas7:40755->1210,8:79600->1800 text cells. Swapped leaf bit order fires wrong-answer controls. Raw eight-bit literal seeds can contain structural LF; printable nibble packing is the working repair."
-
-[ablations.trick_prototype_20261102_literal_value_slots]
-arity = 8
-saving = 12.8
-verdict = "superseded by packed leaves, not stacked. Direct NUL/SOH slots need a2T+2 queue rotation missing from the proposal.5240 paired native runs and2184 complete prefix-state comparisons pass, including native bootstrap programs. Generic7/8 source saves12.0131%/12.8%; bootstrap text14.1628%/14.9832%. N3 source53146->49258. Control-character seed slots work; the required rotation reduces the claimed28% source saving. A wrong literal fires a native wrong-answer control."
 
 [ablations.trick_prototype_20261102_inputs_ahead_layout]
 arity = 8

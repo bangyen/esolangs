@@ -73,11 +73,6 @@ arity = 8
 saving = 99.6131
 verdict = "kept only for reduced parity and its complement: recognize the named Thue-Morse table, sum retained inputs with ADDS, pop ignored inputs, then extract modulo two using the existing rising-argument scale tail. No mask/permutation selection. Actual n=7 parity38541->397 chars (98.97%), complement38361->426 (98.89%); n=8 120433->466 (99.61%), complement120783->497 (99.59%). Every named row through8 executes. Boundary diagnostics through12 execute four rows per old/new program; both-family totals n=12 46081644->1603 chars. Pure all-essential text is2n^2+39n+26 for n>=2; complement adds2n+15. Commands2n+4, plusone for complement. Saving tends100% with no finite peak: along either arity parity, baseline source grows at least4 per two inputs from n=8 while these positive quadratics grow less than4. Exact baseline line/argument counts match emitted totals through12; the prefix bound and change-point sum establish the tail inequality. Constants and all other reduced tables retain byte-identical scans: exactly14 three-input tables change, corpus271188->264468 chars. Existing exact worst source, command and workspace bounds stay attained on nonparity witnesses, including the two-input max586 chars at1101. Owned IO checks cover named inputs through12, discarded inputs, read-first output and a preserved next token."
 
-[ablations.trick_prototype_20261102_unit_spacing_parity_scan]
-arity = 8
-saving = 0.0000
-verdict = "superseded for the named family: actual unit-spacing forward and mirrored prototypes execute valid small tables and four rows on20 random plusparity/complement tables per n=7/8. Transform g=f XOR row-LSB; adjacent changes collide in the strictly rising argument stream. None of the20 random tables per judge arity is eligible; parity and complement are firing positive controls and shrink about64%/67%. Eighty-four three-input tables are eligible. No generic rare firing class ships; only the separately admitted parity sum is emitted, with much smaller source and no threshold chain."
-
 [ablations.trick_prototype_20261102_mask_and_permutation_search]
 arity = 8
 saving = 0.0000

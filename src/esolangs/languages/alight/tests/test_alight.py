@@ -11,7 +11,14 @@ from esolangs.generation.helpers import essential_inputs
 from esolangs.languages.alight.generator import alight
 from esolangs.languages.alight.interpreter import run
 from esolangs.languages.alight.interpreter._machine import _Machine
-from esolangs.languages.alight.interpreter._parse import _replace_first
+from esolangs.languages.alight.interpreter._parse import (
+    _Bin,
+    _Call,
+    _List,
+    _Num,
+    _replace_first,
+    _Val,
+)
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
@@ -668,15 +675,14 @@ def test_cycle_detector_tracks_cursorless_input(io_type) -> None:
 
 def test_a_list_without_a_placeholder_is_left_unchanged() -> None:
     """The no-match return for a node that is not a call."""
-    expr = ("list", [("num", 1)])
-    assert _replace_first(expr, ("val", 2)) == (expr, False)
+    expr = _List("list", [_Num("num", 1)])
+    assert _replace_first(expr, 2) == (expr, False)
 
 
-def test_a_tuple_spelled_binary_node_keeps_its_operand_order() -> None:
-    """The legacy ``("bin", op, left, right)`` spelling converts left to right."""
-    expr = ("bin", "-", ("call", "f", []), ("num", 2))
+def test_a_binary_node_keeps_its_operand_order() -> None:
+    expr = _Bin("bin", "-", _Call("call", "f", []), _Num("num", 2))
     assert _replace_first(expr, 7) == (
-        ("bin", "-", ("val", 7), ("num", 2)),
+        _Bin("bin", "-", _Val("val", 7), _Num("num", 2)),
         True,
     )
 

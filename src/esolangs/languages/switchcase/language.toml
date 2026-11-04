@@ -30,14 +30,6 @@ seed = "named symmetric tables"
 tables = 5
 verdict = "retired 2026-11-02: full shared residual dispatch supersedes this reader; new marginal measurements are in split_switch_on_top_bit. Measured balanced area with pipelined definitions at n=7/8: old parity 910/1020→434/490, AND/OR 880/990→308/343, majority/threshold 910/1020→497/595. All five named families also improve balanced area through n=16. Historical: kept under the named-function rule: a table depending only on how many essential inputs are 1 adds each bit into one index without doubling and switches over m + 1 rows, a rule, not a race: the count build is never longer (byte-identical to the former length race on all 65,812 tables n<=4 and 112 tables n=5..8). Parity, majority, and, or and exactly-2 all 45.8-45.9% at n=4, 63.8% at n=6, 73.5% at n=7, 82.1% at n=8, 93.3% at n=10; a symmetric table with an ignored input 73.0% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
 
-[ablations.minority_arms]
-saving = 39.4
-arity = 8
-seed = "random.Random(184700 + n)"
-tables = 200
-verdict = "retired 2026-11-02: full shared residual dispatch replaces the decimal minority keys and repairs their Theta(T log T) source class. Measured balanced area on the same 200 generic tables n=7/8 is 405570→209293 / 567930→341831 (repo grid_area includes the trailing empty row). Historical: kept one switch with an arm `k?'2` only for the rows of the minority bit, a default printing the majority bit, and case 2 (jumped over at the start) printing the minority bit and jumping to a last no-op case, replacing blocks of a hundred arms that each turn the index into the bit. Random tables 33.9% at n=7, 39.4% at n=8; n=8 parity 2.3%, majority 2.3%, threshold-3 3.4%, and 5.7%, or 5.7% (the symmetric count build already switches over m + 1 rows). Every row run through esolangs.run: n<=3 exhaustive, 3,000 tables at n=4, 100 each at n=7 and n=8, named at n=8; a wrong table fails"
-
-
 [generator_sizes]
 "00000001" = { commands = 26, commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 23, "5" = 23, "6" = 25, "7" = 26 }, source_units = 111 }
 "00001100" = { commands = 22, commands_by_row = { "0" = 20, "1" = 20, "2" = 20, "3" = 20, "4" = 23, "5" = 23, "6" = 22, "7" = 22 }, source_units = 95 }

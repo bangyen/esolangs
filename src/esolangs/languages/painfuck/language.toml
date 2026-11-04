@@ -43,21 +43,6 @@ saving = 4.3
 arity = 12
 verdict = "kept: the two repeated_bank plans and the mixed bank are the sharing family's working member. Race marginal +3.7 / +3.8 / +4.3% on random tables at n=8/10/12; on classes at n=10/12, majority +83.0 / +159.2%, parity +24.0 / +21.4%, ignored classes +16.6..+19.7%, half-constant +24.2 / +21.9%. Plain-rewrite audit 2026-10-28 (20 random tables at n=7 / 8, 3 at n=10, Random(1000n+s)): random 4.21% / 6.15% / 3.05% (balanced 4.78% / 5.54% / 2.76%) at n=7 / 8 / 10, under the bar; majority 36.6% / 44.0% / 69.5%, popcount>=2 29.1% / 36.5% / 47.8%, popcount>=3 38.5% / 49.2% / 59.2%, popcount>=4 36.6% / 50.6% / 66.5%, share rising with n and balanced area alike; or, and, nand, nor, parity 0.0%. Kept for the majority and threshold family"
 
-[ablations.one_residual_form]
-saving = 0.0
-arity = 12
-verdict = "removed 2026-10-28 (retirement candidate #29): the second tree built over the single repeated_block residual and entered in the form race. Plain-rewrite audit: 0.00% on 20 random tables at n=7 and n=8 (Random(1000n+s).getrandbits(1<<n)) and on 3 at n=10, and on parity, majority, and, or, nand, nor, popcount>=2/3/4 at n=7, 8, 10, in size and balanced area, so no measured table is one where it wins; the banks cover its ground"
-
-[ablations.levels_plan]
-saving = 0.0
-arity = 12
-verdict = "removed 2026-10-20 (retirement candidate #30): the repeated_blocks plan entered in the form race on every table. Audit deletion cost was 0.00% on every corpus except mosaic at n=10 (+1.02%). Re-priced 2026-10-20 on fleet-canonical classes: fleet-corpus tiled +5.09% at n=8 (one table), +0.00% at n=10 and +0.83% at n=12; fleet tiled draws +0.30/+0.27/+0.14% at n=8/10/12; random and all other classes +0.00%. At the two largest arities it earns ~nothing, and its one real win fades with arity. The -77% parity figure once credited to it in the generator's comment belongs to the mixed bank (F25). Re-priced 2026-10-28: random 0.01%/0.00%; parity, majority, and, or, popcount>=2 0.00% at n=7..12; popcount>=3 peaks 8.3% at n=16; popcount>=4 9.2/10.4/11.4% at n=14/15/16 only; stays retired (one threshold at the cap is a chosen class)"
-
-[ablations.restart_move]
-saving = 0.0
-arity = 12
-verdict = "removed 2026-10-28: _move emitted the shorter of walking to the target and a d-restart per move. Plain-rewrite audit (20 random tables per arity at n=7 / 8, 3 at n=9..12, Random(1000n+s)): random 1.07% / 0.59% / 0.34% / 0.18% / 0.10% / 0.06% at n=7 / 8 / 9 / 10 / 11 / 12, a share in decline; and 7.4 / 7.6 / 7.8 / 7.9 / 8.0%, or 5.1 / 5.5 / 6.6%, nand 7.2 / 7.4 / 7.8%, nor 5.2 / 5.7 / 6.7%, popcount>=2 3.5 / 3.6 / 3.7%, majority 4.9 / 3.6 / 3.0% at n=7 / 8 / 10 (and 12 for and, or, nor), every named function under 10%; balanced area is quantised noise around the same figures (and 0.0 / 19.0 / 8.9% at n=7 / 8 / 10). With the complement tree in place OR costs what NOR does, which removed the +26.8% / +29.6% it once showed on OR"
-
 [ablations.command_bound]
 saving = 0.0
 arity = 12

@@ -46,11 +46,6 @@ saving = 43.6
 arity = 12
 verdict = "kept: normalization is 47 passes of one shared loop (a counter cell of 47 exits it) instead of 47 unrolled decrements per essential input. 50 seeded random tables, 2026-10-30, trick_prototype: -75.4% / -69.4% / -61.5% characters at n=7/8/9 (173,893 -> 42,848; 218,784 -> 66,973; 283,387 -> 109,160), balance=True area -72.1% / -66.2% / -58.2%; 3 tables -60.6% / -51.5% / -43.6% at n=10/11/12 (share falls with n: the saving is a fixed 138 cells per essential input). Named functions n=7/8/9: parity 2,968 -> 389 / 3,390 -> 435 / 3,806 -> 482, and 2,881 -> 318 / 3,289 -> 352 / 3,691 -> 385, majority 3,061 -> 477 / 3,529 -> 566 / 4,011 -> 673. Executed through esolangs.run: every row of all 278 tables at n<=3, random n=4..10 and named functions, ignored-input tilings at n=7..9 (33,608 rows, 0 wrong; a complemented-table control fails 64 of 64). Cost: steps 50n + 2 -> 50n + 95"
 
-[ablations.lookup_leaf]
-saving = -34.1
-arity = 12
-verdict = "removed (retirement candidate 25, 2026-10-20): the tree stopped k levels short (2**k >= 2n) and each leaf carried a 2**k-cell table indexed by an unrolled counter loop. Deleting the stop (k = 0, sharing kept) makes programs smaller on every corpus measured: random tables -15.6% at n=10 and -34.1% at n=12, sparse -30.2% / -51.3%, dense -28.8% / -52.2%, parity -9.1% / -7.7%. The docstring's Theta(T log T) defence priced the unshared tree; with sharing kept, the low levels collapse and the leaf's counter machinery plus printed cells cost more than the branches they replace. The tree now branches on every essential input. See RETIREMENT-CANDIDATES entry 25"
-
 [ablations.routing_race_figures]
 saving = 0.0
 arity = 4
