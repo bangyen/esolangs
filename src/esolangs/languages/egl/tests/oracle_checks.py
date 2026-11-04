@@ -147,20 +147,22 @@ def check_raw_egl():
     corpus.append("0" * 5000 + "1,1:+=")
     inputs = ("", "A\n", "λ")
     results = [_agrees(_Machine, code, stdin) for code in corpus for stdin in inputs]
-    for code in (
-        "",
-        "1,1",
-        "0,1:",
-        "1,0:",
-        "-1,1:",
-        "1, 1:",
-        "1_0,1:",
-        "1,1:(",
-        "1,1:)",
-        "1,1:)(",
-        "1,1,1:",
-    ):
-        results.append(_agrees(_Machine, code, "unread"))
+    results.extend(
+        _agrees(_Machine, code, "unread")
+        for code in (
+            "",
+            "1,1",
+            "0,1:",
+            "1,0:",
+            "-1,1:",
+            "1, 1:",
+            "1_0,1:",
+            "1,1:(",
+            "1,1:)",
+            "1,1:)(",
+            "1,1,1:",
+        )
+    )
     assert {error for error, _ in results} == {None, "syntax", "input"}
     assert any(not trace[-1][1] for error, trace in results if error is None)
     assert _model("10,1:++(>+++++<-)", "")[1][-1][0][3][1] == 10

@@ -71,7 +71,7 @@ def test_arrowqueue_narrow_drops_ignored_inputs(width: int) -> None:
     table = "".join(b for b in "0110" for _ in range(8))  # 2 of 5 inputs essential
     template = arrowqueue(table, width)
     assert _evaluate("ArrowQueue", template, inputs=5) == table
-    full = arrowqueue("".join(str(bin(i).count("1") % 2) for i in range(32)), width)
+    full = arrowqueue("".join(str((i).bit_count() % 2) for i in range(32)), width)
     assert template.count("\n") < full.count("\n")
 
 

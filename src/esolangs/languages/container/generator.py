@@ -309,8 +309,9 @@ class _TreeEmitter:
             lines.append(f"-{value} {child}>=1")
             return lines
         # A relay is alive a tick late, so it feeds one less than a parent.
-        for relay in self.fed.get(i, []):
-            lines.append(f"{value - 1} {self.names[relay]}>=1")
+        lines.extend(
+            f"{value - 1} {self.names[relay]}>=1" for relay in self.fed.get(i, [])
+        )
         # Only a node that tests must decay, to be 1 when its bit is in
         # IN.  A leaf keeps its birth value, below the output gate's rest.
         if tests < self.n:
@@ -325,8 +326,10 @@ class _TreeEmitter:
         lines = [f"{self.output_gate}={rest}:", f"-{rest - 1} T>={2 * n - 1}"]
         # The gate alone keeps OUT at its base until the printing tick.
         lines.append(f"OUT={_ASCII_ZERO}:")
-        for i in sorted(self.answers, key=self._row_of):
-            lines.append(f"1 {self.names[i]}>={self.output_gate}")
+        lines.extend(
+            f"1 {self.names[i]}>={self.output_gate}"
+            for i in sorted(self.answers, key=self._row_of)
+        )
         lines.append("PRINT:")
         lines.append(f"1 T>={2 * n}")
         lines.append("EXIT=1:")

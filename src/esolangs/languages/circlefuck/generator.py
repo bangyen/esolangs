@@ -114,8 +114,10 @@ def _counted(n: int, weights: list[int], table: str) -> str:
     ([ablations.symmetric_count]); each bit walks home to cell 0.
     """
     prog = ["<[-]>", _reads(n)]
-    for i in reversed(range(n)):
-        prog.append("<" + (f"[-{'<' * (i + 1)}+{'>' * (i + 1)}]" if weights[i] else ""))
+    prog.extend(
+        "<" + (f"[-{'<' * (i + 1)}+{'>' * (i + 1)}]" if weights[i] else "")
+        for i in reversed(range(n))
+    )
     return "".join([*prog, "<", _deleter(0), "<.@", table[::-1], "0"])
 
 

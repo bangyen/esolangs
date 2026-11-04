@@ -245,8 +245,7 @@ def _cm_emit_address(
     before ``high`` are weighted into ``s``, the rest select within the
     decoded cell.  The output lines follow the cells phase's arrays.
     """
-    for i in range(n):
-        lines.append(f"w{i}=z x+input,NOT PRINT.")
+    lines.extend(f"w{i}=z x+input,NOT PRINT." for i in range(n))
     # ``s`` sits one below the first cell, so the address wants the missing
     # one -- folded into the only odd weight, which has to be added last:
     # ``d = A x + B`` is ``d := B + d*A`` for a destination holding zero and

@@ -28,9 +28,7 @@ def _parse(source):
         if (
             len(fields) != 3
             or fields[0] != "move"
-            or any(
-                not (v[1:] if v.startswith("-") else v).isdecimal() for v in fields[1:]
-            )
+            or any(not (v.removeprefix("-")).isdecimal() for v in fields[1:])
         ):
             raise ValueError
         commands.append(tuple(map(int, fields[1:])))
@@ -173,22 +171,26 @@ def check_raw_movesum():
     ]
     inputs = ("", "1 2 3 4", " 0 +2\n", "-1 3", "x")
     results = [_agrees(_Machine, code, stdin) for code in corpus for stdin in inputs]
-    for code in (
-        "",
-        "0=0",
-        "sum",
-        "=0\nsum",
-        "0=\nsum",
-        "0=-1\nsum",
-        "0=0\nSum",
-        "0=0\nmove +1 0",
-        "0=0\nmove --1 0",
-        "0=0\nmove 1 2 3",
-        "0_0=0\nsum",
-    ):
-        results.append(_agrees(_Machine, code, "unread"))
-    for stdin in ("1 x", "1 -1", "  ", "٣", "1_0", "2 3 trailing"):
-        results.append(_agrees(_Machine, "42=42\nsum", stdin))
+    results.extend(
+        _agrees(_Machine, code, "unread")
+        for code in (
+            "",
+            "0=0",
+            "sum",
+            "=0\nsum",
+            "0=\nsum",
+            "0=-1\nsum",
+            "0=0\nSum",
+            "0=0\nmove +1 0",
+            "0=0\nmove --1 0",
+            "0=0\nmove 1 2 3",
+            "0_0=0\nsum",
+        )
+    )
+    results.extend(
+        _agrees(_Machine, "42=42\nsum", stdin)
+        for stdin in ("1 x", "1 -1", "  ", "٣", "1_0", "2 3 trailing")
+    )
     assert {error for error, _ in results} == {None, "syntax", "argument", "halt"}
     assert any(not trace[-1][1] for error, trace in results if error is None)
     assert _model("1=42 2=42\nsum\nmove 0 -1\nmove 0 0", "2 3")[1][-1][2] == "5"

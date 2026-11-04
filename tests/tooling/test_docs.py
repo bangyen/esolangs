@@ -161,7 +161,7 @@ def test_the_usage_guide_names_every_command() -> None:
 _CITATION = re.compile(r"``(test_[a-z_0-9]+)``")
 
 #: A test definition.
-_DEFINITION = re.compile(r"^\s*def (test_[a-z_0-9]+)", re.M)
+_DEFINITION = re.compile(r"^\s*def (test_[a-z_0-9]+)", re.MULTILINE)
 
 _ROOT = pathlib.Path(__file__).parents[2]
 

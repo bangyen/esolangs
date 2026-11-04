@@ -102,8 +102,10 @@ def check_raw_minsky():
     for n in range(4):
         for ops in itertools.product("+~*x", repeat=n):
             code = "".join(ops)
-            for target in (0, 1, 2, 9):
-                corpus.append(code + "\n" + " ".join([str(target)] * code.count("~")))
+            corpus.extend(
+                code + "\n" + " ".join([str(target)] * code.count("~"))
+                for target in (0, 1, 2, 9)
+            )
     rng = random.Random(20261103)
     for _ in range(128):
         ops = rng.choices("+~*", k=12)

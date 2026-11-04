@@ -27,7 +27,7 @@ class TestRotfuck:
     @pytest.mark.parametrize("n", [6, 7, 8])
     def test_a_second_index_digit_still_selects_the_right_entry(self, n: int) -> None:
         """The arity where the index stops fitting in one walk."""
-        table = "".join(str(bin(row).count("1") & 1) for row in range(2**n))
+        table = "".join(str((row).bit_count() & 1) for row in range(2**n))
         program = boolean.rotfuck(table)
         for combo in (0, 1, 2**n - 1, 2**n - 2, 2 ** (n - 1), 2 ** (n - 1) - 1):
             bits = row_bits(combo, n)
@@ -181,7 +181,7 @@ class TestRotfuck:
     @pytest.mark.parametrize("n", [6, 7, 8])
     def test_forward_reaches_a_second_index_digit(self, n: int) -> None:
         """Forward emits its own walks through the arity where the index splits."""
-        table = "".join(str(bin(row).count("1") & 1) for row in range(2**n))
+        table = "".join(str((row).bit_count() & 1) for row in range(2**n))
         program = boolean.rotfuck(table, rotation="forward")
         for combo in (0, 1, 2**n - 1, 2 ** (n - 1)):
             bits = row_bits(combo, n)
@@ -191,7 +191,7 @@ class TestRotfuck:
         """Raw parity and zero-carrier multipliers keep native input/output."""
         _check_symmetric_multipliers()
         _check_raw_five_digits()
-        table = "".join(str(bin(row).count("1") & 1) for row in range(128))
+        table = "".join(str((row).bit_count() & 1) for row in range(128))
         program = boolean.rotfuck(table)
         assert len(program) == 227
         for combo in range(0, 128, 5):
@@ -234,7 +234,7 @@ class TestRotfuck:
 
     def test_a_zero_upper_half_runs(self) -> None:
         """A zero upper half is 2 * 128 plain steps, and still correct."""
-        half = "".join(str(bin(row * 37 % 256).count("1") & 1) for row in range(128))
+        half = "".join(str((row * 37 % 256).bit_count() & 1) for row in range(128))
         table = half + "0" * 128
         program = boolean.rotfuck(table)
         for combo in (0, 1, 127, 128, 200, 255):

@@ -423,7 +423,7 @@ class _Parser:
             clash = self.reserved & set(fn.names)
             if clash:
                 raise _bad(
-                    f"{sorted(clash)[0]!r} names both a function and a variable",
+                    f"{min(clash)!r} names both a function and a variable",
                     "give the variable another name",
                 )
         return _Program(tuple(self.fns), self.overloads, tuple(self.bodies))

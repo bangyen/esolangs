@@ -85,7 +85,7 @@ def _source_lines(code: str) -> list[list[str]]:
         r"/\*.*?\*/",
         lambda match: "\n" * match.group().count("\n"),
         code,
-        flags=re.S,
+        flags=re.DOTALL,
     )
     lines = []
     for raw_line in code.splitlines():

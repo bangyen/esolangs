@@ -80,7 +80,7 @@ def _spans(lines: list[str]) -> dict[str, tuple[int, int]]:
             opened[name] = i
     if opened:
         raise syntax_error(
-            f"unclosed label-block: {sorted(opened)[0]}",
+            f"unclosed label-block: {min(opened)}",
             "repeat the opening name; to close its label block",
         )
     return spans

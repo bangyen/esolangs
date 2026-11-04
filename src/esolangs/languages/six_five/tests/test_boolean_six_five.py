@@ -134,7 +134,7 @@ class TestSixFive:
 
     def test_folding_is_still_per_order_even_though_sharing_is_not(self) -> None:
         """Parity resists folding under every order, and is built anyway."""
-        parity = "".join(str(bin(row).count("1") % 2) for row in range(64))
+        parity = "".join(str((row).bit_count() % 2) for row in range(64))
         for perm in permutations(range(6)):
             assert _six_five_markers(permute_truth_table(parity, perm)) == 63
         assert _markers(boolean.six_five(parity)) <= 35
@@ -178,12 +178,12 @@ class TestSixFive:
 
     def test_parity_is_the_easy_case_once_subtrees_are_shared(self) -> None:
         """Sharing inverts which table is the worst case."""
-        parity6 = "".join(str(bin(row).count("1") % 2) for row in range(64))
+        parity6 = "".join(str((row).bit_count() % 2) for row in range(64))
         assert _six_five_markers(parity6) == 63 > 35
         assert _markers(boolean.six_five(parity6)) <= 35
         assert boolean.six_five(parity6)
 
-        parity10 = "".join(str(bin(row).count("1") % 2) for row in range(1024))
+        parity10 = "".join(str((row).bit_count() % 2) for row in range(1024))
         assert _markers(boolean.six_five(parity10)) <= 35
         assert boolean.six_five(parity10)
 

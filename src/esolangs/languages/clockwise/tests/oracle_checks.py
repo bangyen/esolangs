@@ -14,9 +14,7 @@ def _model(lines, stdin):
         return "syntax", [(None, False, "", 0, 0)]
     width = max(map(len, lines))
     reads = any("." in line for line in lines)
-    incoming = (
-        list("".join(bin(ord(c))[2:].rjust(7, "0") for c in stdin)) if reads else []
-    )
+    incoming = list("".join(f"{ord(c):07b}" for c in stdin)) if reads else []
     consumed = len(stdin) if reads else 0
     position, direction, acc, pending, output, error = 0j, 1 + 0j, 0, [], "", None
 

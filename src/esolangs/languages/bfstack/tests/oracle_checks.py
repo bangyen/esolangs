@@ -39,9 +39,11 @@ def check_raw_bfstack() -> None:
         for _ in range(64)
     ]
     results = []
-    for stdin in ("", "\x00\xff", "A\nB", "λ"):
-        for code in corpus:
-            results.append(agrees_stack(_Machine, bfstack, code, stdin)[-1])
+    results.extend(
+        agrees_stack(_Machine, bfstack, code, stdin)[-1]
+        for stdin in ("", "\x00\xff", "A\nB", "λ")
+        for code in corpus
+    )
     assert {r.error for r in results} == {None, "input", "syntax", "halt"}
     assert any(not r.halted and not r.error for r in results)
     assert any(r.loops and r.halted for r in results)

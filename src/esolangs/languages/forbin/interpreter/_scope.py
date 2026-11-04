@@ -205,7 +205,6 @@ def _enter(
 ) -> tuple[_Frame, Mapping[int, _Scope]]:
     """Return a frame for calling ``callee``; unpassed parameters are 0."""
     locals_: dict[str, object] = dict.fromkeys(callee.fn.args, 0)
-    for name, value in zip(callee.fn.args, args, strict=False):
-        locals_[name] = value
+    locals_.update(zip(callee.fn.args, args, strict=False))
     scope, scopes = _new_scope(scopes, callee.fn, callee.scope, locals_)
     return _Frame(callee.fn, scope), scopes

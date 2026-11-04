@@ -248,8 +248,7 @@ class _Machine:
                     raise fault.error from None
                 break
             filled = tuple(draws)
-            for at in range(base, len(filled)):
-                pending.append((*filled[:at], 99))
+            pending.extend((*filled[:at], 99) for at in range(base, len(filled)))
             successors.append((*_snapshot(new_state), current[-1]))
         return tuple(successors)
 

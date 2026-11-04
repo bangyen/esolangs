@@ -98,8 +98,10 @@ def check_raw_nor_machine():
     corpus += ["", " \n", "rot", "A#", "v", "λ", "I" * 80, "V V", "XLRVV", "IRVV"]
     inputs = ("", "1", "-3", "0 1", "4 3 -2", " +1 \n -2 \t3 ", "1 x 3", "٣")
     results = [_agrees(_Machine, code, stdin) for code in corpus for stdin in inputs]
-    for stdin in ("+", "1_0", "1.0", "--1", "0\x001", " ", "-0", str(1 << 80)):
-        results.append(_agrees(_Machine, "V", stdin))
+    results.extend(
+        _agrees(_Machine, "V", stdin)
+        for stdin in ("+", "1_0", "1.0", "--1", "0\x001", " ", "-0", str(1 << 80))
+    )
     assert {error for error, _ in results} == {None, "syntax", "argument", "halt"}
     assert any(not trace[-1][1] for error, trace in results if error is None)
     assert _model("XLRVV", "4 3")[1][-1][2] == "-7"

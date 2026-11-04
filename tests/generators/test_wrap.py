@@ -324,7 +324,7 @@ def test_width_honouring_layout_meets_any_width_it_can(name: str) -> None:
 @pytest.mark.parametrize(
     "name",
     [
-        pytest.param(name, marks=pytest.mark.slow) if name in {"streetcode"} else name
+        pytest.param(name, marks=pytest.mark.slow) if name == "streetcode" else name
         for name in WIDTH_HONOURING
     ],
 )

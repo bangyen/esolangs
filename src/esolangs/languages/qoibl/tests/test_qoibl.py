@@ -312,7 +312,7 @@ class TestTheTokenizerCarriesItsOwnStack:
 
     @staticmethod
     def _majority(n: int) -> str:
-        return "".join(str(int(bin(r).count("1") * 2 > n)) for r in range(2**n))
+        return "".join(str(int((r).bit_count() * 2 > n)) for r in range(2**n))
 
     def test_a_program_past_the_old_wall_tokenizes(self) -> None:
         """4929 characters, against a default limit of 1000."""

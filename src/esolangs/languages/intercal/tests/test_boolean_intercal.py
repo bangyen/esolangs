@@ -146,7 +146,7 @@ def test_every_name_of_the_widest_witness_is_a_legal_variable() -> None:
     """The large witness respects scalar limits; small lowered caps force spills."""
     program = intercal(_intercal_worst(21))
     assert max(int(k) for k in re.findall(r"\.(\d+)", program)) <= 65535
-    widths = re.findall(r"^\S+ ,(\d+) <- #(\d+)$", program, re.M)
+    widths = re.findall(r"^\S+ ,(\d+) <- #(\d+)$", program, re.MULTILINE)
     assert [int(j) for j, _ in widths] == list(range(1, len(widths) + 1))
     if widths:
         assert len({w for _, w in widths}) == 1

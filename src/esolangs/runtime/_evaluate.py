@@ -340,6 +340,8 @@ def _evaluate(
     ``max_memory`` caps Linux worker virtual address space in bytes.
     """
     answers = []
+    # Collected incrementally, not list(...): when a row raises, the
+    # except below quotes the partial answers in the error's note.
     try:
         for answer in _iter_evaluate(
             language,
@@ -354,7 +356,7 @@ def _evaluate(
             total_timeout=total_timeout,
             settings=settings,
         ):
-            answers.append(answer)
+            answers.append(answer)  # noqa: PERF402
     except EsolangError as exc:
         exc.add_note(f"answered {''.join(answers) or '(none)'}")
         raise

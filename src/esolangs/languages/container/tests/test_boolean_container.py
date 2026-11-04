@@ -335,13 +335,13 @@ def _swept_balance(table: str, default: str) -> str:
                     if lower < overhead + digits < stop
                 )
     candidates = [default]
-    for width in thresholds:
-        candidates.append(
-            min(
-                (_narrow_rules(program, width) for program in programs),
-                key=lambda text: (grid_width(text), len(text)),
-            )
+    candidates.extend(
+        min(
+            (_narrow_rules(program, width) for program in programs),
+            key=lambda text: (grid_width(text), len(text)),
         )
+        for width in thresholds
+    )
     return min(candidates, key=balance_score)
 
 

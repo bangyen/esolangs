@@ -15,7 +15,7 @@ def _decode(raw):
         raise ValueError
     if not digits:
         return ""
-    octal = oct(len(digits))[2:]
+    octal = f"{len(digits):o}"
     if octal[0] != "1":
         raise ValueError
     program = "".join("><+-.,[]"[int(c)] for c in octal[1:])

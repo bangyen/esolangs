@@ -231,12 +231,11 @@ def differences(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
             # incomplete sweep says nothing about the sweep it did finish.
             before = was[name].get(table, {})
             after = is_[name].get(table, {})
-            for field in sorted(set(before) | set(after)):
-                if before.get(field) != after.get(field):
-                    lines.append(
-                        f"{name} [{table}] {field}: "
-                        f"{before.get(field)} -> {after.get(field)}"
-                    )
+            lines.extend(
+                f"{name} [{table}] {field}: {before.get(field)} -> {after.get(field)}"
+                for field in sorted(set(before) | set(after))
+                if before.get(field) != after.get(field)
+            )
     return lines
 
 

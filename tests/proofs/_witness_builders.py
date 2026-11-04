@@ -191,11 +191,11 @@ def _codesick_chars_worst(n: int) -> str:
                 low = []
             used: list[tuple[int, int]] = []
             seeds = []
-            for group in (low, high):
-                for i in range(0, len(group), 2):
-                    seeds.append(
-                        (group[i], group[i + 1] if i + 1 < len(group) else group[0])
-                    )
+            seeds.extend(
+                (group[i], group[i + 1] if i + 1 < len(group) else group[0])
+                for group in (low, high)
+                for i in range(0, len(group), 2)
+            )
             for pair in seeds:
                 if pair not in used and not pair[0] == pair[1] < 0:
                     used.append(pair)
@@ -248,7 +248,7 @@ def _back_worst(n: int) -> tuple[str, ...]:
     # and with row 1 flipped: the most rows its one-edges cannot share.
     tables = (
         "".join(
-            str(bin(i & i >> 1).count("1") % 2 ^ n % 2 ^ (i == 1)) for i in range(width)
+            str((i & i >> 1).bit_count() % 2 ^ n % 2 ^ (i == 1)) for i in range(width)
         ),
     )
     if n == 2:

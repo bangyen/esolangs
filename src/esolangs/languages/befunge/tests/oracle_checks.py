@@ -63,11 +63,11 @@ def check_raw_befunge():
             ]
         )
     final = []
-    for code in corpus:
-        for stdin in ("", "0 -3 A\n", "λ 9", " \t"):
-            final.append(
-                agrees_memory(_Machine, befunge, code, stdin, grid=True, runner=run)[-1]
-            )
+    final.extend(
+        agrees_memory(_Machine, befunge, code, stdin, grid=True, runner=run)[-1]
+        for code in corpus
+        for stdin in ("", "0 -3 A\n", "λ 9", " \t")
+    )
     assert {row.error for row in final} == {None, "syntax", "input", "argument", "halt"}
     assert any(not row.halted and not row.error for row in final)
     assert any(row.string for row in final)

@@ -35,10 +35,10 @@ def check_raw_underload() -> None:
         "".join(rng.choices([*atoms[:11], "((x)S)", "(:^)"], k=8)) for _ in range(64)
     ]
     results = []
-    for code in corpus:
-        results.append(
-            agrees_stack(_Machine, underload, code, "unused", dynamic=True)[-1]
-        )
+    results.extend(
+        agrees_stack(_Machine, underload, code, "unused", dynamic=True)[-1]
+        for code in corpus
+    )
     assert {r.error for r in results} == {None, "halt"}
     assert any(not r.halted and not r.error for r in results)
     assert any(r.code != code for code, r in zip(corpus, results, strict=True))

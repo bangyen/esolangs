@@ -42,8 +42,7 @@ def _packed(t: str, n: int) -> str:
     }
     parts = []
     # One complete FIFO pass discards unused cells and restores cyclic order.
-    for x in labels:
-        parts.append("e" if x in names else "f")
+    parts.extend("e" if x in names else "f" for x in labels)
     labels = [x for x in labels if x in names]
 
     def rotate(x: str) -> None:

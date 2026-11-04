@@ -162,17 +162,17 @@ def check_raw_codesick():
         for args in itertools.product(("a", "b", ""), repeat=4)
     ]
     rng = random.Random(20261103)
-    for _ in range(64):
-        corpus.append(
-            "\n".join(
-                f"{label} codesick "
-                + " ".join(
-                    _quoted(rng.choice(("a", "b", "c", "", "halt"))) for _ in range(5)
-                )
-                + ";"
-                for label in ("a", "b", "c")
+    corpus.extend(
+        "\n".join(
+            f"{label} codesick "
+            + " ".join(
+                _quoted(rng.choice(("a", "b", "c", "", "halt"))) for _ in range(5)
             )
+            + ";"
+            for label in ("a", "b", "c")
         )
+        for _ in range(64)
+    )
     corpus += [
         "",
         " \n",

@@ -53,7 +53,7 @@ def _model(source, stdin, cap=16):
         rules = _parse(source)
     except ValueError:
         return "syntax", [(None, False, "", 0, 0)]
-    text = stdin[:-1] if stdin.endswith("\n") else stdin
+    text = stdin.removesuffix("\n")
     halted, rendered, output = False, False, ""
 
     def view():
@@ -118,20 +118,22 @@ def check_raw_sonata():
     ]
     inputs = ("", "a", "ab", "aabb", "λ\n", "a\nb\n", "x\r\n", "a\n\n")
     results = [_agrees(_Machine, code, stdin) for code in corpus for stdin in inputs]
-    for code in (
-        "x",
-        "^",
-        "_",
-        "^A->^B",
-        "_A_A->",
-        "^A_A->",
-        "a->^",
-        "a->_",
-        "_-->x",
-        "a->^A",
-        "_->x",
-    ):
-        results.append(_agrees(_Machine, code, "unread\n"))
+    results.extend(
+        _agrees(_Machine, code, "unread\n")
+        for code in (
+            "x",
+            "^",
+            "_",
+            "^A->^B",
+            "_A_A->",
+            "^A_A->",
+            "a->^",
+            "a->_",
+            "_-->x",
+            "a->^A",
+            "_->x",
+        )
+    )
     results.append(_agrees(_Machine, "_A->_A_A", "ab", cap=8))
     assert {error for error, _ in results} == {None, "syntax"}
     assert any(not trace[-1][1] for error, trace in results if error is None)
@@ -162,7 +164,7 @@ def check_raw_sonata():
                         replace(
                             rule,
                             pattern=re.compile(
-                                rule.pattern.pattern.replace("(.*?)", "(.*)"), re.S
+                                rule.pattern.pattern.replace("(.*?)", "(.*)"), re.DOTALL
                             ),
                         )
                         for rule in self.rules
@@ -176,7 +178,7 @@ def check_raw_sonata():
                         replace(
                             rule,
                             pattern=re.compile(
-                                rule.pattern.pattern.replace("(.)", "(.*)"), re.S
+                                rule.pattern.pattern.replace("(.)", "(.*)"), re.DOTALL
                             ),
                         )
                         for rule in self.rules

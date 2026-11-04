@@ -179,8 +179,9 @@ def _render_row(record: Mapping[str, Any]) -> str:
 def render_section(records: Mapping[str, Any]) -> str:
     """Return the ``[generator_sizes]`` block for one package's records."""
     lines = [f"[{SECTION}]"]
-    for table in sorted(records):
-        lines.append(f'"{table}" = {_render_row(records[table])}')
+    lines.extend(
+        f'"{table}" = {_render_row(records[table])}' for table in sorted(records)
+    )
     return "\n".join(lines) + "\n"
 
 

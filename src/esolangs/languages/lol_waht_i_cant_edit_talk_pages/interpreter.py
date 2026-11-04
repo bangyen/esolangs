@@ -59,16 +59,21 @@ _INTEGER_PATTERN = re.compile("[+-]?[0-9]+")
 
 _NAME = r"(\S+)"
 _PATTERNS = (
-    ("def", re.compile(r"user:" + _NAME, re.I)),
+    ("def", re.compile(r"user:" + _NAME, re.IGNORECASE)),
     (
         "add",
-        re.compile(r"edit user talk:(\S+) to (change|remove) (\S+) messages?", re.I),
+        re.compile(
+            r"edit user talk:(\S+) to (change|remove) (\S+) messages?", re.IGNORECASE
+        ),
     ),
-    ("loop", re.compile(r"just let me change (\S+) messages? on (\S+) \{", re.I)),
-    ("read", re.compile(r"im awesome tottaly but no " + _NAME, re.I)),
-    ("chr", re.compile(r"grr why u do this " + _NAME, re.I)),
-    ("num", re.compile(r"i hate (?:u|you) " + _NAME, re.I)),
-    ("halt", re.compile(r"waht i got banned", re.I)),
+    (
+        "loop",
+        re.compile(r"just let me change (\S+) messages? on (\S+) \{", re.IGNORECASE),
+    ),
+    ("read", re.compile(r"im awesome tottaly but no " + _NAME, re.IGNORECASE)),
+    ("chr", re.compile(r"grr why u do this " + _NAME, re.IGNORECASE)),
+    ("num", re.compile(r"i hate (?:u|you) " + _NAME, re.IGNORECASE)),
+    ("halt", re.compile(r"waht i got banned", re.IGNORECASE)),
     ("end", re.compile(r"\}")),
     ("say", re.compile(r"(.*?) --tommyaweosme\b.*")),
 )

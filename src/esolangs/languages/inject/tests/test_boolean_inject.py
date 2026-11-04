@@ -22,7 +22,7 @@ class TestInject:
 
     def test_balanced_parity_chunks_the_table_square(self) -> None:
         """Parity n=10: ~sqrt(T)-wide chunks, ~sqrt(T) lines (default: 1024 wide)."""
-        table = "".join(str(bin(i).count("1") % 2) for i in range(1 << 10))
+        table = "".join(str((i).bit_count() % 2) for i in range(1 << 10))
         program = esolangs.generate("inject", table, balance=True)
         assert balance_score(str(program)) == (298, 1968, 142)
 

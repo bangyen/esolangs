@@ -77,7 +77,7 @@ def ladder(n: int, rng: random.Random, extra: int = 6) -> list[str]:
         "1" * size,
         "1" + "0" * (size - 1),
         "0" * (size - 1) + "1",
-        "".join(str(bin(i).count("1") % 2) for i in range(size)),
+        "".join(str((i).bit_count() % 2) for i in range(size)),
         "01" * (size // 2),
         "10" * (size // 2),
     ]

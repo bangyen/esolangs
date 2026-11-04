@@ -41,9 +41,11 @@ def what(truth_table: str) -> str:
         return "?? " * (n - 1) + f"??{truth_table[0]}!!"
     if n <= _LOW_INPUTS:
         parts = ["??" + ".2*.??+" * (n - 1) + f".{48 + int(truth_table[-1])},"]
-        for row in range(len(truth_table) - 1, 0, -1):
-            if truth_table[row] != truth_table[row - 1]:
-                parts.append(f"[{row}>.{48 + int(truth_table[row - 1])},]")
+        parts.extend(
+            f"[{row}>.{48 + int(truth_table[row - 1])},]"
+            for row in range(len(truth_table) - 1, 0, -1)
+            if truth_table[row] != truth_table[row - 1]
+        )
         return "".join(parts) + ".!"
     low = min(n, _LOW_INPUTS)
     high = n - low

@@ -440,7 +440,7 @@ def _b_tapemark_folded(
 
 def _closed_forms(table: str, swap_marker: str = "new") -> list[str]:
     """Return the formula's folded strips (not constant)."""
-    candidates = []
+    candidates: list[str] = []
     depth = len(table).bit_length() - 1
     # A run row as wide as a copy row (3 per entry, less the stage's 12
     # columns west of it) won at n=7..10 in a full grid; below that the
@@ -454,10 +454,10 @@ def _closed_forms(table: str, swap_marker: str = "new") -> list[str]:
     # Its practical win is an explicit exception to the sustained-share bar
     # ([ablations.area_strip_width_prototype]); the side-fit forms still balance.
     area_copy = max(5, isqrt(104 * len(table) // (63 * depth)))
-    for copy in {best, best * 17 // 20, area_copy}:
-        candidates.append(
-            _b_tapemark_folded(table, max(1, copy), max(1, 3 * copy - 12), swap_marker)
-        )
+    candidates.extend(
+        _b_tapemark_folded(table, max(1, copy), max(1, 3 * copy - 12), swap_marker)
+        for copy in {best, best * 17 // 20, area_copy}
+    )
     return candidates
 
 

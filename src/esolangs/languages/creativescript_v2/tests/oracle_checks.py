@@ -171,20 +171,22 @@ def check_raw_creativescript_v2():
     ]
     inputs = ("", " 1 -2\n3", "x", "\u0663", "+4 5 trailing")
     results = [_agrees(_Machine, code, stdin) for code in corpus for stdin in inputs]
-    for code in (
-        "",
-        " \n",
-        "say!\tx",
-        "Set! a 1",
-        "set! 1 2",
-        "out! 1",
-        "add! a 1 c",
-        "in! a b",
-        "set! a",
-        "set! a 1 extra",
-        "unknown!",
-    ):
-        results.append(_agrees(_Machine, code, "unread"))
+    results.extend(
+        _agrees(_Machine, code, "unread")
+        for code in (
+            "",
+            " \n",
+            "say!\tx",
+            "Set! a 1",
+            "set! 1 2",
+            "out! 1",
+            "add! a 1 c",
+            "in! a b",
+            "set! a",
+            "set! a 1 extra",
+            "unknown!",
+        )
+    )
     results.append(_agrees(_Machine, "set! a " + "0" * 5000 + "7\nout! a", ""))
     results.append(_agrees(_Machine, "in! a\nout! a", "9" * 5000))
     assert {error for error, _ in results} == {

@@ -659,8 +659,7 @@ def hunt_tables(n: int) -> list[tuple[str, str]]:
     ]
     items.extend((f"named/{name}", table) for name, table in named_tables(n).items())
     rng = random.Random(184_700 + n)
-    for _ in range(12):
-        items.append(("random", support.random_table(n, rng)))
+    items.extend(("random", support.random_table(n, rng)) for _ in range(12))
     return items
 
 

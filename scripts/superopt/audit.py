@@ -538,16 +538,16 @@ def audit_language(
     runner = Runner(name)
     outcomes: list[Outcome] = []
     if not corpus.alphabet:
-        for table in tables(arity):
-            outcomes.append(
-                Outcome(
-                    runner.name,
-                    table,
-                    corpus.sizes[arity].get(table, -1),
-                    "priced_out",
-                    note=_NO_ALPHABET,
-                )
+        outcomes.extend(
+            Outcome(
+                runner.name,
+                table,
+                corpus.sizes[arity].get(table, -1),
+                "priced_out",
+                note=_NO_ALPHABET,
             )
+            for table in tables(arity)
+        )
         return corpus, outcomes
     pairs = sorted(
         tables(arity),

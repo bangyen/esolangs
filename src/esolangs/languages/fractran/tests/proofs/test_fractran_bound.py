@@ -206,7 +206,7 @@ def test_the_tree_pays_the_address_budget_it_is_priced_by() -> None:
     """Corollary 9 is attained: a guard and two primes per row, all distinct."""
     for n in range(2, 8):
         size = 1 << n
-        parity = "".join(str(bin(row).count("1") & 1) for row in range(size))
+        parity = "".join(str((row).bit_count() & 1) for row in range(size))
         start, fractions = _program(parity, 0)
         guards = [_guard(num, den) for num, den in fractions]
         assert len(fractions) == 3 * size + n - 2, n

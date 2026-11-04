@@ -105,8 +105,7 @@ def _single_lookup(used: list[int], table: str, n: int) -> str:
     if diff:
         cells.append(31)
     prog = [_plant(cells), ">" * (33 - cells[-1])]
-    for i in range(n):
-        prog.append(_SELECTOR if i in used else ">)>>~<<<")
+    prog.extend(_SELECTOR if i in used else ">)>>~<<<" for i in range(n))
     if not used:
         prog.append("<{~>~<}>")
     return "".join([*prog, _FINISH])

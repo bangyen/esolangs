@@ -13,7 +13,7 @@ class TestAnInterpreterLimitIsStillAnEsolangError:
     @staticmethod
     def _parity(n: int) -> str:
         """Return the parity table of arity ``n`` -- reliably a hard one."""
-        return "".join(str(bin(i).count("1") % 2) for i in range(2**n))
+        return "".join(str((i).bit_count() % 2) for i in range(2**n))
 
     def test_a_recursion_error_does_not_escape(
         self, monkeypatch: pytest.MonkeyPatch

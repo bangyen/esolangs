@@ -110,7 +110,7 @@ def _rule(line: str) -> _Rule:
                 f"Sonata variable {text!r} is not bound on the left of {line!r}",
                 "use only variables the left side binds",
             )
-    return _Rule(re.compile("".join(parts), re.S), tuple(out))
+    return _Rule(re.compile("".join(parts), re.DOTALL), tuple(out))
 
 
 def _parse(code: str) -> tuple[_Rule, ...]:

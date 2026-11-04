@@ -64,7 +64,7 @@ class TestFargo:
     def test_parity_grows_linearly_not_exponentially(self) -> None:
         """The size tracks algebraic complexity, so parity is O(n log n)."""
         sizes = [
-            len(boolean.fargo("".join(str(bin(r).count("1") % 2) for r in range(2**n))))
+            len(boolean.fargo("".join(str((r).bit_count() % 2) for r in range(2**n))))
             for n in (2, 4, 6, 8)
         ]
         gaps = [b - a for a, b in itertools.pairwise(sizes)]

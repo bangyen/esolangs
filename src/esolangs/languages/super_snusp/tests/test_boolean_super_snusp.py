@@ -35,7 +35,7 @@ class TestSuperSNUSPWidth:
 
     def test_both_mirrors_are_used(self) -> None:
         """A program long enough to fold twice turns round and back again."""
-        table = "".join(str(bin(i).count("1") % 2) for i in range(32))
+        table = "".join(str((i).bit_count() % 2) for i in range(32))
         narrow = boolean.super_snusp(table, 12)
         assert "\\" in narrow, narrow
         assert "/" in narrow, narrow

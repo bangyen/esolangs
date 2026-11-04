@@ -59,7 +59,7 @@ class TestGraphemeTable:
 
     def test_parity_at_six_inputs_computes(self) -> None:
         """Parity is the table with nothing to fold, so every input is live."""
-        table = "".join(str(bin(row).count("1") & 1) for row in range(64))
+        table = "".join(str((row).bit_count() & 1) for row in range(64))
         assert evaluate_generated("Grapheme", table, timeout=60) == table
 
     def test_a_literal_past_the_int_str_cap_computes(self) -> None:

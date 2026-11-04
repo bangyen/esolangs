@@ -182,7 +182,7 @@ class TestFlowchart:
     def test_stacking_costs_rows_and_stops_tracking_the_table(self) -> None:
         """The stacked drawing is ``n + 6`` columns whatever the table."""
         for n in (2, 3, 4):
-            table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
+            table = "".join(str((i).bit_count() % 2) for i in range(2**n))
             flat = _flowchart_render(_flowchart_cells(table))
             stacked = boolean.flowchart(table, 1)
             assert max(len(row) for row in stacked.splitlines()) == n + 6, n
@@ -321,7 +321,7 @@ def test_balance_of_parity_n8_is_banded() -> None:
     import esolangs
     from esolangs.generation.wrap import balance_score
 
-    table = "".join(str(bin(row).count("1") & 1) for row in range(256))
+    table = "".join(str((row).bit_count() & 1) for row in range(256))
     program = esolangs.generate("Flowchart", table, balance=True)
     assert balance_score(program) == (878, 200404, 878)
 

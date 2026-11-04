@@ -51,9 +51,11 @@ def check_raw_decleq():
             )
         )
     final = []
-    for source in corpus:
-        for stdin in ("", "\0Z", "λ\n"):
-            final.append(agrees_memory(_Machine, decleq, source, stdin, runner=run)[-1])
+    final.extend(
+        agrees_memory(_Machine, decleq, source, stdin, runner=run)[-1]
+        for source in corpus
+        for stdin in ("", "\0Z", "λ\n")
+    )
     assert {row.error for row in final} == {None, "syntax", "input", "halt", "limit"}
     assert any(not row.halted and not row.error for row in final)
     assert any(len(row.memory) > 12 for row in final)

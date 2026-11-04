@@ -21,7 +21,7 @@ def test_a_reader_answers_every_table_to_three_inputs(name: str) -> None:
     """Exhaustive: every table at ``n <= 3``, every row of each."""
     for n in (1, 2, 3):
         for value in range(2 ** (2**n)):
-            table = bin(value)[2:].zfill(2**n)
+            table = f"{value:0{2**n}b}"
             for row in range(2**n):
                 printed, reads = _read_answer(name, table, row)
                 assert printed == table[row], (name, table, row)

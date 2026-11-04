@@ -63,7 +63,7 @@ type _Env = tuple[tuple[str, int], ...]
 type _State = tuple[int, int | str | None, int, _Env]
 
 _COMMAND = re.compile(r"([+-])(\d+)|([,#.@])|'(\d+)|=([A-Za-z_][A-Za-z0-9_]*)")
-_ARM = re.compile(r"(-?\d+)\?(.*)", re.S)
+_ARM = re.compile(r"(-?\d+)\?(.*)", re.DOTALL)
 
 
 @dataclass(frozen=True, slots=True)

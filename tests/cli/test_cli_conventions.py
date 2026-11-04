@@ -90,7 +90,7 @@ class TestExamplesShipWithThePackage:
     def test_the_packaging_declares_them(self) -> None:
         """The other half: inside the package *and* listed as data."""
         config = (pathlib.Path(__file__).parents[2] / "pyproject.toml").read_text()
-        declared = re.search(r"^esolangs = \[(.+?)\]", config, re.M)
+        declared = re.search(r"^esolangs = \[(.+?)\]", config, re.MULTILINE)
         assert declared, "no package-data entry for esolangs"
         patterns = declared.group(1)
         directory = pathlib.Path(esolangs.__file__).resolve().parent / "languages"

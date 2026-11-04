@@ -39,7 +39,7 @@ def test_fractran_answers_every_row(table: str) -> None:
 def test_fractran_answers_every_table_to_three_inputs() -> None:
     for n in (1, 2, 3):
         for value in range(2 ** (2**n)):
-            table = bin(value)[2:].zfill(2**n)
+            table = f"{value:0{2**n}b}"
             for row in range(2**n):
                 answer = "2" if table[row] == "1" else "1"
                 assert _fractran_answer(table, row) == answer, (table, row)

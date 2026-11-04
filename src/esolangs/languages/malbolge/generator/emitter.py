@@ -843,7 +843,7 @@ class _Planner(_Emitter):
                     exact = nav.exact(landing)
                     if exact >= 0:
                         # ``value``'s memoised-exact fast path.
-                        score = step + (exact if exact < cap else cap)
+                        score = step + min(cap, exact)
                     else:
                         score = step + nav.value(landing, cap)
                     if score < best_score:

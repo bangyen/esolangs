@@ -107,7 +107,7 @@ def _tables(n: int) -> list[str]:
         "".join(random.choice("01") for _ in range(1 << n)),
         "0" * (1 << n),
         "1" * (1 << n),
-        "".join(str(bin(row).count("1") & 1) for row in range(1 << n)),
+        "".join(str((row).bit_count() & 1) for row in range(1 << n)),
         "0" * half + "1" * ((1 << n) - half),
     ]
 

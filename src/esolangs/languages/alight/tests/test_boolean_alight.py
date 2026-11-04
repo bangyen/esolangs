@@ -138,7 +138,7 @@ class TestAlightWidth:
     def test_a_width_is_met_at_every_arity(self) -> None:
         """Every requested width holds at every practical arity."""
         for n in (4, 5, 6, 7):
-            table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
+            table = "".join(str((i).bit_count() % 2) for i in range(2**n))
             for width in (60, 80):
                 narrow = boolean.alight(table, width)
                 assert max(len(row) for row in narrow.splitlines()) <= width, (n, width)

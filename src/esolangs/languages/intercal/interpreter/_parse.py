@@ -474,11 +474,11 @@ def _targeted(code: str, at: int) -> bool:
 
 def _statements(code: str) -> list[str]:
     """Assemble statements at identifiers, retaining bare core fixtures."""
-    starts = []
-    for match in _START.finditer(code):
-        starts.append(
-            match.start("id") if _targeted(code, match.start()) else match.start()
-        )
+    starts: list[int] = []
+    starts.extend(
+        match.start("id") if _targeted(code, match.start()) else match.start()
+        for match in _START.finditer(code)
+    )
     bounds = [0, *starts, len(code)]
     statements: list[str] = []
     for left, right in pairwise(bounds):

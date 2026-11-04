@@ -182,14 +182,18 @@ def check_raw_ascenic():
     ]
     inputs = ("", "3 -2\n", "x", "λ", "\x00\xff")
     results = [_agrees(_Machine, code, stdin) for code in corpus for stdin in inputs]
-    for code in ("A", "aS", "A s", "A" * 20 + "s", "As\nAs", "As\nAss\nAs"):
-        results.append(_agrees(_Machine, code, "unread"))
+    results.extend(
+        _agrees(_Machine, code, "unread")
+        for code in ("A", "aS", "A s", "A" * 20 + "s", "As\nAs", "As\nAss\nAs")
+    )
     results += [
         _agrees(_Machine, _source(((2, 1), (6, 99), (1, arg))), "9" * 4300)
         for arg in (100, 101)
     ]
-    for value in ("55296", "1114111", "1114112"):
-        results.append(_agrees(_Machine, _source(((2, 1), (1, 2))), value))
+    results.extend(
+        _agrees(_Machine, _source(((2, 1), (1, 2))), value)
+        for value in ("55296", "1114111", "1114112")
+    )
     assert {error for error, _ in results} == {
         None,
         "syntax",

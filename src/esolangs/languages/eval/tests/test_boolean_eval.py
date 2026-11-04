@@ -198,7 +198,7 @@ class TestEvalBoolean:
         assert sizes[-1] < 2.1
 
         n = 6
-        table = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(2**n))
+        table = "".join("1" if (i).bit_count() % 2 else "0" for i in range(2**n))
         template = generators.eval(table)
         # The template is the exact shape of every program it fills to.
         assert len(template) == len(self.instantiate(template, [0] * n)) == 167
@@ -212,7 +212,7 @@ class TestEvalBoolean:
         from esolangs.languages import generators
 
         for table in (
-            "".join("1" if bin(i).count("1") % 2 else "0" for i in range(2**5)),
+            "".join("1" if (i).bit_count() % 2 else "0" for i in range(2**5)),
             "0" * 31 + "1",
             "0110100110010110",
             "".join(str(i.bit_count() % 2) for i in range(64)),

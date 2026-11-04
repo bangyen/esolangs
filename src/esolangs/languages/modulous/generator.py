@@ -127,13 +127,12 @@ def _lookup(weights: list[int], truth_table: str, width: int | None) -> str:
             reads.append(f"[INP INT][JMP F 4 IF 0][POP][ADD {weight}][JMP F 2][POP]")
         else:
             reads.append("[INP INT][POP]")
-    tail = []
-    for weight in weights[split:]:
-        tail.append(
-            f"[INP INT][JMP F {weight + 1} IF 0]" + "[POP]" * (weight + 1)
-            if weight
-            else "[INP INT][POP]"
-        )
+    tail = [
+        f"[INP INT][JMP F {weight + 1} IF 0]" + "[POP]" * (weight + 1)
+        if weight
+        else "[INP INT][POP]"
+        for weight in weights[split:]
+    ]
     # With no prefix the counter is identically zero: omit it and its walk.
     walk = "[JMP F 5 IF 0][SUB 1][SWP][POP][JMP B 4][POP]" if split else ""
     walk += "".join(tail) + "[PRT STR][END]"

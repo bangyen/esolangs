@@ -46,7 +46,7 @@ class TestForth:
     def test_scales(self) -> None:
         """More inputs mean more tree functions, and every input is read."""
         # Parity folds nothing under any order, so it spends the full tree.
-        parity = "".join(str(bin(row).count("1") % 2) for row in range(32))
+        parity = "".join(str((row).bit_count() % 2) for row in range(32))
         assert _forth_plain(parity).count("{") == 2**5 - 2
         # Sharing keeps two dispatching nodes a level and two calls,
         # ending in two arithmetic bodies and two calls: 2 + 4 * 3.
@@ -60,7 +60,7 @@ class TestForth:
         assert _forth_plain("1" * 8).count("{") == 2
         assert _forth_plain("01" * 4).count("{") == 2
         assert _forth_plain("0" * 4 + "1" * 4).count("{") == 6
-        parity = "".join(str(bin(row).count("1") % 2) for row in range(8))
+        parity = "".join(str((row).bit_count() % 2) for row in range(8))
         assert _forth_plain(parity).count("{") == 2**3 - 2
 
     def test_folded_subtree_leaves_no_orphans(self) -> None:

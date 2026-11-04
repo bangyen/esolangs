@@ -61,14 +61,16 @@ def _eager_annotations(tree: ast.Module) -> list[ast.expr]:
     def visit(node: ast.AST, *, in_function: bool) -> None:
         if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             args = node.args
-            for arg in [
-                *args.posonlyargs,
-                *args.args,
-                *args.kwonlyargs,
-                *filter(None, (args.vararg, args.kwarg)),
-            ]:
-                if arg.annotation is not None:
-                    found.append(arg.annotation)
+            found.extend(
+                arg.annotation
+                for arg in [
+                    *args.posonlyargs,
+                    *args.args,
+                    *args.kwonlyargs,
+                    *filter(None, (args.vararg, args.kwarg)),
+                ]
+                if arg.annotation is not None
+            )
             if node.returns is not None:
                 found.append(node.returns)
             in_function = True

@@ -164,7 +164,7 @@ class TestCircuitDiagramLayoutGuards:
         """Each extra input doubles the cofactors and costs a bounded step."""
         widths = {}
         for n in (3, 4, 5, 6):
-            table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
+            table = "".join(str((i).bit_count() % 2) for i in range(2**n))
             drawing = boolean.circuit_diagram(table)
             widths[n] = max(len(row) for row in drawing.splitlines())
         assert widths == dict.fromkeys((3, 4, 5, 6), 4)

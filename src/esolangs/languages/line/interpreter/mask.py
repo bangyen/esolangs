@@ -163,7 +163,7 @@ class Mask:
         for y in range(off_y, self.height, step):
             row = self.rows[y] >> off_x
             # Binary digits reverse x order; select from the low bit first.
-            bits = bin(row)[2:][::-step]
+            bits = f"{row:b}"[::-step]
             rows.append(int(bits[::-1], 2))
         width = max(0, (self.width - off_x + step - 1) // step)
         return Mask(len(rows), width, rows)

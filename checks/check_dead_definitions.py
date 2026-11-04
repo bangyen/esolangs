@@ -114,7 +114,7 @@ def dead_definitions(root: pathlib.Path) -> list[tuple[pathlib.Path, str, int]]:
             own = _references(ast.Module(body=[node], type_ignores=[]))
             if all(total[n] - own[n] == 0 for n in names):
                 size = (node.end_lineno or node.lineno) - node.lineno + 1
-                found.append((path, sorted(names)[0], size))
+                found.append((path, min(names), size))
     return found
 
 

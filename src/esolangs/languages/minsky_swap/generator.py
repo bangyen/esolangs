@@ -192,10 +192,10 @@ def _rmsn_expand(tokens: list[str], jumps: list[int]) -> str:
             # Both fills still execute two commands, preserving every target.
             lines.extend(("inc();", TEMPLATE_CHAR * len(_MINSKY_SHORT_RMSN_PAIR[0])))
         else:
-            for command in token:
-                lines.append(
-                    f"decnz({next(targets)});" if command == "~" else _RMSN[command]
-                )
+            lines.extend(
+                f"decnz({next(targets)});" if command == "~" else _RMSN[command]
+                for command in token
+            )
     return "\n".join(lines)
 
 

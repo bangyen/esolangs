@@ -141,7 +141,7 @@ def _super_snusp_tokens(program: str) -> list[str]:
     the mirrors of a fold between ``4`` and ``8`` would leave 4 and 8
     instead of 48.
     """
-    return re.findall(r"\d+|.", program, re.S)
+    return re.findall(r"\d+|.", program, re.DOTALL)
 
 
 def _super_snusp_folded(program: str, width: int) -> str:

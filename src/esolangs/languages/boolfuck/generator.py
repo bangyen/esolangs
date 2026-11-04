@@ -71,8 +71,10 @@ def affine_stream(table: str) -> str | None:
     # Cells -1/0/1 use at most four address bits; machine/cursor state
     # needs bl(L)+12+bl(n), below the existing workspace formula for n>=2.
     parts = [">+<" if bias else ""]
-    for coefficient in coefficients:
-        parts.append("," + ("[+>+<]" if coefficient else "") + "<,,,,,,,>")
+    parts.extend(
+        "," + ("[+>+<]" if coefficient else "") + "<,,,,,,,>"
+        for coefficient in coefficients
+    )
     # Ignored reads can leave cell 0 set; clear it before the ASCII high bits.
     parts.append("[+]>;<;;;+;;+;;")
     return "".join(parts)
@@ -395,13 +397,15 @@ def boolfuck(truth_table: str) -> str:
         flip = "+" if truth_table[0] == "1" else ""
         return reads + flip + ";" + flip + ";;;+;;+;;"
     programs = [_boolfuck_tree(truth_table)]
-    for candidate in (
-        affine_stream(truth_table),
-        normal_gates(truth_table),
-        popcount_stream(truth_table),
-    ):
-        if candidate is not None:
-            programs.append(candidate)
+    programs.extend(
+        candidate
+        for candidate in (
+            affine_stream(truth_table),
+            normal_gates(truth_table),
+            popcount_stream(truth_table),
+        )
+        if candidate is not None
+    )
     return min(programs, key=len)
 
 

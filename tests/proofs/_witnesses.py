@@ -444,7 +444,7 @@ def _subleq_worst(n: int) -> str:
     return "".join(
         "1"
         if r == 0 or chunk * n <= r < chunk * n + n
-        else str(bin(r * r).count("1") & 1)
+        else str((r * r).bit_count() & 1)
         for r in range(1 << n)
     )
 

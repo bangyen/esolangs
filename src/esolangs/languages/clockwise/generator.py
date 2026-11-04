@@ -520,8 +520,9 @@ def _clockwise_two_columns(table: str) -> str:
         previous = int(bit)
         # A selected zero turns north; positive accumulated values pass all
         # earlier gates. Even padding preserves the telescoping answer parity.
-        for offset in range(delta):
-            rows.append("+" + ("-" if entry and offset == 0 else " "))
+        rows.extend(
+            "+" + ("-" if entry and offset == 0 else " ") for offset in range(delta)
+        )
         rows.append("!!")
     return "\n".join(row.rstrip() for row in rows)
 

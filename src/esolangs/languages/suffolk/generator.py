@@ -112,8 +112,10 @@ def _suffolk_lookup(truth_table: str) -> str:
 
         out.append(_one(_TWO) + _write(_TWO))  # cell 1 <- 2
         out.append(_read(_TWO) + _write(falls0))  # and the read cell <- 0
-        for cell in (rises0, falls1, rises1):
-            out.append(_read(cell) + _read(_TWO) + _write(cell))
+        out.extend(
+            _read(cell) + _read(_TWO) + _write(cell)
+            for cell in (rises0, falls1, rises1)
+        )
 
     else:
         # [ablations.inputs_first_20261102]: cheap scratch reads precede countdown.

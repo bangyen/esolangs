@@ -122,8 +122,7 @@ class TestParameterizedBack:
 
         n = 12
         table = "".join(
-            str(bin(i & i >> 1).count("1") % 2 ^ n % 2 ^ (i == 1))
-            for i in range(1 << n)
+            str((i & i >> 1).bit_count() % 2 ^ n % 2 ^ (i == 1)) for i in range(1 << n)
         )
         assert grid_area(generators.back(table)) < 0.75 * (3 * n + 5) * (
             3 * (1 << n) // 4 + 1
@@ -478,8 +477,10 @@ def test_the_landing_rule_matches_drawing_the_tree() -> None:
     for n in (5, 6, 7, 8):
         for block in (2, 4, 8, 16):
             pool = ["".join(rng.choice("01") for _ in range(block)) for _ in range(2)]
-            for _ in range(2):
-                tables.append("".join(rng.choice(pool) for _ in range(2**n // block)))
+            tables.extend(
+                "".join(rng.choice(pool) for _ in range(2**n // block))
+                for _ in range(2)
+            )
         tables.append("".join("1" if rng.random() < 0.06 else "0" for _ in range(2**n)))
         tables.append("0" * 2 ** (n - 1) + "".join(rng.choices("01", k=2 ** (n - 1))))
     kept = 0

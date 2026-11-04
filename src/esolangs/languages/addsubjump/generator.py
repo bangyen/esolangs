@@ -333,9 +333,7 @@ def _addsubjump_ordered(
     def emit(a: _Operand, b: _Operand, c: _Operand, d: int) -> int:
         idx = len(instructions)
         instructions.append((a, b, c, d))
-        for v in (a, b):
-            if isinstance(v, str):
-                named.append(v)
+        named.extend(v for v in (a, b) if isinstance(v, str))
         return idx
 
     # The entry jumps over these two instruction-width data blocks.  Their

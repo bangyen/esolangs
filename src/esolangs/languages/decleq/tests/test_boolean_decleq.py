@@ -33,7 +33,7 @@ class TestDecleq:
     def test_constant_subtrees_fold(self) -> None:
         """A constant zero side enters its print gadget directly."""
         halves = "1" * 16 + "0" * 16
-        parity = "".join(str(bin(row).count("1") & 1) for row in range(32))
+        parity = "".join(str((row).bit_count() & 1) for row in range(32))
 
         def outputs(table: str) -> int:
             cells = [int(tok) for tok in boolean.decleq(table).split()]

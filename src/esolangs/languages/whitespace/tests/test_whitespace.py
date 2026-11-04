@@ -15,14 +15,14 @@ S, T, L = " ", "\t", "\n"
 def push(value: int) -> str:
     """Assemble a push of ``value``."""
     sign = T if value < 0 else S
-    digits = "".join(T if bit == "1" else S for bit in bin(abs(value))[2:])
+    digits = "".join(T if bit == "1" else S for bit in f"{abs(value):b}")
     return S + S + sign + digits + L
 
 
 def number(value: int) -> str:
     """Assemble a bare number argument (copy, slide)."""
     sign = T if value < 0 else S
-    digits = "".join(T if bit == "1" else S for bit in bin(abs(value))[2:])
+    digits = "".join(T if bit == "1" else S for bit in f"{abs(value):b}")
     return sign + digits + L
 
 

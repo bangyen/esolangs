@@ -159,8 +159,9 @@ def parse(code: str) -> list[_Token]:
                 j += 1
             size = 4 if c == "!" else 3
             kind = "out" if c == "!" else "in"
-            for start in range(i, j, size):
-                tokens.append(_Token(kind, start, min(size, j - start)))
+            tokens.extend(
+                _Token(kind, start, min(size, j - start)) for start in range(i, j, size)
+            )
             i = j
         elif c == "[":
             token, i = _condition(code, i)

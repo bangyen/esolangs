@@ -311,13 +311,13 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
     tests = ROOT / "src/esolangs/languages" / language.id / "tests"
     path = tests / "cases.toml"
     if path.is_file():
-        for example in tomllib.loads(path.read_text()).get("examples", []):
-            programs.append(
-                (
-                    _example_text(path, example, "source"),
-                    _example_text(path, example, "input"),
-                )
+        programs.extend(
+            (
+                _example_text(path, example, "source"),
+                _example_text(path, example, "input"),
             )
+            for example in tomllib.loads(path.read_text()).get("examples", [])
+        )
     if language.boolean is not None:
         parameterized = esolangs.describe(name)["parameterized"]
         for n in range(1, max_n + 1):

@@ -180,9 +180,11 @@ def _citations() -> list[str]:
         text = path.read_text(encoding="utf-8")
         if not name.search(text):
             continue
-        for line in _prose(path, text):
-            if _cites(line, name, phrase):
-                found.append(f"{relative}: {line.strip()[:100]}")
+        found.extend(
+            f"{relative}: {line.strip()[:100]}"
+            for line in _prose(path, text)
+            if _cites(line, name, phrase)
+        )
     return sorted(set(found))
 
 

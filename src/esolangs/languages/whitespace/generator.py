@@ -48,7 +48,7 @@ _RETURN = _LINE + _TAB + _LINE
 
 def _push(value: int) -> str:
     """Return the push of a non-negative ``value``: a sign token, then binary."""
-    digits = bin(value)[2:] if value else ""
+    digits = f"{value:b}" if value else ""
     bits = "".join(_TAB if digit == "1" else _SPACE for digit in digits)
     return _SPACE + _SPACE + _SPACE + bits + _LINE
 

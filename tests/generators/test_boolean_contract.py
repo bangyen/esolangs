@@ -326,7 +326,7 @@ def _one_minterm(n: int) -> str:
 
 def _one_hot(n: int) -> str:
     """1 exactly where one input is set."""
-    return "".join(str(int(bin(row).count("1") == 1)) for row in range(2**n))
+    return "".join(str(int((row).bit_count() == 1)) for row in range(2**n))
 
 
 #: The table shapes every generator's *output* is executed against.

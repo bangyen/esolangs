@@ -296,7 +296,7 @@ class TestGenerators:
         """
         lengths: dict[int, set[int]] = {}
         for v in range(256):
-            table = bin(v)[2:].zfill(8)
+            table = f"{v:08b}"
             count = len(essential_inputs(table, 3))
             lengths.setdefault(count, set()).add(len(alight(table)))
         assert all(len(group) == 1 for group in lengths.values()), lengths

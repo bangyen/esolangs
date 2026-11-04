@@ -210,15 +210,17 @@ def check_raw_lol_waht_i_cant_edit_talk_pages():
     ]
     inputs = ("", "1 -2\n", "x", "٣", "-1")
     results = [_agrees(_Machine, code, stdin) for code in corpus for stdin in inputs]
-    for code in (
-        "}",
-        "user:a\nJUST LET ME CHANGE no MESSAGES ON a {",
-        "user:",
-        "user:a b",
-        "i  hate u a",
-        "bad",
-    ):
-        results.append(_agrees(_Machine, code, "unread"))
+    results.extend(
+        _agrees(_Machine, code, "unread")
+        for code in (
+            "}",
+            "user:a\nJUST LET ME CHANGE no MESSAGES ON a {",
+            "user:",
+            "user:a b",
+            "i  hate u a",
+            "bad",
+        )
+    )
     results.append(
         _agrees(_Machine, "user:a\nim awesome tottaly but no a\ni hate u a", "9" * 5000)
     )

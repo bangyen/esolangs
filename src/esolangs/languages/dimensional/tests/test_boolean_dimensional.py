@@ -112,7 +112,7 @@ class TestDimensional:
         assert len(boolean.dimensional(one)) < len(boolean.dimensional(alternating))
         # A ones-heavy table is painted as its complement, a zero run.
         assert len(boolean.dimensional(full)) < len(boolean.dimensional(spaced))
-        parity = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
+        parity = "".join("1" if (i).bit_count() % 2 else "0" for i in range(64))
         assert len(boolean.dimensional(parity)) < 10_000
 
     def test_a_pair_of_entries_shares_a_cell_from_n7(self) -> None:

@@ -177,19 +177,21 @@ def check_raw_sstack():
         for code in corpus
         for stdin in ("", "A\n", "λ", "\xff")
     ]
-    for code in (
-        "!",
-        ">a/h<",
-        ">a/b+",
-        ";a:",
-        '"-1/a"',
-        '"٣/a"',
-        "[a\\b",
-        "]",
-        "[a\\b/]",
-        '"1/a',
-    ):
-        results.append(_agrees(_Machine, code, "unread"))
+    results.extend(
+        _agrees(_Machine, code, "unread")
+        for code in (
+            "!",
+            ">a/h<",
+            ">a/b+",
+            ";a:",
+            '"-1/a"',
+            '"٣/a"',
+            "[a\\b",
+            "]",
+            "[a\\b/]",
+            '"1/a',
+        )
+    )
     results.append(_agrees(_Machine, '"' + "9" * 5000 + '/a":a:', ""))
     assert {error for error, _ in results} == {None, "syntax", "input", "halt"}
     assert any(not trace[-1][1] for error, trace in results if error is None)

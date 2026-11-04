@@ -140,9 +140,11 @@ def check_raw_blindfolded_arithmetic():
         "a=i+i\v",
         "a=i+i\u00a0",
     )
-    for code in (*invalid, "i=i/a"):
-        for stdin in ("", " \n", "0", "-1", "x", "1_0", "٣", "  +2 extra"):
-            results.append(_agrees(_Machine, code, stdin))
+    results.extend(
+        _agrees(_Machine, code, stdin)
+        for code in (*invalid, "i=i/a")
+        for stdin in ("", " \n", "0", "-1", "x", "1_0", "٣", "  +2 extra")
+    )
     assert {error for error, _ in results} == {None, "syntax", "input", "argument"}
     assert _model("b=i+i;c=a-i;i=c/b;a=a/a", "3")[1][-1][2] == "0"
     assert any(not trace[-1][1] for error, trace in results if error is None)

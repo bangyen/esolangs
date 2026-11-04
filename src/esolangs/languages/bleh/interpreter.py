@@ -140,7 +140,7 @@ _BUILTINS = ("print", "debug", "next", "hasNext")
 _ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "0": "\0", "\\": "\\", '"': '"', "'": "'"}
 _TOKEN = re.compile(
     r"""\s+|//[^\n]*|/\*.*?\*/|(::|\.\.|[:=;,()\[\]{}^])|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|(\w+)|(.)""",
-    re.S | re.A,
+    re.DOTALL | re.ASCII,
 )
 
 
@@ -185,7 +185,7 @@ def _is_bits(token: str) -> bool:
 
 
 def _is_name(token: str) -> bool:
-    return bool(re.fullmatch(r"\w+", token, re.A)) and not _is_bits(token)
+    return bool(re.fullmatch(r"\w+", token, re.ASCII)) and not _is_bits(token)
 
 
 class _Parser:
@@ -308,7 +308,7 @@ class _Parser:
     def _starts_expr(self) -> bool:
         token = self.peek()
         return token is not None and (
-            token in "[{" or token[0] in "\"'" or bool(re.match(r"\w", token, re.A))
+            token in "[{" or token[0] in "\"'" or bool(re.match(r"\w", token, re.ASCII))
         )
 
     def expr(self) -> _Expr:

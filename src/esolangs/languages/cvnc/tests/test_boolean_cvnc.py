@@ -91,7 +91,7 @@ class TestCvnc:
             assert len(program) < module._reach(squarings)  # noqa: SLF001
             n = len(table).bit_length() - 1
             for combo in range(len(table)):
-                bits = bin(combo)[2:].zfill(n)
+                bits = f"{combo:0{n}b}"
                 assert run_cvnc(program, bits) == table[combo], (table, bits)
 
     def test_squarings_match_the_retry_search_it_replaced(self) -> None:
@@ -129,7 +129,7 @@ class TestCvnc:
         table = "11101000"
         program = boolean.cvnc(table)
         for combo in range(8):
-            bits = bin(combo)[2:].zfill(3)
+            bits = f"{combo:03b}"
             assert run_cvnc(program, bits) == table[combo], bits
 
     def test_every_leaf_ends_by_halting(self) -> None:
