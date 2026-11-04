@@ -99,6 +99,17 @@ select = [
     "C90", # mccabe
     "PLE", # pylint errors
     "PLW", # pylint warnings
+    "PERF", # flake8-perflint
+    # FURB (refurb) is enabled per code, not as a family: these six were
+    # trialled against the tree and are clean wins.  FURB116 (bin() to
+    # f-string) is excluded -- the two forms differ for negative values,
+    # so its signal is unreliable in this codebase's bit arithmetic.
+    "FURB136",
+    "FURB161",
+    "FURB167",
+    "FURB171",
+    "FURB188",
+    "FURB192",
 ]
 ignore = [
     "D203",  # conflicts with D211 (blank line before class)
