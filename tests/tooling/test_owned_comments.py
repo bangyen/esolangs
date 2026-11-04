@@ -110,5 +110,5 @@ def test_proof_ownership_preserves_shared_index_and_evidence(
         package = packages / slug
         package.mkdir(parents=True)
         (package / "language.toml").write_text(sections)
-    assert remove_language._owned_evidence("Tiny") == {proofs / "private.md"}  # noqa: SLF001
-    assert remove_language._owned_evidence("Other") == set()  # noqa: SLF001
+    assert remove_language._owned_evidence("Tiny") == {proofs / "private.md"}
+    assert remove_language._owned_evidence("Other") == set()

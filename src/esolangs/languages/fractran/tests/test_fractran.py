@@ -1,7 +1,5 @@
 """Execution tests for the FRACTRAN interpreter."""
 
-# ruff: noqa: SLF001
-
 import random
 import re
 import sys

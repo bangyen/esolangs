@@ -39,19 +39,19 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
         ),
     }
     monkeypatch.setattr(help_module, "LANGUAGES", languages)
-    template, dialect = help_module._capability_examples()  # noqa: SLF001
+    template, dialect = help_module._capability_examples()
     assert shlex.split(template)[-2:] == ["Template Choice", "0110"]
     commands = dialect.replace("\\\n", "").splitlines()  # Shell-joined.
     assert shlex.split(commands[1])[3] == "mode=with spaces"
     del languages["Template Choice"]
-    assert help_module._capability_examples()[0] == ""  # noqa: SLF001
+    assert help_module._capability_examples()[0] == ""
     # A cap below two inputs is not a runnable example, and a dialect with no
     # values has nothing to name: both are skipped rather than quoted.
     languages.clear()
     languages["Capped"] = Language(
         "Capped", "capped", boolean=build, generator_max_inputs=1
     )
-    assert help_module._capability_examples() == ("", "")  # noqa: SLF001
+    assert help_module._capability_examples() == ("", "")
     languages.clear()
     languages["Empty Dialect"] = Language(
         "Empty Dialect",
@@ -59,9 +59,9 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
         boolean=build,
         dialect_values={"mode": ()},
     )
-    assert help_module._capability_examples() == ("", "")  # noqa: SLF001
+    assert help_module._capability_examples() == ("", "")
     languages.clear()
-    assert help_module._capability_examples() == ("", "")  # noqa: SLF001
+    assert help_module._capability_examples() == ("", "")
 
 
 class TestExamplesShipWithThePackage:

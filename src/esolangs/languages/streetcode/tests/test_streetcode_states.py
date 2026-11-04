@@ -59,7 +59,7 @@ class TestStreetcodeStepMachine:
         snapshots = []
         for state in states:
             machine = _Machine(code, IO())
-            machine._state = state  # noqa: SLF001
+            machine._state = state
             snapshots.append(machine.snapshot())
         # ...and the three fields that are not part of the drive state.
         for mutate in (
@@ -153,12 +153,12 @@ class TestStreetcodeDriveStates:
         start = (machine.row, machine.col)
         shipped = drive_states(machine.grid, start)
 
-        original = module._MOUTH_MAX_DEPTH  # noqa: SLF001
-        module._MOUTH_MAX_DEPTH = machine.grid.height + machine.grid.width  # noqa: SLF001
+        original = module._MOUTH_MAX_DEPTH
+        module._MOUTH_MAX_DEPTH = machine.grid.height + machine.grid.width
         try:
             generous = drive_states(machine.grid, start)
         finally:
-            module._MOUTH_MAX_DEPTH = original  # noqa: SLF001
+            module._MOUTH_MAX_DEPTH = original
         assert shipped == generous
 
 
@@ -250,8 +250,8 @@ class TestStreetcodeGraphBackedStepping:
         fast = _Machine(code, ScriptedIO(stdin))
         slow = _Machine(code, ScriptedIO(stdin))
         # Emptying the graph forces every step down the fallback path.
-        slow._graph = None  # noqa: SLF001
-        assert fast._graph is not None, "the fixture needs a validated street"  # noqa: SLF001
+        slow._graph = None
+        assert fast._graph is not None, "the fixture needs a validated street"
 
         steps = 0
         for steps in range(1, limit + 1):
@@ -309,24 +309,24 @@ class TestStreetcodeGraphBackedStepping:
     def test_an_off_graph_state_falls_back(self) -> None:
         """A state the search never reached still drives, via the phases."""
         machine = _Machine(["+----+", "|C  ;|", "|    |", "+----+"], IO())
-        assert machine._graph is not None  # noqa: SLF001
+        assert machine._graph is not None
         state = _State(
             machine.row,
             machine.col,
             "N",
             _NO_LATCHES._replace(merging_heading="N"),
         )
-        machine._state = state  # noqa: SLF001
-        assert state not in machine._graph  # noqa: SLF001
+        machine._state = state
+        assert state not in machine._graph
         machine.step()
         assert not machine.halted
 
     def test_a_halt_edge_stops_the_car(self) -> None:
         """A ``"halt"`` edge stops the car rather than driving it nowhere."""
         machine = _Machine(["+----+", "|C  ;|", "|    |", "+----+"], IO())
-        assert machine._graph is not None  # noqa: SLF001
+        assert machine._graph is not None
         state = _State(1, 4, "N", _NO_LATCHES)
-        assert all(v == "halt" for v in machine._graph[state].values())  # noqa: SLF001
+        assert all(v == "halt" for v in machine._graph[state].values())
 
         machine.place(1, 4, "N")
         machine.grid[1] = list("|C   |")  # the ';' would halt one arm earlier
@@ -336,11 +336,9 @@ class TestStreetcodeGraphBackedStepping:
     def test_a_wedged_edge_raises_rather_than_halting(self) -> None:
         """A ``None`` edge is a validator bug, and must not pass for a stop."""
         machine = _Machine(["+----+", "|C  ;|", "|    |", "+----+"], IO())
-        assert machine._graph is not None  # noqa: SLF001
+        assert machine._graph is not None
         state = _State(1, 1, "E", _NO_LATCHES)
-        machine._graph[state] = dict.fromkeys(  # noqa: SLF001
-            ((0, 0), (0, 1), (1, 0), (1, 1))
-        )
+        machine._graph[state] = dict.fromkeys(((0, 0), (0, 1), (1, 0), (1, 1)))
 
         machine.place(1, 1, "E")
         with pytest.raises(AssertionError, match="outlived"):

@@ -43,7 +43,7 @@ def test_batched_run_matches_single_steps(seed, commands, stdin, monkeypatch) ->
     from esolangs.runtime._drive import drive
     from esolangs.runtime.io import ScriptedIO
 
-    original = taglate._Machine  # noqa: SLF001
+    original = taglate._Machine
     machines = []
 
     def create(code, port):

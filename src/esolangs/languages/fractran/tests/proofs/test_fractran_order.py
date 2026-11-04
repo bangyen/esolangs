@@ -1,8 +1,5 @@
 """State-dependent order encoding retains the whole permutation channel."""
 
-
-# ruff: noqa: SLF001
-
 import random
 
 import pytest

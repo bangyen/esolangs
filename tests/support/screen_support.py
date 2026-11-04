@@ -179,9 +179,7 @@ def _worst(
     """Return ``(wrong rows, worst steps)``; an unanswered row is wrong."""
     wrong = worst = 0
     for row in rows:
-        result = benchmark._execute(  # noqa: SLF001
-            language, program, table, row, CAP, timeout
-        )
+        result = benchmark._execute(language, program, table, row, CAP, timeout)
         wrong += result["matches"] is not True
         worst = max(worst, result["commands"] or 0)
     return wrong, worst

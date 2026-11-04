@@ -18,14 +18,14 @@ def test_the_reference_is_a_single_file_interpreter() -> None:
 
 def test_a_copy_matches_and_a_mutant_is_caught(tmp_path: Path) -> None:
     programs = tracediff.corpus(REFERENCE, 200, max_n=1)
-    same = tracediff._load(_INTERPRETER, "tracediff_same")  # noqa: SLF001
-    new = tracediff._load(_INTERPRETER, "tracediff_new")  # noqa: SLF001
+    same = tracediff._load(_INTERPRETER, "tracediff_same")
+    new = tracediff._load(_INTERPRETER, "tracediff_new")
     assert tracediff.differences(same, new, programs) == []
     source = _INTERPRETER.read_text(encoding="utf-8")
     assert "(tape[ptr] + 1) % 256" in source
     broken = tmp_path / "mutant.py"
     broken.write_text(source.replace("(tape[ptr] + 1) % 256", "(tape[ptr] + 2) % 256"))
-    mutant = tracediff._load(broken, "tracediff_mutant")  # noqa: SLF001
+    mutant = tracediff._load(broken, "tracediff_mutant")
     assert tracediff.differences(same, mutant, programs)
 
     # Independent NaNs compare by bits; altered values remain detectable.
@@ -33,28 +33,26 @@ def test_a_copy_matches_and_a_mutant_is_caught(tmp_path: Path) -> None:
     nan_source += '\nNAN = float("nan")\n'
     nan_path = tmp_path / "nan.py"
     nan_path.write_text(nan_source)
-    before = tracediff._load(nan_path, "nan_before")  # noqa: SLF001
-    after = tracediff._load(nan_path, "nan_after")  # noqa: SLF001
+    before = tracediff._load(nan_path, "nan_before")
+    after = tracediff._load(nan_path, "nan_after")
     assert tracediff.differences(before, after, [("", "")]) == []
     nan_path.write_text(nan_source.replace('NAN = float("nan")', "NAN = 0"))
-    changed = tracediff._load(nan_path, "nan_changed")  # noqa: SLF001
+    changed = tracediff._load(nan_path, "nan_changed")
     assert tracediff.differences(before, changed, [("", "")])
-    assert tracediff._plain(float("nan"), {}) != tracediff._plain(  # noqa: SLF001
-        -float("nan"), {}
-    )
+    assert tracediff._plain(float("nan"), {}) != tracediff._plain(-float("nan"), {})
 
 
 def test_speed_sees_a_slowed_copy(tmp_path: Path) -> None:
     """Deadfish's rewrite lost a third of its step rate and nothing said so."""
     programs = tracediff.corpus(REFERENCE, 50, max_n=1)
-    same = tracediff._load(_INTERPRETER, "tracediff_fast")  # noqa: SLF001
+    same = tracediff._load(_INTERPRETER, "tracediff_fast")
     slowed = tmp_path / "slowed.py"
     slowed.write_text(
         _INTERPRETER.read_text(encoding="utf-8")
         + "\n_step = _Machine.step\n\n\ndef _slow(self):\n"
         + "    sum(range(2000))\n    _step(self)\n\n\n_Machine.step = _slow\n"
     )
-    slow = tracediff._load(slowed, "tracediff_slow")  # noqa: SLF001
+    slow = tracediff._load(slowed, "tracediff_slow")
     before, after = tracediff.speeds(same, slow, programs, rounds=2)
     assert after < before / 2
 
@@ -80,14 +78,14 @@ def test_a_machine_that_draws_traces_the_same_every_time(tmp_path: Path) -> None
     """Unseeded, draws come from secrets: one %50 program traced 20 ways in 20."""
     path = tmp_path / "drawing.py"
     path.write_text(_DRAWING)
-    module = tracediff._load(path, "tracediff_drawing")  # noqa: SLF001
+    module = tracediff._load(path, "tracediff_drawing")
     traces = {repr(tracediff.trace(module, ("", ""), frozenset())) for _ in range(5)}
     assert len(traces) == 1
 
 
 def test_an_error_records_the_state_it_leaves() -> None:
     """A draft moving its pointer before a failing read passed an error-only diff."""
-    module = tracediff._load(_INTERPRETER, "tracediff_error")  # noqa: SLF001
+    module = tracediff._load(_INTERPRETER, "tracediff_error")
     *_, last = tracediff.trace(module, ("+,", ""), frozenset())
     assert last[:2] == ("error", "InputExhaustedError")
     assert last[-1][:2] == (1, 0)  # still on the ``,``, pointer unmoved

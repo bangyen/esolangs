@@ -43,7 +43,7 @@ def test_a_misspelled_name_is_refused_with_a_suggestion(
 
 
 def test_a_name_resolves_like_the_api_and_a_new_one_passes() -> None:
-    registered = new_language._registered_name  # noqa: SLF001
+    registered = new_language._registered_name
     assert registered(_LONGEST.swapcase()) == _LONGEST
     assert registered("Not A Language") == "Not A Language"
 
@@ -140,11 +140,11 @@ _FILL = (
 def test_bounds_fits_the_simplest_exact_formula(values: list[int], cell: str) -> None:
     # n = 1 and 2 sit off the fit: the formula tests start at n = 3.
     rows = [(1, 999), (2, 0), *zip(range(3, 9), values, strict=False)]
-    assert new_language._fit(rows, "commands") == cell  # noqa: SLF001
+    assert new_language._fit(rows, "commands") == cell
 
 
 def _measured(monkeypatch: pytest.MonkeyPatch, *, ledger: bool) -> None:
-    rows, other = new_language._proof_status_load()  # noqa: SLF001
+    rows, other = new_language._proof_status_load()
     if not ledger:
         rows = [row for row in rows if row.generator != _LONGEST]
     monkeypatch.setattr(new_language, "_proof_status_load", lambda: (rows, other))
@@ -192,14 +192,14 @@ def test_bounds_on_a_stub_says_to_implement_it(
 def test_a_pasted_section_with_fill_left_is_a_gap(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    rows, other = new_language._proof_status_load()  # noqa: SLF001
+    rows, other = new_language._proof_status_load()
     row = next(row for row in rows if row.generator == _LONGEST)
     rows = [
         dataclasses.replace(row, scaling="FILL: linear") if r is row else r
         for r in rows
     ]
     monkeypatch.setattr(new_language, "_proof_status_load", lambda: (rows, other))
-    (gap,) = new_language._ledger_gaps(_LONGEST)  # noqa: SLF001
+    (gap,) = new_language._ledger_gaps(_LONGEST)
     assert gap.fix == "replace each FILL in [proof_status]"
 
 
@@ -228,7 +228,7 @@ def test_a_generator_language_needs_no_hand_sample() -> None:
     # was charged to this 1 s fast-band test, which then failed once per
     # new worktree.
     name = first(boolean_generator=True, parameterized=False, answer_mode="output")
-    program, stdin = samples._generated(name)  # noqa: SLF001
+    program, stdin = samples._generated(name)
     assert esolangs.read_answer(name, esolangs.run(name, program, stdin=stdin)) == "1"
 
 

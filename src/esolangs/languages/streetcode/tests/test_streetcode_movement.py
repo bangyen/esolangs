@@ -179,8 +179,8 @@ class TestStreetcodeAmbiguousTurns:
             if code and code[-1] == "":
                 code = code[:-1]
             machine = _Machine(code, IO())
-            assert machine._graph is not None  # noqa: SLF001
-            for state in machine._graph:  # noqa: SLF001
+            assert machine._graph is not None
+            for state in machine._graph:
                 car = _Car(state.row, state.col, state.heading)
                 for road in _junction_choices(machine.grid, car):
                     assert _open_toward(machine.grid, car, road), (path, state, road)
@@ -306,9 +306,9 @@ class TestStreetcodeLaneMerge:
         machine = machine_unvalidated(code)
         for _ in range(4):
             machine.step()  # down the west lane; the latch forms en route
-        assert machine._state.latches.merge is not None  # noqa: SLF001
+        assert machine._state.latches.merge is not None
         machine.step()  # 'U' at (4,1): turns around into the opposite lane
-        assert machine._state.latches.merge is None  # noqa: SLF001
+        assert machine._state.latches.merge is None
 
     def test_wall_at_the_turn_destination_falls_back_to_plain_rules(self) -> None:
         """The phase-1 turn must not step onto a wall that appears at the
@@ -381,7 +381,7 @@ class TestStreetcodeCountingLoop:
     """A counting loop: a ring the car laps under the control of a cell."""
 
     def _code(self) -> list[str]:
-        return TestStreetcodeAmbiguousTurns()._counting_loop_code()  # noqa: SLF001
+        return TestStreetcodeAmbiguousTurns()._counting_loop_code()
 
     def test_counting_loop_prints_its_character(self) -> None:
         assert run_and_capture(self._code()) == "H"

@@ -204,11 +204,11 @@ class TestSlowAcvMammalian:
         )
         banked = set()
         for offset in (0, 1, 17, 255, 256, 4097):
-            st = module._Sums()  # noqa: SLF001
-            _ = module._build_pool(st, 32, 4)  # noqa: SLF001
+            st = module._Sums()
+            _ = module._build_pool(st, 32, 4)
             st.nw += offset
             before = st.nw
-            module._pool_bank(st, 32, 4)  # noqa: SLF001
+            module._pool_bank(st, 32, 4)
             banked.add(st.nw - before)
         assert banked == {32}
 
@@ -223,9 +223,9 @@ class TestSlowAcvMammalian:
         module = importlib.import_module(
             "esolangs.languages.slow_acv_mammalian.generator"
         )
-        st = module._Sums()  # noqa: SLF001
+        st = module._Sums()
         st.ptr, st.hw, st.nw = 16, 9, 255
-        tokens = module._w_raise(st, amount)  # noqa: SLF001
+        tokens = module._w_raise(st, amount)
         machine = _Machine(" ".join(tokens), ScriptedIO(""), io_modulus=256)
         machine.ptr = 16
         machine.lst = tuple((9, 200, 55) if k == 16 else (0,) for k in range(23))

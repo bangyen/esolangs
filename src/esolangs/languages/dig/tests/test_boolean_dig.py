@@ -270,7 +270,7 @@ class TestDig:
         assert not tree.bridge_entries()
         assert tree.cells == {lane: "#"}
         tree.cells.clear()
-        assert tree._route_entry(point, key, {})  # noqa: SLF001 - unblocked routing control
+        assert tree._route_entry(point, key, {})
 
         source = _dig_layout(sample, 4)
         assert source is not None

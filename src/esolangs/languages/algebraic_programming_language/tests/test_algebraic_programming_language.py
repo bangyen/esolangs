@@ -312,7 +312,7 @@ class TestCoveragePaths:
     def test_the_evaluation_budget_is_enforced(self) -> None:
         """A runaway expression halts rather than allocating without bound."""
         machine_ = machine("F(x) = F(x + 1)\nF(0)")
-        machine_._WORK_LIMIT = 50  # noqa: SLF001
+        machine_._WORK_LIMIT = 50
         with raises_message(HaltError, "expression exceeded the evaluation budget"):
             while not machine_.halted:
                 machine_.step()
@@ -529,7 +529,7 @@ def test_malformed_headers_and_overflow_raise(program: str, error: str) -> None:
 def test_the_evaluation_budget_resets_each_line() -> None:
     """The budget caps one line, not the program: 3 lines of 40 nodes fit 50."""
     machine_ = machine("1+1+1+1+1+1+1+1+1+1\n" * 3)
-    machine_._WORK_LIMIT = 50  # noqa: SLF001
+    machine_._WORK_LIMIT = 50
     while not machine_.halted:
         machine_.step()
     assert machine_.io.getvalue() == "10\n" * 3

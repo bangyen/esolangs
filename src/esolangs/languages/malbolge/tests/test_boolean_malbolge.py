@@ -91,7 +91,7 @@ def test_short_builds_execute(n: int) -> None:
 @pytest.mark.parametrize("n", [1, 5, 13, 14, 15])
 def test_short_builds_end_at_their_highest_live_cell(n: int) -> None:
     """Up to fifteen inputs the source ends at its highest live cell."""
-    build = _digits._digits(n)  # noqa: SLF001
+    build = _digits._digits(n)
     live = max(*build.code, *build.data, *build.tables)
     assert build.words == live + 1 < 3**10
     assert len(boolean.malbolge("01" * 2 ** (n - 1))) == build.words
@@ -99,7 +99,7 @@ def test_short_builds_end_at_their_highest_live_cell(n: int) -> None:
 
 def test_short_builds_share_one_length_above_their_tables() -> None:
     """Every arity to thirteen shares one length, past the top table cell."""
-    lengths = {_digits._digits(n).words for n in range(1, 14)}  # noqa: SLF001
+    lengths = {_digits._digits(n).words for n in range(1, 14)}
     (length,) = lengths
     assert 13114 <= length < 3**10
 
@@ -111,9 +111,9 @@ def test_hub_cells_pair_under_the_all_one_reswap(n: int) -> None:
     n=14 hubs at 19,687 did not: every second pointer cell read 0 and rows
     28 and 29 of a random table never reached a stub.
     """
-    layout = _digits._short_layout(n)  # noqa: SLF001
-    for seed in _digits._seed_values(layout).values():  # noqa: SLF001
-        assert _digits._crazy(29524, seed) == _digits._s01(seed)  # noqa: SLF001
+    layout = _digits._short_layout(n)
+    for seed in _digits._seed_values(layout).values():
+        assert _digits._crazy(29524, seed) == _digits._s01(seed)
 
 
 @pytest.mark.parametrize("n", [1, 4, 11])
@@ -126,14 +126,14 @@ def test_tables_differ_in_one_cell_per_row_pair(n: int) -> None:
 
 def test_digit_readouts_are_distinct_and_clear_of_the_code() -> None:
     """Every row pair owns a cell in 6562..59040, above the code, no wrap."""
-    cells = _digits._readouts_cells()  # noqa: SLF001
+    cells = _digits._readouts_cells()
     assert len(set(cells)) == len(cells) == 2**15
     assert (min(cells), max(cells)) == (6562, 59040)
 
 
 def test_digit_readouts_hold_three_bits_per_digit() -> None:
     """Each two-trit digit takes eight values; the top one never ``(0, 0)``."""
-    readouts = [h - 1 for h in _digits._readouts_cells()]  # noqa: SLF001
+    readouts = [h - 1 for h in _digits._readouts_cells()]
     for k in range(5):
         values = {(s // 9**k) % 9 for s in readouts}
         assert len(values) == 8
@@ -143,7 +143,7 @@ def test_digit_readouts_hold_three_bits_per_digit() -> None:
 def test_held_reads_fill_groups_from_the_last() -> None:
     """``16 - n`` reads are held, three per group from the last, leading first."""
     for n in range(1, 17):
-        held = [_digits._held(n, group) for group in range(5)]  # noqa: SLF001
+        held = [_digits._held(n, group) for group in range(5)]
         assert sum(held) == 16 - n
         assert held == sorted(held)
         assert sum(0 < h < 3 for h in held) <= 1
@@ -153,16 +153,16 @@ def test_held_reads_fill_groups_from_the_last() -> None:
 @pytest.mark.parametrize("n", range(1, 16))
 def test_lower_arities_reuse_sixteens_cells(n: int) -> None:
     """Held reads make each arity's cells a subset of sixteen's."""
-    cells = set(_digits._digits(n)[2])  # noqa: SLF001
+    cells = set(_digits._digits(n)[2])
     assert len(cells) == 2 ** (n - 1)
-    assert cells <= set(_digits._readouts_cells())  # noqa: SLF001
+    assert cells <= set(_digits._readouts_cells())
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [15, 16])
 def test_digit_builds_label_every_cell(n: int) -> None:
     """Each table cell's residue admits the four single-cell answers."""
-    _, _, tables, labels, _ = _digits._digits(n)  # noqa: SLF001
+    _, _, tables, labels, _ = _digits._digits(n)
     for h in tables:
         for label in "01xn":
             _table_char(h, label, labels)
@@ -170,7 +170,7 @@ def test_digit_builds_label_every_cell(n: int) -> None:
 
 def test_label_rule_admits_every_label_at_every_residue() -> None:
     """The label rule covers all 94 residues, not only today's table cells."""
-    _, _, _, labels, _ = _digits._digits(16)  # noqa: SLF001
+    _, _, _, labels, _ = _digits._digits(16)
     for h in range(94):
         for label in "01xn":
             _table_char(h, label, labels)
@@ -242,7 +242,7 @@ def test_seventeen_weight_constant_builds_and_executes() -> None:
 
 def test_symmetric_readouts_cover_every_weight() -> None:
     """The popcount build's cells name weights 0..16, clear of the code."""
-    weights = _symmetric._s_readouts()  # noqa: SLF001
+    weights = _symmetric._s_readouts()
     assert len(weights) == 20480
     assert (min(weights), max(weights)) == (6565, 59040)
     assert sorted(set(weights.values())) == list(range(17))
@@ -254,7 +254,7 @@ def test_weight_classes_reject_a_short_table() -> None:
     The generator only asks at seventeen inputs, where every weight
     occurs; the helper's own contract still names the short case.
     """
-    assert _symmetric._weight_classes("0110") is None  # noqa: SLF001
+    assert _symmetric._weight_classes("0110") is None
 
 
 def test_seventeen_in_neither_family_and_eighteen_are_refused() -> None:

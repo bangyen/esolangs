@@ -39,7 +39,7 @@ def _trit(value: int, k: int) -> int:
 def _gadget(cells: tuple[int, ...], read: int) -> _Uv:
     """``(u, v)`` at one trit from the cells' init trits."""
     c, a = list(cells), 0
-    for op in digits._GADGET:  # noqa: SLF001
+    for op in digits._GADGET:
         if op == "/":
             a = read
         elif op[0] == "K":
@@ -54,9 +54,9 @@ def _step(s: tuple[int, ...], choice: _Choice, group: int) -> tuple[int, ...] | 
     u = [0, *(uv[0] for uv in choice), *[1] * 6]
     v = [0, *(uv[1] for uv in choice), *[2] * 6]
     # swap12 is crazy(2, .): A's trits above 0 are 0, which keeps 1s and 2s.
-    if group == digits._D_SWAP_V:  # noqa: SLF001
+    if group == digits._D_SWAP_V:
         v = [_c(0, x) for x in v]
-    if group == digits._D_SWAP_U:  # noqa: SLF001
+    if group == digits._D_SWAP_U:
         u = [_c(0, x) for x in u]
     if s[0] != 1:
         return None
@@ -85,7 +85,7 @@ _CHOICES: tuple[_Choice, ...] = tuple(product(_UV13, _UV2, _UV13))
 
 @cache
 def _completions(s: tuple[int, ...], group: int) -> int:
-    if group == digits._D_GROUPS:  # noqa: SLF001
+    if group == digits._D_GROUPS:
         return int(all(x == _DIGIT for x in s))
     total = 0
     for choice in _CHOICES:
@@ -113,9 +113,9 @@ def test_shipped_outputs_complete() -> None:
     """2,464 sequences complete; each group's choice is legal and still completes."""
     assert _completions(_START, 0) == 2464
     s = _START
-    for group, init in enumerate(digits._d_inits()):  # noqa: SLF001
+    for group, init in enumerate(digits._d_inits()):
         choice = _outputs(init)
-        assert choice == digits._d_outputs()[group], group  # noqa: SLF001
+        assert choice == digits._d_outputs()[group], group
         assert choice in _CHOICES, group
         nxt = _step(s, choice, group)
         assert nxt is not None, group
@@ -124,19 +124,19 @@ def test_shipped_outputs_complete() -> None:
     assert all(x == _DIGIT for x in s)
 
     # Valid trit zero passes the first check; the rotated trit zero fails next.
-    assert digits._fold((1,) + (0,) * 9, ((1, 2),) * 3, 0) is None  # noqa: SLF001
+    assert digits._fold((1,) + (0,) * 9, ((1, 2),) * 3, 0) is None
 
 
 def test_trit_1_must_follow_s1(monkeypatch: pytest.MonkeyPatch) -> None:
     """Positive control for ``_d_choice``: trit 1 fixed at ``(1, 2)`` breaks group 2."""
-    choose = digits._d_choice  # noqa: SLF001
+    choose = digits._d_choice
 
     def fixed(s: tuple[int, ...], group: int) -> digits._Choice:
         return ((1, 2), *choose(s, group)[1:])
 
     monkeypatch.setattr(digits, "_d_choice", fixed)
     with pytest.raises(AssertionError):
-        digits._d_outputs.__wrapped__()  # noqa: SLF001
+        digits._d_outputs.__wrapped__()
 
 
 @pytest.mark.parametrize(("cell", "value"), [((4, 2), 33), ((0, 0), 42)])
@@ -144,7 +144,7 @@ def test_a_broken_output_fails_rule_and_build(
     monkeypatch: pytest.MonkeyPatch, cell: tuple[int, int], value: int
 ) -> None:
     """Positive control: an init the rule rejects collides in the real build."""
-    inits = [list(t) for t in digits._d_inits()]  # noqa: SLF001
+    inits = [list(t) for t in digits._d_inits()]
     inits[cell[0]][cell[1]] = value
     s: tuple[int, ...] | None = _START
     for group, init in enumerate(inits):
@@ -153,15 +153,15 @@ def test_a_broken_output_fails_rule_and_build(
         s = _step(s, _outputs(tuple(init)), group)
     assert s is None or not all(x == _DIGIT for x in s)
     monkeypatch.setattr(digits, "_d_inits", lambda: tuple(map(tuple, inits)))
-    digits._readouts.cache_clear()  # noqa: SLF001
-    digits._readouts_cells.cache_clear()  # noqa: SLF001
+    digits._readouts.cache_clear()
+    digits._readouts_cells.cache_clear()
     try:
         with pytest.raises(AssertionError, match="collide or wrap"):
-            digits._digits.__wrapped__(digits._DIGITS_N)  # noqa: SLF001
+            digits._digits.__wrapped__(digits._DIGITS_N)
     finally:
         monkeypatch.undo()
-        digits._readouts.cache_clear()  # noqa: SLF001
-        digits._readouts_cells.cache_clear()  # noqa: SLF001
+        digits._readouts.cache_clear()
+        digits._readouts_cells.cache_clear()
 
 
 @pytest.mark.parametrize("group", range(5))
@@ -172,14 +172,14 @@ def test_a_trit_0_of_2_merges_two_reads(
 
     Trits 1..3 are kept, so the trit model above cannot see the change.
     """
-    inits = [list(t) for t in digits._d_inits()]  # noqa: SLF001
+    inits = [list(t) for t in digits._d_inits()]
     value = inits[group][group % 3]
     inits[group][group % 3] = value - value % 3 + 2
     monkeypatch.setattr(digits, "_d_inits", lambda: tuple(map(tuple, inits)))
-    digits._readouts.cache_clear()  # noqa: SLF001
+    digits._readouts.cache_clear()
     try:
-        readouts = digits._readouts(digits._DIGITS_N)  # noqa: SLF001
+        readouts = digits._readouts(digits._DIGITS_N)
         assert len(set(readouts)) < len(readouts)
     finally:
         monkeypatch.undo()
-        digits._readouts.cache_clear()  # noqa: SLF001
+        digits._readouts.cache_clear()

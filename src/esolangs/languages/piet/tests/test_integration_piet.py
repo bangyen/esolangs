@@ -35,7 +35,7 @@ def test_bound_raster_language_loads_and_evaluates_png(tmp_path) -> None:
 def test_a_raster_is_not_a_path() -> None:
     """``_looks_like_a_path`` is typed for text; a Raster must answer False."""
     program = esolangs.generate("Piet", "01")
-    assert not esolangs._looks_like_a_path(program)  # noqa: SLF001
+    assert not esolangs._looks_like_a_path(program)
 
 
 def test_raster_interpreter_owns_loading_and_scale_support(

@@ -114,7 +114,7 @@ def test_a_generated_raster_runs_from_its_retained_graph() -> None:
     from esolangs.languages.line.generator import line as generate
 
     program = generate("0110")
-    assert program._payload is not None  # noqa: SLF001
+    assert program._payload is not None
     io = ScriptedIO("1\n0\n")
     run_line(program, io)
     assert io.getvalue() == "1"

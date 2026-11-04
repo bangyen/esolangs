@@ -25,32 +25,32 @@ class TestAnEmptyImage:
         assert extract.detect_scale(_blank()) == 1
 
     def test_an_empty_blob_has_no_fill(self) -> None:
-        assert extract._fill_ratio(_blank()) == 0.0  # noqa: SLF001
+        assert extract._fill_ratio(_blank()) == 0.0
 
 
 class TestUnitRounding:
     """A leg is a whole number of units, a stray pixel, or untrustworthy."""
 
     def test_an_exact_multiple_rounds_to_its_count(self) -> None:
-        assert extract._round_units(30, 10) == 3  # noqa: SLF001
+        assert extract._round_units(30, 10) == 3
 
     def test_a_near_multiple_still_rounds(self) -> None:
         """Within the tolerance, so a drawn leg one pixel off still reads."""
-        assert extract._round_units(31, 10) == 3  # noqa: SLF001
+        assert extract._round_units(31, 10) == 3
 
     def test_a_stray_pixel_is_zero_not_none(self) -> None:
         """0 is noise the scanner steps over; ``None`` would abort the match."""
-        assert extract._round_units(1, 40) == 0  # noqa: SLF001
+        assert extract._round_units(1, 40) == 0
 
     def test_an_off_unit_length_is_untrusted(self) -> None:
         """Half a unit is an ordinary corner, not a kink leg."""
-        assert extract._round_units(15, 10) is None  # noqa: SLF001
+        assert extract._round_units(15, 10) is None
 
     def test_the_tolerance_is_what_decides(self) -> None:
         inside = int(10 * (1 + _UNIT_TOLERANCE)) - 1
         outside = int(10 * (1 + _UNIT_TOLERANCE)) + 2
-        assert extract._round_units(inside, 10) is not None  # noqa: SLF001
-        assert extract._round_units(outside, 10) is None  # noqa: SLF001
+        assert extract._round_units(inside, 10) is not None
+        assert extract._round_units(outside, 10) is None
 
 
 class TestTrailingNoise:
@@ -58,14 +58,14 @@ class TestTrailingNoise:
 
     def test_only_noise_after_the_last_opcode(self) -> None:
         runs = [(0, 30), (1, 1), (2, 1)]
-        assert extract._only_noise_remains(runs, 1, 10)  # noqa: SLF001
+        assert extract._only_noise_remains(runs, 1, 10)
 
     def test_a_real_leg_after_it_is_not_noise(self) -> None:
         runs = [(0, 30), (1, 1), (2, 30)]
-        assert not extract._only_noise_remains(runs, 1, 10)  # noqa: SLF001
+        assert not extract._only_noise_remains(runs, 1, 10)
 
     def test_nothing_left_counts_as_noise(self) -> None:
-        assert extract._only_noise_remains([(0, 30)], 1, 10)  # noqa: SLF001
+        assert extract._only_noise_remains([(0, 30)], 1, 10)
 
 
 class TestClassifyingNothing:

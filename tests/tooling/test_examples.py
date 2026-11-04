@@ -220,7 +220,7 @@ def test_boolean_example(name: str) -> None:
         assert not run_until_halt_or_cycle(vm)
         while vm.ip != 0:
             vm.step()
-        got = vm._machine.render()  # noqa: SLF001
+        got = vm._machine.render()
     elif isinstance(program, str):
         # language-owners: ["Suffolk"]
         # Suffolk used to need a branch here: its reading programs stopped

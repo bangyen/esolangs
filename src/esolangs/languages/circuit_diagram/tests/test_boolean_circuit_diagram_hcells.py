@@ -87,8 +87,8 @@ def test_h_cell_sealing_preserves_gaps_and_legitimate_crossings() -> None:
     assert result.horizontal[8] == [(3, 8, 1), (19, 24, 1)]
     assert result.render() == layout.render()
     assert result.render().splitlines()[8][4] == "="
-    assert result._glyph_rows[14] == [1, 3]  # noqa: SLF001
-    assert result._glyph_cols[1] == [14]  # noqa: SLF001
+    assert result._glyph_rows[14] == [1, 3]
+    assert result._glyph_cols[1] == [14]
 
 
 @pytest.mark.parametrize("point", [(-1, 0), (32, 0), (0, -1)])

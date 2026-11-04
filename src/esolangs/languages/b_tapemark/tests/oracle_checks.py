@@ -98,7 +98,7 @@ def _check(factory, source, stdin, dialect):
     def state(machine):
         s = machine.state
         grids = tuple(
-            {complex(*point): char for point, char in grid._cells.items()}  # noqa: SLF001
+            {complex(*point): char for point, char in grid._cells.items()}
             for grid in s.grids
         )
         return (

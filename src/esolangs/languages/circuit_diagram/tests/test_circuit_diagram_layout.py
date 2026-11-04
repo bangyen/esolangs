@@ -1,6 +1,5 @@
 """Fast geometry tests for the shared wire-routing layout."""
 
-# ruff: noqa: SLF001 - the layout's indexes are the observable here.
 from __future__ import annotations
 
 import pytest

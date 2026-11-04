@@ -516,7 +516,7 @@ class TestThePathGuardKnowsMoreThanTxt:
     @pytest.mark.parametrize("program", ["~~", "-", "a/b/c", "/", "./", "1.5"])
     def test_a_hand_written_program_is_not_mistaken(self, program: str) -> None:
         """Adjacent commands ``~~`` were refused, and Befunge's ``/``."""
-        assert not esolangs._looks_like_a_path(program), program  # noqa: SLF001
+        assert not esolangs._looks_like_a_path(program), program
 
 
 class TestTheArgumentBoundaryRefusesCleanly:
@@ -592,7 +592,7 @@ def test_the_closed_string_sets_match_their_sources() -> None:
     def labels(alias: object) -> set[str]:
         return set(get_args(alias.__value__))  # type: ignore[attr-defined]
 
-    assert labels(_contracts.StateModel) == set(_describe._STATE_MODELS.values())  # noqa: SLF001
+    assert labels(_contracts.StateModel) == set(_describe._STATE_MODELS.values())
     assert labels(_contracts.SourceForm) == {kind.value for kind in SourceKind}
     assert labels(_contracts.GeneratorShape) == {shape.value for shape in Shape}
     # Static: an interpreter declares its shape as a class attribute.

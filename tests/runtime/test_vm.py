@@ -102,7 +102,7 @@ class TestEveryLanguageIsSteppable:
         missing: dict[str, list[str]] = {}
         for language, module_path in sorted(INTERPRETERS.items()):
             module = importlib.import_module(module_path)
-            state = getattr(module, "_Machine")  # noqa: B009
+            state = module._Machine
             if "rng" not in inspect.signature(state.__init__).parameters:
                 continue
             random_languages.add(language)

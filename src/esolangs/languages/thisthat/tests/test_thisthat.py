@@ -1,6 +1,5 @@
 """thisthat instruction and concurrency semantics."""
 
-# ruff: noqa: SLF001 - instruction primitives are the semantic test surface.
 from itertools import product
 
 import pytest

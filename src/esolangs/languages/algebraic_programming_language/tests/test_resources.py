@@ -34,7 +34,7 @@ def test_shared_expressions_obey_bounds_for_every_small_table(
 
     positive = 0
     calls: list[str] = []
-    original = apl._step_call  # noqa: SLF001
+    original = apl._step_call
 
     def traced(state, frame, node, done, *, _calls=calls, _original=original):
         if not node[2] and node[1].isupper():
@@ -64,7 +64,7 @@ def test_shared_expressions_obey_bounds_for_every_small_table(
                 state.sample(machine.snapshot())
                 assert len(machine.frames) <= 4 * n + 3
                 assert sum(len(frame.work) for frame in machine.frames) <= 6 * n + 5
-                assert len(machine._serials) <= 2 * len(source) + 2  # noqa: SLF001
+                assert len(machine._serials) <= 2 * len(source) + 2
             assert read_answer(NAME, machine.io.getvalue()) == expected
             assert len(calls) == len(set(calls))
             assert len(calls) <= 3 * n + 1

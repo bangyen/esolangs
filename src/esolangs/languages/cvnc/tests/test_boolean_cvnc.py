@@ -34,7 +34,7 @@ class TestCvnc:
     def test_a_table_that_folds_nothing_is_a_full_tree(self) -> None:
         """Parity folds nowhere, so its plain tree keeps a leaf per row."""
         module = importlib.import_module("esolangs.languages.cvnc.generator")
-        tree = module._render(module._tree("01101001"))  # noqa: SLF001
+        tree = module._render(module._tree("01101001"))
         assert _leaves(tree) == 8  # one leaf per row
         assert _branches(tree) == 7  # one branch per interior node
         program = boolean.cvnc("01101001")
@@ -65,7 +65,7 @@ class TestCvnc:
     def test_the_halting_goto_clears_every_program_without_escalating(self) -> None:
         """The starting gadget's reach covers every arity worth asking for."""
         module = importlib.import_module("esolangs.languages.cvnc.generator")
-        reach = module._reach(_HALT_SQUARINGS)  # noqa: SLF001
+        reach = module._reach(_HALT_SQUARINGS)
 
         # parity is the table that folds nothing, so it is the worst case
         for n in range(1, 9):
@@ -88,7 +88,7 @@ class TestCvnc:
             program = module.cvnc(table)
             assert _halt(squarings) in program
             assert _halt(squarings + 1) not in program
-            assert len(program) < module._reach(squarings)  # noqa: SLF001
+            assert len(program) < module._reach(squarings)
             n = len(table).bit_length() - 1
             for combo in range(len(table)):
                 bits = f"{combo:0{n}b}"
@@ -109,9 +109,9 @@ class TestCvnc:
             )
             squarings = _HALT_SQUARINGS
             while True:  # the search, kept as the oracle
-                offset = module._prologue_syllables(squarings)  # noqa: SLF001
+                offset = module._prologue_syllables(squarings)
                 body = in_input_order(table, partial(_direct, offset=offset))
-                if len(_halt(squarings)) + len(body) < module._reach(squarings):  # noqa: SLF001
+                if len(_halt(squarings)) + len(body) < module._reach(squarings):
                     break
                 squarings += 1
             program = module.cvnc(table)
@@ -173,7 +173,7 @@ class TestCvncSharing:
     def test_the_climb_is_a_closed_form(self) -> None:
         """A target is its nearer square's root climbed to, squared, stepped."""
         module = importlib.import_module("esolangs.languages.cvnc.generator")
-        climb = module._climb  # noqa: SLF001
+        climb = module._climb
         assert climb(1, 9) == [("i", 2), ("æ", 1), ("i", 0)]
         # 0, 2, 4, 16, 15: four squared is nearer fifteen than three squared.
         assert climb(0, 15) == [("i", 2), ("æ", 1), ("i", 0), ("æ", 1), ("ə", 1)]
@@ -234,7 +234,7 @@ class TestCvncScalingBound:
     def test_pair_chars_are_what_the_generator_spells(self) -> None:
         module = importlib.import_module("esolangs.languages.cvnc.generator")
         for table, chars in _PAIR_CHARS.items():
-            assert len(module._render(module._tree(table))) == chars  # noqa: SLF001
+            assert len(module._render(module._tree(table))) == chars
 
     def test_a_program_is_at_most_its_prologue_and_chunks(self) -> None:
         """The 17T/2 + 13 bound: pairs 12, nodes above 5, prologue <= 18."""

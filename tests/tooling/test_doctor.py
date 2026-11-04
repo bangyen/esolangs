@@ -15,7 +15,7 @@ def test_just_must_be_new_enough_to_parse_the_justfile(
     version: str, *, ok: bool, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(doctor, "_output", lambda *_: version)
-    assert (doctor._just() is None) is ok  # noqa: SLF001
+    assert (doctor._just() is None) is ok
 
 
 @pytest.mark.parametrize(
@@ -26,4 +26,4 @@ def test_the_hook_path_may_be_relative_or_absolute(
     configured: str, *, ok: bool, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(doctor, "_output", lambda *_: configured)
-    assert (doctor._hooks() is None) is ok  # noqa: SLF001
+    assert (doctor._hooks() is None) is ok

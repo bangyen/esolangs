@@ -102,11 +102,11 @@ def test_direct_atom_exact_area_ceiling(monkeypatch) -> None:
     build = _PoolBuild(dense(9), 7, list(range(9)), 9, {})
     side = build.geometry.leaf_height - 8 * build.k - 48
     monkeypatch.setattr(model, "bounds", lambda: (side, side))
-    build._check_fits(model)  # noqa: SLF001 - equality fits the reserved rectangle
+    build._check_fits(model)
     for h, w in ((side + 1, side), (side, side + 1)):
         monkeypatch.setattr(model, "bounds", lambda h=h, w=w: (h, w))
         with pytest.raises(AssertionError, match="exceeded its rectangle"):
-            build._check_fits(model)  # noqa: SLF001
+            build._check_fits(model)
 
 
 @pytest.mark.medium

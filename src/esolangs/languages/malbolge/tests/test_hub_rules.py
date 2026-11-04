@@ -21,7 +21,7 @@ def _digit(value: int, k: int) -> tuple[int, int]:
 
 
 def test_readouts_are_the_product_of_their_digits() -> None:
-    readouts = set(digits._readouts(digits._DIGITS_N))  # noqa: SLF001
+    readouts = set(digits._readouts(digits._DIGITS_N))
     seen = [{_digit(r, k) for r in readouts} for k in range(5)]
     missing = [set(product(range(3), repeat=2)) - s for s in seen]
     assert len(readouts) == 8**5
@@ -33,16 +33,16 @@ def test_readouts_are_the_product_of_their_digits() -> None:
 
 
 def test_operands_answer_both_inputs_exactly() -> None:
-    cells = core._operand_cells()  # noqa: SLF001
+    cells = core._operand_cells()
     for lab, answers in (("1", (49, 49)), ("n", (49, 48))):
         below, middle, above = cells[lab]
-        operand = core._chain(_g(middle), core._OPERAND_CHAIN)  # noqa: SLF001
+        operand = core._chain(_g(middle), core._OPERAND_CHAIN)
         values = (_g(below), operand, _g(above))
         for x, answer in enumerate(answers):
             assert reduce(_crazy, values, 48 + x) == answer, (lab, x)
 
 
 def test_every_label_owns_two_hubs() -> None:
-    hubs = digits._hubs()  # noqa: SLF001
-    assert sorted(hubs) == sorted(core._T_HUB_LABELS)  # noqa: SLF001
+    hubs = digits._hubs()
+    assert sorted(hubs) == sorted(core._T_HUB_LABELS)
     assert len({v for vs in hubs.values() for v in vs}) == 8

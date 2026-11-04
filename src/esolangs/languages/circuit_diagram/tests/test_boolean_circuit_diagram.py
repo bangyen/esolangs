@@ -79,7 +79,7 @@ class TestCircuitDiagramLayoutGuards:
         layout = self._layout()
         layout.glyphs[(1, 1)] = "&"
         with pytest.raises(AssertionError) as caught:
-            layout._check_free(1, 1)  # noqa: SLF001
+            layout._check_free(1, 1)
         assert str(caught.value) == "two glyphs at (1, 1)"
 
     @pytest.mark.parametrize("axis", ["horizontal", "vertical"])
@@ -91,11 +91,11 @@ class TestCircuitDiagramLayoutGuards:
         else:
             layout.run_vertical(1, 0, 2, 1)
         with pytest.raises(AssertionError) as caught:
-            layout._check_free(1, 1)  # noqa: SLF001
+            layout._check_free(1, 1)
         assert str(caught.value) == "glyph at (1, 1) lands on a wire"
 
     def test_a_free_cell_takes_a_glyph(self) -> None:
-        self._layout()._check_free(1, 1)  # noqa: SLF001
+        self._layout()._check_free(1, 1)
 
     def test_a_run_between_touching_junctions_records_nothing(self) -> None:
         """The span is exclusive, so neighbours leave no cell to claim."""
@@ -112,11 +112,9 @@ class TestCircuitDiagramLayoutGuards:
         """The reported cell is the earliest, not the first one found."""
         from esolangs.languages.circuit_diagram.generator import _Layout
 
-        late_is_earlier = _Layout._clash(  # noqa: SLF001
-            [(6, 9, 1), (2, 4, 2)], None, 0, 10, 9
-        )
+        late_is_earlier = _Layout._clash([(6, 9, 1), (2, 4, 2)], None, 0, 10, 9)
         assert late_is_earlier == (2, True)
-        early_stays = _Layout._clash([(2, 4, 1), (6, 9, 2)], None, 0, 10, 9)  # noqa: SLF001
+        early_stays = _Layout._clash([(2, 4, 1), (6, 9, 2)], None, 0, 10, 9)
         assert early_stays == (2, True)
 
     def test_interval_primitives_keep_order_and_the_earliest_clash(self) -> None:
@@ -124,9 +122,9 @@ class TestCircuitDiagramLayoutGuards:
         from esolangs.languages.circuit_diagram.generator import _Layout
 
         runs = [(6, 9, 2)]
-        _Layout._record(runs, (2, 4, 1))  # noqa: SLF001
+        _Layout._record(runs, (2, 4, 1))
         assert runs == [(2, 4, 1), (6, 9, 2)]
-        assert _Layout._clash(runs, [7], 0, 10, 9) == (2, True)  # noqa: SLF001
+        assert _Layout._clash(runs, [7], 0, 10, 9) == (2, True)
 
     @pytest.mark.parametrize(
         ("dx", "dy"),
@@ -140,7 +138,7 @@ class TestCircuitDiagramLayoutGuards:
         layout.junctions[(5, 5)] = 1
         layout.junctions[(5 + dx, 5 + dy)] = 2
         with pytest.raises(AssertionError) as caught:
-            layout._check_junction_spacing()  # noqa: SLF001
+            layout._check_junction_spacing()
         assert str(caught.value) in (
             f"junctions of different signals touch at (5, 5) and ({5 + dx}, {5 + dy})",
             f"junctions of different signals touch at ({5 + dx}, {5 + dy}) and (5, 5)",
@@ -151,14 +149,14 @@ class TestCircuitDiagramLayoutGuards:
         layout = self._layout()
         layout.junctions[(5, 5)] = 1
         layout.junctions[(6, 6)] = 1
-        layout._check_junction_spacing()  # noqa: SLF001
+        layout._check_junction_spacing()
 
     def test_junctions_one_clear_of_each_other_are_accepted(self) -> None:
         """Distance 2 is what every real layout keeps, and it is legal."""
         layout = self._layout()
         layout.junctions[(5, 5)] = 1
         layout.junctions[(7, 5)] = 2
-        layout._check_junction_spacing()  # noqa: SLF001
+        layout._check_junction_spacing()
 
     def test_the_online_fold_keeps_the_width_logarithmic(self) -> None:
         """Each extra input doubles the cofactors and costs a bounded step."""
@@ -195,7 +193,7 @@ class TestCircuitDiagramLayoutGuards:
             code = boolean.circuit_diagram(table)
             fallback = _h_term_layout(table)
             assert len(code) <= layout_source_size(fallback)
-            assert pool._execute(table, code, range(len(table))) <= 2 * n + 2  # noqa: SLF001
+            assert pool._execute(table, code, range(len(table))) <= 2 * n + 2
 
     def test_h_layout_reserves_linear_area(self) -> None:
         """Two input levels quarter recursively without overlapping leaves."""
@@ -234,9 +232,7 @@ class TestCircuitDiagramLayoutGuards:
 
         for n in (3, 5, 7):
             table = dense(n)
-            pool._execute(  # noqa: SLF001
-                table, _h_term_layout(table).render(), (0, 1, len(table) - 1)
-            )
+            pool._execute(table, _h_term_layout(table).render(), (0, 1, len(table) - 1))
 
     def test_h_depth_buckets_bound_literal_anchor_visits(self) -> None:
         from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_plan
@@ -275,12 +271,7 @@ class TestCircuitDiagramLayoutGuards:
         """The interval guard stops once later wires and glyphs are reached."""
         from esolangs.languages.circuit_diagram.generator import _Layout
 
-        assert (
-            _Layout._clash(  # noqa: SLF001 - exercise the interval primitive
-                [(10, 12, 1)], [10], 0, 5, 0
-            )
-            is None
-        )
+        assert _Layout._clash([(10, 12, 1)], [10], 0, 5, 0) is None
 
     def test_invert_can_start_a_new_band(self) -> None:
         """A complement honors a width already exhausted by its input."""
@@ -301,7 +292,7 @@ class TestCircuitDiagramLayoutGuards:
         )
 
         closest = []
-        original = _Layout._check_junction_spacing  # noqa: SLF001
+        original = _Layout._check_junction_spacing
 
         def record(layout: object) -> None:
             items = list(layout.junctions.items())
@@ -437,7 +428,7 @@ class TestCircuitDiagramLayoutGuards:
         from tests.support.witness_tables import dense
 
         module = importlib.import_module("esolangs.languages.circuit_diagram.generator")
-        original = getattr(_Builder, "_band")  # noqa: B009 - SLF001 otherwise
+        original = _Builder._band
 
         def forgetful(self: _Builder) -> None:
             original(self)
@@ -569,8 +560,8 @@ class TestCircuitDiagram:
         assert joins
         # Both left-side inputs of every future result OR must be protected.
         for x, y in joins:
-            assert held._reserved[x - 1, y - 1] == _HOLD  # noqa: SLF001
-            assert held._reserved[x - 1, y + 1] == _HOLD  # noqa: SLF001
+            assert held._reserved[x - 1, y - 1] == _HOLD
+            assert held._reserved[x - 1, y + 1] == _HOLD
 
         layout = _RoutingLayout()
         layout.reserve((1, 10), _HOLD)  # beside the ``down`` corner
@@ -582,7 +573,7 @@ class TestCircuitDiagram:
         assert (0, 24) in layout.junctions
         assert (20, 24) in layout.junctions
         layout.release(_HOLD)
-        assert not layout._reserved  # noqa: SLF001
+        assert not layout._reserved
 
     @pytest.mark.parametrize("collision", ["endpoint", "neighbour", "interior"])
     def test_a_route_refuses_each_kind_of_claimed_cell(self, collision: str) -> None:
@@ -596,7 +587,7 @@ class TestCircuitDiagram:
             layout.junctions[(1, 1)] = 2
         else:
             layout.run_horizontal(0, 2, 0, 2)  # another signal covers (1, 0)
-        assert not layout._route_is_free([(0, 0), (2, 0)], 1)  # noqa: SLF001
+        assert not layout._route_is_free([(0, 0), (2, 0)], 1)
 
     @pytest.mark.slow  # ~6s: three n=4 builds, sixteen interpreted rows each
     def test_h_layout_lanes_execute_at_four_inputs(self) -> None:
@@ -858,4 +849,4 @@ def _check_complemented_projection_inverts_a_bare_input_rail() -> None:
     )
 
     model = _circuit_diagram_model("01", None, invert=True)
-    pool._execute("10", model.render(), (0, 1))  # noqa: SLF001
+    pool._execute("10", model.render(), (0, 1))

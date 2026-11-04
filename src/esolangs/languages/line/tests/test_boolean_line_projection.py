@@ -109,7 +109,7 @@ def test_compact_loader_admits_a_shared_return_within_the_original_input_budget(
     core = residual * 3 + "0" * 64
     table = _lift(core, 16, tuple(range(8, 16)))
     image = line(table)
-    assert _has_goto(image._payload)  # noqa: SLF001 - physical sharing control
+    assert _has_goto(image._payload)
     _execute(table, image, [row | fill for row in range(256) for fill in (0, 255 << 8)])
 
 
@@ -133,7 +133,7 @@ def test_public_multiple_returns_reduce_mixed_residual_area() -> None:
             return returns(node.zero) + returns(node.nonzero)
         return returns(node.next)
 
-    assert returns(image._payload) == 35  # noqa: SLF001 - generator-owned graph
+    assert returns(image._payload) == 35
     assert len(image.rows) * len(image.rows[0]) == 23496000 < 47454400 < 4031899200
     rows = [row | fill for row in range(512) for fill in (0, 127 << 9)]
     assert _execute(table, image, rows) == 32

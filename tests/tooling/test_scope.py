@@ -80,7 +80,7 @@ class TestWidensToEverything:
             monkeypatch.setattr(
                 scope, "_scope_changed_files", lambda name=name: (name,)
             )
-            skip, reason = scope._scope_plan(full=False)  # noqa: SLF001
+            skip, reason = scope._scope_plan(full=False)
             assert skip is None, (name, reason)
 
     def test_ordinary_interpreter_does_not_widen(self, monkeypatch) -> None:
@@ -88,15 +88,15 @@ class TestWidensToEverything:
         scope = load_script()
         changed = ["src/esolangs/languages/brainfuck/interpreter.py"]
         assert scope.widens_to_everything(changed) is None
-        selected = scope._pytest_scope(changed)  # noqa: SLF001
+        selected = scope._pytest_scope(changed)
         assert isinstance(selected, list)
         assert "src/esolangs/languages/brainfuck/tests/test_brainfuck.py" in selected
         assert set(scope.INTERPRETER_CONTRACT_TESTS) <= set(selected)
         monkeypatch.delenv("VERIFY_FULL", raising=False)
         monkeypatch.setattr(scope, "_scope_changed_files", lambda: ("docs/usage.md",))
-        skip, _ = scope._scope_plan(full=False)  # noqa: SLF001
+        skip, _ = scope._scope_plan(full=False)
         assert skip == set(scope.STEP_SCOPE)
-        assert scope._scoped_cmd("pytest", ["pytest"], ["docs/usage.md"]) is None  # noqa: SLF001
+        assert scope._scoped_cmd("pytest", ["pytest"], ["docs/usage.md"]) is None
 
 
 def test_empty_branch_diff_does_not_fall_back_to_previous_commit() -> None:
@@ -195,6 +195,6 @@ def test_shared_proof_dependencies_keep_their_checks(monkeypatch):
     }
     for path, required in cases.items():
         monkeypatch.setattr(scope, "_scope_changed_files", lambda path=path: (path,))
-        skip, _ = scope._scope_plan(full=False)  # noqa: SLF001
+        skip, _ = scope._scope_plan(full=False)
         assert skip is None or required.isdisjoint(skip), path
-        assert scope._pytest_scope([path]) == scope.WHOLE_SUITE, path  # noqa: SLF001
+        assert scope._pytest_scope([path]) == scope.WHOLE_SUITE, path

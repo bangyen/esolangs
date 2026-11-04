@@ -38,7 +38,7 @@ def source_tree(tmp_path, monkeypatch):
     ],
 )
 def test_relative_transitive_and_cyclic_imports_are_hashed(source_tree, module) -> None:
-    sources = leaks._sources(module)  # noqa: SLF001
+    sources = leaks._sources(module)
     assert source_tree / "src/esolangs/runtime/helper.py" in sources
     assert source_tree / "src/esolangs/runtime/shared/aux.py" in sources
     assert source_tree / "src/esolangs/runtime/unrelated.py" not in sources
@@ -46,8 +46,8 @@ def test_relative_transitive_and_cyclic_imports_are_hashed(source_tree, module) 
 
 
 def test_every_registered_interpreter_resolves() -> None:
-    for module, _ in leaks._runners().values():  # noqa: SLF001
-        assert leaks._module_path(module), module  # noqa: SLF001
+    for module, _ in leaks._runners().values():
+        assert leaks._module_path(module), module
 
 
 @pytest.mark.usefixtures("source_tree")
@@ -58,23 +58,23 @@ def test_helper_change_selects_its_importer() -> None:
         "unrelated": ("unrelated", False),
     }
     with patch.object(leaks, "_changed_files", return_value=[changed]):
-        selected, _ = leaks._select(list(runners), runners)  # noqa: SLF001
+        selected, _ = leaks._select(list(runners), runners)
     assert selected == ["fixture"]
 
 
 def test_helper_change_invalidates_a_cached_fingerprint(source_tree) -> None:
-    before = leaks._fingerprint("fixture", [])  # noqa: SLF001
+    before = leaks._fingerprint("fixture", [])
     helper = source_tree / "src/esolangs/runtime/shared/aux.py"
     helper.write_text(helper.read_text() + "value = 1\n")
-    assert leaks._fingerprint("fixture", []) != before  # noqa: SLF001
+    assert leaks._fingerprint("fixture", []) != before
 
 
 @pytest.mark.usefixtures("source_tree")
 def test_shared_scans_preserve_fingerprints(monkeypatch) -> None:
     modules = ("fixture", "shared")
-    expected = [leaks._fingerprint(module, []) for module in modules]  # noqa: SLF001
+    expected = [leaks._fingerprint(module, []) for module in modules]
     scanned = []
-    original = leaks._imports  # noqa: SLF001
+    original = leaks._imports
 
     def scan(path):
         scanned.append(path)
@@ -85,34 +85,34 @@ def test_shared_scans_preserve_fingerprints(monkeypatch) -> None:
         leaks, "_changed_files", lambda: ["src/esolangs/runtime/shared/aux.py"]
     )
     imports = {}
-    picked, _ = leaks._select(  # noqa: SLF001
+    picked, _ = leaks._select(
         list(modules), {module: (module, False) for module in modules}, imports
     )
     assert picked == list(modules)
-    assert [leaks._fingerprint(module, [], imports) for module in modules] == expected  # noqa: SLF001
+    assert [leaks._fingerprint(module, [], imports) for module in modules] == expected
     assert len(scanned) == len(set(scanned))
 
 
 def test_a_new_scan_finds_new_transitive_imports(source_tree) -> None:
-    before = leaks._fingerprint("fixture", [], {})  # noqa: SLF001
+    before = leaks._fingerprint("fixture", [], {})
     helper = source_tree / "src/esolangs/runtime/shared/aux.py"
     helper.write_text("from .. import unrelated\n")
-    assert leaks._fingerprint("fixture", [], {}) != before  # noqa: SLF001
+    assert leaks._fingerprint("fixture", [], {}) != before
     unrelated = source_tree / "src/esolangs/runtime/unrelated.py"
-    changed = leaks._fingerprint("fixture", [], {})  # noqa: SLF001
+    changed = leaks._fingerprint("fixture", [], {})
     unrelated.write_text("value = 1\n")
-    assert leaks._fingerprint("fixture", [], {}) != changed  # noqa: SLF001
+    assert leaks._fingerprint("fixture", [], {}) != changed
 
 
 def test_package_children_are_included(source_tree) -> None:
-    sources = leaks._sources("shared")  # noqa: SLF001
+    sources = leaks._sources("shared")
     assert source_tree / "src/esolangs/runtime/shared/aux.py" in sources
 
 
 @pytest.mark.usefixtures("source_tree")
 def test_missing_interpreter_is_not_a_clean_fingerprint() -> None:
     with pytest.raises(FileNotFoundError):
-        leaks._sources("missing")  # noqa: SLF001
+        leaks._sources("missing")
 
 
 def test_external_and_attribute_imports_do_not_become_files(source_tree) -> None:
@@ -120,13 +120,13 @@ def test_external_and_attribute_imports_do_not_become_files(source_tree) -> None
     path.write_text(
         "import json\nfrom pathlib import Path\nfrom .helper import value\n"
     )
-    assert Path("json.py") not in leaks._sources("fixture")  # noqa: SLF001
+    assert Path("json.py") not in leaks._sources("fixture")
 
 
 def test_package_initializers_are_cache_inputs(source_tree) -> None:
     init = source_tree / "src/esolangs/runtime/__init__.py"
     init.write_text("value = 1\n")
-    assert init in leaks._sources("fixture")  # noqa: SLF001
+    assert init in leaks._sources("fixture")
 
 
 def test_removed_helper_cannot_skip_the_sweep(source_tree) -> None:
@@ -135,7 +135,7 @@ def test_removed_helper_cannot_skip_the_sweep(source_tree) -> None:
     with patch.object(
         leaks, "_changed_files", return_value=[str(helper.relative_to(source_tree))]
     ):
-        selected, _ = leaks._select(["fixture"], {"fixture": ("fixture", False)})  # noqa: SLF001
+        selected, _ = leaks._select(["fixture"], {"fixture": ("fixture", False)})
     assert selected == ["fixture"]
 
 
@@ -143,7 +143,7 @@ def test_missing_imported_module_fails_closed(source_tree) -> None:
     source = source_tree / "src/esolangs/runtime/fixture.py"
     source.write_text("from esolangs.runtime.missing import value\n")
     with pytest.raises(FileNotFoundError, match="imported source"):
-        leaks._sources("fixture")  # noqa: SLF001
+        leaks._sources("fixture")
 
 
 @pytest.mark.parametrize("extension", ["txt", "png"])
@@ -168,7 +168,7 @@ def test_shipped_example_selects_its_language(source_tree, extension, exists) ->
             leaks, "_changed_files", return_value=[str(path.relative_to(source_tree))]
         ),
     ):
-        selected, _ = leaks._select(list(runners), runners)  # noqa: SLF001
+        selected, _ = leaks._select(list(runners), runners)
     assert selected == ["fixture"]
 
 
@@ -181,13 +181,13 @@ def test_language_corpus_is_independent_of_other_examples(monkeypatch) -> None:
         {name: SimpleNamespace(fuzz_max_digits=0) for name in ("before", "fixture")},
     )
     examples = {"before": ["a"], "fixture": ["+."]}
-    old = leaks._corpus("fixture", examples)  # noqa: SLF001
-    leaks._corpus("before", examples)  # noqa: SLF001
+    old = leaks._corpus("fixture", examples)
+    leaks._corpus("before", examples)
     examples["before"] = ["aaa"]
-    leaks._corpus("before", examples)  # noqa: SLF001
-    assert leaks._corpus("fixture", examples) == old  # noqa: SLF001
+    leaks._corpus("before", examples)
+    assert leaks._corpus("fixture", examples) == old
     examples["fixture"] = ["++."]
-    assert leaks._corpus("fixture", examples) != old  # noqa: SLF001
+    assert leaks._corpus("fixture", examples) != old
 
 
 def test_runtime_changes_invalidate_clean_fingerprints(
@@ -198,12 +198,12 @@ def test_runtime_changes_invalidate_clean_fingerprints(
 
     dependency = SimpleNamespace(metadata={"Name": "fixture"}, version="1")
     monkeypatch.setattr(leaks.importlib.metadata, "distributions", lambda: [dependency])
-    before = leaks._fingerprint("fixture", [])  # noqa: SLF001
+    before = leaks._fingerprint("fixture", [])
     dependency.version = "2"
-    changed = leaks._fingerprint("fixture", [])  # noqa: SLF001
+    changed = leaks._fingerprint("fixture", [])
     assert changed != before
     monkeypatch.setattr(leaks.sys, "version", "different Python")
-    assert leaks._fingerprint("fixture", []) != changed  # noqa: SLF001
+    assert leaks._fingerprint("fixture", []) != changed
 
 
 def test_concurrent_cache_publication_keeps_valid_json(tmp_path, monkeypatch) -> None:
@@ -216,7 +216,7 @@ def test_concurrent_cache_publication_keeps_valid_json(tmp_path, monkeypatch) ->
     with ThreadPoolExecutor(max_workers=4) as pool:
         list(
             pool.map(
-                leaks._save_cache,  # noqa: SLF001
+                leaks._save_cache,
                 [{"language": str(index)} for index in range(16)],
             )
         )

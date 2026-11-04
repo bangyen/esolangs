@@ -56,7 +56,7 @@ def test_random_snapshot_cannot_prove_a_cycle(wrapped) -> None:
     machine = (
         vm
         if wrapped == "vm"
-        else (vm._machine if wrapped == "machine" else make_debugger("Befunge", source))  # noqa: SLF001
+        else (vm._machine if wrapped == "machine" else make_debugger("Befunge", source))
     )
     with pytest.raises(TypeError, match="random machines"):
         run_until_halt_or_cycle(machine, limit=1000)

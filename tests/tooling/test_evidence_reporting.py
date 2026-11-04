@@ -73,6 +73,6 @@ def _failed_collection_removes_partial_coverage(tmp_path, monkeypatch):
     import pytest
 
     with pytest.raises(subprocess.CalledProcessError):
-        module._collect(data, [])  # noqa: SLF001
+        module._collect(data, [])
     assert not data.exists()
     assert failed.call_args.kwargs["check"] is True

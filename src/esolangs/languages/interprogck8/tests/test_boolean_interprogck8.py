@@ -82,7 +82,7 @@ def test_arith_adds_its_delta_mod_256() -> None:
     """Tens and ones add ``delta`` mod 256, even for deltas past a byte."""
     step = {"@id": 10, "@nd": 1, "@dd": -10, "@nt": -1}
     for delta in range(-600, 600):
-        lines = generator._arith(delta)  # noqa: SLF001
+        lines = generator._arith(delta)
         assert sum(step[line] for line in lines) % 256 == delta % 256, delta
 
 
@@ -91,11 +91,11 @@ def test_cluster_sizes_match_their_lines() -> None:
     rng = random.Random(7)
     for n in (4, 5, 6, 7):
         table = "".join(rng.choice("01") for _ in range(1 << n))
-        plan = generator._Plan(table, n)  # noqa: SLF001
+        plan = generator._Plan(table, n)
         for depth in range(n):
             for block in range(1 << depth):
                 size = plan.size(depth, block)
-                if size <= generator._FREE:  # noqa: SLF001
+                if size <= generator._FREE:
                     assert size == len(plan.cluster(depth, block)), (n, depth, block)
 
 
@@ -120,16 +120,16 @@ def test_flight_columns_keep_the_stop_in_the_cursors_window() -> None:
     The scaling bound's window recursion needs the stop (column + 1) past a
     cursor that sits at line 41 at most; flights live at height >= 3.
     """
-    for n in range(4, generator._MAX_INPUTS + 1):  # noqa: SLF001
-        assert min(generator._columns(n)[: n - 2]) >= 40, n  # noqa: SLF001
+    for n in range(4, generator._MAX_INPUTS + 1):
+        assert min(generator._columns(n)[: n - 2]) >= 40, n
     for n in range(4, 32):
-        columns = generator._columns(n, 52)  # noqa: SLF001
+        columns = generator._columns(n, 52)
         assert min(columns[: n - 3]) > 52
         assert all(0 <= c <= 80 for c in columns)
         assert all(a > b for a, b in pairwise(columns))
     # At n=32 the floor81 needs a zero-length body, unavailable below81.
-    cost = len(generator._block(81))  # noqa: SLF001
-    assert all(len(generator._block(c)) > cost for c in range(81))  # noqa: SLF001
+    cost = len(generator._block(81))
+    assert all(len(generator._block(c)) > cost for c in range(81))
 
 
 @pytest.mark.parametrize("n", [3, 5, 7])
@@ -138,10 +138,10 @@ def test_a_subtree_advances_at_most_two_to_the_h_minus_one_windows(n: int) -> No
 
     The recursion behind the scaling bound 226T + 224 (window count <= T/2).
     """
-    period = generator._FREE + generator._ZONE  # noqa: SLF001
+    period = generator._FREE + generator._ZONE
     seen: list[tuple[int, int]] = []
 
-    class Plan(generator._Plan):  # noqa: SLF001
+    class Plan(generator._Plan):
         def lay(self, depth: int, block: int) -> None:
             start = self.cursor // period
             super().lay(depth, block)

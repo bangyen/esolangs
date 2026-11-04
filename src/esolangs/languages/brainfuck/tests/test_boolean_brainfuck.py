@@ -239,14 +239,14 @@ def _check_shared_body_must_be_strictly_shorter(monkeypatch) -> None:
     module = importlib.import_module("esolangs.languages.brainfuck.generator")
     table, order, tail = "0011", (0, 1), "+" * 48 + "."
     monkeypatch.setattr(module, "shared_flag_tree", lambda *_a, **_k: None)
-    plain = module._tree_for(table, order, tail)  # noqa: SLF001
+    plain = module._tree_for(table, order, tail)
     header = ">>".join("," + "-" * 48 for _ in order)
     body = plain[len(header) : -len(tail)] + "><"
     # An admitted alternative may be equivalent while its text is longer.
     monkeypatch.setattr(
         module, "shared_flag_tree", lambda *_a, **kw: (body, kw["command_budget"])
     )
-    assert module._tree_for(table, order, tail) == plain  # noqa: SLF001
+    assert module._tree_for(table, order, tail) == plain
     for source in (plain, header + body + tail):
         for row in range(4):
             io = ScriptedIO(f"{row:02b}")

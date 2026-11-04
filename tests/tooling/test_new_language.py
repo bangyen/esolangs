@@ -89,7 +89,7 @@ def test_registration_ignores_old_generator_locations(root: Path) -> None:
     old = root / "src/esolangs/generation/tiny.py"
     old.parent.mkdir(parents=True)
     old.write_text("owned")
-    (gap,) = new_language._unregistered("Tiny", "tiny")  # noqa: SLF001
+    (gap,) = new_language._unregistered("Tiny", "tiny")
     assert gap.where == "src/esolangs/registry/_table.py"
 
 
@@ -98,9 +98,9 @@ def test_the_slug_is_the_registry_id() -> None:
     from esolangs.registry import LANGUAGES
 
     for name, lang in LANGUAGES.items():
-        assert new_language._slug(name) == lang.id, name  # noqa: SLF001
+        assert new_language._slug(name) == lang.id, name
     with pytest.raises(ValueError, match="keyword"):
-        new_language._slug("class")  # noqa: SLF001
+        new_language._slug("class")
 
 
 def test_remove_cuts_only_entries_that_own_their_lines(tmp_path: Path) -> None:
@@ -113,7 +113,7 @@ def test_remove_cuts_only_entries_that_own_their_lines(tmp_path: Path) -> None:
         'run_gone = _runner("gone")\n'
     )
     modules = {"esolangs.generation.gone"}
-    assert remove_language._drop_entries(path, {"gone"}, modules) == 3  # noqa: SLF001
+    assert remove_language._drop_entries(path, {"gone"}, modules) == 3
     # The import another entry still uses stays.
     assert path.read_text() == (
         "from esolangs.generation.gone import PAIR\n"
@@ -124,7 +124,7 @@ def test_remove_cuts_only_entries_that_own_their_lines(tmp_path: Path) -> None:
 def test_remove_drops_the_whole_limitations_bullet(tmp_path: Path) -> None:
     path = tmp_path / "limitations.md"
     path.write_text("- Gone reads\n  past EOF.\n- Gonero stays.\n  Kept.\n")
-    remove_language._drop_bullets(path, "Gone")  # noqa: SLF001
+    remove_language._drop_bullets(path, "Gone")
     assert path.read_text() == "- Gonero stays.\n  Kept.\n"
 
 
@@ -135,7 +135,7 @@ def test_remove_drops_a_link_bullet(tmp_path: Path) -> None:
         "- [Gone](https://x/) (7): integrated.\n  continued.\n"
         "- [Kept](https://y/): stays.\n"
     )
-    remove_language._drop_bullets(path, "Gone")  # noqa: SLF001
+    remove_language._drop_bullets(path, "Gone")
     assert path.read_text() == "- [Kept](https://y/): stays.\n"
 
 
@@ -147,7 +147,7 @@ def test_remove_preserves_punctuation_prefixed_names(tmp_path: Path) -> None:
         "- [Gone++](https://x/): kept.\n"
         "- gone's own entry goes.\n"
     )
-    remove_language._drop_bullets(path, "Gone")  # noqa: SLF001
+    remove_language._drop_bullets(path, "Gone")
     assert path.read_text() == ("- **Gone++:** kept.\n- [Gone++](https://x/): kept.\n")
 
 
@@ -160,7 +160,7 @@ def test_remove_drops_only_owned_document_rows(tmp_path: Path) -> None:
         "| Gone++ | kept |\n"
         "| Other | discusses Gone |\n"
     )
-    remove_language._drop_doc_entries(path, "Gone")  # noqa: SLF001
+    remove_language._drop_doc_entries(path, "Gone")
     assert path.read_text() == (
         "| Language | Limit |\n| --- | --- |\n"
         "| Gone++ | kept |\n| Other | discusses Gone |\n"
@@ -173,14 +173,14 @@ def test_remove_drops_a_bullet_with_a_fenced_example(tmp_path: Path) -> None:
         "- Gone has an example.\n\n  ```python\n  run('Gone')\n\n"
         "  check()\n  ```\n\n- Kept has an example.\n"
     )
-    remove_language._drop_bullets(path, "Gone")  # noqa: SLF001
+    remove_language._drop_bullets(path, "Gone")
     assert path.read_text() == "\n- Kept has an example.\n"
 
 
 def test_check_flags_a_leftover_placeholder_test(root: Path) -> None:
     new_language.scaffold("Tiny", "other", generator=False)
     assert (root / "src/esolangs/languages/tiny/language.toml").is_file()
-    gaps = new_language._common_gaps("Tiny", "tiny")  # noqa: SLF001
+    gaps = new_language._common_gaps("Tiny", "tiny")
     assert (
         "src/esolangs/languages/tiny/tests/test_tiny.py",
         "replace the placeholder test",
@@ -233,7 +233,7 @@ def test_gate_runs_the_full_gate_not_a_scoped_one(
 
     monkeypatch.setattr(subprocess, "run", run)
     monkeypatch.setattr(subprocess, "Popen", popen)
-    assert new_language._gate() == 0  # noqa: SLF001
+    assert new_language._gate() == 0
     # Three regenerations, then the checks the gate leaves to CI.
     assert len(regenerated) == 4
     assert "dead definitions" in regenerated[-1][-1]
@@ -311,7 +311,7 @@ def test_gap_report_prints_a_shell_safe_followup(
     import shlex
 
     name = "Tiny's $Lang"
-    new_language._report(  # noqa: SLF001
+    new_language._report(
         name, [new_language.Gap("source", "implement the interpreter")]
     )
     command = capsys.readouterr().out.split("after fixing these: ")[1].strip()
@@ -326,7 +326,7 @@ def test_remove_refuses_the_reference_language() -> None:
 
 def test_mention_edit_labels_the_edit_each_path_needs() -> None:
     """The report says what to do, not just where the mention is."""
-    label = remove_language._mention_edit  # noqa: SLF001
+    label = remove_language._mention_edit
     assert label("src/esolangs/cli/help.py:171:  Gone 0110").startswith("example")
     assert label("docs/limitations.md:253:... Gone ...").startswith("prose")
     assert label("tests/generators/test_wrap.py:66:# ... Gone ...").startswith(
@@ -344,7 +344,7 @@ def test_mention_edit_separates_code_comments_and_docstrings(
         '"""Gone had a special wrapper."""\n# Gone benchmark\ndef _gone():\n    pass\n'
     )
     (tmp_path / "shared.py").write_text(source)
-    label = remove_language._mention_edit  # noqa: SLF001
+    label = remove_language._mention_edit
     assert label("shared.py:1:" + source.splitlines()[0], "Gone").startswith("comment")
     assert label("shared.py:2:# Gone benchmark", "Gone").startswith("comment")
     assert label("shared.py:3:def _gone():", "Gone").startswith("code")
@@ -356,7 +356,7 @@ def test_mention_edit_keeps_common_word_calls_visible(tmp_path, monkeypatch) -> 
     word = "li" + "ne"
     source = f'unit = {word!r}\nesolangs.run({word!r}, "+.")\nLANGUAGES[{word!r}]\n'
     (tmp_path / "shared.py").write_text(source)
-    label = remove_language._mention_edit  # noqa: SLF001
+    label = remove_language._mention_edit
     assert label("shared.py:1:" + source.splitlines()[0], word.title()).startswith(
         "ambiguous"
     )
@@ -384,7 +384,7 @@ def test_mention_edit_does_not_exempt_a_whole_fixture_file(
         "    import esolangs.languages.gone.interpreter\n"
     )
     target.write_text(source)
-    label = remove_language._mention_edit  # noqa: SLF001
+    label = remove_language._mention_edit
     lines = source.splitlines()
     assert label(f"{relative}:1:{lines[0]}", "Gone").startswith("code")
     assert label(f"{relative}:4:{lines[3]}", "Gone").startswith("fixture")
@@ -394,7 +394,7 @@ def test_mention_edit_does_not_exempt_a_whole_fixture_file(
 
 def test_owner_id_prefers_the_longest_id() -> None:
     ids = {"piet", "piet_plus_plus", "line", "back"}
-    owner = remove_language._owner_id  # noqa: SLF001
+    owner = remove_language._owner_id
     assert owner("piet_plus_plus.toml", ids) == "piet_plus_plus"
     assert owner("piet.toml", ids) == "piet"
     assert owner("back_routes.py", ids) == "back"
@@ -405,7 +405,7 @@ def test_owner_id_prefers_the_longest_id() -> None:
 def test_stale_timing_matches_any_parametrize_component() -> None:
     names = {"Line", "line", "Piet"}
     gone = {"src/esolangs/languages/line/tests/test_boolean_line.py"}
-    stale = remove_language._stale_timing  # noqa: SLF001
+    stale = remove_language._stale_timing
     assert stale("x.py::t[1-Line]", names, gone)
     assert stale("x.py::t[Line-2]", names, gone)
     assert stale("x.py::t[a-Line-b]", names, gone)
@@ -423,7 +423,7 @@ def test_stale_timing_matches_files_under_a_doomed_directory() -> None:
     # The doomed set carries a package's tests directory, not its files:
     # a node ID naming a file under it is stale, a sibling prefix is not.
     gone = {"src/esolangs/languages/line/tests"}
-    stale = remove_language._stale_timing  # noqa: SLF001
+    stale = remove_language._stale_timing
     assert stale(
         "src/esolangs/languages/line/tests/test_boolean_line.py::t", set(), gone
     )
@@ -454,14 +454,14 @@ def test_dead_test_files_catch_a_submodule_import(
     )
     monkeypatch.setattr(remove_language, "ROOT", tmp_path)
     doomed = {pkg}
-    gone = remove_language._gone_modules(doomed)  # noqa: SLF001
+    gone = remove_language._gone_modules(doomed)
     users = {
         "esolangs.generation.pkg.sub": {
             f"{test_root}/test_sub.py",
             f"{test_root}/test_shared.py",
         }
     }
-    assert remove_language._dead_test_files(doomed, gone, users) == {  # noqa: SLF001
+    assert remove_language._dead_test_files(doomed, gone, users) == {
         tests / "test_sub.py"
     }
 
@@ -476,16 +476,14 @@ def test_orphans_drop_a_helper_only_the_language_imports(
     monkeypatch.setattr(remove_language, "ROOT", tmp_path)
     doomed = {tools / "gone.py"}
     private = {"esolangs.generation.helper": {"src/esolangs/generation/gone.py"}}
-    assert remove_language._orphans(doomed, private) == {  # noqa: SLF001
-        tools / "helper.py"
-    }
+    assert remove_language._orphans(doomed, private) == {tools / "helper.py"}
     shared = {
         "esolangs.generation.helper": {
             "src/esolangs/generation/gone.py",
             "src/esolangs/generation/keeper.py",
         }
     }
-    assert remove_language._orphans(doomed, shared) == set()  # noqa: SLF001
+    assert remove_language._orphans(doomed, shared) == set()
 
 
 def test_drop_dead_code_keeps_live_and_cuts_dead(tmp_path: Path) -> None:
@@ -499,7 +497,7 @@ def test_drop_dead_code_keeps_live_and_cuts_dead(tmp_path: Path) -> None:
         "    return _GONE[1]\n"
         "_GONE = {5: 6}\n"
     )
-    assert remove_language._drop_dead_code(path, {"used"}) == 2  # noqa: SLF001
+    assert remove_language._drop_dead_code(path, {"used"}) == 2
     text = path.read_text()
     # ``_OPS`` is read by a live function and by its own ``|=``: kept.
     assert "_OPS" in text
@@ -511,7 +509,7 @@ def test_drop_dead_code_keeps_live_and_cuts_dead(tmp_path: Path) -> None:
 @pytest.mark.usefixtures("root")
 def test_scaffold_reports_the_canonical_generator() -> None:
     new_language.scaffold("Tiny", "other")
-    (gap,) = new_language._unregistered("Tiny", "tiny")  # noqa: SLF001
+    (gap,) = new_language._unregistered("Tiny", "tiny")
     assert gap.where == "src/esolangs/languages/tiny/generator.py"
 
 
@@ -540,7 +538,7 @@ def test_remove_cleans_language_package(
     created = new_language.scaffold("Tiny", "other", generator=generator)
     namespace = root / "src/esolangs/languages/__init__.py"
     owned = set(created) - {namespace}
-    for relative in remove_language._EDITED:  # noqa: SLF001
+    for relative in remove_language._EDITED:
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("")

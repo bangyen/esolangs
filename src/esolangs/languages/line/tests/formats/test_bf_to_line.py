@@ -78,7 +78,7 @@ class TestNestedLoops:
 def _max_between_stroke_adjacency(program: str) -> int:
     """Most cells of one stroke sitting flush against a *different* stroke."""
     captured: list[list[tuple[int, int]]] = []
-    original = layout_module._Cursor.finish  # noqa: SLF001 - see docstring
+    original = layout_module._Cursor.finish
 
     def spy(self) -> None:
         before = len(self.strokes)
@@ -92,11 +92,11 @@ def _max_between_stroke_adjacency(program: str) -> int:
         if self.occupied is not None:
             captured.extend(self.strokes[before:])
 
-    layout_module._Cursor.finish = spy  # noqa: SLF001 - deliberate stroke spy
+    layout_module._Cursor.finish = spy
     try:
         render(bf_to_line(program))
     finally:
-        layout_module._Cursor.finish = original  # noqa: SLF001 - restore the spy
+        layout_module._Cursor.finish = original
 
     worst = 0
     for i, first in enumerate(captured):

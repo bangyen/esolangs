@@ -116,7 +116,7 @@ def test_a_straight_run_is_walked_to_its_end_however_long() -> None:
     """`_walk_segment` has no fixed ceiling: stopping short invents a vertex."""
     height, width = 640, 3
     column = Mask(height, width, [0b010 if 10 <= y < 610 else 0 for y in range(height)])
-    assert lattice._walk_segment(column, 10, 1, 4) == (609, 1)  # noqa: SLF001 - unit under test
+    assert lattice._walk_segment(column, 10, 1, 4) == (609, 1)
 
 
 def _io(inputs: list[int]) -> tuple[IO, list[int]]:
@@ -436,21 +436,21 @@ def test_band_probe_preserves_edges_and_all_three_rays(
     y, x, direction, expected
 ) -> None:
     mask = Mask(3, 3, [0, 2, 0])
-    assert lattice._band_lit(mask, y, x, direction) is expected  # noqa: SLF001
+    assert lattice._band_lit(mask, y, x, direction) is expected
 
 
 def test_lattice_preserves_an_unsnappable_start_and_stops_a_zero_length_stroke() -> (
     None
 ):
     mask = Mask(3, 3)
-    assert lattice._snap(mask, 1, 1, 0) == (1, 1)  # noqa: SLF001
+    assert lattice._snap(mask, 1, 1, 0) == (1, 1)
     stroke = lattice.walk_tree(mask, (1, 1), 0)
     assert stroke.end == (1, 1)
     assert len(stroke.vertices) == 2
 
 
 def test_lattice_crossing_keeps_the_arrival_heading() -> None:
-    assert lattice._classify({0, 2, 4, 6}, 4) == ("crossing", [0])  # noqa: SLF001
+    assert lattice._classify({0, 2, 4, 6}, 4) == ("crossing", [0])
 
 
 @pytest.mark.parametrize("visited", [set(), {(20, 0)}, {(20, 40)}, {(20, 0), (20, 40)}])

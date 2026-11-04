@@ -94,9 +94,9 @@ def test_proof_evidence_shares_the_link_gates_anchors(
     page = tmp_path / "page.md"
     page.write_text('<a name="kept"></a>\n~~~\n## Hidden\n~~~\n', encoding="utf-8")
     monkeypatch.setattr(proof_status, "ROOT", tmp_path)
-    proof_status._check_evidence("page.md#kept", precise=True)  # noqa: SLF001
+    proof_status._check_evidence("page.md#kept", precise=True)
     with pytest.raises(ValueError, match="missing evidence anchor"):
-        proof_status._check_evidence("page.md#hidden", precise=True)  # noqa: SLF001
+        proof_status._check_evidence("page.md#hidden", precise=True)
 
 
 def test_the_committed_tree_has_no_dead_links() -> None:

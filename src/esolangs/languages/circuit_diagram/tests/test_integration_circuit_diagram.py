@@ -91,7 +91,7 @@ class TestAFailedRowSaysWhichRow:
         # A warm compile cache (another test, same worker) beats 5 ms a row.
         # A fresh cache, not cache_clear(): freeing the worker's cached
         # circuits took a 1 ms Circuit Diagram test to 3.19 s on CI.
-        cold = functools.lru_cache(maxsize=16)(circuit_diagram._compile.__wrapped__)  # noqa: SLF001
+        cold = functools.lru_cache(maxsize=16)(circuit_diagram._compile.__wrapped__)
         monkeypatch.setattr(circuit_diagram, "_compile", cold)
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
             evaluate_generated("Circuit Diagram", table, timeout=0.005)

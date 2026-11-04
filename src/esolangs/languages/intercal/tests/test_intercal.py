@@ -642,13 +642,13 @@ class TestPureTransition:
 
     def test_same_state_and_draws_give_the_same_result(self) -> None:
         machine = _Machine("PLEASE READ OUT #1\nDO GIVE UP\nDO GIVE UP", ScriptedIO(""))
-        program = machine._program  # noqa: SLF001
+        program = machine._program
         state = machine.state
         assert _advance(state, program, (), ()) == _advance(state, program, (), ())
 
     def test_the_transition_leaves_its_arguments_unchanged(self) -> None:
         machine = _Machine("PLEASE READ OUT #1\nDO GIVE UP\nDO GIVE UP", ScriptedIO(""))
-        program = machine._program  # noqa: SLF001
+        program = machine._program
         state = machine.state
         scalars = dict(state.scalars)
         _advance(state, program, (), ())
@@ -658,7 +658,7 @@ class TestPureTransition:
     def test_the_transition_reports_output_instead_of_printing(self) -> None:
         """No port is reachable from ``_advance``: ``READ OUT`` is a value."""
         machine = _Machine("PLEASE READ OUT #1\nDO GIVE UP\nDO GIVE UP", ScriptedIO(""))
-        program = machine._program  # noqa: SLF001
+        program = machine._program
         _state, effects, _used = _advance(machine.state, program, (), ())
         assert effects == ("I\n",)
 
@@ -666,19 +666,19 @@ class TestPureTransition:
         machine = _Machine(
             "PLEASE DO %30 GIVE UP\nDO GIVE UP\nDO GIVE UP", ScriptedIO("")
         )
-        program = machine._program  # noqa: SLF001
+        program = machine._program
         with pytest.raises(_NeedDraw):
             _advance(machine.state, program, (), ())
 
     def test_an_unfed_read_asks_for_input_rather_than_reading(self) -> None:
         machine = _Machine("PLEASE WRITE IN .1\nDO GIVE UP\nDO GIVE UP", ScriptedIO(""))
-        program = machine._program  # noqa: SLF001
+        program = machine._program
         with pytest.raises(_NeedInput):
             _advance(machine.state, program, (), ())
 
     def test_a_read_comes_from_the_explicit_input(self) -> None:
         machine = _Machine("PLEASE WRITE IN .1\nDO GIVE UP\nDO GIVE UP", ScriptedIO(""))
-        program = machine._program  # noqa: SLF001
+        program = machine._program
         state, _effects, _used = _advance(machine.state, program, (), ("ONE\n",))
         assert state.scalars[(".", 1)] == 1
 
@@ -691,7 +691,7 @@ class TestPureTransition:
             "(2) DO READ OUT #1"
         )
         machine = _Machine(source, ScriptedIO(""))
-        program = machine._program  # noqa: SLF001
+        program = machine._program
         for _ in range(3):
             machine.step()
         with pytest.raises(_NeedDraw) as caught:

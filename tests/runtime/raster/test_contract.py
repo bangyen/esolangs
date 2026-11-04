@@ -237,7 +237,7 @@ def test_png_metadata_round_trip_executes(language, scale) -> None:
     assert restored.language == language
     assert restored.settings == settings
     assert restored.scale == scale
-    assert restored._payload is None  # noqa: SLF001 - PNG execution must read pixels
+    assert restored._payload is None
     assert _evaluate(language, restored, inputs=2) == "0110"
     assert _evaluate(language, restored, inputs=2, isolated=True) == "0110"
 
@@ -286,7 +286,7 @@ def test_tagging_unknown_pixels_preserves_automatic_scale_detection() -> None:
     rows = (((255, 0, 0),) * 4,) * 4
     source = Raster(rows).tagged(RASTER_LANGUAGES[0])
     assert source.scale is None
-    assert source._normalized() == (((255, 0, 0),),)  # noqa: SLF001
+    assert source._normalized() == (((255, 0, 0),),)
 
 
 @pytest.mark.parametrize("scale", [0, True, -1])

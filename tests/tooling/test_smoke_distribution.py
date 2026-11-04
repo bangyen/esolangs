@@ -14,7 +14,7 @@ from scripts.ci import release as smoke
 
 
 def test_generator_batch_executes_all_rows() -> None:
-    smoke._generator("Brainfuck", image_extra=True)  # noqa: SLF001
+    smoke._generator("Brainfuck", image_extra=True)
 
 
 def test_generator_batch_rejects_a_wrong_table(monkeypatch) -> None:
@@ -22,7 +22,7 @@ def test_generator_batch_rejects_a_wrong_table(monkeypatch) -> None:
         "esolangs.runtime._evaluate._evaluate", lambda *_args, **_kwargs: "0000"
     )
     with pytest.raises(AssertionError, match="Brainfuck"):
-        smoke._generator("Brainfuck", image_extra=False)  # noqa: SLF001
+        smoke._generator("Brainfuck", image_extra=False)
 
 
 def test_a_missing_dependency_fails_the_generator_smoke(monkeypatch) -> None:
@@ -32,7 +32,7 @@ def test_a_missing_dependency_fails_the_generator_smoke(monkeypatch) -> None:
 
     monkeypatch.setattr("esolangs.runtime._evaluate._evaluate", missing)
     with pytest.raises(esolangs.MissingDependencyError):
-        smoke._generator("Brainfuck", image_extra=False)  # noqa: SLF001
+        smoke._generator("Brainfuck", image_extra=False)
 
 
 @pytest.mark.parametrize("extra", [False, True])
@@ -48,7 +48,7 @@ def test_generator_process_keeps_the_deadline_and_propagates_failure(
 
     monkeypatch.setattr(smoke.subprocess, "run", run)
     with pytest.raises(subprocess.CalledProcessError):
-        smoke._generator_process("Brainfuck", image_extra=extra)  # noqa: SLF001
+        smoke._generator_process("Brainfuck", image_extra=extra)
 
 
 def test_the_generator_self_invocation_is_accepted_by_the_dispatcher(
@@ -69,7 +69,7 @@ def test_the_generator_self_invocation_is_accepted_by_the_dispatcher(
     monkeypatch.setattr(smoke, "_generator", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(sys, "argv", ["release.py"])
     with pytest.raises(subprocess.CalledProcessError):
-        smoke._generator_process("Brainfuck", image_extra=False)  # noqa: SLF001
+        smoke._generator_process("Brainfuck", image_extra=False)
     assert smoke.main(captured["args"][3:]) == 0
 
 

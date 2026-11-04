@@ -75,7 +75,7 @@ def _encode(
 
     ihdr = struct.pack(">IIBBBBB", width, height, depth, colour, 0, 0, 0)
     return (
-        png._SIGNATURE  # noqa: SLF001 - building a PNG by hand
+        png._SIGNATURE
         + _chunk(b"IHDR", ihdr)
         + _chunk(b"IDAT", zlib.compress(b"".join(rows)))
         + _chunk(b"IEND", b"")
@@ -140,10 +140,10 @@ def test_palette_is_resolved_through_plte() -> None:
 
     # Index 0 -> white, index 1 -> black: the fixtures' own palette.
     blob = (
-        png._SIGNATURE  # noqa: SLF001 - building a PNG by hand
+        png._SIGNATURE
         + _chunk(
             b"IHDR",
-            struct.pack(">IIBBBBB", 2, 1, 1, png._PALETTE, 0, 0, 0),  # noqa: SLF001
+            struct.pack(">IIBBBBB", 2, 1, 1, png._PALETTE, 0, 0, 0),
         )
         + _chunk(b"PLTE", bytes([255, 255, 255, 0, 0, 0]))
         + _chunk(b"IDAT", zlib.compress(bytes([0, 0b01000000])))
@@ -158,12 +158,12 @@ def test_palette_is_resolved_through_plte() -> None:
     [
         # Luma weights are ITU-R 601-2, rounded to nearest as Pillow rounds:
         # (r*19595 + g*38470 + b*7471 + 0x8000) >> 16.
-        (png._RGB, [255, 0, 0], 76),  # noqa: SLF001
-        (png._RGB, [170, 85, 42], 106),  # noqa: SLF001
+        (png._RGB, [255, 0, 0], 76),
+        (png._RGB, [170, 85, 42], 106),
         # Alpha is dropped, not composited -- the colour reads the same
         # whatever the alpha channel says.
-        (png._RGBA, [255, 0, 0, 0], 76),  # noqa: SLF001
-        (png._GREY_ALPHA, [200, 0], 200),  # noqa: SLF001
+        (png._RGBA, [255, 0, 0, 0], 76),
+        (png._GREY_ALPHA, [200, 0], 200),
     ],
 )
 def test_colour_types_reduce_to_grey_as_pillow_does(
@@ -173,7 +173,7 @@ def test_colour_types_reduce_to_grey_as_pillow_does(
     blob = _encode([bytes([0, *pixel])], 1, 1, colour=colour)
     assert png.read_grey(blob) == [bytearray([expected])]
     rgb = png.read_rgb(blob)
-    if colour in (png._RGB, png._RGBA):  # noqa: SLF001
+    if colour in (png._RGB, png._RGBA):
         assert rgb == [[tuple(pixel[:3])]]
     else:
         assert rgb == [[(pixel[0],) * 3]]
@@ -188,7 +188,7 @@ def test_multi_channel_filters_step_by_a_whole_pixel() -> None:
         row += bytes(
             (channel - prev[j]) & 0xFF for j, channel in enumerate((red, green, blue))
         )
-    blob = _encode([bytes(row)], 3, 1, colour=png._RGB)  # noqa: SLF001
+    blob = _encode([bytes(row)], 3, 1, colour=png._RGB)
     expected = bytearray(
         (r * 19595 + g * 38470 + b * 7471 + 0x8000) >> 16 for r, g, b in want
     )
@@ -198,7 +198,7 @@ def test_multi_channel_filters_step_by_a_whole_pixel() -> None:
 def _adam7_encode(pixels: list[list[int]], width: int, height: int) -> bytes:
     """Encode 8-bit greyscale as an interlaced PNG, filter 0 throughout."""
     raw = bytearray()
-    for row0, col0, row_step, col_step in png._ADAM7:  # noqa: SLF001
+    for row0, col0, row_step, col_step in png._ADAM7:
         cols = list(range(col0, width, col_step))
         rows = list(range(row0, height, row_step))
         if not cols or not rows:
@@ -206,10 +206,10 @@ def _adam7_encode(pixels: list[list[int]], width: int, height: int) -> bytes:
         for y in rows:
             raw.append(0)
             raw += bytes(pixels[y][x] for x in cols)
-    ihdr = struct.pack(">IIBBBBB", width, height, 8, png._GREY, 0, 0, 1)  # noqa: SLF001
+    ihdr = struct.pack(">IIBBBBB", width, height, 8, png._GREY, 0, 0, 1)
 
     return (
-        png._SIGNATURE  # noqa: SLF001
+        png._SIGNATURE
         + _chunk(b"IHDR", ihdr)
         + _chunk(b"IDAT", zlib.compress(bytes(raw)))
         + _chunk(b"IEND", b"")
@@ -224,7 +224,7 @@ def test_interlaced_reassembles_to_the_same_image(width: int, height: int) -> No
         [bytes([0, *row]) for row in pixels],
         width,
         height,
-        colour=png._GREY,  # noqa: SLF001
+        colour=png._GREY,
     )
     interlaced = _adam7_encode(pixels, width, height)
     assert png.read_grey(interlaced) == png.read_grey(plain)
@@ -237,7 +237,7 @@ def test_sixteen_bit_scales_down_rather_than_clipping() -> None:
     row = bytearray([0])
     for value in values:
         row += struct.pack(">H", value)
-    blob = _encode([bytes(row)], len(values), 1, depth=16, colour=png._GREY)  # noqa: SLF001
+    blob = _encode([bytes(row)], len(values), 1, depth=16, colour=png._GREY)
     assert png.read_grey(blob) == [bytearray(v >> 8 for v in values)]
     assert png.read_rgb(blob) == [[(v >> 8,) * 3 for v in values]]
 
@@ -247,7 +247,7 @@ def test_sixteen_bit_colour_reduces_through_luma() -> None:
     row = bytearray([0])
     for value in (65535, 0, 0):  # pure red at full depth
         row += struct.pack(">H", value)
-    blob = _encode([bytes(row)], 1, 1, depth=16, colour=png._RGB)  # noqa: SLF001
+    blob = _encode([bytes(row)], 1, 1, depth=16, colour=png._RGB)
     assert png.read_grey(blob) == [bytearray([76])]
     assert png.read_rgb(blob) == [[(255, 0, 0)]]
 
@@ -276,15 +276,15 @@ def test_rgb_rejects_an_unknown_depth() -> None:
 
 def test_rgb_rejects_a_palette_without_entries() -> None:
     with pytest.raises(ValueError, match="no PLTE"):
-        png.read_rgb(_encode([bytes([0, 0])], 1, 1, colour=png._PALETTE))  # noqa: SLF001
+        png.read_rgb(_encode([bytes([0, 0])], 1, 1, colour=png._PALETTE))
     with pytest.raises(ValueError, match="no PLTE"):
-        png.read_grey(_encode([bytes([0, 0])], 1, 1, colour=png._PALETTE))  # noqa: SLF001
+        png.read_grey(_encode([bytes([0, 0])], 1, 1, colour=png._PALETTE))
 
 
 def test_rgb_rejects_an_index_outside_the_palette() -> None:
     blob = (
-        png._SIGNATURE  # noqa: SLF001
-        + _chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, png._PALETTE, 0, 0, 0))  # noqa: SLF001
+        png._SIGNATURE
+        + _chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, png._PALETTE, 0, 0, 0))
         + _chunk(b"PLTE", bytes([255, 255, 255]))
         + _chunk(b"IDAT", zlib.compress(bytes([0, 1])))
         + _chunk(b"IEND", b"")
@@ -299,8 +299,8 @@ def test_rejects_a_malformed_palette_length() -> None:
 
     def blob(plte: bytes) -> bytes:
         return (
-            png._SIGNATURE  # noqa: SLF001
-            + _chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, png._PALETTE, 0, 0, 0))  # noqa: SLF001
+            png._SIGNATURE
+            + _chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, png._PALETTE, 0, 0, 0))
             + _chunk(b"PLTE", plte)
             + _chunk(b"IDAT", zlib.compress(bytes([0, 0])))
             + _chunk(b"IEND", b"")
@@ -437,7 +437,7 @@ def test_png_decompression_is_bounded_by_header(monkeypatch, raw_size) -> None:
 def test_png_rejects_missing_compressed_checksum() -> None:
     blob = _encode([bytes(4)], 1, 1, colour=2)
     chunks = bytearray(blob[:8])
-    for kind, body in png._chunks(blob):  # noqa: SLF001
+    for kind, body in png._chunks(blob):
         chunks.extend(_chunk(kind, body[:-1] if kind == b"IDAT" else body))
     with pytest.raises(ValueError, match="truncated PNG compressed stream"):
         png.read_rgb(bytes(chunks))
@@ -454,13 +454,13 @@ _REFUSED = {
     # Palette indices are at most 8 bits, so 16-bit palette is malformed.
     "rejects_a_sixteen_bit_palette": (
         png.read_grey,
-        _encode([bytes([0, 0, 0])], 1, 1, depth=16, colour=png._PALETTE),  # noqa: SLF001
+        _encode([bytes([0, 0, 0])], 1, 1, depth=16, colour=png._PALETTE),
         "palette",
     ),
     # Sub-byte samples are single-channel only, per the spec.
     "rejects_sub_byte_depth_on_a_colour_image": (
         png.read_grey,
-        _encode([bytes([0, 0])], 1, 1, depth=4, colour=png._RGB),  # noqa: SLF001
+        _encode([bytes([0, 0])], 1, 1, depth=4, colour=png._RGB),
         "bit depth",
     ),
     "rejects_a_non_png": (png.read_grey, b"not a png at all", "signature"),
@@ -469,10 +469,10 @@ _REFUSED = {
         _encode([bytes([0, 0])], 1, 1, colour=5),
         "colour type 5",
     ),
-    "rejects_a_missing_header": (png.read_rgb, png._SIGNATURE, "no IHDR"),  # noqa: SLF001
+    "rejects_a_missing_header": (png.read_rgb, png._SIGNATURE, "no IHDR"),
     "rejects_a_truncated_chunk": (
         png.read_rgb,
-        png._SIGNATURE + struct.pack(">I", 4) + b"IHDR" + b"x",  # noqa: SLF001
+        png._SIGNATURE + struct.pack(">I", 4) + b"IHDR" + b"x",
         "truncated IHDR",
     ),
     # A filter byte outside 0-4 is corruption, not something to guess at.

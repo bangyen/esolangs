@@ -383,7 +383,7 @@ class TestTheArmsThatTranslateWhatAnInterpreterRaises:
             raise planted
 
         with (
-            patch.object(machine._machine, "step", boom),  # noqa: SLF001 - the arm
+            patch.object(machine._machine, "step", boom),
             pytest.raises(ProgramError) as exc,
         ):
             machine.step()
@@ -416,7 +416,7 @@ def test_step_keeps_shared_failure_translation(fault, error_type) -> None:
         raise fault
 
     with (
-        patch.object(machine._machine, "step", boom),  # noqa: SLF001 - planted failure
+        patch.object(machine._machine, "step", boom),
         pytest.raises(error_type) as actual,
     ):
         machine.step()

@@ -42,12 +42,12 @@ class TestPytestScopeCollects:
     )
     def test_only_collected_leaf_modules_are_scoped(self, path, scoped) -> None:
         verify = load_scope()
-        scope = verify._pytest_scope([path])  # noqa: SLF001
+        scope = verify._pytest_scope([path])
         assert scope == ([path] if scoped else verify.WHOLE_SUITE)
 
     def test_an_interpreter_runs_shared_contracts_and_its_generator(self) -> None:
         verify = load_scope()
-        scope = verify._pytest_scope(  # noqa: SLF001
+        scope = verify._pytest_scope(
             ["src/esolangs/languages/brainfuck/interpreter.py"]
         )
         assert isinstance(scope, list)
@@ -114,7 +114,7 @@ class TestZeroStepsIsNotAPass:
     def _parse(argv: list[str]) -> object:
         verify = load_script()
         with mock.patch.object(sys, "argv", ["verify.py", *argv]):
-            return verify._parse_only_skip()  # noqa: SLF001
+            return verify._parse_only_skip()
 
     @pytest.mark.parametrize("flag", ["--only", "--skip"])
     def test_an_unknown_step_name_is_rejected(
@@ -379,7 +379,7 @@ assert ready.exists(), 'producer stalled on captured output'
         ("pytest", [sys.executable, "-c", producer], {}),
         ("shadow", [sys.executable, "-c", consumer], {}),
     ]
-    failures, timings, _ = verify._run_steps(runnable, stream=False)  # noqa: SLF001
+    failures, timings, _ = verify._run_steps(runnable, stream=False)
     assert len(failures) == int(returncode != 0)
     assert {name for name, _ in timings} == {"pytest", "shadow"}
     output = capsys.readouterr().out
@@ -399,9 +399,7 @@ assert ready.exists(), 'producer stalled on captured output'
 class TestGeneratorScope:
     def test_leaf_generator_keeps_shared_contracts_and_its_suites(self) -> None:
         verify = load_scope()
-        scope = verify._pytest_scope(  # noqa: SLF001
-            ["src/esolangs/languages/bfstack/generator.py"]
-        )
+        scope = verify._pytest_scope(["src/esolangs/languages/bfstack/generator.py"])
         assert isinstance(scope, list)
         assert "src/esolangs/languages/bfstack/tests/test_boolean_bfstack.py" in scope
         assert "src/esolangs/languages/bfstack/tests/test_bfstack.py" in scope
@@ -419,15 +417,13 @@ class TestGeneratorScope:
     ) -> None:
         verify = load_scope()
         assert (
-            verify._pytest_scope(  # noqa: SLF001
-                [f"src/esolangs/generation/{module}"]
-            )
+            verify._pytest_scope([f"src/esolangs/generation/{module}"])
             == verify.WHOLE_SUITE
         )
 
     def test_explicitly_changed_language_tests_are_never_dropped(self) -> None:
         verify = load_scope()
-        scope = verify._pytest_scope(  # noqa: SLF001
+        scope = verify._pytest_scope(
             [
                 "src/esolangs/languages/bfstack/generator.py",
                 "src/esolangs/languages/line/tests/test_boolean_line.py",
@@ -475,9 +471,7 @@ def test_generator_scope_keeps_transitive_dependents(
         target = tmp_path / path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text)
-    assert verify._pytest_scope(  # noqa: SLF001
-        ["src/esolangs/languages/target/generator.py"]
-    ) == [
+    assert verify._pytest_scope(["src/esolangs/languages/target/generator.py"]) == [
         "src/esolangs/languages/consumer/tests/test_boolean_consumer.py",
         "src/esolangs/languages/target/tests/test_boolean_target.py",
         "tests/generators/test_contracts.py",
@@ -522,7 +516,7 @@ def test_leak_sweep_starts_before_pytest_finishes(tmp_path) -> None:
             {},
         ),
     ]
-    failures, timings, _ = verify._run_steps(runnable, stream=False)  # noqa: SLF001
+    failures, timings, _ = verify._run_steps(runnable, stream=False)
     assert len(failures) == 0
     assert {name for name, _ in timings} == {"pytest", "exception leaks"}
 
@@ -555,7 +549,7 @@ def test_companion_checks_share_one_serial_lane(monkeypatch) -> None:
         lambda *_args, **_kwargs: mock.Mock(stdout=io.TextIOWrapper(io.BytesIO())),
     )
     runnable = [(name, [name], {}) for name in ("pytest", "first", "second")]
-    failures, timings, _ = verify._run_steps(runnable, stream=False)  # noqa: SLF001
+    failures, timings, _ = verify._run_steps(runnable, stream=False)
     assert len(failures) == 0
     assert {name for name, _ in timings} == {"pytest", "first", "second"}
 
@@ -586,7 +580,7 @@ while True:
     if shadow:
         steps.append(("shadow", [sys.executable, "-c", "pass"], dict(os.environ)))
     start = time.monotonic()
-    failures, _, _ = v._run_steps(steps, stream=stream)  # noqa: SLF001
+    failures, _, _ = v._run_steps(steps, stream=stream)
     assert len(failures) == 1
     assert time.monotonic() - start < 3
     value = marker.read_text()
@@ -625,7 +619,7 @@ while not os.path.exists({str(marker)!r}):
 print('leader exited', flush=True)
 """
     start = time.monotonic()
-    failures, _, _ = verify._run_steps(  # noqa: SLF001
+    failures, _, _ = verify._run_steps(
         [("pytest", [sys.executable, "-c", parent], dict(os.environ))], stream=stream
     )
     assert len(failures) == 1
@@ -651,7 +645,7 @@ def test_exited_leaders_worker_can_finish_within_the_deadline(
     parent = (
         f"import subprocess, sys; subprocess.Popen([sys.executable, '-c', {worker!r}])"
     )
-    failures, _, _ = verify._run_steps(  # noqa: SLF001
+    failures, _, _ = verify._run_steps(
         [("pytest", [sys.executable, "-c", parent], dict(os.environ))], stream=stream
     )
     assert len(failures) == 0
@@ -730,7 +724,7 @@ def test_closed_stdout_does_not_skip_heartbeats_or_the_leaders_deadline(
     monkeypatch.setattr(verify, "STEP_DEADLINES", {"pytest": 0.2})
     monkeypatch.setattr(verify, "HEARTBEAT_SECONDS", 0.05)
     parent = "import os, time; os.close(1); os.close(2); time.sleep(1)"
-    failures, _, _ = verify._run_steps(  # noqa: SLF001
+    failures, _, _ = verify._run_steps(
         [("pytest", [sys.executable, "-c", parent], dict(os.environ))], stream=False
     )
     assert len(failures) == 1
@@ -789,7 +783,7 @@ def test_log_writer_errors_fail_the_check_and_stop_running_steps(
     if running:
         script += "; time.sleep(10)"
     start = time.monotonic()
-    failures, _, _ = verify._run_steps(  # noqa: SLF001
+    failures, _, _ = verify._run_steps(
         [("probe", [sys.executable, "-c", script], dict(os.environ))], stream=stream
     )
     assert injected == [True]
@@ -823,7 +817,7 @@ def test_unreadable_log_fails_with_a_diagnostic(
     script = "import time; print('output', flush=True)"
     if timeout:
         script += "; time.sleep(2)"
-    failures, _, _ = verify._run_steps(  # noqa: SLF001
+    failures, _, _ = verify._run_steps(
         [("probe", [sys.executable, "-c", script], dict(os.environ))],
         stream=stream,
     )
@@ -854,7 +848,7 @@ def test_broken_streamed_stdout_does_not_fail_complete_logs(
             output.flush()
 
     monkeypatch.setattr(sys, "stdout", Stream())
-    failures, _, _ = verify._run_steps(  # noqa: SLF001
+    failures, _, _ = verify._run_steps(
         [("probe", [sys.executable, "-c", "print('tee output')"], dict(os.environ))],
         stream=True,
     )
@@ -871,7 +865,7 @@ def test_step_logs_persist_for_streamed_and_captured_output(
     verify = load_script()
     verify.ROOT = tmp_path
     steps = [("probe", [sys.executable, "-c", "print('log marker')"], dict(os.environ))]
-    assert verify._run_steps(steps, stream=stream)[0] == []  # noqa: SLF001
+    assert verify._run_steps(steps, stream=stream)[0] == []
     logs = list((tmp_path / "notes/verification").glob("*.log"))
     assert len(logs) == 1
     assert logs[0].read_text() == "log marker\n"
@@ -905,7 +899,7 @@ while not Path({str(marker)!r}).exists() and time.monotonic() < deadline:
 assert Path({str(marker)!r}).exists(), 'stream withheld a flushed short line'
 """
     assert (
-        verify._run_steps(  # noqa: SLF001
+        verify._run_steps(
             [("probe", [sys.executable, "-c", script], dict(os.environ))], stream=True
         )[0]
         == []
@@ -952,9 +946,7 @@ def test_colocated_interpreter_scope_keeps_language_and_shared_tests(
     colocated_scope: Any, implementation: str
 ) -> None:
     verify = colocated_scope
-    scope = verify._pytest_scope(  # noqa: SLF001
-        [f"src/esolangs/languages/target/{implementation}"]
-    )
+    scope = verify._pytest_scope([f"src/esolangs/languages/target/{implementation}"])
     assert isinstance(scope, list)
     assert "src/esolangs/languages/target/tests/test_target.py" in scope
     assert "src/esolangs/languages/target/tests/test_boolean_target.py" in scope
@@ -966,9 +958,7 @@ def test_colocated_generator_scope_keeps_its_tests(
     colocated_scope: Any, slug: str
 ) -> None:
     verify = colocated_scope
-    scope = verify._pytest_scope(  # noqa: SLF001
-        [f"src/esolangs/languages/{slug}/generator.py"]
-    )
+    scope = verify._pytest_scope([f"src/esolangs/languages/{slug}/generator.py"])
     assert isinstance(scope, list)
     assert f"src/esolangs/languages/{slug}/tests/test_boolean_{slug}.py" in scope
     other = "unrelated" if slug == "target" else "target"
@@ -980,14 +970,12 @@ def test_colocated_test_changes_run_directly_and_helpers_widen(
 ) -> None:
     verify = colocated_scope
     test = "src/esolangs/languages/target/tests/test_target.py"
-    assert verify._pytest_scope([test]) == [test]  # noqa: SLF001
+    assert verify._pytest_scope([test]) == [test]
     assert (
-        verify._pytest_scope(  # noqa: SLF001
-            ["src/esolangs/languages/target/tests/__init__.py"]
-        )
+        verify._pytest_scope(["src/esolangs/languages/target/tests/__init__.py"])
         == verify.WHOLE_SUITE
     )
-    assert verify._pytest_scope(["conftest.py"]) == verify.WHOLE_SUITE  # noqa: SLF001
+    assert verify._pytest_scope(["conftest.py"]) == verify.WHOLE_SUITE
 
 
 def test_a_failed_pre_commit_skips_pytest_but_not_the_cheap_steps(
@@ -1006,7 +994,7 @@ def test_a_failed_pre_commit_skips_pytest_but_not_the_cheap_steps(
         lambda *_args, **_kwargs: mock.Mock(stdout=io.TextIOWrapper(io.BytesIO())),
     )
     runnable = [(name, [name], {}) for name in ("pre-commit", "pytest", "mypy")]
-    failures, timings, _ = verify._run_steps(runnable, stream=False)  # noqa: SLF001
+    failures, timings, _ = verify._run_steps(runnable, stream=False)
     assert [name for name, *_ in failures] == ["pre-commit"]
     assert {name for name, _ in timings} == {"pre-commit", "mypy"}
     assert "[skip] pytest: pre-commit failed" in capsys.readouterr().out
@@ -1024,7 +1012,7 @@ def test_a_failed_hook_names_its_cause_in_the_summary() -> None:
         "- hook id: check-yaml\n"
         "check-toml.......Passed\n"
     )
-    assert verify._located(output) == [  # noqa: SLF001
+    assert verify._located(output) == [
         "  [log] notes/verification/pre-commit-x.log",
         "  ruff (legacy alias): E501 Line too long (95 > 88)",
         "  check-yaml",
@@ -1034,8 +1022,8 @@ def test_a_failed_hook_names_its_cause_in_the_summary() -> None:
 def test_a_stale_artifact_failure_prints_the_whole_regeneration() -> None:
     verify = load_script()
     stale = "FAILED tests/tooling/test_examples.py::test_x[kiss] - stale\n"
-    hint = "\n".join(verify._rerun_hint("pytest", stale))  # noqa: SLF001
+    hint = "\n".join(verify._rerun_hint("pytest", stale))
     assert hint.index("generate.py docs") < hint.index("generate.py examples")
     assert "check_generator_sizes.py --update" in hint
     other = "FAILED tests/t.py::test_y - boom\n"
-    assert "fix:" not in "\n".join(verify._rerun_hint("pytest", other))  # noqa: SLF001
+    assert "fix:" not in "\n".join(verify._rerun_hint("pytest", other))

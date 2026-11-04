@@ -177,7 +177,7 @@ def _check_outer_bank_area_floor_rejects_before_final_assembly(monkeypatch) -> N
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.bundled_banks"
     )
-    original = module._online_bank_area_floor  # noqa: SLF001
+    original = module._online_bank_area_floor
     floors = []
 
     def measured(dimensions, n, prefix, groups, gates):
@@ -201,7 +201,7 @@ def _check_outer_gate_budget(monkeypatch) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.bundled_banks"
     )
-    count = module._gate_count  # noqa: SLF001
+    count = module._gate_count
     values = []
 
     def measured(model):

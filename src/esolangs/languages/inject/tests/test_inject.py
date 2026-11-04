@@ -343,7 +343,7 @@ def test_rewrite_transition_keeps_old_lines_and_spans_immutable() -> None:
     from esolangs.languages.inject.interpreter import _advance
 
     machine = _Machine(["readto data", "data;", "old", "data;"], ScriptedIO(""))
-    before = machine._state  # noqa: SLF001 - the transition input is the invariant
+    before = machine._state
     moved, output = _advance(before, "new")
     assert before[0][2] == "old"
     assert moved[0][2] == "new"

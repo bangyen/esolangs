@@ -190,7 +190,7 @@ def _check_costs() -> None:
                     assert nav.chain0(pos) == chain
                     assert nav.first_le(pos) == first
                     assert nav.finish(pos) == finish
-                assert nav._chains_value(pos, _INF) == min(  # noqa: SLF001
+                assert nav._chains_value(pos, _INF) == min(
                     _chain(nav, pos, 64, lambda p, nav=nav, i=i: _step(nav, i, p))
                     for i in range(12)
                 )
@@ -223,16 +223,16 @@ def _check_eviction(monkeypatch) -> None:
     monkeypatch.setattr(e, "_PRED_TABLES", dict.fromkeys(range(4097)))
     monkeypatch.setattr(e, "_WALK_ALL", dict.fromkeys(range(4097)))
     expected = _pred_tables(5000)
-    assert list(e._PRED_TABLES) == [5000]  # noqa: SLF001
+    assert list(e._PRED_TABLES) == [5000]
     assert _pred_tables(5000) is expected
     nav = _ScanGreedy({}, 430, ceiling=420)
-    assert list(e._WALK_ALL) == [(430, 420)]  # noqa: SLF001
+    assert list(e._WALK_ALL) == [(430, 420)]
     assert nav.walk(419) == 11
 
 
 def _check_walk(start: int, target: int) -> None:
     planner = _Planner(2000, start, {}, {}, ceiling=420)
-    assert planner._walk_to(start, target) == target  # noqa: SLF001
+    assert planner._walk_to(start, target) == target
     _execute(planner, start, target)
 
 

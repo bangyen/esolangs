@@ -153,7 +153,7 @@ def capped_loss(
     """
     k = capped_level(n)
     top = profile(n)[3][n - 1]
-    children = [ref(top - 1, False), ref(top, False)]  # noqa: FBT003
+    children = [ref(top - 1, False), ref(top, False)]  # noqa: FBT003 - ref is a caller-supplied Callable; its bool is positional by contract
     dear, constant = widest(n - 1), const(n - 1)
     if k == n - 1:
         nodes = 1 << (k - 1)

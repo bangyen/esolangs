@@ -48,14 +48,14 @@ def _audit(
             return read_all(*args, **kwargs)
 
         io.input_all = all_input
-        write = io._write  # noqa: SLF001
+        write = io._write
 
         def checked(value):
             if str(value).strip() and stdin[io.position() :].strip():
                 early.append(len(made))
             write(value)
 
-        io._write = checked  # noqa: SLF001
+        io._write = checked
         return io
 
     mp.setattr(esolangs, "ScriptedIO", new)

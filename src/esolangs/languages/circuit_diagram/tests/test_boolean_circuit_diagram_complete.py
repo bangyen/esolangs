@@ -1,6 +1,5 @@
 """Ordered interval bookkeeping and native complete-fold controls."""
 
-# ruff: noqa: SLF001 - the layout's indexes and interval primitive are the
 # observables here.
 from __future__ import annotations
 

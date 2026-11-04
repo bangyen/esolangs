@@ -113,21 +113,21 @@ class TestRotfuck:
             for stack in stacks:
                 for rot in range(8):
                     for done in _targets(stack, cycle):
-                        ruled = gen._Builder(cycle)  # noqa: SLF001
-                        ruled._seeks, ruled.rot = list(stack), rot  # noqa: SLF001
+                        ruled = gen._Builder(cycle)
+                        ruled._seeks, ruled.rot = list(stack), rot
                         found = _search_pad_until(ruled, done)
                         try:
-                            ruled._pad_until(done)  # noqa: SLF001
-                        except gen._UnplaceableError:  # noqa: SLF001
+                            ruled._pad_until(done)
+                        except gen._UnplaceableError:
                             assert found is None
                             continue
                         assert found == len(ruled.src)
                         word = [
-                            gen._rotfuck_rot(char, rot + at, cycle)  # noqa: SLF001
+                            gen._rotfuck_rot(char, rot + at, cycle)
                             for at, char in enumerate(ruled.src)
                         ]
                         assert not any(
-                            gen._shows(cmd, seek, rot + at, cycle)  # noqa: SLF001
+                            gen._shows(cmd, seek, rot + at, cycle)
                             for at, cmd in enumerate(word)
                             for seek in stack
                         )
@@ -329,7 +329,7 @@ def _search_pad_until(builder: object, done: Callable[[int], bool]) -> int | Non
         seen.add(rot)
         for run in pads:
             if all(
-                builder._hidden(c, rot + i)  # type: ignore[attr-defined]  # noqa: SLF001
+                builder._hidden(c, rot + i)  # type: ignore[attr-defined]
                 for i, c in enumerate(run)
             ):
                 heapq.heappush(

@@ -35,7 +35,7 @@ def test_dependencies_late_witnesses_and_ignored_inputs() -> None:
 
 
 def test_dependency_fallback_has_positive_control(monkeypatch) -> None:
-    original = helpers._residual_ids  # noqa: SLF001 -- Instrument the fallback positive control.
+    original = helpers._residual_ids
     calls = []
 
     def record(table, n):

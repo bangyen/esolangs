@@ -47,9 +47,9 @@ def test_return_bay_clearance_and_body_axis(spacing, x, possible, monkeypatch) -
     target = layout.Node("?", nonzero=layout.Node("o"))
     monkeypatch.setattr(layout, "_subtree_extent", lambda _node, _plan: (0, 10, -2, 2))
     monkeypatch.setattr(layout, "_arm_spacing", lambda _node, _plan: spacing)
-    plan = layout._Plan()  # noqa: SLF001
+    plan = layout._Plan()
     # In the body's frame this is the near edge (y=0), strictly between its sides.
-    legs = layout._loop_return_legs(  # noqa: SLF001 - routing premises under test
+    legs = layout._loop_return_legs(
         (-x, spacing), target, {id(target): ((0, 0), (1, 0))}, plan
     )
     assert (legs is not None) is possible

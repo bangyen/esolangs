@@ -32,7 +32,7 @@ class TestLaserFuck:
                 "".join(str((i * 73 + i // 3) & 1) for i in range(size)),
             )
             for table in tables:
-                program = module._laserfuck_weighted(table)  # noqa: SLF001
+                program = module._laserfuck_weighted(table)
                 for combo in range(size):
                     bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                     for heading in range(4):
@@ -97,7 +97,7 @@ class TestLaserFuck:
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
         module = importlib.import_module("esolangs.languages.laserfuck.generator")
-        real = module._laserfuck_build  # noqa: SLF001
+        real = module._laserfuck_build
 
         for n, table, orders in ((3, "01011010", 1),):
             built = 0

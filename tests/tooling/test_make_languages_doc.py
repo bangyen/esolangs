@@ -287,7 +287,7 @@ def test_missing_canonical_interpreter_does_not_link_to_an_old_path(tmp_path) ->
     old.parent.mkdir(parents=True)
     old.write_text("owned")
     with pytest.raises(FileNotFoundError, match="no canonical interpreter"):
-        module._source_link(language.name)  # noqa: SLF001
+        module._source_link(language.name)
 
 
 def test_exports_use_the_canonical_generator_module(tmp_path) -> None:

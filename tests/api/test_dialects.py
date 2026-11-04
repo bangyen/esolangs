@@ -111,7 +111,7 @@ def test_invalid_settings_fail_before_reading(language, settings, options) -> No
 def test_settings_are_immutable() -> None:
     settings = foreign_settings()
     with pytest.raises(FrozenInstanceError):
-        settings._items = ()  # noqa: SLF001 - test frozen storage
+        settings._items = ()
     assert DialectSettings().options(REFERENCE) == {}
 
 

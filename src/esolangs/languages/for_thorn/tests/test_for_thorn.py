@@ -291,7 +291,7 @@ def test_scope_transition_keeps_old_tables_immutable() -> None:
 
     machine = Forth("1{2}", ScriptedIO(""))
     machine.step()
-    before = machine._state  # noqa: SLF001 - the transition input is the invariant
+    before = machine._state
     moved = _advance(before)
     assert before[1] == {}
     assert moved[1] == {1: "2"}

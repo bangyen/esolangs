@@ -25,7 +25,7 @@ class TestSixFive:
 
     def test_right_move_reuses_an_already_allocated_tape(self) -> None:
         """Moving right need not grow a tape that a prior state already grew."""
-        state = sixfive._advance((0, 0, (0, 0, 0)), ["1"])  # noqa: SLF001
+        state = sixfive._advance((0, 0, (0, 0, 0)), ["1"])
         assert state == (1, 2, (0, 0, 0))
 
     def test_the_conditional_skip_only_fires_on_a_match(self) -> None:
@@ -96,14 +96,14 @@ class TestSixFive:
         """``8n`` lands where a scan for the n-th ``4`` would, from the index."""
         from esolangs.runtime.io import ScriptedIO
 
-        machine = sixfive._Machine("4A82A40", ScriptedIO(""))  # noqa: SLF001
+        machine = sixfive._Machine("4A82A40", ScriptedIO(""))
         assert machine.markers == (0, 4)
         toks = machine.toks
-        jumped = sixfive._advance((2, 0, (0,)), toks)  # noqa: SLF001
-        assert jumped == sixfive._advance((2, 0, (0,)), toks, None, machine.markers)  # noqa: SLF001
+        jumped = sixfive._advance((2, 0, (0,)), toks)
+        assert jumped == sixfive._advance((2, 0, (0,)), toks, None, machine.markers)
         assert jumped[0] == 5
-        assert sixfive._marker(machine.markers, 3) is None  # noqa: SLF001
-        assert sixfive._marker(machine.markers, 0) is None  # noqa: SLF001
+        assert sixfive._marker(machine.markers, 3) is None
+        assert sixfive._marker(machine.markers, 0) is None
 
     def test_a_conditional_skip_with_no_operand_does_nothing(self) -> None:
         """The same for a trailing ``7``: no operand, so nothing to read."""

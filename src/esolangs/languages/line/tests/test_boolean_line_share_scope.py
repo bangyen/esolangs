@@ -29,7 +29,7 @@ class TestLineReturnScope:
         """Streaming stems admit parity at n=5 and majority at n=6."""
         for build in (parity, _majority):
             for n in range(5, 9):
-                payload = esolangs.generate("Line", build(n))._payload  # noqa: SLF001
+                payload = esolangs.generate("Line", build(n))._payload
                 assert _has_goto(payload) == (n >= (5 if build is parity else 6)), (
                     build.__name__,
                     n,
@@ -57,7 +57,7 @@ class TestLineReturnScope:
         gotos = 0
         for table in tables:
             generated = esolangs.generate("Line", table)
-            if _has_goto(generated._payload):  # noqa: SLF001
+            if _has_goto(generated._payload):
                 _execute(table, generated, range(1 << n))
                 gotos += 1
         assert gotos == shared_counts[start // 50]

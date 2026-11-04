@@ -186,7 +186,7 @@ def test_complete_fold_wins_fallback_tie(monkeypatch) -> None:
     _generate.cache_clear()
     try:
         image = generator.line(table)
-        assert image._payload is graph  # noqa: SLF001 - check canonical selection
+        assert image._payload is graph
         assert limits == [plan.area + 1]
         _execute(table, image, range(4))
     finally:

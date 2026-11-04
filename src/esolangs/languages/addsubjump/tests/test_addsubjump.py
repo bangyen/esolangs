@@ -314,7 +314,7 @@ class TestStepMachine:
 
     def test_flag_views_report_the_mode_and_flags(self) -> None:
         """After 0 - 1 with the mode on, only ``NF`` and ``FUM`` read 1."""
-        machine = _machine(TestFlags._flag(-6, -4))  # noqa: SLF001
+        machine = _machine(TestFlags._flag(-6, -4))
         machine.step()
         machine.step()
         assert (machine.cf, machine.zf, machine.nf, machine.vf, machine.fum) == (
@@ -327,7 +327,7 @@ class TestStepMachine:
 
     def test_the_negative_flag_view_is_not_the_mode(self) -> None:
         """A zero result with the mode on: ``NF`` reads 0 while ``FUM`` reads 1."""
-        machine = _machine(TestFlags._flag(-7, -4))  # noqa: SLF001
+        machine = _machine(TestFlags._flag(-7, -4))
         machine.step()
         machine.step()
         assert (machine.zf, machine.nf, machine.fum) == (1, 0, 1)

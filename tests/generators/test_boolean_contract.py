@@ -73,7 +73,7 @@ def _reads(entry: tuple, table: str) -> int:
         program.splitlines() if lang.split and isinstance(program, str) else program
     )
     module = importlib.import_module(INTERPRETERS[lang.name])
-    machine_cls = getattr(module, "_Machine")  # noqa: B009
+    machine_cls = module._Machine
     # Every interpreter names its state object ``_Machine``, so this reads
     # the same count for every language.  It used to fall back to ``run``
     # for the three that spelled the class ``State``: that measured a whole
