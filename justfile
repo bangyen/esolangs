@@ -6,10 +6,8 @@
 export UV_CACHE_DIR := env_var_or_default("UV_CACHE_DIR", justfile_directory() + "/.cache/uv")
 
 # Byte-compile dependencies when uv creates the venv.  A fresh worktree's venv
-# otherwise compiles sympy on first import -- ~1.3 s of CPU charged to
-# whichever 1 s fast-band test touches it first, which then failed once per
-# worktree.  Only then: on an existing venv it re-checks all 3276 files and
-# prints a line on every `uv run` (0.06 s -> 0.22 s).
+# avoids charging first-import compilation to a fast-band test.
+# On an existing venv, skip the repeated bytecode scan.
 export UV_COMPILE_BYTECODE := env_var_or_default("UV_COMPILE_BYTECODE", if path_exists(justfile_directory() + "/.venv") == "true" { "0" } else { "1" })
 
 # Auto-detect uv - falls back to plain python if not available

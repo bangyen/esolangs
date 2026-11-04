@@ -194,8 +194,6 @@ CACHED_STEPS = frozenset(
 _DISTRIBUTIONS = {
     "python checks": {
         "pillow",
-        "sympy",
-        "mpmath",
     },
 }
 

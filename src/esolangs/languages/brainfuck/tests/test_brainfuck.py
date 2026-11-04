@@ -1,6 +1,7 @@
 """Unit tests for the Brainfuck interpreter."""
 
 import importlib
+from itertools import product
 
 import pytest
 
@@ -128,3 +129,19 @@ def test_compiled_transition_preserves_borrowed_tape_and_reports_effects() -> No
         None,
         False,
     )
+
+
+@pytest.mark.medium
+def test_ordered_reads_retain_four_stores_at_one_cursor() -> None:
+    states = []
+    for prefix in product("01", repeat=2):
+        io = ScriptedIO("".join((*prefix, "0")))
+        machine = _Machine(",>,>,<<.", io)
+        while io.reads < 2:
+            machine.step()
+        states.append(machine.snapshot())
+        while not machine.halted:
+            machine.step()
+        assert io.getvalue() == prefix[0]
+    assert len(set(states)) == 4
+    assert len({state[0] for state in states}) == 1

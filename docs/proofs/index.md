@@ -630,7 +630,8 @@ by maximality of `r`; every input-forgetting realization needs that width.
   seeded tables per arity four through six also execute every row. A separate
   200-table five-input sample gives `573675 -> 360230` characters and
   `1501446 -> 280080` lines. Full-store boundary checks confirm erasure before
-  the next read. The controls are in `tests/proofs/test_research_tracks.py`.
+  the next read. The controls are in
+  `src/esolangs/languages/brainif/tests/test_brainif_research.py`.
 
 
 ## Scaling status
