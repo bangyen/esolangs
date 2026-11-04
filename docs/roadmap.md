@@ -62,6 +62,50 @@ Keep the registry-wide scaling regressions in `tests/proofs/deep/linearity.py`.
 An unresolved bound stays open; it does not authorize removing its regression
 check or weakening a contract.
 
+## Architecture migrations
+
+Remaining work; start each migration with a bounded pilot and price it within
+the standing budget. Preserve public behavior through adapters; incompatible
+API changes need a major release. Follow the refactor and optimization gates
+in [Contributing](CONTRIBUTING.md).
+
+1. **Execution results across routes.** Extend native `ExecutionResult` to
+   bounded execution, then isolated workers. Preserve output, input counters,
+   completion reason and divergence evidence across native, VM, debugger and
+   worker routes. Exercise seeded runs and combined budgets before removing
+   old dispatch. Completion: routes agree on output, state, input cursor,
+   errors and command counts; timeout never proves divergence. Extend declared
+   native completion beyond the current pilot without inferring halt from a
+   callback return.
+2. **Artifact adapter retirement.** Audit remaining internal string-tag and
+   setter-recovery paths against the explicit artifact records. Retire a path
+   only when its consumers use retained settings and bindings. Preserve native
+   exports, portable round trips and wrong-language/unfilled-template refusals;
+   keep legacy plain-source filling behind its compatibility adapter until
+   API cutover.
+3. **Explicit Boolean representations.** Inventory existing subtree, affine
+   and lookup analysis; extract representations only where multiple backends
+   need them. Pilot one family at a time with ordered input reads, constant
+   folding and residual sharing. Keep emission and layout language-owned.
+   Completion: byte-identical programs, unchanged input consumption, proved
+   O(T) construction and emitted size, and timings at three arities without
+   growth-rate regression. Retire replaced helpers; size changes qualify
+   separately.
+4. **Structured evidence.** Pilot validated `language.toml` schemas for
+   witnesses, seeds, units, bounds, exactness and construction paths. Validate
+   source anchors, resource formulas and ablations against execution before
+   generating their documentation. Completion: claims retain their witnesses
+   and gates, figures match measurements, and prose parsing can be removed
+   without losing checks. Preserve open and upper-bound verdicts.
+5. **Independent semantic checks.** Extend the Engineering oracles below into
+   language admission. Derive each bounded oracle from the spec independently
+   of production helpers and generator structure; record ambiguities first.
+   Check raw programs, errors, input consumption, state and termination with
+   positive controls and mutants. Completion per language: known faults are
+   detected and discrepancies have spec-backed resolutions or explicit open
+   decisions. Replace source-shape guards only with checks covering their
+   invariant; retain purity and snapshot guarantees.
+
 ## Engineering
 
 Next experiments; budgets are wall time, not permission for an unpriced search.
