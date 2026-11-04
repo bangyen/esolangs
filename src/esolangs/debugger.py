@@ -14,7 +14,8 @@ from time import monotonic
 from typing import Literal, cast, get_args
 
 from esolangs.exceptions import ArgumentError, EsolangError
-from esolangs.runtime._source import InputSource, ProgramSource
+from esolangs.runtime._input import InputSource
+from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._validate import _argument_repr, check_timeout, check_whole
 from esolangs.settings import DialectSettings
 from esolangs.vm import (

@@ -5,8 +5,9 @@ from dataclasses import dataclass
 import esolangs
 from esolangs.registry import resolve
 from esolangs.registry._describe import LanguageInfo
+from esolangs.runtime._input import InputSource
 from esolangs.runtime._program import Program
-from esolangs.runtime._source import InputSource, ProgramSource
+from esolangs.runtime._source import ProgramSource
 from esolangs.settings import DialectSettings
 
 

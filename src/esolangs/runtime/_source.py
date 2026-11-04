@@ -10,9 +10,6 @@ from typing import IO
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import ArgumentError, ProgramError, ProgramNotFoundError
 from esolangs.raster import Raster
-from esolangs.runtime._input import InputSource as InputSource
-from esolangs.runtime._input import check_input as check_input
-from esolangs.runtime._input import read_input as read_input
 from esolangs.runtime._program import Program
 from esolangs.runtime._validate import check_scale
 from esolangs.runtime.source_hints import syntax_error, with_hint

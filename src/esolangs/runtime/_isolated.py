@@ -20,8 +20,9 @@ from esolangs import exceptions
 from esolangs.compressed import CompressedText
 from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry import resolve
+from esolangs.runtime._input import InputSource, read_input
 from esolangs.runtime._program import Program
-from esolangs.runtime._source import InputSource, ProgramSource, read_input
+from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._validate import check_timeout, check_whole
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings

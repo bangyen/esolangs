@@ -95,8 +95,9 @@ from esolangs.runtime._execution import (
     interpreter_module,
     prepare_call,
 )
+from esolangs.runtime._input import InputSource
 from esolangs.runtime._program import Program
-from esolangs.runtime._source import InputSource, ProgramSource, check_scale_for
+from esolangs.runtime._source import ProgramSource, check_scale_for
 from esolangs.runtime._traits import trait, traits
 from esolangs.runtime._validate import check_whole
 from esolangs.runtime._vm_views import machine_views

@@ -36,7 +36,8 @@ from typing import TYPE_CHECKING
 
 from esolangs.runtime.source_hints import syntax_error
 
-from .extract import OpCall, Stroke, Vertex, classify_ops
+from .extract import OpCall, classify_ops
+from .lattice import Stroke, Vertex
 
 if TYPE_CHECKING:
     from esolangs.languages.line.generator.layout import Node
@@ -57,7 +58,7 @@ class IO:
 class _Compiled:
     """One stroke's classified ops plus its two possible next strokes.
 
-    Built once per :class:`extract.Stroke` so a looping run never
+    Built once per :class:`lattice.Stroke` so a looping run never
     re-classifies.  ``goto`` is set only for a leaf whose path reconnects,
     and may be a synthetic resume point (the tail of another stroke's ops,
     sharing its children) rather than a real stroke.

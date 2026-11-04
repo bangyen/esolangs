@@ -4,6 +4,7 @@ import pytest
 
 from esolangs.languages.line.generator import layout, render
 from esolangs.languages.line.interpreter import extract
+from esolangs.languages.line.interpreter.lattice import Vertex
 from esolangs.languages.line.interpreter.mask import Mask
 from esolangs.languages.line.tests.formats.bf_to_line import bf_to_line
 
@@ -31,10 +32,10 @@ def test_stray_specks_outside_the_cursor_are_not_a_path() -> None:
 
 def test_trailing_noise_does_not_complete_a_kink() -> None:
     vertices = [
-        extract.Vertex(0, 0, 0),
-        extract.Vertex(-20, 0, 1),
-        extract.Vertex(-40, 20, 2),
-        extract.Vertex(-40, 21, None),
+        Vertex(0, 0, 0),
+        Vertex(-20, 0, 1),
+        Vertex(-40, 20, 2),
+        Vertex(-40, 21, None),
     ]
     assert extract.classify_ops(vertices, unit=20) == []
 

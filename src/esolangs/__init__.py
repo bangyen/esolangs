@@ -84,14 +84,13 @@ from esolangs.runtime._execution import (
     prepare_call,
     run_under_alarm,
 )
+from esolangs.runtime._input import InputSource, check_input
 from esolangs.runtime._isolated import check_limits
 from esolangs.runtime._isolated import run_isolated as _run_isolated
 from esolangs.runtime._program import Program, RunnerProgram
 from esolangs.runtime._source import (
-    InputSource,
     ProgramSource,
     _FileSource,
-    check_input,
     check_scale_for,
     text_source,
 )

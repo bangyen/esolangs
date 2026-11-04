@@ -300,18 +300,12 @@ def find_cursor(mask: Mask) -> Cursor:
     )
 
 
-# The tree walk lives in lattice.py (8-direction vertex-star probes); these
-# aliases keep its types importable from extract.
-Stroke = lattice.Stroke
-Vertex = lattice.Vertex
-
-
 def extract_tree(
     mask: Mask,
     cursor: Cursor,
     *,
     unit: int = lattice.UNIT,
-) -> Stroke:
+) -> lattice.Stroke:
     """Walk a Line image's full path tree from the cursor.
 
     The start heading is the one pointing from the cursor toward the path.
@@ -357,7 +351,7 @@ def extract_tree(
     return lattice.walk_tree(stripped, nearest, start_heading, unit=unit)
 
 
-def _direction_runs(vertices: list[Vertex]) -> list[tuple[int, int]]:
+def _direction_runs(vertices: list[lattice.Vertex]) -> list[tuple[int, int]]:
     """Convert walked ``vertices`` into ``(direction_index, pixel_length)`` pairs.
 
     One per leg, already maximal (:func:`lattice.walk_tree` never emits two
@@ -485,7 +479,9 @@ def _match_fixed(
     return None
 
 
-def classify_ops(vertices: list[Vertex], unit: int = DEFAULT_UNIT) -> list[OpCall]:
+def classify_ops(
+    vertices: list[lattice.Vertex], unit: int = DEFAULT_UNIT
+) -> list[OpCall]:
     """Identify which opcodes' kinks appear along a walked stroke's ``vertices``.
 
     Scans :func:`_direction_runs` against a dynamic heading, matching
@@ -555,7 +551,7 @@ def classify_ops(vertices: list[Vertex], unit: int = DEFAULT_UNIT) -> list[OpCal
     return calls
 
 
-def _redraw(vertex_lists: list[list[Vertex]], mask: Mask) -> Mask:
+def _redraw(vertex_lists: list[list[lattice.Vertex]], mask: Mask) -> Mask:
     """Draw every walked vertex-to-vertex leg's real ink onto a blank canvas.
 
     Re-walks ``mask`` pixel by pixel along each heading (as
@@ -578,7 +574,7 @@ def _redraw(vertex_lists: list[list[Vertex]], mask: Mask) -> Mask:
     return canvas
 
 
-def coverage_gap(mask: Mask, cursor: Cursor, stroke: Stroke) -> int:
+def coverage_gap(mask: Mask, cursor: Cursor, stroke: lattice.Stroke) -> int:
     """How many source-image ink pixels ``stroke`` leaves unaccounted for.
 
     XOR of :func:`_redraw` against the source, cursor blob excluded; a
@@ -594,7 +590,7 @@ def coverage_gap(mask: Mask, cursor: Cursor, stroke: Stroke) -> int:
 
 def extract_mask(
     mask: Mask, *, scale: int | None = None, unit: int = DEFAULT_UNIT
-) -> Stroke:
+) -> lattice.Stroke:
     """Extract a program from ``mask`` with an explicit instruction unit.
 
     Crops to content, normalizes scale, isolates the cursor, and walks the
@@ -621,7 +617,7 @@ def extract_mask(
     return stroke
 
 
-def extract(path: str, *, unit: int = DEFAULT_UNIT) -> Stroke:
+def extract(path: str, *, unit: int = DEFAULT_UNIT) -> lattice.Stroke:
     """Load a Line image and walk its full path tree, cursor auto-detected.
 
     :func:`crop_to_content` and :func:`normalize_scale` run first, since
@@ -635,12 +631,12 @@ def extract(path: str, *, unit: int = DEFAULT_UNIT) -> Stroke:
 if __name__ == "__main__":
     import sys
 
-    def _leg_pixels(vertices: list[Vertex]) -> int:
+    def _leg_pixels(vertices: list[lattice.Vertex]) -> int:
         return sum(
             max(abs(v1.y - v0.y), abs(v1.x - v0.x)) for v0, v1 in pairwise(vertices)
         )
 
-    def _describe(stroke: Stroke, indent: str = "") -> None:
+    def _describe(stroke: lattice.Stroke, indent: str = "") -> None:
         ops = [c.op for c in classify_ops(stroke.vertices)]
         n = len(stroke.vertices)
         print(f"{indent}stroke: {n} vertices, end={stroke.end}, ops={ops}")
