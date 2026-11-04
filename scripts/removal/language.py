@@ -35,7 +35,7 @@ else:
 from removal import documents as _documents  # noqa: E402
 from removal import entries as _entries  # noqa: E402
 from removal import ownership as _ownership  # noqa: E402
-from removal.documents import (  # noqa: E402, F401 - re-exported: the removal tests read these as attributes of this module
+from removal.documents import (  # noqa: E402
     _drop_bullets,
     _drop_doc_entries,
     _drop_from_series,
@@ -48,7 +48,7 @@ from removal.entries import (  # noqa: E402
     _drop_inline_items,
     _names_used,
 )
-from removal.ownership import (  # noqa: E402, F401 - re-exported: the removal tests read these as attributes of this module
+from removal.ownership import (  # noqa: E402
     _EDITED,
     _dead_test_files,
     _declaring_module,
@@ -67,6 +67,27 @@ from removal.ownership import (  # noqa: E402, F401 - re-exported: the removal t
     _python_files,
     _within,
 )
+
+#: The re-exported names the removal tests read as attributes of this
+#: module; listing them here is what makes the imports a surface rather
+#: than unused (F401).  The remaining imported names are used internally.
+__all__ = [
+    "_EDITED",
+    "_dead_test_files",
+    "_declaring_module",
+    "_drop_bullets",
+    "_drop_doc_entries",
+    "_drop_from_series",
+    "_drop_language_statement",
+    "_gone",
+    "_gone_modules",
+    "_import_users",
+    "_imported",
+    "_is_test",
+    "_owner_id",
+    "_prune_fixtures",
+    "_stale_timing",
+]
 
 #: The phase modules whose ``ROOT`` follows this module's.
 _PHASE_MODULES = (_documents, _entries, _ownership)

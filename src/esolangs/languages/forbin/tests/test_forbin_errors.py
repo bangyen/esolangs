@@ -91,7 +91,10 @@ class TestIdentifierCharacters:
 class TestKeywordPrefixedNames:
     def test_an_identifier_may_start_with_a_keyword(self) -> None:
         """``returnvar`` is a name, not ``return`` followed by ``var``."""
-        eight = lambda name: ",".join([name] * 8)  # noqa: E731
+
+        def eight(name: str) -> str:
+            return ",".join([name] * 8)
+
         code = (
             "main { returnvar = 1,1,1,1,1,1,1,1;"
             " forvar = 0,1,0,0,0,0,0,1;"

@@ -118,7 +118,24 @@ _DROP_TOKEN = {1: 0, 2: 2, 3: 4, 4: 13}
 #: a digit names the cell a ``p`` runs over.  The unique shortest injective
 #: suffix after the wipe prefix (``test_suffix_is_unique_shortest``); cells 1, 2
 #: are ``u = 1+x-y-xyz``, ``v = (2-x)(1-z)+zxy`` mod 3 (trit 0).
-_GADGET = tuple("/ 0 / 1 K2 0 K2 1 / 2 0 1 0 K1 0 2".split())  # noqa: SIM905
+_GADGET = (
+    "/",
+    "0",
+    "/",
+    "1",
+    "K2",
+    "0",
+    "K2",
+    "1",
+    "/",
+    "2",
+    "0",
+    "1",
+    "0",
+    "K1",
+    "0",
+    "2",
+)
 #: Gadget groups, one digit each.
 _D_GROUPS = 5
 #: Trits 1..3 of the reads ``'0'`` and ``'1'`` (48, 49), which agree there.

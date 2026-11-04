@@ -7,7 +7,7 @@ from itertools import product
 from esolangs.languages.malbolge.generator.digits import _GADGET
 from esolangs.languages.malbolge.interpreter import _crazy
 
-_PREFIX = tuple("/ 0 / 1 K2 0 K2 1 / 2".split())  # noqa: SIM905
+_PREFIX = ("/", "0", "/", "1", "K2", "0", "K2", "1", "/", "2")
 _SUFFIX = _GADGET[len(_PREFIX) :]
 _ALPHABET = ("0", "1", "2", "K0", "K1", "K2")
 _INPUTS = tuple(product((0, 1), repeat=3))

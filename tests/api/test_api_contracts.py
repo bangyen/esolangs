@@ -1,5 +1,6 @@
 """Contracts the public API owes a caller who has only read the docs."""
 
+import json
 import pathlib
 import re
 import subprocess
@@ -162,48 +163,11 @@ class TestDescribe:
 
 #: ``inspect.signature`` of every public callable; identical on 3.12 and 3.14.
 #: Required arguments positional, optional ones keyword-only (docs/usage.md).
-SIGNATURES = {
-    "esolangs.describe": "(language: str) -> esolangs.registry._describe.LanguageInfo",
-    "esolangs.dump_program": "(language: 'str', program: 'Program', *, settings: 'DialectSettings | None' = None) -> 'str'",  # noqa: E501
-    "esolangs.encode_inputs": "(language: str, bits: list[int] | tuple[int, ...], *, truth_table: str | None = None) -> str",  # noqa: E501
-    "esolangs.generate": "(language: str, truth_table: str, *, width: int | None = None, balance: bool = False, scale: int = 1, settings: esolangs.settings.DialectSettings | None = None) -> Program",  # noqa: E501
-    "esolangs.instantiate": "(language: str, template: Program, bits: list[int] | tuple[int, ...], *, width: int | None = None, truth_table: str | None = None, settings: esolangs.settings.DialectSettings | None = None) -> str",  # noqa: E501
-    "esolangs.list_languages": "() -> list[str]",
-    "esolangs.load_program": "(language: 'str', document: 'str') -> 'Program'",
-    "esolangs.read_answer": "(language: str, output: str) -> str",
-    "esolangs.run": "(language: str, program: ProgramSource, *, stdin: InputSource = '', timeout: float | None = None, seed: int | None = None, isolated: bool = False, max_steps: int | None = None, scale: int | None = None, max_output: int | None = None, max_memory: int | None = None, settings: esolangs.settings.DialectSettings | None = None) -> str",  # noqa: E501
-    "esolangs.save_program": "(program: 'Program', path: 'str | PathLike[str]') -> 'None'",  # noqa: E501
-    "esolangs.debugger.make_debugger": "(language: 'str', program: 'ProgramSource', *, stdin: 'InputSource' = '', scale: 'int | None' = None, settings: 'DialectSettings | None' = None) -> 'Debugger'",  # noqa: E501
-    "esolangs.debugger.make_vm": "(language: 'str', program: 'ProgramSource', *, stdin: 'InputSource' = '', scale: 'int | None' = None, settings: 'DialectSettings | None' = None) -> 'VM'",  # noqa: E501
-    "Language.__init__": "(self, name: str) -> None",
-    "Language.describe": "(self) -> esolangs.registry._describe.LanguageInfo",
-    "Language.dump_program": "(self, program: Program, *, settings: esolangs.settings.DialectSettings | None = None) -> str",  # noqa: E501
-    "Language.encode_inputs": "(self, bits: list[int] | tuple[int, ...], *, truth_table: str | None = None) -> str",  # noqa: E501
-    "Language.generate": "(self, truth_table: str, *, width: int | None = None, balance: bool = False, scale: int = 1, settings: esolangs.settings.DialectSettings | None = None) -> Program",  # noqa: E501
-    "Language.instantiate": "(self, template: Program, bits: list[int] | tuple[int, ...], *, width: int | None = None, truth_table: str | None = None, settings: esolangs.settings.DialectSettings | None = None) -> str",  # noqa: E501
-    "Language.load_program": "(self, document: str) -> Program",
-    "Language.read_answer": "(self, output: str) -> str",
-    "Language.run": "(self, program: ProgramSource, *, stdin: InputSource = '', timeout: float | None = None, seed: int | None = None, isolated: bool = False, max_steps: int | None = None, max_output: int | None = None, max_memory: int | None = None, settings: esolangs.settings.DialectSettings | None = None, scale: int | None = None) -> str",  # noqa: E501
-    "Raster.__init__": "(self, rows: 'Rows', *, language: 'str | None' = None, settings: 'DialectSettings | None' = None, scale: 'int | None' = None) -> 'None'",  # noqa: E501
-    "Raster.from_png": "(cls, data: 'bytes') -> 'Raster'",
-    "Raster.tagged": "(self, language: 'str', *, settings: 'DialectSettings | None' = None, scale: 'int | None' = None) -> 'Raster'",  # noqa: E501
-    "Raster.to_png": "(self) -> 'bytes'",
-    "Raster.upscaled": "(self, scale: 'int') -> 'Raster'",
-    "DialectSettings.__init__": "(self, **choices: int | str) -> None",
-    "DialectSettings.options": "(self, language: str) -> dict[str, typing.Any]",
-    "Debugger.__init__": "(self, vm: 'VM') -> 'None'",
-    "Debugger.break_at": "(self, ip: 'int | tuple[int, ...]') -> 'None'",
-    "Debugger.break_on_cell": "(self, index: 'int', value: 'int') -> 'None'",
-    "Debugger.break_on_output": "(self, text: 'str') -> 'None'",
-    "Debugger.break_on_stack": "(self, slot: 'int', value: 'object') -> 'None'",
-    "Debugger.break_when": "(self, predicate: 'Callable[[VM], bool]') -> 'None'",
-    "Debugger.clear_breakpoints": "(self) -> 'None'",
-    "Debugger.run": "(self, *, max_steps: 'int | None' = None, timeout: 'float | None' = None) -> 'StopReason'",  # noqa: E501
-    "Debugger.snapshot": "(self) -> 'Hashable'",
-    "Debugger.step": "(self) -> 'None'",
-    "Debugger.watch_cell": "(self, index: 'int') -> 'list[int | None]'",
-    "Debugger.watch_stack": "(self, slot: 'int') -> 'list[object]'",
-}
+#: The table itself is data, not code -- signatures.json beside this file,
+#: so its lines are not subject to the line-length rule.
+SIGNATURES: dict[str, str] = json.loads(
+    (pathlib.Path(__file__).parent / "signatures.json").read_text()
+)
 
 #: Public (non-underscore) attributes of the public classes, methods included.
 PUBLIC_MEMBERS = {

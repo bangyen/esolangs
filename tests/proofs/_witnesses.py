@@ -26,13 +26,15 @@ from tests.proofs._witness_builders import (
     _diagram_witness,
     _false_tiled,
     _forbin_worst,
-    _malbolge_stub,  # noqa: F401 -- re-exported for the formula suites
     _row_one,
     _sbleq_worst,
     _smu_worst,
     _suffolk_deep,
     _suffolk_worst,
     _switchcase_worst,
+)
+from tests.proofs._witness_builders import (
+    _malbolge_stub as _malbolge_stub,  # re-exported for the formula suites
 )
 from tests.support.witness_tables import parity as _parity
 
