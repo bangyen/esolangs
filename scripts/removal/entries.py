@@ -76,21 +76,17 @@ def _whole_statement(
     )
 
 
-def _drop_entries(  # noqa: C901
-    path: Path,
+def _collect_entry_spans(
+    parsed: ast.Module,
+    lines: list[str],
     keys: set[str],
     modules: set[str],
-    external: set[str] | frozenset[str] = frozenset(),
-) -> int:
-    """Delete every dict entry, list item or ``X[key] = ...`` keyed by ``keys``.
+    external: set[str] | frozenset[str],
+) -> tuple[list[tuple[int, int]], set[str]]:
+    """Span every entry, item and statement the removal cuts directly.
 
-    Located by AST and cut by line, so an entry must own its lines; one
-    sharing a line with another is left for the leftover report.  A helper
-    ``external`` still names (``sbleq_variant``, shared by the S*bleq
-    variants) is kept even when it reads a name the removal deletes.
+    Returns the spans and the names imported from a deleted module.
     """
-    source = path.read_text(encoding="utf-8")
-    lines = source.splitlines(keepends=True)
     spans: list[tuple[int, int]] = []
 
     def named(node: ast.AST | None) -> bool:
@@ -109,8 +105,6 @@ def _drop_entries(  # noqa: C901
                     lo -= 1
             spans.append((lo, hi))
 
-    # A statement alone in its block cannot go without leaving it empty.
-    parsed = ast.parse(source)
     # ``_JAUNE_LANGUAGE`` in the ``_LANGUAGES`` tuple: an item that is only a
     # name imported from a deleted module, which would otherwise keep its
     # import alive.
@@ -120,6 +114,7 @@ def _drop_entries(  # noqa: C901
         if isinstance(node, ast.ImportFrom) and _gone(node.module, modules)
         for alias in node.names
     }
+    # A statement alone in its block cannot go without leaving it empty.
     lonely = {
         id(block[0])
         for parent in ast.walk(parsed)
@@ -168,8 +163,20 @@ def _drop_entries(  # noqa: C901
             ):
                 lo = top
             spans.append((lo, node.end_lineno or node.lineno))
-    # A top-level function or class using a name imported from a deleted
-    # module goes too, and so, in turn, does whatever uses it.
+    return spans, imported
+
+
+def _propagate_dead(
+    parsed: ast.Module,
+    spans: list[tuple[int, int]],
+    imported: set[str],
+    external: set[str] | frozenset[str],
+) -> None:
+    """Span top-level definitions that use a name the removal deletes.
+
+    A top-level function or class using a name imported from a deleted
+    module goes too, and so, in turn, does whatever uses it.
+    """
     dead = imported | {
         node.name
         for node in parsed.body
@@ -199,6 +206,26 @@ def _drop_entries(  # noqa: C901
             top = min([node.lineno, *(d.lineno for d in node.decorator_list)])
             if top not in spanned:
                 spans.append((top, node.end_lineno or node.lineno))
+
+
+def _drop_entries(
+    path: Path,
+    keys: set[str],
+    modules: set[str],
+    external: set[str] | frozenset[str] = frozenset(),
+) -> int:
+    """Delete every dict entry, list item or ``X[key] = ...`` keyed by ``keys``.
+
+    Located by AST and cut by line, so an entry must own its lines; one
+    sharing a line with another is left for the leftover report.  A helper
+    ``external`` still names (``sbleq_variant``, shared by the S*bleq
+    variants) is kept even when it reads a name the removal deletes.
+    """
+    source = path.read_text(encoding="utf-8")
+    lines = source.splitlines(keepends=True)
+    parsed = ast.parse(source)
+    spans, imported = _collect_entry_spans(parsed, lines, keys, modules, external)
+    _propagate_dead(parsed, spans, imported, external)
     # A span inside another (a nested helper, an entry of a dropped table)
     # goes with the outer one; cutting both would cut the outer twice.
     spans = _outermost(spans)

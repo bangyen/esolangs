@@ -138,10 +138,10 @@ def _expected_stream_size(
     return total
 
 
-def _validate_png(  # noqa: C901
+def _scan_chunks(
     data: bytes,
-) -> tuple[int, int, int, bytes]:
-    """Validate the container and stream before Pillow allocates pixels."""
+) -> tuple[tuple[int, ...] | None, bytes | None, bytes]:
+    """Collect the header, palette and compressed stream from the chunks."""
     header = None
     palette = None
     idat = bytearray()
@@ -164,13 +164,17 @@ def _validate_png(  # noqa: C901
             idat += body
         elif kind == b"IEND":
             break
-    if header is None:
-        raise syntax_error(
-            "PNG has no IHDR chunk",
-            ("re-export the image with a PNG encoder so it includes the image header"),
-        )
-    width, height, depth, colour, compression, filter_method, interlace = header
+    return header, palette, bytes(idat)
 
+
+def _check_header_fields(
+    depth: int,
+    colour: int,
+    compression: int,
+    filter_method: int,
+    interlace: int,
+) -> int:
+    """Refuse header fields this decoder does not implement; return channels."""
     if compression != 0 or filter_method != 0:
         raise syntax_error(
             "unsupported PNG compression or filter method",
@@ -206,12 +210,17 @@ def _validate_png(  # noqa: C901
         raise syntax_error(
             "palette PNGs cannot be 16-bit", "use an 8-bit palette or export as RGB"
         )
+    return channels
 
-    needed = _expected_stream_size(width, height, channels, depth, interlace)
+
+def _inflate_checked(
+    idat: bytes, needed: int, width: int, height: int, depth: int
+) -> bytes:
+    """Inflate the stream, refusing any size but the header's own count."""
     decoder = zlib.decompressobj()
     # A 1x1 RGB header needs four bytes; a 39-byte IDAT expanded to 16,384
     # before its size was rejected. One surplus byte proves the mismatch.
-    data_stream = decoder.decompress(bytes(idat), min(needed + 1, sys.maxsize))
+    data_stream = decoder.decompress(idat, min(needed + 1, sys.maxsize))
     if len(data_stream) != needed:
         # Reject before any allocation grows with the IHDR numbers.
         raise syntax_error(
@@ -228,10 +237,18 @@ def _validate_png(  # noqa: C901
             "truncated PNG compressed stream",
             "restore or re-export the complete PNG including its compressed checksum",
         )
-    if colour == _PALETTE and palette is None:
-        raise syntax_error(
-            "palette PNG has no PLTE chunk", "include a colour palette or export as RGB"
-        )
+    return data_stream
+
+
+def _check_row_filters(
+    data_stream: bytes,
+    width: int,
+    height: int,
+    channels: int,
+    depth: int,
+    interlace: int,
+) -> None:
+    """Walk the passes, refusing a row filter byte above 4."""
     offset = 0
     passes = (
         [_pass_size(width, height, i) for i in range(len(_ADAM7))]
@@ -249,6 +266,29 @@ def _validate_png(  # noqa: C901
                     "re-export the PNG using standard row filters 0 through 4",
                 )
             offset += stride + 1
+
+
+def _validate_png(
+    data: bytes,
+) -> tuple[int, int, int, bytes]:
+    """Validate the container and stream before Pillow allocates pixels."""
+    header, palette, idat = _scan_chunks(data)
+    if header is None:
+        raise syntax_error(
+            "PNG has no IHDR chunk",
+            ("re-export the image with a PNG encoder so it includes the image header"),
+        )
+    width, height, depth, colour, compression, filter_method, interlace = header
+    channels = _check_header_fields(
+        depth, colour, compression, filter_method, interlace
+    )
+    needed = _expected_stream_size(width, height, channels, depth, interlace)
+    data_stream = _inflate_checked(idat, needed, width, height, depth)
+    if colour == _PALETTE and palette is None:
+        raise syntax_error(
+            "palette PNG has no PLTE chunk", "include a colour palette or export as RGB"
+        )
+    _check_row_filters(data_stream, width, height, channels, depth, interlace)
     return width, depth, colour, palette or b""
 
 

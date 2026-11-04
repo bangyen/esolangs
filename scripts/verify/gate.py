@@ -25,6 +25,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -487,7 +488,88 @@ def _report(name: str, elapsed: float, returncode: int, output: str | None) -> b
     return ok
 
 
-def _run_steps(  # noqa: C901
+def _drop_long_step_after_mutation_failure(
+    failed: list[tuple[str, int, str | None]],
+    rest: list[tuple[str, list[str], dict[str, str]]],
+) -> tuple[list[tuple[str, list[str], dict[str, str]]], bool]:
+    """Skip the long step when the tree-mutating step just rewrote the tree.
+
+    The cheap steps still report, but pytest would spend ~150 s on a
+    tree the hooks just rewrote and the fix will rewrite again: six
+    sessions waited it out for a one-line ruff fix.  Returns the
+    remaining steps and whether the verified cache is now stale.
+    """
+    if not any(name == MUTATES_TREE for name, *_ in failed):
+        return rest, False
+    if any(step[0] == LONG_STEP for step in rest):
+        print(f"[skip] {LONG_STEP}: {MUTATES_TREE} failed; fix it and rerun")
+        rest = [step for step in rest if step[0] != LONG_STEP]
+    return rest, True
+
+
+def _run_shadow_phase(
+    long_step: tuple[str, list[str], dict[str, str]] | None,
+    shadow: list[tuple[str, list[str], dict[str, str]]],
+    heavy: list[tuple[str, list[str], dict[str, str]]],
+    *,
+    stream: bool,
+    run_serial: Callable[..., None],
+    record: Callable[..., None],
+) -> list[tuple[str, list[str], dict[str, str]]]:
+    """Launch the long step and run the cheap ones in its shadow.
+
+    Returns the heavy steps still owed a serial phase: when the shadow
+    ran on threads, the heavy steps already ran alongside it.
+    """
+    proc = None
+    long_start = 0.0
+    # Nothing to fill the shadow with: run it as an ordinary step, which lets
+    # a single-step run (`just test-py`) stream its output live.
+    if long_step is not None and not shadow and (stream or not heavy):
+        run_serial(*long_step)
+        long_step = None
+    if long_step is not None:
+        _, cmd, step_env = long_step
+        long_start = time.monotonic()
+        proc = start_logged(cmd, LONG_STEP, step_env, ROOT, stream=False)
+        print(f"[....] {LONG_STEP} (running alongside the remaining steps)")
+
+    if proc is not None:
+
+        def collect_long(
+            child: subprocess.Popen[str], started: float
+        ) -> tuple[str, int, float]:
+            output, returncode = _wait_with_heartbeat(child, LONG_STEP, started)
+            return output, returncode, time.monotonic() - started
+
+        # Drain immediately: waiting until the shadow ends can fill the pipe
+        # and stall pytest. The collector also measures its actual finish.
+        with ThreadPoolExecutor(max_workers=1) as collector:
+            pending = collector.submit(collect_long, proc, long_start)
+            if stream:
+                for name, cmd, step_env in shadow:
+                    run_serial(name, cmd, step_env)
+            else:
+
+                def run_shadow() -> None:
+                    for step in shadow:
+                        run_serial(*step)
+
+                with ThreadPoolExecutor(max_workers=2) as checks:
+                    results = [checks.submit(run_serial, *step) for step in heavy]
+                    results.append(checks.submit(run_shadow))
+                    for result in results:
+                        result.result()
+                heavy = []
+            output, returncode, elapsed = pending.result()
+        record(LONG_STEP, elapsed, returncode, output)
+    else:
+        for name, cmd, step_env in shadow:
+            run_serial(name, cmd, step_env)
+    return heavy
+
+
+def _run_steps(
     runnable: list[tuple[str, list[str], dict[str, str]]],
     *,
     stream: bool,
@@ -560,65 +642,23 @@ def _run_steps(  # noqa: C901
         for future in futures:
             future.result()
     rest = [s for s in runnable if s[0] != MUTATES_TREE]
-    if any(name == MUTATES_TREE for name, *_ in failed):
+    rest, cache_stale = _drop_long_step_after_mutation_failure(failed, rest)
+    if cache_stale:
         clean_cache = None
         cache_keys.clear()
-        # The cheap steps still report, but pytest would spend ~150 s on a
-        # tree the hooks just rewrote and the fix will rewrite again: six
-        # sessions waited it out for a one-line ruff fix.
-        if any(s[0] == LONG_STEP for s in rest):
-            print(f"[skip] {LONG_STEP}: {MUTATES_TREE} failed; fix it and rerun")
-            rest = [s for s in rest if s[0] != LONG_STEP]
 
     # Phase 2: launch the long step, then run the cheap ones in its shadow.
     long_step = next((s for s in rest if s[0] == LONG_STEP), None)
     shadow = [s for s in rest if s[0] != LONG_STEP and s[0] not in HEAVY_STEPS]
     heavy = [s for s in rest if s[0] in HEAVY_STEPS]
-    proc = None
-    long_start = 0.0
-    # Nothing to fill the shadow with: run it as an ordinary step, which lets
-    # a single-step run (`just test-py`) stream its output live.
-    if long_step is not None and not shadow and (stream or not heavy):
-        run_serial(*long_step)
-        long_step = None
-    if long_step is not None:
-        _, cmd, step_env = long_step
-        long_start = time.monotonic()
-        proc = start_logged(cmd, LONG_STEP, step_env, ROOT, stream=False)
-        print(f"[....] {LONG_STEP} (running alongside the remaining steps)")
-
-    if proc is not None:
-
-        def collect_long(
-            child: subprocess.Popen[str], started: float
-        ) -> tuple[str, int, float]:
-            output, returncode = _wait_with_heartbeat(child, LONG_STEP, started)
-            return output, returncode, time.monotonic() - started
-
-        # Drain immediately: waiting until the shadow ends can fill the pipe
-        # and stall pytest. The collector also measures its actual finish.
-        with ThreadPoolExecutor(max_workers=1) as collector:
-            pending = collector.submit(collect_long, proc, long_start)
-            if stream:
-                for name, cmd, step_env in shadow:
-                    run_serial(name, cmd, step_env)
-            else:
-
-                def run_shadow() -> None:
-                    for step in shadow:
-                        run_serial(*step)
-
-                with ThreadPoolExecutor(max_workers=2) as checks:
-                    results = [checks.submit(run_serial, *step) for step in heavy]
-                    results.append(checks.submit(run_shadow))
-                    for result in results:
-                        result.result()
-                heavy = []
-            output, returncode, elapsed = pending.result()
-        record(LONG_STEP, elapsed, returncode, output)
-    else:
-        for name, cmd, step_env in shadow:
-            run_serial(name, cmd, step_env)
+    heavy = _run_shadow_phase(
+        long_step,
+        shadow,
+        heavy,
+        stream=stream,
+        run_serial=run_serial,
+        record=record,
+    )
 
     # Phase 3: the parallel steps, now that they can have the machine.
     for name, cmd, step_env in heavy:
