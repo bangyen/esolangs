@@ -1,7 +1,9 @@
 """What the CLI suites share: the examples directory, a bound, and both streams."""
 
 import shlex
+import subprocess
 import sys
+from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -22,17 +24,6 @@ PACKAGE = Path(__file__).resolve().parents[2] / "src/esolangs"
 _LOOPS = "0.5"
 
 
-class _FakeStdin:
-    def __init__(self, data: str) -> None:
-        self.data = data
-
-    def isatty(self) -> bool:
-        return False
-
-    def read(self) -> str:
-        return self.data
-
-
 def _program(tmp_path: Path, source: str) -> str:
     """Write ``source`` to a file and return its path."""
     path = tmp_path / "prog.b"
@@ -46,7 +37,7 @@ def call_both(
     """Run ``main`` and return both streams."""
     with (
         patch.object(sys, "argv", ["esolangs", *args]),
-        patch.object(sys, "stdin", _FakeStdin(stdin)),
+        patch.object(sys, "stdin", StringIO(stdin)),
     ):
         main()
     captured = capsys.readouterr()
@@ -79,3 +70,20 @@ def _refused(
         for word in shlex.split(command)
     ]
     return _failure(args, capsys, stdin=stdin)[1]
+
+
+def run_cli(*args: str, stdin: str = "") -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, "-m", "esolangs.cli", *args],
+        capture_output=True,
+        text=True,
+        input=stdin,
+        check=False,
+    )
+
+
+def call_main(
+    args: list[str], capsys: pytest.CaptureFixture[str], stdin: str = ""
+) -> str:
+    """Run main and return stdout; call_both retains stderr too."""
+    return call_both(args, capsys, stdin)[0]

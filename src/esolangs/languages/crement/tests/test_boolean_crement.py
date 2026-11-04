@@ -15,11 +15,11 @@ from esolangs.languages.crement.generator import (
     crement_setters,
 )
 from esolangs.languages.crement.interpreter import _Machine
-from esolangs.runtime._evaluate import _evaluate
 from esolangs.vm import run_until_halt_or_cycle
 from tests.generators.fills import fill
 from tests.generators.sample_tables import five_input_sample
 from tests.support.divergence import diverges
+from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import dense, parity
 
 instantiate_crement = fill("Crement")

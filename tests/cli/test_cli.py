@@ -1,8 +1,8 @@
 """Unit tests for the esolangs command-line interface."""
 
 import json
-import subprocess
 import sys
+from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -11,7 +11,7 @@ import pytest
 import esolangs
 from esolangs.cli import main
 from esolangs.registry import LANGUAGES
-from tests.support.cli_support import _FakeStdin, _program, _refused
+from tests.support.cli_support import _program, _refused, call_main, run_cli
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
 
@@ -27,27 +27,6 @@ TEMPLATED = first(parameterized=True)
 TABLE3 = "01101001"
 
 
-def run_cli(*args: str, stdin: str = "") -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, "-m", "esolangs.cli", *args],
-        capture_output=True,
-        text=True,
-        input=stdin,
-        check=False,
-    )
-
-
-def call_main(
-    args: list[str], capsys: pytest.CaptureFixture[str], stdin: str = ""
-) -> str:
-    with (
-        patch.object(sys, "argv", ["esolangs", *args]),
-        patch.object(sys, "stdin", _FakeStdin(stdin)),
-    ):
-        main()
-    return str(capsys.readouterr().out)
-
-
 class TestInProcess:
     def test_generating_a_raster_writes_png_bytes(
         self, capsysbinary: pytest.CaptureFixture[bytes]
@@ -55,7 +34,7 @@ class TestInProcess:
         """Raster ``generate`` writes the image to the byte stream."""
         with (
             patch.object(sys, "argv", ["esolangs", "generate", _RASTER, "0110"]),
-            patch.object(sys, "stdin", _FakeStdin("")),
+            patch.object(sys, "stdin", StringIO("")),
         ):
             main()
         out = capsysbinary.readouterr().out

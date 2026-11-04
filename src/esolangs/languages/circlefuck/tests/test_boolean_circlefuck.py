@@ -27,8 +27,8 @@ def _rows(program: str, table: str, n: int) -> None:
 def test_constant_reads_into_spent_code_and_prints_a_literal_tail(n, bit) -> None:
     import esolangs
     from esolangs.languages.circlefuck.interpreter import _Machine
-    from esolangs.runtime._evaluate import _evaluate
     from esolangs.runtime.io import ScriptedIO
+    from tests.support.evaluation import _evaluate
 
     if n == 1 and bit == "0":
         _check_constants()

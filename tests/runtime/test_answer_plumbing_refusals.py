@@ -15,7 +15,6 @@ from esolangs import _check_program, _run
 from tests.support.generator_support import evaluate_generated, verify_generated
 from tests.support.pick import first, languages, one
 from tests.support.reference import REFERENCE
-from tests.support.stdin_check import _check_stdin
 
 
 class TestTheNewChecksRefuseTheirOwnBadInput:
@@ -154,11 +153,10 @@ class TestABadStdinIsAnArgumentFault:
             lambda: _check_program(REFERENCE, ",.", ["0"]),
             lambda: debugger_api.make_vm(REFERENCE, ",.", stdin=["0"]),
             lambda: debugger_api.make_debugger(REFERENCE, ",.", stdin=["0"]),
-            lambda: _check_stdin(REFERENCE, ["0"]),
         ],
     )
     def test_every_entry_point_agrees(self, call: object) -> None:
-        """One fault, one class -- ``except ArgumentError`` has to cover all five."""
+        """One fault, one class -- ``except ArgumentError`` has to cover all four."""
         with pytest.raises(esolangs.ArgumentError, match="stdin must be a string"):
             call()
 

@@ -13,8 +13,7 @@ from esolangs.cli import main
 from esolangs.cli.io import (
     _bounded_read,
 )
-from tests.cli.test_cli import call_main, run_cli
-from tests.support.cli_support import PACKAGE
+from tests.support.cli_support import PACKAGE, call_main, run_cli
 from tests.support.pick import languages, one_where
 from tests.support.reference import REFERENCE
 

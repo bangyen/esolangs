@@ -4,8 +4,8 @@ import pytest
 
 import esolangs
 from esolangs import vm
-from esolangs.runtime._evaluate import _row_answerer
 from esolangs.runtime.io import ScriptedIO
+from tests.support.evaluation import _row_answerer
 from tests.support.generator_support import assert_proved_resource_cap
 from tests.support.reference import REFERENCE
 from tests.support.witness_tables import witnesses

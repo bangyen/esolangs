@@ -13,8 +13,8 @@ from esolangs.languages.slashes.generator import (
     _UNARY,
     _is_unfilled_template,
 )
-from esolangs.runtime._evaluate import _evaluate
 from scripts.benchmark import WrittenState
+from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import witnesses
 
 

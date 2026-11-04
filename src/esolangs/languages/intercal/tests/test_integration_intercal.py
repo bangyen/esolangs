@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from tests.cli.test_cli import call_main
+from tests.support.cli_support import call_main
 from tests.support.witness_tables import witnesses
 
 

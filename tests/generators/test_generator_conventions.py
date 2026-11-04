@@ -12,8 +12,8 @@ import pytest
 import esolangs
 import esolangs.languages.generators as boolean
 from esolangs.registry import LANGUAGES
-from esolangs.runtime._evaluate import _evaluate
-from tests.cli.test_cli import call_main
+from tests.support.cli_support import call_main
+from tests.support.evaluation import _evaluate
 from tests.support.generator_support import probe_table
 from tests.support.witness_tables import witnesses
 

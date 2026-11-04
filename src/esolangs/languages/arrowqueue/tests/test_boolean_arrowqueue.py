@@ -105,7 +105,7 @@ class TestParameterizedArrowQueue:
 def test_constant_balance_and_setters_off_path(bit: str) -> None:
     """Constant roots keep their setters off the halt/ring path, balanced."""
     import esolangs
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     if bit == "0":
         _check_constants()

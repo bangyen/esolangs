@@ -324,7 +324,7 @@ def test_balanced_tree_folds_and_still_computes(table: str, monkeypatch) -> None
     import esolangs
     from esolangs.generation.wrap import balance_score
     from esolangs.languages.flowchart.generator import _ANSWER, _snake
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     shapes = set()
     padded_reads = []

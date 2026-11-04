@@ -141,7 +141,7 @@ def test_default_names_only_the_nodes_sharing_shortens() -> None:
 @pytest.mark.parametrize("width", [1, 12, 40, 10**6])
 def test_packed_lines_name_shared_or_overlong_nodes(width: int) -> None:
     from esolangs.languages.fargo.generator import _expression, _packed_program
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     table = format(random.Random(1847).getrandbits(64), "064b")
     program = _packed_program(_expression(table, 6), 6, width)
@@ -163,7 +163,7 @@ def test_a_width_request_keeps_the_exact_fit_and_counts_every_use(
 ) -> None:
     """Both programs fit their width exactly or inline shared uses; sizes are exact."""
     import esolangs
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     program = esolangs.generate("fargo", table, width=width)
     assert len(str(program)) == size
@@ -180,7 +180,7 @@ def test_balanced_layout_scores_are_exact(
     """The squarest packing the width walk finds, as side, length and width."""
     import esolangs
     from esolangs.generation.wrap import balance_score
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     program = esolangs.generate("fargo", table, balance=True)
     assert balance_score(str(program)) == score

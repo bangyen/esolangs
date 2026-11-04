@@ -373,7 +373,7 @@ def test_a_dag_over_the_cycle_bound_is_refused() -> None:
 def test_balance_races_the_flat_tree(n: int, side: int) -> None:
     """Contracted flat trees retain their balanced size pins."""
     from esolangs.generation.wrap import balance_score
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
     balanced = esolangs.generate("thisthat", table, balance=True)

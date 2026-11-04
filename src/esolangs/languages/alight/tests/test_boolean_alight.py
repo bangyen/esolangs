@@ -8,8 +8,8 @@ import esolangs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from esolangs.languages.alight.interpreter import run as alight_run
-from esolangs.runtime._evaluate import _evaluate
 from esolangs.runtime.io import ScriptedIO
+from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_an_ignored_input_costs
 
@@ -208,7 +208,7 @@ def test_postfix_settings_are_checked_and_do_not_leak() -> None:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_lookup_drops_every_index_input(syntax, update, bit) -> None:
     import esolangs
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     _check_native_constants(syntax, update, bit)
     table = bit * 256
@@ -226,7 +226,7 @@ def test_constant_lookup_drops_every_index_input(syntax, update, bit) -> None:
 @pytest.mark.parametrize("n", [3, 8])
 def test_constant_lookup_executes_every_layout(syntax, bit, width, n) -> None:
     import esolangs
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     table = bit * (1 << n)
     settings = esolangs.DialectSettings(expression_syntax=syntax)

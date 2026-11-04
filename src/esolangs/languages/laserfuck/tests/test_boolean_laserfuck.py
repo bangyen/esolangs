@@ -478,7 +478,7 @@ def test_balance_races_the_turned_tree(n: int, side: int) -> None:
     """The tree stood on end is the balanced square (upright: 166-172 / 322+)."""
     import esolangs
     from esolangs.generation.wrap import balance_score
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
     balanced = esolangs.generate("LaserFuck", table, balance=True)
@@ -493,7 +493,7 @@ def test_balance_tiles_subtrees_at_n9() -> None:
     """The tree cut at depth 2, subtrees side by side: (side, length, width)."""
     import esolangs
     from esolangs.generation.wrap import balance_score
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     table = format(random.Random(9).getrandbits(1 << 9), f"0{1 << 9}b")
     balanced = esolangs.generate("LaserFuck", table, balance=True)

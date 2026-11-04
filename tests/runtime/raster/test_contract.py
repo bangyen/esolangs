@@ -9,8 +9,8 @@ import esolangs
 from esolangs import _check_program
 from esolangs.raster import Raster, lazy_raster
 from esolangs.registry import LANGUAGES, SourceKind
-from esolangs.runtime._evaluate import _evaluate
 from tests.support.dialect_support import integer_setting
+from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
 
 RASTER_LANGUAGES = [

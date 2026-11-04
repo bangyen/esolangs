@@ -195,7 +195,7 @@ def test_single_column_cannot_close_a_clockwise_ring() -> None:
 @pytest.mark.parametrize("split", [1, 2, 3])
 def test_banded_lookup_selects_a_strip_by_the_first_inputs(split: int) -> None:
     from esolangs.languages.clockwise.generator import _clockwise_banded
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     # The second input is ignored and the sixth trails: a head reads past
     # one and the rail reads the other.

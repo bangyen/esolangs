@@ -7,9 +7,9 @@ import pytest
 
 import esolangs
 from esolangs.languages import generators as boolean
-from esolangs.runtime._evaluate import _evaluate
 from tests.generators.boolean_runners import _runner
 from tests.generators.sample_tables import five_input_sample
+from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_an_ignored_input_costs
 from tests.support.witness_tables import row_bits, witnesses

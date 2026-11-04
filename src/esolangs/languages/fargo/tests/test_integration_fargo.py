@@ -10,34 +10,6 @@ import esolangs.debugger as debugger_api
 from esolangs.exceptions import ArgumentError
 from tests.support.cli_support import call_both
 from tests.support.reference import REFERENCE
-from tests.support.stdin_check import _check_stdin
-
-
-class TestALeadingZeroIndexNeverCrashes:
-    """The message explaining a leading zero crashed on one."""
-
-    @pytest.mark.parametrize("value", ["02", "089"])
-    def test_a_non_binary_leading_zero_is_refused_cleanly(self, value: str) -> None:
-        """`int('02', 2)` raises, so the friendly message threw a traceback."""
-        with pytest.raises(esolangs.ArgumentError, match="leading zero"):
-            _check_stdin("Fargo", f"{value}\n")
-
-    @pytest.mark.parametrize("value", ["01", "010"])
-    def test_a_binary_one_still_offers_the_index(self, value: str) -> None:
-        """The helpful half must survive the fix to the crashing half."""
-        with pytest.raises(esolangs.ArgumentError, match="if those are the input bits"):
-            _check_stdin("Fargo", f"{value}\n")
-
-    def test_the_suggested_index_is_right(self) -> None:
-        """`010` as bits is row 2, and the message says so."""
-        with pytest.raises(esolangs.ArgumentError, match="the index is 2"):
-            _check_stdin("Fargo", "010\n")
-
-    def test_a_large_binary_index_is_refused_without_rendering_it(self) -> None:
-        with pytest.raises(esolangs.ArgumentError, match="15001 input bits") as caught:
-            _check_stdin("Fargo", "0" + "1" * 15000)
-        assert "leading zero" in str(caught.value)
-        assert len(str(caught.value)) < 200
 
 
 def test_describe_leads_with_the_contract(capsys) -> None:
@@ -50,27 +22,8 @@ def test_describe_leads_with_the_contract(capsys) -> None:
     assert "esolangs describe --spec Fargo" in output
 
 
-class TestARowIndexNeverHasALeadingZero:
-    """`0010` fed to a 16-row program parses as ten and answers row 10."""
-
-    def test_a_bit_string_typed_as_an_index_is_caught(self) -> None:
-        """No table needed; the message gives the index the bits meant."""
-        with pytest.raises(esolangs.ArgumentError, match=r"leading zero.*index is 2"):
-            _check_stdin("Fargo", "0010\n")
-
-    def test_a_real_index_passes(self) -> None:
-        """Including a single zero, which has no *leading* zero to speak of."""
-        _check_stdin("Fargo", "0\n")
-        _check_stdin("Fargo", "15\n")
-
-
 class TestAHugeRowIndexIsRefusedNotCrashed:
     """CPython caps int<->str at 4300 digits; both directions leaked it."""
-
-    def test_check_stdin_refuses_a_row_index_past_the_digit_cap(self) -> None:
-        """``isdecimal`` passes for 4301 nines; ``int`` is what refuses them."""
-        with pytest.raises(ArgumentError):
-            _check_stdin("Fargo", "9" * 4301, "01")
 
     def test_encode_inputs_refuses_a_row_index_past_the_digit_cap(self) -> None:
         """Fargo reads a decimal row index, and 15000 bits name too many digits."""

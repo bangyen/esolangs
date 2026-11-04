@@ -17,7 +17,7 @@ from esolangs.languages.fish.generator import (
     fish,
 )
 from esolangs.languages.fish.interpreter import run
-from esolangs.runtime._evaluate import _evaluate
+from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import run_lines
 from tests.support.witness_tables import witnesses

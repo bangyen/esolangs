@@ -28,11 +28,11 @@ from esolangs.runtime._execution import check_signal_timeout
 from esolangs.runtime._isolated import check_limits
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import ProgramSource, check_scale_for
+from esolangs.runtime._termination import _terminates
 from esolangs.runtime._validate import _TIMEOUT_FLOOR, check_timeout, check_whole
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
-from esolangs.vm import make_vm, run_until_halt_or_cycle
 
 
 class _Default:
@@ -91,7 +91,7 @@ def _prepare[T](call: Callable[[], T], deadline: float | None, *, isolated: bool
         if reader.is_alive():
             raise ExecutionTimeoutError("evaluation timed out during preparation")
     else:
-        esolangs._run(capture, "", ScriptedIO(""), bound)  # noqa: SLF001
+        esolangs._run(capture, "", ScriptedIO(""), bound)
     _remaining(deadline, None)
     if errors:
         raise errors[0]
@@ -180,7 +180,7 @@ def _iter_evaluate(
     )
     deadline = None if total_timeout is None else started + total_timeout
     program = _prepare(
-        lambda: esolangs._read_source(name, program),  # noqa: SLF001
+        lambda: esolangs._read_source(name, program),
         deadline,
         isolated=isolated,
     )
@@ -361,32 +361,3 @@ def _evaluate(
         exc.add_note(f"answered {''.join(answers) or '(none)'}")
         raise
     return "".join(answers)
-
-
-def _terminates(
-    name: str,
-    source: str,
-    stdin: str,
-    bound: float | None,
-    halts: str,
-    diverges: str,
-    *,
-    settings: DialectSettings | None = None,
-) -> str:
-    """Return this row's answer for a language that answers by terminating.
-
-    Repeated snapshots prove divergence; a growing state needs the deadline.
-    """
-    dialect_options(name, settings)
-
-    # A box, because ``_run`` exists to apply the timeout and discards what
-    # it drove -- which is right for ``run``, whose result is the io buffer.
-    verdict: list[bool] = []
-
-    def _drive(*_args: object) -> None:
-        factory = make_vm if settings is None else partial(make_vm, settings=settings)
-        machine = factory(name, source, stdin=stdin)
-        verdict.append(run_until_halt_or_cycle(machine))
-
-    esolangs._run(_drive, source, ScriptedIO(""), bound)  # noqa: SLF001
-    return halts if verdict and verdict[0] else diverges

@@ -18,9 +18,7 @@ def test_generator_batch_executes_all_rows() -> None:
 
 
 def test_generator_batch_rejects_a_wrong_table(monkeypatch) -> None:
-    monkeypatch.setattr(
-        "esolangs.runtime._evaluate._evaluate", lambda *_args, **_kwargs: "0000"
-    )
+    monkeypatch.setattr(smoke, "_evaluator", lambda: lambda *_args, **_kwargs: "0000")
     with pytest.raises(AssertionError, match="Brainfuck"):
         smoke._generator("Brainfuck", image_extra=False)
 
@@ -30,7 +28,7 @@ def test_a_missing_dependency_fails_the_generator_smoke(monkeypatch) -> None:
     def missing(*_args, **_kwargs):
         raise esolangs.MissingDependencyError("extra missing")
 
-    monkeypatch.setattr("esolangs.runtime._evaluate._evaluate", missing)
+    monkeypatch.setattr(smoke, "_evaluator", lambda: missing)
     with pytest.raises(esolangs.MissingDependencyError):
         smoke._generator("Brainfuck", image_extra=False)
 

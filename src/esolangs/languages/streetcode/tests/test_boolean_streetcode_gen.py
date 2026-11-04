@@ -9,8 +9,8 @@ import pytest
 import esolangs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
-from esolangs.runtime._evaluate import _evaluate
 from tests.generators.boolean_runners import _runner
+from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import row_bits
 

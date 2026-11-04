@@ -8,11 +8,10 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs.runtime._evaluate import _evaluate
-from tests.cli.test_cli import call_main
 from tests.runtime.test_stepping_parity import _STEP_BUDGET, _row
+from tests.support.cli_support import call_main
+from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
-from tests.support.stdin_check import _check_stdin
 
 
 def test_bound_template_language_runs_each_input_row() -> None:
@@ -99,7 +98,6 @@ def test_execution_does_not_require_examples_or_docstrings(monkeypatch) -> None:
     monkeypatch.setattr(_describe, "_spec", refuse_documentation)
     monkeypatch.setattr(examples, "BOOLEAN_EXAMPLES", {})
     assert esolangs.encode_inputs(REFERENCE, [0, 1]) == "01"
-    _check_stdin(REFERENCE, "01", "0110")
     assert esolangs.read_answer("RAM0", "z: 1\nn: 0") == "1"
     assert _evaluate(REFERENCE, program, inputs=2) == "0110"
 

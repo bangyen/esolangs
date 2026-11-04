@@ -9,9 +9,9 @@ from esolangs.languages import generators as boolean
 from esolangs.languages.fractran.generator import PAIR as FRACTRAN_PAIR
 from esolangs.languages.fractran.generator import fractran
 from esolangs.languages.fractran.interpreter import run as run_fractran
-from esolangs.runtime._evaluate import _evaluate
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.reader_support import _TABLES
+from tests.support.evaluation import _evaluate
 from tests.support.generator_support import evaluate_generated
 from tests.support.witness_tables import row_bits as _bits
 from tests.support.witness_tables import witnesses

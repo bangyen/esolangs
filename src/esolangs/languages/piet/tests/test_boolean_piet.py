@@ -11,7 +11,7 @@ from esolangs.generation.raster_lookup.balance import _bounded_operations
 from esolangs.languages.piet.generator import piet as generate
 from esolangs.languages.piet.tests.test_boolean_piet_raster_balance import TABLES, score
 from esolangs.raster import Raster
-from esolangs.runtime._evaluate import _evaluate
+from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 
 

@@ -8,7 +8,6 @@ import esolangs
 from esolangs import _check_program, debugger
 from esolangs.exceptions import EsolangError, UnknownLanguageError
 from esolangs.registry import LANGUAGES
-from esolangs.runtime._evaluate import _evaluate
 from esolangs.runtime._validate import (
     check_bits,
     check_scale,
@@ -17,8 +16,8 @@ from esolangs.runtime._validate import (
 )
 from esolangs.runtime.source_hints import error_text
 from esolangs.vm import machine_traits
+from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
-from tests.support.stdin_check import _check_stdin
 
 
 def test_list_languages() -> None:
@@ -287,7 +286,6 @@ def test_bound_language_runs_a_boolean_workflow() -> None:
     assert language.describe()["name"] == language.name
     program = language.generate("0110", balance=True)
     stdin = language.encode_inputs([0, 1], truth_table="0110")
-    _check_stdin(language.name, stdin, "0110")
     assert _check_program(language.name, program, stdin) == program
     assert language.read_answer(language.run(program, stdin=stdin)) == "1"
     assert _evaluate(language.name, program, inputs=2) == "0110"

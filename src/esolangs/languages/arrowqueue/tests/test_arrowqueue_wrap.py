@@ -47,7 +47,7 @@ def test_arrowqueue_four_columns_preserve_public_provenance(*, tagged: bool) -> 
 
 def test_width_six_builds_the_wide_cascade() -> None:
     """Width 6 is past the narrow cutoff: the cascade keeps its third column."""
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     template = arrowqueue("01011100", 6)
     lines = template.splitlines()
@@ -66,7 +66,7 @@ def test_a_narrow_template_fills_against_its_table(width: int) -> None:
 @pytest.mark.parametrize("width", [1, 4, 5, 6])
 def test_arrowqueue_narrow_drops_ignored_inputs(width: int) -> None:
     """A narrow build with ignored inputs is smaller than the full cascade and runs."""
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     table = "".join(b for b in "0110" for _ in range(8))  # 2 of 5 inputs essential
     template = arrowqueue(table, width)
@@ -81,7 +81,7 @@ def test_arrowqueue_narrow_drops_ignored_inputs(width: int) -> None:
 def test_balanced_fold_computes_every_row_and_is_squarer(table: str) -> None:
     """The folded cascade beats the unfolded candidates and keeps the answer."""
     from esolangs.generation.wrap import balance_score
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     program = str(esolangs.generate("ArrowQueue", table, balance=True))
     inputs = len(table).bit_length() - 1
@@ -104,7 +104,7 @@ def test_balanced_three_input_sizes_are_pinned(
     table: str, rows: int, cols: int, chars: int
 ) -> None:
     """Balanced 3-input programs keep their measured shape and still compute."""
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     program = str(esolangs.generate("ArrowQueue", table, balance=True))
     lines = program.split("\n")

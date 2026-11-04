@@ -10,7 +10,7 @@ import pytest
 import esolangs
 from esolangs.cli import HELP, USAGE
 from esolangs.registry import wiki_url
-from tests.cli.test_cli import call_main
+from tests.support.cli_support import call_main
 from tests.support.pick import first
 
 

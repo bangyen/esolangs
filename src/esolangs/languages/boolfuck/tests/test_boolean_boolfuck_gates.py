@@ -216,7 +216,7 @@ def test_four_input_table_keeps_its_gate_size() -> None:
 
     # The gates race starts at n = 4, where the workspace first holds;
     # this table's winner is the gates program, not the shared tree.
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     table = "0001110100101101"
     program = boolfuck(table)

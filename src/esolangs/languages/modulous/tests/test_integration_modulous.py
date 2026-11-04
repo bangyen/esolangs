@@ -8,9 +8,8 @@ import esolangs
 from esolangs import vm
 from esolangs.exceptions import HaltError
 from esolangs.vm import make_vm
-from tests.cli.test_cli import call_main
 from tests.runtime.test_vm import assert_random_steps_reproduce
-from tests.support.cli_support import _failure, call_both
+from tests.support.cli_support import _failure, call_both, call_main
 from tests.support.reference import REFERENCE
 
 

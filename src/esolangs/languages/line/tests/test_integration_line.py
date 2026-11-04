@@ -2,6 +2,7 @@
 
 import json
 import sys
+from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -12,9 +13,9 @@ from esolangs import DialectSettings, Raster
 from esolangs.cli import main
 from esolangs.languages.line.interpreter.extract import detect_scale, normalize_scale
 from esolangs.languages.line.interpreter.mask import Mask
-from esolangs.runtime._evaluate import _evaluate
-from tests.cli.test_cli import _FakeStdin, call_main
 from tests.interpreters.test_input_convention import assert_reads_tokens_on_one_line
+from tests.support.cli_support import call_main
+from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
 
 
@@ -78,7 +79,7 @@ class TestTheSmallInconsistencies:
             patch.object(
                 sys, "argv", ["esolangs", "generate", "--width", "10", "Line", "0100"]
             ),
-            patch.object(sys, "stdin", _FakeStdin("")),
+            patch.object(sys, "stdin", StringIO("")),
         ):
             main()
         captured = capsysbinary.readouterr()

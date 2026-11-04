@@ -8,7 +8,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import DialectSettings
-from esolangs.runtime._evaluate import _evaluate
+from tests.support.evaluation import _evaluate
 
 
 class TestEveryDumpSaysWhereTheAnswerIs:

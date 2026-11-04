@@ -6,9 +6,8 @@ from math import isqrt
 
 import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
-from esolangs.runtime._evaluate import _DEFAULT, _Default, _evaluate
 from esolangs.runtime.io import ScriptedIO
-from tests.support.stdin_check import _validate_shape_for_evaluate
+from tests.support.evaluation import _DEFAULT, _Default, _evaluate
 from tests.support.witness_tables import parity, row_bits
 
 
@@ -68,8 +67,8 @@ def evaluate_generated(
     isolated: bool = False,
 ) -> str:
     """Generate a table's program, then evaluate its observed answers."""
-    inputs = _validate_shape_for_evaluate(table)
     program = esolangs.generate(language, table, width=width)
+    inputs = len(table).bit_length() - 1
     return _evaluate(language, program, timeout, inputs=inputs, isolated=isolated)
 
 

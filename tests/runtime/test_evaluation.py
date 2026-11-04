@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 
 import esolangs
-import esolangs.runtime._evaluate as evaluator
-from esolangs.runtime._evaluate import _evaluate, _iter_evaluate
+import tests.support.evaluation as evaluator
+from tests.support.evaluation import _evaluate, _iter_evaluate
 from tests.support.generator_support import probe_table
 from tests.support.pick import first, languages
 from tests.support.reference import REFERENCE
@@ -256,7 +256,7 @@ def test_execution_failure_never_becomes_an_answer(
         raise error
 
     monkeypatch.setattr(esolangs, "run", fail)
-    monkeypatch.setattr(evaluator, "run_until_halt_or_cycle", fail)
+    monkeypatch.setattr("esolangs.runtime._termination.run_until_halt_or_cycle", fail)
     with pytest.raises(error_type) as caught:
         _evaluate(name, program, inputs=1)
     assert caught.value is error

@@ -154,7 +154,7 @@ strict = true
 python_version = "3.12"
 # scripts/ is CI infrastructure (the verification and installer checks), so
 # it is type-checked alongside the package itself.
-files = ["src", "scripts", "checks"]
+files = ["src", "scripts", "checks", "tests/support/evaluation.py"]
 exclude = ["\\.venv/", "build/", "dist/", "src/esolangs/languages/[^/]+/tests/"]
 warn_unused_configs = true
 disallow_untyped_decorators = false  # pytest's decorators are untyped

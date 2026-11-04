@@ -6,7 +6,7 @@ import esolangs
 from esolangs.exceptions import ArgumentError, ProgramError
 from esolangs.raster import Raster
 from esolangs.raster.scale import detect_scale, normalize
-from esolangs.runtime._evaluate import _evaluate
+from tests.support.evaluation import _evaluate
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
 

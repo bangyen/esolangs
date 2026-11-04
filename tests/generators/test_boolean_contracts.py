@@ -5,7 +5,6 @@ import sys
 
 import pytest
 
-import esolangs
 from esolangs.generation.examples import BOOLEAN_EXAMPLES
 from esolangs.registry import LANGUAGES, parameterized_ids, resolve
 from tests.support.pick import spread
@@ -42,12 +41,9 @@ def test_stripped_docstrings_preserve_all_answer_mechanisms() -> None:
         "answer_encoding",
         boolean_generator=True,
     )
-    # ``describe`` refuses under -OO, so what it says is read out here.
-    readers = [name for name in names if esolangs.describe(name)["reads_input"]]
     code = f"""
 import esolangs
-from esolangs.runtime._evaluate import _evaluate
-from tests.support.stdin_check import _check_stdin
+from tests.support.evaluation import _evaluate
 from tests.support.generator_support import probe_table
 for name in {names!r}:
     table = probe_table(name)
@@ -56,8 +52,6 @@ for name in {names!r}:
     result = _evaluate(name, program, inputs=inputs)
     if result != table:
         raise AssertionError((name, result))
-    if name in {readers!r}:
-        _check_stdin(name, esolangs.encode_inputs(name, [0] * inputs), table)
 try:
     esolangs.describe('brainfuck')
 except esolangs.ProgramError as exc:

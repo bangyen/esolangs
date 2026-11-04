@@ -290,7 +290,7 @@ def test_balance_of_a_three_ones_n8_table_is_exact() -> None:
 @pytest.mark.parametrize(("copy", "run"), [(1, 1), (5, 3), (16, 40)])
 def test_folded_copy_and_runs_keep_the_walk(copy: int, run: int) -> None:
     from esolangs.languages.b_tapemark.generator import _b_tapemark_folded
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     # The second input is ignored, so its stage crosses no run.
     table = "".join(
@@ -312,7 +312,7 @@ def test_the_default_is_the_least_by_area_of_the_strip_and_closed_forms() -> Non
         _b_tapemark_program,
         _closed_forms,
     )
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     rng = random.Random(11)
     for bits in (2, 4, 6, 7):

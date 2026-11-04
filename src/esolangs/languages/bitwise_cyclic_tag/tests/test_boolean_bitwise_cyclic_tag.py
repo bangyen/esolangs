@@ -10,9 +10,9 @@ from esolangs.languages.bitwise_cyclic_tag.interpreter import (
     _Machine as BctMachine,
 )
 from esolangs.languages.bitwise_cyclic_tag.interpreter import run as run_bct
-from esolangs.runtime._evaluate import _evaluate
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.reader_support import _TABLES
+from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import parity as _parity
 from tests.support.witness_tables import row_bits as _bits
 

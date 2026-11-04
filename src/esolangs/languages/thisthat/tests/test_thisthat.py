@@ -316,18 +316,13 @@ def test_the_flag_switches_input_sets(stdin: str, expected: str) -> None:
 
 
 def test_a_generated_program_reads_the_first_set_only() -> None:
-    """Spaces are ignored, a newline is not: the stdin oracle refuses ``0\\n1``."""
-    from esolangs.exceptions import ArgumentError
-    from tests.support.stdin_check import _check_stdin
+    """Spaces are ignored; a newline ends the input set."""
 
     xor = thisthat("0110").splitlines()
     for stdin, expected in (("0 1\n", "1"), ("0\n1", "")):
         io = ScriptedIO(stdin)
         run(xor, io)
         assert io.getvalue() == expected
-    _check_stdin("thisthat", "0 1\n", "0110")
-    with pytest.raises(ArgumentError, match="first line"):
-        _check_stdin("thisthat", "0\n1", "0110")
 
 
 def test_branching_protocol_covers_random_input_plain_and_halted() -> None:

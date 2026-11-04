@@ -14,8 +14,10 @@ import tarfile
 import tempfile
 from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
+from functools import cache
 from itertools import islice
 from pathlib import Path
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -100,11 +102,24 @@ def _refuses_timeout() -> None:
     assert "Unix main thread" in str(refusal)
 
 
+@cache
+def _evaluator() -> Callable[..., str]:
+    """Load the development harness without exposing checkout source to imports."""
+    path = ROOT / "tests/support/evaluation.py"
+    spec = importlib.util.spec_from_file_location("release_evaluation", path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return cast("Callable[..., str]", module._evaluate)  # noqa: SLF001
+
+
 def _generator(name: str, *, image_extra: bool) -> None:
     """Execute all rows in one process; its parent supplies the deadline."""
     import esolangs
     from esolangs.registry import LANGUAGES, resolve
-    from esolangs.runtime._evaluate import _evaluate
+
+    _evaluate = _evaluator()
 
     controls = LANGUAGES[resolve(name)].benchmark_tables
     table = next((t for t in controls if "0" in t and "1" in t), "0110")
@@ -178,7 +193,8 @@ def smoke(*, image_extra: bool = False) -> None:
 def _smoke_install(package: Path) -> None:
     """Check the installed package, its entry point and the bounded runners."""
     import esolangs
-    from esolangs.runtime._evaluate import _evaluate
+
+    _evaluate = _evaluator()
 
     assert package.parent.name in {"site-packages", "dist-packages"}, package
     assert (package / "py.typed").is_file()
@@ -237,7 +253,8 @@ def _smoke_generators(package: Path, *, image_extra: bool) -> None:
 def _smoke_files() -> None:
     """Run generated source from a file through the API and the CLI's limits."""
     import esolangs
-    from esolangs.runtime._evaluate import _evaluate
+
+    _evaluate = _evaluator()
 
     with tempfile.TemporaryDirectory() as temporary:
         source = Path(temporary) / "xor.txt"
@@ -314,7 +331,8 @@ def _smoke_rasters(*, image_extra: bool) -> None:
 def _smoke_deadlines() -> None:
     """Check signal, thread and isolated deadlines, and termination answers."""
     import esolangs
-    from esolangs.runtime._evaluate import _evaluate
+
+    _evaluate = _evaluator()
 
     if hasattr(signal, "SIGALRM"):
         assert (

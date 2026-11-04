@@ -499,7 +499,7 @@ def _worker() -> None:
         )
         if "termination" in request:
             from esolangs import vm
-            from esolangs.runtime._evaluate import _terminates
+            from esolangs.runtime._termination import _terminates
 
             if request.get("max_output") is not None:
                 # Same process-wide swap for the termination checker's vm import.

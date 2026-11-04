@@ -16,17 +16,17 @@ def test_cli_echoes_a_surrogate_to_a_text_stdout(tmp_path: Any) -> None:
     """
     import io
     import sys
+    from io import StringIO
     from unittest.mock import patch
 
     from esolangs.cli import main
-    from tests.support.cli_support import _FakeStdin
 
     path = tmp_path / "p.txt"
     path.write_text(",.")
     out = io.StringIO()
     with (
         patch.object(sys, "argv", ["esolangs", "run", "BFStack", str(path)]),
-        patch.object(sys, "stdin", _FakeStdin("\ud800")),
+        patch.object(sys, "stdin", StringIO("\ud800")),
         patch.object(sys, "stdout", out),
     ):
         main()

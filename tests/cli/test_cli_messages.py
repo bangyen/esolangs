@@ -2,6 +2,7 @@
 
 import io
 import sys
+from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -10,8 +11,7 @@ import pytest
 import esolangs
 from esolangs.cli import main
 from esolangs.cli.io import _write_output
-from tests.cli.test_cli import _FakeStdin, call_main
-from tests.support.cli_support import _failure, _refused, call_both
+from tests.support.cli_support import _failure, _refused, call_both, call_main
 from tests.support.pick import one, one_where
 from tests.support.reference import REFERENCE
 
@@ -112,7 +112,7 @@ class TestRoundSixQol:
         # and the note under test goes to stderr.
         with (
             patch.object(sys, "argv", ["esolangs", "run", REFERENCE, str(empty)]),
-            patch.object(sys, "stdin", _FakeStdin("")),
+            patch.object(sys, "stdin", StringIO("")),
             patch.object(sys.stdout, "isatty", lambda: True),
         ):
             main()

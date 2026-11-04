@@ -10,9 +10,9 @@ import esolangs
 from esolangs.languages import generators as boolean
 from esolangs.languages.dig.generator import _DIG_BRANCH, _DIG_STRIDE
 from esolangs.languages.dig.interpreter import _Machine
-from esolangs.runtime._evaluate import _evaluate
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
+from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_constant_output
 from tests.support.witness_tables import row_bits

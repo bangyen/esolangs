@@ -5,8 +5,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from tests.cli.test_cli import _program, call_main
-from tests.support.cli_support import call_both
+from tests.support.cli_support import _program, call_both, call_main
 from tests.support.generator_support import evaluate_generated
 from tests.support.screen_support import _worst
 

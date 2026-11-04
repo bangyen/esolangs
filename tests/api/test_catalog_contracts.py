@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.runtime._execution import interpreter_module
-from tests.cli.test_cli import call_main
+from tests.support.cli_support import call_main
 from tests.support.reference import REFERENCE
 
 #: What a spec must not show: a private name, a raw Sphinx role, a repo path.

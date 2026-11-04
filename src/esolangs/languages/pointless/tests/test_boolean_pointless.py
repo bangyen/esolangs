@@ -27,7 +27,7 @@ def test_a_function_called_once_is_pasted_in() -> None:
     import re
 
     from esolangs.languages.pointless.generator import pointless
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     table = format(random.Random(1847).getrandbits(64), "064b")
     program = pointless(table)

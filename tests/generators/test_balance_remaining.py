@@ -10,7 +10,7 @@ from esolangs.generation import wrap as _wrap
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score, wrap_chars, wrap_program
 from esolangs.registry import LANGUAGES, SourceKind
-from esolangs.runtime._evaluate import _evaluate
+from tests.support.evaluation import _evaluate
 from tests.support.exact_token_width import exact_token_width
 from tests.support.witness_tables import witnesses
 

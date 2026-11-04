@@ -4,7 +4,6 @@ import pytest
 
 import esolangs
 from tests.support.generator_support import measure_run
-from tests.support.stdin_check import _check_stdin
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -47,12 +46,6 @@ def test_the_input_is_the_row_number() -> None:
                     assert vm.output == bit
                     assert steps == 2
                     assert state.bits <= n + 8
-
-
-@pytest.mark.parametrize("stdin", ["0\n", "5\n"])
-def test_a_row_number_outside_one_to_t_is_refused(stdin: str) -> None:
-    with pytest.raises(esolangs.ArgumentError, match=r"out of range.*\(1\.\.4\)"):
-        _check_stdin("Blindfolded Arithmetic", stdin, "0110")
 
 
 def _check_alternating_rounds() -> None:

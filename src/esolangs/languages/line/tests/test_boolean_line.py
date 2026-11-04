@@ -19,7 +19,7 @@ from esolangs.languages.line.interpreter.simulate import (
     run_compiled,
 )
 from esolangs.raster import Raster, png
-from esolangs.runtime._evaluate import _evaluate
+from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import row_bits
 
 

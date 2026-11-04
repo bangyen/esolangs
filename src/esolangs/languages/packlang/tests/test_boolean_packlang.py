@@ -13,8 +13,8 @@ from esolangs.languages import generators as boolean
 from esolangs.languages.packlang.generator import _folded
 from esolangs.languages.packlang.interpreter import run as packlang_run
 from esolangs.languages.packlang.wrapping import _packlang
-from esolangs.runtime._evaluate import _evaluate
 from esolangs.runtime.io import ScriptedIO
+from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 
 

@@ -10,7 +10,7 @@ import pytest
 import esolangs
 from esolangs import _check_program
 from esolangs.debugger import make_debugger
-from esolangs.runtime._evaluate import _evaluate
+from tests.support.evaluation import _evaluate
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
 

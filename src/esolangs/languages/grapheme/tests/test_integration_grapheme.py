@@ -8,12 +8,10 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import DialectSettings
 from esolangs.debugger import make_debugger
-from esolangs.runtime._evaluate import _evaluate
 from tests.api.test_api_contracts import XOR
-from tests.cli.test_cli import call_main
-from tests.support.cli_support import call_both
+from tests.support.cli_support import call_both, call_main
+from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
-from tests.support.stdin_check import _check_stdin
 from tests.support.witness_tables import witnesses
 
 
@@ -165,12 +163,10 @@ class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
 
     def test_the_alphabet_check_reads_the_declared_alphabet(self) -> None:
         """Grapheme's own bits are %/A, so 0/1 is what is wrong there."""
-        _check_stdin("Grapheme", "%\nA\n")
-        # 0/1 is wrong *here*, and the specific message is the one that
-        # fires: the general stray-line rule runs last so a language with
-        # something better to say keeps saying it.
-        with pytest.raises(esolangs.ArgumentError, match="spells its bits"):
-            _check_stdin("Grapheme", "0\n1\n")
+        assert esolangs.encode_inputs("Grapheme", [0, 1]) == "%\nA\n"
+        source = esolangs.generate("Grapheme", "0101")
+        assert esolangs.run("Grapheme", source, stdin="%\nA\n") == "1"
+        assert esolangs.run("Grapheme", source, stdin="0\n1\n") == "0"
 
 
 class TestTheShapeWarningFiresOnlyWhenItShould:

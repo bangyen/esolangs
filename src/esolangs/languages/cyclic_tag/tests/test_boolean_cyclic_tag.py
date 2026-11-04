@@ -4,8 +4,8 @@ import pytest
 
 import esolangs
 from esolangs.languages.cyclic_tag.interpreter import _Machine
-from esolangs.runtime._evaluate import _evaluate
 from esolangs.runtime.io import ScriptedIO
+from tests.support.evaluation import _evaluate
 
 
 @pytest.mark.medium

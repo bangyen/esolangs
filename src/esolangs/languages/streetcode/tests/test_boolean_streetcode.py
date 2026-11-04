@@ -4,7 +4,7 @@ import pytest
 
 import esolangs
 from esolangs.generation.wrap import balance_score
-from esolangs.runtime._evaluate import _evaluate
+from tests.support.evaluation import _evaluate
 from tests.support.generator_support import evaluate_generated
 
 

@@ -237,7 +237,7 @@ def test_balanced_spaces_only_separate_word_tokens(n: int, side: int) -> None:
     import re
 
     from esolangs.generation.wrap import balance_score
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
     balanced = str(esolangs.generate("forbin", table, balance=True))

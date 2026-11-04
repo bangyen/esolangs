@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs.runtime._evaluate import _evaluate
+from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
 
 

@@ -262,7 +262,7 @@ def test_loop_depth_rule_is_within_the_bar_of_the_measured_best(monkeypatch) -> 
 def test_a_narrow_five_input_lookup_has_an_exact_size() -> None:
     """The single-one table's strip walks every unlooped level's guards in full."""
     import esolangs
-    from esolangs.runtime._evaluate import _evaluate
+    from tests.support.evaluation import _evaluate
 
     table = "0" * 31 + "1"
     program = esolangs.generate("brainif", table, width=1)
