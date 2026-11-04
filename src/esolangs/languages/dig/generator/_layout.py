@@ -611,7 +611,8 @@ class _AlternatingTree:
     ) -> list[tuple[_Point, int, int]]:
         """Shorten each corridor to stop where its child's lane cell now sits."""
         shortened = []
-        for start, heading, distance in self.corridors:
+        for start, heading, full_distance in self.corridors:
+            distance = full_distance
             child = start.step(heading, distance)
             if child in lanes:
                 distance -= 1

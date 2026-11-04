@@ -998,7 +998,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     # Pairs 01, 10 alternating but for a last 11: every input essential, no two
     # adjacent pairs agree, so each is a leaf (size, steps).  Workspace: the
     # first pairs 00, so the reversed twin is shorter yet as long as the worst.
-    "Home Row": lambda n: _home_row_worst(n),
+    "Home Row": _home_row_worst,
     # Size and steps: the alternating table ignores all but its last input, so
     # the worst keeps every input and flips the first pair.  Workspace: the
     # mirrored scan is chosen for a constant prefix then alternating (prefix 2

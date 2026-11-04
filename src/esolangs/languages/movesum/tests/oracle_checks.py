@@ -55,19 +55,19 @@ def _number(stdin, at):
 
 def _seed(seeds, stdin, consumed):
     staging = {}
-    for key, value in seeds:
-        if key == "42":
+    for raw_key, raw_value in seeds:
+        if raw_key == "42":
             key, consumed, error = _number(stdin, consumed)
             if error:
                 return None, consumed, error
         else:
-            key = int(key)
-        if value == "42":
+            key = int(raw_key)
+        if raw_value == "42":
             value, consumed, error = _number(stdin, consumed)
             if error:
                 return None, consumed, error
         else:
-            value = int(value)
+            value = int(raw_value)
         staging[key] = value
     return staging, consumed, None
 
@@ -219,7 +219,7 @@ def check_raw_movesum():
                 if self.mode == "seed":
                     read = self._number
                     values = [read(), read()]
-                    self._number = lambda: values.pop()
+                    self._number = values.pop
 
             @property
             def halted(self):

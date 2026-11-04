@@ -92,7 +92,7 @@ def test_short_builds_execute(n: int) -> None:
 def test_short_builds_end_at_their_highest_live_cell(n: int) -> None:
     """Up to fifteen inputs the source ends at its highest live cell."""
     build = _digits._digits(n)  # noqa: SLF001
-    live = max(max(build.code), max(build.data), max(build.tables))
+    live = max(*build.code, *build.data, *build.tables)
     assert build.words == live + 1 < 3**10
     assert len(boolean.malbolge("01" * 2 ** (n - 1))) == build.words
 

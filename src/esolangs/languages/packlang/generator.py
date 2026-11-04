@@ -105,7 +105,8 @@ def packlang(
             )
         ]
     built = []
-    for program in candidates:
+    for candidate in candidates:
+        program = candidate
         if literal_policy != "decimal":
             program = re.sub(
                 r"(?<!\w)\d+", lambda match: literals.emit(int(match[0])), program

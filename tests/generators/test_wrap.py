@@ -166,7 +166,7 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
         wrapped = wrap_program(plain, LANGUAGES[name].id, max(1, width // 2))
         same_layout = LANGUAGES[name].same_layout
         if same_layout is not None:
-            assert same_layout(wrapped, plain, lambda width: example.build(width))
+            assert same_layout(wrapped, plain, example.build)
         elif name in {"FRACTRAN", "RAM0"}:
             assert wrapped.split() == plain.split()
         else:

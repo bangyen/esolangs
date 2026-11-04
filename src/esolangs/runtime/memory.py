@@ -46,8 +46,8 @@ def parse_int_memory(code: str) -> list[int]:
     malformed program (:class:`ValueError`).
     """
     tokens: list[int] = []
-    for line in code.splitlines():
-        line = line.split("#", 1)[0].strip()
+    for raw_line in code.splitlines():
+        line = raw_line.split("#", 1)[0].strip()
         if not line:
             continue
         for tok in line.split():

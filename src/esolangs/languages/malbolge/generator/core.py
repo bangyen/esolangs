@@ -193,7 +193,8 @@ def _pointers(
     all hold the first).
     """
     values: dict[int, int] = {}
-    for lab, a in starts:
+    for lab, start in starts:
+        a = start
         first = _crazy(a, _ALL1)
         for p in sorted(label):
             if label[p] == lab:

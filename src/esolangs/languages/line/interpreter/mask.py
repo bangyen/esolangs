@@ -122,10 +122,11 @@ class Mask:
         entirely blank, which is the same reason ``crop_to_content`` exists.
         """
         for y, row in enumerate(self.rows):
-            while row:
-                low = row & -row
+            remaining = row
+            while remaining:
+                low = remaining & -remaining
                 yield y, low.bit_length() - 1
-                row ^= low
+                remaining ^= low
 
     def bounds(self) -> tuple[int, int, int, int] | None:
         """Ink's bounding box as ``(top, left, bottom, right)``, or ``None``.

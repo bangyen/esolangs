@@ -44,7 +44,7 @@ def test_every_first_implementation_was_one_when_admitted() -> None:
         if outside is not None:
             when = outside["date"]
             if not isinstance(when, datetime):
-                admitted, when = admitted.date(), when  # a day: strict order only
+                admitted = admitted.date()  # a day: strict order only
                 assert when != admitted, f"{name}: same day; record the time"
             assert when > admitted, f"{name}: implemented elsewhere first"
         # Interpreter-only is the fame route's alone.

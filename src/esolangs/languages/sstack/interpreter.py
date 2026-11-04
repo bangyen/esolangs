@@ -169,9 +169,10 @@ class _Machine:
         out = {}
         for name, stack in zip(_NAMES, self.state[1], strict=True):
             items = []
-            while stack is not None:
-                items.append(stack[0])
-                stack = stack[1]
+            node = stack
+            while node is not None:
+                items.append(node[0])
+                node = node[1]
             out[name] = items[::-1]
         return out
 

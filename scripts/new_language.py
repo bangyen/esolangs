@@ -961,7 +961,7 @@ def main(argv: list[str] | None = None) -> int:
         quick = [sys.executable, "-m", "pytest", "-q", "-n", "0", "-m", ""]
         tests = quick_tests(args.name)
         print("+ pytest", " ".join(tests), flush=True)
-        failed = subprocess.run([*quick, *tests], cwd=ROOT)
+        failed = subprocess.run([*quick, *tests], cwd=ROOT, check=False)
         if failed.returncode:
             print(f"{args.name}: integrated, but fix the failures above first")
             return 1

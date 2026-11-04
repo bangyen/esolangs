@@ -592,7 +592,7 @@ def _digits(
     labels = {p - 1: lab for p, lab in _D_LABEL.items()}
     words = _WORDS
     if layout:
-        words = max(max(code), max(data), max(tables)) + 1
+        words = max(*code, *data, *tables) + 1
     return _Digits(code, data, tables, labels, words)
 
 

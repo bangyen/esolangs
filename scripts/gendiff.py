@@ -64,7 +64,9 @@ def _dump(src: Path, name: str, max_n: int) -> tuple[Outputs, float]:
     """Run :func:`outputs` against the tree at ``src``; return it and its time."""
     env = dict(os.environ, PYTHONPATH=str(src))
     command = [sys.executable, __file__, "--dump", name, "--max-n", str(max_n)]
-    result = subprocess.run(command, env=env, capture_output=True, text=True)
+    result = subprocess.run(
+        command, env=env, capture_output=True, text=True, check=False
+    )
     if result.returncode:
         raise SystemExit(f"generating from {src} failed:\n{result.stderr[-2000:]}")
     dumped = json.loads(result.stdout)

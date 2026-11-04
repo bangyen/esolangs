@@ -50,7 +50,7 @@ class IO:
     """
 
     read: Callable[[], int] = field(default=lambda: int(input("Input: ")))
-    write: Callable[[int], None] = field(default=lambda value: print(value))
+    write: Callable[[int], None] = field(default=print)
 
 
 @dataclass

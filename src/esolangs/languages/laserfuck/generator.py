@@ -834,7 +834,7 @@ def _laserfuck_tiled(table: str) -> str:
             grid.put_run(exit_row + offset, base + col, text)
     floor = exit_row + len(top.rows)
     # Wires run from the cut rows to columns past the whole top part.
-    column = max(max(len(line) for line in grid.cells), base + 1)
+    column = max(base + 1, *(len(line) for line in grid.cells))
     for row, _, first, skipped in top.cuts:
         sub = _TreeEmitter(table, n)
         sub.emit(cut, first, 0, 0, skipped)

@@ -438,9 +438,7 @@ def test_png_rejects_missing_compressed_checksum() -> None:
     blob = _encode([bytes(4)], 1, 1, colour=2)
     chunks = bytearray(blob[:8])
     for kind, body in png._chunks(blob):  # noqa: SLF001
-        if kind == b"IDAT":
-            body = body[:-1]
-        chunks.extend(_chunk(kind, body))
+        chunks.extend(_chunk(kind, body[:-1] if kind == b"IDAT" else body))
     with pytest.raises(ValueError, match="truncated PNG compressed stream"):
         png.read_rgb(bytes(chunks))
 

@@ -705,7 +705,8 @@ def main() -> int:
     # the two apart lets the runner overlap the long step with the short ones
     # without the skip logic having to care.
     runnable: list[tuple[str, list[str], dict[str, str]]] = []
-    for name, cmd in STEPS:
+    for name, raw_cmd in STEPS:
+        cmd = raw_cmd
         if only is not None and name not in only:
             continue
         if skip is not None and name in skip:

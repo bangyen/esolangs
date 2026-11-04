@@ -442,7 +442,7 @@ def _layout_area(layout: _Layout) -> int:
     height, width = layout.bounds()
     if layout.prefix:
         height += layout.prefix.count("\n")
-        width = max(width, max(map(len, layout.prefix.splitlines())))
+        width = max(width, *map(len, layout.prefix.splitlines()))
     return height * width
 
 

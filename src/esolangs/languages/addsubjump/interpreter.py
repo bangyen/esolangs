@@ -88,8 +88,8 @@ def _source_lines(code: str) -> list[list[str]]:
         flags=re.S,
     )
     lines = []
-    for raw in code.splitlines():
-        raw = raw.split("//", 1)[0].split("#", 1)[0]
+    for raw_line in code.splitlines():
+        raw = raw_line.split("//", 1)[0].split("#", 1)[0]
         tokens = re.findall(r"\{|\}|[^\s{}]+", raw)
         if tokens:
             lines.append(tokens)

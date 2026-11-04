@@ -142,8 +142,8 @@ def _repeated_blocks(
                 [(zero, row)] if zero == one else [(zero, row), (one, row + span // 2)]
             )
             for child, first in children:
-                previous, first = following.get(child, (0, first))
-                following[child] = (previous + copies, first)
+                previous, kept_first = following.get(child, (0, first))
+                following[child] = (previous + copies, kept_first)
         live = following
     return found
 

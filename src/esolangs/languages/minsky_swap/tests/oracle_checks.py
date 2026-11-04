@@ -12,8 +12,8 @@ from tests.interpreters.oracle_support import observed
 def _parse(source):
     commands = []
     if any(name + "(" in source for name in ("inc", "swap", "decnz")):
-        for text in source.splitlines():
-            text = text.strip()
+        for raw_text in source.splitlines():
+            text = raw_text.strip()
             if not text:
                 continue
             name, separator, rest = text.partition("(")

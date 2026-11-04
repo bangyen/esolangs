@@ -33,6 +33,7 @@ def run_cli(*args: str, stdin: str = "") -> subprocess.CompletedProcess[str]:
         capture_output=True,
         text=True,
         input=stdin,
+        check=False,
     )
 
 

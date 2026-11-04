@@ -98,7 +98,7 @@ class TestCollatzMultiverse:
             plain = boolean.collatz_multiverse(table)
             program = esolangs.generate("Collatz Multiverse", table, width=width)
             assert max(map(len, program.splitlines())) <= max(
-                width, max(map(len, plain.splitlines()))
+                width, *map(len, plain.splitlines())
             )
             assert program.count("input") == n
             assert program.count("DO PRINT.") == 1

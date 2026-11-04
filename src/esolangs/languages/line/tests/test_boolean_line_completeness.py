@@ -67,7 +67,8 @@ def _walk_states(head: Node, table: str) -> dict[tuple[int, str], int]:
         is_fork = sub[:half] != sub[half:]
         assert sel.op == ("?" if is_fork else "")
         arms = [(0, sel.zero), (1, sel.nonzero)] if is_fork else [(0, sel.next)]
-        for bit, child in arms:
+        for bit, raw_child in arms:
+            child = raw_child
             if child is not None and child.op == "" and child.goto is not None:
                 child = child.goto
             assert child is not None

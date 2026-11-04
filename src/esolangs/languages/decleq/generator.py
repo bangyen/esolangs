@@ -209,7 +209,8 @@ class _OwnerBuilder(_CodeBuilder):
         fixups: list[tuple[int, _Node]] = []
         # Decrementing the required count is injective: each nonconstant
         # one-child has one parent, so these chains are disjoint.
-        for key in (key for key in order if key not in one_children):
+        for chain_start in (key for key in order if key not in one_children):
+            key = chain_start
             while True:
                 addresses[key] = self.pc()
                 zero, one = graph[key]

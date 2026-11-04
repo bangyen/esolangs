@@ -151,7 +151,8 @@ def _utf8_bits(text: str) -> str:
 def _string(token: str) -> str:
     """Return the bits of a quoted string token."""
     out, chars = [], iter(token[1:-1])
-    for char in chars:
+    for raw_char in chars:
+        char = raw_char
         if char == "\\":
             escaped = next(chars)
             if escaped not in _ESCAPES:

@@ -156,7 +156,7 @@ GENERIC = [
 # a 2-second timeout is ten minutes.  A step cap ends them at once, and is
 # reproducible -- it does not shift with the speed of the machine running
 # it, so it cannot time out a slow-but-valid program and call it a leak.
-_STEP_CAP = int(os.environ.get("LEAKSWEEP_STEP_CAP", 0)) or 20000
+_STEP_CAP = int(os.environ.get("LEAKSWEEP_STEP_CAP", "0")) or 20000
 
 #: Caps the sweep walks, cheapest first, retrying only what is still running.
 #:
@@ -291,7 +291,7 @@ _LANG_TIMEOUT = 90.0
 #: deliberately with ``LEAKSWEEP_JOBS``
 #: on a machine with cores to spare; ``LEAKSWEEP_JOBS=1`` is sequential,
 #: which is what to use when reading a live transcript.
-_JOBS = max(1, int(os.environ.get("LEAKSWEEP_JOBS", 0)) or 2)
+_JOBS = max(1, int(os.environ.get("LEAKSWEEP_JOBS", "0")) or 2)
 
 
 def _corpus(lang: str, examples: dict[str, list[Program]]) -> list[Program]:
@@ -311,8 +311,9 @@ def _corpus(lang: str, examples: dict[str, list[Program]]) -> list[Program]:
         )
         return progs
     progs = list(GENERIC)
-    for src in examples[lang]:
-        assert isinstance(src, str)
+    for raw_src in examples[lang]:
+        assert isinstance(raw_src, str)
+        src = raw_src
         if digits := LANGUAGES[lang].fuzz_max_digits:
             src = _cap_numeric_runs(src, digits)
         progs.append(src)

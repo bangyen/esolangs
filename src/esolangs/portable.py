@@ -143,7 +143,8 @@ def decode_settings(value: Any) -> DialectSettings | None:
     if not isinstance(value, dict):
         raise ValueError("settings must be an object or null")
     choices: dict[str, Any] = {}
-    for key, item in value.items():
+    for key, saved in value.items():
+        item = saved
         if isinstance(item, dict):
             if set(item) != {"integer"} or not isinstance(item["integer"], str):
                 raise ValueError("integer settings need a hexadecimal string")

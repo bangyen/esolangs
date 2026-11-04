@@ -23,7 +23,7 @@ Image: Any = _UNLOADED
 
 def _require_image() -> Any:
     """Return Pillow or name the extra that installs it."""
-    global Image
+    global Image  # noqa: PLW0603 - the module global is the lazy-import cache: Pillow is an optional extra, imported once on first use
     if Image is _UNLOADED:
         # Text-only workers paid 29 ms importing Pillow before using PNG I/O.
         try:

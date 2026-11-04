@@ -18,7 +18,8 @@ def _integer(text):
 
 def _parse(source):
     ops = []
-    for line, text in enumerate(source.split("\n")):
+    for line, raw_text in enumerate(source.split("\n")):
+        text = raw_text
         if not text.strip():
             continue
         if ":" in text:

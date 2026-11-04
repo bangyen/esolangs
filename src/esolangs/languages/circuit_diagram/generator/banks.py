@@ -61,11 +61,11 @@ class _BankLayout(_RoutingLayout):
             self.glyphs[point] = char
             glyph_x.setdefault(a, []).append(b)
             glyph_y.setdefault(b, []).append(a)
-        for (a, b), signal in model.junctions.items():
+        for (a, b), raw_signal in model.junctions.items():
             point = x + a, y + b
             if point in self.junctions or point in self.glyphs:
                 raise AssertionError(f"bank junction overlaps at {point}")
-            signal = owner(signal)
+            signal = owner(raw_signal)
             self.junctions[point] = signal
             junction_x.setdefault(a, []).append((b, signal))
             junction_y.setdefault(b, []).append((a, signal))

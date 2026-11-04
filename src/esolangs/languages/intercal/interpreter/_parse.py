@@ -483,8 +483,8 @@ def _statements(code: str) -> list[str]:
     statements: list[str] = []
     for left, right in pairwise(bounds):
         fragments: list[str] = []
-        for line in code[left:right].splitlines():
-            line = line.strip()
+        for raw_line in code[left:right].splitlines():
+            line = raw_line.strip()
             if not line:
                 continue
             # Bare complete commands remain physical-line statements; a
