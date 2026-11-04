@@ -594,9 +594,10 @@ its data store and pointer depend only on depth; the control location carries
 the residual function. Ordered reads alone do not imply this property:
 `,>,>,<<.` reaches one cursor with four stores after two reads.
 
-- BrainIf's residual-DAG candidate satisfies it. Its first input cell is zero;
+- BrainIf's ordinary residual DAG satisfies it. Its first input cell is zero;
   before each later read, `if 48 increment` maps the prior Boolean byte to 49.
-  The one input then overwrites it. No earlier input remains in the store.
+  The next input overwrites it. OR with trailing ignored inputs instead keeps
+  its answer beside a scratch input cell, outside this input-forgetting model.
 
 After `k` reads, distinct residual functions require distinct states: equal
 states would execute identically on every common suffix. At depth `k` there
@@ -613,25 +614,26 @@ the total is below `12T/n`. For a matching lower bound, at remaining depth
 There are `T/2**(r+1) >= T/(2n)` prefixes and enough different residuals
 by maximality of `r`; every input-forgetting realization needs that width.
 
-- BrainIf emits four lines per DAG node, three at the root. Destinations have
-  `O(n)` digits, so the worst-case source is `O(T)`. Two shared output tails
-  add constant text. A run consumes exactly `n` inputs in order and executes
-  at most `4n+50` lines. The zero tail moves to a virgin cell only when the
-  last byte is 49, then builds 48; the one tail increments 48 if needed and
-  prints 49. All gotos go forward, so termination is structural.
+- BrainIf's full-input DAG emits at most four lines per node, three at the
+  root; placing a node before a child removes one goto. Destinations have
+  `O(n)` digits, so the worst-case source is `O(T)`. Shared output tails add
+  constant text. The ordinary zero tail builds 48 on a zero cell; OR prints
+  its known zero byte directly. All gotos go forward.
   Interning and writing the labels cost `O(T)` in the repository's
   `Theta(n)`-bit table/index word model. This does not assert linear bit work.
 
-  The public generator keeps the shorter source against the tree/spatial
-  candidate; width requests retain that older route. Every three-input table
-  shrinks: total characters `319576 -> 291524` (8.78%), summed executed
-  lines `134984 -> 74440` (44.85%), with no table growing or slowing.
-  All 2,120 rows through three inputs execute; constants, parity and four
-  seeded tables per arity four through six also execute every row. A separate
-  200-table five-input sample gives `573675 -> 360230` characters and
-  `1501446 -> 280080` lines. Full-store boundary checks confirm erasure before
-  the next read. The controls are in
+  The public generator uses a read chain for constants and the DAG otherwise;
+  width requests use the tree/spatial construction. Against the tree, the
+  three-input totals are `310116 -> 265396` characters and
+  `130888 -> 69509` executed lines. The controls execute all 2,120 rows through
+  three inputs and every row of constants, parity and four seeded tables per
+  arity four through six, checking answers and input consumption. Full-store
+  boundary checks confirm erasure before ordinary input-cell reuse. These
+  controls are in
   `src/esolangs/languages/brainif/tests/test_brainif_research.py`.
+  Every default run consumes `n` inputs and executes at most `4n+50` lines;
+  `src/esolangs/languages/brainif/tests/test_boolean_brainif.py` also checks
+  trailing ignored-input layouts.
 
 
 ## Scaling status
