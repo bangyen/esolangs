@@ -40,6 +40,15 @@ repos:
         language: system
         types_or: [python, pyi]
         require_serial: true
+      # actionlint runs from the project env too (the actionlint-py pin in
+      # uv.lock): it parses workflows strictly -- a duplicate key, which
+      # PyYAML tolerates and GitHub rejects, failed a CI run on 2026-11-04
+      # before this hook existed.
+      - id: actionlint
+        name: actionlint
+        entry: uv run --frozen actionlint
+        language: system
+        files: ^\.github/workflows/[^/]+\.ya?ml$
 
   # No mypy hook.  The mirror runs in an isolated env, so it could only ever
   # reach ``src/`` -- ``scripts/`` imports esolangs and urllib3, which are

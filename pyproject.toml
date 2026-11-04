@@ -49,6 +49,7 @@ dev = [
     "types-setuptools",
     "sympy>=1.12.0",
     "Pillow>=11.3.0",
+    "actionlint-py>=1.7.12.25",
 ]
 
 [project.urls]
@@ -100,6 +101,7 @@ select = [
     "PLE", # pylint errors
     "PLW", # pylint warnings
     "PERF", # flake8-perflint
+    "PGH",  # pygrep-hooks: no blanket noqa or type-ignore (the audit's rule)
     # FURB (refurb) is enabled per code, not as a family: these six were
     # trialled against the tree and are clean wins.  FURB116 (bin() to
     # f-string) is excluded -- the two forms differ for negative values,
