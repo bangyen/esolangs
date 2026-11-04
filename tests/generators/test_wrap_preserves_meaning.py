@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 
 import esolangs
-from esolangs.generation.wrap import WRAPPERS
 from esolangs.registry import LANGUAGES
 from tests.support.witness_tables import row_bits
 
@@ -22,7 +21,7 @@ def _wrappable() -> list[str]:
         name
         for name, lang in LANGUAGES.items()
         if lang.boolean is not None
-        and lang.id in WRAPPERS
+        and lang.wrap is not None
         and esolangs.describe(name)["answer_mode"] != "termination"
     )
 

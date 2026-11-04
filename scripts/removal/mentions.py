@@ -12,7 +12,7 @@ from contextlib import suppress
 from pathlib import Path
 
 #: Registries a language's name indexes.
-_REGISTRIES = frozenset({"LANGUAGES", "BY_ID", "WRAPPERS", "INTERPRETERS", "RUNNERS"})
+_REGISTRIES = frozenset({"LANGUAGES", "BY_ID", "INTERPRETERS", "RUNNERS"})
 #: Calls taking a language name: first argument, or second for the wrappers.
 _LANGUAGE_CALLS = frozenset(
     {

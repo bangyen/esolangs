@@ -224,7 +224,7 @@ def remove(name: str) -> list[str]:
         tokens.discard(name)
     if exclusive and wrapper is not None:
         # The wrapper's own name is not the language's; surface the tests that
-        # still name it (``WRAPPERS[...] is _bio``) so the hand edit is found.
+        # still name it (``LANGUAGES[...].wrap is _bio``) so the hand edit is found.
         tokens.add(wrapper)
     patterns = list(tokens)
     patterns += [

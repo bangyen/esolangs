@@ -42,7 +42,7 @@ def test_readme_counts_match_the_registry() -> None:
     examples = module.render_examples_section()
     count = sum(lang.boolean is not None for lang in module.LANGUAGES.values())
     assert f"each of the {count}\nlanguages with a boolean" in examples
-    assert f"  {len(module.BOOLEAN)} of the" in module.render_boolean_count_section()
+    assert f"  {count} of the" in module.render_boolean_count_section()
 
 
 def test_contributor_facts_match_the_registry() -> None:
@@ -204,12 +204,6 @@ def test_the_shape_table_carries_the_encoders_output() -> None:
     # Row 5 is 101; a padded stream leads an odd count with a zero.
     for name in one(input_shape="row_index"):
         assert f"| {name} | `row_index` | `0`/`1` | `'5\\n'` |" in rendered
-
-
-def test_boolean_set_names_are_registered() -> None:
-    """Every language marked boolean in the matrix is a registered language."""
-    module = load_script()
-    assert set(module.LANGUAGES) >= module.BOOLEAN
 
 
 def test_language_listing_covers_every_interpreter() -> None:

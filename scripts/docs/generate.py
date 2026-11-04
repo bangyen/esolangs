@@ -24,7 +24,6 @@ from docs.curation import dates as _curation_dates
 from docs.curation import rows as _curation_rows
 from docs.proof_status import splice, update_catalogue, update_docs
 from docs.writing import write_if_changed as _write_if_changed
-from esolangs.languages.generators import BOOLEAN
 from esolangs.registry import LANGUAGES, SourceKind, wiki_url
 from esolangs.registry._language import Shape
 
@@ -204,7 +203,7 @@ def render_boolean_count_section() -> str:
             "The truth table is a binary string of length `2**n`,"
             " most-significant input",
             f"first; its length implies `n`, so it isn't passed separately."
-            f"  {len(BOOLEAN)} of the",
+            f"  {sum(lang.boolean is not None for lang in LANGUAGES.values())} of the",
             "languages have such a generator, some covering only a"
             " documented subset of",
             "tables.",
@@ -491,10 +490,11 @@ def render_trick_prototype_section() -> str:
     done = [
         name
         for name, row in _audit_rows().items()
-        if "trick_prototype" in row and name in BOOLEAN
+        if "trick_prototype" in row and LANGUAGES[name].boolean is not None
     ]
+    count = sum(lang.boolean is not None for lang in LANGUAGES.values())
     return textwrap.fill(
-        f"{len(done)} of the {len(BOOLEAN)} generators: {_names(done)}.",
+        f"{len(done)} of the {count} generators: {_names(done)}.",
         width=76,
     )
 
@@ -679,7 +679,7 @@ def render(root: pathlib.Path = ROOT) -> str:
             else:
                 lines.append(line + comment)
     imports = "\n".join(lines)
-    names = sorted(["BOOLEAN", *(g for _, g in pairs)])
+    names = sorted(g for _, g in pairs)
     listed = "\n".join(f'    "{name}",' for name in names)
     declarations = "\n".join(f"    _{g.upper()}_LANGUAGE," for _, g in pairs)
     return f"{imports}\n\n_LANGUAGES = (\n{declarations}\n)\n\n__all__ = [\n{listed}\n]"

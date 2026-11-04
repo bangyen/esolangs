@@ -39,7 +39,6 @@ dev = [
     "pytest-cov>=4.0.0",
     "pytest-xdist>=3.8.0",
     "pytest-timeout>=2.3",
-    "pygments>=2.20.0",
     "ruff==0.17.3",
     "mypy==2.4.1",
     "pre-commit>=3.0.0",

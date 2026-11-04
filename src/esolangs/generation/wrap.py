@@ -8,11 +8,10 @@ Generators detected by :func:`takes_width` lay out their own programs.
 They preserve structural lines and return a width floor when the requested
 width cannot fit whole tokens, statements or routing cells.
 
-:data:`MULTILINE` names the wrappers that handle their own structural
-lines. Language-owned wrappers preserve their own token and term boundaries;
+``Language.wrap_multiline`` marks wrappers that handle structural lines.
+Language-owned wrappers preserve their own token and term boundaries;
 :func:`wrap_grid` right-aligns instruction cells.
-:data:`WRAPPERS` maps a language id to the wrapper its ``LANGUAGE`` names
-(``wrap=``); :func:`wrap_program` is the entry point.
+``Language.wrap`` names its wrapper; :func:`wrap_program` is the entry point.
 """
 
 import inspect
@@ -20,7 +19,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from math import isqrt
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from esolangs.generation.helpers import MARK, MOST_INPUTS, mark
 from esolangs.generation.token_balance import (
@@ -215,25 +214,6 @@ _bracket_literal = TokenWrapper(_BRACKET_LITERAL)
 _quote_literal = TokenWrapper(_EVAL_UNIT)
 
 
-def __getattr__(name: str) -> Any:
-    """Derive ``WRAPPERS`` and ``MULTILINE`` from the registry on first use.
-
-    Each language names its wrapper in its own ``LANGUAGE`` (``wrap=``); the
-    registry imports the generators, which import this module, so the
-    tables cannot be built while it loads.
-    """
-    if name not in {"WRAPPERS", "MULTILINE"}:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    from esolangs.registry import LANGUAGES
-
-    wrappers = {lang.id: lang.wrap for lang in LANGUAGES.values() if lang.wrap}
-    globals()["WRAPPERS"] = wrappers
-    globals()["MULTILINE"] = frozenset(
-        lang.id for lang in LANGUAGES.values() if lang.wrap and lang.wrap_multiline
-    )
-    return globals()[name]
-
-
 def _language(language_id: str) -> "Language | None":
     """Return the registered language with ``language_id``, if any."""
     from esolangs.registry import LANGUAGES
@@ -258,7 +238,7 @@ def wrap_program(program: str, language_id: str, width: int | None) -> str:
 
     ``None`` means do not wrap (the default).  A language that cannot take
     newlines, and a program already multi-line, are returned unchanged
-    rather than raising; a :data:`MULTILINE` wrapper knows which lines are structural.
+    rather than raising; a multiline wrapper knows which lines are structural.
     """
     if width is None or width <= 0:
         return program

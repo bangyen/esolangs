@@ -10,8 +10,6 @@ from esolangs import generate, run
 from esolangs.generation.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.generation.examples import BooleanExample
 from esolangs.generation.wrap import (
-    MULTILINE,
-    WRAPPERS,
     _cell_width,
     _span,
     takes_width,
@@ -67,11 +65,9 @@ UNWRAPPABLE = {lang.id: lang.no_wrap for lang in LANGUAGES.values() if lang.no_w
 # loop layout is tied to the beam's track and cannot fold, so a loop program
 # wider than the width is re-emitted as the (foldable) linear form.
 #
-# Derived from :func:`takes_width` rather than written out, for the reason
-# ``esolangs.languages.BOOLEAN`` is derived from the registry: the
-# hand-written table had drifted both ways.  It omitted Streetcode, which
-# really does take a width.  And it named Dig, which at the time took only
-# a truth table and returned the same program whatever width was asked for
+# Derived from :func:`takes_width`: the hand-written table drifted both ways.
+# It omitted Streetcode, which really does take a width. And it named Dig,
+# which took only a truth table and returned the same program at every width
 # -- the 2-input table below was inside 80 columns either way, which is
 # what let it pass.  Dig has since grown a real one, so that entry would be
 # right today for a reason the table never had; a derived table cannot make
@@ -97,7 +93,7 @@ WRAPPED = sorted(
     for name, lang in LANGUAGES.items()
     if lang.boolean
     and lang.interpreter
-    and lang.id in WRAPPERS
+    and lang.wrap is not None
     and lang.id in EXAMPLE_BY_ID
 )
 
@@ -113,7 +109,7 @@ def _wrapper_witnesses() -> list[str]:
     chosen = []
     for name in WRAPPED:
         example = EXAMPLE_BY_ID[LANGUAGES[name].id]
-        key = (WRAPPERS[LANGUAGES[name].id], example.fill is None)
+        key = (LANGUAGES[name].wrap, example.fill is None)
         if takes_width(example.generator) or key not in seen:
             seen.add(key)
             chosen.append(name)
@@ -126,7 +122,7 @@ def test_every_generator_has_a_width_policy() -> None:
         language.id
         for language in LANGUAGES.values()
         if language.boolean is not None
-        and language.id not in WRAPPERS
+        and language.wrap is None
         and not takes_width(language.boolean)
         and not language.no_wrap.strip()
     }
@@ -145,7 +141,7 @@ def _stdin(name: str) -> str:
 
 def _is_grid(name: str) -> bool:
     """Whether ``name``'s wrapper lays its tokens out as a padded grid."""
-    return WRAPPERS[LANGUAGES[name].id] is wrap_grid
+    return LANGUAGES[name].wrap is wrap_grid
 
 
 def _run(name: str, program: str) -> str:
@@ -200,7 +196,7 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
         assert wrapped.split() == plain.split()
         return
     # Structural wrappers preserve the first line while reflowing commands.
-    if LANGUAGES[name].id in MULTILINE and "\n" in plain:
+    if LANGUAGES[name].wrap_multiline and "\n" in plain:
         seed, _, rest = wrapped.partition("\n")
         plain_seed, _, plain_rest = plain.partition("\n")
         assert seed == plain_seed
@@ -221,11 +217,11 @@ def test_every_wrapper_actually_fires(name: str) -> None:
     raw = example.build(width=None)
     if any(example.build(width) != raw for width in (40, 1)):
         return
-    structural = LANGUAGES[name].id in MULTILINE
+    structural = LANGUAGES[name].wrap_multiline
     for arity in range(1, 5):
         grown = _grown(name, parity(arity), None)
         # A newline disqualifies a grown program only where it means layout.
-        # A :data:`MULTILINE` language starts with a structural row its
+        # A multiline language starts with a structural row its
         # wrapper keeps and folds the rest, so the question there is whether
         # wrapping adds *more* rows, not whether any exist -- and whether the
         # part it may fold is itself long enough to need a break.
@@ -384,7 +380,9 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
 
 
 def test_unwrappable_languages_have_no_wrapper() -> None:
-    assert set(UNWRAPPABLE).isdisjoint(WRAPPERS)
+    assert all(
+        lang.wrap is None for lang in LANGUAGES.values() if lang.id in UNWRAPPABLE
+    )
 
 
 @pytest.mark.parametrize("structural", [False, True])

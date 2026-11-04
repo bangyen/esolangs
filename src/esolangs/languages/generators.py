@@ -376,7 +376,6 @@ _LANGUAGES = (
 )
 
 __all__ = [
-    "BOOLEAN",
     "a_painter_ant",
     "abcdirection",
     "addsubjump",
@@ -493,16 +492,3 @@ __all__ = [
     "whitespace",
 ]
 # END GENERATED EXPORTS
-
-BOOLEAN: frozenset[str]
-
-
-def __getattr__(name: str) -> frozenset[str]:
-    """Derive ``BOOLEAN`` from the registry on first access."""
-    if name != "BOOLEAN":
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    from esolangs.registry import LANGUAGES
-
-    return frozenset(
-        lang.name for lang in LANGUAGES.values() if lang.boolean is not None
-    )

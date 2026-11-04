@@ -1011,3 +1011,23 @@ def test_a_stale_artifact_failure_prints_the_whole_regeneration() -> None:
     assert "check_generator_sizes.py --update" in hint
     other = "FAILED tests/t.py::test_y - boom\n"
     assert "fix:" not in "\n".join(verify._rerun_hint("pytest", other))
+
+
+@pytest.mark.parametrize("opt_out", ["0", "1"])
+def test_dependency_sync_uses_uv_and_respects_the_offline_override(
+    monkeypatch, opt_out
+):
+    verify = load_script()
+    monkeypatch.setenv("VERIFY_NO_SYNC", opt_out)
+    calls = []
+    monkeypatch.setattr(
+        verify, "run_bounded", lambda *args, **kwargs: calls.append((args, kwargs))
+    )
+    verify._ensure_dev_deps()
+    assert calls == (
+        []
+        if opt_out == "1"
+        else [
+            ((["uv", "sync", "--group", "dev"],), {"cwd": verify.ROOT, "check": True})
+        ]
+    )

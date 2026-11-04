@@ -77,8 +77,7 @@ ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || ROOT=""
 # is a wall of text, which is why the hook does not ask for it.
 echo "pre-push: running scripts/verify/gate.py (up to 3 min; --no-verify skips it)"
 
-# gate.py picks the project interpreter itself (.venv, then uv run), so
-# the hook can hand it any python that can execute the file.
+# The gate runs checks through uv; this interpreter only launches it.
 if [ -n "$VERIFY_FULL" ] && [ "$VERIFY_FULL" != "0" ]; then
     exec "${PY:-python3}" "$ROOT/scripts/verify/gate.py" --full
 fi

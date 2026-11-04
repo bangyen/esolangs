@@ -51,3 +51,10 @@ def test_dev_dependencies_follow_the_declared_distributions(
     assert (result is None) is installed
     if result:
         assert "binary-tool, library" in result
+
+
+def test_missing_uv_is_a_setup_failure(monkeypatch, capsys):
+    monkeypatch.setattr(doctor.shutil, "which", lambda _: None)
+    monkeypatch.setattr(doctor, "CHECKS", {"uv": doctor._uv})
+    assert doctor.main([]) == 1
+    assert "install uv" in capsys.readouterr().out

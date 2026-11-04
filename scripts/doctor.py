@@ -50,7 +50,7 @@ def _just() -> str | None:
 
 def _uv() -> str | None:
     if shutil.which("uv") is None:
-        return "uv not found: install uv, or use `pip install -e . --group dev`"
+        return "uv not found: install uv, then run `just install-dev`"
     return None
 
 
@@ -100,9 +100,7 @@ CHECKS: dict[str, Callable[[], str | None]] = {
     "pre-push hook": _hooks,
     "esolangs import": _checkout,
 }
-# The scripts run without just, and install-dev falls back to pip: a missing
-# tool is advice; a just too old to parse the justfile is a gap.
-ADVISORY = frozenset({"just on PATH", "uv"})
+ADVISORY = frozenset({"just on PATH"})
 
 
 def main(argv: list[str] | None = None) -> int:

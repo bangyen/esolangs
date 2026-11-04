@@ -19,7 +19,6 @@ from __future__ import annotations
 import argparse
 import os
 import shlex
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -63,24 +62,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(line_buffering=True)
 
 
-def python_cmd() -> list[str]:
-    """Return the project's Python command.
-
-    ``verify/gate.py`` may be run with the system interpreter (e.g. plain
-    ``python scripts/verify/gate.py``), which does not have the project's dev
-    dependencies.  Prefer the local venv, then ``uv run python`` (the uv
-    workflow the justfile uses), and only fall back to the running
-    interpreter.
-    """
-    venv = ROOT / ".venv" / "bin" / "python"
-    if venv.exists():
-        return [str(venv)]
-    if shutil.which("uv") is not None:
-        return ["uv", "run", "python"]
-    return [sys.executable]
-
-
-PY = python_cmd()
+PY = ["uv", "run", "--no-sync", "python"]
 
 # CI owns these checks; --only retains manual local access.
 MANUAL_ONLY = frozenset(
@@ -420,27 +402,9 @@ def _load_verdict(
 
 
 def _ensure_dev_deps() -> None:
-    """Sync dev dependencies when the runner's Python lacks them.
-
-    A fresh worktree venv has an interpreter but no third-party packages, so
-    every step fails at 0.0s with ``No module named ...`` -- missing tooling,
-    not broken code.  Syncing once here fixes it where the failure surfaces.
-    ``VERIFY_NO_SYNC`` opts out (offline machines); without ``uv`` there is
-    nothing to sync with, so the steps report it themselves.
-    """
-    if os.environ.get("VERIFY_NO_SYNC", "0") not in ("", "0"):
-        return
-    probe = run_bounded(
-        [*PY, "-c", "import pytest"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    if probe.returncode == 0:
-        return
-    if shutil.which("uv") is None:
-        return
-    print("dev dependencies missing; running `uv sync --group dev` ...")
-    run_bounded(["uv", "sync", "--group", "dev"], cwd=ROOT, check=False)
+    """Sync development dependencies unless VERIFY_NO_SYNC opts out."""
+    if os.environ.get("VERIFY_NO_SYNC", "0") in ("", "0"):
+        run_bounded(["uv", "sync", "--group", "dev"], cwd=ROOT, check=True)
 
 
 def _should_stream(steps: int, *, quiet: bool, verbose: bool) -> bool:

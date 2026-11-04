@@ -10,8 +10,7 @@ export UV_CACHE_DIR := env_var_or_default("UV_CACHE_DIR", justfile_directory() +
 # On an existing venv, skip the repeated bytecode scan.
 export UV_COMPILE_BYTECODE := env_var_or_default("UV_COMPILE_BYTECODE", if path_exists(justfile_directory() + "/.venv") == "true" { "0" } else { "1" })
 
-# Auto-detect uv - falls back to plain python if not available
-PYTHON := `command -v uv >/dev/null 2>&1 && echo "uv run python" || echo "python"`
+PYTHON := "uv run python"
 
 # show the first-contribution workflow and all commands
 [group('start')]
@@ -44,15 +43,7 @@ doctor:
 install-dev:
     #!/usr/bin/env bash
     set -euo pipefail
-    if command -v uv >/dev/null 2>&1; then
-        echo "Using uv..."
-        uv sync --group dev --compile-bytecode
-    else
-        echo "Using pip..."
-        # `--group` (PEP 735 dependency groups) needs pip 25.1.
-        python -m pip install -U pip
-        pip install -e . --group dev
-    fi
+    uv sync --group dev --compile-bytecode
     # Enable the pre-push gate (scripts/verify/gate.py) so every push runs the
     # local check: lint, types, and pytest.
     git config core.hooksPath .githooks

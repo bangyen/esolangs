@@ -20,14 +20,13 @@ rationale, formerly the ledger's comments:
 
 from __future__ import annotations
 
-import copy
-import tomllib
 from collections.abc import Iterable
 from pathlib import Path
 
+from scripts.docs.fragments import FRAGMENT, cached, fingerprint, section
+
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGES = ROOT / "src" / "esolangs" / "languages"
-FRAGMENT = "language.toml"
 #: The section of ``language.toml`` this suite aggregates.
 TABLE = "deep_arities"
 
@@ -36,32 +35,6 @@ ARITY_SECTIONS = ("linearity", "execution", "workspace")
 #: Sections whose values are exemption reasons.
 REASON_SECTIONS = ("workspace_step_exempt", "linearity_exempt")
 SECTIONS = ARITY_SECTIONS + REASON_SECTIONS
-
-
-def _table(path: Path) -> dict[str, object] | None:
-    """Return ``path``'s deep-arities section, or None when it has none."""
-    table = tomllib.loads(path.read_text("utf-8")).get(TABLE)
-    if table is None:
-        return None
-    if not isinstance(table, dict):
-        raise ValueError(f"{path}: [{TABLE}] must be a table")
-    return table
-
-
-def _fingerprint(packages: Path) -> tuple[tuple[str, int, int], ...]:
-    """Return a stamp of the fragment set under ``packages``.
-
-    One (package, mtime, size) entry per ``language.toml``; adding,
-    removing, or editing a fragment changes the stamp, so an aggregate
-    cached against it cannot go stale in a process that mutates the
-    tree, as the scaffold and removal flows do.
-    """
-    if not packages.is_dir():
-        return ()
-    return tuple(
-        (path.parent.name, path.stat().st_mtime_ns, path.stat().st_size)
-        for path in sorted(packages.glob(f"*/{FRAGMENT}"))
-    )
 
 
 #: Aggregates by (packages, registry ids, fragment fingerprint):
@@ -84,10 +57,8 @@ def aggregate_fragments(
     ``ValueError``, as does a repeated language id.
     """
     ids = list(language_ids)
-    key = (packages, tuple(ids), _fingerprint(packages))
-    if key not in _AGGREGATES:
-        _AGGREGATES[key] = _aggregate_fragments(packages, ids)
-    return copy.deepcopy(_AGGREGATES[key])
+    key = (packages, tuple(ids), fingerprint(packages))
+    return cached(_AGGREGATES, key, lambda: _aggregate_fragments(packages, ids))
 
 
 def _aggregate_fragments(
@@ -103,25 +74,25 @@ def _aggregate_fragments(
         path = packages / language_id / FRAGMENT
         if not path.is_file():
             continue
-        table = _table(path)
+        table = section(path, TABLE)
         if table is None:
             continue
-        for section, value in table.items():
-            if section not in SECTIONS:
-                raise ValueError(f"{path}: unknown section {section!r}")
-            if section in REASON_SECTIONS:
+        for column, value in table.items():
+            if column not in SECTIONS:
+                raise ValueError(f"{path}: unknown section {column!r}")
+            if column in REASON_SECTIONS:
                 if not isinstance(value, str) or not value:
                     raise ValueError(
-                        f"{path}: {section} must be a nonempty reason, got {value!r}"
+                        f"{path}: {column} must be a nonempty reason, got {value!r}"
                     )
             elif isinstance(value, bool) or not isinstance(value, int):
-                raise ValueError(f"{path}: {section} must be an int, got {value!r}")
+                raise ValueError(f"{path}: {column} must be an int, got {value!r}")
             elif value < 1:
-                raise ValueError(f"{path}: {section} must be positive")
-            sections[section][language_id] = value
+                raise ValueError(f"{path}: {column} must be positive")
+            sections[column][language_id] = value
     if packages.is_dir():
         for path in packages.glob(f"*/{FRAGMENT}"):
-            if path.parent.name not in seen and _table(path) is not None:
+            if path.parent.name not in seen and section(path, TABLE) is not None:
                 raise ValueError(
                     f"{path}: package {path.parent.name!r} is not registered"
                 )

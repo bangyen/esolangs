@@ -164,10 +164,11 @@ def _aggregate_fragments(
 
 def _generators() -> list[tuple[str, str]]:
     """Return ``(name, package id)`` for each Boolean generator, registry order."""
-    from esolangs.languages.generators import BOOLEAN
     from esolangs.registry import LANGUAGES
 
-    return [(name, lang.id) for name, lang in LANGUAGES.items() if name in BOOLEAN]
+    return [
+        (name, lang.id) for name, lang in LANGUAGES.items() if lang.boolean is not None
+    ]
 
 
 def load_data(path: Path | None = None) -> dict[str, list[dict[str, Any]]]:

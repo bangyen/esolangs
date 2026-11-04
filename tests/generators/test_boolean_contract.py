@@ -121,7 +121,7 @@ def _exported_generators() -> dict[str, str]:
     squashed = {lang.id.replace("_", ""): name for name, lang in LANGUAGES.items()}
     found = {}
     for fn in boolean.__all__:
-        if fn in ("BOOLEAN", "instantiate") or not callable(getattr(boolean, fn, None)):
+        if fn == "instantiate" or not callable(getattr(boolean, fn, None)):
             continue
         display = (
             by_id.get(fn)
@@ -134,20 +134,10 @@ def _exported_generators() -> dict[str, str]:
 
 
 def test_boolean_set_lists_exactly_the_exported_generators() -> None:
-    """``BOOLEAN`` and the package's exports name the same languages."""
+    """Registry declarations and package exports name the same generators."""
     exported = _exported_generators()
-    missing = {d for d in exported.values() if d not in boolean.BOOLEAN}
-    assert not missing, (
-        f"these languages export a boolean generator but are absent from "
-        f"BOOLEAN, so describe() reports boolean_generator=False for them: "
-        f"{sorted(missing)} -- check their LANGUAGE declarations"
-    )
-    stale = boolean.BOOLEAN - set(exported.values())
-    assert not stale, (
-        f"BOOLEAN names these languages but the package exports no generator "
-        f"resolving to them: {sorted(stale)} -- remove them from BOOLEAN, or "
-        f"export the generator from languages/generators.py"
-    )
+    declared = {name for name, lang in LANGUAGES.items() if lang.boolean is not None}
+    assert set(exported.values()) == declared
 
 
 def test_reorder_permutation_preserves_the_function() -> None:

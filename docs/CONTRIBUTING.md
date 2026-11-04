@@ -23,7 +23,8 @@ before changing generated programs.
 
 ## Development
 
-Use `uv run` or activate `.venv`. Without `just`, run the underlying scripts:
+Development requires uv. Use `uv run` or activate `.venv`. Without `just`,
+run the underlying scripts:
 `just test` is `python scripts/verify/gate.py`; language `check` and `finish`
 are subcommands of `scripts/new_language.py`.
 [Scripts reference](../scripts/README.md) maps the other recipes.
