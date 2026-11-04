@@ -185,11 +185,6 @@ def baseline(records: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def collect() -> dict[str, Any]:
-    """Return the baseline as measured now."""
-    return baseline(sweep())
-
-
 def recorded_baseline() -> dict[str, Any]:
     """Return the committed baseline, aggregated from the package fragments."""
     return {

@@ -8,11 +8,13 @@ unreachable exactly when the version check matters.  Exits 1 on any gap.
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
 import importlib.util
 import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from collections.abc import Callable
 from pathlib import Path
 
@@ -53,11 +55,16 @@ def _uv() -> str | None:
 
 
 def _dev_deps() -> str | None:
-    missing = [
-        name
-        for name in ("pytest", "xdist", "mypy", "pylint")
-        if importlib.util.find_spec(name) is None
-    ]
+    requirements = tomllib.loads((ROOT / "pyproject.toml").read_text())[
+        "dependency-groups"
+    ]["dev"]
+    missing = []
+    for requirement in requirements:
+        name = re.split(r"[<>=!~;\[]", requirement, maxsplit=1)[0]
+        try:
+            importlib.metadata.version(name)
+        except importlib.metadata.PackageNotFoundError:
+            missing.append(name)
     if missing:
         return f"dev dependencies missing ({', '.join(missing)}): just install-dev"
     return None

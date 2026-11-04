@@ -64,14 +64,16 @@ install-dev:
 [group('test')]
 [doc('required checks before a commit: lint, types, pytest (branch-scoped)')]
 [no-exit-message]
+[positional-arguments]
 test *args:
-    {{PYTHON}} scripts/verify/gate.py {{args}}
+    {{PYTHON}} scripts/verify/gate.py "$@"
 
 # local checks over the whole tree, including slow tests
 [group('test')]
 [no-exit-message]
+[positional-arguments]
 test-full *args:
-    {{PYTHON}} scripts/verify/gate.py --full {{args}}
+    {{PYTHON}} scripts/verify/gate.py --full "$@"
 
 # The release gate is deliberate, not the inner loop, so it may take the box:
 # on a quiet machine the committed measurement (pyproject.toml's worker note)
@@ -81,8 +83,9 @@ test-full *args:
 [group('test')]
 [doc('test-full on every core; idle machine only')]
 [no-exit-message]
+[positional-arguments]
 test-full-parallel *args:
-    PYTEST_ADDOPTS="-n auto" {{PYTHON}} scripts/verify/gate.py --full {{args}}
+    PYTEST_ADDOPTS="-n auto" {{PYTHON}} scripts/verify/gate.py --full "$@"
 
 # inner loop: pre-commit + pytest, fast band only, quiet by default.
 # Four workers, the pytest config's default: this box also runs sessions in
@@ -93,14 +96,16 @@ test-full-parallel *args:
 [group('test')]
 [doc('inner loop: pre-commit + fast pytest band, quiet')]
 [no-exit-message]
+[positional-arguments]
 test-quick *args:
-    PYTEST_ADDOPTS="-m 'not slow and not medium and not weekly'" {{PYTHON}} scripts/verify/gate.py --quiet --only pre-commit,pytest {{args}}
+    PYTEST_ADDOPTS="-m 'not slow and not medium and not weekly'" {{PYTHON}} scripts/verify/gate.py --quiet --only pre-commit,pytest "$@"
 
 # pytest fast and medium bands only; use just test before a commit
 [group('test')]
 [no-exit-message]
+[positional-arguments]
 test-mid *args:
-    PYTEST_ADDOPTS="-m 'not slow and not weekly'" {{PYTHON}} scripts/verify/gate.py --only pytest {{args}}
+    PYTEST_ADDOPTS="-m 'not slow and not weekly'" {{PYTHON}} scripts/verify/gate.py --only pytest "$@"
 
 # granular targets — each maps to one STEPS entry in scripts/verify/gate.py (see gate.py --list)
 # add --quiet to any of these for terse output (e.g. just test-py --quiet)
@@ -112,8 +117,9 @@ test-mid *args:
 # pytest only, in full -- including the `slow` band
 [group('test')]
 [no-exit-message]
+[positional-arguments]
 test-py *args:
-    {{PYTHON}} scripts/verify/gate.py --only pytest {{args}}
+    {{PYTHON}} scripts/verify/gate.py --only pytest "$@"
 
 # named tests or node ids, serial, any band (`-p no:xdist` breaks addopts' -n)
 [group('test')]
@@ -125,38 +131,44 @@ test-one +nodes:
 # lint + dead definitions
 [group('test')]
 [no-exit-message]
+[positional-arguments]
 test-lint *args:
-    {{PYTHON}} scripts/verify/gate.py --only pre-commit,"dead definitions" {{args}}
+    {{PYTHON}} scripts/verify/gate.py --only pre-commit,"dead definitions" "$@"
 
 # create interpreter, generator and test stubs; asks the category unless --category
 [group('languages')]
 [no-exit-message]
+[positional-arguments]
 new-language name *args:
-    {{PYTHON}} scripts/new_language.py start "{{name}}" {{args}}
+    {{PYTHON}} scripts/new_language.py start "$@"
 
 # list every integration step a language still lacks
 [group('languages')]
 [no-exit-message]
+[positional-arguments]
 check-language name:
-    {{PYTHON}} scripts/new_language.py check "{{name}}"
+    {{PYTHON}} scripts/new_language.py check "$@"
 
 # regenerate examples, docs and size baselines, then run the full gate
 [group('languages')]
 [no-exit-message]
+[positional-arguments]
 finish-language name:
-    {{PYTHON}} scripts/new_language.py finish "{{name}}"
+    {{PYTHON}} scripts/new_language.py finish "$@"
 
 # worst steps and bits per arity, and a [proof_status] section to paste
 [group('languages')]
 [no-exit-message]
+[positional-arguments]
 bounds name *args:
-    {{PYTHON}} scripts/new_language.py bounds "{{name}}" {{args}}
+    {{PYTHON}} scripts/new_language.py bounds "$@"
 
 # delete a language everywhere check looks, then list prose mentions left
 [group('languages')]
 [no-exit-message]
+[positional-arguments]
 remove-language name:
-    {{PYTHON}} scripts/new_language.py remove "{{name}}"
+    {{PYTHON}} scripts/new_language.py remove "$@"
 
 # regenerate the generated README and docs sections
 [group('languages')]
@@ -167,14 +179,16 @@ docs:
 # regenerate the committed example programs; pass a set name to limit it
 [group('languages')]
 [no-exit-message]
+[positional-arguments]
 examples *args:
-    {{PYTHON}} scripts/docs/generate.py examples {{args}}
+    {{PYTHON}} scripts/docs/generate.py examples "$@"
 
 # measure one generated program: size, commands, answers (--json for all of it)
 [group('evidence')]
 [no-exit-message]
+[positional-arguments]
 benchmark language table *args:
-    {{PYTHON}} scripts/benchmark.py "{{language}}" "{{table}}" {{args}}
+    {{PYTHON}} scripts/benchmark.py "$@"
 
 # Every language on 2-, 3- and 4-input tables, compared exactly against the
 # [generator_sizes] section of each package's language.toml.  Pass --update
@@ -182,8 +196,9 @@ benchmark language table *args:
 # check emitted sizes and step counts against the committed baseline
 [group('evidence')]
 [no-exit-message]
+[positional-arguments]
 sizes *args:
-    {{PYTHON}} checks/check_generator_sizes.py {{args}}
+    {{PYTHON}} checks/check_generator_sizes.py "$@"
 
 # A refactor's evidence: step traces against a git revision (default main)
 # over samples, wiki examples, generated rows and random programs.  Pass
@@ -192,8 +207,9 @@ sizes *args:
 # diff an interpreter's step-by-step behaviour against another revision
 [group('evidence')]
 [no-exit-message]
+[positional-arguments]
 tracediff language *args:
-    {{PYTHON}} scripts/tracediff.py "{{language}}" {{args}}
+    {{PYTHON}} scripts/tracediff.py "$@"
 
 # A generator refactor's evidence: every table through n=3, at several widths
 # and balanced, byte-identical to a git revision (default main).  Pass
@@ -202,27 +218,31 @@ tracediff language *args:
 # diff a generator's programs against another revision
 [group('evidence')]
 [no-exit-message]
+[positional-arguments]
 gendiff language *args:
-    {{PYTHON}} scripts/gendiff.py "{{language}}" {{args}}
+    {{PYTHON}} scripts/gendiff.py "$@"
 
 # generator code no test reaches, vs scripts/baselines/deadcode_known.toml; languages narrow it
 [group('maintenance')]
 [no-exit-message]
+[positional-arguments]
 deadcode *args:
-    {{PYTHON}} scripts/deadcode.py {{args}}
+    {{PYTHON}} scripts/deadcode.py "$@"
 
 # seeded generator mutants against their tests (sweep in a worktree)
 [group('maintenance')]
 [no-exit-message]
+[positional-arguments]
 mutants *args:
-    {{PYTHON}} scripts/mutants.py {{args}}
+    {{PYTHON}} scripts/mutants.py "$@"
 
 # Merge downloaded artifacts, one complete CI run per directory.
 [group('maintenance')]
 [doc('merge downloaded CI timing artifacts, one run per directory')]
 [no-exit-message]
+[positional-arguments]
 refresh-ci-timings *args:
-    {{PYTHON}} scripts/ci/shard.py refresh {{args}}
+    {{PYTHON}} scripts/ci/shard.py refresh "$@"
 
 # `python -m tests.proofs.deep --list` shows which proofs CI and verify run.
 # run every executable proof: the ledger obligations and the deep proofs

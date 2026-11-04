@@ -7,23 +7,15 @@ is skipped by accident is a check that silently stops guarding.
 
 import ast
 import functools
-import hashlib
-import importlib
-import importlib.metadata
-import json
 import os
-import re
 import subprocess
 import sys
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import Protocol
 
 # scripts/ holds the sibling `verify`, `docs`, and `ci` packages.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from verify.process import run_bounded, write_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -183,246 +175,6 @@ def local_tooling_deselections(changed: list[str]) -> list[str]:
     ]
 
 
-CACHED_STEPS = frozenset(
-    {
-        "generated docs",
-        "deep proofs (verify band)",
-        "dead definitions",
-        "generator size baseline",
-    }
-)
-_DISTRIBUTIONS = {
-    "python checks": {
-        "pillow",
-    },
-}
-
-
-class _Digest(Protocol):
-    def update(self, data: bytes, /) -> None: ...
-
-
-def _feed(digest: _Digest, value: bytes) -> None:
-    digest.update(len(value).to_bytes(8, "big"))
-    digest.update(value)
-
-
-# Steps whose certificate covers imported tool sources, and those modules.
-_RUNTIME_MODULES = {"python checks": ("ast", "PIL.Image")}
-
-
-def runtime_digest(step: str) -> str:
-    """Hash the interpreter, dependency inventory and the check's tool sources."""
-    for name in _RUNTIME_MODULES[step]:
-        importlib.import_module(name)
-    digest = hashlib.sha256()
-    _feed(digest, sys.version.encode())
-    _feed(digest, Path(sys.executable).read_bytes())
-    files: dict[Path, str] = {}
-    for distribution in sorted(
-        importlib.metadata.distributions(),
-        key=lambda item: (item.metadata["Name"], str(item.locate_file(""))),
-    ):
-        name = distribution.metadata["Name"].lower().replace("_", "-")
-        _feed(digest, f"{name}:{distribution.version}".encode())
-        selected = name in _DISTRIBUTIONS[step]
-        for file in distribution.files or ():
-            if file.suffix == ".pyc":
-                continue
-            if selected or file.name in ("METADATA", "RECORD", "entry_points.txt"):
-                path = Path(str(distribution.locate_file(file)))
-                if path.is_file():
-                    files[path] = str(path)
-    for module in tuple(sys.modules.values()):
-        filename = getattr(module, "__file__", None)
-        if filename and Path(filename).is_file():
-            # uv's bootstrap module lives in a fresh temporary directory.
-            # Its import name and bytes identify the input across invocations.
-            files.setdefault(Path(filename), f"module:{module.__name__}")
-    for path in sorted(files):
-        _feed(digest, files[path].encode())
-        _feed(digest, path.read_bytes())
-    return digest.hexdigest()
-
-
-def _tree(root: Path) -> tuple[str, dict[str, tuple[int, int, int]]]:
-    """Return the digest of every git-visible input, plus its stat tuple.
-
-    ``git ls-files`` lists tracked and untracked-unignored files, so no
-    directory walk is needed.  The walk that used to run over ``src`` and
-    ``scripts`` also swept gitignored build artifacts (``src/*.egg-info``),
-    and a ``uv run`` in another shell rewrote one mid-gate, so the run's own
-    stability check rejected an otherwise clean result.
-    """
-    result = run_bounded(
-        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
-        cwd=root,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    paths = {root / name for name in result.stdout.split("\0") if name}
-    paths.update(root / name for name in (".pylintrc", "setup.cfg"))
-    for path in tuple(paths):
-        if path.is_symlink() and path.is_dir():
-            if not path.resolve().is_relative_to(root.resolve()):
-                raise OSError("cannot fingerprint an external input directory")
-            paths.update(child for child in path.rglob("*") if child.is_file())
-    digest = hashlib.sha256()
-    stamps = {}
-    for path in sorted(paths):
-        name = path.relative_to(root).as_posix()
-        _feed(digest, name.encode())
-        if path.is_symlink() and path.is_dir():
-            _feed(digest, str(path.resolve()).encode())
-            continue
-        if path.is_file():
-            stat = path.stat()
-            stamps[name] = (stat.st_ino, stat.st_size, stat.st_mtime_ns)
-            _feed(digest, b"present" + path.read_bytes())
-        else:
-            _feed(digest, b"absent")
-    return digest.hexdigest(), stamps
-
-
-class VerifiedCache:
-    """Reuse clean runs; publish new entries only after input stability checks."""
-
-    def __init__(self, root: Path) -> None:
-        """Snapshot the tree at construction."""
-        self.root = root
-        self.initial = _tree(root)
-        self.pending: list[tuple[Path, dict[str, str | int]]] = []
-        self.runtimes: dict[str, tuple[list[str], dict[str, str], str]] = {}
-
-    def key(self, step: str, cmd: list[str], env: dict[str, str]) -> str | None:
-        """Return a key, or decline caching when the runtime cannot be verified."""
-        if env.get("VERIFY_CLEAN_CACHE", "1") == "0":
-            return None
-        if "python" not in Path(cmd[0]).name:
-            return None
-        query = [cmd[0], str(Path(__file__).resolve()), "python checks"]
-        query_key = json.dumps([query, sorted(env.items())])
-        if query_key not in self.runtimes:
-            try:
-                result = run_bounded(
-                    query,
-                    env=env,
-                    cwd=self.root,
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                )
-            except (OSError, subprocess.SubprocessError):
-                return None
-            runtime = result.stdout.strip()
-            if not re.fullmatch(r"[0-9a-f]{64}", runtime):
-                return None
-            self.runtimes[query_key] = (query, env, runtime)
-        return self._key(step, cmd, env, self.runtimes[query_key][2])
-
-    def _key(self, step: str, cmd: list[str], env: dict[str, str], runtime: str) -> str:
-        inputs = self.initial[0]
-        return hashlib.sha256(
-            json.dumps(
-                [step, cmd, sorted(env.items()), inputs, runtime],
-                separators=(",", ":"),
-            ).encode()
-        ).hexdigest()
-
-    def path(self, key: str) -> Path:
-        """Return the cache file path for a key."""
-        return self.root / ".cache" / "verification" / f"{key}.json"
-
-    def load(self, key: str) -> str | None:
-        """Return the clean run's output, treating corrupt entries as misses."""
-        try:
-            entry = json.loads(self.path(key).read_text())
-        except (OSError, ValueError):
-            return None
-        if (
-            isinstance(entry, dict)
-            and entry.get("key") == key
-            and type(entry.get("returncode")) is int
-            and entry["returncode"] == 0
-        ):
-            output = entry.get("output")
-            if isinstance(output, str):
-                return output
-        return None
-
-    def remember(self, key: str, output: str, returncode: int) -> None:
-        """Queue a clean result to publish if the inputs stay fixed."""
-        if returncode == 0:
-            self.pending.append(
-                (self.path(key), {"key": key, "output": output, "returncode": 0})
-            )
-
-    def _stable(self) -> bool:
-        """Whether the repository inputs still match the initial snapshot."""
-        try:
-            return _tree(self.root) == self.initial
-        except (OSError, subprocess.SubprocessError):
-            return False
-
-    def finish(self) -> bool:
-        """Publish clean results only if repository and runtime inputs stayed fixed."""
-        if not self._stable():
-            return False
-
-        def matches(runtime: tuple[list[str], dict[str, str], str]) -> bool:
-            query, env, original = runtime
-            try:
-                result = run_bounded(
-                    query,
-                    env=env,
-                    cwd=self.root,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                )
-            except (OSError, subprocess.SubprocessError):
-                return False
-            return result.returncode == 0 and result.stdout.strip() == original
-
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            if not all(pool.map(matches, self.runtimes.values())):
-                return False
-        if not self._stable():
-            return False
-        for path, entry in self.pending:
-            write_text(path, json.dumps(entry))
-        return True
-
-
-# Which paths each step actually guards.  A step whose prefixes the branch did
-# not touch cannot have been broken by that branch, so a scoped run skips it.
-# A step absent from this table is always run: it is either cheap enough not to
-# matter or it guards the whole tree.  Prefixes are repo-relative.
-STEP_SCOPE: dict[str, tuple[str, ...]] = {
-    "dead definitions": ("src/", "scripts/", "checks/"),
-    # Only a generator, an interpreter (the step counts are executed), or the
-    # baseline itself can move these numbers.
-    "generator size baseline": (
-        "src/",
-        "checks/check_generator_sizes.py",
-        "scripts/benchmark.py",
-        "checks/generator_sizes.py",
-    ),
-    "deep proofs (verify band)": (
-        "src/",
-        "tests/proofs/",
-        "tests/support/",
-    ),
-    # Helpers outside interpreters can introduce leaks too. The sweep's
-    # dependency graph narrows this to the languages that import them.
-    "exception leaks": (
-        "src/esolangs/",
-        "checks/verify_no_exception_leaks.py",
-    ),
-}
-
-
 @functools.lru_cache(maxsize=1)
 def _scope_changed_files() -> tuple[str, ...]:
     """Return this branch's changed paths, queried once per run."""
@@ -434,28 +186,17 @@ def verify_full() -> bool:
     return os.environ.get("VERIFY_FULL", "0") not in ("", "0")
 
 
-def _scope_plan(*, full: bool) -> tuple[set[str] | None, str]:
-    """Return the step names to skip as unaffected, and why.
-
-    ``None`` means "run everything".  That is the answer whenever the branch's
-    diff cannot be read or something shared moved, so scoping can only ever
-    remove work that provably could not have broken -- never work whose status
-    is unknown.
-    """
+def _scope_plan(*, full: bool) -> tuple[bool, str]:
+    """Return whether all files need checking, and why."""
     if full:
-        return None, "--full requested"
+        return True, "--full requested"
     if verify_full():
-        return None, "VERIFY_FULL set"
+        return True, "VERIFY_FULL set"
     changed = list(_scope_changed_files())
     reason = widens_to_everything(changed)
     if reason is not None:
-        return None, reason
-    skip = {
-        name
-        for name, prefixes in STEP_SCOPE.items()
-        if not any(f.startswith(prefixes) for f in changed)
-    }
-    return skip, f"{len(changed)} file(s) changed"
+        return True, reason
+    return False, f"{len(changed)} file(s) changed"
 
 
 # What a scoped pytest run should do.  Spelled out rather than overloading
@@ -729,14 +470,3 @@ def _scoped_cmd(name: str, cmd: list[str], changed: list[str]) -> list[str] | No
             return cmd  # not localisable: run every test
         return [*cmd, *paths]
     return cmd
-
-
-if __name__ == "__main__":
-    import argparse
-
-    _parser = argparse.ArgumentParser(
-        description="Print a step's runtime digest (gate.py runs this; not for "
-        "direct use)."
-    )
-    _parser.add_argument("step", choices=sorted(_RUNTIME_MODULES))
-    print(runtime_digest(_parser.parse_args().step))

@@ -27,3 +27,27 @@ def test_the_hook_path_may_be_relative_or_absolute(
 ) -> None:
     monkeypatch.setattr(doctor, "_output", lambda *_: configured)
     assert (doctor._hooks() is None) is ok
+
+
+@pytest.mark.parametrize("installed", [False, True])
+def test_dev_dependencies_follow_the_declared_distributions(
+    tmp_path, monkeypatch, *, installed
+):
+    (tmp_path / "pyproject.toml").write_text(
+        '[dependency-groups]\ndev = ["binary-tool>=1", "library"]\n'
+    )
+    monkeypatch.setattr(doctor, "ROOT", tmp_path)
+    queried = []
+
+    def version(name):
+        queried.append(name)
+        if not installed:
+            raise doctor.importlib.metadata.PackageNotFoundError(name)
+        return "1"
+
+    monkeypatch.setattr(doctor.importlib.metadata, "version", version)
+    result = doctor._dev_deps()
+    assert queried == ["binary-tool", "library"]
+    assert (result is None) is installed
+    if result:
+        assert "binary-tool, library" in result

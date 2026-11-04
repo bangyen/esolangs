@@ -13,42 +13,22 @@ import importlib
 import shutil
 import subprocess
 import sys
-import types
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-ROOT = Path(__file__).parents[2]
-# scripts/ holds this `removal` package, like `verify` and `docs`; the phases
-# import as top-level `removal.*` however this module was reached.
-if str(Path(__file__).parents[1]) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).parents[1]))
-
-if TYPE_CHECKING:
-    from removal.mentions import drop_owned_comments, mention_edit
-else:
-    _mentions = importlib.import_module(
-        f"{__package__ + '.' if __package__ else 'removal.'}mentions"
-    )
-    mention_edit = _mentions.mention_edit
-    drop_owned_comments = _mentions.drop_owned_comments
-
-from removal import documents as _documents  # noqa: E402
-from removal import entries as _entries  # noqa: E402
-from removal import ownership as _ownership  # noqa: E402
-from removal.documents import (  # noqa: E402
-    _drop_bullets,
+from .documents import (
     _drop_doc_entries,
     _drop_from_series,
     _prune_fixtures,
-    _stale_timing,
 )
-from removal.entries import (  # noqa: E402
+from .entries import (
     _drop_dead_code,
     _drop_entries,
     _drop_inline_items,
     _names_used,
 )
-from removal.ownership import (  # noqa: E402
+from .mentions import drop_owned_comments, mention_edit
+from .ownership import (
     _EDITED,
     _dead_test_files,
     _declaring_module,
@@ -63,52 +43,11 @@ from removal.ownership import (  # noqa: E402
     _owned_evidence,
     _owned_module_paths,
     _owned_scripts,
-    _owner_id,
     _python_files,
     _within,
 )
 
-#: The re-exported names the removal tests read as attributes of this
-#: module; listing them here is what makes the imports a surface rather
-#: than unused (F401).  The remaining imported names are used internally.
-__all__ = [
-    "_EDITED",
-    "_dead_test_files",
-    "_declaring_module",
-    "_drop_bullets",
-    "_drop_doc_entries",
-    "_drop_from_series",
-    "_drop_language_statement",
-    "_gone",
-    "_gone_modules",
-    "_import_users",
-    "_imported",
-    "_is_test",
-    "_owner_id",
-    "_prune_fixtures",
-    "_stale_timing",
-]
-
-#: The phase modules whose ``ROOT`` follows this module's.
-_PHASE_MODULES = (_documents, _entries, _ownership)
-
-
-class _RootModule(types.ModuleType):
-    """A module type that forwards ``ROOT`` assignments to the phases.
-
-    Tests point ``remove_language.ROOT`` at a fixture tree; the phase
-    modules read their own ``ROOT``, so an assignment here must reach
-    them too or the phases would keep working on the real tree.
-    """
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        super().__setattr__(name, value)
-        if name == "ROOT":
-            for module in _PHASE_MODULES:
-                module.ROOT = value  # type: ignore[attr-defined]
-
-
-sys.modules[__name__].__class__ = _RootModule
+ROOT = Path(__file__).parents[2]
 
 
 def tests_attr(module: str, attr: str) -> Any:

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from scripts.removal import ownership as removal_ownership
 from scripts.removal.mentions import drop_owned_comments
 
 
@@ -78,9 +79,8 @@ def test_arithmetic_literal_keeps_real_language_calls_visible(tmp_path: Path) ->
 def test_proof_ownership_preserves_shared_index_and_evidence(
     tmp_path, monkeypatch
 ) -> None:
-    from scripts.removal import language as remove_language
 
-    monkeypatch.setattr(remove_language, "ROOT", tmp_path)
+    monkeypatch.setattr(removal_ownership, "ROOT", tmp_path)
     proofs = tmp_path / "docs/proofs"
     proofs.mkdir(parents=True)
     for name in ("index.md", "private.md", "shared.md"):
@@ -110,5 +110,5 @@ def test_proof_ownership_preserves_shared_index_and_evidence(
         package = packages / slug
         package.mkdir(parents=True)
         (package / "language.toml").write_text(sections)
-    assert remove_language._owned_evidence("Tiny") == {proofs / "private.md"}
-    assert remove_language._owned_evidence("Other") == set()
+    assert removal_ownership._owned_evidence("Tiny") == {proofs / "private.md"}
+    assert removal_ownership._owned_evidence("Other") == set()

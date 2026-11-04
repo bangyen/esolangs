@@ -17,7 +17,6 @@ single-step runs stream it. ``just test`` and the pre-push hook use this gate.
 from __future__ import annotations
 
 import argparse
-import contextlib
 import os
 import shlex
 import shutil
@@ -45,8 +44,6 @@ from verify.process import (  # noqa: E402
     wait_with_heartbeat,
 )
 from verify.scope import (  # noqa: E402
-    CACHED_STEPS,
-    VerifiedCache,
     _scope_changed_files,
     _scope_plan,
     _scoped_cmd,
@@ -224,8 +221,6 @@ REGENERATE = (
 
 def _rerun_hint(name: str, output: str | None = None) -> list[str]:
     """Return the commands that rerun, and any that fix, failed step *name*."""
-    if name == "verification inputs":
-        return ["  rerun: uv run python scripts/verify/gate.py"]
     rerun = f"  rerun: uv run python scripts/verify/gate.py --only {shlex.quote(name)}"
     fixes = FIXES.get(name, ())
     if name == LONG_STEP and any(
@@ -491,20 +486,19 @@ def _report(name: str, elapsed: float, returncode: int, output: str | None) -> b
 def _drop_long_step_after_mutation_failure(
     failed: list[tuple[str, int, str | None]],
     rest: list[tuple[str, list[str], dict[str, str]]],
-) -> tuple[list[tuple[str, list[str], dict[str, str]]], bool]:
+) -> list[tuple[str, list[str], dict[str, str]]]:
     """Skip the long step when the tree-mutating step just rewrote the tree.
 
     The cheap steps still report, but pytest would spend ~150 s on a
     tree the hooks just rewrote and the fix will rewrite again: six
-    sessions waited it out for a one-line ruff fix.  Returns the
-    remaining steps and whether the verified cache is now stale.
+    sessions waited it out for a one-line ruff fix.
     """
     if not any(name == MUTATES_TREE for name, *_ in failed):
-        return rest, False
+        return rest
     if any(step[0] == LONG_STEP for step in rest):
         print(f"[skip] {LONG_STEP}: {MUTATES_TREE} failed; fix it and rerun")
         rest = [step for step in rest if step[0] != LONG_STEP]
-    return rest, True
+    return rest
 
 
 def _run_shadow_phase(
@@ -591,8 +585,6 @@ def _run_steps(
     failed: list[tuple[str, int, str | None]] = []
     timings: list[tuple[str, float]] = []
     wall_start = time.monotonic()
-    clean_cache: VerifiedCache | None = None
-    cache_keys: dict[str, str | None] = {}
 
     def record(name: str, elapsed: float, returncode: int, output: str | None) -> None:
         timings.append((name, elapsed))
@@ -601,51 +593,19 @@ def _run_steps(
 
     def run_serial(name: str, cmd: list[str], step_env: dict[str, str]) -> None:
         start = time.monotonic()
-        key = cache_keys.get(name)
-        if key is not None:
-            assert clean_cache is not None
-            if (cached := clean_cache.load(key)) is not None:
-                print(f"[cache] {name}: identical verified inputs")
-                record(name, time.monotonic() - start, 0, cached)
-                return
         captured, returncode = _wait_with_heartbeat(
             start_logged(cmd, name, step_env, ROOT, stream=stream),
             name,
             start,
         )
         record(name, time.monotonic() - start, returncode, captured)
-        if key is not None and captured is not None:
-            assert clean_cache is not None
-            clean_cache.remember(key, captured, returncode)
 
-    # Companion checks wait for formatting; runtime probes may overlap it.
-    # The cache's initial snapshot rejects entries if formatting changed inputs.
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        futures = []
-        if not stream and any(
-            name in CACHED_STEPS and env.get("VERIFY_CLEAN_CACHE", "1") != "0"
-            for name, _, env in runnable
-        ):
-            with contextlib.suppress(OSError, subprocess.SubprocessError):
-                clean_cache = VerifiedCache(ROOT)
-
-                def prepare(steps: list[tuple[str, list[str], dict[str, str]]]) -> None:
-                    assert clean_cache is not None
-                    for name, cmd, step_env in steps:
-                        cache_keys[name] = clean_cache.key(name, cmd, step_env)
-
-                eligible = [step for step in runnable if step[0] in CACHED_STEPS]
-                futures = [pool.submit(prepare, eligible)]
-        for name, cmd, step_env in runnable:
-            if name == MUTATES_TREE:
-                run_serial(name, cmd, step_env)
-        for future in futures:
-            future.result()
-    rest = [s for s in runnable if s[0] != MUTATES_TREE]
-    rest, cache_stale = _drop_long_step_after_mutation_failure(failed, rest)
-    if cache_stale:
-        clean_cache = None
-        cache_keys.clear()
+    for name, cmd, step_env in runnable:
+        if name == MUTATES_TREE:
+            run_serial(name, cmd, step_env)
+    rest = _drop_long_step_after_mutation_failure(
+        failed, [step for step in runnable if step[0] != MUTATES_TREE]
+    )
 
     # Phase 2: launch the long step, then run the cheap ones in its shadow.
     long_step = next((s for s in rest if s[0] == LONG_STEP), None)
@@ -663,9 +623,6 @@ def _run_steps(
     # Phase 3: the parallel steps, now that they can have the machine.
     for name, cmd, step_env in heavy:
         run_serial(name, cmd, step_env)
-
-    if clean_cache is not None and not clean_cache.finish():
-        record("verification inputs", 0.0, 1, "Inputs changed during verification")
 
     return failed, timings, time.monotonic() - wall_start
 
@@ -708,8 +665,6 @@ def _pytest_cmd(cmd: list[str], *, full: bool, changed: list[str]) -> list[str]:
                 "scripts.ci.shard",
                 "--duration-output",
                 str(output),
-                "--duration-input",
-                str(ROOT / "snapshot.json"),
             ]
         )
     if not full and not verify_full():
@@ -729,17 +684,15 @@ def main() -> int:
 
     # An explicit --only is already a hand-picked subset; scoping it further
     # would silently drop steps the caller asked for by name.
-    unaffected, why = (None, "--only given") if only else _scope_plan(full=full)
+    unscoped, why = (True, "--only given") if only else _scope_plan(full=full)
     whole = only is not None or full or verify_full()
     changed = [] if whole else list(_scope_changed_files())
-    if unaffected is None:
+    if unscoped:
         print(f"scope: full run ({why})")
     else:
-        print(f"scope: {len(STEPS) - len(unaffected)}/{len(STEPS)} steps ({why})")
+        print(f"scope: changed files ({why})")
 
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
-    if whole:
-        env["VERIFY_CLEAN_CACHE"] = "0"
     # Decide every step first, then run.  Deciding is pure bookkeeping (scope
     # lookups, tool probes) while running is where the time goes, so keeping
     # the two apart lets the runner overlap the long step with the short ones
@@ -755,10 +708,7 @@ def main() -> int:
         if name in MANUAL_ONLY and only is None:
             print(f"[skip] {name}: left to CI; use --only to run locally")
             continue
-        if unaffected is not None and name in unaffected:
-            print(f"[skip] {name}: branch touched none of its files")
-            continue
-        if unaffected is not None:
+        if not unscoped:
             narrowed = _scoped_cmd(name, cmd, changed)
             if narrowed is None:
                 print(f"[skip] {name}: branch touched none of its files")
@@ -767,14 +717,6 @@ def main() -> int:
         elif name == MUTATES_TREE:
             cmd = whole_tree_cmd(cmd)
         step_env = env
-        if name == MUTATES_TREE:
-            # Skip the config's mypy hook: the very next step runs mypy over
-            # src/ *and* scripts/ from the project env, against the same
-            # pyproject config, so the hook re-proves a strict subset -- and
-            # pays for its own isolated env to do it.  Only the local run
-            # skips it; CI runs `pre-commit run --all-files` with no SKIP
-            # (ci.yml:28), so the hook still guards the config itself.
-            step_env = dict(step_env, SKIP="mypy")
         if only is None and name == LONG_STEP:
             cmd = _pytest_cmd(cmd, full=full, changed=changed)
         runnable.append((name, cmd, step_env))

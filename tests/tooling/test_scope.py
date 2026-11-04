@@ -80,8 +80,8 @@ class TestWidensToEverything:
             monkeypatch.setattr(
                 scope, "_scope_changed_files", lambda name=name: (name,)
             )
-            skip, reason = scope._scope_plan(full=False)
-            assert skip is None, (name, reason)
+            whole, reason = scope._scope_plan(full=False)
+            assert whole, (name, reason)
 
     def test_ordinary_interpreter_does_not_widen(self, monkeypatch) -> None:
         """A single interpreter is the case scoping exists to narrow."""
@@ -94,8 +94,8 @@ class TestWidensToEverything:
         assert set(scope.INTERPRETER_CONTRACT_TESTS) <= set(selected)
         monkeypatch.delenv("VERIFY_FULL", raising=False)
         monkeypatch.setattr(scope, "_scope_changed_files", lambda: ("docs/usage.md",))
-        skip, _ = scope._scope_plan(full=False)
-        assert skip == set(scope.STEP_SCOPE)
+        whole, _ = scope._scope_plan(full=False)
+        assert not whole
         assert scope._scoped_cmd("pytest", ["pytest"], ["docs/usage.md"]) is None
 
 
@@ -184,17 +184,9 @@ def test_nul_paths_and_rename_sources_are_preserved(bad) -> None:
 def test_shared_proof_dependencies_keep_their_checks(monkeypatch):
     scope = load_script()
     monkeypatch.delenv("VERIFY_FULL", raising=False)
-    cases = {
-        "src/esolangs/generation/shared_flag.py": {
-            "deep proofs (verify band)",
-            "generator size baseline",
-            "exception leaks",
-        },
-        "src/esolangs/vm.py": {"deep proofs (verify band)", "generator size baseline"},
-        "tests/proofs/formulas.py": {"deep proofs (verify band)"},
-    }
-    for path, required in cases.items():
-        monkeypatch.setattr(scope, "_scope_changed_files", lambda path=path: (path,))
-        skip, _ = scope._scope_plan(full=False)
-        assert skip is None or required.isdisjoint(skip), path
+    for path in (
+        "src/esolangs/generation/shared_flag.py",
+        "src/esolangs/vm.py",
+        "tests/proofs/formulas.py",
+    ):
         assert scope._pytest_scope([path]) == scope.WHOLE_SUITE, path

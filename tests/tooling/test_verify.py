@@ -160,7 +160,7 @@ def test_shared_changes_keep_all_tests_without_local_coverage(
         verify, "_parse_only_skip", lambda: (None, None, full, False, False)
     )
     monkeypatch.setattr(
-        verify, "_scope_plan", lambda **_: (None, "verification tooling changed")
+        verify, "_scope_plan", lambda **_: (True, "verification tooling changed")
     )
     monkeypatch.setattr(
         verify,
@@ -193,7 +193,7 @@ def test_failures_close_the_run_with_their_cause(
     monkeypatch.setattr(
         verify, "_parse_only_skip", lambda: (None, None, True, False, False)
     )
-    monkeypatch.setattr(verify, "_scope_plan", lambda **_: (None, "test"))
+    monkeypatch.setattr(verify, "_scope_plan", lambda **_: (True, "test"))
     monkeypatch.setattr(verify, "_scope_changed_files", lambda: ())
     monkeypatch.setattr(
         verify, "run_bounded", lambda *_a, **_kw: subprocess.CompletedProcess([], 0)
@@ -216,7 +216,7 @@ def test_a_failure_names_its_log_and_failing_tests(
     monkeypatch.setattr(
         verify, "_parse_only_skip", lambda: (None, None, True, False, False)
     )
-    monkeypatch.setattr(verify, "_scope_plan", lambda **_: (None, "test"))
+    monkeypatch.setattr(verify, "_scope_plan", lambda **_: (True, "test"))
     monkeypatch.setattr(verify, "_scope_changed_files", lambda: ())
     monkeypatch.setattr(
         verify, "run_bounded", lambda *_a, **_kw: subprocess.CompletedProcess([], 0)
@@ -240,7 +240,7 @@ def _run_gate(monkeypatch: pytest.MonkeyPatch, verify: Any, failures: list) -> i
     monkeypatch.setattr(
         verify, "_parse_only_skip", lambda: (None, None, True, False, False)
     )
-    monkeypatch.setattr(verify, "_scope_plan", lambda **_: (None, "test"))
+    monkeypatch.setattr(verify, "_scope_plan", lambda **_: (True, "test"))
     monkeypatch.setattr(verify, "_scope_changed_files", lambda: ())
     monkeypatch.setattr(
         verify, "run_bounded", lambda *_a, **_kw: subprocess.CompletedProcess([], 0)
@@ -476,22 +476,6 @@ def test_generator_scope_keeps_transitive_dependents(
         "src/esolangs/languages/target/tests/test_boolean_target.py",
         "tests/generators/test_contracts.py",
     ]
-
-
-def test_exception_sweep_scope_includes_helpers_outside_interpreters() -> None:
-    verify = load_scope()
-    assert any(
-        "src/esolangs/runtime/_traits.py".startswith(prefix)
-        for prefix in verify.STEP_SCOPE["exception leaks"]
-    )
-
-
-def test_leak_step_covers_shipped_examples() -> None:
-    from scripts.verify.scope import STEP_SCOPE
-
-    assert "src/esolangs/languages/fixture/fixture.txt".startswith(
-        STEP_SCOPE["exception leaks"]
-    )
 
 
 @pytest.mark.medium

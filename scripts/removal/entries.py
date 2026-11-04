@@ -9,16 +9,12 @@ from __future__ import annotations
 
 import ast
 import re
-import sys
 from collections.abc import Callable
 from pathlib import Path
 
-ROOT = Path(__file__).parents[2]
-# scripts/ holds the sibling `removal` package, like `verify` and `docs`.
-if str(Path(__file__).resolve().parents[1]) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from .ownership import _gone
 
-from removal.ownership import _gone  # noqa: E402
+ROOT = Path(__file__).parents[2]
 
 
 def _outermost(spans: list[tuple[int, int]]) -> list[tuple[int, int]]:

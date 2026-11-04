@@ -50,12 +50,6 @@ repos:
         language: system
         files: ^\.github/workflows/[^/]+\.ya?ml$
 
-  # No mypy hook.  The mirror runs in an isolated env, so it could only ever
-  # reach ``src/`` -- ``scripts/`` imports esolangs and urllib3, which are
-  # not there -- while ``uv run mypy`` covers ``src`` and ``scripts`` under
-  # the same strict pyproject config in the project env.  Keeping both
-  # type-checked ``src/`` twice and pinned mypy in two places.
-
   - repo: local
     hooks:
       - id: check-doc-links

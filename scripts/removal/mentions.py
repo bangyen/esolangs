@@ -144,10 +144,7 @@ def _code_label(tree: ast.Module, path: str, line: int, name: str | None) -> str
         isinstance(node, ast.FunctionDef)
         and _spans(node, line)
         and any(
-            isinstance(part, ast.Attribute)
-            and isinstance(part.value, ast.Name)
-            and part.value.id == "remove_language"
-            and part.attr in _SCANNER_HELPERS
+            isinstance(part, ast.Attribute) and part.attr in _SCANNER_HELPERS
             for part in ast.walk(node)
         )
         for node in nodes

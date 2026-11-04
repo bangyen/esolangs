@@ -6,7 +6,10 @@ from pathlib import Path
 import pytest
 
 from scripts import new_language
+from scripts.removal import documents as removal_documents
+from scripts.removal import entries as removal_entries
 from scripts.removal import language as remove_language
+from scripts.removal import ownership as removal_ownership
 from tests.support.reference import REFERENCE
 
 
@@ -113,7 +116,7 @@ def test_remove_cuts_only_entries_that_own_their_lines(tmp_path: Path) -> None:
         'run_gone = _runner("gone")\n'
     )
     modules = {"esolangs.generation.gone"}
-    assert remove_language._drop_entries(path, {"gone"}, modules) == 3
+    assert removal_entries._drop_entries(path, {"gone"}, modules) == 3
     # The import another entry still uses stays.
     assert path.read_text() == (
         "from esolangs.generation.gone import PAIR\n"
@@ -124,7 +127,7 @@ def test_remove_cuts_only_entries_that_own_their_lines(tmp_path: Path) -> None:
 def test_remove_drops_the_whole_limitations_bullet(tmp_path: Path) -> None:
     path = tmp_path / "limitations.md"
     path.write_text("- Gone reads\n  past EOF.\n- Gonero stays.\n  Kept.\n")
-    remove_language._drop_bullets(path, "Gone")
+    removal_documents._drop_bullets(path, "Gone")
     assert path.read_text() == "- Gonero stays.\n  Kept.\n"
 
 
@@ -135,7 +138,7 @@ def test_remove_drops_a_link_bullet(tmp_path: Path) -> None:
         "- [Gone](https://x/) (7): integrated.\n  continued.\n"
         "- [Kept](https://y/): stays.\n"
     )
-    remove_language._drop_bullets(path, "Gone")
+    removal_documents._drop_bullets(path, "Gone")
     assert path.read_text() == "- [Kept](https://y/): stays.\n"
 
 
@@ -147,7 +150,7 @@ def test_remove_preserves_punctuation_prefixed_names(tmp_path: Path) -> None:
         "- [Gone++](https://x/): kept.\n"
         "- gone's own entry goes.\n"
     )
-    remove_language._drop_bullets(path, "Gone")
+    removal_documents._drop_bullets(path, "Gone")
     assert path.read_text() == ("- **Gone++:** kept.\n- [Gone++](https://x/): kept.\n")
 
 
@@ -160,7 +163,7 @@ def test_remove_drops_only_owned_document_rows(tmp_path: Path) -> None:
         "| Gone++ | kept |\n"
         "| Other | discusses Gone |\n"
     )
-    remove_language._drop_doc_entries(path, "Gone")
+    removal_documents._drop_doc_entries(path, "Gone")
     assert path.read_text() == (
         "| Language | Limit |\n| --- | --- |\n"
         "| Gone++ | kept |\n| Other | discusses Gone |\n"
@@ -173,7 +176,7 @@ def test_remove_drops_a_bullet_with_a_fenced_example(tmp_path: Path) -> None:
         "- Gone has an example.\n\n  ```python\n  run('Gone')\n\n"
         "  check()\n  ```\n\n- Kept has an example.\n"
     )
-    remove_language._drop_bullets(path, "Gone")
+    removal_documents._drop_bullets(path, "Gone")
     assert path.read_text() == "\n- Kept has an example.\n"
 
 
@@ -202,42 +205,32 @@ def test_finish_still_runs_the_gate_past_open_steps(
     assert "curation unassessed" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("gate_status", [0, 1])
 def test_gate_runs_the_full_gate_not_a_scoped_one(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    gate_status: int,
 ) -> None:
-    """``finish`` promises the full gate; a scoped run skips untouched steps."""
     import subprocess
 
-    regenerated: list[list[str]] = []
-    gated: list[list[str]] = []
+    commands: list[list[str]] = []
 
     def run(cmd: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
-        regenerated.append(cmd)
-        return subprocess.CompletedProcess(cmd, 0)
-
-    class Gate:
-        returncode = 0
-
-        def __init__(self) -> None:
-            self.stdout: list[str] = []
-
-        def __enter__(self) -> "Gate":
-            return self
-
-        def __exit__(self, *_exc: object) -> None:
-            return None
-
-    def popen(cmd: list[str], **_kwargs: object) -> Gate:
-        gated.append(cmd)
-        return Gate()
+        commands.append(cmd)
+        status = gate_status if "--full" in cmd else 0
+        return subprocess.CompletedProcess(cmd, status)
 
     monkeypatch.setattr(subprocess, "run", run)
-    monkeypatch.setattr(subprocess, "Popen", popen)
-    assert new_language._gate() == 0
-    # Three regenerations, then the checks the gate leaves to CI.
-    assert len(regenerated) == 4
-    assert "dead definitions" in regenerated[-1][-1]
-    assert gated == [[sys.executable, "scripts/verify/gate.py", "--full", "--quiet"]]
+    assert new_language._gate() == gate_status
+    assert commands[3] == [
+        sys.executable,
+        "scripts/verify/gate.py",
+        "--full",
+        "--quiet",
+    ]
+    assert len(commands) == (5 if gate_status == 0 else 4)
+    if gate_status == 0:
+        assert "dead definitions" in commands[-1][-1]
     assert "+ scripts/verify/gate.py --full --quiet" in capsys.readouterr().out
 
 
@@ -378,7 +371,7 @@ def test_mention_edit_does_not_exempt_a_whole_fixture_file(
     source = (
         "import esolangs.languages.gone.interpreter\n"
         "def test_scanner():\n"
-        "    owner = remove_language._owner_id\n"
+        "    owner = removal_ownership._owner_id\n"
         '    assert owner("gone.py", {"gone"}) == "gone"\n'
         '    esolangs.run("Gone", "+.")\n'
         "    import esolangs.languages.gone.interpreter\n"
@@ -394,7 +387,7 @@ def test_mention_edit_does_not_exempt_a_whole_fixture_file(
 
 def test_owner_id_prefers_the_longest_id() -> None:
     ids = {"piet", "piet_plus_plus", "line", "back"}
-    owner = remove_language._owner_id
+    owner = removal_ownership._owner_id
     assert owner("piet_plus_plus.toml", ids) == "piet_plus_plus"
     assert owner("piet.toml", ids) == "piet"
     assert owner("back_routes.py", ids) == "back"
@@ -405,7 +398,7 @@ def test_owner_id_prefers_the_longest_id() -> None:
 def test_stale_timing_matches_any_parametrize_component() -> None:
     names = {"Line", "line", "Piet"}
     gone = {"src/esolangs/languages/line/tests/test_boolean_line.py"}
-    stale = remove_language._stale_timing
+    stale = removal_documents._stale_timing
     assert stale("x.py::t[1-Line]", names, gone)
     assert stale("x.py::t[Line-2]", names, gone)
     assert stale("x.py::t[a-Line-b]", names, gone)
@@ -423,7 +416,7 @@ def test_stale_timing_matches_files_under_a_doomed_directory() -> None:
     # The doomed set carries a package's tests directory, not its files:
     # a node ID naming a file under it is stale, a sibling prefix is not.
     gone = {"src/esolangs/languages/line/tests"}
-    stale = remove_language._stale_timing
+    stale = removal_documents._stale_timing
     assert stale(
         "src/esolangs/languages/line/tests/test_boolean_line.py::t", set(), gone
     )
@@ -452,16 +445,16 @@ def test_dead_test_files_catch_a_submodule_import(
     (tests / "test_shared.py").write_text(
         "import esolangs.generation.pkg.sub\nimport esolangs\n"
     )
-    monkeypatch.setattr(remove_language, "ROOT", tmp_path)
+    monkeypatch.setattr(removal_ownership, "ROOT", tmp_path)
     doomed = {pkg}
-    gone = remove_language._gone_modules(doomed)
+    gone = removal_ownership._gone_modules(doomed)
     users = {
         "esolangs.generation.pkg.sub": {
             f"{test_root}/test_sub.py",
             f"{test_root}/test_shared.py",
         }
     }
-    assert remove_language._dead_test_files(doomed, gone, users) == {
+    assert removal_ownership._dead_test_files(doomed, gone, users) == {
         tests / "test_sub.py"
     }
 
@@ -473,17 +466,17 @@ def test_orphans_drop_a_helper_only_the_language_imports(
     tools.mkdir(parents=True)
     (tools / "gone.py").write_text("from esolangs.generation.helper import h\n")
     (tools / "helper.py").write_text("h = 1\n")
-    monkeypatch.setattr(remove_language, "ROOT", tmp_path)
+    monkeypatch.setattr(removal_ownership, "ROOT", tmp_path)
     doomed = {tools / "gone.py"}
     private = {"esolangs.generation.helper": {"src/esolangs/generation/gone.py"}}
-    assert remove_language._orphans(doomed, private) == {tools / "helper.py"}
+    assert removal_ownership._orphans(doomed, private) == {tools / "helper.py"}
     shared = {
         "esolangs.generation.helper": {
             "src/esolangs/generation/gone.py",
             "src/esolangs/generation/keeper.py",
         }
     }
-    assert remove_language._orphans(doomed, shared) == set()
+    assert removal_ownership._orphans(doomed, shared) == set()
 
 
 def test_drop_dead_code_keeps_live_and_cuts_dead(tmp_path: Path) -> None:
@@ -497,7 +490,7 @@ def test_drop_dead_code_keeps_live_and_cuts_dead(tmp_path: Path) -> None:
         "    return _GONE[1]\n"
         "_GONE = {5: 6}\n"
     )
-    assert remove_language._drop_dead_code(path, {"used"}) == 2
+    assert removal_entries._drop_dead_code(path, {"used"}) == 2
     text = path.read_text()
     # ``_OPS`` is read by a live function and by its own ``|=``: kept.
     assert "_OPS" in text
@@ -538,7 +531,7 @@ def test_remove_cleans_language_package(
     created = new_language.scaffold("Tiny", "other", generator=generator)
     namespace = root / "src/esolangs/languages/__init__.py"
     owned = set(created) - {namespace}
-    for relative in remove_language._EDITED:
+    for relative in removal_ownership._EDITED:
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("")
@@ -591,7 +584,13 @@ def test_remove_cleans_language_package(
         module = types.ModuleType(tiny.__module__)
         module.LANGUAGE = lang
         monkeypatch.setitem(sys.modules, tiny.__module__, module)
-    monkeypatch.setattr(remove_language, "ROOT", root)
+    for module in (
+        remove_language,
+        removal_documents,
+        removal_entries,
+        removal_ownership,
+    ):
+        monkeypatch.setattr(module, "ROOT", root)
     real_run = subprocess.run
     for command in (
         ["git", "init", "-q"],

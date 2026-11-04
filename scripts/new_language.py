@@ -817,7 +817,7 @@ def _ci_only() -> int:
 
 
 def _gate() -> int:
-    """Regenerate, run the gate and CI's checks, and rerun failures alone."""
+    """Regenerate, then run the full gate and CI-only checks."""
     python = [sys.executable]
     for cmd in (
         [*python, "scripts/docs/generate.py", "examples"],
@@ -827,37 +827,11 @@ def _gate() -> int:
         print("+", " ".join(cmd[1:]), flush=True)
         if subprocess.run(cmd, cwd=ROOT, check=False).returncode:
             return 1
-    print("+ scripts/verify/gate.py --full --quiet", flush=True)
-    failed = []
-    with subprocess.Popen(
-        [*python, "scripts/verify/gate.py", "--full", "--quiet"],
-        cwd=ROOT,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-    ) as gate:
-        assert gate.stdout is not None
-        for line in gate.stdout:
-            print(line, end="", flush=True)
-            if line.startswith("FAILED "):
-                failed.append(line[7:].split(" - ")[0].strip())
-    if not gate.returncode:
-        return _ci_only()
-    if not failed:
-        return 1  # not a pytest failure
-    # A loaded machine pushes borderline tests past their duration band.
-    # Rerunning only the failures, serially, separates those from real ones.
-    # The ids come from this run's output: pytest's own --lf record can
-    # hold tests since deleted, and then reruns the whole suite.
-    print("+ rerunning the failed tests alone", flush=True)
-    rerun = [*python, "-m", "pytest", "-q", "-n", "0", "-m", "", *failed]
-    if subprocess.run(rerun, cwd=ROOT, check=False).returncode:
+    cmd = [*python, "scripts/verify/gate.py", "--full", "--quiet"]
+    print("+", " ".join(cmd[1:]), flush=True)
+    if subprocess.run(cmd, cwd=ROOT, check=False).returncode:
         return 1
-    print(
-        "every failed test passed alone: the failures were load, not the "
-        "language; rerun the gate on a quiet machine before pushing"
-    )
-    return 0
+    return _ci_only()
 
 
 def _registered_name(name: str) -> str:

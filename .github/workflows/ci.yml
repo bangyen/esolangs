@@ -109,7 +109,7 @@ jobs:
     # Measured in run 37334678602, the plain legs set the wall clock
     # (3.12: 496s of pytest) while the 3.14 coverage leg
     # below took 297s. Coverage now shards too, combining its branch data
-    # before the changed-line gate. The `slow`
+    # before the coverage floor. The `slow`
     # job's sharder partitions the band; with no recorded durations
     # for this band it balances by test count, which the band limits
     # keep honest (fast <= 1s, medium <= 5s on a local machine).
@@ -258,7 +258,6 @@ jobs:
         test -f .coverage.shard-1
         uv run coverage combine .coverage.shard-0 .coverage.shard-1
         uv run coverage report --fail-under=98
-        uv run coverage xml
 
 
   slow:
