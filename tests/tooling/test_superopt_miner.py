@@ -142,7 +142,7 @@ class _StubRunner:
     name = "Stub"
     terminating = False
 
-    def answer_row(self, program, bits, *, timeout, backstop):  # noqa: ARG002
+    def answer_row(self, program, bits, *, timeout, backstop):  # noqa: ARG002 - the stub must accept the runner protocol's full signature; score_program passes every argument
         if bits == [0]:
             raise ExecutionTimeoutError("row ran out of bound")
         raise ValueError("interpreter rejected the candidate")

@@ -35,7 +35,7 @@ else:
 from removal import documents as _documents  # noqa: E402
 from removal import entries as _entries  # noqa: E402
 from removal import ownership as _ownership  # noqa: E402
-from removal.documents import (  # noqa: E402, F401
+from removal.documents import (  # noqa: E402, F401 - re-exported: the removal tests read these as attributes of this module
     _drop_bullets,
     _drop_doc_entries,
     _drop_from_series,
@@ -48,7 +48,7 @@ from removal.entries import (  # noqa: E402
     _drop_inline_items,
     _names_used,
 )
-from removal.ownership import (  # noqa: E402, F401
+from removal.ownership import (  # noqa: E402, F401 - re-exported: the removal tests read these as attributes of this module
     _EDITED,
     _dead_test_files,
     _declaring_module,
