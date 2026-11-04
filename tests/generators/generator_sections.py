@@ -6,7 +6,6 @@ The shape is the ``_GENERATOR`` stub in ``scripts/new_language.py``.
 import random
 import re
 
-from scripts.stale_figures import FIGURE
 from tests.interpreters.spec_sections import section
 
 #: The sections, in the order a docstring gives them; ``Size:`` is required.
@@ -19,6 +18,9 @@ PUBLIC_ERRORS = frozenset({"GeneratorCapError", "ArgumentError"})
 ANCHOR = re.compile(
     r"n=(\d+) (parity|and|or|majority|zero|random \d+): ([\d,]+) (chars|codels|pixels)"
 )
+
+#: Short integers such as n=10 are parameters, not measured figures.
+FIGURE = re.compile(r"\d+(?:\.\d+)?%|\d+\.\d+|\d{1,3}(?:,\d{3})+|\d{3,}")
 
 _ENTRY = re.compile(r"^    (\w+):")
 

@@ -17,7 +17,6 @@ checks, which `just test` runs for you.
 | `gendiff` | `gendiff.py` | prove a generator refactor changes no byte |
 | `deadcode` | `deadcode.py` | list generator code no test reaches; name a language to scan one |
 | `mutants` | `mutants.py` | seed generator mutants; survivors are untested behaviour |
-| `stale-figures` | `stale_figures.py` | rank measured figures by churn since |
 | `refresh-ci-timings` | `ci/shard.py` | merge CI timing artifacts |
 
 `python scripts/ci/generator_timings.py generator-timings.json --history
@@ -32,7 +31,6 @@ Not run directly:
 
 - `verify/`, `docs/`, `removal/` -- the packages behind the commands above.
 - `_benchmark_worker.py` -- the subprocess `benchmark.py` supervises.
-- `baselines/` -- triaged results `deadcode`, `mutants` and `stale-figures`
-  compare against: `deadcode --update` and `stale-figures --confirm` rewrite
-  theirs; add swept packages to `mutants_swept.toml` by hand, with the commit
-  swept.
+- `baselines/` -- triaged results `deadcode` and `mutants` compare against:
+  `deadcode --update` rewrites its baseline; add swept packages to
+  `mutants_swept.toml` by hand, with the commit swept.

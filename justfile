@@ -213,12 +213,6 @@ gendiff language *args:
 deadcode *args:
     {{PYTHON}} scripts/deadcode.py {{args}}
 
-# generator Decisions: figures, ranked by package commits since each was written
-[group('maintenance')]
-[no-exit-message]
-stale-figures *args:
-    {{PYTHON}} scripts/stale_figures.py {{args}}
-
 # seeded generator mutants against their tests (sweep in a worktree)
 [group('maintenance')]
 [no-exit-message]
