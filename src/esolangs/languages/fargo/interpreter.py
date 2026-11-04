@@ -57,7 +57,7 @@ from esolangs.runtime.source_hints import syntax_error
 # The wiki renders the truth machine with zero-width spaces inside two of
 # its lines; they are invisible presentation, not syntax, so the tokenizer
 # drops them rather than letting them ride along inside a token.
-_ZERO_WIDTH = "​"
+_ZERO_WIDTH = "\u200b"
 
 
 class _Func:

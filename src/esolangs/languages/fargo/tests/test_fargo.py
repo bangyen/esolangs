@@ -113,7 +113,7 @@ class TestSyntax:
         assert run_program("# a comment\n\n% 0 1 # trailing\n$") == "1"
 
     def test_zero_width_spaces_are_stripped(self) -> None:
-        assert run_program("​% 0 1\n$") == "1"
+        assert run_program("\u200b% 0 1\n$") == "1"
 
     def test_a_token_may_end_in_a_colon(self) -> None:
         """The raw mark is a *prefix*; a trailing colon is part of the name."""
@@ -189,7 +189,7 @@ class TestSyntax:
 class TestWikiExamples:
     """The page's truth machine, including its zero-width spaces."""
 
-    WIKI = "one ​^ $ one\n​% 0 @ 0\n: @ 0 one\n$\n"
+    WIKI = "one \u200b^ $ one\n\u200b% 0 @ 0\n: @ 0 one\n$\n"
 
     def test_truth_machine_on_zero_prints_zero_once(self) -> None:
         assert run_program(self.WIKI, "0\n") == "0"
