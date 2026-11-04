@@ -16,6 +16,7 @@ from esolangs.languages.addsubjump.generator import (
     addsubjump,
 )
 from tests.generators.boolean_runners import _run_from, _runner
+from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_parity_at_most_doubles
 from tests.support.witness_tables import row_bits, witnesses
 
@@ -288,18 +289,9 @@ def test_five_input_all_essential_table_pins_its_balanced_size() -> None:
 def _check_native_constants() -> None:
     from esolangs.languages.addsubjump.interpreter import _Machine
     from esolangs.languages.addsubjump.proof_formulas import workspace
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("AddSubJump", bit * (1 << n), **options)
@@ -307,7 +299,7 @@ def _check_native_constants() -> None:
                     stdin = esolangs.encode_inputs(
                         "AddSubJump", list(map(int, f"{row:0{n}b}"))
                     )
-                    io = ReadFirstIO(stdin + "Q")
+                    io = ReadFirstIO(stdin + "Q", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     steps = 0
@@ -326,12 +318,6 @@ def _check_packed_reader() -> None:
     """Raw Horner reads preserve projection, stream order and low data words."""
     from esolangs.languages.addsubjump.generator import _addsubjump_packed
     from esolangs.languages.addsubjump.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
-    class ReadFirstIO(ScriptedIO):
-        def _write(self, value):
-            assert self.reads == 6
-            super()._write(value)
 
     for position in range(6):
         table = "".join(str((row >> (5 - position)) & 1) for row in range(64))
@@ -341,7 +327,7 @@ def _check_packed_reader() -> None:
             esolangs.generate("AddSubJump", table, balance=True),
         ):
             for row in (0, 21, 42, 63):
-                io = ReadFirstIO(f"{row:06b}" + "Q")
+                io = ReadFirstIO(f"{row:06b}" + "Q", expected=6)
                 machine = _Machine(program, io)
                 for _ in range(100_000):
                     if machine.halted:

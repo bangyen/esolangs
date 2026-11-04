@@ -17,6 +17,7 @@ from esolangs.languages.befunge.generator import (
     balance_befunge,
     befunge,
 )
+from tests.support.event_io import ReadFirstIO
 
 
 @pytest.mark.parametrize("inputs", [1, 4, 13])
@@ -225,18 +226,9 @@ def test_a_width_beyond_the_torus_still_fits_it(width: int) -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.befunge.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 14):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Befunge", bit * (1 << n), **options)
@@ -247,7 +239,7 @@ def _check_constants() -> None:
                     stdin = esolangs.encode_inputs(
                         "Befunge", list(map(int, f"{row:0{n}b}"))
                     )
-                    io = ReadFirstIO(stdin + "\n7\n")
+                    io = ReadFirstIO(stdin + "\n7\n", expected=n)
                     machine = _Machine(program.splitlines(), io)
                     written = WrittenState(machine.snapshot())
                     steps = 0

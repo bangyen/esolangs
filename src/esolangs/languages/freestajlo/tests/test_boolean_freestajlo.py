@@ -4,6 +4,8 @@ import pytest
 
 import esolangs
 from esolangs.generation.wrap import balance_score
+from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import assert_constant_output
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -49,27 +51,16 @@ def test_balance_of_n8_cuts_the_literal() -> None:
 def _check_constants() -> None:
     import esolangs
     from esolangs.languages.freestajlo.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = 2 * n
-
-            def _write(self, value: object) -> None:
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Freestajlo", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(
                         esolangs.encode_inputs("Freestajlo", [int(b) for b in row])
-                        + "7\n"
+                        + "7\n",
+                        expected=2 * n,
                     )
-                    run(program, io)
-                    assert io.getvalue() == bit
-                    assert io.reads == 2 * n
-                    assert io.past_end == 0
+                    assert_constant_output(run, program, io, bit, 2 * n)
                     assert io.input_num() == 7

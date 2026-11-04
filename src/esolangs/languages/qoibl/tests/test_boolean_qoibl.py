@@ -7,6 +7,7 @@ import pytest
 import esolangs
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
+from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
     assert_parity_at_most_doubles,
@@ -156,17 +157,8 @@ class TestQoiblSweepPins:
 
 def test_constant_audit_read_first_and_sentinel() -> None:
     from esolangs.languages.qoibl.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
@@ -178,7 +170,8 @@ def test_constant_audit_read_first_and_sentinel() -> None:
                         esolangs.encode_inputs(
                             "Qoibl", list(map(int, format(row, f"0{n}b")))
                         )
-                        + "Q"
+                        + "Q",
+                        expected=n,
                     )
                     machine = _Machine(program, io)
                     steps = 0

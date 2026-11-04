@@ -4,6 +4,7 @@ from itertools import pairwise
 
 import pytest
 
+from tests.support.generator_support import measure_run
 from tests.support.witness_tables import witnesses
 
 
@@ -222,7 +223,6 @@ def _check_pair_source_cap() -> None:
     from esolangs.languages.minsky_swap.proof_formulas import execution, workspace
     from esolangs.languages.minsky_swap.tests.formulas import _chars
     from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 9):
         table = "0" * (1 << (n - 1)) + "1" * (1 << (n - 1))
@@ -232,12 +232,7 @@ def _check_pair_source_cap() -> None:
             template, TEMPLATE_CHAR, minsky_swap_setters(template, n), [1] * n
         )
         machine = _Machine(code, ScriptedIO(""))
-        written = WrittenState(machine.snapshot())
-        steps = 0
-        while not machine.halted:
-            machine.step()
-            written.sample(machine.snapshot())
-            steps += 1
+        steps, written = measure_run(machine)
         assert steps == 16 * n - 3
         assert steps <= execution(n, template)
         assert written.bits <= workspace(n, template)

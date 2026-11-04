@@ -7,6 +7,8 @@ import pytest
 
 from esolangs.languages import generators as boolean
 from tests.interpreters.runner import run_program
+from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import assert_constant_output
 
 
 def run_fargo(program: str, inputs: list[str]) -> str:
@@ -219,26 +221,15 @@ def test_a_wide_definition_keeps_its_pinned_silhouette() -> None:
 def _check_constants() -> None:
     import esolangs
     from esolangs.languages.fargo.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = 1
-
-            def _write(self, value: object) -> None:
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Fargo", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(
-                        esolangs.encode_inputs("Fargo", [int(b) for b in row]) + "7\n"
+                        esolangs.encode_inputs("Fargo", [int(b) for b in row]) + "7\n",
+                        expected=1,
                     )
-                    run(program, io)
-                    assert io.getvalue() == bit
-                    assert io.reads == 1
-                    assert io.past_end == 0
+                    assert_constant_output(run, program, io, bit, 1)
                     assert io.input_num() == 7

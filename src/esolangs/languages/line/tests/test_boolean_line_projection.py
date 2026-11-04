@@ -8,7 +8,7 @@ from esolangs.languages.line.generator import balance, line, projected_boolean
 from esolangs.languages.line.interpreter import _Machine
 from esolangs.raster import Raster
 from esolangs.runtime.io import ScriptedIO
-from scripts.benchmark import WrittenState
+from tests.support.generator_support import measure_run
 
 
 def _lift(core, n, kept):
@@ -34,12 +34,7 @@ def _execute(table, image, rows, trace=None):
     for row in rows:
         vm.state = (0, 0, 0, ())
         vm.io = ScriptedIO(" ".join(f"{row:0{n}b}"))
-        written = WrittenState(vm.snapshot())
-        commands = 0
-        while not vm.halted and commands <= 5 * n:
-            vm.step()
-            written.sample(vm.snapshot())
-            commands += 1
+        commands, written = measure_run(vm, limit=5 * n)
         assert vm.halted
         assert vm.io.getvalue() == table[row]
         if trace is not None:

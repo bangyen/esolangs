@@ -13,6 +13,7 @@ from esolangs.languages.thue.interpreter import run as run_thue
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
 from tests.generators.reader_support import _TABLES
+from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import row_bits as _bits
 from tests.support.witness_tables import witnesses
 
@@ -401,14 +402,6 @@ def _check_constants() -> None:
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Thue", bit * (1 << n), **options)
@@ -418,7 +411,7 @@ def _check_constants() -> None:
                     stdin = esolangs.encode_inputs(
                         "Thue", list(map(int, f"{row:0{n}b}"))
                     )
-                    io = ReadFirstIO(stdin + "7\n")
+                    io = ReadFirstIO(stdin + "7\n", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     steps = 0

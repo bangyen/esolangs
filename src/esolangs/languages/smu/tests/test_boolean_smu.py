@@ -6,6 +6,7 @@ from esolangs.languages import generators as tools
 from esolangs.languages.smu.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.sample_tables import five_input_sample
+from tests.support.event_io import ReadFirstIO
 
 
 def execute(program: str, row: int, n: int) -> tuple[str, int]:
@@ -92,17 +93,10 @@ def _check_terminal_leaves() -> None:
     for table in tables:
         n = len(table).bit_length() - 1
 
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for options in ({}, {"width": 1}, {"balance": True}):
             program = esolangs.generate("Smu", table, **options)
             for row in (0, (1 << n) // 3, (1 << n) - 1):
-                io = ReadFirstIO(f"{row:0{n}b}")
+                io = ReadFirstIO(f"{row:0{n}b}", expected=n)
                 machine = _Machine(program, io)
                 written = WrittenState(machine.snapshot())
                 steps = runs = 0
@@ -143,19 +137,11 @@ def _check_constants() -> None:
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Smu", bit * (1 << n), **options)
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    io = ReadFirstIO(f"{row:0{n}b}")
+                    io = ReadFirstIO(f"{row:0{n}b}", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     steps = 0

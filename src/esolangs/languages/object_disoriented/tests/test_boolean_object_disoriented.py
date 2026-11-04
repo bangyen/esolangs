@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from tests.support.event_io import ReadFirstIO
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -15,20 +16,14 @@ def test_every_row_prints_its_answer(table: str) -> None:
     if table == "00":
         _check_native_constants()
     from esolangs.languages.object_disoriented.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     n = len(table).bit_length() - 1
-
-    class ReadFirstIO(ScriptedIO):
-        def _write(self, value: object) -> None:
-            assert self.reads == n
-            super()._write(value)
 
     program = esolangs.generate("Object disoriented", table)
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("Object disoriented", bits)
-        io = ReadFirstIO(stdin + "Q")
+        io = ReadFirstIO(stdin + "Q", expected=n)
         run(program, io)
         got = io.getvalue()
         assert io.past_end == 0
@@ -42,18 +37,9 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 def _check_native_constants() -> None:
     from esolangs.languages.object_disoriented.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate(
@@ -63,7 +49,7 @@ def _check_native_constants() -> None:
                     stdin = esolangs.encode_inputs(
                         "Object disoriented", list(map(int, f"{row:0{n}b}"))
                     )
-                    io = ReadFirstIO(stdin + "Q")
+                    io = ReadFirstIO(stdin + "Q", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     steps = 0

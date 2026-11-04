@@ -4,6 +4,8 @@ import pytest
 
 import esolangs
 from esolangs.languages.codesick.generator import codesick
+from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import assert_constant_output
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -44,24 +46,12 @@ def test_only_a_constant_table_spends_the_missing_test(table: str) -> None:
 def _check_constants() -> None:
     import esolangs
     from esolangs.languages.codesick.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = 1
-
-            def _write(self, value: object) -> None:
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Codesick", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row)
-                    run(program, io)
-                    assert io.getvalue() == bit
-                    assert io.reads == 1
-                    assert io.past_end == 0
+                    io = ReadFirstIO(row, expected=1)
+                    assert_constant_output(run, program, io, bit, 1)
                     assert io.position() == n

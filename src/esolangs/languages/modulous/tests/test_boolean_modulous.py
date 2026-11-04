@@ -7,7 +7,8 @@ import pytest
 import esolangs
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
-from tests.support.generator_support import assert_an_ignored_input_costs
+from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import assert_an_ignored_input_costs, measure_run
 from tests.support.witness_tables import witnesses
 
 run_modulous = _runner("modulous", newline=True)
@@ -83,24 +84,15 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
     from esolangs.languages.modulous.interpreter import _Machine
     from esolangs.languages.modulous.proof_formulas import workspace
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         if n == 1:
             for table in ("01", "10"):
                 for options in ({}, {"width": 1}, {"balance": True}):
                     program = esolangs.generate("Modulous", table, **options)
                     for bit in "01":
-                        io = ReadFirstIO(bit + "\nQ")
+                        io = ReadFirstIO(bit + "\nQ", expected=n)
                         machine = _Machine(program, io)
                         written = WrittenState(machine.snapshot())
                         steps = 0
@@ -123,14 +115,9 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
                     stdin = esolangs.encode_inputs(
                         "Modulous", list(map(int, format(row, f"0{n}b")))
                     )
-                    io = ReadFirstIO(stdin + "Q")
+                    io = ReadFirstIO(stdin + "Q", expected=n)
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
-                    steps = 0
-                    while not machine.halted and steps <= 2 * n + 3:
-                        machine.step()
-                        written.sample(machine.snapshot())
-                        steps += 1
+                    steps, written = measure_run(machine, limit=2 * n + 3)
                     assert machine.halted
                     assert io.getvalue() == bit
                     assert steps == 2 * n + 3

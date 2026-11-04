@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.exceptions import GeneratorCapError
 from esolangs.languages.interprogck8 import generator
+from tests.support.event_io import ReadFirstIO
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -165,18 +166,12 @@ def test_a_subtree_advances_at_most_two_to_the_h_minus_one_windows(n: int) -> No
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constants_read_before_the_arithmetic_tail(n, bit) -> None:
     from esolangs.languages.interprogck8.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
-
-    class ReadFirstIO(ScriptedIO):
-        def _write(self, value):
-            assert self.reads == n
-            super()._write(value)
 
     program = esolangs.generate("Interprogck8", bit * (1 << n))
     assert len(program) == 2 * n + 28 + 4 * int(bit)
     rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
     for row in rows:
-        io = ReadFirstIO("\n".join(format(row, f"0{n}b")) + "\nQ\n")
+        io = ReadFirstIO("\n".join(format(row, f"0{n}b")) + "\nQ\n", expected=n)
         run(program, io)
         assert io.getvalue() == bit
         assert io.reads == n

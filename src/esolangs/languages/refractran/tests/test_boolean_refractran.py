@@ -8,7 +8,7 @@ import esolangs
 from esolangs.languages.refractran.generator import _swap
 from esolangs.languages.refractran.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
-from tests.support.generator_support import evaluate_generated
+from tests.support.generator_support import evaluate_generated, measure_run
 
 
 def _rational_run(value: int, program: list[str]) -> int:
@@ -93,7 +93,6 @@ def _check_constants() -> None:
 
 
 def _check_pruned_children_and_polarity() -> None:
-    from scripts.benchmark import WrittenState
 
     for table in ("10", "1101", "0110"):
         n = len(table).bit_length() - 1
@@ -108,12 +107,7 @@ def _check_pruned_children_and_polarity() -> None:
                 assert initial % 2 == 0
                 assert initial % 3 != 0
                 assert all(initial % scratch for scratch in (11, 13, 17))
-                measured = WrittenState(machine.snapshot())
-                steps = 0
-                while not machine.halted:
-                    machine.step()
-                    measured.sample(machine.snapshot())
-                    steps += 1
+                steps, measured = measure_run(machine)
                 assert io.getvalue()[-1] == table[row]
                 assert io.reads == 0
                 assert io.input_char() == ord("Q")

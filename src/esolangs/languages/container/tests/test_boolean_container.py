@@ -10,6 +10,7 @@ from esolangs.languages import generators as boolean
 from esolangs.runtime._evaluate import _evaluate
 from tests.generators.boolean_runners import _runner
 from tests.generators.sample_tables import five_input_sample
+from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_an_ignored_input_costs
 from tests.support.witness_tables import row_bits, witnesses
 
@@ -375,17 +376,8 @@ def test_output_gate_rests_at_two_for_the_smallest_peak() -> None:
 @pytest.mark.medium
 def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
     from esolangs.languages.container.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Container", bit * (1 << n), **options)
@@ -396,7 +388,7 @@ def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
                     stdin = esolangs.encode_inputs(
                         "Container", list(map(int, format(row, f"0{n}b")))
                     )
-                    io = ReadFirstIO(stdin + "Q")
+                    io = ReadFirstIO(stdin + "Q", expected=n)
                     machine = _Machine(program.splitlines(), io)
                     steps = 0
                     while not machine.halted and steps < 4 * n + 10:

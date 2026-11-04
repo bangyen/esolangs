@@ -7,6 +7,7 @@ from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.languages.subleq.generator import subleq
 from esolangs.languages.subleq.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
+from tests.support.event_io import ReadFirstIO
 
 
 def _execute_count(program: str, text: str) -> tuple[str, int, int]:
@@ -69,18 +70,9 @@ def test_shared_parity_uses_direct_jumps_at_sixteen_inputs() -> None:
 def _check_constants() -> None:
     from esolangs.languages.subleq.interpreter import _Machine
     from esolangs.languages.subleq.proof_formulas import workspace
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Subleq", bit * (1 << n), **options)
@@ -91,7 +83,7 @@ def _check_constants() -> None:
                     stdin = esolangs.encode_inputs(
                         "Subleq", list(map(int, f"{row:0{n}b}"))
                     )
-                    io = ReadFirstIO(stdin + "7")
+                    io = ReadFirstIO(stdin + "7", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     steps = 0

@@ -10,6 +10,7 @@ import esolangs
 from esolangs.languages import generators as boolean
 from esolangs.languages.laserfuck.generator import MARGIN
 from esolangs.languages.laserfuck.tests.runners import run_laserfuck
+from tests.support.generator_support import measure_run
 from tests.support.witness_tables import row_bits, witnesses
 
 
@@ -46,7 +47,6 @@ class TestLaserFuck:
         )
         from esolangs.runtime.io import ScriptedIO
         from esolangs.runtime.randomness import FirstDraw
-        from scripts.benchmark import WrittenState
 
         for n in (7, 8):
             table = "0" * ((1 << n) - 1) + "1"
@@ -54,12 +54,7 @@ class TestLaserFuck:
             for heading in range(4):
                 stream = ScriptedIO("1" * n + "Q")
                 machine = _Machine(program.splitlines(), stream, FirstDraw(heading))
-                written = WrittenState(machine.snapshot())
-                commands = 0
-                while not machine.halted:
-                    machine.step()
-                    written.sample(machine.snapshot())
-                    commands += 1
+                commands, written = measure_run(machine)
                 assert commands == execution(n, program) + 2 * (heading in (1, 2))
                 assert commands <= all_heading_execution(n, program)
                 assert written.bits == workspace(n, program)

@@ -24,6 +24,8 @@ from esolangs.languages.slow_acv_mammalian.wrapping import (
 )
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
+from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import measure_run
 from tests.support.witness_tables import witnesses
 
 
@@ -939,18 +941,9 @@ def test_constant_print_array_is_independent_of_every_input(cell, io, bit) -> No
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_print_array_still_consumes_the_whole_stream(cell, io, bit) -> None:
     from esolangs.languages.slow_acv_mammalian.proof_formulas import workspace
-    from scripts.benchmark import WrittenState
 
     settings = esolangs.DialectSettings(cell_modulus=cell, io_modulus=io)
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for options in ({}, {"width": 1}, {"balance": True}):
             program = esolangs.generate(
                 "SLOW ACV MAMMALIAN", bit * (1 << n), settings=settings, **options
@@ -958,14 +951,9 @@ def test_constant_print_array_still_consumes_the_whole_stream(cell, io, bit) -> 
             if not options:
                 assert len(program) == 7 * n + 63 - 5 * int(bit)
             for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                stream = ReadFirstIO(format(row, f"0{n}b") + "Q")
+                stream = ReadFirstIO(format(row, f"0{n}b") + "Q", expected=n)
                 machine = _Machine(program, stream, cell_modulus=cell, io_modulus=io)
-                written = WrittenState(machine.snapshot())
-                steps = 0
-                while not machine.halted and steps <= n + 11:
-                    machine.step()
-                    written.sample(machine.snapshot())
-                    steps += 1
+                steps, written = measure_run(machine, limit=n + 11)
                 assert machine.halted
                 assert steps == n + 11 - int(bit)
                 assert machine.ptr == 5 + int(bit)

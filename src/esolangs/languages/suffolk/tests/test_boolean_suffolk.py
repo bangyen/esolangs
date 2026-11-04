@@ -5,6 +5,7 @@ import pytest
 from esolangs.languages import generators as boolean
 from esolangs.languages.suffolk.generator import _suffolk_lookup
 from tests.generators.boolean_runners import _runner
+from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import row_bits
 
 run_suffolk = _runner("suffolk")
@@ -27,31 +28,22 @@ class TestSuffolk:
 
         import esolangs
         from esolangs.languages.suffolk.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
         from scripts.benchmark import WrittenState
 
         for n in range(1, 13):
-
-            class ReadFirstIO(ScriptedIO):
-                expected = n
-
-                def _write(self, value):
-                    assert self.reads == self.expected
-                    super()._write(value)
-
             for bit in "01":
                 length = 2 * n + 51 + int(bit)
                 for options in ({}, {"width": 1}, {"balance": True}):
                     program = esolangs.generate("Suffolk", bit * (1 << n), **options)
                     for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                         stdin = f"{row:0{n}b}"
-                        io = ReadFirstIO(stdin + "Q")
+                        io = ReadFirstIO(stdin + "Q", expected=n)
                         machine = _Machine("".join(program.split()), io)
                         for _ in range(length):
                             machine.step()
                         assert io.getvalue() == bit
                         assert io.input_char() == ord("Q")
-                        io = ReadFirstIO(stdin)
+                        io = ReadFirstIO(stdin, expected=n)
                         machine = _Machine("".join(program.split()), io)
                         written = WrittenState(machine.snapshot())
                         for _ in range(length + 1):

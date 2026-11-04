@@ -3,6 +3,8 @@
 import pytest
 
 import esolangs
+from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import assert_constant_output
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -27,28 +29,17 @@ def test_every_row_prints_its_answer(table: str) -> None:
 def _check_constants() -> None:
     import esolangs
     from esolangs.languages.one_i.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value: object) -> None:
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("1 + i", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(
-                        esolangs.encode_inputs("1 + i", [int(b) for b in row]) + "7\n"
+                        esolangs.encode_inputs("1 + i", [int(b) for b in row]) + "7\n",
+                        expected=n,
                     )
-                    run(program, io)
-                    assert io.getvalue() == bit
-                    assert io.reads == n
-                    assert io.past_end == 0
+                    assert_constant_output(run, program, io, bit, n)
                     assert io.input_num() == 7
 
 
@@ -58,15 +49,7 @@ def _check_arithmetic_tails() -> None:
     from esolangs.languages.one_i.interpreter import _Fn, _Machine
     from esolangs.languages.one_i.proof_formulas import execution, workspace
     from esolangs.languages.one_i.tests.formulas import workspace_witness
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
-
-    class ReadFirstIO(ScriptedIO):
-        expected: int
-
-        def _write(self, value: object) -> None:
-            assert self.reads == self.expected
-            super()._write(value)
 
     tables = [f"{v:04b}" for v in range(16)]
     tables += [
@@ -89,9 +72,9 @@ def _check_arithmetic_tails() -> None:
         program = esolangs.generate("1 + i", table)
         for row in (0, (1 << n) // 3, 1 << (n - 1), (1 << n) - 1):
             io = ReadFirstIO(
-                esolangs.encode_inputs("1 + i", list(map(int, f"{row:0{n}b}"))) + "7\n"
+                esolangs.encode_inputs("1 + i", list(map(int, f"{row:0{n}b}"))) + "7\n",
+                expected=n,
             )
-            io.expected = n
             machine = _Machine(program, io)
             written = WrittenState(machine.snapshot())
             steps = 0

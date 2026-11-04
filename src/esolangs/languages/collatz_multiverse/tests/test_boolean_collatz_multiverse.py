@@ -7,6 +7,7 @@ import pytest
 import esolangs
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
+from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_parity_at_most_doubles
 from tests.support.witness_tables import row_bits, witnesses
 
@@ -345,12 +346,6 @@ def test_named_routes_improve_the_four_row_lookup(family: str, *, invert: bool) 
 @pytest.mark.parametrize("n", [1, 3, 4, 5, 6, 8, 12])
 def test_constants_read_first_and_leave_the_next_record(n) -> None:
     from esolangs.languages.collatz_multiverse.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
-
-    class ReadFirstIO(ScriptedIO):
-        def _write(self, value):
-            assert self.reads == n
-            super()._write(value)
 
     for bit in "01":
         for options in ({}, {"width": 1}, {"balance": True}):
@@ -359,7 +354,7 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
                 assert len(program) == 23 * n + 228 + 20 * int(bit)
             rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
             for row in rows:
-                io = ReadFirstIO("\n".join(format(row, f"0{n}b")) + "\nQ\n")
+                io = ReadFirstIO("\n".join(format(row, f"0{n}b")) + "\nQ\n", expected=n)
                 run(program, io)
                 assert io.getvalue() == bit
                 assert io.reads == n
@@ -382,18 +377,9 @@ def _check_affine_stream() -> None:
         execution,
         workspace,
     )
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 6):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for mask in range(1 << n):
             for bias in (0, 1):
                 table = "".join(
@@ -406,7 +392,7 @@ def _check_affine_stream() -> None:
                     n + 5 * mask.bit_count() + 13 + bias if mask else n + 10
                 )
                 for row, expected in enumerate(table):
-                    io = ReadFirstIO(" ".join(f"{row:0{n}b}") + " Q")
+                    io = ReadFirstIO(" ".join(f"{row:0{n}b}") + " Q", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     commands = 0

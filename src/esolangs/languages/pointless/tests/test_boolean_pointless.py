@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from tests.support.event_io import ReadFirstIO
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -43,17 +44,8 @@ def test_a_function_called_once_is_pasted_in() -> None:
 
 def test_constant_audit_read_first_and_sentinel() -> None:
     from esolangs.languages.pointless.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
@@ -65,7 +57,8 @@ def test_constant_audit_read_first_and_sentinel() -> None:
                         esolangs.encode_inputs(
                             "Pointless", list(map(int, format(row, f"0{n}b")))
                         )
-                        + "Q"
+                        + "Q",
+                        expected=n,
                     )
                     machine = _Machine(program, io)
                     steps = 0

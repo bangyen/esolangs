@@ -11,6 +11,7 @@ from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from esolangs.runtime._evaluate import _evaluate
 from tests.generators.boolean_runners import _runner
+from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import row_bits
 
 run_streetcode = _runner("streetcode", lines=True)
@@ -361,12 +362,6 @@ def test_the_folded_street_computes_random_tables(n: int, count: int) -> None:
 @pytest.mark.parametrize("n", [1, 3, 4, 5, 6, 8, 12])
 def test_constants_read_first_and_leave_the_next_record(n) -> None:
     from esolangs.languages.streetcode.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
-
-    class ReadFirstIO(ScriptedIO):
-        def _write(self, value):
-            assert self.reads == n
-            super()._write(value)
 
     for bit in "01":
         for options in ({}, {"width": 1}, {"balance": True}):
@@ -377,7 +372,7 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
                 assert balance_score(program)[0] <= max(29, 5 * n + 23)
             rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
             for row in rows:
-                io = ReadFirstIO(format(row, f"0{n}b") + "Q")
+                io = ReadFirstIO(format(row, f"0{n}b") + "Q", expected=n)
                 run(program.splitlines(), io)
                 assert io.getvalue() == bit
                 assert io.reads == n

@@ -13,6 +13,8 @@ from esolangs.languages.dig.interpreter import _Machine
 from esolangs.runtime._evaluate import _evaluate
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
+from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import assert_constant_output
 from tests.support.witness_tables import row_bits
 
 run_dig = _runner("dig", lines=True, newline=True)
@@ -770,23 +772,13 @@ def _check_constants() -> None:
     from esolangs.languages.dig.interpreter import run
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value: object) -> None:
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Dig", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(
-                        esolangs.encode_inputs("Dig", [int(b) for b in row]) + "7\n"
+                        esolangs.encode_inputs("Dig", [int(b) for b in row]) + "7\n",
+                        expected=n,
                     )
-                    run(program.splitlines(), io)
-                    assert io.getvalue() == bit
-                    assert io.reads == n
-                    assert io.past_end == 0
+                    assert_constant_output(run, program.splitlines(), io, bit, n)
                     assert io.input_num() == 7

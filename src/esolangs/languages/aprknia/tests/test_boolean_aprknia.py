@@ -3,6 +3,8 @@
 import pytest
 
 import esolangs
+from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import assert_constant_output, measure_run
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -15,21 +17,15 @@ def test_every_row_prints_its_answer(table: str) -> None:
         _check_constants()
         _check_quotient_guard()
     from esolangs.languages.aprknia.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     n = len(table).bit_length() - 1
-
-    class ReadFirstIO(ScriptedIO):
-        def _write(self, value: object) -> None:
-            assert self.reads == n
-            super()._write(value)
 
     program = esolangs.generate("Aprknia", table)
     assert isinstance(program, str)
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("Aprknia", bits)
-        io = ReadFirstIO(stdin + "7")
+        io = ReadFirstIO(stdin + "7", expected=n)
         run(program, io)
         got = io.getvalue()
         assert io.past_end == 0
@@ -41,27 +37,15 @@ def test_every_row_prints_its_answer(table: str) -> None:
 def _check_constants() -> None:
     import esolangs
     from esolangs.languages.aprknia.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value: object) -> None:
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Aprknia", bit * (1 << n), **options)
                 assert isinstance(program, str)
                 for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row + "7")
-                    run(program, io)
-                    assert io.getvalue() == bit
-                    assert io.reads == n
-                    assert io.past_end == 0
+                    io = ReadFirstIO(row + "7", expected=n)
+                    assert_constant_output(run, program, io, bit, n)
                     assert io.input_char() == ord("7")
 
 
@@ -69,7 +53,6 @@ def _check_quotient_guard() -> None:
     from esolangs.languages.aprknia.generator import aprknia
     from esolangs.languages.aprknia.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for code in range(256):
         table = f"{code:08b}"
@@ -85,12 +68,7 @@ def _check_quotient_guard() -> None:
         table = "1" * ((1 << n) - 1) + "0"
         program = aprknia(table)
         machine = _Machine(program, ScriptedIO("1" * n))
-        written = WrittenState(machine.snapshot())
-        commands = 0
-        while not machine.halted:
-            machine.step()
-            written.sample(machine.snapshot())
-            commands += 1
+        commands, written = measure_run(machine)
         assert isinstance(machine.io, ScriptedIO)
         assert machine.io.getvalue() == "0"
         assert commands == 18 * n + 5

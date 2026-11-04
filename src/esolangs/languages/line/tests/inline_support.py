@@ -7,7 +7,7 @@ from esolangs.languages.line.interpreter import _Machine
 from esolangs.languages.line.proof_formulas import execution, workspace
 from esolangs.raster import Raster
 from esolangs.runtime.io import ScriptedIO
-from scripts.benchmark import WrittenState
+from tests.support.generator_support import measure_run
 
 
 class _ReadFirstIO(ScriptedIO):
@@ -32,12 +32,7 @@ def _native(table: str, *, balanced: bool) -> int:
     for row, expected in enumerate(table):
         machine.state = (0, 0, 0, ())
         machine.io = _ReadFirstIO(f"{row:0{n}b}")
-        written = WrittenState(machine.snapshot())
-        steps = 0
-        while not machine.halted and steps <= cap:
-            machine.step()
-            written.sample(machine.snapshot())
-            steps += 1
+        steps, written = measure_run(machine, limit=cap)
         assert machine.halted
         assert machine.io.getvalue() == expected
         assert machine.io.input_num() == 9

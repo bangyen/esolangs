@@ -7,7 +7,8 @@ from esolangs.languages.false.generator import _shared, false
 from tests.generators.plain_oracles import separated_tree_text
 from tests.generators.reader_support import assert_emissions_grow_by_a_line
 from tests.generators.sample_tables import five_input_sample
-from tests.support.generator_support import verify_generated
+from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import assert_constant_output, verify_generated
 from tests.support.witness_tables import witnesses
 
 
@@ -117,26 +118,14 @@ def false_plain(truth_table: str, n: int) -> str:
 def _check_constants() -> None:
     import esolangs
     from esolangs.languages.false.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value: object) -> None:
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("FALSE", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row + "7")
-                    run(program, io)
-                    assert io.getvalue() == bit
-                    assert io.reads == n
-                    assert io.past_end == 0
+                    io = ReadFirstIO(row + "7", expected=n)
+                    assert_constant_output(run, program, io, bit, n)
                     assert io.input_char() == ord("7")
 
 

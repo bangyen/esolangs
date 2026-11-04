@@ -5,7 +5,12 @@ import random
 import pytest
 
 from esolangs.languages import generators as boolean
-from tests.support.generator_support import multiple_tables
+from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import (
+    assert_constant_output,
+    measure_run,
+    multiple_tables,
+)
 
 
 class TestPainfuck:
@@ -49,7 +54,6 @@ def test_multiple_flags_execute_with_their_native_command_price(table) -> None:
     from esolangs.generation.helpers import permute_truth_table
     from esolangs.generation.shared_block import repeated_bank
     from esolangs.languages.painfuck.generator import _painfuck_shared
-    from scripts.benchmark import WrittenState
 
     n = len(table).bit_length() - 1
     served = 0
@@ -67,12 +71,7 @@ def test_multiple_flags_execute_with_their_native_command_price(table) -> None:
                     "Painfuck", [int(bit) for bit in f"{row:0{n}b}"]
                 )
                 machine = make_vm("Painfuck", program, stdin=stdin)
-                written = WrittenState(machine.snapshot())
-                commands = 0
-                while not machine.halted and commands <= limit:
-                    machine.step()
-                    written.sample(machine.snapshot())
-                    commands += 1
+                commands, written = measure_run(machine, limit=limit)
                 assert machine.halted
                 assert machine.output == expected
                 assert commands <= limit
@@ -129,26 +128,16 @@ def _check_constants() -> None:
     from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value: object) -> None:
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Painfuck", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(
                         esolangs.encode_inputs("Painfuck", [int(b) for b in row])
-                        + "7\n"
+                        + "7\n",
+                        expected=n,
                     )
-                    run(program, io)
-                    assert io.getvalue() == bit
-                    assert io.reads == n
-                    assert io.past_end == 0
+                    assert_constant_output(run, program, io, bit, n)
                     assert io.input_num() == 7
 
     from esolangs.languages.painfuck.generator import _constant

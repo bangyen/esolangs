@@ -5,6 +5,7 @@ import random
 import pytest
 
 import esolangs
+from tests.support.event_io import ReadFirstIO
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -39,18 +40,9 @@ def test_a_table_past_the_low_input_cap_labels_its_blocks() -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.what.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 17):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("What!?", bit * (1 << n), **options)
@@ -61,7 +53,7 @@ def _check_constants() -> None:
                     stdin = esolangs.encode_inputs(
                         "What!?", list(map(int, f"{row:0{n}b}"))
                     )
-                    io = ReadFirstIO(stdin + "\n7\n")
+                    io = ReadFirstIO(stdin + "\n7\n", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     steps = 0
@@ -86,7 +78,6 @@ def _check_constants() -> None:
 
 def _check_copyless() -> None:
     from esolangs.languages.what.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     total = 0
     for value in range(256):
@@ -96,12 +87,7 @@ def _check_copyless() -> None:
         for row in range(8):
             stdin = esolangs.encode_inputs("What!?", list(map(int, f"{row:03b}")))
 
-            class ReadFirstIO(ScriptedIO):
-                def _write(self, value):
-                    assert self.reads == 3
-                    super()._write(value)
-
-            io = ReadFirstIO(stdin + "\n7\n")
+            io = ReadFirstIO(stdin + "\n7\n", expected=3)
             machine = _Machine(program, io)
             while not machine.halted:
                 machine.step()

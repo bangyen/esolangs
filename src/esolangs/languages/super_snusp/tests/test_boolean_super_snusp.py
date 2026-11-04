@@ -5,6 +5,8 @@ import pytest
 import esolangs
 from esolangs.languages import generators as boolean
 from esolangs.languages.super_snusp.generator import balance_super_snusp
+from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import assert_constant_output, measure_run
 
 
 class TestSuperSNUSPWidth:
@@ -225,7 +227,6 @@ class TestSuperSNUSPSweepPins:
 def _check_stacked_operands() -> None:
     from esolangs.languages.super_snusp.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     class ReadFirstIO(ScriptedIO):
         def __init__(self, bits: str) -> None:
@@ -249,12 +250,7 @@ def _check_stacked_operands() -> None:
             for row in (0, (1 << n) // 3, (1 << n) - 1):
                 io = ReadFirstIO(f"{row:0{n}b}")
                 machine = _Machine(program.splitlines(), io)
-                written = WrittenState(machine.snapshot())
-                steps = 0
-                while not machine.halted:
-                    machine.step()
-                    written.sample(machine.snapshot())
-                    steps += 1
+                steps, written = measure_run(machine)
                 assert io.getvalue() == table[row]
                 assert io.past_end == 0
                 assert io.input_char() == ord("Q")
@@ -279,24 +275,12 @@ def _check_stacked_operands() -> None:
 def _check_constants() -> None:
     import esolangs
     from esolangs.languages.super_snusp.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value: object) -> None:
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Super SNUSP", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row + "7")
-                    run(program.splitlines(), io)
-                    assert io.getvalue() == bit
-                    assert io.reads == n
-                    assert io.past_end == 0
+                    io = ReadFirstIO(row + "7", expected=n)
+                    assert_constant_output(run, program.splitlines(), io, bit, n)
                     assert io.input_char() == ord("7")

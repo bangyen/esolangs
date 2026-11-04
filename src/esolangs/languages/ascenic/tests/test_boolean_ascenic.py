@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from tests.support.event_io import ReadFirstIO
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -17,17 +18,11 @@ def test_every_row_prints_its_answer(table: str) -> None:
     n = len(table).bit_length() - 1
     program = esolangs.generate("Ascenic", table)
     from esolangs.languages.ascenic.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
-
-    class ReadFirstIO(ScriptedIO):
-        def _write(self, value):
-            assert self.reads == n
-            super()._write(value)
 
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("Ascenic", bits)
-        io = ReadFirstIO(stdin + "\nQ\n")
+        io = ReadFirstIO(stdin + "\nQ\n", expected=n)
         run(program, io)
         got = io.getvalue()
         assert io.past_end == 0
@@ -45,12 +40,6 @@ def test_ignored_inputs_are_popped_not_scanned() -> None:
 @pytest.mark.parametrize("n", [1, 3, 4, 6, 7, 8, 12])
 def test_named_tables_read_first_and_leave_the_next_record(n) -> None:
     from esolangs.languages.ascenic.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
-
-    class ReadFirstIO(ScriptedIO):
-        def _write(self, value):
-            assert self.reads == n
-            super()._write(value)
 
     rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
     for bit in "01":
@@ -59,7 +48,7 @@ def test_named_tables_read_first_and_leave_the_next_record(n) -> None:
             if not options:
                 assert len(program) == 2 * n * n + 17 * n - 1 + 6 * int(bit)
             for row in rows:
-                io = ReadFirstIO("\n".join(format(row, f"0{n}b")) + "\nQ\n")
+                io = ReadFirstIO("\n".join(format(row, f"0{n}b")) + "\nQ\n", expected=n)
                 run(program, io)
                 assert io.getvalue() == bit
                 assert io.reads == n
@@ -69,7 +58,7 @@ def test_named_tables_read_first_and_leave_the_next_record(n) -> None:
         table = "".join(str((row.bit_count() % 2) ^ invert) for row in range(1 << n))
         program = esolangs.generate("Ascenic", table)
         for row in rows:
-            io = ReadFirstIO("\n".join(format(row, f"0{n}b")) + "\nQ\n")
+            io = ReadFirstIO("\n".join(format(row, f"0{n}b")) + "\nQ\n", expected=n)
             run(program, io)
             assert io.getvalue() == table[row]
             assert io.reads == n

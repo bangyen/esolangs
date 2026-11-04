@@ -8,6 +8,8 @@ import esolangs
 from esolangs.languages.quassaunt.generator import quassaunt
 from esolangs.languages.quassaunt.interpreter import run
 from esolangs.runtime.io import ScriptedIO
+from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import measure_run
 
 #: Every one- and two-input table; a diagram's sharing bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -59,26 +61,15 @@ def test_constants_read_every_input(n: int, bit: str) -> None:
 def _check_store_loop() -> None:
     from esolangs.languages.quassaunt.interpreter import _Machine
     from esolangs.languages.quassaunt.proof_formulas import execution, workspace
-    from scripts.benchmark import WrittenState
-
-    class ReadFirstIO(ScriptedIO):
-        def _write(self, value):
-            assert self.reads == 3
-            super()._write(value)
 
     table = "00110110"
     baseline_steps = {}
     for options in ({}, {"width": 1}, {"balance": True}):
         program = esolangs.generate("Quassaunt", table, **options)
         for row in (0, 1, 7):
-            io = ReadFirstIO(f"{row:03b}Q")
+            io = ReadFirstIO(f"{row:03b}Q", expected=3)
             machine = _Machine(program, io)
-            measured = WrittenState(machine.snapshot())
-            steps = 0
-            while not machine.halted:
-                machine.step()
-                measured.sample(machine.snapshot())
-                steps += 1
+            steps, measured = measure_run(machine)
             assert io.getvalue() == table[row]
             assert io.past_end == 0
             assert io.input_char() == ord("Q")

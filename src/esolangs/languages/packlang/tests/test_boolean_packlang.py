@@ -15,6 +15,7 @@ from esolangs.languages.packlang.interpreter import run as packlang_run
 from esolangs.languages.packlang.wrapping import _packlang
 from esolangs.runtime._evaluate import _evaluate
 from esolangs.runtime.io import ScriptedIO
+from tests.support.event_io import ReadFirstIO
 
 
 class TestPacklangPaintedArray:
@@ -202,17 +203,8 @@ def test_balance_of_random_n10_refolds_the_body() -> None:
 @pytest.mark.medium
 def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
     from esolangs.languages.packlang.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for policy in ("decimal", "binary_digits"):
                 for options in ({}, {"width": 1}, {"balance": True}):
@@ -229,7 +221,7 @@ def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
                         stdin = esolangs.encode_inputs(
                             "Packlang", list(map(int, format(row, f"0{n}b")))
                         )
-                        io = ReadFirstIO(stdin + "Q")
+                        io = ReadFirstIO(stdin + "Q", expected=n)
                         machine = _Machine(program, io, literal_policy=policy)
                         steps = 0
                         while not machine.halted and steps < 4 * n + 10:

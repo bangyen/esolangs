@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from tests.support.event_io import ReadFirstIO
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -34,12 +35,6 @@ def test_an_ignored_input_folds_its_subtree() -> None:
 @pytest.mark.parametrize("n", [1, 3, 4, 6, 7, 8, 12])
 def test_constants_read_first_and_leave_the_next_record(n) -> None:
     from esolangs.languages.hot.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
-    class ReadFirstIO(ScriptedIO):
-        def _write(self, value):
-            assert self.reads == n
-            super()._write(value)
 
     rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
     for bit in "01":
@@ -48,7 +43,7 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
             if not options:
                 assert len(program) == 4 * n + 3
             for row in rows:
-                io = ReadFirstIO(format(row, f"0{n}b") + "Q")
+                io = ReadFirstIO(format(row, f"0{n}b") + "Q", expected=n)
                 machine = _Machine(program, io)
                 steps = 0
                 while not machine.halted and steps <= 4 * n + 3:

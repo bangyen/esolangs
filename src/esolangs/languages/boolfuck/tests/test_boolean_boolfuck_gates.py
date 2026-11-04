@@ -12,7 +12,7 @@ from esolangs.languages.boolfuck.generator import (
 )
 from esolangs.languages.boolfuck.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
-from scripts.benchmark import WrittenState
+from tests.support.generator_support import measure_run
 
 
 def _execute(table: str, program: str, rows: range | list[int]) -> int:
@@ -32,12 +32,7 @@ def _execute(table: str, program: str, rows: range | list[int]) -> int:
     for row in rows:
         io = ScriptedIO(f"{row:0{n}b}")
         machine = _Machine(program, io)
-        written = WrittenState(machine.snapshot())
-        commands = 0
-        while not machine.halted and commands <= command_bound:
-            machine.step()
-            written.sample(machine.snapshot())
-            commands += 1
+        commands, written = measure_run(machine, limit=command_bound)
         assert machine.halted
         assert io.getvalue() == table[row]
         assert commands <= command_bound

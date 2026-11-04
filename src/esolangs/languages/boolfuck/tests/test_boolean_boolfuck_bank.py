@@ -4,6 +4,7 @@ import random
 
 import pytest
 
+from tests.support.generator_support import measure_run
 from tests.support.reference import REFERENCE
 
 
@@ -32,7 +33,6 @@ def test_banked_residuals_execute_and_match_command_price(kind, table) -> None:
     from esolangs.generation.helpers import permute_truth_table
     from esolangs.generation.shared_block import repeated_bank
     from esolangs.generation.shared_flag import flag_tree_body
-    from scripts.benchmark import WrittenState
 
     served = 0
     n = len(table).bit_length() - 1
@@ -58,12 +58,7 @@ def test_banked_residuals_execute_and_match_command_price(kind, table) -> None:
         limit = len(header) + cost + 49
         for row, expected in enumerate(table):
             machine = make_vm(language, program, stdin=f"{row:0{n}b}")
-            written = WrittenState(machine.snapshot())
-            commands = 0
-            while not machine.halted and commands <= limit:
-                machine.step()
-                written.sample(machine.snapshot())
-                commands += 1
+            commands, written = measure_run(machine, limit=limit)
             assert machine.halted
             assert esolangs.read_answer(language, machine.output) == expected
             assert commands <= limit

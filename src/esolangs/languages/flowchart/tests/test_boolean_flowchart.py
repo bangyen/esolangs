@@ -14,6 +14,7 @@ from esolangs.languages.flowchart.generator import (
 )
 from esolangs.runtime.io import IO, ScriptedIO
 from tests.generators.boolean_runners import _runner
+from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import row_bits
 
 run_flowchart = _runner("flowchart", lines=True)
@@ -287,23 +288,14 @@ def test_constant_lookup_reads_without_deque_or_selector(bit) -> None:
 
     import esolangs
     from esolangs.languages.flowchart.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     for n in (1, 3, 8, 12):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for options in ({}, {"width": 1}, {"balance": True}):
             program = esolangs.generate("Flowchart", bit * (1 << n), **options)
             if not options:
                 assert len(program) == 32 * n + 29
             for row in (0, 1, (1 << n) - 1):
-                io = ReadFirstIO(format(row, f"0{n}b") + "Q")
+                io = ReadFirstIO(format(row, f"0{n}b") + "Q", expected=n)
                 machine = _Machine(program.splitlines(), io)
                 steps = 0
                 while not machine.halted and steps < 1000:

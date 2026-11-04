@@ -10,6 +10,7 @@ from esolangs.languages import generators as boolean
 from esolangs.languages.alight.interpreter import run as alight_run
 from esolangs.runtime._evaluate import _evaluate
 from esolangs.runtime.io import ScriptedIO
+from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_an_ignored_input_costs
 
 
@@ -263,14 +264,6 @@ def _check_native_constants(syntax: str, update: str, bit: str) -> None:
 
     settings = esolangs.DialectSettings(expression_syntax=syntax, list_update=update)
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for options in ({}, {"width": 1}, {"balance": True}):
             program = esolangs.generate(
                 "Alight", bit * (1 << n), settings=settings, **options
@@ -284,7 +277,7 @@ def _check_native_constants(syntax: str, update: str, bit: str) -> None:
                 )
                 assert len(program) == 6 * n + 31
             for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                io = ReadFirstIO(f"{row:0{n}b}" + "Q")
+                io = ReadFirstIO(f"{row:0{n}b}" + "Q", expected=n)
                 machine = _Machine(
                     program, io, expression_syntax=syntax, list_update=update
                 )

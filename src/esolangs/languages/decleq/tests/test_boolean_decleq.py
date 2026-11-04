@@ -7,6 +7,7 @@ import pytest
 from esolangs.generation.wrap import balance_program, balance_score, wrap_program
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
+from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import parity as _parity
 from tests.support.witness_tables import row_bits
 
@@ -129,18 +130,9 @@ def test_constants_reuse_scratch_and_print_after_every_read() -> None:
     import esolangs
     from esolangs.languages.decleq.interpreter import _Machine
     from esolangs.languages.decleq.proof_formulas import workspace
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Decleq", bit * (1 << n), **options)
@@ -153,7 +145,7 @@ def test_constants_reuse_scratch_and_print_after_every_read() -> None:
                 assert cells[3 * n : 3 * n + 3] == [-2, 3 * n + 6, 3 * n + 3]
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     stdin = esolangs.encode_inputs("Decleq", row_bits(row, n))
-                    io = ReadFirstIO(stdin + "Q")
+                    io = ReadFirstIO(stdin + "Q", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     steps = 0

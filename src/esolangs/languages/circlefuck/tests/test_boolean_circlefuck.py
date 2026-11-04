@@ -8,6 +8,8 @@ import pytest
 import esolangs
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
+from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import assert_constant_output, measure_run
 
 run_circlefuck = _runner("circlefuck")
 
@@ -113,37 +115,19 @@ def test_run_warns_when_input_runs_out() -> None:
 def _check_constants() -> None:
     import esolangs
     from esolangs.languages.circlefuck.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value: object) -> None:
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Circlefuck", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row + "7")
-                    run(program, io)
-                    assert io.getvalue() == bit
-                    assert io.reads == n
-                    assert io.past_end == 0
+                    io = ReadFirstIO(row + "7", expected=n)
+                    assert_constant_output(run, program, io, bit, n)
                     assert io.input_char() == ord("7")
 
 
 def _check_reader() -> None:
     from esolangs.languages.circlefuck.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
-
-    class ReadFirstIO(ScriptedIO):
-        def _write(self, value):
-            assert self.reads == 3
-            super()._write(value)
 
     total = 0
     for value in range(256):
@@ -151,7 +135,7 @@ def _check_reader() -> None:
         program = str(esolangs.generate("Circlefuck", table))
         total += len(program)
         for row in range(8):
-            io = ReadFirstIO(f"{row:03b}" + "7")
+            io = ReadFirstIO(f"{row:03b}" + "7", expected=3)
             run(program, io)
             assert io.getvalue() == table[row]
             assert io.past_end == 0
@@ -160,19 +144,13 @@ def _check_reader() -> None:
 
     from esolangs.languages.circlefuck.interpreter import _Machine
     from esolangs.languages.circlefuck.proof_formulas import execution, workspace
-    from scripts.benchmark import WrittenState
 
     table = "00110110"
     for options in ({}, {"width": 1}, {"balance": True}):
         program = str(esolangs.generate("Circlefuck", table, **options))
-        io = ReadFirstIO("1117")
+        io = ReadFirstIO("1117", expected=3)
         machine = _Machine(program, io)
-        written = WrittenState(machine.snapshot())
-        steps = 0
-        while not machine.halted:
-            machine.step()
-            written.sample(machine.snapshot())
-            steps += 1
+        steps, written = measure_run(machine)
         assert steps == execution(3, program)
         assert written.bits == workspace(3, program)
         assert io.getvalue() == table[7]

@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from tests.support.generator_support import measure_run
 from tests.support.stdin_check import _check_stdin
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
@@ -32,7 +33,6 @@ def test_the_input_is_the_row_number() -> None:
     assert esolangs.encode_inputs("Blindfolded Arithmetic", [1, 0]) == "3\n"
     _check_alternating_rounds()
     from esolangs.vm import make_vm
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":
@@ -43,12 +43,7 @@ def test_the_input_is_the_row_number() -> None:
                 assert len(source.replace("\n", "")) == 11
                 for row in (0, 1, (1 << n) - 1):
                     vm = make_vm("Blindfolded Arithmetic", source, stdin=f"{row + 1}\n")
-                    state = WrittenState(vm.snapshot())
-                    steps = 0
-                    while not vm.halted:
-                        vm.step()
-                        state.sample(vm.snapshot())
-                        steps += 1
+                    steps, state = measure_run(vm)
                     assert vm.output == bit
                     assert steps == 2
                     assert state.bits <= n + 8

@@ -13,7 +13,9 @@ from esolangs.languages.algebraic_programming_language.interpreter import _Machi
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
 from tests.generators.sample_tables import five_input_sample
+from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
+    assert_constant_output,
     assert_parity_at_most_doubles,
     verify_generated,
 )
@@ -398,17 +400,8 @@ def test_a_wide_table_keeps_its_one_line_tail_under_the_frame_floor() -> None:
 def _check_constants() -> None:
     import esolangs
     from esolangs.languages.algebraic_programming_language.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value: object) -> None:
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate(
@@ -419,12 +412,10 @@ def _check_constants() -> None:
                         esolangs.encode_inputs(
                             "Algebraic Programming Language", [int(b) for b in row]
                         )
-                        + "7\n"
+                        + "7\n",
+                        expected=n,
                     )
-                    run(program, io)
-                    assert io.getvalue() == bit + "\n"
-                    assert io.reads == n
-                    assert io.past_end == 0
+                    assert_constant_output(run, program, io, bit + "\n", n)
                     assert io.input_num() == 7
 
 

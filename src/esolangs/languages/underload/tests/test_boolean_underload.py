@@ -14,9 +14,8 @@ from esolangs.languages.underload.generator import PAIR, underload, underload_se
 from esolangs.languages.underload.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import make_vm
-from scripts.benchmark import WrittenState
 from tests.generators.sample_tables import five_input_sample
-from tests.support.generator_support import run_filled, verify_generated
+from tests.support.generator_support import measure_run, run_filled, verify_generated
 from tests.support.witness_tables import witnesses
 
 
@@ -48,12 +47,7 @@ def test_wrapped_public_templates_preserve_input_slots() -> None:
                 for row in (0, 1, (1 << n) - 1):
                     bits = list(map(int, f"{row:0{n}b}"))
                     vm = make_vm("Underload", template.fill(bits))
-                    state = WrittenState(vm.snapshot())
-                    steps = 0
-                    while not vm.halted:
-                        vm.step()
-                        state.sample(vm.snapshot())
-                        steps += 1
+                    steps, state = measure_run(vm)
                     assert vm.output == bit
                     if not options:
                         assert steps == 2 * n + 2

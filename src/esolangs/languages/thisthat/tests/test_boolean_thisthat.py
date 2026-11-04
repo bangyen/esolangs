@@ -9,6 +9,7 @@ import esolangs
 from esolangs.languages.thisthat.generator import _Builder, _tree, thisthat
 from esolangs.languages.thisthat.interpreter import run
 from esolangs.runtime.io import ScriptedIO
+from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     evaluate_generated,
     run_lines,
@@ -411,14 +412,6 @@ def _check_constants() -> None:
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("thisthat", bit * (1 << n), **options)
@@ -428,7 +421,7 @@ def _check_constants() -> None:
                         == 2 * n + 5
                     )
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    io = ReadFirstIO(f"{row:0{n}b}" + "1")
+                    io = ReadFirstIO(f"{row:0{n}b}" + "1", expected=n)
                     machine = _Machine(program.splitlines(), io)
                     written = WrittenState(machine.snapshot())
                     steps = 0

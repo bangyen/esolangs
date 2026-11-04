@@ -7,7 +7,11 @@ import pytest
 from esolangs.languages import generators as tools
 from esolangs.languages.egl.interpreter import run
 from esolangs.runtime.io import ScriptedIO
-from tests.support.generator_support import assert_an_ignored_input_costs
+from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import (
+    assert_an_ignored_input_costs,
+    assert_constant_output,
+)
 
 
 def execute(program: str, bits: tuple[int, ...]) -> tuple[str, int]:
@@ -71,26 +75,14 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 def _check_constants() -> None:
     import esolangs
     from esolangs.languages.egl.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value: object) -> None:
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("EGL", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row + "7")
-                    run(program, io)
-                    assert io.getvalue() == bit
-                    assert io.reads == n
-                    assert io.past_end == 0
+                    io = ReadFirstIO(row + "7", expected=n)
+                    assert_constant_output(run, program, io, bit, n)
                     assert io.input_char() == ord("7")
 
 

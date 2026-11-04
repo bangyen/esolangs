@@ -20,7 +20,7 @@ from esolangs.languages.intercal.generator import (
 from esolangs.languages.intercal.interpreter import run
 from esolangs.runtime._evaluate import _evaluate
 from tests.proofs._witnesses import _intercal_worst
-from tests.support.generator_support import run_filled
+from tests.support.generator_support import measure_run, run_filled
 
 
 def _run(table: str, row: int) -> str:
@@ -189,7 +189,6 @@ def test_constants_reuse_one_variable_and_print_the_literal() -> None:
     from esolangs.languages.intercal.interpreter import _Machine
     from esolangs.languages.intercal.proof_formulas import workspace
     from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":
@@ -207,12 +206,7 @@ def test_constants_reuse_one_variable_and_print_the_literal() -> None:
                     assert len(program) == len(template)
                     stream = ScriptedIO()
                     machine = _Machine(program, stream)
-                    written = WrittenState(machine.snapshot())
-                    steps = 0
-                    while not machine.halted and steps <= n + 2:
-                        machine.step()
-                        written.sample(machine.snapshot())
-                        steps += 1
+                    steps, written = measure_run(machine, limit=n + 2)
                     assert machine.halted
                     assert steps == n + 2
                     assert esolangs.read_answer("INTERCAL", stream.getvalue()) == bit

@@ -3,7 +3,8 @@
 import pytest
 
 from esolangs.languages import generators as boolean
-from tests.support.generator_support import assert_parity_at_most_doubles
+from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import assert_parity_at_most_doubles, measure_run
 
 
 class TestBitTilde:
@@ -28,18 +29,9 @@ def test_parity_source_at_most_doubles_per_input() -> None:
 def test_every_constant_row_within_written_state_bound(bit: str) -> None:
     import esolangs
     from esolangs.languages.bit_tilde.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for options in ({}, {"width": 1}, {"balance": True}):
             program = esolangs.generate("bit~", bit * (1 << n), **options)
             commands = n + 17 + 9 * int(bit)
@@ -47,7 +39,7 @@ def test_every_constant_row_within_written_state_bound(bit: str) -> None:
             workspace = 23 + 4 * int(bit) + commands.bit_length() + n.bit_length()
             for row in range(1 << n) if n in (1, 2, 3, 8) else (0, 1, (1 << n) - 1):
                 stdin = esolangs.encode_inputs("bit~", list(map(int, f"{row:0{n}b}")))
-                io = ReadFirstIO(stdin + "Q")
+                io = ReadFirstIO(stdin + "Q", expected=n)
                 machine = _Machine("".join(program.split()), io)
                 written = WrittenState(machine.snapshot())
                 steps = 0
@@ -89,7 +81,6 @@ def _check_split_inputs() -> None:
     import esolangs
     from esolangs.languages.bit_tilde.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     # First-bit exits and odd/even ignored prefixes, including before planting.
     for n, used in ((5, list(range(5))), (6, [1, 2, 3, 4, 5]), (7, [2, 3, 4, 5, 6])):
@@ -122,11 +113,6 @@ def _check_split_inputs() -> None:
         assert len(program) == 3 * (1 << n) + 19 * n + 115
         io = ScriptedIO("0" * n)
         machine = _Machine(program, io)
-        written = WrittenState(machine.snapshot())
-        steps = 0
-        while not machine.halted:
-            machine.step()
-            written.sample(machine.snapshot())
-            steps += 1
+        steps, written = measure_run(machine)
         assert steps == expected_steps
         assert written.bits == expected_bits

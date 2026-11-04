@@ -8,6 +8,8 @@ import esolangs
 from esolangs.languages import generators as boolean
 from scripts import new_language
 from tests.generators.boolean_runners import _runner
+from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import assert_constant_output, measure_run
 
 run_sstack = _runner("sstack")
 
@@ -150,7 +152,6 @@ def test_multiple_definitions_preserve_inputs_commands_and_workspace() -> None:
     from esolangs.generation.shared_block import _repeated_blocks
     from esolangs.languages.sstack.generator import _sstack_shared
     from esolangs.languages.sstack.interpreter import _parse
-    from scripts.benchmark import WrittenState
 
     n = 8
     a, b = "0001" * 16, "0110" * 16
@@ -161,12 +162,7 @@ def test_multiple_definitions_preserve_inputs_commands_and_workspace() -> None:
     bound = 6 * n + 12 + len(_parse(program)).bit_length() + n.bit_length()
     for row, expected in enumerate(table):
         machine = make_vm("SStack", program, stdin=f"{row:08b}" + "B")
-        written = WrittenState(machine.snapshot())
-        commands = 0
-        while not machine.halted and commands <= limit:
-            machine.step()
-            written.sample(machine.snapshot())
-            commands += 1
+        commands, written = measure_run(machine, limit=limit)
         assert machine.halted
         assert machine.output == expected
         assert commands <= limit
@@ -276,7 +272,6 @@ def test_binary_bank_shares_more_than_sixty_three_residuals_within_ledger() -> N
     from esolangs.languages.sstack.generator._binary import binary_bank
     from esolangs.languages.sstack.interpreter import _Machine, _parse
     from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     table = _binary_bank_table()
     blocks = tuple(
@@ -297,12 +292,7 @@ def test_binary_bank_shares_more_than_sixty_three_residuals_within_ledger() -> N
                 machine.ops = ops
                 machine.io = ScriptedIO(f"{row:016b}" + "B")
                 machine.state = (0, (None,) * 7)
-                written = WrittenState(machine.snapshot())
-                commands = 0
-                while not machine.halted and commands <= limit:
-                    machine.step()
-                    written.sample(machine.snapshot())
-                    commands += 1
+                commands, written = measure_run(machine, limit=limit)
                 assert machine.halted
                 assert machine.io.getvalue() == table[row]
                 assert commands <= limit
@@ -430,24 +420,12 @@ def test_check_runs_the_formula_case_bounds_measures() -> None:
 def _check_constants() -> None:
     import esolangs
     from esolangs.languages.sstack.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value: object) -> None:
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("SStack", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row + "7")
-                    run(program, io)
-                    assert io.getvalue() == bit
-                    assert io.reads == n
-                    assert io.past_end == 0
+                    io = ReadFirstIO(row + "7", expected=n)
+                    assert_constant_output(run, program, io, bit, n)
                     assert io.input_char() == ord("7")

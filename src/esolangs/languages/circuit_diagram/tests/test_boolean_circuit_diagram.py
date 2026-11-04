@@ -10,6 +10,7 @@ import esolangs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from esolangs.languages.circuit_diagram.generator.hlayout import _LATTICE, _h_size
+from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import witnesses
 
 
@@ -811,12 +812,6 @@ def test_a_single_input_table_past_the_competing_floor_builds(
 @pytest.mark.parametrize("n", [1, 3, 4, 6, 7, 8, 12])
 def test_constants_read_first_and_leave_the_next_record(n) -> None:
     from esolangs.languages.circuit_diagram.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
-
-    class ReadFirstIO(ScriptedIO):
-        def _write(self, value):
-            assert self.reads == n
-            super()._write(value)
 
     rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
     for bit in "01":
@@ -825,7 +820,7 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
             if not options:
                 assert len(program) == 2 * n + 3
             for row in rows:
-                io = ReadFirstIO(format(row, f"0{n}b") + "Q")
+                io = ReadFirstIO(format(row, f"0{n}b") + "Q", expected=n)
                 run(program.splitlines(), io)
                 assert io.getvalue() == bit
                 assert io.reads == n

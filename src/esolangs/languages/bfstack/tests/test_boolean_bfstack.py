@@ -7,6 +7,7 @@ import pytest
 import esolangs
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
+from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_an_ignored_input_costs
 
 run_bfstack = _runner("bfstack")
@@ -219,18 +220,9 @@ def _check_identities() -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.bfstack.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("BFStack", bit * (1 << n), **options)
@@ -241,7 +233,7 @@ def _check_constants() -> None:
                     stdin = esolangs.encode_inputs(
                         "BFStack", list(map(int, f"{row:0{n}b}"))
                     )
-                    io = ReadFirstIO(stdin + "7")
+                    io = ReadFirstIO(stdin + "7", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     steps = 0

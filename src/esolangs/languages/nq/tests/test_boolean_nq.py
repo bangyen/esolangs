@@ -10,6 +10,7 @@ from esolangs.debugger import make_vm
 from esolangs.languages.nq.generator import nq
 from esolangs.languages.nq.tests.ablations import ablate
 from esolangs.languages.nq.tests.test_nq import check_instructions
+from tests.support.event_io import ReadFirstIO
 
 
 @pytest.mark.medium
@@ -68,24 +69,15 @@ def test_language_contract() -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.nq.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value: object) -> None:
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for binding in ("opcode", "recursive"):
                 for options in ({}, {"width": 1}, {"balance": True}):
                     source = esolangs.generate("NQ", bit * (1 << n), **options)
                     for bits in ([0] * n, [1] * n):
-                        io = ReadFirstIO("".join(map(str, bits)) + "7")
+                        io = ReadFirstIO("".join(map(str, bits)) + "7", expected=n)
                         machine = _Machine(source, io, guard_binding=binding)
                         written = WrittenState(machine.snapshot())
                         for _ in range(n + 3):

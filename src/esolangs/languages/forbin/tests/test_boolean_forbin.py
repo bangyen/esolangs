@@ -12,6 +12,7 @@ import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
+from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import witnesses
 
 run_forbin_boolean = _runner("forbin")
@@ -250,18 +251,9 @@ def test_constants_read_whole_bytes_then_print_inline() -> None:
     import esolangs
     from esolangs.languages.forbin.interpreter import _Machine
     from esolangs.languages.forbin.proof_formulas import workspace
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Forbin", bit * (1 << n), **options)
@@ -269,7 +261,7 @@ def test_constants_read_whole_bytes_then_print_inline() -> None:
                     assert len(program) == (16 * n + 40 if n == 1 else 2 * n + 64)
                 rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
                 for row in rows:
-                    io = ReadFirstIO(format(row, f"0{n}b") + "Q")
+                    io = ReadFirstIO(format(row, f"0{n}b") + "Q", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     steps = 0

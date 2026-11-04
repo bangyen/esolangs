@@ -150,7 +150,6 @@ def assert_shared_program(
 ):
     """Execute shared-program rows and check commands and written state."""
     from esolangs.debugger import make_vm
-    from scripts.benchmark import WrittenState
 
     n = len(table).bit_length() - 1
     program = esolangs.generate(language, table)
@@ -168,12 +167,7 @@ def assert_shared_program(
             else esolangs.encode_inputs(language, bits, truth_table=table)
         )
         machine = make_vm(language, source, stdin=stdin)
-        written = WrittenState(machine.snapshot())
-        commands = 0
-        while not machine.halted and commands <= command_bound:
-            machine.step()
-            written.sample(machine.snapshot())
-            commands += 1
+        commands, written = measure_run(machine, limit=command_bound)
         assert machine.halted
         if machine.dumps_on_the_post_halt_step:
             machine.step()
@@ -193,3 +187,24 @@ def near_even_counts(size: int) -> set[int]:
     for divisor in range(1, isqrt(size - 1) + 1):
         counts.update((divisor + 1, (size - 1) // divisor + 1))
     return counts
+
+
+def assert_constant_output(run, code, io, expected, reads, **run_kwargs):
+    """Run a constant program; check output and reads without touching its sentinel."""
+    run(code, io, **run_kwargs)
+    assert io.getvalue() == expected
+    assert io.reads == reads
+    assert io.past_end == 0
+
+
+def measure_run(machine, *, limit=None):
+    """Return step count and sampled written state, stopping past ``limit``."""
+    from scripts.benchmark import WrittenState
+
+    written = WrittenState(machine.snapshot())
+    commands = 0
+    while not machine.halted and (limit is None or commands <= limit):
+        machine.step()
+        written.sample(machine.snapshot())
+        commands += 1
+    return commands, written

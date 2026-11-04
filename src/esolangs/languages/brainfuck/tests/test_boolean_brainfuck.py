@@ -2,6 +2,8 @@
 
 import pytest
 
+from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import measure_run
 from tests.support.reference import REFERENCE
 
 
@@ -9,7 +11,6 @@ from tests.support.reference import REFERENCE
 def test_affine_stream_all_small_coefficients_within_ledger() -> None:
     from esolangs.debugger import make_vm
     from esolangs.languages.brainfuck.generator import _affine_stream
-    from scripts.benchmark import WrittenState
 
     _check_constants()
     _check_zero_guards()
@@ -26,12 +27,7 @@ def test_affine_stream_all_small_coefficients_within_ledger() -> None:
                 admitted += 1
                 for row, expected in enumerate(table):
                     vm = make_vm(REFERENCE, source, stdin=f"{row:0{n}b}")
-                    written = WrittenState(vm.snapshot())
-                    commands = 0
-                    while not vm.halted and commands <= 69 * n + 44:
-                        vm.step()
-                        written.sample(vm.snapshot())
-                        commands += 1
+                    commands, written = measure_run(vm, limit=69 * n + 44)
                     assert vm.halted
                     assert vm.output == expected
                     assert commands <= 69 * n + 44
@@ -112,7 +108,6 @@ def test_multiple_residuals_reduce_guarded_parity_within_ledger() -> None:
 def test_literal_counter_consumes_inputs_within_revised_bounds(n: int) -> None:
     from esolangs.debugger import make_vm
     from esolangs.languages.brainfuck.generator import brainfuck
-    from scripts.benchmark import WrittenState
 
     size = 1 << n
     for exceptional in (0, size // 3, size - 1):
@@ -121,12 +116,7 @@ def test_literal_counter_consumes_inputs_within_revised_bounds(n: int) -> None:
             source = brainfuck(table)
             for row, expected in enumerate(table):
                 vm = make_vm(REFERENCE, source, stdin=f"{row:0{n}b}")
-                written = WrittenState(vm.snapshot())
-                commands = 0
-                while not vm.halted and commands <= 75 * n + 49:
-                    vm.step()
-                    written.sample(vm.snapshot())
-                    commands += 1
+                commands, written = measure_run(vm, limit=75 * n + 49)
                 assert vm.halted
                 assert vm.output == expected
                 assert vm.snapshot()[-1] == n
@@ -142,18 +132,9 @@ def test_literal_counter_consumes_inputs_within_revised_bounds(n: int) -> None:
 def _check_constants() -> None:
     import esolangs
     from esolangs.languages.brainfuck.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(2, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("brainfuck", bit * (1 << n), **options)
@@ -161,7 +142,7 @@ def _check_constants() -> None:
                     stdin = esolangs.encode_inputs(
                         "brainfuck", list(map(int, f"{row:0{n}b}"))
                     )
-                    io = ReadFirstIO(stdin + "Q")
+                    io = ReadFirstIO(stdin + "Q", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     steps = 0
@@ -186,15 +167,7 @@ def _check_constants() -> None:
 def _check_zero_guards() -> None:
     import esolangs
     from esolangs.languages.brainfuck.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
-
-    class ReadFirstIO(ScriptedIO):
-        expected = 0
-
-        def _write(self, value):
-            assert self.reads == self.expected
-            super()._write(value)
 
     inverted = False
     for n, used in ((3, (0, 1, 2)), (5, (1, 3)), (7, (0, 4, 6))):
@@ -206,7 +179,7 @@ def _check_zero_guards() -> None:
             source = esolangs.generate("brainfuck", table, **options)
             inverted |= "-[+" in "".join(source.split())
             for row in (0, 1, (1 << n) - 1):
-                io = ReadFirstIO(f"{row:0{n}b}Q")
+                io = ReadFirstIO(f"{row:0{n}b}Q", expected=0)
                 io.expected = n
                 machine = _Machine(source, io)
                 written = WrittenState(machine.snapshot())

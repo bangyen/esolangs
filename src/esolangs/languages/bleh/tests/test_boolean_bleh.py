@@ -3,6 +3,8 @@
 import pytest
 
 import esolangs
+from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import measure_run
 
 #: Nonconstant one- and two-input tables; a diagram's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(1, 2**2**n - 1)]
@@ -26,18 +28,8 @@ def test_every_row_prints_its_answer(table: str) -> None:
 def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
     from esolangs.languages.bleh.interpreter import _Machine
     from esolangs.languages.bleh.proof_formulas import workspace
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for n in (*range(1, 13), 19, 20, 21):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Bleh", bit * (1 << n), **options)
@@ -51,14 +43,9 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
                     stdin = esolangs.encode_inputs(
                         "Bleh", list(map(int, format(row, f"0{n}b")))
                     )
-                    io = ReadFirstIO(stdin + "Q")
+                    io = ReadFirstIO(stdin + "Q", expected=n)
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
-                    steps = 0
-                    while not machine.halted and steps <= 5 * n + 6:
-                        machine.step()
-                        written.sample(machine.snapshot())
-                        steps += 1
+                    steps, written = measure_run(machine, limit=5 * n + 6)
                     assert machine.halted
                     assert io.getvalue() == bit
                     assert steps == 5 * n + 6

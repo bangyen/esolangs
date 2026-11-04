@@ -8,6 +8,7 @@ import pytest
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
 from tests.interpreters.runner import run_program
+from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import row_bits
 
 
@@ -342,18 +343,9 @@ def _check_native_constants(bit: str) -> None:
     import esolangs
     from esolangs.languages.rotfuck.interpreter import _Machine
     from esolangs.languages.rotfuck.proof_formulas import execution, workspace
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for rotation in ("backward", "forward"):
             settings = esolangs.DialectSettings(rotation=rotation)
             for options in ({}, {"width": 1}, {"balance": True}):
@@ -363,7 +355,7 @@ def _check_native_constants(bit: str) -> None:
                 assert len("".join(program.split())) == n + 26 + int(bit)
                 commands = execution(n, program)
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    io = ReadFirstIO(f"{row:0{n}b}" + "Q")
+                    io = ReadFirstIO(f"{row:0{n}b}" + "Q", expected=n)
                     machine = _Machine(program, io, rotation=rotation)
                     written = WrittenState(machine.snapshot())
                     steps = 0

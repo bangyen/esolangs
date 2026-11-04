@@ -18,6 +18,7 @@ from esolangs.languages.fish.generator import (
 )
 from esolangs.languages.fish.interpreter import run
 from esolangs.runtime._evaluate import _evaluate
+from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import run_lines
 from tests.support.witness_tables import witnesses
 
@@ -180,18 +181,9 @@ def test_balance_folds_the_packed_row(n: int, side: int) -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.fish.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Fish", bit * (1 << n), **options)
@@ -201,7 +193,7 @@ def _check_constants() -> None:
                     stdin = esolangs.encode_inputs(
                         "Fish", list(map(int, f"{row:0{n}b}"))
                     )
-                    io = ReadFirstIO(stdin + "7")
+                    io = ReadFirstIO(stdin + "7", expected=n)
                     machine = _Machine(program.splitlines(), io)
                     written = WrittenState(machine.snapshot())
                     steps = 0

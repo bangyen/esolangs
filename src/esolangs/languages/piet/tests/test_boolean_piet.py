@@ -12,6 +12,7 @@ from esolangs.languages.piet.generator import piet as generate
 from esolangs.languages.piet.tests.test_boolean_piet_raster_balance import TABLES, score
 from esolangs.raster import Raster
 from esolangs.runtime._evaluate import _evaluate
+from tests.support.event_io import ReadFirstIO
 
 
 @pytest.mark.parametrize(
@@ -285,15 +286,7 @@ def _check_majority() -> None:
                 image = Raster.from_png(image.to_png())
                 scale = 3 if options == {"scale": 3} else 1
                 for row in (0, 1, (1 << n) // 3, (1 << n) - 1):
-
-                    class ReadFirstIO(ScriptedIO):
-                        expected = n
-
-                        def _write(self, value):
-                            assert self.reads == self.expected
-                            super()._write(value)
-
-                    io = ReadFirstIO("\n".join(f"{row:0{n}b}") + "\n7\n")
+                    io = ReadFirstIO("\n".join(f"{row:0{n}b}") + "\n7\n", expected=n)
                     machine = _Machine(image, io, scale=scale)
                     written = WrittenState(machine.snapshot())
                     steps = 0
@@ -340,18 +333,9 @@ def _check_majority() -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.piet.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Piet", bit * (1 << n), **options)
@@ -364,7 +348,7 @@ def _check_constants() -> None:
                     stdin = esolangs.encode_inputs(
                         "Piet", list(map(int, f"{row:0{n}b}"))
                     )
-                    io = ReadFirstIO(stdin + "\n7\n")
+                    io = ReadFirstIO(stdin + "\n7\n", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     steps = 0

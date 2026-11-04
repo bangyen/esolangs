@@ -9,9 +9,11 @@ import esolangs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
+from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
     assert_parity_at_most_doubles,
+    measure_run,
 )
 
 run_inject = _runner("inject", newline=True)
@@ -194,18 +196,8 @@ def test_counted_halving_splits_unrepresentable_repeat_counts() -> None:
 def test_constant_scratch_reuse_reads_first_and_preserves_the_next_line() -> None:
     from esolangs.languages.inject.interpreter import _Machine
     from esolangs.languages.inject.proof_formulas import workspace
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Inject", bit * (1 << n), **options)
@@ -215,14 +207,9 @@ def test_constant_scratch_reuse_reads_first_and_preserves_the_next_line() -> Non
                     stdin = esolangs.encode_inputs(
                         "Inject", list(map(int, format(row, f"0{n}b")))
                     )
-                    stream = ReadFirstIO(stdin + "Q\n")
+                    stream = ReadFirstIO(stdin + "Q\n", expected=n)
                     machine = _Machine(program, stream)
-                    written = WrittenState(machine.snapshot())
-                    steps = 0
-                    while not machine.halted and steps <= n + 7:
-                        machine.step()
-                        written.sample(machine.snapshot())
-                        steps += 1
+                    steps, written = measure_run(machine, limit=n + 7)
                     assert machine.halted
                     assert steps == n + 7
                     assert written.bits == workspace(n, program)

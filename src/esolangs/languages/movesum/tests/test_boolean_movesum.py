@@ -8,6 +8,7 @@ import esolangs
 from esolangs.languages.movesum.generator import movesum
 from esolangs.languages.movesum.interpreter import run
 from esolangs.runtime.io import ScriptedIO
+from tests.support.event_io import ReadFirstIO
 
 
 def answer(program: str, row: int, n: int) -> str:
@@ -43,12 +44,7 @@ def test_the_run_halts_on_the_row_it_names() -> None:
     table = "01101001"
     program = movesum(table)
 
-    class ReadFirstIO(ScriptedIO):
-        def _write(self, value: object) -> None:
-            assert self.reads == 3
-            super()._write(value)
-
-    io = ReadFirstIO("1\n0\n1\n9\n")
+    io = ReadFirstIO("1\n0\n1\n9\n", expected=3)
     run(program, io)
     assert io.getvalue() == " ".join(table[:6])
     assert io.input_token() == "9"

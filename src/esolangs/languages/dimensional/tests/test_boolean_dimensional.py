@@ -13,6 +13,7 @@ from esolangs.languages.dimensional.generator import dimensional
 from esolangs.languages.dimensional.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
+from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import witnesses
 
 run_dimensional = _runner("dimensional", newline=True)
@@ -191,18 +192,9 @@ def test_fourteen_input_lookup_stays_within_step_cap(kind: str) -> None:
 def _check_constants() -> None:
     import esolangs
     from esolangs.languages.dimensional.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Dimensional", bit * (1 << n), **options)
@@ -214,7 +206,7 @@ def _check_constants() -> None:
                     stdin = esolangs.encode_inputs(
                         "Dimensional", list(map(int, f"{row:0{n}b}"))
                     )
-                    io = ReadFirstIO(stdin + "\n7\n")
+                    io = ReadFirstIO(stdin + "\n7\n", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     steps = 0
@@ -239,11 +231,6 @@ def _check_first_essential_read() -> None:
     from esolangs.generation.helpers import input_weights
     from esolangs.languages.dimensional.generator import _packed
 
-    class ReadFirstIO(ScriptedIO):
-        def _write(self, value):
-            assert self.reads == 7
-            super()._write(value)
-
     for selected in ((0, 1, 6), (2, 4, 6), (0, 3, 5)):
         table = "".join(
             "00110110"[
@@ -264,7 +251,7 @@ def _check_first_essential_read() -> None:
             programs.append(packed)
         for program in programs:
             for row in (0, 1, 21, 63, 127):
-                io = ReadFirstIO(" ".join(f"{row:07b}") + " 7")
+                io = ReadFirstIO(" ".join(f"{row:07b}") + " 7", expected=7)
                 machine = _Machine(program, io)
                 for _ in range(10_000):
                     if machine.halted:

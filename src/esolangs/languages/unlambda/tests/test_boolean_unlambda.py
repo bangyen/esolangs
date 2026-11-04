@@ -11,6 +11,7 @@ from tests.generators.reader_support import (
     assert_emissions_grow_by_a_line,
 )
 from tests.generators.sample_tables import five_input_sample
+from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import verify_generated
 
 
@@ -72,18 +73,9 @@ def _check_constants(arities: range) -> None:
     import esolangs
     from esolangs.languages.unlambda.interpreter import _Machine
     from esolangs.languages.unlambda.tests.formulas import _workspace
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in arities:
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Unlambda", bit * (1 << n), **options)
@@ -93,7 +85,7 @@ def _check_constants(arities: range) -> None:
                     stdin = esolangs.encode_inputs(
                         "Unlambda", list(map(int, f"{row:0{n}b}"))
                     )
-                    io = ReadFirstIO(stdin + "7")
+                    io = ReadFirstIO(stdin + "7", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     steps = 0

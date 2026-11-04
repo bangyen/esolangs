@@ -8,6 +8,7 @@ import esolangs
 from esolangs.generation.token_balance import rendered_side
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.abcdirection.generator import _floor, _plan, abcdirection
+from tests.support.event_io import ReadFirstIO
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -19,17 +20,11 @@ def test_every_row_prints_its_answer(table: str) -> None:
     n = len(table).bit_length() - 1
     program = esolangs.generate("ABCDirection", table)
     from esolangs.languages.abcdirection.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
-
-    class ReadFirstIO(ScriptedIO):
-        def _write(self, value):
-            assert self.reads == n
-            super()._write(value)
 
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("ABCDirection", bits)
-        io = ReadFirstIO(stdin + "Q")
+        io = ReadFirstIO(stdin + "Q", expected=n)
         run(program, io)
         got = io.getvalue()
         assert io.past_end == 0
@@ -102,19 +97,13 @@ def test_balance_of_not_n1_is_exact() -> None:
 @pytest.mark.parametrize("balanced", [False, True])
 def test_constant_teeth_consume_whole_bytes(n, bit, balanced) -> None:
     from esolangs.languages.abcdirection.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
-
-    class ReadFirstIO(ScriptedIO):
-        def _write(self, value):
-            assert self.reads == n
-            super()._write(value)
 
     program = esolangs.generate("ABCDirection", bit * (1 << n), balance=balanced)
     if n == 8 and not balanced:
         assert len(program) == 559
     rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
     for row in rows:
-        io = ReadFirstIO(format(row, f"0{n}b") + "Q")
+        io = ReadFirstIO(format(row, f"0{n}b") + "Q", expected=n)
         run(program, io)
         assert io.getvalue() == bit
         assert io.reads == n

@@ -7,6 +7,7 @@ import pytest
 from esolangs.generation.helpers import essential_inputs, permute_truth_table
 from esolangs.languages import generators as boolean
 from tests.generators.sample_tables import five_input_sample
+from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
     verify_generated,
@@ -153,18 +154,9 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 def _check_constants() -> None:
     import esolangs
     from esolangs.languages.for_thorn.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("Forþ", bit * (1 << n), **options)
@@ -174,7 +166,7 @@ def _check_constants() -> None:
                     stdin = esolangs.encode_inputs(
                         "Forþ", list(map(int, f"{row:0{n}b}"))
                     )
-                    io = ReadFirstIO(stdin + "7\n")
+                    io = ReadFirstIO(stdin + "7\n", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     steps = 0

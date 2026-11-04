@@ -14,7 +14,7 @@ from esolangs.languages.smallfuck.generator import (
 )
 from esolangs.languages.smallfuck.interpreter import run
 from esolangs.registry import LANGUAGES
-from tests.support.generator_support import multiple_tables, run_filled
+from tests.support.generator_support import measure_run, multiple_tables, run_filled
 from tests.support.witness_tables import dense, witnesses
 
 
@@ -168,7 +168,6 @@ def test_multiple_residuals_preserve_bands_and_native_bounds(
     from esolangs.generation.helpers import permute_truth_table
     from esolangs.generation.shared_block import repeated_bank, repeated_blocks
     from esolangs.languages.smallfuck.generator import _smallfuck_tree
-    from scripts.benchmark import WrittenState
 
     n = len(table).bit_length() - 1
     perm = tuple(reversed(range(n))) if reverse else tuple(range(n))
@@ -190,12 +189,7 @@ def test_multiple_residuals_preserve_bands_and_native_bounds(
         bits = [int(bit) for bit in f"{row:0{n}b}"]
         program = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, bits)
         machine = make_vm("Smallfuck", program)
-        written = WrittenState(machine.snapshot())
-        commands = 0
-        while not machine.halted and commands <= limit:
-            machine.step()
-            written.sample(machine.snapshot())
-            commands += 1
+        commands, written = measure_run(machine, limit=limit)
         assert machine.halted
         machine.step()
         written.sample(machine.snapshot())
@@ -267,7 +261,6 @@ def test_all_two_input_complement_pairs_and_ignored_prefixes(swap_suffix, half) 
     from esolangs.generation.helpers import permute_truth_table
     from esolangs.generation.shared_block import repeated_block
     from esolangs.languages.smallfuck.generator import _paired_roots, _smallfuck_tree
-    from scripts.benchmark import WrittenState
 
     table = "".join(f"{code:04b}" for code in range(16)) * 4
     n = 8
@@ -283,12 +276,7 @@ def test_all_two_input_complement_pairs_and_ignored_prefixes(swap_suffix, half) 
             template, TEMPLATE_CHAR, [PAIR] * n, [int(bit) for bit in f"{row:08b}"]
         )
         machine = make_vm("Smallfuck", program)
-        written = WrittenState(machine.snapshot())
-        commands = 0
-        while not machine.halted and commands <= limit:
-            machine.step()
-            written.sample(machine.snapshot())
-            commands += 1
+        commands, written = measure_run(machine, limit=limit)
         assert machine.halted
         machine.step()
         written.sample(machine.snapshot())

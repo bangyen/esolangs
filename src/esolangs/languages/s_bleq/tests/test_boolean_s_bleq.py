@@ -16,6 +16,7 @@ from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
 from tests.proofs._witnesses import _sbleq_worst
 from tests.proofs.test_execution_formulas import _tables
+from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_parity_at_most_doubles
 
 run_sbleq = _runner("s_bleq")
@@ -140,18 +141,9 @@ def test_flipped_tree_ends_the_and_relay_jumps() -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.s_bleq.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
-
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate("S*bleq", bit * (1 << n), **options)
@@ -162,7 +154,7 @@ def _check_constants() -> None:
                     stdin = esolangs.encode_inputs(
                         "S*bleq", list(map(int, f"{row:0{n}b}"))
                     )
-                    io = ReadFirstIO(stdin + "7")
+                    io = ReadFirstIO(stdin + "7", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())
                     steps = 0
@@ -187,13 +179,6 @@ def _check_compacted_trees() -> None:
     for table in ("0110", "00001100", "01101001", "1101001101101101"):
         n = len(table).bit_length() - 1
 
-        class ReadFirstIO(ScriptedIO):
-            expected = n
-
-            def _write(self, value):
-                assert self.reads == self.expected
-                super()._write(value)
-
         for flip in (False, True):
             old = hoisted_tree(table, tuple(range(n)), flip=flip)
             program = _compact_tree(old, n)
@@ -201,7 +186,7 @@ def _check_compacted_trees() -> None:
             literal = initial.index(-49)
             assert len(program) < len(old)
             for row in range(1 << n):
-                io = ReadFirstIO(f"{row:0{n}b}!")
+                io = ReadFirstIO(f"{row:0{n}b}!", expected=n)
                 machine = _Machine(program, io)
                 steps = 0
                 while not machine.halted:
