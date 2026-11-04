@@ -97,6 +97,8 @@ select = [
     "SLF", # private member access
     "T10", # flake8-debugger
     "C90", # mccabe
+    "PLE", # pylint errors
+    "PLW", # pylint warnings
 ]
 ignore = [
     "D203",  # conflicts with D211 (blank line before class)
