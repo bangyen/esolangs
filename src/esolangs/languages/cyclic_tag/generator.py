@@ -74,6 +74,7 @@ LANGUAGE = Language(
     "Cyclic tag",
     RuntimeSpec(
         "cyclic_tag",
+        completion_entrypoint="_execute",
         category="queue_based",
         empty_program="Cyclic tag requires productions,queue using bits and semicolons",
     ),

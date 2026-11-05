@@ -85,9 +85,9 @@ from esolangs.runtime._artifacts import (
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._execution import (
     check_signal_timeout,
-    interpreter_errors,
     interpreter_module,
     prepare_call,
+    run_prepared,
     run_under_alarm,
 )
 from esolangs.runtime._input import InputSource, check_input
@@ -878,23 +878,22 @@ def run(
     name = resolve(language)
     program = _check_program(name, program, stdin)
     settings = effective_settings(name, program, settings)
-    run_fn = interpreter_module(name).run
+    entrypoint = LANGUAGES[name].runtime.completion_entrypoint
+    run_fn = getattr(interpreter_module(name), entrypoint or "run")
     program_args, options = prepare_call(
         name, program, ExecutionContext(scale=scale, seed=seed, settings=settings)
     )
     if options:
         run_fn = partial(run_fn, **options)
     io_obj = ScriptedIO(stdin)
-    with interpreter_errors(
-        f"the {name} interpreter recursed deeper than CPython's stack "
-        "limit allows on this program; the program is well formed, and "
-        "sys.setrecursionlimit can raise the limit if this interpreter's "
-        "depth grows with program size",
+    return run_prepared(
+        name,
+        run_fn,
+        program_args,
         io_obj,
-        language=name,
-    ):
-        _run(run_fn, program_args, io_obj, timeout)
-    return io_obj.getvalue()
+        timeout,
+        report_required=entrypoint is not None,
+    ).output
 
 
 def _run[T](

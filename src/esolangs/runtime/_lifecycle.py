@@ -34,6 +34,24 @@ class BoundaryCycle:
             raise ValueError("a boundary cycle needs ordered passes and a stride")
 
 
+@dataclass(frozen=True, slots=True)
+class CompletionReport:
+    """Successful completion; periodic output retains its boundary-cycle evidence."""
+
+    kind: Completion
+    cycle: BoundaryCycle | None = None
+
+    def __post_init__(self) -> None:
+        """Require cycle evidence exactly for periodic completion."""
+        if not isinstance(self.kind, Completion):
+            raise ValueError("completion kind must be a Completion policy")
+        if self.kind is Completion.PERIODIC:
+            if not isinstance(self.cycle, BoundaryCycle):
+                raise ValueError("periodic completion requires cycle evidence")
+        elif self.cycle is not None:
+            raise ValueError("only periodic completion accepts cycle evidence")
+
+
 def completion(machine: object) -> Completion:
     """Read a declared policy; ordinary machines complete at halt."""
     policy = getattr(machine, "completion", Completion.HALTED)

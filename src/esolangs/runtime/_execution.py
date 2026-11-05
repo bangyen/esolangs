@@ -22,7 +22,9 @@ from esolangs.exceptions import (
 )
 from esolangs.registry import INTERPRETERS, LANGUAGES
 from esolangs.runtime._context import ExecutionContext
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._program import Program, RunnerProgram
+from esolangs.runtime._result import ExecutionResult
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
 from esolangs.runtime.source_hints import with_hint
@@ -118,6 +120,41 @@ def run_under_alarm[T](
 def interpreter_module(name: str) -> ModuleType:
     """Return the canonical language's interpreter module."""
     return importlib.import_module(INTERPRETERS[name])
+
+
+def run_prepared(
+    name: str,
+    run_fn: Callable[..., Any],
+    program: RunnerProgram,
+    io_obj: ScriptedIO,
+    timeout: float | None,
+    *,
+    report_required: bool,
+) -> ExecutionResult:
+    """Execute prepared source and retain output, input usage and declared reports."""
+    import esolangs
+
+    with interpreter_errors(
+        f"the {name} interpreter recursed deeper than CPython's stack "
+        "limit allows on this program; the program is well formed, and "
+        "sys.setrecursionlimit can raise the limit if this interpreter's "
+        "depth grows with program size",
+        io_obj,
+        language=name,
+    ):
+        value = esolangs._run(run_fn, program, io_obj, timeout)  # noqa: SLF001
+        if report_required and not isinstance(value, CompletionReport):
+            raise InterpreterLimitError(
+                "completion runner returned no completion report",
+                hint="check the declared completion entry point",
+            )
+    return ExecutionResult(
+        io_obj.getvalue(),
+        io_obj.position(),
+        io_obj.reads,
+        io_obj.past_end,
+        value if report_required else None,
+    )
 
 
 #: CPython's int/str digit-cap ValueError, an implementation limit.  Matched

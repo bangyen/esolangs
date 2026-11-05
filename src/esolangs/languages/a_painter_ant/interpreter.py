@@ -24,7 +24,7 @@ from typing import Literal
 
 from esolangs.runtime._drive import drive_periodic
 from esolangs.runtime._entry import script_main
-from esolangs.runtime._lifecycle import Completion
+from esolangs.runtime._lifecycle import Completion, CompletionReport, completion
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -218,8 +218,8 @@ class _Machine:
         return "#" if white else "."
 
 
-def run(code: str, io: IO) -> None:
-    """Run an A Painter Ant program until its state repeats at a pass boundary.
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Return completion after rendering a repeated pass boundary.
 
     Once ``snapshot()`` repeats at a pass start every later pass is
     identical.  Boundaries only: a snapshot copies every painted cell
@@ -229,7 +229,13 @@ def run(code: str, io: IO) -> None:
     picture by then.
     """
     machine = _Machine(code, io)
-    drive_periodic(machine, len(machine.prog))
+    cycle = drive_periodic(machine, len(machine.prog))
+    return CompletionReport(completion(machine), cycle)
+
+
+def run(code: str, io: IO) -> None:
+    """Render the state once a complete pass repeats."""
+    _execute(code, io)
 
 
 if __name__ == "__main__":

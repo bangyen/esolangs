@@ -88,3 +88,15 @@ def test_the_wiki_evolution() -> None:
 @pytest.mark.medium
 def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("Cyclic tag", "0,1;", "semicolons only before")
+
+
+def test_native_completion_reports_the_dump_and_run_keeps_its_return_contract():
+    from esolangs.languages.cyclic_tag.interpreter import _execute
+    from esolangs.runtime._lifecycle import Completion
+
+    io = ScriptedIO()
+    report = _execute(",1", io)
+    assert report.kind is Completion.POST_HALT
+    assert report.cycle is None
+    assert io.getvalue() == "1"
+    assert run(",1", ScriptedIO()) is None

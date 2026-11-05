@@ -92,3 +92,18 @@ def test_periodic_completion_renders_at_the_repeated_pass_boundary(source, expec
     assert not machine.halted
     machine.step()
     assert io.getvalue() == expected
+
+
+def test_native_completion_preserves_the_periodic_evidence():
+    from esolangs.languages.a_painter_ant.interpreter import _execute, run
+    from esolangs.runtime._lifecycle import Completion
+    from esolangs.runtime.io import ScriptedIO
+
+    io = ScriptedIO()
+    report = _execute("P", io)
+    assert report.kind is Completion.PERIODIC
+    assert report.cycle is not None
+    assert report.cycle.commands_per_pass == 1
+    assert report.cycle.repeat_pass > report.cycle.first_pass
+    assert io.getvalue() == "@"
+    assert run("P", ScriptedIO()) is None

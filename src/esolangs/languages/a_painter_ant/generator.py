@@ -155,7 +155,9 @@ def _westward_flipped(table: str, weights: list[int], *, invert: bool) -> str:
 
 LANGUAGE = Language(
     "A Painter Ant",
-    RuntimeSpec("a_painter_ant", category="grid_based"),
+    RuntimeSpec(
+        "a_painter_ant", completion_entrypoint="_execute", category="grid_based"
+    ),
     backend=BooleanBackend(
         generate=a_painter_ant,
         # Not a tree: one corridor cell per row, walked by the inputs' weights.
