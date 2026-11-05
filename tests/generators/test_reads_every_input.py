@@ -185,24 +185,43 @@ def test_the_audit_sees_overreading(monkeypatch) -> None:
         _audit(REFERENCE, ",,", 1, monkeypatch, sentinel=True)
 
 
+def _audit_tables(monkeypatch, name, n, tables):
+    executed = attempted = 0
+    selected = sorted({0, 1, (1 << n) - 1, *[1 << bit for bit in range(n)]})
+    for table in tables:
+        attempted += 1
+        try:
+            program = esolangs.generate(name, table)
+        except esolangs.GeneratorCapError:
+            assert_proved_resource_cap(name)
+            continue
+        rows, unread, past, early = _audit(
+            name, program, n, monkeypatch, table=table, selected=selected
+        )
+        assert rows > 0, (name, n, "no rows executed")
+        assert (unread, early) == (0, 0), (name, n)
+        assert past in (0, rows), (name, n)
+        executed += rows
+    assert attempted, (name, n, "empty witness corpus")
+    if not executed:
+        pytest.skip(f"{name}: no executable witness at n={n}; proved resource cap")
+    return executed
+
+
 @pytest.mark.slow
-@pytest.mark.parametrize("name", GENERATED)
-def test_contract_at_larger_arities(monkeypatch, name) -> None:
-    """Sample rows at n=4 and n=6 (or the declared cap); never sweep 2**cap."""
-    cap = INFOS[name]["generator_max_inputs"] or 6
-    for n in sorted({min(4, cap), min(6, cap)}):
-        for table in witnesses(n):
-            try:
-                program = esolangs.generate(name, table)
-            except esolangs.GeneratorCapError:
-                assert_proved_resource_cap(name)
-                continue
-            selected = sorted({0, 1, (1 << n) - 1, *[1 << bit for bit in range(n)]})
-            rows, unread, past, early = _audit(
-                name, program, n, monkeypatch, table=table, selected=selected
-            )
-            assert (unread, early) == (0, 0), (name, n)
-            assert past in (0, rows), (name, n)
+@pytest.mark.parametrize(
+    ("name", "n"),
+    [
+        (name, n)
+        for name in GENERATED
+        for n in sorted(
+            {min(arity, INFOS[name]["generator_max_inputs"] or 6) for arity in (4, 6)}
+        )
+    ],
+)
+def test_contract_at_larger_arities(monkeypatch, name, n) -> None:
+    """Sample rows at n=4 and n=6 (or the declared cap)."""
+    _audit_tables(monkeypatch, name, n, witnesses(n))
 
 
 @pytest.mark.medium
@@ -213,28 +232,76 @@ def test_the_audit_rejects_wrong_input_order(monkeypatch) -> None:
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "name", [name for name in GENERATED if INFOS[name]["generator_max_inputs"]]
+    ("name", "n"),
+    [
+        (name, n)
+        for name in GENERATED
+        if (cap := INFOS[name]["generator_max_inputs"])
+        for n in (cap - 1, cap)
+    ],
 )
-def test_contract_at_declared_cap(monkeypatch, name) -> None:
+def test_contract_at_declared_cap(monkeypatch, name, n) -> None:
     """Exercise constants and either-end projections at and below the cap."""
-    cap = INFOS[name]["generator_max_inputs"]
-    for n in (cap - 1, cap):
-        size = 1 << n
-        tables = (
-            "0" * size,
-            "1" * size,
-            "01" * (size // 2),
-            "0" * (size // 2) + "1" * (size // 2),
-        )
-        for table in tables:
-            try:
-                program = esolangs.generate(name, table)
-            except esolangs.GeneratorCapError:
-                assert_proved_resource_cap(name)
-                continue
-            selected = sorted({0, 1, size - 1, *[1 << bit for bit in range(n)]})
-            rows, unread, past, early = _audit(
-                name, program, n, monkeypatch, table=table, selected=selected
-            )
-            assert (unread, early) == (0, 0), (name, n)
-            assert past in (0, rows), (name, n)
+    size = 1 << n
+    tables = (
+        "0" * size,
+        "1" * size,
+        "01" * (size // 2),
+        "0" * (size // 2) + "1" * (size // 2),
+    )
+    _audit_tables(monkeypatch, name, n, tables)
+
+
+@pytest.mark.parametrize(
+    "audit", [test_contract_at_larger_arities, test_contract_at_declared_cap]
+)
+def test_arity_audits_report_complete_refusal(monkeypatch, audit):
+    name = next(n for n in GENERATED if LANGUAGES[n].certification.benchmark_tables)
+    n = INFOS[name]["generator_max_inputs"]
+    refused = []
+
+    def decline(*_args, **_options):
+        refused.append(True)
+        raise esolangs.GeneratorCapError("arity-audit refusal control")
+
+    monkeypatch.setattr(esolangs, "generate", decline)
+    with pytest.raises(pytest.skip.Exception, match=f"no executable witness at n={n}"):
+        audit(monkeypatch, name, n)
+    assert refused, "the control never attempted generation"
+
+
+def test_arity_audit_rejects_an_unproved_refusal(monkeypatch):
+    def decline(*_args, **_options):
+        raise esolangs.GeneratorCapError("unproved refusal control")
+
+    monkeypatch.setattr(esolangs, "generate", decline)
+    with pytest.raises(AssertionError):
+        _audit_tables(monkeypatch, REFERENCE, 1, ["01"])
+
+
+def test_arity_audit_rejects_zero_executed_rows(monkeypatch):
+    monkeypatch.setattr(__name__ + "._audit", lambda *_args, **_options: (0, 0, 0, 0))
+    with pytest.raises(AssertionError, match="no rows executed"):
+        _audit_tables(monkeypatch, REFERENCE, 1, ["01"])
+
+
+def test_arity_audit_rejects_an_empty_corpus(monkeypatch):
+    with pytest.raises(AssertionError, match="empty witness corpus"):
+        _audit_tables(monkeypatch, REFERENCE, 1, [])
+
+
+@pytest.mark.medium
+def test_arity_audit_executes_remaining_witnesses(monkeypatch):
+    name = next(n for n in GENERATED if LANGUAGES[n].certification.benchmark_tables)
+    generate = esolangs.generate
+
+    def partial(language, table):
+        if table == "00":
+            raise esolangs.GeneratorCapError("partial refusal control")
+        return generate(language, table)
+
+    monkeypatch.setattr(esolangs, "generate", partial)
+    try:
+        assert _audit_tables(monkeypatch, name, 1, ["00", "01"]) == 2
+    except pytest.skip.Exception as error:
+        raise AssertionError("an executable witness was skipped") from error
