@@ -165,9 +165,10 @@ qualitative = { growth = "linear", text = "worst C = Σ_{d<n} min(2^d,2^2^(n-d)-
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter/__init__.py"
 tests = [
+    "src/esolangs/languages/fractran/tests/oracle_checks.py::check_raw_fractran",
     "src/esolangs/languages/fractran/tests/test_fractran.py::test_the_two_fraction_adder",
     "src/esolangs/languages/fractran/tests/test_fractran.py::test_a_value_no_fraction_divides_is_printed_at_once",
     "src/esolangs/languages/fractran/tests/test_fractran.py::test_the_first_matching_fraction_wins",

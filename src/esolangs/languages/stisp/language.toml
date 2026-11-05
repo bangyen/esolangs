@@ -154,9 +154,10 @@ description = { growth = "linear", claim = "at most", template = "{claim} {formu
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter.py"
 tests = [
+    "src/esolangs/languages/stisp/tests/oracle_checks.py::check_raw_stisp",
     "src/esolangs/languages/stisp/tests/test_stisp.py::test_the_first_matching_equation_wins",
     "src/esolangs/languages/stisp/tests/test_stisp.py::test_a_frame_rewrites_to_several_frames_in_order",
     "src/esolangs/languages/stisp/tests/test_stisp.py::test_list_sugar_prints_as_a_list",

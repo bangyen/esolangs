@@ -52,8 +52,10 @@ Decisions:
     * ``(True)`` and ``(False)`` are condition literals; the page shows a
       Condition's values but no spelling.
     * ``p`` prints no newline, and prints only a string or an integer.
-    * ``=`` needs equal types, so ``'1'=|1|`` is false; ``s`` takes only
-      strings and integers.
+    * Mixed-type ``=`` raises, as the existing runtime and tests require;
+      the page permits both types but leaves their comparison open. The
+      former docstring claim that it returned false contradicted execution.
+      ``s`` takes only strings and integers.
     * A line is stripped and has no interior blanks outside a string.
     * Inside a group only ``c + * = > r n`` are allowed, the operations that
       return a value; the rest always fail as a group, and rejecting them at

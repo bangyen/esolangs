@@ -135,9 +135,10 @@ description = { growth = "linear", claim = "at most", template = "{claim} {formu
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter.py"
 tests = [
+    "src/esolangs/languages/between/tests/oracle_checks.py::check_raw_between",
     "src/esolangs/languages/between/tests/test_between.py::test_goto_is_zero_based_and_skips_comments",
     "src/esolangs/languages/between/tests/test_between.py::test_goto_to_the_end_halts_and_beyond_raises",
     "src/esolangs/languages/between/tests/test_between.py::test_conditions_nest",

@@ -163,9 +163,10 @@ description = { growth = "linear", claim = "at most", template = "{claim} {formu
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter.py"
 tests = [
+    "src/esolangs/languages/thue/tests/oracle_checks.py::check_raw_thue",
     "src/esolangs/languages/thue/tests/test_thue.py::test_a_rule_prints_and_deletes_its_match",
     "src/esolangs/languages/thue/tests/test_thue.py::test_every_occurrence_is_a_candidate_including_overlapping_ones",
     "src/esolangs/languages/thue/tests/test_thue.py::test_input_is_substituted_by_the_triple_colon",

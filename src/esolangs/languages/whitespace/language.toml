@@ -190,9 +190,10 @@ description = { growth = "linear", claim = "worst", template = "{claim} {formula
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter.py"
 tests = [
+    "src/esolangs/languages/whitespace/tests/oracle_checks.py::check_raw_whitespace",
     "src/esolangs/languages/whitespace/tests/test_whitespace.py::test_push_and_both_outputs",
     "src/esolangs/languages/whitespace/tests/test_whitespace.py::test_arithmetic_takes_the_first_pushed_as_left",
     "src/esolangs/languages/whitespace/tests/test_whitespace.py::test_stack_manipulation",

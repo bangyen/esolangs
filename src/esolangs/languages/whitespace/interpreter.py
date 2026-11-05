@@ -32,18 +32,29 @@ Errors:
     InputExhaustedError: a read at EOF.
     ArgumentError: a number read given a non-integer token.
     HaltError: a pop from an empty stack; division or modulo by zero; a
-    ``copy`` or ``slide`` past the stack; a ``return`` with no call; a jump
-    to a label that is never marked.
+    ``copy`` past the stack; a ``slide`` on an empty stack; a ``return``
+    with no call; a jump to a label that is never marked.
 
 Decisions:
     * Division truncates toward zero and the remainder takes the dividend's
-      sign, as the reference implementation does; the wiki says only
-      "integer division".
+      sign. Canonical Haskell VM.hs uses floor division and divisor-sign
+      remainder; arithmetic compatibility remains open.
+    * ``slide`` keeps the top and drops at most the available items below
+      it; negative counts drop none, matching canonical VM.hs (Slide/drop).
+      The former error claim for sliding past the stack was false.
     * ``copy`` counts from 0 at the top, as the reference implementation does.
-    * Duplicate marks of one label: the last wins.
+    * Duplicate marks of one label: the last wins; canonical VM.hs picks
+      the first. Duplicate-label compatibility remains open.
+    * An undefined label raises even on an untaken conditional branch;
+      canonical VM.hs resolves it only when taken. Conditional-label
+      compatibility remains open. Falling off code halts in this adapter.
     * The wiki's Cat, Hello and Truth-machine pages show a line break after
       each rendered line that is not a line feed: breaks are dropped and each
       glyph read as its character.
+    * Canonical reference: https://github.com/wspace/whitespace-haskell,
+      VM.hs. Token-framed numeric input, byte output and zero-filled sparse
+      integer-addressed heap are this adapter's existing I/O/storage choices;
+      their compatibility with the canonical line/character/list VM is open.
 """
 
 from __future__ import annotations

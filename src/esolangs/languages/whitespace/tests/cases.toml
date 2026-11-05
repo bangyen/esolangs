@@ -59,7 +59,7 @@ claim = "division or modulo by zero"
 program = "   \t\n \t   \t \t\n\n\n\n"
 stdin = ""
 expect = "HaltError"
-claim = "a ``copy`` or ``slide`` past the stack"
+claim = "a ``copy`` past the stack"
 
 [[spec_triggers]]
 program = "\n\t\n\n\n\n"
