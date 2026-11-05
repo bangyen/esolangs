@@ -8,7 +8,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import compat, run
+from esolangs import run
 from tests.support.cli_support import call_main
 from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
@@ -55,7 +55,7 @@ class TestStdinCannotHangTheCommandForever:
     def test_a_timeout_bounds_the_read(self, tmp_path: Path) -> None:
         """It bounded execution only, and the block happens before that."""
         path = tmp_path / "p.txt"
-        path.write_text(compat.generate(REFERENCE, "0110"))
+        path.write_text(esolangs.generate(REFERENCE, "0110").source)
         code, err = self._run_with_open_stdin(
             ["run", "--timeout", "2", REFERENCE, str(path)], 20
         )
@@ -80,7 +80,9 @@ class TestStdinCannotHangTheCommandForever:
         """RAM0 embeds its inputs, so the wait was for input nobody wanted."""
         path = tmp_path / "p.txt"
         path.write_text(
-            compat.instantiate("RAM0", compat.generate("RAM0", "0110"), [0, 1])
+            esolangs.instantiate(
+                "RAM0", esolangs.generate("RAM0", "0110"), [0, 1]
+            ).source
         )
         code, err = self._run_with_open_stdin(
             ["run", "--timeout", "2", "RAM0", str(path)], 20
@@ -97,7 +99,7 @@ def test_execution_does_not_require_examples_or_docstrings(monkeypatch) -> None:
     def refuse_documentation(_language):
         raise AssertionError("execution requested documentation")
 
-    program = compat.generate(REFERENCE, "0110")
+    program = esolangs.generate(REFERENCE, "0110")
     monkeypatch.setattr(_describe, "_spec", refuse_documentation)
     monkeypatch.setattr(examples, "BOOLEAN_EXAMPLES", {})
     assert esolangs.encode_inputs(REFERENCE, [0, 1]) == "01"
@@ -128,7 +130,7 @@ def test_a_dump_is_reachable_without_touching_the_wrapped_vm() -> None:
 
 def test_read_answer_finds_a_dumped_answer(capsys: pytest.CaptureFixture[str]) -> None:
     """RAM0's answer is its `z` register, three lines from the end."""
-    program = compat.instantiate("RAM0", compat.generate("RAM0", "0110"), [0, 1])
+    program = esolangs.instantiate("RAM0", esolangs.generate("RAM0", "0110"), [0, 1])
     output = run("RAM0", program, timeout=20).output
     assert call_main(["read-answer", "RAM0"], capsys, stdin=output).strip() == "1"
 

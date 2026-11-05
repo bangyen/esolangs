@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from tests.support.cli_support import call_main
 from tests.support.witness_tables import witnesses
 
@@ -20,10 +19,10 @@ def test_describe_keeps_the_newline_answer_on_one_line(
 def test_intercal_layout_candidates_keep_exact_provenance(width: int) -> None:
     for inputs in range(1, 4):
         for table in witnesses(inputs):
-            template = str(compat.generate("INTERCAL", table, width=width))
-            compat.instantiate("INTERCAL", template, [0] * inputs, truth_table=table)
+            template = esolangs.generate("INTERCAL", table, width=width)
+            esolangs.instantiate("INTERCAL", template, [0] * inputs, truth_table=table)
             wrong = table.translate(str.maketrans("01", "10"))
             with pytest.raises(esolangs.TemplateError, match="is not the template"):
-                compat.instantiate(
+                esolangs.instantiate(
                     "INTERCAL", template, [0] * inputs, truth_table=wrong
                 )

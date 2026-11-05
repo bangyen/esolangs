@@ -2,7 +2,8 @@
 
 import pytest
 
-from esolangs import DialectSettings, compat, run
+import esolangs
+from esolangs import DialectSettings, run
 from esolangs.vm import complete_vm, make_vm
 
 
@@ -25,7 +26,7 @@ def test_rotfuck_rotation_reaches_every_execution_path(isolated) -> None:
         complete_vm(make_vm("ROTfuck", ",,", stdin="x", settings=forward), 100) == "x"
     )
     assert complete_vm(make_vm("ROTfuck", ",,", stdin="x"), 100) == ""
-    generated = compat.generate("ROTfuck", "01", settings=forward)
+    generated = esolangs.generate("ROTfuck", "01", settings=forward)
     assert (
         run("ROTfuck", generated, stdin="0", settings=forward, isolated=isolated).output
         == "0"

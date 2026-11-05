@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import compat, run
+from esolangs import run
 from esolangs.debugger import complete_vm
 from esolangs.vm import (
     make_vm,
@@ -23,7 +23,7 @@ class TestSelfHaltsIsAWarningNotAGuarantee:
     """``False`` promised the step loop never returns.  It can."""
 
     def test_a_bare_step_loop_halts_and_the_wording_says_so(self) -> None:
-        program = compat.generate("Suffolk", "0110")
+        program = esolangs.generate("Suffolk", "0110")
         vm = debugger_api.make_vm(
             "Suffolk", program, stdin=esolangs.encode_inputs("Suffolk", [1, 0])
         )
@@ -82,7 +82,7 @@ def test_the_value_growth_detector_proves_a_climb_and_declines_a_repeat() -> Non
 def test_documented_eof_halts_with_the_answer() -> None:
     """Suffolk's programs end *by* running out of input."""
 
-    program = compat.generate("Suffolk", "0110")
+    program = esolangs.generate("Suffolk", "0110")
     stdin = esolangs.encode_inputs("Suffolk", [1, 0], truth_table="0110")
     assert run("Suffolk", program, stdin=stdin, timeout=20).output == "1"
 

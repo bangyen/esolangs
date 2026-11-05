@@ -4,7 +4,6 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import compat
 from tests.support.evaluation import _evaluate
 
 
@@ -14,7 +13,7 @@ def test_termination_input_exhaustion_is_a_fault(
     def exhausted(*_args: object, **_kwargs: object) -> None:
         raise esolangs.InputExhaustedError(2, 1)
 
-    program = compat.generate("ArrowQueue", "01")
+    program = esolangs.generate("ArrowQueue", "01")
     monkeypatch.setattr("esolangs.runtime._termination.make_vm", exhausted)
     with pytest.raises(esolangs.InputExhaustedError) as exc:
         _evaluate("ArrowQueue", program, inputs=1)

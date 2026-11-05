@@ -6,7 +6,7 @@ from dataclasses import replace
 import pytest
 
 import esolangs
-from esolangs import Raster, compat, run
+from esolangs import Raster, run
 from esolangs.exceptions import TemplateError
 from esolangs.registry import LANGUAGES, SourceKind
 from tests.support.evaluation import _evaluate
@@ -34,14 +34,14 @@ def test_bound_raster_language_loads_and_evaluates_png(tmp_path) -> None:
 
 def test_a_raster_is_not_a_path() -> None:
     """``_looks_like_a_path`` is typed for text; a Raster must answer False."""
-    program = compat.generate("Piet", "01")
-    assert not esolangs._looks_like_a_path(program)
+    program = esolangs.generate("Piet", "01")
+    assert not esolangs._looks_like_a_path(program.source)
 
 
 def test_raster_interpreter_owns_loading_and_scale_support(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    program = compat.generate("Piet", "01", scale=2)
+    program = esolangs.generate("Piet", "01", scale=2)
     monkeypatch.setitem(
         LANGUAGES,
         "Piet",
@@ -51,7 +51,7 @@ def test_raster_interpreter_owns_loading_and_scale_support(
             backend=None,
         ),
     )
-    assert run("Piet", program.to_png(), stdin="1", scale=2).output == "1"
+    assert run("Piet", program.source.to_png(), stdin="1", scale=2).output == "1"
     assert run("Piet", program, stdin="1", scale=2, max_steps=100).output == "1"
 
 
@@ -79,7 +79,7 @@ def test_raster_interpreter_retains_geometry_hint() -> None:
 def test_a_raster_is_refused_as_a_template() -> None:
     """Typed ``Program`` so generate's result type-checks; no raster embeds."""
     with pytest.raises(TemplateError, match="raster programs read"):
-        compat.instantiate("Piet", compat.generate("Piet", XOR), [0, 1])
+        esolangs.instantiate("Piet", esolangs.generate("Piet", XOR), [0, 1])
 
 
 @pytest.mark.medium
@@ -104,8 +104,8 @@ def test_empty_piet_operation_path_halts() -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("scale", [2, 17])
 def test_piet_detects_its_scale(scale: int) -> None:
-    image = compat.generate("Piet", "0001", scale=scale)
-    assert _evaluate("Piet", Raster.from_png(image.to_png()), inputs=2) == "0001"
+    image = esolangs.generate("Piet", "0001", scale=scale)
+    assert _evaluate("Piet", Raster.from_png(image.source.to_png()), inputs=2) == "0001"
 
 
 def test_it_reads_numeric_tokens_on_the_same_line() -> None:

@@ -2,28 +2,28 @@
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import compat, run
+from esolangs import run
 from tests.support.samples import FLOWCHART_CAT, FLOWCHART_TRUTH_MACHINE
 from tests.support.vm_support import _run_all, assert_starts_downward
 
 
 class TestDebuggerInputAndHalting:
     def test_underfed_input_matches_run(self) -> None:
-        program = compat.generate("Flowchart", "0110")
+        program = esolangs.generate("Flowchart", "0110")
         output = run("Flowchart", program, stdin="1\n", timeout=10).output
         debugger = debugger_api.make_debugger("Flowchart", program, stdin="1\n")
         assert debugger.run(timeout=10) == "halted"
         assert debugger.vm.output == output
 
     def test_encoded_input_computes_the_answer(self) -> None:
-        program = compat.generate("Flowchart", "0110")
+        program = esolangs.generate("Flowchart", "0110")
         stdin = esolangs.encode_inputs("Flowchart", [1, 0], truth_table="0110")
         debugger = debugger_api.make_debugger("Flowchart", program, stdin=stdin)
         assert debugger.run(timeout=10) == "halted"
         assert esolangs.read_answer("Flowchart", debugger.vm.output) == "1"
 
     def test_repeated_run_preserves_halted_state(self) -> None:
-        program = compat.generate("Flowchart", "0110")
+        program = esolangs.generate("Flowchart", "0110")
         debugger = debugger_api.make_debugger("Flowchart", program, stdin="1\n")
         assert debugger.run(timeout=10) == "halted"
         before = debugger.vm.snapshot(), debugger.vm.output

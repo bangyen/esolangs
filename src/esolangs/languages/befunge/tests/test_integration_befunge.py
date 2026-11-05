@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 
 import esolangs
-from esolangs import compat, run
+from esolangs import run
 from tests.proofs._ledger import load
 from tests.support.cli_support import _failure
 from tests.support.input_convention import assert_reads_tokens_on_one_line
@@ -20,7 +20,7 @@ def test_generator_cap_hint_reaches_cli(capsys) -> None:
 
 def test_generator_cap_hint() -> None:
     with pytest.raises(esolangs.GeneratorCapError) as caught:
-        compat.generate("Befunge", "0010" * (1 << 12))
+        esolangs.generate("Befunge", "0010" * (1 << 12))
     assert "fixed 80x25 grid" in caught.value.__notes__[0]
 
 
@@ -44,7 +44,7 @@ def test_invalid_numeric_input_is_not_mislabeled_as_a_program_error(mode: str) -
 
 def test_befunge_grid_refusal_is_catchable() -> None:
     with pytest.raises(esolangs.GeneratorCapError, match="80x25"):
-        compat.generate("Befunge", "0010" * (1 << 12))
+        esolangs.generate("Befunge", "0010" * (1 << 12))
 
 
 @pytest.mark.parametrize("wrapped", ["vm", "machine", "debugger"])
@@ -74,7 +74,7 @@ def test_it_reads_numeric_tokens_on_the_same_line() -> None:
 def test_befunge_refusal_is_an_explicit_totality_exception() -> None:
     """The fixed-torus refusal must not disappear from the totality audit."""
     with pytest.raises(esolangs.GeneratorCapError, match="at most thirteen inputs"):
-        compat.generate("Befunge", "01" * 8192)
+        esolangs.generate("Befunge", "01" * 8192)
     assert "exception" in load().by_name()["Befunge"].labels
 
 

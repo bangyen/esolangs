@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs import compat, run
+from esolangs import run
 from tests.support.witness_tables import XOR
 
 
@@ -24,7 +24,7 @@ class TestAnswerMode:
                 continue
             if facts["parameterized"] or facts["answer_mode"] != "output":
                 continue
-            program = compat.generate(name, XOR)
+            program = esolangs.generate(name, XOR)
             got = "".join(
                 esolangs.read_answer(
                     name,

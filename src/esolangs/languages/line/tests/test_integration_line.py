@@ -9,7 +9,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs import DialectSettings, Raster, compat, run
+from esolangs import DialectSettings, Raster, run
 from esolangs.cli import main
 from esolangs.languages.line.interpreter.extract import detect_scale, normalize_scale
 from esolangs.languages.line.interpreter.mask import Mask
@@ -31,24 +31,29 @@ def test_cli_scaled_raster(capsysbinary, scale) -> None:
 
 @pytest.mark.medium
 @pytest.mark.parametrize("scale", [1, 2])
-def test_raw_png_round_trip_executes(scale) -> None:
+def test_raw_png_round_trip_executes(scale, tmp_path) -> None:
     settings = DialectSettings()
-    source = compat.generate("Line", "01", scale=scale, settings=settings)
-    raw = Raster.from_png(source.to_png())
+    source = esolangs.generate("Line", "01", scale=scale, settings=settings)
+    path = tmp_path / "program.png"
+    esolangs.save_program(source, path)
+    raw = Raster.from_png(path.read_bytes())
     assert raw.settings == settings
-    restored = compat.load_program(
+    restored = esolangs.load_program(
         "Line", esolangs.dump_program("Line", raw, settings=settings)
     )
-    assert restored.rows == source.rows
+    assert isinstance(restored, esolangs.ProgramArtifact)
+    assert restored.source.rows == source.source.rows
     assert _evaluate("Line", restored, inputs=1) == "01"
 
 
 @pytest.mark.parametrize("value", ["!", "abcd", "é"])
 def test_invalid_png(value) -> None:
-    document = json.loads(esolangs.dump_program("Line", compat.generate("Line", "01")))
+    document = json.loads(
+        esolangs.dump_program("Line", esolangs.generate("Line", "01"))
+    )
     document["source"] = value
     with pytest.raises(esolangs.ProgramError):
-        compat.load_program("Line", json.dumps(document))
+        esolangs.load_program("Line", json.dumps(document))
 
 
 class TestTheSmallInconsistencies:
@@ -59,7 +64,7 @@ class TestTheSmallInconsistencies:
     ) -> None:
         """Every value-taking option refused a repeat; this flag did not."""
         path = tmp_path / "p.txt"
-        path.write_text(compat.generate(REFERENCE, "0110"))
+        path.write_text(esolangs.generate(REFERENCE, "0110").source)
         with pytest.raises(SystemExit) as exc:
             call_main(
                 ["run", "--isolated", "--isolated", REFERENCE, str(path)],
@@ -87,10 +92,12 @@ class TestTheSmallInconsistencies:
 
 
 def test_source_kind_cannot_change_language_contract() -> None:
-    document = json.loads(esolangs.dump_program("Line", compat.generate("Line", "01")))
+    document = json.loads(
+        esolangs.dump_program("Line", esolangs.generate("Line", "01"))
+    )
     document["language"] = REFERENCE
     with pytest.raises(esolangs.ProgramError):
-        compat.load_program("Brainfuck", json.dumps(document))
+        esolangs.load_program("Brainfuck", json.dumps(document))
 
 
 @pytest.mark.medium
@@ -128,7 +135,7 @@ def test_a_one_pixel_path_below_a_stair_stepped_arrowhead_keeps_scale_one() -> N
 
 def test_a_two_pixel_speck_nearer_than_the_path_is_not_the_path() -> None:
     # Extraction tolerates two stray pixels; they must not be read as the path.
-    rows = [list(row) for row in compat.generate("Line", "01").rows]
+    rows = [list(row) for row in esolangs.generate("Line", "01").source.rows]
     for y in (1, 2):
         rows[y][51] = (0, 0, 0)
     image = Raster(tuple(map(tuple, rows)))
@@ -147,9 +154,11 @@ def test_explicit_line_scale_checks_ink_blocks() -> None:
 
 @pytest.mark.medium
 def test_explicit_scale_validates_lazy_line_pixels() -> None:
-    image = compat.generate("Line", "00", scale=2)
+    image = esolangs.generate("Line", "00", scale=2)
     assert run("Line", image, stdin="1\n", scale=2).output == "0"
-    assert run("Line", Raster.from_png(image.to_png()), stdin="1\n").output == "0"
+    assert (
+        run("Line", Raster.from_png(image.source.to_png()), stdin="1\n").output == "0"
+    )
     with pytest.raises(esolangs.ProgramError, match="uniform"):
         run("Line", image, stdin="1\n", scale=3)
 

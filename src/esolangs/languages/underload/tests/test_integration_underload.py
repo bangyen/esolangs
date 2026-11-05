@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import compat, run
+from esolangs import run
 from esolangs.runtime import _isolated
 from tests.support.evaluation import _evaluate
 from tests.support.vm_support import _BUDGET, _LINUX
@@ -79,5 +79,8 @@ def test_memory_failure_during_evaluation_is_not_an_answer() -> None:
     assert caught.value.partial_output == "0"
 
 
-def _growing_template(doublings: int) -> str:
-    return compat.generate("Underload", "01") + "(x)" + ":*" * doublings
+def _growing_template(doublings: int) -> esolangs.TemplateArtifact:
+    from dataclasses import replace
+
+    template = esolangs.generate("Underload", "01")
+    return replace(template, source=template.source + "(x)" + ":*" * doublings)

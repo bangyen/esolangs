@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
 
@@ -11,7 +10,7 @@ from tests.support.reference import REFERENCE
 def test_generate_refuses_a_language_with_no_generator() -> None:
     """A registered language may have no generator, and must say so."""
     with pytest.raises(esolangs.ArgumentError) as exc:
-        compat.generate("Deadfish", "0110")
+        esolangs.generate("Deadfish", "0110")
     message = str(exc.value)
     assert "no boolean generator" in message
     assert "generator contracts" in message

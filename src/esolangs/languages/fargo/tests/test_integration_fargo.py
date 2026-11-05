@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import compat, run
+from esolangs import run
 from esolangs.exceptions import ArgumentError
 from tests.support.cli_support import call_both
 from tests.support.reference import REFERENCE
@@ -43,7 +43,7 @@ def test_cli_invalid_settings_precede_io(choices, capsys) -> None:
 
 @pytest.mark.medium
 def test_bounded_run_executes_generated_xor() -> None:
-    program = compat.generate("Fargo", "0110")
+    program = esolangs.generate("Fargo", "0110")
     for row, expected in enumerate("0110"):
         stdin = esolangs.encode_inputs("Fargo", tuple(map(int, format(row, "02b"))))
         assert run("Fargo", program, stdin=stdin, max_steps=1000).output == expected
@@ -92,7 +92,7 @@ def test_the_input_is_a_row_index() -> None:
 def test_a_bit_per_line_input_is_the_wrong_row() -> None:
     """Only n>=4 shows it."""
     table = "0000000000000001"  # AND of four inputs
-    program = compat.generate("Fargo", table)
+    program = esolangs.generate("Fargo", table)
     right = run(
         "Fargo",
         program,
@@ -107,7 +107,9 @@ def test_a_bit_per_line_input_is_the_wrong_row() -> None:
 def test_missing_stdin_selects_row_zero() -> None:
     """Fargo answered row 0 -- the starkest case, since nothing was fed."""
     assert (
-        run("Fargo", compat.generate("Fargo", "10010110"), stdin="", timeout=10).output
+        run(
+            "Fargo", esolangs.generate("Fargo", "10010110"), stdin="", timeout=10
+        ).output
         == "1"
     )
 

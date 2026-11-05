@@ -68,6 +68,10 @@ Owned Boolean tests for Underload, Eval, Cyclic tag, Bitwise Cyclic Tag, Stisp
 and FRACTRAN retain template bindings. Persistence checks restore artifacts;
 native calls unwrap only filled programs. Remaining template callers stay open.
 
+Owned integration callers now retain artifacts through execution, debugging,
+pickle and portable round trips, including raster and compressed source.
+Native-file fixtures unwrap explicitly; modified templates retain bindings.
+
 Accounting and analysis rows require owned witnesses, not just a declared hook
 or a recognized helper name. Certification needs an installed-package/lazy-import
 acceptance audit after the active separation work lands. Storage policy needs

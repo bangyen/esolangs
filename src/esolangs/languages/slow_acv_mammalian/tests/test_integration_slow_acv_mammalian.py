@@ -5,8 +5,7 @@ import json
 import pytest
 
 import esolangs
-from esolangs import DialectSettings, compat, run
-from esolangs.tagged import _Tagged
+from esolangs import DialectSettings, run
 
 
 @pytest.mark.medium
@@ -18,7 +17,9 @@ def test_mammalian_rejects_unknown_words_before_output(word) -> None:
 
 def test_partial_overrides_merge_and_validate() -> None:
     settings = DialectSettings(cell_modulus=256, io_modulus=255)
-    source = _Tagged("SEED " * 255 + "DIGEST PRONOUNCE", "SLOW ACV MAMMALIAN", settings)
+    source = esolangs.ProgramArtifact(
+        "SEED " * 255 + "DIGEST PRONOUNCE", "SLOW ACV MAMMALIAN", settings
+    )
     assert run("SLOW ACV MAMMALIAN", source).output == chr(0)
     assert run(
         "SLOW ACV MAMMALIAN", source, settings=DialectSettings(io_modulus=256)
@@ -34,4 +35,4 @@ def test_large_integer_setting_is_rejected() -> None:
     document = json.loads(esolangs.dump_program("SLOW ACV MAMMALIAN", "SEED"))
     document["settings"] = {"cell_modulus": {"integer": hex(1 << 20_000)}}
     with pytest.raises(esolangs.ProgramError):
-        compat.load_program("SLOW ACV MAMMALIAN", json.dumps(document))
+        esolangs.load_program("SLOW ACV MAMMALIAN", json.dumps(document))

@@ -6,7 +6,6 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import compat
 from tests.support.cli_support import call_both
 from tests.support.generator_support import evaluate_generated, overruns
 from tests.support.reference import REFERENCE
@@ -24,7 +23,7 @@ class TestABreakpointMustBeAbleToFire:
 
     def test_a_grid_coordinate_is_still_accepted(self) -> None:
         """A 2D language's ``ip`` is a tuple, so that spelling must pass."""
-        program = compat.generate("Streetcode", "0110")
+        program = esolangs.generate("Streetcode", "0110")
         dbg = debugger_api.make_debugger(
             "Streetcode", program, stdin=esolangs.encode_inputs("Streetcode", [0, 1])
         )
@@ -73,7 +72,7 @@ class TestTheAdvisoryNotesAreRenderedOnce:
     ) -> None:
         """A raw UserWarning would print this file's path and a line of it."""
         path = tmp_path / "p.txt"
-        path.write_text(compat.generate(REFERENCE, "00010111"))
+        path.write_text(esolangs.generate(REFERENCE, "00010111").source)
         out, err = call_both(["run", REFERENCE, str(path)], capsys, stdin="110011")
         assert out == "1"
         assert "read 3 of the 6 lines" not in err
@@ -93,8 +92,8 @@ class TestTheAdvisoryNotesAreRenderedOnce:
 def test_width_floor_matches_its_source_and_overrun_count() -> None:
     """Warnings follow actual rendered widths, including narrower constructions."""
     assert esolangs.describe("Streetcode")["width_effect"] == "layout"
-    source = compat.generate("Streetcode", "10010110", width=1)
-    assert max(map(len, source.splitlines())) == 7
+    source = esolangs.generate("Streetcode", "10010110", width=1)
+    assert max(map(len, source.source.splitlines())) == 7
     assert overruns("Streetcode", "10010110") == (2, 6)
     assert evaluate_generated("Streetcode", "10010110", width=1) == "10010110"
 

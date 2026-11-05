@@ -7,7 +7,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import DialectSettings, compat, run
+from esolangs import DialectSettings, run
 from tests.support.evaluation import _evaluate
 
 
@@ -18,10 +18,10 @@ class TestEveryDumpSaysWhereTheAnswerIs:
         """It claims the whole dump is the answer bit.  Check that, do not trust it."""
         note = str(esolangs.describe("Bitdeque")["answer_convention"])
         assert "the whole dump is the answer" in note
-        template = compat.generate("Bitdeque", "0110")
+        template = esolangs.generate("Bitdeque", "0110")
         for combo in range(4):
             bits = [(combo >> (1 - i)) & 1 for i in range(2)]
-            program = compat.instantiate("Bitdeque", template, bits)
+            program = esolangs.instantiate("Bitdeque", template, bits)
             dump = run("Bitdeque", program, stdin="", timeout=10).output
             assert dump == "0110"[combo], bits
             assert len(dump) == 1, dump
@@ -30,44 +30,53 @@ class TestEveryDumpSaysWhereTheAnswerIs:
 @pytest.mark.parametrize("template", [False, True])
 def test_text_pickle_retains_settings(template) -> None:
     settings = DialectSettings()
-    source = compat.generate("Bitdeque", "0110", settings=settings)
+    source = esolangs.generate("Bitdeque", "0110", settings=settings)
     if not template:
-        source = compat.instantiate("Bitdeque", source, [1, 0])
+        source = esolangs.instantiate("Bitdeque", source, [1, 0])
     restored = pickle.loads(pickle.dumps(source))
     assert restored.settings == settings
     assert type(restored) is type(source)
     if template:
-        restored = compat.instantiate("Bitdeque", restored, [1, 0])
+        restored = esolangs.instantiate("Bitdeque", restored, [1, 0])
     assert run("Bitdeque", restored).output == "1"
 
 
-def test_settings_through_plain_text_and_template_override() -> None:
+def test_settings_through_explicit_template_and_override() -> None:
     settings = DialectSettings()
-    template = compat.generate("Bitdeque", "0110", settings=settings)
-    assert not hasattr(str(template), "settings")
-    filled = compat.instantiate("Bitdeque", str(template), [1, 0], settings=settings)
+    template = esolangs.generate("Bitdeque", "0110", settings=settings)
+    assert not hasattr(template.source, "settings")
+    explicit = esolangs.TemplateArtifact(
+        template.source, template.language, template.bindings
+    )
+    filled = esolangs.instantiate("Bitdeque", explicit, [1, 0], settings=settings)
     assert filled.settings is settings
     assert run("Bitdeque", filled).output == "1"
 
-    source = compat.generate("Brainfuck", "01")
+    source = esolangs.generate("Brainfuck", "01")
     assert source.settings is None
     assert run("Brainfuck", source, stdin="1", settings=DialectSettings()).output == "1"
-    filled = compat.instantiate(
+    filled = esolangs.instantiate(
         "Bitdeque", template, [1, 0], settings=DialectSettings()
     )
     assert filled.settings == settings
     assert run("Bitdeque", filled).output == "1"
 
 
-@pytest.mark.parametrize("plain", [False, True])
-def test_balanced_bitdeque_setters(plain) -> None:
+@pytest.mark.parametrize("restored", [False, True])
+def test_balanced_bitdeque_setters(restored) -> None:
     settings = DialectSettings()
     table = "10010110"
-    program = compat.generate("Bitdeque", table, balance=True, settings=settings)
+    program = esolangs.generate("Bitdeque", table, balance=True, settings=settings)
     for row, expected in enumerate(table):
-        source = str(program) if plain else program
+        source = (
+            esolangs.load_program(
+                "Bitdeque", esolangs.dump_program("Bitdeque", program)
+            )
+            if restored
+            else program
+        )
         bits = tuple(map(int, format(row, "03b")))
-        filled = compat.instantiate(
+        filled = esolangs.instantiate(
             "Bitdeque", source, bits, truth_table=table, settings=settings
         )
         assert run("Bitdeque", filled, settings=settings).output == expected
@@ -75,19 +84,19 @@ def test_balanced_bitdeque_setters(plain) -> None:
 
 @pytest.mark.medium
 def test_filled_template_becomes_portable_text() -> None:
-    source = compat.generate("Bitdeque", "0110", settings=DialectSettings())
-    filled = compat.instantiate("Bitdeque", source, [1, 0])
+    source = esolangs.generate("Bitdeque", "0110", settings=DialectSettings())
+    filled = esolangs.instantiate("Bitdeque", source, [1, 0])
     document = esolangs.dump_program("Bitdeque", filled)
     assert json.loads(document)["kind"] == "text"
-    assert run("Bitdeque", compat.load_program("Bitdeque", document)).output == "1"
+    assert run("Bitdeque", esolangs.load_program("Bitdeque", document)).output == "1"
 
 
 def test_foreign_language_is_rejected() -> None:
-    source = compat.generate("Bitdeque", "0110", settings=DialectSettings())
+    source = esolangs.generate("Bitdeque", "0110", settings=DialectSettings())
     with pytest.raises(esolangs.ProgramError):
         esolangs.dump_program("Brainfuck", source)
     with pytest.raises(esolangs.ProgramError, match="program language"):
-        compat.load_program("Brainfuck", esolangs.dump_program("Bitdeque", source))
+        esolangs.load_program("Brainfuck", esolangs.dump_program("Bitdeque", source))
 
 
 @pytest.mark.parametrize(
@@ -103,11 +112,11 @@ def test_foreign_language_is_rejected() -> None:
 )
 def test_invalid_template_fields(field, value) -> None:
     document = json.loads(
-        esolangs.dump_program("Bitdeque", compat.generate("Bitdeque", "0110"))
+        esolangs.dump_program("Bitdeque", esolangs.generate("Bitdeque", "0110"))
     )
     document[field] = value
     with pytest.raises(esolangs.ProgramError):
-        compat.load_program("Bitdeque", json.dumps(document))
+        esolangs.load_program("Bitdeque", json.dumps(document))
 
 
 @pytest.mark.medium

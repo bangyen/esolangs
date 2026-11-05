@@ -7,7 +7,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import compat, run
+from esolangs import run
 from esolangs.cli import HELP
 from esolangs.runtime._execution import interpreter_module
 from esolangs.vm import make_vm, run_until_halt_or_all_branches_cycle
@@ -215,8 +215,8 @@ class TestASeedMakesARunRepeat:
 def test_width_floor_matches_its_source_and_overrun_count() -> None:
     """Warnings follow actual rendered widths, including narrower constructions."""
     assert esolangs.describe("LaserFuck")["width_effect"] == "layout"
-    source = compat.generate("LaserFuck", "10010110", width=1)
-    assert max(map(len, source.splitlines())) == 8
+    source = esolangs.generate("LaserFuck", "10010110", width=1)
+    assert max(map(len, source.source.splitlines())) == 8
     assert overruns("LaserFuck", "10010110") == (2, 7)
     assert evaluate_generated("LaserFuck", "10010110", width=1) == "10010110"
 

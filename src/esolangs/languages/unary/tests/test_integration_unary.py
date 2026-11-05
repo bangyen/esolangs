@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs import compat, run
+from esolangs import run
 from tests.support.cli_support import call_main
 
 
@@ -19,20 +19,21 @@ def test_unary_generator_declares_byte_inputs_and_termination_answers() -> None:
     assert description["input_encoding"] == ("\x00", "\xff")
     assert description["answer_mode"] == "termination"
     assert esolangs.encode_inputs("Unary", (0, 1)) == "\x00\xff"
-    assert len(compat.generate("Unary", "01")) == 887
+    assert len(esolangs.generate("Unary", "01").source) == 887
 
 
 def test_compressed_and_plain_sources_share_execution(tmp_path) -> None:
-    program = compat.generate("Unary", "0001")
-    assert isinstance(program, esolangs.CompressedText)
-    assert len(program) == 27_452_351
-    assert len(program.to_gzip()) == 26_712
+    program = esolangs.generate("Unary", "0001")
+    assert isinstance(program.source, esolangs.CompressedText)
+    assert len(program.source) == 27_452_351
+    assert len(program.source.to_gzip()) == 26_712
     path = tmp_path / "and.txt.gz"
-    program.save(path)
-    for source in (program, program.to_gzip(), path, str(program)):
+    esolangs.save_program(program, path)
+    for source in (program, program.source.to_gzip(), path, str(program.source)):
         assert run("Unary", source, stdin="\x00\xff", max_steps=20).output == ""
-    restored = compat.load_program("Unary", esolangs.dump_program("Unary", program))
-    assert isinstance(restored, esolangs.CompressedText)
+    restored = esolangs.load_program("Unary", esolangs.dump_program("Unary", program))
+    assert isinstance(restored, esolangs.ProgramArtifact)
+    assert isinstance(restored.source, esolangs.CompressedText)
     assert restored == program
     assert (
         run("Unary", program, stdin="\x00\xff", isolated=True, timeout=5).output == ""
