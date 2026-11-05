@@ -6,11 +6,14 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, Self
 
 from esolangs.generation.helpers import TEMPLATE_CHAR, Setters
+from esolangs.raster import Raster
 from esolangs.runtime._artifacts import (
+    Artifact,
     ProgramArtifact,
     TemplateArtifact,
     TemplateBindings,
 )
+from esolangs.runtime._program import Program
 
 if TYPE_CHECKING:
     from esolangs.settings import DialectSettings
@@ -76,6 +79,7 @@ class _Template(_Tagged):
     """
 
     _bindings: TemplateBindings
+    _spans: tuple[tuple[int, int], ...]
 
     def __new__(
         cls,
@@ -89,8 +93,16 @@ class _Template(_Tagged):
         artifact = TemplateArtifact(
             str(text), language, TemplateBindings(char, tuple(setters)), settings
         )
-        template = super().__new__(cls, artifact.source, language, settings)
+        return cls._from_artifact(artifact)
+
+    @classmethod
+    def _from_artifact(cls, artifact: TemplateArtifact) -> Self:
+        """Adapt an already validated template without retaining its source copy."""
+        template = super().__new__(
+            cls, artifact.source, artifact.language, artifact.settings
+        )
         object.__setattr__(template, "_bindings", artifact.bindings)
+        object.__setattr__(template, "_spans", artifact._spans)  # noqa: SLF001
         return template
 
     @property
@@ -106,7 +118,7 @@ class _Template(_Tagged):
     @property
     def _artifact(self) -> TemplateArtifact:
         """Recover the explicit record from the legacy source adapter."""
-        return TemplateArtifact(str(self), self.language, self._bindings, self.settings)
+        return TemplateArtifact.from_adapter(self)
 
     @property
     def inputs(self) -> int:
@@ -115,7 +127,7 @@ class _Template(_Tagged):
 
     def fill(self, bits: Sequence[int]) -> str:
         """Return the program for ``bits``; the wrong count is a TemplateError."""
-        return self._bindings.fill(str(self), bits)
+        return self._bindings.fill(str(self), bits, spans=self._spans)
 
     def __reduce__(self) -> tuple[object, ...]:
         """Pickle with the character and the setters."""
@@ -123,3 +135,17 @@ class _Template(_Tagged):
             type(self),
             (str(self), self.language, self.char, self.setters, self.settings),
         )
+
+
+def source_adapter(artifact: Artifact) -> Program:
+    """Export a record to the public source representation."""
+    if isinstance(artifact, TemplateArtifact):
+        return _Template._from_artifact(artifact)  # noqa: SLF001 - compatibility boundary
+    source = artifact.source
+    if isinstance(source, str):
+        return _Tagged(source, artifact.language, artifact.settings)
+    if isinstance(source, Raster):
+        return source.tagged(
+            artifact.language, settings=artifact.settings, scale=artifact.scale
+        )
+    return source.tagged(artifact.language, settings=artifact.settings)

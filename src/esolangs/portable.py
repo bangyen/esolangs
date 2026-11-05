@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+from collections.abc import Callable
 from dataclasses import asdict
 from os import PathLike
 from pathlib import Path
@@ -14,10 +15,15 @@ from esolangs.compressed import CompressedText, TextLimits
 from esolangs.exceptions import ArgumentError, ProgramError
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, resolve, template_char
-from esolangs.runtime._artifacts import ProgramArtifact, TemplateArtifact
+from esolangs.runtime._artifacts import (
+    Artifact,
+    ProgramArtifact,
+    TemplateArtifact,
+    TemplateBindings,
+)
 from esolangs.runtime._program import Program
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
-from esolangs.tagged import _Tagged, _Template
+from esolangs.tagged import _Tagged, source_adapter
 
 _FORMAT = "esolangs.program"
 
@@ -165,16 +171,15 @@ def decode_settings(value: Any) -> DialectSettings | None:
 
 def _load_png(
     value: dict[str, Any], name: str, settings: DialectSettings | None
-) -> Program:
+) -> ProgramArtifact[Raster]:
     """Restore a ``png`` document's raster."""
-    return Raster.from_png(base64.b64decode(value["source"], validate=True)).tagged(
-        name, settings=settings
-    )
+    raster = Raster.from_png(base64.b64decode(value["source"], validate=True))
+    return ProgramArtifact(raster, name, settings, raster.scale)
 
 
 def _load_gzip(
     value: dict[str, Any], name: str, settings: DialectSettings | None
-) -> Program:
+) -> ProgramArtifact[CompressedText]:
     """Restore a ``gzip`` document's compressed text."""
     limits = value.get("limits")
     if limits is not None:
@@ -185,21 +190,23 @@ def _load_gzip(
         }:
             raise ValueError("invalid compressed text limits")
         limits = TextLimits(**limits)
-    return CompressedText(
-        base64.b64decode(value["source"], validate=True), limits=limits
-    ).tagged(name, settings=settings)
+    return ProgramArtifact(
+        CompressedText(base64.b64decode(value["source"], validate=True), limits=limits),
+        name,
+        settings,
+    )
 
 
 def _load_text(
     value: dict[str, Any], name: str, settings: DialectSettings | None
-) -> Program:
+) -> ProgramArtifact[str]:
     """Restore a ``text`` document's source."""
-    return _Tagged(value["source"], name, settings)
+    return ProgramArtifact(value["source"], name, settings)
 
 
 def _load_template(
     value: dict[str, Any], name: str, settings: DialectSettings | None
-) -> Program:
+) -> TemplateArtifact:
     """Restore a ``template`` document's template and setters."""
     if not isinstance(value["char"], str) or len(value["char"]) != 1:
         raise ValueError("template char must be one character")
@@ -213,11 +220,15 @@ def _load_template(
         for pair in pairs
     ):
         raise ValueError("setters must be pairs of strings")
-    return _Template(value["source"], name, value["char"], pairs, settings)
+    return TemplateArtifact(
+        value["source"], name, TemplateBindings(value["char"], tuple(pairs)), settings
+    )
 
 
 #: Source-kind dispatch for :func:`load_program`.
-_LOADERS = {
+_LOADERS: dict[
+    str, Callable[[dict[str, Any], str, DialectSettings | None], Artifact]
+] = {
     "png": _load_png,
     "gzip": _load_gzip,
     "text": _load_text,
@@ -268,7 +279,7 @@ def load_program(language: str, document: str) -> Program:
         settings = _settings(value["settings"], name)
         if not isinstance(kind, str) or kind not in _LOADERS:
             raise ValueError("unknown source kind")
-        source = _LOADERS[kind](value, name, settings)
+        source = source_adapter(_LOADERS[kind](value, name, settings))
         return _read_source(name, source)
     except (ValueError, TypeError) as error:
         raise ProgramError(f"invalid portable program: {error}") from error

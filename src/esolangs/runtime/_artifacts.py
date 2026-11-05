@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from esolangs.exceptions import TemplateError
@@ -19,6 +19,7 @@ from esolangs.runtime._validate import check_bits
 
 if TYPE_CHECKING:
     from esolangs.settings import DialectSettings
+    from esolangs.tagged import _Template
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +29,7 @@ class ProgramArtifact[Source: Program]:
     source: Source
     language: str
     settings: DialectSettings | None = None
+    scale: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,7 +48,13 @@ class TemplateBindings:
         """How many inputs the template embeds."""
         return len(self.setters)
 
-    def fill(self, source: str, bits: Sequence[int]) -> str:
+    def fill(
+        self,
+        source: str,
+        bits: Sequence[int],
+        *,
+        spans: Sequence[tuple[int, int]] | None = None,
+    ) -> str:
         """Bind integer bits in source, refusing missing or stray runs."""
         bits = check_bits(bits, "bits")
         if len(bits) != self.inputs:
@@ -54,7 +62,7 @@ class TemplateBindings:
                 f"this template has {self.inputs} inputs, but {len(bits)} "
                 f"bits were given"
             )
-        return fill_runs(source, self.char, self.setters, bits)
+        return fill_runs(source, self.char, self.setters, bits, spans=spans)
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,7 +73,35 @@ class TemplateArtifact:
     language: str
     bindings: TemplateBindings
     settings: DialectSettings | None = None
+    # Re-parsing on adapter conversion added 20-26% to fills at n=2/4/6.
+    _spans: tuple[tuple[int, int], ...] = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         """Require every placeholder to belong to an input."""
-        runs(self.source, self.bindings.char, self.bindings.setters)
+        object.__setattr__(
+            self,
+            "_spans",
+            tuple(runs(self.source, self.bindings.char, self.bindings.setters)),
+        )
+
+    def fill(self, bits: Sequence[int]) -> ProgramArtifact[str]:
+        """Bind inputs without rescanning the immutable template's runs."""
+        return ProgramArtifact(
+            self.bindings.fill(self.source, bits, spans=self._spans),
+            self.language,
+            self.settings,
+        )
+
+    @classmethod
+    def from_adapter(cls, template: _Template) -> TemplateArtifact:
+        """Copy an immutable adapter's already validated bindings and run index."""
+        artifact = object.__new__(cls)
+        object.__setattr__(artifact, "source", str(template))
+        object.__setattr__(artifact, "language", template.language)
+        object.__setattr__(artifact, "bindings", template._bindings)  # noqa: SLF001
+        object.__setattr__(artifact, "settings", template.settings)
+        object.__setattr__(artifact, "_spans", template._spans)  # noqa: SLF001
+        return artifact
+
+
+type Artifact = ProgramArtifact[Program] | TemplateArtifact

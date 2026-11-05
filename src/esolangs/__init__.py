@@ -77,6 +77,12 @@ from esolangs.registry._describe import (
     list_languages,
 )
 from esolangs.runtime._answers import encode_inputs, read_answer
+from esolangs.runtime._artifacts import (
+    Artifact,
+    ProgramArtifact,
+    TemplateArtifact,
+    TemplateBindings,
+)
 from esolangs.runtime._execution import (
     check_signal_timeout,
     interpreter_errors,
@@ -107,6 +113,7 @@ from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 from esolangs.tagged import _Tagged, _Template
+from esolangs.tagged import source_adapter as _source_adapter
 
 #: From the installed distribution (a hand-kept copy said 0.1.0 at 0.2.0);
 #: the fallback covers an uninstalled tree.  Read on first access, not
@@ -238,6 +245,28 @@ def generate(
             (``describe(language)["generator_max_inputs"]`` and
             ``["generator_restrictions"]``).
     """
+    return _source_adapter(
+        _generate_artifact(
+            language,
+            truth_table,
+            width=width,
+            balance=balance,
+            scale=scale,
+            settings=settings,
+        )
+    )
+
+
+def _generate_artifact(
+    language: str,
+    truth_table: str,
+    *,
+    width: int | None = None,
+    balance: bool = False,
+    scale: int = 1,
+    settings: DialectSettings | None = None,
+) -> Artifact:
+    """Build and lay out source before creating a public compatibility adapter."""
     options = dialect_options(language, settings)
     check_scale(scale)
     check_flag(balance, "balance")
@@ -247,10 +276,15 @@ def generate(
                 ArgumentError("scale is only supported for raster generators"),
                 "omit scale for text languages; apply it only to raster source",
             )
-        source = generate(
-            language, truth_table, width=width, balance=balance, settings=settings
+        artifact = cast(
+            ProgramArtifact[Raster],
+            _generate_artifact(
+                language, truth_table, width=width, balance=balance, settings=settings
+            ),
         )
-        return cast(Raster, source).upscaled(scale)
+        return ProgramArtifact(
+            artifact.source.upscaled(scale), artifact.language, settings, scale
+        )
     if balance and width is not None:
         raise with_hint(
             ArgumentError("balance and width are mutually exclusive"),
@@ -289,19 +323,19 @@ def generate(
         # Tagged the way a text program is ``_Tagged``: a raster fed to a
         # text interpreter otherwise passed ``_check_program`` and answered '', a
         # confident garbage result rather than a refusal.
-        return generated.tagged(resolved, settings=settings, scale=1)
+        return ProgramArtifact(generated, resolved, settings, scale=1)
     if isinstance(generated, CompressedText):
-        return generated.wrapped(width).tagged(resolved, settings=settings)
+        return ProgramArtifact(generated.wrapped(width), resolved, settings)
     slots = str(generated)
     if not lang.parameterized:
         program = slots if laid_out else wrap_program(slots, lang.id, width)
-        return _Tagged(program, resolved, settings=settings)
+        return ProgramArtifact(program, resolved, settings)
     # The generator spells each input as a run; the public template is
     # that, wrapped with every run whole (see render_template).
     inputs = len(truth_table).bit_length() - 1
     wrap_to = None if laid_out else width
     text, char, pairs = render_template(lang.id, slots, inputs, wrap_to)
-    return _Template(text, resolved, char, pairs, settings=settings)
+    return TemplateArtifact(text, resolved, TemplateBindings(char, pairs), settings)
 
 
 def _generate_balanced(
@@ -309,20 +343,23 @@ def _generate_balanced(
     truth_table: str,
     options: dict[str, Any],
     settings: DialectSettings | None,
-) -> Program:
+) -> Artifact:
     """Return ``generate(..., balance=True)``: the default, rebuilt squarest."""
-    default = generate(language, truth_table, settings=settings)
+    default = _generate_artifact(language, truth_table, settings=settings)
+    source = default.source
     name = resolve(language)
     lang = LANGUAGES[name]
     balancer = lang.balance
-    if isinstance(default, CompressedText):
-        return default.wrapped(max(1, isqrt(CELL_ASPECT * len(default))))
-    if isinstance(default, Raster):
+    if isinstance(source, CompressedText):
+        return ProgramArtifact(
+            source.wrapped(max(1, isqrt(CELL_ASPECT * len(source)))), name, settings
+        )
+    if isinstance(source, Raster):
         if balancer is None:
             return default
         raster_balance = cast(Callable[[str, Raster], Raster], balancer)
-        return raster_balance(truth_table, default).tagged(
-            name, settings=settings, scale=1
+        return ProgramArtifact(
+            raster_balance(truth_table, source), name, settings, scale=1
         )
     if balancer is not None:
         # A dialect setting the balancer names changes what it rebuilds.
@@ -331,19 +368,18 @@ def _generate_balanced(
             key: value for key, value in options.items() if key in accepted
         }
         text = cast(Callable[..., str], balancer)(
-            truth_table, default, **balance_options
+            truth_table, source, **balance_options
         )
-        if isinstance(default, _Template):
-            text, char, pairs = render_template(lang.id, text, default.inputs)
-            return _Template(text, default.language, char, pairs, settings=settings)
-        return _Tagged(text, name, settings=settings)
-    if isinstance(default, _Template):
-        marked = mark_runs(default, default.char, default.setters)
-        text = unmark(balance_program(marked, lang.id), default.char, default.inputs)
-        return _Template(
-            text, default.language, default.char, default.setters, settings=settings
-        )
-    return _Tagged(balance_program(default, lang.id), name, settings=settings)
+        if isinstance(default, TemplateArtifact):
+            text, char, pairs = render_template(lang.id, text, default.bindings.inputs)
+            return TemplateArtifact(text, name, TemplateBindings(char, pairs), settings)
+        return ProgramArtifact(text, name, settings)
+    if isinstance(default, TemplateArtifact):
+        bindings = default.bindings
+        marked = mark_runs(default.source, bindings.char, bindings.setters)
+        text = unmark(balance_program(marked, lang.id), bindings.char, bindings.inputs)
+        return TemplateArtifact(text, name, bindings, settings)
+    return ProgramArtifact(balance_program(source, lang.id), name, settings)
 
 
 def _is_template_for(
@@ -490,12 +526,13 @@ def instantiate(
     char = _check_template_source(name, template, truth_table, settings)
     assert isinstance(template, str)  # the check refuses a Raster
     bits = check_bits(bits, "bits")
-    tagged = (
-        template
+    artifact = (
+        template._artifact  # noqa: SLF001 - public source compatibility boundary
         if isinstance(template, _Template)
         else _recover_template(name, template, char, settings)
     )
-    if len(bits) != tagged.inputs:
+    inputs = artifact.bindings.inputs
+    if len(bits) != inputs:
         given = (
             f"{len(bits)} bit was given"
             if len(bits) == 1
@@ -503,22 +540,24 @@ def instantiate(
         )
         raise with_hint(
             TemplateError(
-                f"this {name} template has {tagged.inputs} input"
-                f"{'' if tagged.inputs == 1 else 's'}, but {given}"
+                f"this {name} template has {inputs} input"
+                f"{'' if inputs == 1 else 's'}, but {given}"
             ),
-            f"pass exactly {tagged.inputs} integer bits to instantiate(), "
-            "one per input",
+            f"pass exactly {inputs} integer bits to instantiate(), one per input",
         )
-    program = template_body(LANGUAGES[name].id, tagged.fill(bits))
-    return _Tagged(
-        wrap_program(program, LANGUAGES[name].id, width), name, settings=settings
+    filled = artifact.fill(bits)
+    program = wrap_program(
+        template_body(LANGUAGES[name].id, filled.source), LANGUAGES[name].id, width
     )
+    if program is not filled.source or settings is not filled.settings:
+        filled = ProgramArtifact(program, name, settings)
+    return cast(str, _source_adapter(filled))
 
 
 def _recover_template(
     name: str, template: str, char: str, settings: DialectSettings | None
-) -> _Template:
-    """Tag a plain-string template, recovering its setters from the language's."""
+) -> TemplateArtifact:
+    """Recover a plain-string template's bindings at the compatibility boundary."""
     if char not in template:
         # An ordinary program and an already-filled template look the
         # same from here, so the message names both.
@@ -544,7 +583,9 @@ def _recover_template(
                 "manually editing its placeholder runs"
             ),
         ) from exc
-    return _Template(template, name, char, pairs, settings=settings)
+    return TemplateArtifact(
+        str(template), name, TemplateBindings(char, pairs), settings
+    )
 
 
 #: ``run(..., isolated=True)``'s deadline when ``timeout`` is None: the

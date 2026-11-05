@@ -15,7 +15,7 @@ from esolangs.runtime._artifacts import (
 )
 from esolangs.tagged import _Tagged, _Template
 from tests.support.evaluation import _evaluate
-from tests.support.pick import one, one_where
+from tests.support.pick import languages, one, one_where
 from tests.support.reference import REFERENCE
 
 _EMBEDDING = one(parameterized=True, boolean_generator=True, answer_mode="output")
@@ -120,3 +120,63 @@ def test_template_record_copies_bindings_and_retains_settings() -> None:
     assert template.bindings.fill(template.source, [1]) == "1"
     assert template.language == REFERENCE
     assert template.settings is settings
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("language", "table", "options"),
+    [
+        (language, table, options)
+        for language, table in _PILOTS
+        for options in ({}, {"width": 3}, {"balance": True})
+    ]
+    + [
+        (language, "0110", {"balance": True, "scale": 2})
+        for language in languages(source_kind="raster", boolean_generator=True)
+    ],
+)
+def test_generation_adapts_only_the_final_record(language, table, options, monkeypatch):
+    exported = []
+    adapt = esolangs._source_adapter
+
+    def capture(artifact):
+        exported.append(artifact)
+        return adapt(artifact)
+
+    monkeypatch.setattr(esolangs, "_source_adapter", capture)
+    source = esolangs.generate(language, table, **options)
+    assert len(exported) == 1
+    artifact = exported[0]
+    assert isinstance(artifact, (ProgramArtifact, TemplateArtifact))
+    assert artifact.language == language
+    if isinstance(source, esolangs.Raster):
+        assert source.scale == artifact.scale == options.get("scale", 1)
+    assert _evaluate(language, source, inputs=len(table).bit_length() - 1) == table
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("language", _EMBEDDING)
+def test_template_record_reuses_validated_runs_and_retains_provenance(
+    language, monkeypatch
+):
+    import esolangs.generation.helpers as helpers
+    import esolangs.runtime._artifacts as artifacts
+
+    choices = esolangs.DialectSettings()
+    artifact = esolangs._generate_artifact(language, "0110", settings=choices)
+    assert isinstance(artifact, TemplateArtifact)
+    source = esolangs._source_adapter(artifact)
+
+    def refuse_rescan(*_args):
+        raise AssertionError("rescanned a validated template")
+
+    monkeypatch.setattr(helpers, "runs", refuse_rescan)
+    monkeypatch.setattr(artifacts, "runs", refuse_rescan)
+    restored = source._artifact
+    for bits, answer in [([0, 0], "0"), ([0, 1], "1"), ([1, 0], "1"), ([1, 1], "0")]:
+        filled = artifact.fill(bits)
+        assert isinstance(filled, ProgramArtifact)
+        assert filled.language == language
+        assert filled.settings is choices
+        assert esolangs.run(language, filled.source) == answer
+        assert restored.fill(bits).source == filled.source == source.fill(bits)

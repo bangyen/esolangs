@@ -342,14 +342,24 @@ def runs(text: str, char: str, setters: Setters) -> list[tuple[int, int]]:
     return spans
 
 
-def fill_runs(text: str, char: str, setters: Setters, bits: Sequence[int]) -> str:
-    """Return ``text`` with each input's run replaced by its bit's setter."""
+def fill_runs(
+    text: str,
+    char: str,
+    setters: Setters,
+    bits: Sequence[int],
+    *,
+    spans: Sequence[tuple[int, int]] | None = None,
+) -> str:
+    """Fill runs; supplied spans must already be validated for this source."""
     if len(bits) != len(setters):
         raise ValueError(f"expected {len(setters)} bits, got {len(bits)}")
     out: list[str] = []
     position = 0
     for (start, end), (zero, one), bit in zip(
-        runs(text, char, setters), setters, bits, strict=True
+        runs(text, char, setters) if spans is None else spans,
+        setters,
+        bits,
+        strict=True,
     ):
         out.append(text[position:start])
         out.append(one if bit else zero)
