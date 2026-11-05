@@ -25,9 +25,6 @@ workspace = "T log T: at most 2(n+1)T + 3 + bl(L-1) bits: corridor, answers, ant
 [catalogue]
 folding_constant_local = "_program"  # restore inputs and leave one answer cell
 
-[formula_arities]
-# A T-cell corridor and T - 1 answers at bl(x) + 2 bits each, the ant, ip.
-workspace = [3, 6]
 
 [schemes]
 folds_without_tree = true
@@ -124,4 +121,34 @@ rule = "and"
 size = 1071
 unit = "chars"
 scale = 1
+construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.a_painter_ant.proof_formulas:execution"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant"
+
+[resource_evidence.workspace]
+expression = "2(n+1)T + 3 + bl(L-1)"
+exact = false
+arities = [3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant"
+
+[resource_evidence.scaling]
+expression = "13T/2 + 3n - 2"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
 construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant"

@@ -23,8 +23,6 @@ definitions = ["A = 3T/4+1", "F = 30/143 at n=1/2; then (3n+5)max(6n+1,T/2) thro
 "1101001101101101" = { commands = 48, commands_by_row = { "0" = 40, "1" = 41, "2" = 40, "3" = 40, "4" = 42, "5" = 43, "6" = 45, "7" = 46, "8" = 43, "9" = 43, "10" = 46, "11" = 46, "12" = 48, "13" = 49, "14" = 48, "15" = 48 }, source_units = 426 }
 "11111110" = { commands = 29, commands_by_row = { "0" = 25, "1" = 28, "2" = 25, "3" = 29, "4" = 26, "5" = 29, "6" = 26, "7" = 29 }, source_units = 183 }
 
-[formula_arities]
-workspace = [3, 6]
 
 [ablations]
 audited = "2026-10-27"
@@ -154,4 +152,34 @@ seed = 1847
 size = 12341
 unit = "chars"
 scale = 1
+construction = "esolangs.languages.back.generator:back"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.back.proof_formulas:execution"
+exact = true
+arities = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.back.generator:back"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.back.proof_formulas:workspace"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.back.generator:back"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.back.tests.formulas:_cells"
+exact = true
+arities = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+first = 8
+unit = "cells"
+witnesses = "tests.proofs.execution:tables"
 construction = "esolangs.languages.back.generator:back"

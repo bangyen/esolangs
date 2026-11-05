@@ -160,3 +160,33 @@ size = 9050
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.three_x.generator:three_x"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "L"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.three_x.generator:three_x"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.three_x.tests.formulas:_three_x"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.three_x.generator:three_x"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.three_x.tests.formulas:_chars"
+exact = false
+arities = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.three_x.generator:three_x"

@@ -35,6 +35,3 @@ def _chars(n: int, _: str) -> int:
         )
     )
     return (17 * (1 << n) + 316 * n + 482) // 2 - (n >= 7) - 8 * (n >= 13) + delta
-
-
-FORMULAS = {"scaling": (_chars, True, (4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14))}

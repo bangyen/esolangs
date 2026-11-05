@@ -30,8 +30,6 @@ evidence = "docs/proofs/line-sharing.md"
 "1101001101101101" = { commands = 19, commands_by_row = { "0" = 18, "1" = 18, "2" = 19, "3" = 19, "4" = 17, "5" = 17, "6" = 17, "7" = 17, "8" = 19, "9" = 19, "10" = 20, "11" = 20, "12" = 18, "13" = 18, "14" = 19, "15" = 19 }, source_units = 687177 }
 "11111110" = { commands = 15, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 13, "5" = 13, "6" = 15, "7" = 15 }, source_units = 190647 }
 
-[formula_arities]
-execution = [3, 5]
 
 [ablations]
 audited = "2026-10-19"
@@ -154,4 +152,34 @@ seed = 1847
 size = 23976000
 unit = "pixels"
 scale = 1
+construction = "esolangs.languages.line.generator:line"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.line.proof_formulas:execution"
+exact = [3, 5]
+arities = [1, 2, 3, 5, 6, 8]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.line.generator:line"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.line.proof_formulas:workspace"
+exact = true
+arities = [5]
+first = 5
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.line.generator:line"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.line.tests.formulas:_pixels"
+exact = false
+arities = [6, 7]
+first = 6
+unit = "pixels"
+witnesses = "tests.proofs.execution:tables"
 construction = "esolangs.languages.line.generator:line"

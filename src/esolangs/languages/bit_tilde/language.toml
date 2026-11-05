@@ -98,9 +98,6 @@ seed = "random.Random(184700+n+1000*i).getrandbits(1<<n), i<200"
 tables = "400 generic tables; all four forced encodings through n3"
 verdict = "rejected: four named encodings (base e0/e1, diff or complement) save .591%/.491%, source135360/228324 ->134560/227203, below20% declining. Complemented diff needs two extra tilde commands in its conditional clear AND swapped print windows; without the window swap0001 row0 prints1 instead of0. Base e1 drops the selector preflip; restoring it swaps answers and the checker catches row2. All four corrected encodings execute every table/row through n3; public small forms may otherwise choose the unchanged affine/stride reader. Public n3 totals unchanged; fixed sample commands437146/757152 ->434850/754974. No searched/frozen encodings or production choice added."
 
-[formula_arities]
-execution = [4, 5, 6, 8]
-workspace = [4, 5, 6, 8]
 
 [interpreter_ablations.speedup_prototype_20261103]
 price = -3.6079
@@ -127,4 +124,34 @@ rule = "and"
 size = 2610
 unit = "chars"
 scale = 1
+construction = "esolangs.languages.bit_tilde.generator:bit_tilde"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "19T/4+18n+123"
+exact = true
+arities = [4, 5, 6, 8]
+first = 4
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.bit_tilde.generator:bit_tilde"
+
+[resource_evidence.workspace]
+expression = "3T/2+50+bl(3T/2+42)+bl(3T+19n+115)+bl(n)"
+exact = true
+arities = [4, 5, 6, 8]
+first = 4
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.bit_tilde.generator:bit_tilde"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.bit_tilde.tests.formulas:_chars"
+exact = true
+arities = [4, 6, 8]
+first = 4
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
 construction = "esolangs.languages.bit_tilde.generator:bit_tilde"

@@ -34,9 +34,7 @@ from esolangs.generation.wrap import (
     balance_score,
     wrap_space_delimited,
 )
-from esolangs.languages.modulous.proof_formulas import execution, workspace
 from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
@@ -206,9 +204,5 @@ LANGUAGE = Language(
         # Not a tree: pops a ``PSH STR`` table down to the indexed character.
         shape=Shape.LOOKUP,
         balance=_balance,
-    ),
-    certification=CertificationSpec(
-        proof_execution=(execution, True, (1, 2, 3, 5)),
-        proof_workspace=(workspace, True, (2, 3, 4, 6)),
     ),
 )

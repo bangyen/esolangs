@@ -47,9 +47,7 @@ from esolangs.generation.helpers import (
     short_name,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.fargo.proof_formulas import execution, workspace
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -466,14 +464,5 @@ LANGUAGE = Language(
         input_shape="row_index",
         note="Fargo reads one number whose bits are the inputs, so the "
         "committed input is the row index rather than a bit per line",
-    ),
-    certification=CertificationSpec(
-        # Fargo reads one *number* before the program starts, not a bit per
-        # line, and ``@ k`` indexes that number's bits.  The boolean
-        # convention is therefore to feed the row index: the inputs
-        # most-significant-first are its binary digits, so the 0,1 row of a
-        # two-input table is the single line "1".
-        proof_execution=(execution, False, (3, 7)),
-        proof_workspace=(workspace, False, (6,)),
     ),
 )

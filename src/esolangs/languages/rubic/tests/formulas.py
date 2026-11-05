@@ -14,6 +14,3 @@ def witness(n: int) -> str:
     for _ in range(2, n):
         left, right = left + right, right + left
     return left
-
-
-FORMULAS = {"workspace": (workspace, True, (1, 2, 3, 6))}

@@ -36,9 +36,7 @@ from esolangs.generation.wrap import (
     wrap_space_delimited,
 )
 from esolangs.languages.fractran.interpreter.index import SMALL_BASE
-from esolangs.languages.fractran.proof_formulas import execution, workspace
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -236,8 +234,4 @@ LANGUAGE = Language(
         "is the value the run stops on -- 1 for a zero and 2 for a one",
     ),
     example=Example(expected="1"),
-    certification=CertificationSpec(
-        proof_execution=(execution, True, (3, 5)),
-        proof_workspace=(workspace, True, (3, 5, 6)),
-    ),
 )

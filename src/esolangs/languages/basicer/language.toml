@@ -62,3 +62,33 @@ size = 108
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.basicer.generator:basicer"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "n + 2"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.basicer.generator:basicer"
+
+[resource_evidence.workspace]
+expression = "n + 4"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.basicer.generator:basicer"
+
+[resource_evidence.scaling]
+expression = "T + 2"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "lines"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.basicer.generator:basicer"

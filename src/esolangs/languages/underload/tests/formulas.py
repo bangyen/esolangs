@@ -12,6 +12,3 @@ def scaling(n: int, _: str) -> int:
     if n == 4:
         return 153
     return 5 * n + 31 * 2**n // 4 - 3
-
-
-FORMULAS = {"scaling": (scaling, False, (4, 5, 6, 7))}

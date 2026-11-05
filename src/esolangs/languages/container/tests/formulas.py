@@ -35,6 +35,3 @@ def _threshold(n: int, _: str) -> int:
         + 2**n
         - ((4 * n + 3 + 2 ** (n - 1)) if n >= 2 else 0)
     )
-
-
-FORMULAS = {"scaling": (_threshold, False, (2, 3, 4, 5))}

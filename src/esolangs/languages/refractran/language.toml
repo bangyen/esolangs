@@ -144,3 +144,24 @@ size = 30327
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.refractran.generator:refractran"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "2L + 1"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.refractran.generator:refractran"
+
+[resource_evidence.workspace]
+expression = "8L + bl(L) + 16"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.refractran.generator:refractran"

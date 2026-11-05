@@ -22,9 +22,7 @@ from esolangs.generation.packed_decoder import (
     packed_decoder,
 )
 from esolangs.generation.wrap import wrap_grid
-from esolangs.languages.s_bleq.proof_formulas import execution
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -186,8 +184,5 @@ LANGUAGE = Language(
     backend=BooleanBackend(generate=s_bleq, wrap=wrap_grid),
     contract=BooleanContract(
         input_shape="char_stream",
-    ),
-    certification=CertificationSpec(
-        proof_execution=(execution, True, (3, 4, 5, 6, 7, 8, 9))
     ),
 )

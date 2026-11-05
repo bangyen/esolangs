@@ -115,3 +115,33 @@ size = 98450
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.eval.generator:eval"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "L+1"
+exact = true
+arities = [4, 6]
+first = 4
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.eval.generator:eval"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.eval.tests.formulas:_workspace"
+exact = true
+arities = [4, 6]
+first = 4
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.eval.generator:eval"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.eval.tests.formulas:_chars"
+exact = true
+arities = [4, 6]
+first = 4
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.eval.generator:eval"

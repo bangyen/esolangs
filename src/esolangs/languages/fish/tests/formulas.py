@@ -52,10 +52,3 @@ def _scaling(n: int, _: str) -> int:
     if n > 55:
         return 2 * (1 << n)
     return _packed(n)[0] + 6 - (-(1 << n) // 6)
-
-
-FORMULAS = {
-    "execution": (_execution, True, (3, 4, 5, 6, 7)),
-    "workspace": (_workspace, True, (3, 4, 5, 6, 7)),
-    "scaling": (_scaling, True, (3, 4, 5, 6, 7)),
-}

@@ -31,18 +31,7 @@ workspace = "linear: worst 8n+26 bits at n = 5, 6, then 12T+n+6+2bl(n)"
 [catalogue]
 sharing_exempt = "a leaf retires by its path's bits, so equal subtables differ as text; a lookup above sixty-four entries"
 
-[formula_arities]
-execution = [5]
-workspace = [5]
 
-# Plain-rewrite audit record, re-audited in area: each trick's saving
-# measured in shipped context at the largest arity where it runs
-# (area = rows x longest row; seeded random tables, seed 184700+n,
-# 200 per arity).  Prices are contextual -- joint removals were
-# measured separately before landing.  Rows for removed tricks stay
-# as the record of why they left.  The first audit priced these rows
-# in chars; those prices are superseded here and kept in
-# EXPERIMENT-laserfuck.md (this audit: EXPERIMENT-laserfuck-reaudit.md).
 [ablations]
 audited = "2026-10-18"
 
@@ -201,4 +190,34 @@ rule = "zero"
 size = 36
 unit = "chars"
 scale = 1
+construction = "esolangs.languages.laserfuck.generator:laserfuck"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.laserfuck.proof_formulas:execution"
+exact = true
+arities = [5, 6, 7]
+first = 5
+unit = "steps"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.laserfuck.generator:laserfuck"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.laserfuck.proof_formulas:workspace"
+exact = true
+arities = [5, 6, 7]
+first = 5
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.laserfuck.generator:laserfuck"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.laserfuck.tests.formulas:_cells"
+exact = true
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
+first = 1
+unit = "cells"
+witnesses = "tests.proofs.execution:tables"
 construction = "esolangs.languages.laserfuck.generator:laserfuck"

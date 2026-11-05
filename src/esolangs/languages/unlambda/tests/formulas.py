@@ -49,6 +49,3 @@ def _workspace(n: int, program: str) -> int:
     return (
         16 * (_weight(term) + n * _bound_weight(term)) + frames * bl(frames) + 9 + bl(n)
     )
-
-
-FORMULAS = {"workspace": (_workspace, False, _ARITIES)}

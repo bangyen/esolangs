@@ -147,3 +147,33 @@ size = 1845
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.dimensional.generator:dimensional"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "11T + ⌊(2T+1)/5⌋ - 4n + 43"
+exact = true
+arities = [4, 6]
+first = 4
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.dimensional.generator:dimensional"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.dimensional.proof_formulas:workspace"
+exact = true
+arities = [1, 2, 3, 4]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.dimensional.generator:dimensional"
+
+[resource_evidence.scaling]
+expression = "2T + 20n + 42"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.dimensional.generator:dimensional"

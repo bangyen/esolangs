@@ -169,3 +169,33 @@ size = 412
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.collatz_multiverse.proof_formulas:execution"
+exact = false
+arities = [3, 5, 6, 8]
+first = 3
+unit = "lines"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.collatz_multiverse.proof_formulas:workspace"
+exact = false
+arities = [3, 4, 5, 6, 7, 9]
+first = 3
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.collatz_multiverse.tests.formulas:_chars"
+exact = false
+arities = [3, 4, 5, 6, 7]
+first = 3
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"

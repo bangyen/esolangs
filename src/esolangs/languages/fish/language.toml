@@ -125,3 +125,33 @@ size = 267
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.fish.generator:fish"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.fish.tests.formulas:_execution"
+exact = true
+arities = [2, 3, 4, 5, 6, 7]
+first = 2
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.fish.generator:fish"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.fish.tests.formulas:_workspace"
+exact = true
+arities = [2, 3, 4, 5, 6, 7]
+first = 2
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.fish.generator:fish"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.fish.tests.formulas:_scaling"
+exact = true
+arities = [2, 3, 4, 5, 6, 7]
+first = 2
+unit = "cells"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.fish.generator:fish"

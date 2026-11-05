@@ -37,9 +37,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, _tokens, balance_score
-from esolangs.languages.slashes.proof_formulas import workspace
 from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -169,5 +167,4 @@ LANGUAGE = Language(
         note="Inputs fill the binary row index before unary selection; "
         "constant tables parse the input letters as a nonmatching rule pattern.",
     ),
-    certification=CertificationSpec(proof_workspace=(workspace, True, (1, 2, 3, 5))),
 )

@@ -1,6 +1,6 @@
 """Source ceiling for input buffering and shared residual cases."""
 
-from esolangs.languages.switchcase.proof_formulas import diagram_cap, workspace
+from esolangs.languages.switchcase.proof_formulas import diagram_cap
 
 
 def _chars(n: int, _: str) -> int:
@@ -18,9 +18,3 @@ def workspace_witness(n: int) -> str:
         # first bit. All upper nodes differ; last01 shares the first leaf.
         return "".join(f"{v:04b}" for v in range(16) if v >> 2 != v & 3)[:32]
     return "".join(str(row.bit_count() % 2) for row in range(1 << n))
-
-
-FORMULAS = {
-    "scaling": (_chars, False, (1, 2, 3, 4, 5, 6, 8, 9, 10, 12)),
-    "workspace": (workspace, frozenset({1, 2, 3, 5}), (3, 5)),
-}

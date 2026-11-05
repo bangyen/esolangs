@@ -36,7 +36,6 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.wrap import wrap_chars
-from esolangs.languages.bfstack.proof_formulas import execution, workspace
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec, Payload
 from esolangs.registry._contracts import BooleanContract
@@ -199,8 +198,6 @@ LANGUAGE = Language(
     RuntimeSpec("bfstack", category="stack_based"),
     certification=CertificationSpec(
         payload=_payload,
-        proof_execution=(execution, True, (8, 9, 10)),
-        proof_workspace=(workspace, False, (3, 6)),
     ),
     backend=BooleanBackend(
         generate=bfstack,

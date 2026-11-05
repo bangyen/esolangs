@@ -196,3 +196,33 @@ size = 7097
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.dig.generator:dig"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.dig.proof_formulas:execution"
+exact = false
+arities = [7, 8, 9, 10, 11, 12]
+first = 7
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.dig.generator:dig"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.dig.proof_formulas:workspace"
+exact = true
+arities = [5]
+first = 5
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.dig.generator:dig"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.dig.tests.formulas:_cells"
+exact = [10]
+arities = [7, 8, 10]
+first = 7
+unit = "cells"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.dig.generator:dig"

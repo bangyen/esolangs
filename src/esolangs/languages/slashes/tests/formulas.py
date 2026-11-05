@@ -9,9 +9,3 @@ def _scaling(n: int, _: str) -> int:
 def _execution(n: int, _: str) -> int:
     # One sweep at n=1 is shorter without the macro; otherwise c<=T/2.
     return 28 if n == 1 else 9 * (1 << n) // 2 + n + 21
-
-
-FORMULAS = {
-    "scaling": (_scaling, True, (1, 2, 3, 5)),
-    "execution": (_execution, True, (1, 2, 3, 5)),
-}

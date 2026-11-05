@@ -114,3 +114,33 @@ size = 9297
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.slashes.generator:slashes"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.slashes.tests.formulas:_execution"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "steps"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.slashes.generator:slashes"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.slashes.proof_formulas:workspace"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.slashes.generator:slashes"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.slashes.tests.formulas:_scaling"
+exact = true
+arities = [1, 2, 3, 5]
+first = 4
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.slashes.generator:slashes"

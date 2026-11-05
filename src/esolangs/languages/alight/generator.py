@@ -35,9 +35,7 @@ from esolangs.languages.alight.interpreter._dialect import (
 from esolangs.languages.alight.interpreter._dialect import (
     list_update as validate_list_update,
 )
-from esolangs.languages.alight.proof_formulas import workspace
 from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -598,5 +596,4 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    certification=CertificationSpec(proof_workspace=(workspace, True, (3, 5))),
 )

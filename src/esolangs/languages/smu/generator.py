@@ -40,9 +40,7 @@ from string import ascii_letters
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import wrap_chars
-from esolangs.languages.smu.proof_formulas import workspace
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -139,5 +137,4 @@ LANGUAGE = Language(
         note="Smu reads one bit a run, low bit of each byte first, and "
         "packs its output bits into bytes the same way",
     ),
-    certification=CertificationSpec(proof_workspace=(workspace, True, (2, 4))),
 )

@@ -59,10 +59,6 @@ saving = 22.358354
 verdict = "kept: only opposite bottom leaves print the final input bit (17 chars) or its complement (23); the attachment's wider constant-half shortcut prints before ignored inputs and is rejected by a read-first positive control. On 100 random tables per n=7,8, one Random(7) stream, characters 323900->250592 (22.63%) and 647087->502409 (22.36%); no table grows. All rows, 76800 paired old/new executions. All tables/rows n<=3 pass; n=3 total 44737->33019 chars. Named functions, complements, ignored suffixes and random controls n=4..8 execute with wrong-table controls. n=4 parity 586->370 chars. Source <=39T and workspace <=32n+bl(L)+bl(n)+13 stay valid. Execution worst tightens 26n+9->26n-3: the inverted bottom pair takes 23 commands, each enclosing one arm adds at most 26; all-ones except the final zero reaches it. Root constants unchanged. Owned regressions enforce reads before output and preserve the following byte."
 
 
-[formula_arities]
-execution = [1, 2, 3, 5, 6]
-workspace = [1, 2, 3, 5, 6]
-
 
 [ablations.garbage_guard_20261103]
 arity = 8
@@ -97,4 +93,34 @@ rule = "parity"
 size = 305
 unit = "chars"
 scale = 1
+construction = "esolangs.languages.aprknia.generator:aprknia"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "18n + 5"
+exact = true
+arities = [1, 2, 3, 5, 6]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.aprknia.generator:aprknia"
+
+[resource_evidence.workspace]
+expression = "34n + bl(L) + bl(n) + 13"
+exact = false
+arities = [1, 2, 3, 5, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.aprknia.generator:aprknia"
+
+[resource_evidence.scaling]
+expression = "39T"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
 construction = "esolangs.languages.aprknia.generator:aprknia"

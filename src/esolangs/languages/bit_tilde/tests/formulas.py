@@ -3,6 +3,3 @@
 
 def _chars(n: int, _: str) -> int:
     return 3 * (1 << n) + 19 * n + 115
-
-
-FORMULAS = {"scaling": (_chars, True, (4, 6, 8))}

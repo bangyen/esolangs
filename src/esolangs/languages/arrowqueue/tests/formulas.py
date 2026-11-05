@@ -38,6 +38,3 @@ def _cells(n: int, _: str) -> int:
     centre = (3 + isqrt(9 + 12 * (6 * n + 7 + t))) // 2
     folds = (_fold(n, max(10, h), t - 1) for h in range(centre - 1, centre + 3))
     return min(6 * (2 * t + 6 * n + 7), *(f for f in folds if f is not None))
-
-
-FORMULAS = {"scaling": (_cells, True, (3, 4, 5, 6, 7, 8))}

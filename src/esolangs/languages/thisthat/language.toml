@@ -133,3 +133,33 @@ size = 36199
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.thisthat.generator:thisthat"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.thisthat.proof_formulas:execution"
+exact = false
+arities = [3, 4]
+first = 3
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.thisthat.generator:thisthat"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.thisthat.proof_formulas:workspace"
+exact = false
+arities = [3, 5]
+first = 3
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.thisthat.generator:thisthat"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.thisthat.tests.formulas:_cells"
+exact = false
+arities = [3, 4, 5, 6, 7, 8]
+first = 3
+unit = "cells"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.thisthat.generator:thisthat"

@@ -38,6 +38,3 @@ def _chars(n: int, _: str) -> int:
     arrays = -(-spilled // width)
     dimensions = arrays * (14 + len(str(width))) + _digits_sum(arrays)
     return 5 * (unshared + 3) + dimensions
-
-
-FORMULAS = {"scaling": (_chars, False, tuple(range(3, 25)))}

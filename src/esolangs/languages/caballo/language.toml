@@ -116,3 +116,33 @@ size = 5541
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.caballo.generator:caballo"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "n^2 + 12n + 6"
+exact = true
+arities = [3, 6]
+first = 3
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.caballo.generator:caballo"
+
+[resource_evidence.workspace]
+expression = "(n+1)(n+2)/2 + 51n + 82 + bl(n) + (3n+3) bl(⌊2L/5⌋) + (n+1) bl(n+3)"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.caballo.generator:caballo"
+
+[resource_evidence.scaling]
+expression = "33T/4 + n - 4"
+exact = true
+arities = [2, 3, 6]
+first = 2
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.caballo.generator:caballo"

@@ -5,13 +5,9 @@ Each was derived from its generator, not fitted: a fit from parity data
 ``exact`` formula must also be reached here; ``bound`` only never exceeded.
 """
 
-from collections.abc import Callable
-
 import esolangs
 from esolangs.debugger import make_vm
-from esolangs.registry import LANGUAGES
 from scripts.benchmark import WrittenState
-from tests.proofs._arities import formula_arities
 from tests.proofs._formula import ledger_formulas
 from tests.proofs._witnesses import (
     _WITNESSES,
@@ -27,26 +23,7 @@ from tests.proofs.deep.execution import _dense, run_to_answer
 from tests.support.witness_tables import parity as _parity
 from tests.support.witness_tables import row_bits
 
-#: Formulas the ledger notation cannot state: a case split, a definition,
-#: a count taken from the program.  Each lives on its language's
-#: ``proof_execution`` (``proof_formulas.py`` in its package); this table
-#: holds only entries that cannot relocate, with the reason.
-_HAND: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] = {}
-#: Arities where the default (see ``ledger_formulas``) is too slow or too
-#: shallow for the construction, aggregated from each package's
-#: ``[formula_arities]`` section.
-_ARITIES = formula_arities("execution")
-
-#: Generator -> (formula, exact?, arities): the ledger's own clause where
-#: it parses (``tests/proofs/_formula.py``), else ``_HAND``.
-_HAND.update(
-    (name, lang.certification.proof_execution)
-    for name, lang in LANGUAGES.items()
-    if lang.certification.proof_execution is not None
-)
-FORMULAS = ledger_formulas(
-    lambda row: row.execution_clause, _HAND, _ARITIES, column="execution"
-)
+FORMULAS = ledger_formulas("execution")
 
 
 def _unary_tables(n: int) -> tuple[str, ...]:

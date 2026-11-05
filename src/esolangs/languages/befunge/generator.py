@@ -29,7 +29,6 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.befunge.proof_formulas import execution, workspace
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Example, Language
@@ -376,8 +375,6 @@ LANGUAGE = Language(
     ),
     certification=CertificationSpec(
         layout_switch=(2, 7, 8, 9),
-        proof_execution=(execution, True, (3, 9, 11)),
-        proof_workspace=(workspace, True, (3, 9, 11)),
     ),
     backend=BooleanBackend(
         max_inputs=MAX_INPUTS,

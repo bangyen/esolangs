@@ -26,8 +26,6 @@ definitions = ["S = 6T+28n+21 at n=2..4; 3T+28n+144 at n=5; otherwise T/2+48n+15
 [catalogue]
 folding_constant_local = "input_weights"  # one projected table entry
 
-[formula_arities]
-workspace = [3, 6]
 
 [schemes]
 folds_without_tree = true
@@ -124,4 +122,34 @@ seed = 1847
 size = 2804
 unit = "chars"
 scale = 1
+construction = "esolangs.languages.modulous.generator:modulous"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.modulous.proof_formulas:execution"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.modulous.generator:modulous"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.modulous.proof_formulas:workspace"
+exact = true
+arities = [1, 2, 3, 4, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.modulous.generator:modulous"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.modulous.tests.formulas:_chars"
+exact = true
+arities = [1, 2, 3, 4, 5, 8]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
 construction = "esolangs.languages.modulous.generator:modulous"

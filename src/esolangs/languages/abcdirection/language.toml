@@ -116,3 +116,33 @@ size = 559
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.abcdirection.generator:abcdirection"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.abcdirection.proof_formulas:execution"
+exact = true
+arities = [1, 2, 3, 7]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.abcdirection.generator:abcdirection"
+
+[resource_evidence.workspace]
+expression = "T + 10n + 56"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.abcdirection.generator:abcdirection"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.abcdirection.tests.formulas:_cells"
+exact = true
+arities = [1, 2, 3, 4, 5, 6, 7]
+first = 1
+unit = "cells"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.abcdirection.generator:abcdirection"

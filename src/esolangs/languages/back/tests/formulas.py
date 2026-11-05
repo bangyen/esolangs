@@ -122,12 +122,3 @@ def _cells(n: int, _: str) -> int:
     if n < 3:
         return 30 if n == 1 else 143
     return _comb(n) if n <= 7 else _fold(n)
-
-
-FORMULAS = {
-    "scaling": (
-        _cells,
-        True,
-        (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17),
-    )
-}

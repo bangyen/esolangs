@@ -36,9 +36,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens
-from esolangs.languages.bitdeque.proof_formulas import workspace
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -288,5 +286,4 @@ LANGUAGE = Language(
         "halt; the generator leaves exactly one bit on it, so the "
         "whole dump is the answer and there is no position to name",
     ),
-    certification=CertificationSpec(proof_workspace=(workspace, True, (3, 4, 5, 6))),
 )

@@ -32,17 +32,7 @@ evidence = "docs/proofs/index.md#malbolge-bound"
 folding_ignored = "fixed-size source; an extra input port adds no cells"
 folding_constant = "direct constant builder after all reads: 618..639 characters over n=1..17"
 
-[formula_arities]
-# Every word and register is below 3^10 < 2^16; measured ~394k bits.
-workspace = [2, 3]
 
-# Plain-rewrite audit record: each trick's saving measured in shipped
-# context at the largest arity where it runs (chars; seeded random
-# tables, seed 184700+n, 200 per arity).  Prices are contextual --
-# joint removals were measured separately before landing.  Rows for
-# removed tricks stay as the record of why they left.  The emitted
-# size is one constant per arity (13,340 to n = 13, 19,683 at 14, 52,480
-# at 15, the full 59,049-cell store at 16), so every per-table trick prices at 0.0% by construction.
 [ablations]
 audited = "2026-10-18"
 
@@ -148,4 +138,34 @@ seed = 1847
 size = 13340
 unit = "chars"
 scale = 1
+construction = "esolangs.languages.malbolge.generator:malbolge"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.malbolge.proof_formulas:execution"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.malbolge.generator:malbolge"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.malbolge.proof_formulas:workspace"
+exact = false
+arities = [1, 2, 3]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.malbolge.generator:malbolge"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.malbolge.tests.formulas:_chars"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
 construction = "esolangs.languages.malbolge.generator:malbolge"

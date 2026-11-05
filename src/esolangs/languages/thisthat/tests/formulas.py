@@ -12,6 +12,3 @@ def _cells(n: int, _: str) -> int:
         side = 16 * ((1 << n // 2) - 1)
         return (side + 1) * (side + 3)
     return (16 * ((1 << (n + 1) // 2) - 1) + 1) * (16 * ((1 << (n - 1) // 2) - 1) + 3)
-
-
-FORMULAS = {"scaling": (_cells, False, (3, 4, 5, 6, 7, 8))}

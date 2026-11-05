@@ -118,3 +118,33 @@ size = 6118
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.underload.generator:underload"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "10n + 3 + 2⌊(n-1)/2⌋"
+exact = true
+arities = [3, 6]
+first = 3
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.underload.generator:underload"
+
+[resource_evidence.workspace]
+expression = "24L + 168T + 32n - 168 + bl(2L+14T+6n-14)"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.underload.generator:underload"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.underload.tests.formulas:scaling"
+exact = false
+arities = [4, 5, 6, 7]
+first = 4
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.underload.generator:underload"

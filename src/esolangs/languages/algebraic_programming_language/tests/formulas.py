@@ -53,10 +53,3 @@ def scaling(n: int, _: str) -> int:
     if 2 <= n <= 14:
         return 10 * (1 << n) + 4 * n + 6
     return 21 * (1 << n) // 2 + 4 * n + 6
-
-
-FORMULAS = {
-    "scaling": (scaling, False, (2, 3, 4, 5, 6, 8)),
-    "execution": (execution, False, (3, 4, 5, 6, 8)),
-    "workspace": (workspace, False, (3, 4, 5, 6, 8)),
-}

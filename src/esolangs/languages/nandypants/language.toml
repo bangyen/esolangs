@@ -99,3 +99,24 @@ size = 130
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.nandypants.generator:nandypants"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "12n + 18"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.nandypants.generator:nandypants"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.nandypants.proof_formulas:workspace"
+exact = false
+arities = [1, 2, 3, 4, 5, 6, 7]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.nandypants.generator:nandypants"

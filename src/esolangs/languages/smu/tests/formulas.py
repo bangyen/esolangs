@@ -60,12 +60,3 @@ def _chars(n: int, _: str) -> int:
         total += 3 * unequal + 2 * pads
         edges = 2 * unequal + pads
     return total + edges - (4 - pads_all if pads_all <= 4 else 0)
-
-
-FORMULAS = {
-    "scaling": (
-        _chars,
-        frozenset((3, 5, 9, 10, 11)),
-        (3, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18),
-    )
-}

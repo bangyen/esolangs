@@ -15,9 +15,3 @@ def _workspace(n: int, program: str) -> int:
     length = len(program)
     copies = 1 if (1 << n) < 8 * n + 4 else 2
     return 8 * length + (1 << n) + copies * n + 1 + length.bit_length()
-
-
-FORMULAS = {
-    "scaling": (_chars, True, (4, 6)),
-    "workspace": (_workspace, True, (4, 6)),
-}

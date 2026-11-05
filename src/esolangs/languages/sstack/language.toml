@@ -126,3 +126,33 @@ size = 16617
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.sstack.generator:sstack"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "7n + 3"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.sstack.generator:sstack"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.sstack.proof_formulas:workspace"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.sstack.generator:sstack"
+
+[resource_evidence.scaling]
+expression = "24T-9"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.sstack.generator:sstack"

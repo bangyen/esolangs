@@ -73,6 +73,3 @@ def _shared(n: int, _: str) -> int:
 def _chars(n: int, p: str) -> int:
     """The shorter build is at most either one; from n = 6 R exceeds P."""
     return min(_packed(n, p), _shared(n, p))
-
-
-FORMULAS = {"scaling": (_chars, frozenset(range(6, 10)), tuple(range(2, 10)))}

@@ -598,8 +598,4 @@ LANGUAGE = Language(
         empty_program="Dig program cannot be empty",
     ),
     backend=BooleanBackend(generate=dig, balance=_balance, grid=True),
-    certification=CertificationSpec(
-        proof_execution=(execution, False, (7, 8, 9, 10, 11, 12)),
-        proof_workspace=(workspace, True, (5,)),
-    ),
 )

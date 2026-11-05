@@ -47,9 +47,7 @@ Decisions:
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.helpers import _parity_bias, _validate_truth_table, subtree_ids
-from esolangs.languages.interprogck8.proof_formulas import workspace
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 from esolangs.runtime.source_hints import with_hint
@@ -256,5 +254,4 @@ LANGUAGE = Language(
         generate=interprogck8,
         no_wrap="a newline adds a line and moves every DownAccLines landing",
     ),
-    certification=CertificationSpec(proof_workspace=(workspace, True, (3, 4, 5, 6))),
 )

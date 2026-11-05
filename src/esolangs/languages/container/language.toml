@@ -141,3 +141,33 @@ size = 2241
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.container.generator:container"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.container.proof_formulas:execution"
+exact = true
+arities = [1, 2, 3, 7]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.container.generator:container"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.container.proof_formulas:workspace"
+exact = false
+arities = [1, 2, 3, 7]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.container.generator:container"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.container.tests.formulas:_threshold"
+exact = false
+arities = [1, 2, 3, 4, 5]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.container.generator:container"

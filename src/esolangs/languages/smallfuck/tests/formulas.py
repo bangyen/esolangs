@@ -103,6 +103,3 @@ def _chars(n: int, _: str) -> int:
     20n + 100 also covers the flag-backed n=2/3 kernels.
     """
     return _plain(n, 5) + (20 * n + 100 if n >= 2 else 0)
-
-
-FORMULAS = {"scaling": (_chars, False, tuple(range(2, 10)))}

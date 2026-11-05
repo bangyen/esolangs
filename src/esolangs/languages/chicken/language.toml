@@ -82,3 +82,33 @@ size = 1678
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.chicken.generator:chicken"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "9n + 3"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.chicken.generator:chicken"
+
+[resource_evidence.workspace]
+expression = "3T/2 + 80n + 300"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.chicken.generator:chicken"
+
+[resource_evidence.scaling]
+expression = "5T + 4n^2 + 372n + 300"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.chicken.generator:chicken"

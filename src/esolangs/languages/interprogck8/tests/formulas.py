@@ -655,9 +655,3 @@ def _steps(n: int, _: str) -> int:
 def steps_witness(n: int) -> str:
     """The table reaching :func:`_steps`."""
     return _worst(n)[1]
-
-
-FORMULAS = {
-    "scaling": (_chars, True, tuple(range(3, 11))),
-    "execution": (_steps, True, tuple(range(3, _EXACT + 1))),
-}

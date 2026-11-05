@@ -17,10 +17,8 @@ from esolangs.generation.helpers import (
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score, wrap_program
 from esolangs.languages.taglate.interpreter import _PREFIX, _SUFFIX, percent_encode
-from esolangs.languages.taglate.proof_formulas import execution, workspace
 from esolangs.languages.taglate.wrapping import _taglate, same_layout
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -216,10 +214,6 @@ def balance_taglate(_table: str, default: str) -> str:
 LANGUAGE = Language(
     "Taglate",
     RuntimeSpec("taglate", category="queue_based", split=True),
-    certification=CertificationSpec(
-        proof_execution=(execution, True, (3, 4, 5)),
-        proof_workspace=(workspace, True, (3, 4, 5)),
-    ),
     backend=BooleanBackend(
         generate=taglate,
         # Both concatenate before tokenizing (Taglate after the queue seed; A

@@ -27,8 +27,6 @@ sharing_local = "_definition_program"  # intern expressions into definitions
 folding_ignored_local = "_arm_expression"  # zero ANF arms omit their variable
 folding_constant_local = "_arm_expression"  # literal zero or one ANF coefficient
 
-[formula_arities]
-workspace = [6]
 
 [ablations]
 audited = "2026-10-19"
@@ -170,4 +168,34 @@ seed = 1847
 size = 1810
 unit = "chars"
 scale = 1
+construction = "esolangs.languages.fargo.generator:fargo"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.fargo.proof_formulas:execution"
+exact = false
+arities = [1, 2, 3, 7]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.fargo.generator:fargo"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.fargo.proof_formulas:workspace"
+exact = false
+arities = [6]
+first = 6
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.fargo.generator:fargo"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.fargo.tests.formulas:_chars"
+exact = false
+arities = [2, 3, 4, 5, 6, 7]
+first = 2
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
 construction = "esolangs.languages.fargo.generator:fargo"

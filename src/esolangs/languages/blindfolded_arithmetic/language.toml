@@ -120,3 +120,33 @@ size = 4391
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "⌊T/2⌋ + ⌈T/3⌉ + 8n + 9"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic"
+
+[resource_evidence.workspace]
+expression = "2T + 6 + bl(⌊T/2⌋+⌈T/3⌉+8n+6)"
+exact = true
+arities = [3, 5]
+first = 3
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic"
+
+[resource_evidence.scaling]
+expression = "3T + 6⌈T/3⌉ + 48n + 53"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic"

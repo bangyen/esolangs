@@ -408,28 +408,14 @@ def _ledger_gaps(name: str) -> list[Gap]:
         ]
     if "FILL" in repr(row):
         return [Gap(toml, "replace each FILL in [proof_status]")]
-    if not row.execution.split(": ", 1)[-1].startswith(("worst ", "at most ")):
-        return []
-    gaps = []
-    for cell in ("execution", "workspace"):
-        stated = getattr(row, cell).split(": ", 1)[-1]
-        table = f"test_{cell}_formulas"
-        if cell == "workspace" and "bits" not in stated:
-            continue
-        if name not in importlib.import_module(f"tests.proofs.{cell}").FORMULAS:
-            gaps.append(
-                Gap(
-                    f"tests/proofs/{table}.py",
-                    f"the ledger's {cell} cell does not parse as a formula: "
-                    f"{stated}; write its bound with n, T, L, integers, bl, "
-                    "max, min, ⌈⌉ and ⌊⌋ before the unit (tests/proofs/"
-                    f"_formula.py), or declare proof_{cell}=(callable, "
-                    "exact, (lo, hi)) on the Language with the callable "
-                    "in the package's proof_formulas.py (taglate is the "
-                    "example)",
-                )
-            )
-    return gaps
+    from docs.fragments import section
+    from docs.resource_evidence import parse_bounds
+
+    try:
+        parse_bounds(name, section(ROOT / toml, "resource_evidence") or {})
+    except (ValueError, FileNotFoundError, ImportError) as error:
+        return [Gap(toml, f"record resource evidence: {error}")]
+    return []
 
 
 def check(name: str) -> list[Gap]:

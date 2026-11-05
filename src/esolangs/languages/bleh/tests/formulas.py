@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from esolangs.languages.bleh.proof_formulas import workspace
 from tests.proofs._diagram_bounds import (
     capped_level,
     capped_loss,
@@ -118,9 +117,3 @@ def witness(n: int) -> str:
 def workspace_witness(n: int) -> str:
     """A full forced-thunk path, then a literal print and its argument frame."""
     return "1" * ((1 << n) - 2) + "01"
-
-
-FORMULAS = {
-    "scaling": (_chars, frozenset(range(3, 24)), tuple(range(3, 24))),
-    "workspace": (workspace, frozenset(range(1, 8)), tuple(range(1, 8))),
-}

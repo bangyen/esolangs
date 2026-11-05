@@ -43,9 +43,7 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
-from esolangs.languages.crement.proof_formulas import execution, workspace
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -301,8 +299,4 @@ LANGUAGE = Language(
         "end (halts, 0) or on a self-jump (diverges, 1)",
     ),
     example=Example(expected=""),
-    certification=CertificationSpec(
-        proof_workspace=(workspace, False, (3, 6)),
-        proof_execution=(execution, True, (1, 2, 3, 5, 6)),
-    ),
 )

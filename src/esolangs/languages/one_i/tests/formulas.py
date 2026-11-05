@@ -12,6 +12,3 @@ def witness(n: int) -> str:
 def workspace_witness(n: int) -> str:
     """Two drained bits and a Gaussian constant peak above the arithmetic tail."""
     return witness(n)[:-4] + "0000"
-
-
-FORMULAS: dict[str, object] = {}

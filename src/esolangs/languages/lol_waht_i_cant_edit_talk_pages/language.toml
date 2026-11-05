@@ -92,3 +92,33 @@ size = 1222
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.lol_waht_i_cant_edit_talk_pages.generator:lol_waht_i_cant_edit_talk_pages"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "2n + 3"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.lol_waht_i_cant_edit_talk_pages.generator:lol_waht_i_cant_edit_talk_pages"
+
+[resource_evidence.workspace]
+expression = "bl(L) + 2bl(n) + 4"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.lol_waht_i_cant_edit_talk_pages.generator:lol_waht_i_cant_edit_talk_pages"
+
+[resource_evidence.scaling]
+expression = "105T"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.lol_waht_i_cant_edit_talk_pages.generator:lol_waht_i_cant_edit_talk_pages"

@@ -21,9 +21,6 @@ workspace = "linear: worst 8T + 24 + bl(2n) bits: the T + 3 character state stri
 "1101001101101101" = { commands = 42, commands_by_row = { "0" = 42, "1" = 42, "2" = 42, "3" = 42, "4" = 42, "5" = 42, "6" = 42, "7" = 42, "8" = 42, "9" = 42, "10" = 42, "11" = 42, "12" = 42, "13" = 42, "14" = 42, "15" = 42 }, source_units = 203 }
 "11111110" = { commands = 23, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 23, "5" = 23, "6" = 23, "7" = 23 }, source_units = 195 }
 
-[formula_arities]
-execution = [3, 7]
-workspace = [3, 6]
 
 [ablations]
 audited = "2026-10-19"
@@ -116,4 +113,34 @@ rule = "and"
 size = 585
 unit = "chars"
 scale = 1
+construction = "esolangs.languages.thue.generator:thue"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "5T/2 + 3n - 1"
+exact = false
+arities = [3, 7]
+first = 1
+unit = "rewrites"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.thue.generator:thue"
+
+[resource_evidence.workspace]
+expression = "8T + 24 + bl(2n)"
+exact = true
+arities = [3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.thue.generator:thue"
+
+[resource_evidence.scaling]
+expression = "T + 187"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
 construction = "esolangs.languages.thue.generator:thue"

@@ -25,8 +25,6 @@ workspace = "poly n: worst 57n + 54 + bl(5*2^n+8n+3) bits: 7n-character queue"
 [catalogue]
 folding_constant_local = "_constant_ring"  # read rotation and literal output
 
-[formula_arities]
-workspace = [3, 6]
 
 [schemes]
 folds_without_tree = true
@@ -143,4 +141,34 @@ seed = 1847
 size = 94703
 unit = "chars"
 scale = 1
+construction = "esolangs.languages.clockwise.generator:clockwise"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "16T + 22n + 2"
+exact = true
+arities = [2, 3, 5]
+first = 2
+unit = "steps"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.clockwise.generator:clockwise"
+
+[resource_evidence.workspace]
+expression = "57n + 54 + bl(5*2^n+8n+3)"
+exact = true
+arities = [3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.clockwise.generator:clockwise"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.clockwise.tests.formulas:_cells"
+exact = true
+arities = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+first = 2
+unit = "cells"
+witnesses = "tests.proofs.execution:tables"
 construction = "esolangs.languages.clockwise.generator:clockwise"

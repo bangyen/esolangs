@@ -809,7 +809,6 @@ LANGUAGE = Language(
         # invariants.
         scaling_rungs=(8, 9),
         documented_sizes=(52_057, 106_751, 2.05),
-        proof_workspace=(workspace, False, (3, 6)),
     ),
     example=Example(slow_build=True),
     backend=BooleanBackend(generate=circuit_diagram, balance=_balance, grid=True),

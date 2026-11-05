@@ -96,8 +96,6 @@ LANGUAGE = Language(
         # Every source loads into the fixed store, so every program -- this
         # generator's or any other -- is bounded by a constant.
         size_bound=lambda _n: 59_049,
-        proof_execution=(execution, True, (2, 3, 6)),
-        proof_workspace=(workspace, False, (2, 3)),
     ),
     backend=BooleanBackend(
         max_inputs=MAX_INPUTS + 1,

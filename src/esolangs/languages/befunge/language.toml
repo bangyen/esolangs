@@ -133,3 +133,33 @@ size = 1545
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.befunge.generator:befunge"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.befunge.proof_formulas:execution"
+exact = true
+arities = [2, 3, 9, 11]
+first = 2
+unit = "steps"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.befunge.generator:befunge"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.befunge.proof_formulas:workspace"
+exact = true
+arities = [2, 3, 9, 11]
+first = 2
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.befunge.generator:befunge"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.befunge.tests.formulas:_cells"
+exact = true
+arities = [7, 8, 9, 10, 11, 12, 13]
+first = 9
+unit = "cells"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.befunge.generator:befunge"

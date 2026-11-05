@@ -362,8 +362,6 @@ LANGUAGE = Language(
     certification=CertificationSpec(
         # A 2^12-row raster renders in about 24s.
         slow_scaling=True,
-        proof_execution=(execution, False, (3, 5)),
-        proof_workspace=(workspace, True, (5,)),
     ),
     backend=BooleanBackend(
         generate=line,

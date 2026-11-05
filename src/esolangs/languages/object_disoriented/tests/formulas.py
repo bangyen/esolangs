@@ -140,9 +140,3 @@ def _workspace(n: int, text: str) -> int:
     frames += bl(c) + bl(16 * n + 40) + 3 * (bl(cells) + 1)
     store = (n + 1) * (4 * bl(c) + 8) + cells
     return frames + store + bl(cells) + bl(n) + 14
-
-
-FORMULAS = {
-    "scaling": (_chars, frozenset(range(2, 9)), tuple(range(2, 10))),
-    "workspace": (_workspace, False, (3, 4, 5, 6)),
-}

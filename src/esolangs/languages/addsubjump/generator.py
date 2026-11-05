@@ -25,9 +25,7 @@ from esolangs.generation.helpers import (
     stored_inputs,
 )
 from esolangs.generation.wrap import wrap_grid
-from esolangs.languages.addsubjump.proof_formulas import execution, workspace
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -425,9 +423,5 @@ LANGUAGE = Language(
     backend=BooleanBackend(generate=addsubjump, wrap=wrap_grid),
     contract=BooleanContract(
         input_shape="char_stream",
-    ),
-    certification=CertificationSpec(
-        proof_execution=(execution, True, (6,)),
-        proof_workspace=(workspace, False, (3, 5)),
     ),
 )

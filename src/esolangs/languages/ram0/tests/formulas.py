@@ -11,6 +11,3 @@ def _chars(n: int, _: str) -> int:
     tokens = base if base + 1 < 10**4 else base + 2 * sum(nodes)
     digits = len(str(tokens + 1))
     return 2 * tokens - 1 + (2 * sum(nodes) + 1) * (digits - 1)
-
-
-FORMULAS = {"scaling": (_chars, False, (3, 4, 5, 6))}

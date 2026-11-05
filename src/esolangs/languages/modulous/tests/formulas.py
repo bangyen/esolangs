@@ -15,6 +15,3 @@ def _chars(n: int, _: str) -> int:
 def resource_witness(n: int) -> str:
     """Use decoder code3 at the final pair to attain its long one-input arm."""
     return "0" * ((1 << n) - 2) + "10"
-
-
-FORMULAS = {"scaling": (_chars, True, (3, 4, 5, 8))}

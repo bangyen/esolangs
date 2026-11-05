@@ -18,6 +18,3 @@ def _cells(n: int, _: str) -> int:
     if n < 4:
         return (32 * n + 80) << n
     return 7 * (3 * 2 ** (n - 1) + 108 + _gap(n))
-
-
-FORMULAS = {"scaling": (_cells, True, (2, 3, 4, 5, 6, 7, 8, 9, 10))}

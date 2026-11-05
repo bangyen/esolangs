@@ -46,6 +46,3 @@ def _chars(n: int, _: str) -> int:
     lines = 1 + -(-(paint + 16 * blocks) // 56)
     # Every old candidate loses at least the two-character trailing 0;.
     return head + sum(counters) + paint + 3 * (len(counters) + lines) - 2
-
-
-FORMULAS = {"scaling": (_chars, False, (3, 4, 5, 6, 7, 8, 9, 10))}

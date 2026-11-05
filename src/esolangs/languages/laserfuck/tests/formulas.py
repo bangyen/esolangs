@@ -9,6 +9,3 @@ def _cells(n: int, _: str) -> int:
     if n <= 6:
         return max(1 << n, 3) * (12 * n + 32)
     return 3 * (11 * (1 << n) + 52 * n + 3)
-
-
-FORMULAS = {"scaling": (_cells, True, (1, 2, 3, 4, 5, 6, 7, 8))}

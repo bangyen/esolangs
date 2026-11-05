@@ -94,3 +94,33 @@ size = 5276
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.what.generator:what"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.what.tests.formulas:_commands"
+exact = true
+arities = [1, 2, 3, 4, 5]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.what.generator:what"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.what.proof_formulas:workspace"
+exact = true
+arities = [1, 2, 3, 4, 5, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.what.generator:what"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.what.tests.formulas:_characters"
+exact = true
+arities = [1, 2, 3, 4, 5, 15, 16, 17, 18, 19, 20, 21, 22]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.what.generator:what"

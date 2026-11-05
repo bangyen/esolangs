@@ -17,6 +17,3 @@ def _cells(n: int, _: str) -> int:
     leaf = 8 * ((4 * gates + 10 * k + 59) // 8)
     side = (leaf + 16 * k + 72) << ((n - k) // 2)
     return (8 * n + 8 + side - 16 * n - 72) ** 2
-
-
-FORMULAS = {"scaling": (_cells, False, (9, 10, 11))}

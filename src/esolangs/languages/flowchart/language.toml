@@ -130,3 +130,33 @@ size = 35074
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.flowchart.generator:flowchart"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "2T+2·2^⌊n/2⌋+2^⌈n/2⌉+9n+1"
+exact = true
+arities = [2, 3, 5]
+first = 2
+unit = "nodes"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.flowchart.generator:flowchart"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.flowchart.proof_formulas:workspace"
+exact = true
+arities = [3, 4, 5]
+first = 3
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.flowchart.generator:flowchart"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.flowchart.tests.formulas:_cells"
+exact = true
+arities = [2, 3, 4, 5, 6, 7, 8]
+first = 2
+unit = "cells"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.flowchart.generator:flowchart"

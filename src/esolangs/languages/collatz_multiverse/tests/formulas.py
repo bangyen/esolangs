@@ -63,6 +63,3 @@ def _chars(n: int, _: str) -> int:
         len("o=k1 x+k48,DO PRINT."),
     ]
     return sum(lens) + len(lens) - 1
-
-
-FORMULAS = {"scaling": (_chars, False, (3, 4, 5, 6, 7))}

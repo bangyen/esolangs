@@ -22,8 +22,6 @@ workspace = "T log T: at most (2n+364)T + 43n + 2bl(n) bits: frame text and the 
 "1101001101101101" = { commands = 86, commands_by_row = { "0" = 87, "1" = 86, "2" = 90, "3" = 95, "4" = 86, "5" = 94, "6" = 91, "7" = 86, "8" = 87, "9" = 86, "10" = 90, "11" = 95, "12" = 86, "13" = 94, "14" = 91, "15" = 86 }, source_units = 159 }
 "11111110" = { commands = 45, commands_by_row = { "0" = 37, "1" = 44, "2" = 37, "3" = 45, "4" = 37, "5" = 44, "6" = 37, "7" = 45 }, source_units = 58 }
 
-[formula_arities]
-execution = [3, 7]
 
 [ablations]
 audited = "2026-10-19"
@@ -108,4 +106,34 @@ seed = 1847
 size = 5094
 unit = "chars"
 scale = 1
+construction = "esolangs.languages.for_thorn.generator:for_thorn"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "6T + 12n - 3"
+exact = false
+arities = [3, 7]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.for_thorn.generator:for_thorn"
+
+[resource_evidence.workspace]
+expression = "(2n+364)T + 43n + 2bl(n)"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.for_thorn.generator:for_thorn"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.for_thorn.tests.formulas:_chars"
+exact = false
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
 construction = "esolangs.languages.for_thorn.generator:for_thorn"

@@ -129,3 +129,33 @@ size = 230
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.freestajlo.generator:freestajlo"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.freestajlo.tests.formulas:_execution"
+exact = true
+arities = [1, 2, 3, 4, 5, 6, 7]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.freestajlo.generator:freestajlo"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.freestajlo.tests.formulas:_freestajlo"
+exact = true
+arities = [1, 2, 3, 4, 5, 6, 7]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.freestajlo.generator:freestajlo"
+
+[resource_evidence.scaling]
+expression = "min(T + 4n + 1, ⌈T/6⌉ + 4n + 19)"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.freestajlo.generator:freestajlo"

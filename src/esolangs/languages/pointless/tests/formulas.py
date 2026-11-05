@@ -33,6 +33,3 @@ def _chars(n: int, _: str) -> int:
         total += digits(top[k + 1], below) + constants[k + 1] * name[k + 1]
         total += max(0, slots - below - constants[k + 1]) * widest
     return total
-
-
-FORMULAS = {"scaling": (_chars, False, (3, 4, 5, 6, 7, 8))}

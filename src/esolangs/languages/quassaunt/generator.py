@@ -25,9 +25,7 @@ from typing import NamedTuple
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.token_balance import CELL_ASPECT, balanced_token_width
 from esolangs.generation.wrap import wrap_space_delimited
-from esolangs.languages.quassaunt.proof_formulas import execution, workspace
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -191,8 +189,4 @@ LANGUAGE = Language(
         balance=_balance,
     ),
     contract=BooleanContract(input_shape="char_stream"),
-    certification=CertificationSpec(
-        proof_execution=(execution, True, (3, 6)),
-        proof_workspace=(workspace, True, (3, 4, 5, 6)),
-    ),
 )

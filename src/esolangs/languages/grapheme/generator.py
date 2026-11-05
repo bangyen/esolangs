@@ -18,9 +18,7 @@ from esolangs.languages.grapheme.interpreter import (
     INTEGER_CONVERSIONS,
     GraphemeDialect,
 )
-from esolangs.languages.grapheme.proof_formulas import execution, workspace
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -168,9 +166,5 @@ LANGUAGE = Language(
         note="input bits are spelled % and A: a line starting with A is a 1 "
         "and any other line a 0, so a 0/1 line reads as 0 and the program "
         "answers the all-zeros row; esolangs encode spells them",
-    ),
-    certification=CertificationSpec(
-        proof_execution=(execution, True, (3, 5)),
-        proof_workspace=(workspace, True, (3, 5)),
     ),
 )

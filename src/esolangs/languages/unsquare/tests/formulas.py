@@ -29,10 +29,3 @@ def _bits(n: int, program: str) -> int:
         + max(0, length - 33).bit_length()
         + 2 * n.bit_length()
     )
-
-
-FORMULAS = {
-    "scaling": (_chars, frozenset(range(2, 10)), tuple(range(2, 10))),
-    "execution": (_commands, True, (8, 9)),
-    "workspace": (_bits, False, (3, 6, 7)),
-}

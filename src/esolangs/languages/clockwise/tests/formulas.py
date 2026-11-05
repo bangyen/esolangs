@@ -11,6 +11,3 @@ def _cells(n: int, _: str) -> int:
     stacked box (2T + 9n + 2)(2n + 15) is always larger.
     """
     return 25 * (1 << n) + 40 * n + 20
-
-
-FORMULAS = {"scaling": (_cells, True, (2, 3, 4, 5, 6, 7, 8, 9, 10))}

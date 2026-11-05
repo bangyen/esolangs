@@ -145,3 +145,33 @@ size = 87
 unit = "codels"
 scale = 1
 construction = "esolangs.languages.piet.generator:piet"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.piet.tests.formulas:_steps"
+exact = [3, 4, 5, 6, 7]
+arities = [2, 3, 4, 5, 6, 7, 8]
+first = 2
+unit = "steps"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.piet.generator:piet"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.piet.tests.formulas:_written"
+exact = [3, 4, 5, 6, 7]
+arities = [2, 3, 4, 5, 6, 7, 8]
+first = 2
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.piet.generator:piet"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.piet.tests.formulas:_codels"
+exact = [3, 4, 5, 6, 7]
+arities = [2, 3, 4, 5, 6, 7, 8]
+first = 2
+unit = "codels"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.piet.generator:piet"

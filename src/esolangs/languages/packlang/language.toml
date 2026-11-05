@@ -150,3 +150,33 @@ size = 6677
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.packlang.generator:packlang"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.packlang.proof_formulas:execution"
+exact = false
+arities = [3, 7]
+first = 3
+unit = "steps"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.packlang.generator:packlang"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.packlang.proof_formulas:workspace"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.packlang.generator:packlang"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.packlang.tests.formulas:_chars"
+exact = false
+arities = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.packlang.generator:packlang"

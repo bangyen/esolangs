@@ -92,3 +92,33 @@ size = 403
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.monotonic_boolfuck.generator:monotonic_boolfuck"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "21n + 13"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.monotonic_boolfuck.generator:monotonic_boolfuck"
+
+[resource_evidence.workspace]
+expression = "bl(L) + bl(4n + 2) + 2n·bl(2n) + 25"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.monotonic_boolfuck.generator:monotonic_boolfuck"
+
+[resource_evidence.scaling]
+expression = "53T/2 - 21"
+exact = true
+arities = [2, 3, 6]
+first = 2
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.monotonic_boolfuck.generator:monotonic_boolfuck"

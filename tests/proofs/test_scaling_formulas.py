@@ -38,7 +38,7 @@ def _raster_area(program: object) -> int:
     return len(program.rows) * len(program.rows[0])
 
 
-FORMULAS = ledger_formulas(lambda row: row.scaling_clause, {}, {}, column="scaling")
+FORMULAS = ledger_formulas("scaling")
 _UNIT = {
     row.generator: match.group(2)
     for row in load_ledger().rows

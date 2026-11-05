@@ -1,7 +1,5 @@
 """Minsky Swap's emitted characters: the commands line, then the jump targets."""
 
-from esolangs.languages.minsky_swap.proof_formulas import workspace
-
 
 def _full_chars(n: int, _: str) -> int:
     """Worst all-essential pair cascade, with every pair but one equal to 10."""
@@ -42,9 +40,3 @@ def witness(n: int) -> str:
 def source_witness(n: int) -> str:
     """The first-input negation attains the source maximum through n=5."""
     return "1" * (1 << (n - 1)) + "0" * (1 << (n - 1))
-
-
-FORMULAS = {
-    "scaling": (_chars, frozenset(range(1, 6)), (3, 4, 5)),
-    "workspace": (workspace, frozenset({1, 2, 3, 6}), (3, 6)),
-}

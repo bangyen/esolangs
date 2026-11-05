@@ -11,4 +11,3 @@ def _cells(n: int, _: str) -> int:
 
 # Reached at 10 only; at 7, 8 and 9 a random table has at most two, four and
 # eight classes, so the indexed decoder is smaller (540, 900 and 1,440 cells).
-FORMULAS = {"scaling": (_cells, frozenset({10}), (7, 8, 10))}

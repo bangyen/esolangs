@@ -38,9 +38,7 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.wrap import wrap_chars
-from esolangs.languages.a_painter_ant.proof_formulas import execution
 from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -174,5 +172,4 @@ LANGUAGE = Language(
         "shown by 'o' (on black, a zero) or '@' (on white, a one)",
     ),
     example=Example(expected="....\n####\n.o.#"),
-    certification=CertificationSpec(proof_execution=(execution, True, (3, 6))),
 )

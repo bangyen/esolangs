@@ -16,6 +16,3 @@ def _chars(n: int, _: str) -> int:
         + 2 * (c - 1) * (n - 7 * c + 6)
         - (18 * n - 17 if n >= 3 else 0)
     )
-
-
-FORMULAS = {"scaling": (_chars, True, (3, 5, 8, 9))}

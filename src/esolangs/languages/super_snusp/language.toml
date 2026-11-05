@@ -26,9 +26,6 @@ definitions = ["D = decimal digits of 2^(T-1)"]
 [catalogue]
 folding_constant_local = "_emit_lookup"  # projected literal table
 
-[formula_arities]
-execution = [5, 6]
-workspace = [5, 6]
 
 [ablations]
 audited = "2026-10-19"
@@ -141,4 +138,34 @@ rule = "parity"
 size = 19875
 unit = "chars"
 scale = 1
+construction = "esolangs.languages.super_snusp.generator:super_snusp"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.super_snusp.proof_formulas:commands"
+exact = true
+arities = [1, 2, 3, 5, 6]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.super_snusp.generator:super_snusp"
+
+[resource_evidence.workspace]
+expression = "T+2n+14+bl(L)+bl(n)"
+exact = true
+arities = [5, 6]
+first = 5
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.super_snusp.generator:super_snusp"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.super_snusp.proof_formulas:commands"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "cells"
+witnesses = "tests.proofs.execution:tables"
 construction = "esolangs.languages.super_snusp.generator:super_snusp"

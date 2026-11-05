@@ -64,9 +64,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.abcdirection.proof_formulas import execution
 from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -514,5 +512,4 @@ LANGUAGE = Language(
         grid=True,
     ),
     contract=BooleanContract(input_shape="char_stream"),
-    certification=CertificationSpec(proof_execution=(execution, True, (3, 7))),
 )

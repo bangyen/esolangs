@@ -133,3 +133,33 @@ size = 667
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.sonata.generator:sonata"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "T + n + 3 - min(1,(n-2)^2)"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "steps"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.sonata.generator:sonata"
+
+[resource_evidence.workspace]
+expression = "16T + 10"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.sonata.generator:sonata"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.sonata.tests.formulas:_chars"
+exact = [1, 2, 3, 4, 5, 6]
+arities = [1, 2, 3, 5]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.sonata.generator:sonata"

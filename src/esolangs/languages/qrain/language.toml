@@ -68,3 +68,33 @@ size = 278
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.qrain.generator:qrain"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "36n + 60"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.qrain.generator:qrain"
+
+[resource_evidence.workspace]
+expression = "bl(L) + (2n + 4)bl(2n + 2) + 9n + bl(n) + 10"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.qrain.generator:qrain"
+
+[resource_evidence.scaling]
+expression = "29T + 10n + 25"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.qrain.generator:qrain"

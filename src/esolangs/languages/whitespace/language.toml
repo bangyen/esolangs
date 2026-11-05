@@ -138,3 +138,33 @@ size = 357
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.whitespace.generator:whitespace"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.whitespace.proof_formulas:execution"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.whitespace.generator:whitespace"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.whitespace.proof_formulas:workspace"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.whitespace.generator:whitespace"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.whitespace.tests.formulas:_chars"
+exact = true
+arities = [1, 2, 3, 5, 6]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.whitespace.generator:whitespace"

@@ -27,9 +27,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
-from esolangs.languages.ram0.proof_formulas import workspace
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -275,5 +273,4 @@ LANGUAGE = Language(
         "at halt; the answer is the 'z' register",
     ),
     example=Example(expected="z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}"),
-    certification=CertificationSpec(proof_workspace=(workspace, True, (3, 6))),
 )

@@ -69,10 +69,10 @@ the standing budget. Preserve public behavior through adapters; incompatible
 API changes need a major release. Follow the refactor and optimization gates
 in [Contributing](CONTRIBUTING.md).
 
-1. **Structured resource evidence.** Extend validated `language.toml` evidence
-   to resource bounds, exactness and ablations. Retain witnesses and execution
-   gates, generate documentation from measured claims, and remove remaining
-   semantic prose parsing. Preserve open and upper-bound verdicts.
+1. **Structured evidence rendering.** Generate resource descriptions and
+   ablation documentation from validated claims. Retire remaining unit and
+   coverage prose readers while retaining witnesses and execution gates.
+   Preserve open and upper-bound verdicts.
 2. **Independent semantic checks.** Extend the Engineering oracles below into
    language admission. Derive each bounded oracle from the spec independently
    of production helpers and generator structure; record ambiguities first.

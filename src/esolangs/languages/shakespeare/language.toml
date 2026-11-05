@@ -95,3 +95,33 @@ size = 524
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.shakespeare.generator:shakespeare"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.shakespeare.tests.formulas:_steps"
+exact = true
+arities = [1, 2, 3, 5, 7, 8, 10]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.shakespeare.generator:shakespeare"
+
+[resource_evidence.workspace]
+expression = "2T + bl(2n+ceil(T/64)+6) + bl(2n-1) + 4"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.shakespeare.generator:shakespeare"
+
+[resource_evidence.scaling]
+expression = "16T + 7n^2 + 180n + 300"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.shakespeare.generator:shakespeare"

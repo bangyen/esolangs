@@ -11,7 +11,6 @@ from esolangs.languages.line.generator.layout import (
     _turn_right,
 )
 from esolangs.languages.line.generator.render import _UNIT
-from esolangs.languages.line.proof_formulas import execution
 
 type Box = tuple[int, int, int, int]  # (top, bottom, left, right), in units
 
@@ -87,9 +86,3 @@ def _pixels(n: int, _: str) -> int:
             boxes.extend(_chain("i" * (kept[0] + 1), box) for box in level)
     # Leaf choices are independent; the smaller complete fold can still win.
     return max((b[1] - b[0] + 2) * (b[3] - b[2] + 2) for b in boxes) * _UNIT**2
-
-
-FORMULAS = {
-    "scaling": (_pixels, False, (6, 7)),
-    "execution": (execution, frozenset({3, 5}), (3, 5, 6, 8)),
-}

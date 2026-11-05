@@ -88,3 +88,33 @@ size = 4333
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.between.generator:between"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "4n + 1"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.between.generator:between"
+
+[resource_evidence.workspace]
+expression = "16n + bl(L) + bl(2n) + 1"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.between.generator:between"
+
+[resource_evidence.scaling]
+expression = "2T + 2n + 2"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "lines"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.between.generator:between"

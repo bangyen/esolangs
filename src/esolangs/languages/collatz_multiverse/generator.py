@@ -35,9 +35,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.collatz_multiverse.proof_formulas import execution, workspace
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
@@ -519,9 +517,5 @@ LANGUAGE = Language(
         generate=collatz_multiverse,
         balance=balance_collatz_multiverse,
         no_wrap="each line is one complete register assignment",
-    ),
-    certification=CertificationSpec(
-        proof_execution=(execution, False, (3, 5, 6, 8)),
-        proof_workspace=(workspace, False, (3, 4, 5, 6, 7, 9)),
     ),
 )

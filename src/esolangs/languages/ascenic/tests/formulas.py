@@ -15,6 +15,3 @@ def _chars(n: int, _: str) -> int:
         + (16 * n + 44 + 4 * m) * t
         + (48 * n * n + (203 + 24 * m) * n - 98 + 39 * m) // 2
     )
-
-
-FORMULAS = {"scaling": (_chars, frozenset({2, 3, 4, 5, 6, 7}), (3, 4, 5, 6, 7))}

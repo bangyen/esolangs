@@ -79,6 +79,3 @@ def _chars(n: int, p: str) -> int:
     5538, 10042 = P.
     """
     return min(_packed(n, p), _tree(n, p))
-
-
-FORMULAS = {"scaling": (_chars, frozenset(range(9, 15)), tuple(range(2, 15)))}

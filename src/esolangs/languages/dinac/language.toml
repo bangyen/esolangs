@@ -79,3 +79,33 @@ size = 578
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.dinac.generator:dinac"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "7T + 2n - 9"
+exact = true
+arities = [2, 3, 5]
+first = 2
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.dinac.generator:dinac"
+
+[resource_evidence.workspace]
+expression = "290n + n*bl(n) + 424"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.dinac.generator:dinac"
+
+[resource_evidence.scaling]
+expression = "40T + 18n + 120"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.dinac.generator:dinac"

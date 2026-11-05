@@ -102,13 +102,3 @@ def _workspace(n: int, program: str) -> int:
     """B, 6 a read: an input cell 0 becomes -48 or -49 (7 bits), no other widens."""
     bl = int.bit_length
     return _cell_bits(program) + 6 * n + bl(3 * len(program.split())) + bl(n) + 1
-
-
-FORMULAS = {
-    "scaling": (
-        _scaling,
-        frozenset({11, 12, 13, 19, 20, 21, 22, 23, 24, 25}),
-        (5, 8, 10, 11, 12, 13, 19, 20, 21, 22, 23, 24, 25),
-    ),
-    "workspace": (_workspace, False, (3, 4, 5, 6)),
-}

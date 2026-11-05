@@ -72,3 +72,33 @@ size = 1025
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.creativescript_v2.generator:creativescript_v2"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "6n + 5"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.creativescript_v2.generator:creativescript_v2"
+
+[resource_evidence.workspace]
+expression = "3T + n + 6 + bl(6n+5) + bl(n)"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.creativescript_v2.generator:creativescript_v2"
+
+[resource_evidence.scaling]
+expression = "⌈T/3⌉ + 70n + 62"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.creativescript_v2.generator:creativescript_v2"

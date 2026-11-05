@@ -46,6 +46,3 @@ def _chars(n: int, _: str) -> int:
     climb = sum(len(f"if {k} increment") for k in range(48))
     chars += 16 + climb + 12 + 2 * (11 + len(str(done))) + 15 + 12
     return chars + sum(nodes[d] * lines[d] for d in range(n)) + 54 - 1
-
-
-FORMULAS = {"scaling": (_chars, False, (1, 2, 3, 4, 5))}

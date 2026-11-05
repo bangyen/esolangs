@@ -102,8 +102,8 @@ section and skip absent files or sections.
 
 | Kind | Sections | Meaning |
 | --- | --- | --- |
-| Gates | `proof_status`, `generator_sizes`, `catalogue`, `schemes`, `deep_arities` | claims consumed by checks; wrong data fails |
-| Reference | `curation`, `formula_arities` | census facts and extra probe arities; no gate |
+| Gates | `proof_status`, `evidence`, `resource_evidence`, `generator_sizes`, `catalogue`, `schemes`, `deep_arities` | claims consumed by checks; wrong data fails |
+| Reference | `curation` | census facts; no gate |
 | Record | `ablations`, `interpreter_ablations` | reproducible audit verdicts; new entries include `seed` and `tables`; source cites `[ablations.<key>]` rather than duplicating figures (tested) |
 
 `Language` records names, interpreter, source shape, optional generator and

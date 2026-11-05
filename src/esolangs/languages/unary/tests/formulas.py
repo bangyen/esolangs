@@ -18,6 +18,3 @@ def workspace(n: int, _: str) -> int:
     decision tree or the AND chain, 4n - 2 or 5n - 2 commands.
     """
     return max(t + bl(n) + bl(n + k) for k, t in _SHAPES if n + k <= 9)
-
-
-FORMULAS = {"workspace": (workspace, True, (2, 3, 4, 5, 6, 7, 8))}

@@ -30,8 +30,6 @@ definitions = ["E = (2n+13)T+68n+232+2C from n=3, otherwise (2n+13)T+94n+89+2S; 
 [catalogue]
 folding_constant_local = "_program"  # read into an executed cell and print the tail
 
-[formula_arities]
-workspace = [3]
 
 [schemes]
 folds_without_tree = true
@@ -147,4 +145,34 @@ rule = "and"
 size = 753
 unit = "chars"
 scale = 1
+construction = "esolangs.languages.circlefuck.generator:circlefuck"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.circlefuck.proof_formulas:execution"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.circlefuck.generator:circlefuck"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.circlefuck.proof_formulas:workspace"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.circlefuck.generator:circlefuck"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.circlefuck.tests.formulas:_chars"
+exact = true
+arities = [1, 2, 3, 5, 8, 9]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
 construction = "esolangs.languages.circlefuck.generator:circlefuck"

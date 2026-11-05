@@ -117,3 +117,33 @@ size = 6794
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.retrograde.generator:retrograde"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "12n - 2"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.retrograde.generator:retrograde"
+
+[resource_evidence.workspace]
+expression = "n + bl(L) + bl(n+1) + 16"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.retrograde.generator:retrograde"
+
+[resource_evidence.scaling]
+expression = "14T + 4n - 13"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.retrograde.generator:retrograde"

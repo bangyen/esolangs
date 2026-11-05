@@ -86,3 +86,33 @@ size = 7163
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.kiss.generator:kiss"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "4n - 1"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "rewrites"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.kiss.generator:kiss"
+
+[resource_evidence.workspace]
+expression = "24T + 2bl(n) + 17"
+exact = true
+arities = [2, 3, 6]
+first = 2
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.kiss.generator:kiss"
+
+[resource_evidence.scaling]
+expression = "7T-5"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.kiss.generator:kiss"

@@ -211,5 +211,4 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    certification=CertificationSpec(proof_workspace=(workspace, True, (3, 6))),
 )

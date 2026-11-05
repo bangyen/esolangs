@@ -45,6 +45,3 @@ def _chars(n: int, _: str) -> int:
         # The root step is one character; each longer step adds 4 per base-15 digit.
         best = max(best, total - 1 + 4 * steps + 5 * m + 4 * (n - m) + 5)
     return best
-
-
-FORMULAS = {"scaling": (_chars, False, (2, 3, 4, 5, 6, 7, 8))}

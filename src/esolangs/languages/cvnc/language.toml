@@ -110,3 +110,33 @@ size = 22086
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.cvnc.generator:cvnc"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.cvnc.proof_formulas:execution"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.cvnc.generator:cvnc"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.cvnc.proof_formulas:workspace"
+exact = true
+arities = [1, 2, 3, 4, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.cvnc.generator:cvnc"
+
+[resource_evidence.scaling]
+expression = "17T/2 + 13"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.cvnc.generator:cvnc"

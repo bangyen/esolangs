@@ -23,6 +23,3 @@ def _chars(n: int, _: str) -> int:
         + (nodes + 1) * (2 + d)
         + (cells - 1)
     )
-
-
-FORMULAS = {"scaling": (_chars, False, (3, 4, 5, 6))}

@@ -66,7 +66,6 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.streetcode.proof_formulas import execution, workspace
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
@@ -996,8 +995,6 @@ LANGUAGE = Language(
     certification=CertificationSpec(
         layout_switch=(4, 5),
         slow_scaling=True,
-        proof_execution=(execution, True, (6, 8)),
-        proof_workspace=(workspace, False, (6, 7)),
     ),
     backend=BooleanBackend(generate=streetcode, balance=_balance, grid=True),
     contract=BooleanContract(

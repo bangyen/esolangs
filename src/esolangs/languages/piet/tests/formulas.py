@@ -396,10 +396,3 @@ def resource_witness(n: int, kind: str) -> str:
     z = {"area": zeros, "steps": walk_zeros, "bits": bit_zeros}[kind](n)
     ones = {0, width - 1, *[*middle, *rest][: width - z - 2]}
     return "".join("1" if r in ones else "0" for r in range(width))
-
-
-FORMULAS = {
-    "scaling": (_codels, frozenset(range(3, 8)), (3, 4, 5, 6, 7, 8)),
-    "execution": (_steps, frozenset(range(3, 8)), (3, 4, 5, 6, 7, 8)),
-    "workspace": (_written, frozenset(range(3, 8)), (3, 4, 5, 6, 7, 8)),
-}

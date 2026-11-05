@@ -26,9 +26,6 @@ workspace = "linear: worst T + 11 + bl(T+6n+8) bits: a queue of T + 6 bits, the 
 sharing_exempt = "Horner marker cascade; no subtable is drawn"
 folding_constant_local = "_program"  # direct halt or circulating heading
 
-[formula_arities]
-execution = [1, 7]
-workspace = [1, 6]
 
 [ablations]
 audited = "2026-10-19"
@@ -103,4 +100,34 @@ rule = "and"
 size = 4893
 unit = "chars"
 scale = 1
+construction = "esolangs.languages.arrowqueue.generator:arrowqueue"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "11T + 32n + 92"
+exact = false
+arities = [1, 7]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.arrowqueue.generator:arrowqueue"
+
+[resource_evidence.workspace]
+expression = "T + 11 + bl(T+6n+8)"
+exact = true
+arities = [1, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.arrowqueue.generator:arrowqueue"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.arrowqueue.tests.formulas:_cells"
+exact = true
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
+first = 1
+unit = "cells"
+witnesses = "tests.proofs.execution:tables"
 construction = "esolangs.languages.arrowqueue.generator:arrowqueue"

@@ -10,6 +10,3 @@ def _cells(n: int, _: str) -> int:
     """
     k = (n + 1) // 2
     return 20 * (1 << n) + 16 * (1 << (n - k)) + 12 * (1 << k) + 72 * n + 14
-
-
-FORMULAS = {"scaling": (_cells, True, (2, 3, 4, 5, 6, 7, 8))}

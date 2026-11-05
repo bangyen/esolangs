@@ -30,9 +30,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import wrap_chars
-from esolangs.languages.home_row.proof_formulas import workspace
 from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -127,5 +125,4 @@ LANGUAGE = Language(
         template=TemplateSpec(pair=HOME_ROW_PAIR),
     ),
     contract=BooleanContract(),
-    certification=CertificationSpec(proof_workspace=(workspace, True, (2, 3, 4, 5, 6))),
 )

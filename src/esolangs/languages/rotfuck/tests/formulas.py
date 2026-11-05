@@ -22,6 +22,3 @@ def _chars(n: int, _: str) -> int:
         length += _walk_chars(2 << shift)
         shift += width
     return length
-
-
-FORMULAS = {"scaling": (_chars, True, tuple(range(2, 11)))}

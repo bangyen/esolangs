@@ -93,3 +93,24 @@ size = 180
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "4n + 9"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers"
+
+[resource_evidence.workspace]
+expression = "3T + 4 + bl(4n+10) + bl(2n)"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers"

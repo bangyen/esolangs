@@ -100,3 +100,33 @@ size = 26651
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.bitwise_cyclic_tag.generator:bitwise_cyclic_tag"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "19T/4 + n + 2"
+exact = true
+arities = [3, 5]
+first = 3
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.bitwise_cyclic_tag.generator:bitwise_cyclic_tag"
+
+[resource_evidence.workspace]
+expression = "12T + 16 + bl(13T/2+n) + bl(3T/2+n+2)"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.bitwise_cyclic_tag.generator:bitwise_cyclic_tag"
+
+[resource_evidence.scaling]
+expression = "13T/2+2n+3"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.bitwise_cyclic_tag.generator:bitwise_cyclic_tag"

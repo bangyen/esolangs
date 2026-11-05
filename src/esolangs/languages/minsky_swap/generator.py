@@ -29,9 +29,7 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.minsky_swap.proof_formulas import execution, workspace
 from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -242,8 +240,4 @@ LANGUAGE = Language(
         "registers at halt; the answer is the second one",
     ),
     example=Example(expected="1 0"),
-    certification=CertificationSpec(
-        proof_execution=(execution, True, (3, 5)),
-        proof_workspace=(workspace, False, (3, 6)),
-    ),
 )

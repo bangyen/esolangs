@@ -33,9 +33,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.container.proof_formulas import execution, workspace
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -666,9 +664,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         note="Container prints the answer; module.run returns the EXIT code.",
         input_shape="char_stream",
-    ),
-    certification=CertificationSpec(
-        proof_execution=(execution, True, (3, 7)),
-        proof_workspace=(workspace, False, (3, 7)),
     ),
 )

@@ -30,6 +30,3 @@ def _chars(n: int, _: str) -> int:
             kap_below = 1 + _digits(d + 1)
             total += slots * lam[d + 1] + max(0, kap_below - lam[d + 1]) * to_const
     return total
-
-
-FORMULAS = {"scaling": (_chars, False, (3, 4, 5, 6, 7))}

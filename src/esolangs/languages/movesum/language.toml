@@ -90,3 +90,24 @@ size = 772
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.movesum.generator:movesum"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "4T + 6n + 4"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.movesum.generator:movesum"
+
+[resource_evidence.workspace]
+expression = "7n + 72"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.movesum.generator:movesum"

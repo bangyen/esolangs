@@ -12,6 +12,3 @@ def _cells(n: int, _: str) -> int:
     if n == 8:
         return 128
     return 80 * (_ceil(5 * n + 64, 78) + _ceil(_ceil(1 << n, 6), 80))
-
-
-FORMULAS = {"scaling": (_cells, True, (7, 8, 9, 10, 11, 12, 13))}

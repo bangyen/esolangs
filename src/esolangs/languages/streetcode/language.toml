@@ -209,3 +209,33 @@ size = 251
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.streetcode.generator:streetcode"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.streetcode.proof_formulas:execution"
+exact = true
+arities = [2, 3, 4, 5, 6, 8]
+first = 2
+unit = "steps"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.streetcode.generator:streetcode"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.streetcode.proof_formulas:workspace"
+exact = false
+arities = [6, 7]
+first = 6
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.streetcode.generator:streetcode"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.streetcode.tests.formulas:_cells"
+exact = true
+arities = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+first = 2
+unit = "cells"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.streetcode.generator:streetcode"

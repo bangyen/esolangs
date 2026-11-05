@@ -14,6 +14,3 @@ def _bound(n: int, _: str) -> int:
     # Prelude 8 words, n setters, two constant leaves, two last-level blocks,
     # then 13 + d characters a unit.
     return 34 + d + 12 * n + 8 * n + 46 + 2 * max(37, 23 + 2 * d) + (13 + d) * s - 1
-
-
-FORMULAS = {"scaling": (_bound, False, (3, 4, 5, 6, 7))}

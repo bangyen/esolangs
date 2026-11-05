@@ -16,9 +16,3 @@ def _chars(n: int, _: str) -> int:
 
 def _steps(n: int, _: str) -> int:
     return 25 + _costs(n)[1]
-
-
-FORMULAS = {
-    "scaling": (_chars, True, (4, 5, 6, 7, 8)),
-    "execution": (_steps, True, (4, 5, 6, 7, 8)),
-}

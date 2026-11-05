@@ -124,3 +124,33 @@ size = 7405
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.suffolk.generator:suffolk"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.suffolk.proof_formulas:execution"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.suffolk.generator:suffolk"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.suffolk.proof_formulas:workspace"
+exact = false
+arities = [3, 5, 6]
+first = 3
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.suffolk.generator:suffolk"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.suffolk.tests.formulas:_chars"
+exact = true
+arities = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+first = 4
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.suffolk.generator:suffolk"

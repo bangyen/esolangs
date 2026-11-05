@@ -24,11 +24,8 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
-
-from .proof_formulas import execution, workspace
 
 _SPACE = " "
 _TAB = "\t"
@@ -98,9 +95,5 @@ LANGUAGE = Language(
         generate=whitespace,
         shape=Shape.REDUCING,
         no_wrap="a line feed is a token, so a break changes the command it splits",
-    ),
-    certification=CertificationSpec(
-        proof_execution=(execution, True, (1, 2, 3, 5)),
-        proof_workspace=(workspace, True, (1, 2, 3, 5)),
     ),
 )

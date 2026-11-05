@@ -22,6 +22,3 @@ def workspace(n: int, program: str) -> int:
     if "[" in compact:
         return n + 1 + 2 * b * (compact.count(":") + n + 2) + bl(n)
     return 6 * n + 1 + 2 * b + bl(n)
-
-
-FORMULAS = {"workspace": (workspace, False, (3, 4, 5, 6, 8, 9))}

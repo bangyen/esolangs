@@ -1,9 +1,5 @@
 """Full-support literal-seed resource attainers."""
 
-from esolangs.registry._certification import ProofFormula
-
-FORMULAS: dict[str, ProofFormula] = {}
-
 
 def resource_witness(n: int) -> str:
     """Keep every input essential, with nibble15 at the all-one prefix."""

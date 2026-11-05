@@ -88,3 +88,33 @@ size = 284
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.basicfuck.generator:basicfuck"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "5n + 55"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.basicfuck.generator:basicfuck"
+
+[resource_evidence.workspace]
+expression = "6n + 60 + bl(L) + bl(n)"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.basicfuck.generator:basicfuck"
+
+[resource_evidence.scaling]
+expression = "14T + 16n + 43"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.basicfuck.generator:basicfuck"

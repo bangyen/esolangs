@@ -194,3 +194,33 @@ size = 19
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "2n + 1"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.circuit_diagram.proof_formulas:workspace"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.circuit_diagram.tests.formulas:_cells"
+exact = false
+arities = [9, 10, 11]
+first = 9
+unit = "cells"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"

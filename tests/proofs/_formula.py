@@ -1,129 +1,11 @@
-"""Read a ledger cell's stated bound as a formula the tests can evaluate.
-
-A ``worst`` or ``at most`` clause states its bound in the notation of
-docs/proofs/index.md's Symbols: ``69n + 44``, ``2T + 3n - 2``,
-``n^2 + 8n + 5``, ``bl(3T+6n+5)``.  When the bound uses only ``n``, ``T``
-(``2^n``), ``L`` (the program's length), integers and ``bl``, ``max``,
-``min``, ``⌈⌉``, ``⌊⌋``, the clause itself is the formula: the test
-measures against what the ledger says, so the two cannot drift.  Anything
-else (a definition such as ``M = ...``, a sum, a case split) returns None,
-and the test file spells that formula by hand.
-"""
+"""Load formula checks from validated language-owned evidence."""
 
 from __future__ import annotations
 
-import ast
-import importlib
-import math
-import re
-from collections.abc import Callable
-from fractions import Fraction
-from pathlib import Path
-from typing import TYPE_CHECKING
-
 from esolangs.registry import LANGUAGES
-from esolangs.registry._slug import canonical_id
+from scripts.docs.resource_evidence import Formula, resource_bounds
 
-if TYPE_CHECKING:
-    from tests.proofs._ledger import Row as LedgerRow
-
-#: The words a bound ends on: its unit.
-_UNITS = (
-    r"(?:commands|steps|rewrites|nodes|instructions|lines|rows|characters|cells"
-    r"|codels|bits)"
-)
-_BOUND = re.compile(rf"^(worst|at most) (.+?) {_UNITS}\b(.*)$")
-#: ``past n = k``: the bound holds from k + 1 inputs.
-_PAST = re.compile(r"^,? past n ?= ?(\d+)(?=$|[:;,])")
-_NAMES = {"n", "T", "L", "bl", "max", "min", "ceil", "floor"}
-
-Formula = Callable[[int, str], int | Fraction]
-#: ``worst`` at every listed arity, or only at these (``at most`` at the rest).
 Exact = bool | frozenset[int]
-
-
-def bl(value: Fraction | int) -> int:
-    """Bit length of a non-negative integer, as the ledger uses it."""
-    return int(value).bit_length()
-
-
-def _python(expression: str) -> str | None:
-    """Return ``expression`` as Python, or None outside the notation."""
-    text = expression.replace("·", "*").replace("²", "^2").replace("^", "**")
-    text = re.sub(r"⌈([^⌈⌉]*)⌉", r"ceil(\1)", text)
-    text = re.sub(r"⌊([^⌊⌋]*)⌋", r"floor(\1)", text)
-    # Juxtaposition multiplies: 2n, 3T, 5bl(n), (n+1)T, 2(n+1).
-    text = re.sub(r"(\d|\))\s*(?=[A-Za-z(])", r"\1*", text)
-    text = re.sub(r"\b([nTL])\s*(?=[A-Za-z(\d])", r"\1*", text)
-    try:
-        tree = ast.parse(text, mode="eval")
-    except SyntaxError:
-        return None
-    allowed = (
-        ast.Expression,
-        ast.BinOp,
-        ast.UnaryOp,
-        ast.Call,
-        ast.Name,
-        ast.Load,
-        ast.Constant,
-        ast.Add,
-        ast.Sub,
-        ast.Mult,
-        ast.Div,
-        ast.Pow,
-        ast.USub,
-    )
-    for node in ast.walk(tree):
-        if not isinstance(node, allowed):
-            return None
-        if isinstance(node, ast.Name) and node.id not in _NAMES:
-            return None
-        if isinstance(node, ast.Constant) and type(node.value) is not int:
-            return None
-    return text
-
-
-def parse(clause: str) -> tuple[Formula, bool, int] | None:
-    """Return ``(formula(n, program), exact, first n)``, or None.
-
-    ``exact`` is a ``worst`` bound, which some table must reach; ``at most``
-    need only never be exceeded.  ``first n`` is 1, or one past ``past n``.
-    """
-    match = _BOUND.match(clause)
-    if match is None:
-        return None
-    kind, expression, rest = match.groups()
-    past = _PAST.match(rest)
-    tail = rest[past.end() :] if past else rest
-    # A colon explains the bound; a comma or semicolon may start a second
-    # case ("; 2n + 2 past n = 7", ", else 15T/2 - 4"), so one with figures
-    # is left to a hand-written formula.
-    second = not tail.startswith((",", ";")) or re.search(r"\d|else|after", tail)
-    if tail and not tail.startswith(":") and second:
-        return None
-    python = _python(expression)
-    if python is None:
-        return None
-    code = compile(python, "<ledger>", "eval")
-    # A raster program has no length; only a bound that reads L asks.
-    reads_length = "L" in code.co_names
-
-    def formula(n: int, program: str) -> int | Fraction:
-        names = {
-            "n": Fraction(n),
-            "T": Fraction(2**n),
-            "L": Fraction(len(program)) if reads_length else None,
-            "bl": bl,
-            "max": max,
-            "min": min,
-            "ceil": math.ceil,
-            "floor": math.floor,
-        }
-        value = Fraction(eval(code, {"__builtins__": {}}, names))
-        return value.numerator if value.denominator == 1 else value
-
-    return formula, kind == "worst", int(past.group(1)) + 1 if past else 1
 
 
 def exact_at(exact: Exact, n: int) -> bool:
@@ -131,68 +13,11 @@ def exact_at(exact: Exact, n: int) -> bool:
     return n in exact if isinstance(exact, frozenset) else exact
 
 
-def _first_claimed(text: str) -> int:
-    """Least n the clause claims: 1, or where its stated scope starts."""
-    starts = [int(k) + 1 for k in re.findall(r"past n ?= ?(\d+)", text)]
-    stated = r"(?:n ?(?:>=|≥) ?|(?:at|for|from) n ?= ?)(\d+)"
-    starts += map(int, re.findall(stated, text))
-    starts += map(int, re.findall(r"\bn ?= ?(\d+)\.\.", text))
-    return min(starts, default=1)
-
-
-def ledger_formulas(
-    clause: Callable[[LedgerRow], str],
-    hand: dict[str, tuple[Formula, Exact, tuple[int, ...]]],
-    arities: dict[str, tuple[int, ...]],
-    *,
-    column: str | None = None,
-) -> dict[str, tuple[Formula, Exact, tuple[int, ...]]]:
-    """Return parsed bounds, handwritten fallbacks, then language-owned overrides.
-
-    Arities run from the first n through three more for a ``poly n`` row,
-    two more otherwise (each rung of a linear row costs twice the last),
-    unless ``arities`` names them. ``column`` loads language-owned formulas
-    from each language's ``tests/formulas.py`` when present.
-    """
-    from tests.proofs._ledger import load
-
-    rows = {row.generator: row for row in load().rows}
-    hand = dict(hand)
-    table: dict[str, tuple[Formula, Exact, tuple[int, ...]]] = {}
-    local: dict[str, tuple[Formula, Exact, tuple[int, ...]]] = {}
-    for row in load().rows:
-        if column is not None:
-            # The registered id: "Piet++" slugs to Piet's, but its id is its own.
-            lang = LANGUAGES.get(row.generator)
-            stem = lang.id if lang else canonical_id(row.generator)
-            path = (
-                Path(__file__).resolve().parents[2]
-                / "src/esolangs/languages"
-                / stem
-                / "tests"
-                / "formulas.py"
-            )
-            if path.is_file():
-                owner = importlib.import_module(
-                    f"esolangs.languages.{stem}.tests.formulas"
-                )
-                if formula := owner.FORMULAS.get(column):
-                    local[row.generator] = formula
-                    continue
-        parsed = parse(clause(row)) if row.generator not in hand else None
-        if parsed is not None:
-            formula, exact, start = parsed
-            span = 3 if row.execution_class.startswith("poly") else 2
-            # Every n below 3 too: unchecked, three bounds were false at n = 1.
-            base = max(start, 3)
-            table[row.generator] = (
-                formula,
-                exact,
-                arities.get(row.generator, (*range(start, base), base, base + span)),
-            )
-    for owned in (hand, local):
-        for name, (formula, exact, rungs) in owned.items():
-            row = rows.get(name)
-            first = _first_claimed(clause(row)) if row else 1
-            owned[name] = (formula, exact, (*range(first, min(rungs)), *rungs))
-    return {**table, **hand, **local}
+def ledger_formulas(column: str) -> dict[str, tuple[Formula, Exact, tuple[int, ...]]]:
+    """Return each explicit formula, exactness rule and unchanged probe arities."""
+    return {
+        name: (bound.formula, bound.exact, bound.arities)
+        for name, language in LANGUAGES.items()
+        if language.backend is not None
+        if (bound := resource_bounds(name).get(column)) is not None
+    }

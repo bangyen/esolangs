@@ -146,3 +146,33 @@ size = 10156
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.painfuck.generator:painfuck"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.painfuck.tests.formulas:_execution"
+exact = true
+arities = [3, 6]
+first = 3
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.painfuck.generator:painfuck"
+
+[resource_evidence.workspace]
+expression = "2n + 5 + 3bl(n) + (n+1)bl(L)"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.painfuck.generator:painfuck"
+
+[resource_evidence.scaling]
+expression = "31T/2+3n-21"
+exact = false
+arities = [4, 7]
+first = 4
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.painfuck.generator:painfuck"

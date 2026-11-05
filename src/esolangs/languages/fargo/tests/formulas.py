@@ -9,6 +9,3 @@ def _chars(n: int, _: str) -> int:
     for t in range(2, n):
         m = 2 * m + 8 + t.bit_length()
     return 7 + m
-
-
-FORMULAS = {"scaling": (_chars, False, (3, 4, 5, 6, 7))}

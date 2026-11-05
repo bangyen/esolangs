@@ -130,3 +130,33 @@ size = 44
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.interprogck8.generator:interprogck8"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.interprogck8.tests.formulas:_steps"
+exact = true
+arities = [3, 4, 5, 6, 7, 8, 9, 10]
+first = 3
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.interprogck8.generator:interprogck8"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.interprogck8.proof_formulas:workspace"
+exact = true
+arities = [3, 4, 5, 6]
+first = 3
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.interprogck8.generator:interprogck8"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.interprogck8.tests.formulas:_chars"
+exact = true
+arities = [3, 4, 5, 6, 7, 8, 9, 10]
+first = 3
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.interprogck8.generator:interprogck8"

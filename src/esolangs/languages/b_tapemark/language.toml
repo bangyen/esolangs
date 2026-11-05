@@ -30,8 +30,6 @@ definitions = ["B = 8 + coordinate bits per program cell, plus a widest-coordina
 [catalogue]
 folding_constant_local = "b_tapemark"  # direct read-and-print constant
 
-[formula_arities]
-execution = [3, 6]
 
 [schemes]
 folds_without_tree = true
@@ -134,4 +132,34 @@ seed = 1847
 size = 13741
 unit = "chars"
 scale = 1
+construction = "esolangs.languages.b_tapemark.generator:b_tapemark"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.b_tapemark.tests.formulas:_steps"
+exact = true
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
+first = 1
+unit = "steps"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.b_tapemark.generator:b_tapemark"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.b_tapemark.tests.formulas:_workspace"
+exact = [3, 4, 5, 6, 7, 8]
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.b_tapemark.generator:b_tapemark"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.b_tapemark.tests.formulas:_cells"
+exact = true
+arities = [2, 3, 4, 5, 6, 7, 8]
+first = 2
+unit = "cells"
+witnesses = "tests.proofs.execution:tables"
 construction = "esolangs.languages.b_tapemark.generator:b_tapemark"

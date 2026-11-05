@@ -25,9 +25,3 @@ def _commands(n: int, _: str) -> int:
     if n <= 15:
         return 5 * (1 << n) + 6 * n - 5
     return (1 << n) + (1 << 17) + n + (1 << (n - 15)) + 143
-
-
-FORMULAS = {
-    "scaling": (_characters, True, (3, 4, 5, 15, 16, 17, 18, 19, 20, 21, 22)),
-    "execution": (_commands, True, (3, 4, 5)),
-}

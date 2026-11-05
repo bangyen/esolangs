@@ -49,9 +49,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.shared_block import ContinuationCost as _Cost
 from esolangs.generation.shared_flag import flag_tree_body
 from esolangs.generation.wrap import wrap_chars
-from esolangs.languages.boolfuck.proof_formulas import workspace
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -447,9 +445,5 @@ LANGUAGE = Language(
     backend=BooleanBackend(generate=boolfuck, wrap=wrap_chars),
     contract=BooleanContract(
         input_shape="char_stream",
-    ),
-    certification=CertificationSpec(
-        # Four to eight reach the AND/XOR gates (docs/proofs/boolfuck-gates.md).
-        proof_workspace=(workspace, False, (3, 4, 6, 7, 8))
     ),
 )

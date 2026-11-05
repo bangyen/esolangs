@@ -86,3 +86,24 @@ size = 130
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.iebel.generator:iebel"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "3n + 2"
+exact = false
+arities = [2, 3, 6]
+first = 2
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.iebel.generator:iebel"
+
+[resource_evidence.workspace]
+expression = "n + 274 + min(1,n-1)"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.iebel.generator:iebel"

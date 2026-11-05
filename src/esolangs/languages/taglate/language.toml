@@ -119,3 +119,33 @@ size = 2673
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.taglate.generator:taglate"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.taglate.proof_formulas:execution"
+exact = true
+arities = [3, 4, 5]
+first = 3
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.taglate.generator:taglate"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.taglate.proof_formulas:workspace"
+exact = true
+arities = [3, 4, 5]
+first = 3
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.taglate.generator:taglate"
+
+[resource_evidence.scaling]
+expression = "3T+12n²+17n+12"
+exact = true
+arities = [3, 5]
+first = 3
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.taglate.generator:taglate"

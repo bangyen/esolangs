@@ -28,9 +28,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import wrap_chars
-from esolangs.languages.nor_machine.proof_formulas import execution, workspace
 from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
@@ -209,9 +207,5 @@ LANGUAGE = Language(
         # Not a tree: Horner's rule packs every row of the essential-input table.
         shape=Shape.LOOKUP,
         wrap=wrap_chars,
-    ),
-    certification=CertificationSpec(
-        proof_execution=(execution, False, (1, 2, 3, 5)),
-        proof_workspace=(workspace, False, (1, 2, 3, 5)),
     ),
 )

@@ -6,7 +6,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-ProofFormula = tuple[Callable[[int, str], float], bool, tuple[int, ...]]
 Payload = tuple[tuple[int, ...], tuple[int, ...], int, int]
 
 
@@ -22,8 +21,6 @@ class CertificationSpec:
     layout_switch: tuple[int, ...] = ()
     #: Admitted controls when a generic corpus exceeds a proved cap.
     benchmark_tables: tuple[str, ...] = ()
-    proof_execution: ProofFormula | None = None
-    proof_workspace: ProofFormula | None = None
     slow_scaling: bool = False
     slow_width_sweep: bool = False
     reader_checked: bool = False

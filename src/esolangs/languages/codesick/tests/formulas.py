@@ -9,6 +9,3 @@ def _chars(n: int, _: str) -> int:
     # Base88 names (skipping three keywords) fit digits10(C+1).
     # A node and two forwarders cost <=(64+10w), with two final prints.
     return (68 + 10 * len(str(count + 1))) * count + 43
-
-
-FORMULAS = {"scaling": (_chars, False, (3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14))}

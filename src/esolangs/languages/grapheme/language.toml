@@ -99,3 +99,33 @@ size = 20015
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.grapheme.generator:grapheme"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.grapheme.proof_formulas:execution"
+exact = true
+arities = [2, 3, 5]
+first = 2
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.grapheme.generator:grapheme"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.grapheme.proof_formulas:workspace"
+exact = true
+arities = [2, 3, 5]
+first = 2
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.grapheme.generator:grapheme"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.grapheme.tests.formulas:_chars"
+exact = true
+arities = [2, 3, 5]
+first = 2
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.grapheme.generator:grapheme"

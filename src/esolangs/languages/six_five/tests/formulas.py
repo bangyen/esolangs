@@ -29,6 +29,3 @@ def _chars(n: int, _: str) -> int:
     m = min(35, t - 1)
     tree = 6 * n + m * (n + 13) + 4  # reads, m nodes of <= n + 8, m + 1 leaves of 5
     return max(6 * t + 17 * n + 3, tree)
-
-
-FORMULAS = {"scaling": (_chars, False, (1, 2, 3, 4, 5, 6, 7, 8))}

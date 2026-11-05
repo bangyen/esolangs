@@ -26,8 +26,6 @@ definitions = ["N = 40n+11 through n=5; global ceiling beyond", "W = n+3+bl(max(
 [catalogue]
 folding_constant_local = "input_weights"  # zero projected index weights
 
-[formula_arities]
-workspace = [3, 6]
 
 [schemes]
 folds_without_tree = true
@@ -145,4 +143,34 @@ seed = 1847
 size = 8913
 unit = "chars"
 scale = 1
+construction = "esolangs.languages.minsky_swap.generator:minsky_swap"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.minsky_swap.proof_formulas:execution"
+exact = true
+arities = [1, 2, 3, 5]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.minsky_swap.generator:minsky_swap"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.minsky_swap.proof_formulas:workspace"
+exact = [1, 2, 3, 6]
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.minsky_swap.generator:minsky_swap"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.minsky_swap.tests.formulas:_chars"
+exact = [1, 2, 3, 4, 5]
+arities = [1, 2, 3, 4, 5]
+first = 1
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
 construction = "esolangs.languages.minsky_swap.generator:minsky_swap"

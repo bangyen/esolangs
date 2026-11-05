@@ -109,3 +109,24 @@ size = 545
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.nor_machine.generator:nor_machine"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.nor_machine.proof_formulas:execution"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.nor_machine.generator:nor_machine"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.nor_machine.proof_formulas:workspace"
+exact = false
+arities = [1, 2, 3, 5]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.nor_machine.generator:nor_machine"

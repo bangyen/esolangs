@@ -138,3 +138,33 @@ size = 5211
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.bfstack.generator:bfstack"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+provider = "esolangs.languages.bfstack.proof_formulas:execution"
+exact = true
+arities = [8, 9, 10]
+first = 9
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.bfstack.generator:bfstack"
+
+[resource_evidence.workspace]
+provider = "esolangs.languages.bfstack.proof_formulas:workspace"
+exact = [5, 9, 10, 11]
+arities = [3, 5, 6, 9, 10, 11]
+first = 5
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.bfstack.generator:bfstack"
+
+[resource_evidence.scaling]
+provider = "esolangs.languages.bfstack.tests.formulas:_chars"
+exact = true
+arities = [3, 4, 5, 6, 7, 8, 9]
+first = 3
+unit = "characters"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.bfstack.generator:bfstack"

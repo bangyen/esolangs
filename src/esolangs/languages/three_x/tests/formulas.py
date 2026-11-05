@@ -69,9 +69,3 @@ def _chars(n: int, _: str) -> int:
         worst = max(leaf, bit[e] + 6 + 2 * child)
     head = sum(3 + len(_SCALE) + bit[v] for v in range(n))
     return head + worst + 8 + result
-
-
-FORMULAS = {
-    "scaling": (_chars, False, tuple(range(2, 10))),
-    "workspace": (_three_x, False, (3, 5)),
-}

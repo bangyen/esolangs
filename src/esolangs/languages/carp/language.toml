@@ -70,3 +70,33 @@ size = 519
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.carp.generator:carp"
+
+[resource_evidence]
+version = 1
+
+[resource_evidence.execution]
+expression = "3n + 19"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.carp.generator:carp"
+
+[resource_evidence.workspace]
+expression = "n + 23"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.carp.generator:carp"
+
+[resource_evidence.scaling]
+expression = "2T + n + 20"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "lines"
+witnesses = "tests.proofs.execution:tables"
+construction = "esolangs.languages.carp.generator:carp"

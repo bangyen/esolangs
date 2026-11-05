@@ -21,6 +21,3 @@ def _chars(n: int, _: str) -> int:
         + len(str(3 * blocks))
         + 1
     )
-
-
-FORMULAS = {"scaling": (_chars, True, (3, 4, 5))}

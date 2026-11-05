@@ -15,6 +15,3 @@ def _chars(n: int, _: str) -> int:
     on every table n <= 4 before the zero-arm and redundant-move cleanup.
     """
     return 35 * 2**n // 2 + 55 * n + 25
-
-
-FORMULAS = {"scaling": (_chars, False, (2, 3, 4, 5, 6, 7, 8))}

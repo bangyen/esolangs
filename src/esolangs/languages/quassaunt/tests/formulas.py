@@ -19,6 +19,3 @@ def witness(n: int) -> str:
     return worst_diagram(
         n, lambda node, _: len(str(node)), 1 + len(str(capped_level(n)))
     )
-
-
-FORMULAS = {"scaling": (_chars, False, tuple(range(3, 22)))}

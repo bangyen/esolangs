@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from esolangs.languages.stisp.proof_formulas import workspace
 from tests.proofs._diagram_bounds import (
     capped_level,
     capped_loss,
@@ -154,9 +153,3 @@ def workspace_witness(n: int) -> str:
 def _hybrid_chars(n: int, program: str) -> int:
     """Each local inline choice saves text; the selectors add 28 characters."""
     return _chars(n, program) + 28
-
-
-FORMULAS = {
-    "workspace": (workspace, frozenset(range(1, 8)), tuple(range(1, 8))),
-    "scaling": (_hybrid_chars, False, tuple(range(3, 21))),
-}

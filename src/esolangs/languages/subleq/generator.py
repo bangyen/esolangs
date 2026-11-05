@@ -17,7 +17,6 @@ from esolangs.generation.branch_decoder import hoisted_tree
 from esolangs.generation.helpers import _validate_truth_table, in_input_order
 from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.generation.wrap import wrap_grid
-from esolangs.languages.subleq.proof_formulas import workspace
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec, Payload
 from esolangs.registry._contracts import BooleanContract
@@ -49,7 +48,7 @@ LANGUAGE = Language(
     "Subleq",
     RuntimeSpec("subleq", category="tape_based"),
     certification=CertificationSpec(
-        payload=_payload, proof_workspace=(workspace, True, (3, 5, 9))
+        payload=_payload,
     ),
     backend=BooleanBackend(
         generate=subleq,

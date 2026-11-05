@@ -32,4 +32,3 @@ def _chars(n: int, _: str) -> int:
 # n = 17 is the first two-letter label, n = 50 the first two-letter input
 # (not buildable: 2^50 rows; the layout is checked with stand-in halves);
 # parity reaches C at n = 5..21.
-FORMULAS = {"scaling": (_chars, True, (5, 6, 17))}
