@@ -32,6 +32,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._fault import _Fault
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -555,12 +556,20 @@ class _Machine:
         self._flush(effects, flushed)
 
 
+def _execute(code: list[str] | str, io: IO) -> CompletionReport:
+    """Execute Qoibl program code.
+
+    Lines or one string; the program is one character stream.
+    """
+    return drive(_Machine(code, io))
+
+
 def run(code: list[str] | str, io: IO) -> None:
     """Execute Qoibl program code.
 
     Lines or one string; the program is one character stream.
     """
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

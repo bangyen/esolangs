@@ -41,6 +41,7 @@ from dataclasses import dataclass
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -165,9 +166,14 @@ class _Machine:
             self.rendered = True
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run a Sonata program on its input and print the final string."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run a Sonata program on its input and print the final string."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

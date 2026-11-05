@@ -22,6 +22,7 @@ from collections.abc import Sequence
 from functools import lru_cache
 
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import HALTED_REPORT, CompletionReport
 from esolangs.runtime.brackets import match_brackets as matches
 from esolangs.runtime.io import IO
 
@@ -269,7 +270,7 @@ def _advance_compiled(
     return (ind + 1, ptr), (prefix, suffix, writes), output, False
 
 
-def run(code: str, io: IO) -> None:
+def _execute(code: str, io: IO) -> CompletionReport:
     """Run compact operations, applying the pure core's tape and IO effects."""
     ops = _compile(code)
     tape = bytearray(1)
@@ -290,6 +291,12 @@ def run(code: str, io: IO) -> None:
         state = moved
         if output is not None:
             io.print_char(output)
+    return HALTED_REPORT
+
+
+def run(code: str, io: IO) -> None:
+    """Run compact operations, applying the pure core's tape and IO effects."""
+    _execute(code, io)
 
 
 if __name__ == "__main__":

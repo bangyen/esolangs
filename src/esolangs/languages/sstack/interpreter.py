@@ -45,6 +45,7 @@ import re
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.brackets import unmatched
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer, parse_integer
@@ -200,9 +201,14 @@ class _Machine:
         self.state = _advance(self.state, self.ops, byte)
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run an SStack program."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run an SStack program."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

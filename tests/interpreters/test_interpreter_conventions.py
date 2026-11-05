@@ -24,10 +24,19 @@ from tests.interpreters.spec_sections import (
 # started from.
 _INTERPRETERS = pathlib.Path(__file__).resolve().parents[2] / ("src/esolangs")
 
-# ``run`` is the entry point the template puts the IO on -- it builds the
-# machine, drives it, and is handed the ``IO`` to do it with.  It is the
-# one module-level function that is *supposed* to reach the ports.
-_IO_OWNER = "run"
+
+def _native_io_owners() -> dict[pathlib.Path, str]:
+    """Scope each native shell to its declaration; instruction helpers stay pure."""
+    return {
+        pathlib.Path(
+            inspect.getfile(
+                importlib.import_module(f"esolangs.languages.{lang.id}.interpreter")
+            )
+        ): lang.runtime.completion_entrypoint
+        for lang in LANGUAGES.values()
+        if lang.runtime.interpreter
+    }
+
 
 #: A module's own ``REACHES_IO`` names the functions and methods that call
 #: an IO effect outside the normal ``run``/``_Machine`` shells -- each a
@@ -104,13 +113,14 @@ def _io_calls(function: ast.FunctionDef, surface: frozenset[str]) -> list[str]:
 def _reaching_functions() -> dict[tuple[str, str], list[str]]:
     """Return every non-shell function or method that calls into ``IO``."""
     surface = _io_surface()
+    owners = _native_io_owners()
     found: dict[tuple[str, str], list[str]] = {}
     for path in _module_files():
         relative = path.relative_to(_INTERPRETERS).as_posix()
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in tree.body:
             if isinstance(node, ast.FunctionDef):
-                if node.name == _IO_OWNER:
+                if node.name in ("run", owners.get(path)):
                     continue
                 calls = _io_calls(node, surface)
                 if calls:
@@ -159,12 +169,33 @@ class TestTheSweepCanSee:
         surface = _io_surface()
         assert {"print_str", "print_char", "print_value", "input_str"} <= surface
 
+    def test_native_shell_names_are_scoped_to_their_module(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        module = importlib.import_module(__name__)
+        path = tmp_path / "interpreter.py"
+        path.write_text(
+            "def run(io): io.print_str('public')\n"
+            "def _execute_program(io): io.print_str('native')\n"
+            "def _execute(io): io.print_str('instruction')\n"
+            "def _advance(io): io.input_char()\n"
+        )
+        monkeypatch.setattr(module, "_INTERPRETERS", tmp_path)
+        monkeypatch.setattr(module, "_module_files", lambda: [path])
+        monkeypatch.setattr(
+            module, "_native_io_owners", lambda: {path: "_execute_program"}
+        )
+        assert _reaching_functions() == {
+            ("interpreter.py", "_execute"): ["print_str"],
+            ("interpreter.py", "_advance"): ["input_char"],
+        }
+
 
 class TestTransitionsDoNotReachIO:
     """The convention itself, pinned in both directions."""
 
     def test_no_unlisted_module_function_calls_io(self) -> None:
-        """Only ``run`` and the pinned exceptions reach the ports."""
+        """Only declared shells and pinned exceptions reach the ports."""
         unexpected = {
             where: calls
             for where, calls in _reaching_functions().items()
@@ -452,7 +483,7 @@ class TestEntryPointConventions:
         run = next(
             node
             for node in tree.body
-            if isinstance(node, ast.FunctionDef) and node.name == _IO_OWNER
+            if isinstance(node, ast.FunctionDef) and node.name == "run"
         )
         annotation = run.args.args[0].annotation
         assert annotation is not None, f"{path.name}: run's source is unannotated"

@@ -65,6 +65,7 @@ import re
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._validate import check_address
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
@@ -326,9 +327,14 @@ def _unescape(match: re.Match[str]) -> str:
     return chr(code)
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run Chicken: read the lines, execute from cell 2, print at exit."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run Chicken: read the lines, execute from cell 2, print at exit."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

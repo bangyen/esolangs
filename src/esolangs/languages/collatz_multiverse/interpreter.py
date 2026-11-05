@@ -40,6 +40,7 @@ from typing import cast
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -294,10 +295,15 @@ def _advance(
     return value, (next_ip, regs, arrays)
 
 
-def run(code: str, io: IO) -> None:
+def _execute(code: str, io: IO) -> CompletionReport:
     """Run a Collatz Multiverse program."""
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: str, io: IO) -> None:
+    """Run a Collatz Multiverse program."""
+    _execute(code, io)
 
 
 if __name__ == "__main__":

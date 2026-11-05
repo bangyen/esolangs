@@ -50,6 +50,7 @@ from types import MappingProxyType
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -183,9 +184,14 @@ class _Machine:
             self.io.print_str(f" {out}" if spaced else str(out))
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Execute a Movesum program."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Execute a Movesum program."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

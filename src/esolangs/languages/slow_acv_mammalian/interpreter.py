@@ -38,6 +38,7 @@ from itertools import chain
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
@@ -317,6 +318,26 @@ class _Machine:
         self._restore(_advance(self._state, n, byte, moduli=self.moduli))
 
 
+def _execute(
+    code: str,
+    io: IO,
+    *,
+    cell_modulus: int = DEFAULT_MODULI.cell_modulus,
+    io_modulus: int = DEFAULT_MODULI.io_modulus,
+    leapfrog_resume: str = DEFAULT_MODULI.leapfrog_resume,
+) -> CompletionReport:
+    """Run with separate cell and EXCRETE/PRONOUNCE moduli, and a resume reading."""
+    return drive(
+        _Machine(
+            code,
+            io,
+            cell_modulus=cell_modulus,
+            io_modulus=io_modulus,
+            leapfrog_resume=leapfrog_resume,
+        )
+    )
+
+
 def run(
     code: str,
     io: IO,
@@ -326,14 +347,12 @@ def run(
     leapfrog_resume: str = DEFAULT_MODULI.leapfrog_resume,
 ) -> None:
     """Run with separate cell and EXCRETE/PRONOUNCE moduli, and a resume reading."""
-    drive(
-        _Machine(
-            code,
-            io,
-            cell_modulus=cell_modulus,
-            io_modulus=io_modulus,
-            leapfrog_resume=leapfrog_resume,
-        )
+    _execute(
+        code,
+        io,
+        cell_modulus=cell_modulus,
+        io_modulus=io_modulus,
+        leapfrog_resume=leapfrog_resume,
     )
 
 

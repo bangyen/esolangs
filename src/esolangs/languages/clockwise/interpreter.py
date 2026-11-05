@@ -24,6 +24,7 @@ from collections.abc import Sequence
 from esolangs.exceptions import InputExhaustedError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -206,10 +207,15 @@ class _Machine:
             self.io.print_char(chr(byte))
 
 
-def run(code: list[str], io: IO) -> None:
+def _execute(code: list[str], io: IO) -> CompletionReport:
     """Run a Clockwise program, reading input bits when the ring reads ``.``."""
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: list[str], io: IO) -> None:
+    """Run a Clockwise program, reading input bits when the ring reads ``.``."""
+    _execute(code, io)
 
 
 if __name__ == "__main__":

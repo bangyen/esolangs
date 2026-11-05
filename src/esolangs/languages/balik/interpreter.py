@@ -40,6 +40,7 @@ from __future__ import annotations
 from esolangs.exceptions import ArgumentError, HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -150,9 +151,14 @@ class _Machine:
             self.io.print_num(out)
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run a Balik program until the pointer leaves the grid."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run a Balik program until the pointer leaves the grid."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

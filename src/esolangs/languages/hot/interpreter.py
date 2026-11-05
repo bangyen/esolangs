@@ -37,6 +37,7 @@ from __future__ import annotations
 from esolangs.exceptions import ArgumentError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.combinators import Args as _Args
 from esolangs.runtime.combinators import State as _State
 from esolangs.runtime.combinators import Term as _Term
@@ -187,9 +188,14 @@ class _Machine:
         self.odd = not self.odd
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run a Hot program on the binary string read from ``io``."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run a Hot program on the binary string read from ``io``."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

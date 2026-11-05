@@ -30,6 +30,7 @@ from fractions import Fraction
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -275,10 +276,15 @@ def _advance(
     return (ind + 1, stack, jumps, variables)
 
 
-def run(code: str, io: IO) -> None:
+def _execute(code: str, io: IO) -> CompletionReport:
     """Run a 3x program."""
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: str, io: IO) -> None:
+    """Run a 3x program."""
+    _execute(code, io)
 
 
 if __name__ == "__main__":

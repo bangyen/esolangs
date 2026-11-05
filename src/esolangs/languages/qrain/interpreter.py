@@ -41,6 +41,7 @@ from typing import NamedTuple
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.brackets import match_brackets
 from esolangs.runtime.io import IO
 
@@ -134,9 +135,14 @@ class _Machine:
         self.state = _advance(self.state, command, front, self.brackets)
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Execute Qrain."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Execute Qrain."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ EOF does not arise, and no source is invalid, so no ProgramError arises.
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 
 #: ``(source, rule)``: the unread program, and the ``(pattern, replacement)``
@@ -99,9 +100,14 @@ class _Machine:
             self.io.print_str(output)
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Execute /// using literal leftmost rewriting."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Execute /// using literal leftmost rewriting."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

@@ -42,6 +42,7 @@ from typing import NamedTuple, final
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import trunc_div, trunc_mod, wrap_int32
 
@@ -558,9 +559,14 @@ class _Machine:
             )
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run a Forþ program."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run a Forþ program."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

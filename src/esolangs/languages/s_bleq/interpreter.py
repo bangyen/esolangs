@@ -44,6 +44,7 @@ from collections.abc import Sequence
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._validate import check_address
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
@@ -248,13 +249,24 @@ class _Machine:
             self.mem[addr] = value
 
 
+def _execute(
+    code: str, io: IO, store: str = "a", *, indirect: bool = False
+) -> CompletionReport:
+    """Execute an S*bleq program.
+
+    ``store`` is ``"a"`` (base), ``"ab"`` (S*bl*q) or ``"b"`` (Subl*q);
+    ``indirect`` gives S**bleq, S**bl**q and Subl**q respectively.
+    """
+    return drive(_Machine(code, io, store=store, indirect=indirect))
+
+
 def run(code: str, io: IO, store: str = "a", *, indirect: bool = False) -> None:
     """Execute an S*bleq program.
 
     ``store`` is ``"a"`` (base), ``"ab"`` (S*bl*q) or ``"b"`` (Subl*q);
     ``indirect`` gives S**bleq, S**bl**q and Subl**q respectively.
     """
-    drive(_Machine(code, io, store=store, indirect=indirect))
+    _execute(code, io, store, indirect=indirect)
 
 
 if __name__ == "__main__":

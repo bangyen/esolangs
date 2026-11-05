@@ -988,6 +988,7 @@ LANGUAGE = Language(
     "Streetcode",
     RuntimeSpec(
         "streetcode",
+        completion_entrypoint="_execute_program",
         category="grid_based",
         split=True,
         empty_program="Streetcode program cannot be empty",

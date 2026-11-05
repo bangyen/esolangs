@@ -31,6 +31,7 @@ from __future__ import annotations
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 
 #: The largest value ``A`` can print.  Outputting a cell outside the valid
@@ -244,10 +245,15 @@ class _Machine:
         self.state = _advance(self.state, self.toks, byte, self.markers)
 
 
-def run(code: str, io: IO) -> None:
+def _execute(code: str, io: IO) -> CompletionReport:
     """Run a 6-5 program."""
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: str, io: IO) -> None:
+    """Run a 6-5 program."""
+    _execute(code, io)
 
 
 if __name__ == "__main__":

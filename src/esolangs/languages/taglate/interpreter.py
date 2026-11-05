@@ -32,6 +32,7 @@ from functools import lru_cache
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import HALTED_REPORT, CompletionReport
 from esolangs.runtime.brackets import unmatched
 from esolangs.runtime.io import IO
 
@@ -276,7 +277,7 @@ def _advance_bulk(state: _State, tokens: list[str]) -> _State | None:
     return queue[consumed:], ind + consumed
 
 
-def run(code: list[str], io: IO) -> None:
+def _execute(code: list[str], io: IO) -> CompletionReport:
     """Run Taglate, applying pure batched rotation/pop transitions."""
     machine = _Machine(code, io)
     while not machine.halted:
@@ -285,6 +286,12 @@ def run(code: list[str], io: IO) -> None:
             machine.step()
         else:
             machine.queue, machine.ind = moved
+    return HALTED_REPORT
+
+
+def run(code: list[str], io: IO) -> None:
+    """Run Taglate, applying pure batched rotation/pop transitions."""
+    _execute(code, io)
 
 
 if __name__ == "__main__":

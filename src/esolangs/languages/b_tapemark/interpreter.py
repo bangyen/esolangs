@@ -40,6 +40,7 @@ from dataclasses import dataclass
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -301,10 +302,15 @@ class _Machine:
             self.io.print_char(output)
 
 
-def run(source: str, io: IO, *, swap_marker: str = "new") -> None:
+def _execute(source: str, io: IO, *, swap_marker: str = "new") -> CompletionReport:
     """Run a B-tapemark program until ``!`` executes."""
     machine = _Machine(source, io, swap_marker=swap_marker)
-    drive(machine)
+    return drive(machine)
+
+
+def run(source: str, io: IO, *, swap_marker: str = "new") -> None:
+    """Run a B-tapemark program until ``!`` executes."""
+    _execute(source, io, swap_marker=swap_marker)
 
 
 if __name__ == "__main__":

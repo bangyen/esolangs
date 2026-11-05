@@ -108,6 +108,7 @@ from esolangs.languages.circuit_diagram.interpreter._parse import (
     _Wiring,
 )
 from esolangs.runtime._drive import drive
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 
 # ``tests/test_circuit_diagram.py`` carries ``PRIME_TESTER`` (repaired, replayed over
@@ -569,7 +570,12 @@ class _Machine:
         return (self.values, self.latches, self.halted, self.clock.position)
 
 
-def run(code: list[str], io: IO) -> None:
+def _execute(code: list[str], io: IO) -> CompletionReport:
     """Execute a Circuit Diagram program."""
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: list[str], io: IO) -> None:
+    """Execute a Circuit Diagram program."""
+    _execute(code, io)

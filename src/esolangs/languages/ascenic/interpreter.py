@@ -53,6 +53,7 @@ from typing import cast
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.randomness import Randomness, draw
@@ -224,9 +225,14 @@ class _Machine:
             self.io.print_str(out)
 
 
+def _execute(code: str, io: IO, rng: Randomness | None = None) -> CompletionReport:
+    """Run an Ascenic program."""
+    return drive(_Machine(code, io, rng))
+
+
 def run(code: str, io: IO, rng: Randomness | None = None) -> None:
     """Run an Ascenic program."""
-    drive(_Machine(code, io, rng))
+    _execute(code, io, rng)
 
 
 if __name__ == "__main__":

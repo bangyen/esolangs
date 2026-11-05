@@ -32,6 +32,7 @@ Decisions:
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 
 #: The whole run state as an immutable value, so ``snapshot`` can hand it
@@ -121,9 +122,13 @@ class _Machine:
             self.io.print_char(out)
 
 
-def run(code: str, io: IO) -> None:
+def _execute(code: str, io: IO) -> CompletionReport:
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: str, io: IO) -> None:
+    _execute(code, io)
 
 
 if __name__ == "__main__":

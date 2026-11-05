@@ -10,6 +10,7 @@ from esolangs.runtime._isolated import _decode
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
 from esolangs.runtime._result import ExecutionResult
 from esolangs.runtime._result_wire import decode_result, encode_result
+from tests.support.pick import one, one_where
 from tests.support.reference import REFERENCE
 
 
@@ -24,7 +25,13 @@ def test_worker_retains_actual_unicode_input_usage(max_output):
 
 @pytest.mark.parametrize(
     "language",
-    [name for name, lang in LANGUAGES.items() if lang.runtime.completion_entrypoint],
+    [
+        *one_where(
+            lambda info: info["answer_mode"] != "termination",
+            dumps_on_the_post_halt_step=True,
+        ),
+        *one(steppable_to_answer=False),
+    ],
 )
 def test_declared_completion_survives_a_worker(language):
     template = esolangs.generate(language, "01")

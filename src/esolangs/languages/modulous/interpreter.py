@@ -53,6 +53,7 @@ from typing import Never, cast
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import keyword_hint, syntax_error, with_hint
@@ -591,6 +592,19 @@ _DISPATCH: dict[str, _Handler] = {
 }
 
 
+def _execute(code: str, io: IO, rng: Randomness | None = None) -> CompletionReport:
+    """Run a Modulous program, drawing ``RND`` from ``rng``.
+
+    ``rng`` is the source ``RND`` draws from; ``None`` draws for real,
+    which is the spec's behaviour and what a plain run gets.  The machine
+    has always taken one -- it is how the VM makes a stepped run
+    reproducible -- but ``run`` did not forward it, so a caller holding
+    only ``run`` could not pin the draw without patching ``secrets``
+    globally.  This is the signature the other random-drawing runs take.
+    """
+    return drive(_Machine(code, io, rng))
+
+
 def run(code: str, io: IO, rng: Randomness | None = None) -> None:
     """Run a Modulous program, drawing ``RND`` from ``rng``.
 
@@ -601,7 +615,7 @@ def run(code: str, io: IO, rng: Randomness | None = None) -> None:
     only ``run`` could not pin the draw without patching ``secrets``
     globally.  This is the signature the other random-drawing runs take.
     """
-    drive(_Machine(code, io, rng))
+    _execute(code, io, rng)
 
 
 if __name__ == "__main__":

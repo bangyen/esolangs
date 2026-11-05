@@ -29,6 +29,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, cast
 
 from esolangs.raster import Pixel, Raster, Rows
+from esolangs.runtime._lifecycle import HALTED_REPORT, CompletionReport
 from esolangs.runtime._source import raster_source as load_source
 from esolangs.runtime.io import IO
 
@@ -164,12 +165,18 @@ class _Machine:
             self.io.print_num(output)
 
 
-def run(program: Raster, io: IO, *, scale: int | None = None) -> None:
+def _execute(program: Raster, io: IO, *, scale: int | None = None) -> CompletionReport:
     """Execute a Line raster, writing decimal outputs through ``io``."""
     if program._payload is not None and scale is None:  # noqa: SLF001 - language-owned payload
         _Machine.run_node(cast("Node", program._payload), io)  # noqa: SLF001
-        return
+        return HALTED_REPORT
     _run_compiled(
         _compiled(program, scale if scale is not None else program.scale),
         _LINE_IO(read=io.input_num, write=io.print_num),
     )
+    return HALTED_REPORT
+
+
+def run(program: Raster, io: IO, *, scale: int | None = None) -> None:
+    """Execute a Line raster, writing decimal outputs through ``io``."""
+    _execute(program, io, scale=scale)

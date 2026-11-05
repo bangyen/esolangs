@@ -46,6 +46,7 @@ from typing import NamedTuple
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import syntax_error
@@ -410,10 +411,15 @@ class _Machine:
             self.io.print_str(out)
 
 
-def run(code: str, io: IO, rng: Randomness | None = None) -> None:
+def _execute(code: str, io: IO, rng: Randomness | None = None) -> CompletionReport:
     """Run a Thue program."""
     machine = _Machine(code, io, rng)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: str, io: IO, rng: Randomness | None = None) -> None:
+    """Run a Thue program."""
+    _execute(code, io, rng)
 
 
 if __name__ == "__main__":

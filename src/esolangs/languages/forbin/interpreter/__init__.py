@@ -65,6 +65,7 @@ from esolangs.languages.forbin.interpreter._scope import (
 from esolangs.languages.forbin.interpreter._step import _advance, _run_block
 from esolangs.runtime._drive import drive
 from esolangs.runtime._fault import _Fault
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -369,7 +370,12 @@ class _Machine:
         self._flush(out, flushed)
 
 
-def run(code: str, io: IO) -> None:
+def _execute(code: str, io: IO) -> CompletionReport:
     """Run a Forbin program, calling ``main`` with a dummy argument."""
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: str, io: IO) -> None:
+    """Run a Forbin program, calling ``main`` with a dummy argument."""
+    _execute(code, io)

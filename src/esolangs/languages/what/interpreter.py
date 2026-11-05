@@ -56,6 +56,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime import persistent
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 
 _CELLS = 256
@@ -332,9 +333,14 @@ class _Machine:
             self.io.print_str(out)
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run a What!? program."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run a What!? program."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

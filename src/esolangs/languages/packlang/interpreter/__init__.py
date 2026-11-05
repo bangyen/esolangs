@@ -98,6 +98,7 @@ from esolangs.languages.packlang.interpreter._values import (
     _truth,
 )
 from esolangs.runtime._drive import drive
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 
 # There is no recursion ceiling.  A call pushes a frame rather than
@@ -629,7 +630,12 @@ class _Machine:
             self.io.print_char(out)
 
 
-def run(code: str, io: IO, *, literal_policy: str = "decimal") -> None:
+def _execute(code: str, io: IO, *, literal_policy: str = "decimal") -> CompletionReport:
     """Run a Packlang program to completion."""
     machine = _Machine(code, io, literal_policy=literal_policy)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: str, io: IO, *, literal_policy: str = "decimal") -> None:
+    """Run a Packlang program to completion."""
+    _execute(code, io, literal_policy=literal_policy)

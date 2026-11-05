@@ -9,7 +9,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 
 # A frozen dataclass put the two-input pilot 10.2% over baseline.
 class ExecutionResult(NamedTuple):
-    """Output and stdin usage; legacy native completion remains unknown.
+    """Output, stdin usage and explicit completion evidence.
 
     Input position counts characters in captured stdin; reads count successful
     IO calls and past-end counts failed reads, including caught EOFs.

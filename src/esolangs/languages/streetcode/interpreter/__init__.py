@@ -68,6 +68,7 @@ from esolangs.languages.streetcode.interpreter.validation import (
     validate_street,
 )
 from esolangs.runtime._drive import drive
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -398,7 +399,12 @@ class _Machine:
         return cls(list(code), io, _compiled=cls._compile(tuple(code)))
 
 
-def run(code: list[str], io: IO) -> None:
+def _execute_program(code: list[str], io: IO) -> CompletionReport:
     """Drive a Streetcode car over ``code`` until it halts."""
     machine = _Machine._for_run(code, io)  # noqa: SLF001
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: list[str], io: IO) -> None:
+    """Drive a Streetcode car over ``code`` until it halts."""
+    _execute_program(code, io)

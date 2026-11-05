@@ -18,7 +18,7 @@ from collections.abc import Sequence
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
-from esolangs.runtime._lifecycle import Completion
+from esolangs.runtime._lifecycle import Completion, CompletionReport
 from esolangs.runtime.io import IO
 
 # (d_row, d_col) per heading, in the clockwise order right, down, left, up.
@@ -160,7 +160,7 @@ class _Machine:
         self.state = _advance(self.state, self.grid, self.width)
 
 
-def run(code: list[str], io: IO) -> None:
+def _execute(code: list[str], io: IO) -> CompletionReport:
     """Run an ArrowQueue program and print the queue when it halts.
 
     The dump follows the interpreter-only convention: the queued headings as
@@ -170,7 +170,19 @@ def run(code: list[str], io: IO) -> None:
     The dump is :meth:`_Machine.step`'s post-halt step.
     """
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: list[str], io: IO) -> None:
+    """Run an ArrowQueue program and print the queue when it halts.
+
+    The dump follows the interpreter-only convention: the queued headings as
+    :data:`DELTA` indices (0 right, 1 down, 2 left, 3 up), space-separated,
+    no trailing newline -- the repo's spelling, not the spec's.  An
+    empty-pop halt dumps nothing; a walk off the grid dumps what is loaded.
+    The dump is :meth:`_Machine.step`'s post-halt step.
+    """
+    _execute(code, io)
 
 
 if __name__ == "__main__":

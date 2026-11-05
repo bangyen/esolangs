@@ -53,6 +53,7 @@ from collections.abc import Mapping, Sequence
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.bits import flush_byte, put_bit, take_bit
 from esolangs.runtime.brackets import unmatched
 from esolangs.runtime.io import IO
@@ -241,9 +242,14 @@ class _Machine:
             self._end_run()
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Execute a Smu program, one input bit per run."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Execute a Smu program, one input bit per run."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

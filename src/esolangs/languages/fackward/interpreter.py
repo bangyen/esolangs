@@ -53,6 +53,7 @@ from typing import cast
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 
 _FUNCTIONS = frozenset("+-*/%:~!$(<)H")
@@ -284,9 +285,14 @@ def _depth(stack: _Stack) -> int:
     return depth
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run a Fackward program."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run a Fackward program."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

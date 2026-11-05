@@ -30,6 +30,7 @@ from __future__ import annotations
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 
 #: Reset from exactly these two; a range check is the C comment's bug.
@@ -101,9 +102,14 @@ class _Machine:
             self.io.print_str(out)
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run a Deadfish program, printing a line per ``o``."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run a Deadfish program, printing a line per ``o``."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

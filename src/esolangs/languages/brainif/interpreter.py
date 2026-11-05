@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.persistent import (
@@ -245,9 +246,14 @@ class _Machine:
         self.state = _advance(self.state, parsed, byte)
 
 
+def _execute(code: list[str], io: IO) -> CompletionReport:
+    """Run a BrainIf program through its pure transition."""
+    return drive(_Machine(code, io))
+
+
 def run(code: list[str], io: IO) -> None:
     """Run a BrainIf program through its pure transition."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

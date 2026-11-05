@@ -33,6 +33,7 @@ Decisions:
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 
 #: The rotation cycle per direction, each read as "turns into the next":
@@ -259,9 +260,14 @@ class _Machine:
         self._restore(_advance(self._state, self.prog.chars(), byte, self.prog.cycle))
 
 
+def _execute(code: str, io: IO, *, rotation: str = "backward") -> CompletionReport:
+    """Run a ROTfuck program through its pure transition."""
+    return drive(_Machine(code, io, rotation=rotation))
+
+
 def run(code: str, io: IO, *, rotation: str = "backward") -> None:
     """Run a ROTfuck program through its pure transition."""
-    drive(_Machine(code, io, rotation=rotation))
+    _execute(code, io, rotation=rotation)
 
 
 if __name__ == "__main__":

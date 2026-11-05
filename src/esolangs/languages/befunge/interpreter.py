@@ -60,6 +60,7 @@ from typing import NamedTuple, cast
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import trunc_div, trunc_mod
 from esolangs.runtime.randomness import Randomness, draw
@@ -356,10 +357,17 @@ class _Machine:
             self.io.print_str(effect)
 
 
-def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
+def _execute(
+    code: list[str], io: IO, rng: Randomness | None = None
+) -> CompletionReport:
     """Execute a Befunge grid."""
     machine = _Machine(code, io, rng)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
+    """Execute a Befunge grid."""
+    _execute(code, io, rng)
 
 
 if __name__ == "__main__":

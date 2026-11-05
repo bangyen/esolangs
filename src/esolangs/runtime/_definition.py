@@ -37,5 +37,5 @@ class RuntimeSpec:
     #: Error raised when the specification rejects an empty program.
     empty_program: str = ""
     category: str = "other"
-    #: Optional native entry point returning a CompletionReport.
-    completion_entrypoint: str | None = None
+    #: Native entry point returning a CompletionReport.
+    completion_entrypoint: str = "_execute"

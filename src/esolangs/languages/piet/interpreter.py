@@ -60,6 +60,7 @@ from contextlib import suppress
 from esolangs.raster import Raster
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._source import raster_source as load_source
 from esolangs.runtime.codels import (
     BLACK,
@@ -327,10 +328,15 @@ class _Machine:
         self.state = (current, dp, cc, stack, halted)
 
 
-def run(program: Raster, io: IO, *, scale: int | None = None) -> None:
+def _execute(program: Raster, io: IO, *, scale: int | None = None) -> CompletionReport:
     """Execute a Piet image, detecting its codel scale."""
     machine = _Machine(program, io, scale=scale)
-    drive(machine)
+    return drive(machine)
+
+
+def run(program: Raster, io: IO, *, scale: int | None = None) -> None:
+    """Execute a Piet image, detecting its codel scale."""
+    _execute(program, io, scale=scale)
 
 
 if __name__ == "__main__":

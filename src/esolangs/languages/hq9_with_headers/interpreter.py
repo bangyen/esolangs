@@ -61,6 +61,7 @@ from esolangs.runtime import persistent
 from esolangs.runtime._digits import digit_limit_for
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 
 _BEGIN = "==== HEADER ===="
@@ -463,9 +464,14 @@ class _Machine:
             self.io.print_str(out)
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run an HQ9+ with headers program."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run an HQ9+ with headers program."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

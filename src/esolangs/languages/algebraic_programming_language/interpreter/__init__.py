@@ -95,6 +95,7 @@ from esolangs.languages.algebraic_programming_language.interpreter._parse import
     _tokens,
 )
 from esolangs.runtime._drive import drive
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -716,7 +717,12 @@ def _raw_arith(op: str, left: _Number, right: _Number) -> _Number:
     return left**right
 
 
-def run(code: str, io: IO) -> None:
+def _execute(code: str, io: IO) -> CompletionReport:
     """Run an APL program, printing the result of every executed line."""
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: str, io: IO) -> None:
+    """Run an APL program, printing the result of every executed line."""
+    _execute(code, io)

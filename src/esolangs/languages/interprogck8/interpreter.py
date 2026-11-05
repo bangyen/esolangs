@@ -64,6 +64,7 @@ from typing import cast
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
 
@@ -670,9 +671,16 @@ class _Machine:
             self.io.print_str(out)
 
 
+def _execute_program(
+    code: str | list[str], io: IO, rng: Randomness | None = None
+) -> CompletionReport:
+    """Run ``code`` to its halt; ``rng`` pins ``[a b]`` and ``~``."""
+    return drive(_Machine(code, io, rng))
+
+
 def run(code: str | list[str], io: IO, rng: Randomness | None = None) -> None:
     """Run ``code`` to its halt; ``rng`` pins ``[a b]`` and ``~``."""
-    drive(_Machine(code, io, rng))
+    _execute_program(code, io, rng)
 
 
 if __name__ == "__main__":

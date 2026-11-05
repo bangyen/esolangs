@@ -23,6 +23,7 @@ Errors:
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._validate import check_address
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_int_memory
@@ -105,9 +106,14 @@ class _Machine:
             self._write(b, result)
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run Subleq with direct jumps and byte I/O."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run Subleq with direct jumps and byte I/O."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

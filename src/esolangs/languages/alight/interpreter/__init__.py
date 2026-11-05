@@ -11,7 +11,22 @@ Errors:
 
 from esolangs.languages.alight.interpreter._machine import _Machine
 from esolangs.runtime._drive import drive
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
+
+
+def _execute(
+    code: list[str] | str,
+    io: IO,
+    *,
+    expression_syntax: str = "infix",
+    list_update: str = "in_place",
+) -> CompletionReport:
+    """Run an Alight program to its ``end``."""
+    machine = _Machine(
+        code, io, expression_syntax=expression_syntax, list_update=list_update
+    )
+    return drive(machine)
 
 
 def run(
@@ -22,7 +37,4 @@ def run(
     list_update: str = "in_place",
 ) -> None:
     """Run an Alight program to its ``end``."""
-    machine = _Machine(
-        code, io, expression_syntax=expression_syntax, list_update=list_update
-    )
-    drive(machine)
+    _execute(code, io, expression_syntax=expression_syntax, list_update=list_update)

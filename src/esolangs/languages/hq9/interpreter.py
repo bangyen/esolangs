@@ -14,6 +14,7 @@ Decisions:
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 
 type _State = tuple[int, int]
@@ -85,9 +86,14 @@ class _Machine:
             self.io.print_str(output)
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run HQ9+ in source order."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run HQ9+ in source order."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

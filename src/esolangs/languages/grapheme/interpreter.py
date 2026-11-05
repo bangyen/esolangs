@@ -56,6 +56,7 @@ from typing import Final, Literal
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -689,6 +690,17 @@ class _Machine:
                 self.io.print_value(output)
 
 
+def _execute(
+    code: str,
+    io: IO,
+    *,
+    integer_conversion: str = "between_letters",
+) -> CompletionReport:
+    """Run a Grapheme program to completion."""
+    machine = _Machine(code, io, integer_conversion=integer_conversion)
+    return drive(machine)
+
+
 def run(
     code: str,
     io: IO,
@@ -696,8 +708,7 @@ def run(
     integer_conversion: str = "between_letters",
 ) -> None:
     """Run a Grapheme program to completion."""
-    machine = _Machine(code, io, integer_conversion=integer_conversion)
-    drive(machine)
+    _execute(code, io, integer_conversion=integer_conversion)
 
 
 if __name__ == "__main__":

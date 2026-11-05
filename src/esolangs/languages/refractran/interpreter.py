@@ -30,6 +30,7 @@ from typing import NamedTuple
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -117,9 +118,14 @@ class _Machine:
             self.state = _advance(self.state, self.fractions)
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run REFRACTRAN, dumping its final integer in binary."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run REFRACTRAN, dumping its final integer in binary."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

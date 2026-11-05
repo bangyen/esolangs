@@ -36,6 +36,7 @@ import re
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.brackets import match_brackets
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer, parse_integer
@@ -186,10 +187,15 @@ class _Machine:
             self.io.print_str(format_integer(output))
 
 
-def run(code: str, io: IO) -> None:
+def _execute(code: str, io: IO) -> CompletionReport:
     """Run an EGL program to the end of its source."""
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: str, io: IO) -> None:
+    """Run an EGL program to the end of its source."""
+    _execute(code, io)
 
 
 if __name__ == "__main__":

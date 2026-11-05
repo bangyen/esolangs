@@ -45,6 +45,7 @@ from typing import NamedTuple
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -175,9 +176,14 @@ class _Machine:
             self.io.print_char(out)
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run a Pilas program until either line's pointer runs off its end."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run a Pilas program until either line's pointer runs off its end."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

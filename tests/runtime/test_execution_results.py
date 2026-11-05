@@ -18,9 +18,7 @@ def test_result_retains_character_cursor_reads_and_caught_eof():
             io.input_char()
         return report
 
-    result = run_prepared(
-        REFERENCE, execute, "", ScriptedIO("é"), None, report_required=True
-    )
+    result = run_prepared(REFERENCE, execute, "", ScriptedIO("é"), None)
     assert result.output == "é"
     assert (result.input_position, result.input_reads, result.input_past_end) == (
         1,
@@ -32,13 +30,10 @@ def test_result_retains_character_cursor_reads_and_caught_eof():
         result.output = "changed"
 
 
-@pytest.mark.parametrize("value", [None, CompletionReport(Completion.HALTED)])
-def test_undeclared_completion_stays_unknown(value):
-    result = run_prepared(
-        REFERENCE, lambda *_: value, "", ScriptedIO(), None, report_required=False
-    )
-    assert result.output == ""
-    assert result.completion is None
+@pytest.mark.parametrize("value", [None, Completion.HALTED, True])
+def test_a_return_without_a_report_is_not_completion(value):
+    with pytest.raises(InterpreterLimitError, match="no completion report"):
+        run_prepared(REFERENCE, lambda *_: value, "", ScriptedIO(), None)
 
 
 def test_declared_runner_requires_a_report_and_keeps_partial_output():
@@ -46,7 +41,7 @@ def test_declared_runner_requires_a_report_and_keeps_partial_output():
         io.print_str("prefix")
 
     with pytest.raises(InterpreterLimitError, match="no completion report") as caught:
-        run_prepared(REFERENCE, execute, "", ScriptedIO(), None, report_required=True)
+        run_prepared(REFERENCE, execute, "", ScriptedIO(), None)
     assert caught.value.partial_output == "prefix"
 
 

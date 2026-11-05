@@ -52,6 +52,10 @@ class CompletionReport:
             raise ValueError("only periodic completion accepts cycle evidence")
 
 
+HALTED_REPORT = CompletionReport(Completion.HALTED)
+POST_HALT_REPORT = CompletionReport(Completion.POST_HALT)
+
+
 def completion(machine: object) -> Completion:
     """Read a declared policy; ordinary machines complete at halt."""
     policy = getattr(machine, "completion", Completion.HALTED)

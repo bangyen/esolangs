@@ -114,3 +114,29 @@ def test_the_readme_suffolk_flow_completes(tmp_path: Path) -> None:
         for b in (0, 1)
     )
     assert got == "0110"
+
+
+def test_native_completion_distinguishes_eof_from_an_actual_repeat():
+    from esolangs.languages.suffolk.interpreter import _Machine
+    from esolangs.runtime._lifecycle import Completion
+    from esolangs.runtime.io import ScriptedIO
+
+    machine = _Machine("<", ScriptedIO())
+    state = machine.snapshot()
+    machine.step()
+    assert machine.snapshot() == state
+    assert not machine.halted
+    result = esolangs._run_result("Suffolk", "<")
+    assert result.completion.kind is Completion.PERIODIC
+    assert result.completion.cycle.state == state
+    assert (
+        result.completion.cycle.first_pass,
+        result.completion.cycle.repeat_pass,
+        result.completion.cycle.commands_per_pass,
+    ) == (0, 1, 1)
+    assert esolangs._run_result("Suffolk", "<", isolated=True) == result
+
+    ended = esolangs._run_result("Suffolk", ",")
+    assert ended.completion.kind is Completion.HALTED
+    assert ended.completion.cycle is None
+    assert (ended.input_position, ended.input_reads, ended.input_past_end) == (0, 0, 1)

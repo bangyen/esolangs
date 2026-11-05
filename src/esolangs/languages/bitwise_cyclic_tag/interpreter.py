@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
-from esolangs.runtime._lifecycle import Completion
+from esolangs.runtime._lifecycle import Completion, CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -163,10 +163,15 @@ class _Machine:
             self.data.append(append)
 
 
-def run(code: str, io: IO) -> None:
+def _execute(code: str, io: IO) -> CompletionReport:
     """Run a BCT program, printing the bit its last deletion consumed."""
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: str, io: IO) -> None:
+    """Run a BCT program, printing the bit its last deletion consumed."""
+    _execute(code, io)
 
 
 if __name__ == "__main__":

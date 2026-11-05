@@ -37,6 +37,7 @@ from typing import NamedTuple
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -430,13 +431,21 @@ class _Machine:
         self._restore(_advance(self._state, self.size, value))
 
 
+def _execute(
+    code: list[str],
+    io: IO,
+) -> CompletionReport:
+    """Execute a Dig program with mole movement and underground work commands."""
+    machine = _Machine(code, io)
+    return drive(machine)
+
+
 def run(
     code: list[str],
     io: IO,
 ) -> None:
     """Execute a Dig program with mole movement and underground work commands."""
-    machine = _Machine(code, io)
-    drive(machine)
+    _execute(code, io)
 
 
 if __name__ == "__main__":

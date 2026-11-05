@@ -58,6 +58,7 @@ import re
 from esolangs.exceptions import HaltError, ProgramError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 
 _NAME = r"[A-Za-z_]\w*"
@@ -325,9 +326,14 @@ class _Machine:
             self.io.print_char(out)
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run a Basicfuck program to its end."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run a Basicfuck program to its end."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

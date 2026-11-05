@@ -60,6 +60,7 @@ from fractions import Fraction
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 
 #: An exact Gaussian rational ``(re, im)``, or a float once inexact.
@@ -442,9 +443,14 @@ class _Machine:
             self.io.print_str(out)
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run a 1 + i program."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run a 1 + i program."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

@@ -98,6 +98,7 @@ from esolangs.languages.intercal.interpreter._semantics import (
 )
 from esolangs.runtime._drive import drive
 from esolangs.runtime._fault import _Fault
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
 
@@ -295,7 +296,12 @@ class _Machine:
         return len(effects)
 
 
-def run(code: str, io: IO, rng: Randomness | None = None) -> None:
+def _execute(code: str, io: IO, rng: Randomness | None = None) -> CompletionReport:
     """Execute an INTERCAL program."""
     machine = _Machine(code, io, rng)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: str, io: IO, rng: Randomness | None = None) -> None:
+    """Execute an INTERCAL program."""
+    _execute(code, io, rng)

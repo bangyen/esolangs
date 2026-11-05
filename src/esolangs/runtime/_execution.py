@@ -128,8 +128,6 @@ def run_prepared(
     program: RunnerProgram,
     io_obj: ScriptedIO,
     timeout: float | None,
-    *,
-    report_required: bool,
 ) -> ExecutionResult:
     """Execute prepared source and retain output, input usage and declared reports."""
     import esolangs
@@ -143,7 +141,7 @@ def run_prepared(
         language=name,
     ):
         value = esolangs._run(run_fn, program, io_obj, timeout)  # noqa: SLF001
-        if report_required and not isinstance(value, CompletionReport):
+        if not isinstance(value, CompletionReport):
             raise InterpreterLimitError(
                 "completion runner returned no completion report",
                 hint="check the declared completion entry point",
@@ -153,7 +151,7 @@ def run_prepared(
         io_obj.position(),
         io_obj.reads,
         io_obj.past_end,
-        value if report_required else None,
+        value,
     )
 
 

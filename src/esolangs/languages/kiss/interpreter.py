@@ -40,6 +40,7 @@ from __future__ import annotations
 from esolangs.exceptions import ArgumentError, InputExhaustedError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.combinators import State as _State
 from esolangs.runtime.combinators import count, parse, stack, unwind
 from esolangs.runtime.io import IO
@@ -143,6 +144,12 @@ class _Machine:
         self.state = result
         if out is not None:
             self.io.print_str(str(out))
+
+
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Return completion after the native machine halts."""
+    machine = _Machine(code, io)
+    return drive(machine)
 
 
 def run(code: str, io: IO) -> int:

@@ -47,7 +47,7 @@ from collections.abc import Sequence
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
-from esolangs.runtime._lifecycle import Completion
+from esolangs.runtime._lifecycle import Completion, CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -217,10 +217,15 @@ class _Machine:
         self.state = _advance(self.state, self.code, self.size)
 
 
-def run(code: list[str], io: IO) -> None:
+def _execute(code: list[str], io: IO) -> CompletionReport:
     """Run a Back program, printing the tape when it halts."""
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: list[str], io: IO) -> None:
+    """Run a Back program, printing the tape when it halts."""
+    _execute(code, io)
 
 
 if __name__ == "__main__":

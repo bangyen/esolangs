@@ -69,6 +69,7 @@ from typing import Literal
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 
 _NUMBER = re.compile(r"-?[0-9]+(?:\.[0-9]+)?")
@@ -547,9 +548,14 @@ class _Machine:
             self.io.print_str(out)
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run a Parenthesys program."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run a Parenthesys program."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

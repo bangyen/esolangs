@@ -3,7 +3,14 @@
 from collections.abc import Hashable
 from typing import Protocol, runtime_checkable
 
-from esolangs.runtime._lifecycle import BoundaryCycle, Completion, completion
+from esolangs.runtime._lifecycle import (
+    HALTED_REPORT,
+    POST_HALT_REPORT,
+    BoundaryCycle,
+    Completion,
+    CompletionReport,
+    completion,
+)
 from esolangs.runtime._validate import check_whole
 
 
@@ -51,11 +58,13 @@ def finalize(
             machine.step()
 
 
-def drive(machine: Machine) -> None:
+def drive(machine: Machine) -> CompletionReport:
     """Run to halt, including a language's declared final output step."""
     while not machine.halted:
         machine.step()
-    finalize(machine)
+    policy = completion(machine)
+    finalize(machine, policy=policy)
+    return POST_HALT_REPORT if policy is Completion.POST_HALT else HALTED_REPORT
 
 
 def drive_periodic(machine: PeriodicMachine, commands_per_pass: int) -> BoundaryCycle:

@@ -42,6 +42,7 @@ from collections.abc import Mapping
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 
 # Keep an escaped quote from backtracking into the closing delimiter.
@@ -185,9 +186,14 @@ class _Machine:
         self.pc = self.labels.get(label)
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run a Codesick program."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run a Codesick program."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

@@ -40,6 +40,7 @@ from dataclasses import dataclass
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -453,10 +454,15 @@ class _Machine:
             self.io.print_str(out)
 
 
-def run(code: str, io: IO) -> None:
+def _execute(code: str, io: IO) -> CompletionReport:
     """Run an Unlambda program."""
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: str, io: IO) -> None:
+    """Run an Unlambda program."""
+    _execute(code, io)
 
 
 if __name__ == "__main__":

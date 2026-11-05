@@ -14,15 +14,14 @@ from tests.support.reference import REFERENCE
 def test_bounded_and_native_input_usage_agree():
     native = run_prepared(
         REFERENCE,
-        interpreter_module(REFERENCE).run,
+        interpreter_module(REFERENCE)._execute,
         ",.",
         ScriptedIO("é"),
         None,
-        report_required=False,
     )
     bounded = esolangs._run_bounded_result(REFERENCE, ",.", stdin="é", max_steps=2)
     assert bounded[:4] == native[:4] == ("é", 1, 1, 0)
-    assert native.completion is None
+    assert native.completion.kind is Completion.HALTED
     assert bounded.completion.kind is Completion.HALTED
     assert esolangs.run(REFERENCE, ",.", stdin="é", max_steps=2) == bounded.output
 
@@ -31,7 +30,8 @@ def test_post_halt_result_follows_the_final_dump():
     name = next(
         name
         for name, lang in LANGUAGES.items()
-        if lang.runtime.completion_entrypoint is not None
+        if lang.parameterized
+        and lang.contract.answer_mode != "termination"
         and esolangs.describe(name)["dumps_on_the_post_halt_step"]
     )
     source = esolangs.instantiate(name, esolangs.generate(name, "01"), [1])

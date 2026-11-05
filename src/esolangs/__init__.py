@@ -911,7 +911,7 @@ def _run_result(
     program = _check_program(name, program, stdin)
     settings = effective_settings(name, program, settings)
     entrypoint = LANGUAGES[name].runtime.completion_entrypoint
-    run_fn = getattr(interpreter_module(name), entrypoint or "run")
+    run_fn = getattr(interpreter_module(name), entrypoint)
     program_args, options = prepare_call(
         name, program, ExecutionContext(scale=scale, seed=seed, settings=settings)
     )
@@ -924,7 +924,6 @@ def _run_result(
         program_args,
         io_obj,
         timeout,
-        report_required=entrypoint is not None,
     )
 
 

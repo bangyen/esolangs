@@ -26,7 +26,7 @@ from typing import NamedTuple
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
-from esolangs.runtime._lifecycle import Completion
+from esolangs.runtime._lifecycle import Completion, CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
@@ -183,10 +183,15 @@ class _Machine:
         self.io.print_str(" ".join(map(str, self.state.deq)))
 
 
-def run(code: str, io: IO) -> None:
+def _execute(code: str, io: IO) -> CompletionReport:
     """Run a Bitdeque program and print the deque at the end."""
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: str, io: IO) -> None:
+    """Run a Bitdeque program and print the deque at the end."""
+    _execute(code, io)
 
 
 if __name__ == "__main__":

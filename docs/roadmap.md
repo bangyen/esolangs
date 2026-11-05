@@ -69,14 +69,12 @@ the standing budget. Preserve public behavior through adapters; incompatible
 API changes need a major release. Follow the refactor and optimization gates
 in [Contributing](CONTRIBUTING.md).
 
-1. **Execution results across routes.** Extend native `ExecutionResult` to
-   bounded execution, then isolated workers. Preserve output, input counters,
-   completion reason and divergence evidence across native, VM, debugger and
-   worker routes. Exercise seeded runs and combined budgets before removing
-   old dispatch. Completion: routes agree on output, state, input cursor,
-   errors and command counts; timeout never proves divergence. Extend declared
-   native completion beyond the current pilot without inferring halt from a
-   callback return.
+1. **Execution proof results.** Carry structured termination evidence through
+   cycle detection, debugger and worker routes. Preserve output, input counters,
+   completion reason and divergence evidence; timeout never proves divergence.
+   Exercise seeded stepping and combined budgets before removing remaining
+   Boolean-verdict dispatch. Completion: routes agree on output, state, input
+   cursor, errors and command counts.
 2. **Artifact adapter retirement.** Audit remaining internal string-tag and
    setter-recovery paths against the explicit artifact records. Retire a path
    only when its consumers use retained settings and bindings. Preserve native

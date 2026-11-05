@@ -32,7 +32,7 @@ from typing import cast
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
-from esolangs.runtime._lifecycle import Completion
+from esolangs.runtime._lifecycle import Completion, CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.persistent import (
     Chunked,
@@ -464,7 +464,9 @@ class _Machine:
             self.io.print_num(val)
 
 
-def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
+def _execute(
+    code: list[str], io: IO, rng: Randomness | None = None
+) -> CompletionReport:
     """Run a LaserFuck program, printing the tape when it halts.
 
     ``rng`` supplies the initial direction (``randbelow(4)``: 0=up, 1=down,
@@ -472,7 +474,17 @@ def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
     signature as the other drawing interpreters.
     """
     machine = _Machine(code, io, rng)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
+    """Run a LaserFuck program, printing the tape when it halts.
+
+    ``rng`` supplies the initial direction (``randbelow(4)``: 0=up, 1=down,
+    2=left, 3=right) and each ``*`` split; ``None`` draws for real.  Same
+    signature as the other drawing interpreters.
+    """
+    _execute(code, io, rng)
 
 
 if __name__ == "__main__":

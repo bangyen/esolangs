@@ -22,6 +22,7 @@ from esolangs.languages.brainfuck.interpreter import _State as _BFState
 from esolangs.languages.brainfuck.interpreter import _written
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._source import ProgramSource, _read_container, text_source
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
@@ -88,9 +89,14 @@ class _Machine(_BFMachine):
             self.state = _at_eof(self.state)
 
 
+def _execute(code: str | CompressedText | ProgramSource, io: IO) -> CompletionReport:
+    """Decode Unary and run its Brainfuck program."""
+    return drive(_Machine(load_source(code), io))
+
+
 def run(code: str | CompressedText | ProgramSource, io: IO) -> None:
     """Decode Unary and run its Brainfuck program."""
-    drive(_Machine(load_source(code), io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

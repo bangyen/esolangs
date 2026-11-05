@@ -114,6 +114,7 @@ from typing import Literal, assert_never
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -975,10 +976,15 @@ class _Tick:
         return run, tuple(self.printed)
 
 
-def run(code: list[str], io: IO) -> None:
+def _execute(code: list[str], io: IO) -> CompletionReport:
     """Execute a Flowchart program."""
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: list[str], io: IO) -> None:
+    """Execute a Flowchart program."""
+    _execute(code, io)
 
 
 if __name__ == "__main__":

@@ -31,6 +31,7 @@ Decisions:
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.bit_tape import _BitTapeMachine
 from esolangs.runtime.io import IO
 
@@ -48,9 +49,14 @@ class _Machine(_BitTapeMachine):
             self.ones.add(ptr)
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Execute Monotonic Boolfuck and flush its final partial byte."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Execute Monotonic Boolfuck and flush its final partial byte."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

@@ -38,6 +38,7 @@ from typing import NamedTuple
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.bits import flush_byte, put_bit, take_bit
 from esolangs.runtime.io import IO
 
@@ -234,9 +235,14 @@ class _Machine:
             )
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Execute Nandypants and flush its final partial byte."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Execute Nandypants and flush its final partial byte."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

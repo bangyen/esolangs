@@ -46,6 +46,7 @@ from esolangs.languages.fractran.interpreter.index import (
     integer,
 )
 from esolangs.runtime._drive import drive
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -287,7 +288,12 @@ class _Machine:
             self.io.print_num(out)
 
 
-def run(code: str, io: IO) -> None:
+def _execute(code: str, io: IO) -> CompletionReport:
     """Run a FRACTRAN program, printing the value it ends on."""
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: str, io: IO) -> None:
+    """Run a FRACTRAN program, printing the value it ends on."""
+    _execute(code, io)

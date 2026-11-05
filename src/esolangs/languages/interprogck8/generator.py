@@ -242,7 +242,13 @@ def interprogck8(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Interprogck8",
-    RuntimeSpec("interprogck8", category="register_based", split=True, random=True),
+    RuntimeSpec(
+        "interprogck8",
+        completion_entrypoint="_execute_program",
+        category="register_based",
+        split=True,
+        random=True,
+    ),
     backend=BooleanBackend(
         restrictions=(
             f"at most {_MAX_INPUTS} inputs, past any table that fits in memory"

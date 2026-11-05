@@ -25,6 +25,12 @@ Decisions:
 from __future__ import annotations
 
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import (
+    HALTED_REPORT,
+    BoundaryCycle,
+    Completion,
+    CompletionReport,
+)
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -183,16 +189,28 @@ class _Machine:
         self.state = _advance(self.state, self.code, byte)
 
 
-def run(code: str, io: IO) -> None:
+def _execute(code: str, io: IO) -> CompletionReport:
     """Run until EOF zeroes the accumulator or a state repeats."""
     machine = _Machine(code, io)
     seen: set[tuple[object, ...]] = set()
+    history: list[tuple[object, ...]] = []
     while not machine.halted:
         state = machine.snapshot()
         if state in seen:
-            return
+            return CompletionReport(
+                Completion.PERIODIC,
+                BoundaryCycle(state, history.index(state), len(history), 1),
+            )
+        # Ordinary EOF runs keep set lookups; index only on an actual repeat.
         seen.add(state)
+        history.append(state)
         machine.step()
+    return HALTED_REPORT
+
+
+def run(code: str, io: IO) -> None:
+    """Run until EOF zeroes the accumulator or a state repeats."""
+    _execute(code, io)
 
 
 if __name__ == "__main__":

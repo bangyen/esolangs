@@ -35,6 +35,7 @@ import re
 from esolangs.exceptions import ArgumentError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import trunc_div
 from esolangs.runtime.source_hints import syntax_error
@@ -136,9 +137,14 @@ class _Machine:
             self.state = state
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run a Blindfolded Arithmetic program on the integer read from ``io``."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run a Blindfolded Arithmetic program on the integer read from ``io``."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

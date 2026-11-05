@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -264,6 +265,12 @@ def _advance(
     if _has(variables, "EXIT") and _get(variables, "EXIT") != _get(new, "EXIT"):
         exit_code = _get(new, "EXIT")
     return (new, exit_code, count + 1, reads + int(read_success))
+
+
+def _execute(code: list[str], io: IO) -> CompletionReport:
+    """Return completion after the native machine halts."""
+    machine = _Machine(code, io)
+    return drive(machine)
 
 
 def run(code: list[str], io: IO) -> int | None:

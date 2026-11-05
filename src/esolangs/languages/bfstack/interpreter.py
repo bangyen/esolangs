@@ -23,6 +23,7 @@ from typing import NamedTuple
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -196,10 +197,15 @@ class _Machine:
         self.state = _advance(self.state, self.code, self._jumps, byte)
 
 
-def run(code: str, io: IO) -> None:
+def _execute(code: str, io: IO) -> CompletionReport:
     """Run a BFStack program, halting on an invalid empty-stack operation."""
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: str, io: IO) -> None:
+    """Run a BFStack program, halting on an invalid empty-stack operation."""
+    _execute(code, io)
 
 
 if __name__ == "__main__":

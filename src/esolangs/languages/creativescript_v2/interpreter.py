@@ -46,6 +46,7 @@ import re
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
@@ -193,9 +194,14 @@ class _Machine:
         self.cursor += 1
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Run a CreativeScript v2 program."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Run a CreativeScript v2 program."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,56 @@
+"""Every registered native driver publishes an explicit completion report."""
+
+import pytest
+
+import esolangs
+from esolangs.registry import LANGUAGES
+from esolangs.runtime._lifecycle import Completion, CompletionReport
+from tests.support.generator_support import probe_table
+from tests.support.samples import SAMPLES
+
+
+@pytest.mark.parametrize("language", LANGUAGES)
+def test_native_driver_reports_completion(language):
+    lang = LANGUAGES[language]
+    if lang.backend is None:
+        source, stdin = SAMPLES[language]
+    else:
+        table = (
+            "00"
+            if lang.contract.answer_mode == "termination"
+            else probe_table(language, "01")
+        )
+        row = (
+            table.index("0")
+            if lang.contract.answer_mode == "termination"
+            else table.index("1")
+        )
+        n = len(table).bit_length() - 1
+        bits = [int(char) for char in f"{row:0{n}b}"]
+        template = esolangs.generate(language, table)
+        source = (
+            esolangs.instantiate(language, template, bits)
+            if lang.parameterized
+            else template
+        )
+        stdin = (
+            ""
+            if lang.parameterized
+            else esolangs.encode_inputs(language, bits, truth_table=table)
+        )
+    result = esolangs._run_result(
+        language,
+        source,
+        stdin=stdin,
+        seed=7 if LANGUAGES[language].runtime.random else None,
+    )
+    assert isinstance(result.completion, CompletionReport)
+    if result.completion.kind is Completion.PERIODIC:
+        assert result.completion.cycle is not None
+    else:
+        expected = (
+            Completion.POST_HALT
+            if esolangs.describe(language)["dumps_on_the_post_halt_step"]
+            else Completion.HALTED
+        )
+        assert result.completion.kind is expected

@@ -44,6 +44,7 @@ from typing import NamedTuple
 from esolangs.exceptions import ArgumentError, HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -265,9 +266,14 @@ class _Machine:
             self.io.print_str(effect.output)
 
 
+def _execute(code: str, io: IO, *, guard_binding: str = "opcode") -> CompletionReport:
+    """Run NQ until H; a nonempty source without H can wrap forever."""
+    return drive(_Machine(code, io, guard_binding=guard_binding))
+
+
 def run(code: str, io: IO, *, guard_binding: str = "opcode") -> None:
     """Run NQ until H; a nonempty source without H can wrap forever."""
-    drive(_Machine(code, io, guard_binding=guard_binding))
+    _execute(code, io, guard_binding=guard_binding)
 
 
 if __name__ == "__main__":

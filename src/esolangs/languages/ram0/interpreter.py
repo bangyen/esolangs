@@ -25,7 +25,7 @@ from typing import NamedTuple
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
-from esolangs.runtime._lifecycle import Completion
+from esolangs.runtime._lifecycle import Completion, CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.persistent import (
     Chunked,
@@ -226,10 +226,15 @@ class _Machine:
             self._index[n] = length(ram)
 
 
-def run(code: str, io: IO) -> None:
+def _execute(code: str, io: IO) -> CompletionReport:
     """Execute a RAM0 program by parsing commands and running them sequentially."""
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: str, io: IO) -> None:
+    """Execute a RAM0 program by parsing commands and running them sequentially."""
+    _execute(code, io)
 
 
 if __name__ == "__main__":

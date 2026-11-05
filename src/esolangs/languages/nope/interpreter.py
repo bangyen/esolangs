@@ -7,6 +7,7 @@ under the constant-language semantics.
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 
 type _State = bool
@@ -40,9 +41,14 @@ class _Machine:
             self.io.print_str(output)
 
 
+def _execute(code: str, io: IO) -> CompletionReport:
+    """Print the constant answer once."""
+    return drive(_Machine(code, io))
+
+
 def run(code: str, io: IO) -> None:
     """Print the constant answer once."""
-    drive(_Machine(code, io))
+    _execute(code, io)
 
 
 if __name__ == "__main__":

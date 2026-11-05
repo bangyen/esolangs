@@ -33,6 +33,7 @@ from dataclasses import dataclass
 from esolangs.exceptions import HaltError, ProgramError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -254,10 +255,15 @@ class _Machine:
         self.state = _advance(self.state)
 
 
-def run(code: str, io: IO) -> None:
+def _execute(code: str, io: IO) -> CompletionReport:
     """Run a Crement program until it executes past its final instruction."""
     machine = _Machine(code, io)
-    drive(machine)
+    return drive(machine)
+
+
+def run(code: str, io: IO) -> None:
+    """Run a Crement program until it executes past its final instruction."""
+    _execute(code, io)
 
 
 if __name__ == "__main__":
