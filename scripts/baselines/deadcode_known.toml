@@ -47,11 +47,3 @@
     "arm: if one != o0: -> if zero != z0:",
     "arm: if zero != z0: -> body.append(f\"+J {cell} 1\")",
 ]
-
-# backs < 2 iff the subtree id is < 2 (descending induction; rank values
-# are >= 3), so for a node >= 2 low == high < 2 never holds: skip gives
-# low = zb >= 2, and literal/one/branch give low != high or backs >= 2.
-"retrograde/generator.py" = [
-    "arm: if low == high and low < 2: -> backs[depth][k] = low",
-    "line: backs[depth][k] = low",
-]

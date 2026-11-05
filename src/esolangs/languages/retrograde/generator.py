@@ -70,14 +70,12 @@ def retrograde(truth_table: str) -> str:
                 kind = "branch"
                 low, high = zb, ob
             kinds[depth][k] = kind
-            if low == high and low < 2:
-                backs[depth][k] = low
-            else:
-                key = low, high
-                if key not in rank:
-                    rank[key] = fresh
-                    fresh += 1
-                backs[depth][k] = rank[key]
+            # Reversal is constant iff its subtree is; this node is nonconstant.
+            key = low, high
+            if key not in rank:
+                rank[key] = fresh
+                fresh += 1
+            backs[depth][k] = rank[key]
     # [ablations.trick_prototype_20261102_bidirectional_sibling]
     chunks = [prefix, "<" * n]
     stack: list[str | tuple[int, int]] = [(0, 0)]
