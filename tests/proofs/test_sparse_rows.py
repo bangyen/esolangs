@@ -21,8 +21,8 @@ from esolangs.registry import LANGUAGES
 from scripts.benchmark import WrittenState
 from tests.proofs._witnesses import _SPARSE_BAND, _SPARSE_ROWS, SparseRows, band_marks
 from tests.proofs.deep.execution import run_to_answer
-from tests.proofs.test_execution_formulas import FORMULAS as EXECUTION_FORMULAS
-from tests.proofs.test_workspace_formulas import FORMULAS as WORKSPACE_FORMULAS
+from tests.proofs.execution import FORMULAS as EXECUTION_FORMULAS
+from tests.proofs.workspace import FORMULAS as WORKSPACE_FORMULAS
 from tests.support.witness_tables import row_bits
 
 

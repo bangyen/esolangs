@@ -21,7 +21,7 @@ from esolangs.registry import LANGUAGES
 from tests.proofs._formula import exact_at, ledger_formulas
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs._witnesses import _WITNESS_BAND, band_marks
-from tests.proofs.test_execution_formulas import _tables
+from tests.proofs.execution import tables as _tables
 from tests.support.generator_support import CHECK
 
 #: A stated size bound: the unit follows its formula.

@@ -5,44 +5,17 @@ fitted.  ``L`` is the program's length, ``T`` is 2^n; ``exact`` formulas must be
 on some table here, ``bound`` ones only never exceeded.
 """
 
-from collections.abc import Callable
-
 import pytest
 
 import esolangs
-from esolangs.registry import LANGUAGES
-from tests.proofs._arities import formula_arities
-from tests.proofs._formula import exact_at, ledger_formulas
+from tests.proofs._formula import exact_at
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs._witnesses import band_marks
-from tests.proofs.test_execution_formulas import FORMULAS as EXECUTION_FORMULAS
-from tests.proofs.test_execution_formulas import _measure, _tables
+from tests.proofs.execution import FORMULAS as EXECUTION_FORMULAS
+from tests.proofs.execution import measure as _measure
+from tests.proofs.execution import tables as _tables
+from tests.proofs.workspace import FORMULAS
 from tests.support.generator_support import CHECK
-
-#: Formulas the ledger notation cannot state: a case split, a definition,
-#: a count taken from the program.  Each lives on its language's
-#: ``proof_workspace`` (``proof_formulas.py`` in its package); this table
-#: holds only entries that cannot relocate, with the reason.
-_HAND: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {}
-
-#: Arities where the default (see ``ledger_formulas``) is too slow or too
-#: shallow for the construction, aggregated from each package's
-#: ``[formula_arities]`` section.
-_ARITIES = formula_arities("workspace")
-#: Generator -> (formula, exact?, arities): the ledger's own clause where
-#: it parses (``tests/proofs/_formula.py``), else ``_HAND``.
-_HAND.update(
-    (name, lang.proof_workspace)
-    for name, lang in LANGUAGES.items()
-    if lang.proof_workspace is not None
-)
-FORMULAS = ledger_formulas(
-    lambda row: row.workspace_clause if " bits" in row.workspace_clause else "",
-    _HAND,
-    _ARITIES,
-    column="workspace",
-)
-
 
 # language-owners: ["6-5", "Container", "Fargo", "Malbolge", "Subleq"]
 #: Smallest-arity cases that still measure past the medium band run alone

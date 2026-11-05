@@ -9,12 +9,10 @@ regenerates, and lists the mentions left in prose.
 from __future__ import annotations
 
 import ast
-import importlib
 import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
 
 from .documents import (
     _drop_doc_entries,
@@ -50,15 +48,6 @@ from .ownership import (
 ROOT = Path(__file__).parents[2]
 
 
-def tests_attr(module: str, attr: str) -> Any:
-    """Read ``attr`` from ``tests.<module>``, which needs the repo on the path."""
-    sys.path.insert(0, str(ROOT))
-    try:
-        return getattr(importlib.import_module(f"tests.{module}"), attr)
-    finally:
-        sys.path.remove(str(ROOT))
-
-
 def _mention_edit(mention: str, name: str | None = None) -> str:
     """Classify a raw hit from this checkout."""
     return mention_edit(ROOT, mention, name)
@@ -67,8 +56,9 @@ def _mention_edit(mention: str, name: str | None = None) -> str:
 def remove(name: str) -> list[str]:
     """Delete ``name`` everywhere ``check`` looks; return the leftover mentions."""
     from esolangs.registry import LANGUAGES, example_stems
+    from tests.support.reference import REFERENCE
 
-    reference = tests_attr("api.test_language_coupling", "REFERENCE")
+    reference = REFERENCE
     if name == reference:
         raise ValueError(
             f"{reference} is the reference language: shared tests, the example "

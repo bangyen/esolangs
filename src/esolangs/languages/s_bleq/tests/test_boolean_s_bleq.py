@@ -15,7 +15,7 @@ from esolangs.languages.s_bleq.tests.formulas import below_eleven, tree_chars
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
 from tests.proofs._witnesses import _sbleq_worst
-from tests.proofs.test_execution_formulas import _tables
+from tests.proofs.execution import tables as _tables
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_parity_at_most_doubles
 

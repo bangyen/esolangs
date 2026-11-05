@@ -32,14 +32,6 @@ _TABLES = ("0110", "0001", "10010110", "00010111")
 _TERMINATION_TIMEOUT = 1.0
 _RUN_TIMEOUT = 30.0
 
-#: Step cap on the divergence certificate, matching
-#: :func:`~esolangs.vm.run_until_halt_or_growth`'s own 100_000.  Every row
-#: these sweeps ask about resolves in well under a millisecond, so this is
-#: not a bound anyone is near; it is there because a *cycle* detector does
-#: not return on divergence-by-growth, and a wrapping bug can produce one.
-#: Reaching it is not a verdict -- the caller falls back to the clock.
-_CYCLE_STEPS = 100_000
-
 
 def _terminates(name: str, source: str, stdin: str) -> str:
     """``"0"`` if ``source`` halts, ``"1"`` if it provably does not."""

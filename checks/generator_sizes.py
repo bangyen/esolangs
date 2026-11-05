@@ -21,14 +21,13 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from docs.fragments import AggregateKey, aggregate
+from docs.fragments import FRAGMENT, AggregateKey, aggregate, sections
 
 if TYPE_CHECKING:
     from esolangs.registry import Language
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGES = ROOT / "src" / "esolangs" / "languages"
-FRAGMENT = "language.toml"
 SECTION = "generator_sizes"
 _HEADER = (
     "# Language-owned data, one section per dataset; aggregators read\n"
@@ -37,16 +36,6 @@ _HEADER = (
 _FIELDS = frozenset(
     {"source_units", "commands", "commands_by_row", "commands_by_row_nulls"}
 )
-
-
-def _section(path: Path) -> dict[str, Any] | None:
-    """Return ``path``'s generator_sizes section, or None when it has none."""
-    table = tomllib.loads(path.read_text(encoding="utf-8")).get(SECTION)
-    if table is None:
-        return None
-    if not isinstance(table, dict):
-        raise ValueError(f"{path}: [{SECTION}] must be a table")
-    return table
 
 
 def _count(path: Path, table: str, key: str, value: object) -> int:
@@ -120,23 +109,10 @@ def _aggregate_fragments(
     does a repeated language.
     """
     rows: dict[str, dict[str, Any]] = {}
-    seen: set[str] = set()
-    for lang in languages:
-        if lang.id in seen:
-            raise ValueError(f"duplicate language id: {lang.id}")
-        seen.add(lang.id)
-        path = packages / lang.id / FRAGMENT
-        if not path.is_file():
-            continue
-        section = _section(path)
-        if section is not None:
-            if lang.name in rows:
-                raise ValueError(f"duplicate language name: {lang.name}")
-            rows[lang.name] = _validate_section(path, section)
-    if packages.is_dir():
-        for path in packages.glob(f"*/{FRAGMENT}"):
-            if path.parent.name not in seen and _section(path) is not None:
-                raise ValueError(f"{path}: [{SECTION}] in an unregistered package")
+    for lang, path, section in sections(packages, languages, SECTION):
+        if lang.name in rows:
+            raise ValueError(f"duplicate language name: {lang.name}")
+        rows[lang.name] = _validate_section(path, section)
     return rows
 
 

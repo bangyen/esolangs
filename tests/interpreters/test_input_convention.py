@@ -7,6 +7,7 @@ import pytest
 
 import esolangs
 from esolangs.runtime.io import IO, ScriptedIO
+from tests.support.input_convention import reading_languages as _reading_languages
 from tests.support.reference import REFERENCE
 
 
@@ -51,19 +52,6 @@ def assert_reads_tokens_on_one_line(language: str) -> None:
 # The default is that the ``EOFError`` escapes, so the caller sees a real end
 # of input.  A language that answers differently says why in its
 # ``LANGUAGE``'s ``eof=``: a statement about it, not an exception to ignore.
-def _reading_languages() -> list[str]:
-    """The examples whose programs read their inputs from the stream."""
-    from esolangs.generation.examples import BOOLEAN_EXAMPLES
-    from esolangs.registry import LANGUAGES
-
-    eof = {lang.interpreter for lang in LANGUAGES.values() if lang.eof}
-    return sorted(
-        name
-        for name, example in BOOLEAN_EXAMPLES.items()
-        # A ``fill`` means the bits are embedded in the program text, so
-        # the language has no input command to run out of.
-        if example.fill is None and example.interpreter not in eof
-    )
 
 
 @pytest.mark.parametrize("name", _reading_languages())

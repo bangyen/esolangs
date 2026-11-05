@@ -1,7 +1,7 @@
 """Worst-case witness tables for the execution/workspace formula tests.
 
 ``_WITNESSES`` maps a generator to the named tables its exact cells need;
-``test_execution_formulas._tables`` appends them to the generic corpus.
+``execution.tables`` appends them to the generic corpus.
 ``_SPARSE_ROWS`` maps a generator to the named rows of one witness table
 that ``test_sparse_rows`` steps where the all-row suites cannot afford to,
 and ``_SPARSE_BAND`` carries those cases' duration bands.

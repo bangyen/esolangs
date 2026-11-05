@@ -8,7 +8,7 @@ import esolangs
 from esolangs.debugger import make_vm
 from scripts.benchmark import WrittenState
 from tests.proofs.deep.execution import run_to_answer
-from tests.proofs.test_workspace_formulas import FORMULAS
+from tests.proofs.workspace import FORMULAS
 from tests.support.witness_tables import row_bits
 
 

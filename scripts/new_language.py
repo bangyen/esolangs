@@ -21,12 +21,13 @@ mentions left in prose for a hand edit.
 from __future__ import annotations
 
 import argparse
+import importlib
 import keyword
 import os
 import shlex
 import subprocess
 import sys
-from collections.abc import Callable, Container
+from collections.abc import Callable
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
@@ -38,8 +39,10 @@ if TYPE_CHECKING:
 ROOT = Path(__file__).parents[1]
 # ``remove``'s half lives beside this file, imported as a sibling whether
 # this runs as a script or is imported as ``scripts.new_language``.
+sys.path.insert(0, str(ROOT))
 if str(Path(__file__).parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).parent))
+from docs.catalogue import load as _catalogue_load  # noqa: E402
 from docs.curation import FAME_BACKLINKS  # noqa: E402
 from docs.curation import fragment_row as _curation_fragment  # noqa: E402
 from docs.proof_status import load as _proof_status_load  # noqa: E402
@@ -235,11 +238,6 @@ class Gap:
     fix: str
 
 
-def _tests_module(module: str, attr: str) -> Container[str]:
-    value: Container[str] = removal.tests_attr(module, attr)
-    return value
-
-
 def _source_file(base: Path) -> Path | None:
     """Return ``base.py``, else ``base/__init__.py``, whichever exists."""
     return next(
@@ -315,8 +313,9 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
         if "def test_placeholder_" in path.read_text(encoding="utf-8")
     )
     # tests/support/samples.py derives a generator language's sample itself.
-    if not _registered_generator(name) and name not in _tests_module(
-        "support.samples", "SAMPLES"
+    if (
+        not _registered_generator(name)
+        and name not in importlib.import_module("tests.support.samples").SAMPLES
     ):
         gaps.append(
             Gap(
@@ -430,7 +429,7 @@ def _ledger_gaps(name: str) -> list[Gap]:
         table = f"test_{cell}_formulas"
         if cell == "workspace" and "bits" not in stated:
             continue
-        if name not in _tests_module(f"proofs.{table}", "FORMULAS"):
+        if name not in importlib.import_module(f"tests.proofs.{cell}").FORMULAS:
             gaps.append(
                 Gap(
                     f"tests/proofs/{table}.py",
@@ -511,13 +510,11 @@ def quick_tests(name: str) -> list[str]:
         "tests/runtime/test_answer_plumbing.py::TestWhatHappensWhenAProgramIsUnderfed",
     ]
     catalogue = "tests/generators/test_boolean_canonical_catalogue.py::"
-    folding = removal.tests_attr(
-        "generators.test_boolean_canonical_catalogue", "_folding"
-    )
+    folding = _catalogue_load()["folding"]
     nodes.append(catalogue + "test_the_catalogue_covers_exactly_the_exceptions")
-    if name not in folding("constant"):
+    if name not in set(folding["constant"]):
         nodes.append(catalogue + f"test_a_constant_table_folds[{name}]")
-    if name not in folding("ignored") | folding("ignored_read"):
+    if name not in set(folding["ignored"]) | set(folding["ignored_read"]):
         nodes.append(
             catalogue + f"test_an_ignored_input_costs_under_half_a_real_one[{name}]"
         )
@@ -532,9 +529,7 @@ def quick_tests(name: str) -> list[str]:
         nodes.append(f"tests/tooling/test_examples.py::test_boolean_example[{stem}]")
     if (
         stem
-        in removal.tests_attr(
-            "interpreters.test_input_convention", "_reading_languages"
-        )()
+        in importlib.import_module("tests.support.input_convention").reading_languages()
     ):
         nodes.append(
             "tests/interpreters/test_input_convention.py"
@@ -542,7 +537,7 @@ def quick_tests(name: str) -> list[str]:
         )
     arities = []
     for table in ("execution", "workspace"):
-        formulas = removal.tests_attr(f"proofs.test_{table}_formulas", "FORMULAS")
+        formulas = importlib.import_module(f"tests.proofs.{table}").FORMULAS
         if name in formulas:
             arities.append(min(formulas[name][2]))
     if arities:
@@ -595,8 +590,8 @@ def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str
     """
     import esolangs
 
-    tables = removal.tests_attr("proofs.test_execution_formulas", "_tables")
-    measure = removal.tests_attr("proofs.test_execution_formulas", "_measure")
+    execution = importlib.import_module("tests.proofs.execution")
+    tables, measure = execution.tables, execution.measure
     rows = []
     for n in arities:
         worst = {t: measure(name, t, written=True) for t in tables(name, n)}
@@ -671,7 +666,7 @@ def _fit(values: list[tuple[int, int]], unit: str) -> str:
     the formula tests start), each confirmed by a point it was not solved
     from and re-read through the tests' own parser.
     """
-    parse = removal.tests_attr("proofs._formula", "parse")
+    parse = importlib.import_module("tests.proofs._formula").parse
     values = [(n, v) for n, v in values if n >= 3]
     for terms in _BASES:
         rows = [
@@ -706,7 +701,6 @@ def size_anchors(name: str) -> list[str]:
     Each is re-measured as ``test_the_size_anchor_is_what_generate_emits``
     does; Sonata's and SwitchCase's went stale twice while being built.
     """
-    import importlib
     import inspect
 
     import esolangs
@@ -716,10 +710,10 @@ def size_anchors(name: str) -> list[str]:
     if boolean is None:
         return []
     doc = inspect.cleandoc(importlib.import_module(boolean.__module__).__doc__ or "")
-    sections = "generators.generator_sections"
-    named_table = removal.tests_attr(sections, "named_table")
+    sections = importlib.import_module("tests.generators.generator_sections")
+    named_table = sections.named_table
     lines = []
-    for n, table, size, unit in removal.tests_attr(sections, "anchors")(doc):
+    for n, table, size, unit in sections.anchors(doc):
         program = esolangs.generate(name, named_table(n, table))
         got = (
             len(program)
@@ -756,9 +750,9 @@ def _print_bounds(name: str, max_n: int) -> None:
     if any(row.generator == name for row in rows_):
         print("\n".join(cell for cell in cells if "FILL" not in cell))
         return
-    ledger = "proofs._ledger"
-    labels = sorted(removal.tests_attr(ledger, "SCHEME_LABELS").values())
-    scaling = sorted(removal.tests_attr(ledger, "SCALING_CLASSES"))
+    ledger = importlib.import_module("tests.proofs._ledger")
+    labels = sorted(ledger.SCHEME_LABELS.values())
+    scaling = sorted(ledger.SCALING_CLASSES)
     print(
         f"\n# append to src/esolangs/languages/{_slug(name)}/language.toml and "
         "replace each FILL;\n# docs/proofs/index.md defines the labels under "
@@ -767,7 +761,7 @@ def _print_bounds(name: str, max_n: int) -> None:
         f'labels = ["FILL: {", ".join(labels)}"]  # plus "cap" or "exception"',
         'qualification = "FILL: how the program computes the table, one sentence"',
         f'scaling = "FILL: {" | ".join(scaling)}: in at most '
-        f'{removal.tests_attr(ledger, "LINEAR_CLAUSE_WORDS")} words"',
+        f'{ledger.LINEAR_CLAUSE_WORDS} words"',
         *cells,
         sep="\n",
     )
