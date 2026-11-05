@@ -45,8 +45,8 @@ from esolangs.generation.helpers import (
     input_weights,
     move_text,
     subtree_ids,
-    symmetric_outputs,
 )
+from esolangs.generation.lookup import symmetric_outputs
 from esolangs.generation.shared_block import ContinuationCost as _Cost
 from esolangs.generation.shared_flag import flag_tree_body
 from esolangs.languages.boolfuck.descriptor import LANGUAGE as LANGUAGE

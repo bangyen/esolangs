@@ -25,6 +25,7 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
+from esolangs.generation.lookup import symmetric_outputs
 from esolangs.languages.decleq.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["decleq"]
@@ -65,12 +66,9 @@ def decleq(truth_table: str) -> str:
 
 def _owner_family(table: str, n: int) -> bool:
     """Recognize strict majority and fixed thresholds 3..6, or their negations."""
-    profile: list[str | None] = [None] * (n + 1)
-    for row, bit in enumerate(table):
-        weight = row.bit_count()
-        if profile[weight] not in (None, bit):
-            return False
-        profile[weight] = bit
+    profile = symmetric_outputs(table, n)
+    if profile is None:
+        return False
     threshold = next((i for i, bit in enumerate(profile) if bit != profile[0]), n + 1)
     return (
         threshold <= n

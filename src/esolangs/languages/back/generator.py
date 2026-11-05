@@ -49,8 +49,8 @@ from esolangs.generation.helpers import (
     input_weights,
     move_text,
     subtree_ids,
-    symmetric_outputs,
 )
+from esolangs.generation.lookup import symmetric_outputs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.back.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.back.descriptor import PAIR as PAIR

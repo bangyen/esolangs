@@ -11,6 +11,7 @@ from typing import NamedTuple
 from esolangs.exceptions import TruthTableError
 from esolangs.generation.algebraic import AffineForm as AffineForm
 from esolangs.generation.algebraic import affine_form as affine_form
+from esolangs.generation.lookup import symmetric_outputs as symmetric_outputs
 from esolangs.runtime.source_hints import with_hint
 
 # ``ord("0")``.  Input digits arrive as 48/49 from a byte-oriented read, and a
@@ -513,16 +514,6 @@ def input_weights(truth_table: str, n: int) -> WeightedLookup:
     for rank, i in enumerate(essential):
         weights[i] = 1 << (len(essential) - 1 - rank)
     return WeightedLookup(weights, read_at(truth_table, essential, n))
-
-
-def symmetric_outputs(table: str, n: int) -> str | None:
-    """Return outputs by popcount for a validated n-input symmetric table."""
-    outputs = "".join(table[(1 << count) - 1] for count in range(n + 1))
-    return (
-        outputs
-        if all(bit == outputs[row.bit_count()] for row, bit in enumerate(table))
-        else None
-    )
 
 
 def symmetric_weights(truth_table: str, n: int) -> WeightedLookup | None:

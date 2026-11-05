@@ -1,6 +1,7 @@
 """decleq generator tests."""
 
 import random
+from itertools import product
 
 import pytest
 
@@ -198,3 +199,22 @@ def _check_gadgets_and_owner_families() -> None:
             assert io.getvalue() == table[row]
             assert io.past_end == 0
             assert io.input_char() == ord("Q")
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("n", range(1, 9))
+def test_owner_family_accepts_only_the_named_thresholds(n):
+    from esolangs.languages.decleq.generator import _owner_family
+
+    admitted = set()
+    for threshold in {3, 4, 5, 6, n // 2 + 1}:
+        if threshold <= n:
+            profile = "0" * threshold + "1" * (n + 1 - threshold)
+            admitted.update((profile, profile.translate(str.maketrans("01", "10"))))
+    for bits in product("01", repeat=n + 1):
+        profile = "".join(bits)
+        table = "".join(profile[row.bit_count()] for row in range(1 << n))
+        assert _owner_family(table, n) == (profile in admitted)
+    if n >= 2:
+        table = "01" * (1 << (n - 1))
+        assert not _owner_family(table, n)
