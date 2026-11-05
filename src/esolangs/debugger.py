@@ -14,6 +14,7 @@ from time import monotonic
 from typing import Literal, cast, get_args
 
 from esolangs.exceptions import ArgumentError, EsolangError
+from esolangs.results import Completion, CompletionReport, ExecutionResult
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._validate import _argument_repr, check_timeout, check_whole
@@ -22,6 +23,7 @@ from esolangs.vm import (
     VM,
     IpShape,
     SnapshotVM,
+    _capture_observation,
     complete_vm,
     make_vm,
     run_until_halt,
@@ -81,6 +83,7 @@ class Debugger:
         self._timed_out = False
         self._dumped = False
         self._steps = 0
+        self._faulted = False
 
     @property
     def halted(self) -> bool:
@@ -91,6 +94,27 @@ class Debugger:
     def output(self) -> str:
         """Everything the wrapped VM has written so far."""
         return self.vm.output
+
+    @property
+    def result(self) -> ExecutionResult:
+        """Current output and input usage, with completion only after finalization.
+
+        Steps count successful calls through this debugger while active;
+        completion dump calls are excluded. Caller-owned IO counters stay None.
+        """
+        report = None
+        if (
+            self.halted
+            and not self._faulted
+            and self.steppable_to_answer
+            and (not self.dumps_on_the_post_halt_step or self._dumped)
+        ):
+            report = CompletionReport(
+                Completion.POST_HALT
+                if self.dumps_on_the_post_halt_step
+                else Completion.HALTED
+            )
+        return _capture_observation(self.vm, report)._replace(steps=self._steps)
 
     @property
     def ip(self) -> int | tuple[int, ...] | None:
@@ -304,12 +328,20 @@ class Debugger:
         there, and returning early cost a debugger-driven verifier 58/65.
         A fault raises with ``partial_output`` set, as :func:`esolangs.run`'s does.
         """
+        active = not self.vm.halted
         try:
             self.vm.step()
         except EsolangError as exc:
+            self._faulted = True
             exc.partial_output = self.output
+            exc.execution = self.result._replace(completion=None)
             raise
-        self._steps += 1
+        if active:
+            self._faulted = False
+            self._steps += 1
+        elif self.dumps_on_the_post_halt_step:
+            self._faulted = False
+            self._dumped = True
         self._record()
 
     def run(
@@ -351,11 +383,14 @@ class Debugger:
                 # debugger, not per run: it lands in every watch history,
                 # and three idle ``run()`` calls on a halted machine
                 # grew ``watch_cell`` by three.
-                self._dumped = True
                 try:
                     complete_vm(self.vm, max_steps=0)
+                    self._dumped = True
+                    self._faulted = False
                 except EsolangError as exc:
+                    self._faulted = True
                     exc.partial_output = self.output
+                    exc.execution = self.result._replace(completion=None)
                     raise
                 self._record()
                 if self._stopped_at_breakpoint():

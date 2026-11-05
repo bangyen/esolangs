@@ -7,10 +7,9 @@ from the built-in it replaced (``ValueError``, ``EOFError``).
 from __future__ import annotations
 
 from functools import partial
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
-if TYPE_CHECKING:
-    from esolangs.runtime._result import ExecutionResult
+from esolangs.results import ExecutionResult
 
 
 class EsolangError(Exception):

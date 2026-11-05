@@ -67,6 +67,7 @@ PUBLIC_MEMBERS = {
         "memory",
         "output",
         "ptr",
+        "result",
         "run",
         "self_halts",
         "snapshot",
