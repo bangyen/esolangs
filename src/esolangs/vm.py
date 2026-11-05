@@ -317,6 +317,7 @@ class _DelegatingVM:
             with interpreter_errors(
                 f"the {self.language} interpreter recursed deeper than "
                 "CPython's stack limit allows on this program",
+                self._io,
                 language=self.language,
             ):
                 raise

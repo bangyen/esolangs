@@ -68,19 +68,56 @@ def test_immutable_cycle_state_survives_json():
 
 
 @pytest.mark.parametrize("counter", [-1, True])
-def test_worker_refuses_corrupt_counters_and_retains_output(counter):
+@pytest.mark.parametrize("failure", [False, True])
+def test_worker_refuses_corrupt_counters_and_retains_output(counter, failure):
     metadata = encode_result(ExecutionResult("prefix", 0, 0, 0))
     metadata["input_reads"] = counter
+    message = (
+        {"error": "HaltError", "args": ["bad"]} if failure else {"result": "prefix"}
+    )
     text = (
         json.dumps({"output": "prefix"})
         + "\n"
-        + json.dumps({"result": "prefix", "execution": metadata})
+        + json.dumps({**message, "execution": metadata})
     )
     with pytest.raises(
         esolangs.InterpreterLimitError, match="invalid isolated"
     ) as caught:
         _decode(text, expired=False)
     assert caught.value.partial_output == "prefix"
+
+
+@pytest.mark.parametrize("isolated", [False, True])
+@pytest.mark.parametrize("max_steps", [None, 16])
+def test_routes_retain_success_and_failed_input_observations(isolated, max_steps):
+    options = {"isolated": isolated, "max_steps": max_steps}
+    success = esolangs._run_result(REFERENCE, ",.", stdin="é", **options)
+    assert success == ExecutionResult("é", 1, 1, 0, CompletionReport(Completion.HALTED))
+    for source, stdin, expected in (
+        (",", "", ExecutionResult("", 0, 0, 1)),
+        (",.,", "é", ExecutionResult("é", 1, 1, 1)),
+    ):
+        with pytest.raises(esolangs.InputExhaustedError) as caught:
+            esolangs._run_result(REFERENCE, source, stdin=stdin, **options)
+        assert caught.value.execution == expected
+        assert caught.value.partial_output == expected.output
+
+
+@pytest.mark.parametrize("isolated", [False, True])
+def test_step_bound_retains_an_unfinished_observation(isolated):
+    with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
+        esolangs._run_result(REFERENCE, "+[.]", max_steps=4, isolated=isolated)
+    assert caught.value.execution == ExecutionResult("\x01", 0, 0, 0)
+    assert caught.value.partial_output == "\x01"
+
+
+def test_failed_worker_cannot_claim_completion():
+    metadata = encode_result(
+        ExecutionResult("", 0, 0, 0, CompletionReport(Completion.HALTED))
+    )
+    text = json.dumps({"error": "HaltError", "args": ["bad"], "execution": metadata})
+    with pytest.raises(esolangs.InterpreterLimitError, match="invalid isolated"):
+        _decode(text, expired=False)
 
 
 def test_periodic_wire_report_cannot_drop_its_evidence():

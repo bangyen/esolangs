@@ -15,6 +15,7 @@ class ExecutionResult(NamedTuple):
     IO calls and past-end counts failed reads, including caught EOFs.
     Counters are None for custom VMs without library-owned IO.
     Completion is absent before output finalization.
+    Runtime failures retain an unfinished observation on EsolangError.execution.
     """
 
     output: str

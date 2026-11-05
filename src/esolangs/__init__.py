@@ -117,7 +117,7 @@ from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 from esolangs.tagged import _Tagged, _Template
 from esolangs.tagged import source_adapter as _source_adapter
-from esolangs.vm import _capture_result
+from esolangs.vm import _capture_observation, _capture_result
 
 #: From the installed distribution (a hand-kept copy said 0.1.0 at 0.2.0);
 #: the fallback covers an uninstalled tree.  Read on first access, not
@@ -780,6 +780,7 @@ def _run_bounded_result(
         )
         error.partial_output = debugger.output
         error.bound = "timeout" if reason == "timeout" else "max_steps"
+        error.execution = _capture_observation(debugger.vm)
         raise error
     return _capture_result(debugger.vm)
 

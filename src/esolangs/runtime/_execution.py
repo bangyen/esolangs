@@ -316,9 +316,14 @@ def interpreter_errors(
         ):
             hint = _value_error_hint(str(original), language)
             error.add_note(f"hint: {hint}")
-        if io_obj is not None and (written := io_obj.getvalue()):
+        if io_obj is not None:
+            written = io_obj.getvalue()
             error.partial_output = written
-            error.add_note(f"the program printed {written[:200]!r} before this")
+            error.execution = ExecutionResult(
+                written, io_obj.position(), io_obj.reads, io_obj.past_end
+            )
+            if written:
+                error.add_note(f"the program printed {written[:200]!r} before this")
         if error is original:
             raise
         raise error from original

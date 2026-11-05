@@ -5,6 +5,7 @@ import pytest
 from esolangs.exceptions import InterpreterLimitError
 from esolangs.runtime._execution import run_prepared
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
+from esolangs.runtime._result import ExecutionResult
 from esolangs.runtime.io import ScriptedIO
 from tests.support.reference import REFERENCE
 
@@ -43,6 +44,7 @@ def test_declared_runner_requires_a_report_and_keeps_partial_output():
     with pytest.raises(InterpreterLimitError, match="no completion report") as caught:
         run_prepared(REFERENCE, execute, "", ScriptedIO(), None)
     assert caught.value.partial_output == "prefix"
+    assert caught.value.execution == ExecutionResult("prefix", 0, 0, 0)
 
 
 @pytest.mark.parametrize("kind", [Completion.HALTED, Completion.POST_HALT])

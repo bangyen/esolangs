@@ -116,6 +116,17 @@ def _decode(text: str, *, expired: bool) -> _WorkerResult:
             args, options = args[:2], {"unit": args[2]}
         error = cls(*args, **options)
         error.partial_output = partial
+        try:
+            if result.get("execution") is not None:
+                error.execution = decode_result(partial, result["execution"])
+                if error.execution.completion is not None:
+                    raise ValueError("failed execution cannot declare completion")
+        except (TypeError, ValueError, KeyError) as cause:
+            invalid = exceptions.InterpreterLimitError(
+                "invalid isolated execution result"
+            )
+            invalid.partial_output = partial
+            raise invalid from cause
         if "notes" in result:
             error.__notes__ = list(result["notes"])
         if isinstance(error, exceptions.ExecutionTimeoutError) and "bound" in result:
@@ -616,11 +627,15 @@ def _serve_request() -> None:
             args = (error.language, error.suggestions)
         elif isinstance(error, exceptions.InputExhaustedError):
             args = (error.reads, error.supplied, error.unit)
+        observation = getattr(error, "execution", None)
         send(
             {
                 "error": type(error).__name__,
                 "args": args,
                 "notes": getattr(error, "__notes__", []),
+                "execution": encode_result(observation)
+                if observation is not None
+                else None,
                 **(
                     {"bound": error.bound}
                     if isinstance(error, exceptions.ExecutionTimeoutError)

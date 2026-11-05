@@ -4,8 +4,13 @@ Every deliberate error derives from :class:`EsolangError`, and each also
 from the built-in it replaced (``ValueError``, ``EOFError``).
 """
 
+from __future__ import annotations
+
 from functools import partial
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from esolangs.runtime._result import ExecutionResult
 
 
 class EsolangError(Exception):
@@ -14,6 +19,9 @@ class EsolangError(Exception):
     #: Output written before the raise; empty for errors raised before the
     #: program ran.  (``run`` once dropped it while the debugger showed it.)
     partial_output: str = ""
+
+    #: Unfinished execution observation; None when execution was not observed.
+    execution: ExecutionResult | None = None
 
 
 class HaltError(EsolangError):
