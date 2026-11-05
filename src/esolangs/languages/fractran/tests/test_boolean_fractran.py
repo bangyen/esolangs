@@ -1,5 +1,7 @@
 """fractran generator tests."""
 
+from collections.abc import Iterator
+
 import pytest
 
 import esolangs
@@ -17,32 +19,33 @@ from tests.support.witness_tables import row_bits as _bits
 from tests.support.witness_tables import witnesses
 
 
-def _fractran_answer(table: str, row: int) -> str:
-    """Return what the instantiated FRACTRAN program stopped on."""
+def _fractran_answers(table: str) -> Iterator[str]:
+    """Run each filled row of one template with fresh interpreter state."""
     n = len(table).bit_length() - 1
     template = boolean.fractran(table)
-    program = fill_runs(template, TEMPLATE_CHAR, [FRACTRAN_PAIR] * n, _bits(row, n))
-    io = ScriptedIO("")
-    run_fractran(program, io)
-    return io.getvalue()
+    for row in range(1 << n):
+        program = fill_runs(template, TEMPLATE_CHAR, [FRACTRAN_PAIR] * n, _bits(row, n))
+        io = ScriptedIO("")
+        run_fractran(program, io)
+        yield io.getvalue()
 
 
 @pytest.mark.parametrize("table", _TABLES)
 def test_fractran_answers_every_row(table: str) -> None:
-    n = len(table).bit_length() - 1
-    for row in range(2**n):
-        answer = "2" if table[row] == "1" else "1"
-        assert _fractran_answer(table, row) == answer, (table, row)
+    for bit, actual in zip(table, _fractran_answers(table), strict=True):
+        assert actual == ("2" if bit == "1" else "1"), table
 
 
 @pytest.mark.slow
 def test_fractran_answers_every_table_to_three_inputs() -> None:
+    """Together with the fast corpus, exhaust every table and row through n=3."""
     for n in (1, 2, 3):
         for value in range(2 ** (2**n)):
             table = f"{value:0{2**n}b}"
-            for row in range(2**n):
-                answer = "2" if table[row] == "1" else "1"
-                assert _fractran_answer(table, row) == answer, (table, row)
+            if table in _TABLES:
+                continue
+            for bit, actual in zip(table, _fractran_answers(table), strict=True):
+                assert actual == ("2" if bit == "1" else "1"), table
 
 
 def test_fractran_shares_equal_subtables() -> None:
