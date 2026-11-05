@@ -74,7 +74,7 @@ def basicfuck(truth_table: str) -> str:
 type _Key = tuple[int, int]  # (depth, subtree id): a node that tests an input
 type _Ref = _Key | int  # a node, or a constant leaf (0 or 1)
 
-#: Flag names left after the inputs and the answer.
+#: One-character name pool for inputs, the answer and flags.
 _NAMES = len(_LETTERS)
 #: Characters of ``f+=1;``, the call; of ``if(f){`` and ``}``, the block; and
 #: of ``,f`` in ``#allocate``, so a node is shared only when
@@ -136,7 +136,7 @@ def _program(truth_table: str, n: int, mark: str, base: int) -> str:
             if m > 1 and gain > 0:
                 saving.append((gain, key))
                 shared.add(key)
-    # Names run out at 53; keep the largest savings.
+    # Keep the largest estimated gains within the one-character flag budget.
     room = max(0, _NAMES - n - 1)
     shared = {key for _, key in sorted(saving, key=lambda s: (-s[0], s[1]))[:room]}
 

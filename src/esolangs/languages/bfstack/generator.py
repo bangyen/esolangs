@@ -24,7 +24,6 @@ Decisions:
     it must be a zero row ([ablations.eighth_input]).
 """
 
-from functools import cache
 from typing import Any
 
 from esolangs.generation.helpers import (
@@ -164,7 +163,6 @@ def _bfstack_plain(truth_table: str) -> str:
         return _bfstack_small(truth_table, n)
     constant = constant_span_test(truth_table)
 
-    @cache
     def build(level: int, lo: int, hi: int) -> str:
         remaining = n - level
         if constant(lo, hi):
