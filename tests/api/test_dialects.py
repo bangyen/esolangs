@@ -46,12 +46,12 @@ def _invalid() -> list[tuple[str, DialectSettings]]:
     return cases
 
 
-@pytest.mark.parametrize(("key", "bad"), [case[1:] for case in _out_of_range()])
-def test_constructor_refuses_a_value_outside_the_choices(key, bad) -> None:
-    with pytest.raises(esolangs.ArgumentError, match="choices: "):
-        DialectSettings(**{key: bad})
-    with pytest.raises(esolangs.ArgumentError, match="choices: "):
-        DialectSettings(**{key: None})
+def test_constructor_refuses_a_value_outside_the_choices() -> None:
+    for _, key, bad in _out_of_range():
+        with pytest.raises(esolangs.ArgumentError, match="choices: "):
+            DialectSettings(**{key: bad})
+        with pytest.raises(esolangs.ArgumentError, match="choices: "):
+            DialectSettings(**{key: None})
 
 
 def test_every_dialect_declares_its_values() -> None:

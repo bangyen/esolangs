@@ -39,19 +39,22 @@ Decisions:
 from __future__ import annotations
 
 from collections import deque
-from typing import NamedTuple
+from collections.abc import Mapping
+from functools import partial
+from typing import Any, NamedTuple
 
 from esolangs.exceptions import ArgumentError, HaltError
+from esolangs.languages.nq.dialect import DEFAULT_GUARD_BINDING, GUARD_BINDINGS
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
-GUARD_BINDINGS = ("opcode", "recursive")
 
-
-def guard_dialect(guard_binding: str = "opcode") -> None:
+def guard_dialect(guard_binding: str = DEFAULT_GUARD_BINDING) -> None:
     """Validate the explicit reading of an ungrouped guard's target."""
     if guard_binding not in GUARD_BINDINGS:
         raise ValueError("guard_binding must be opcode or recursive")
@@ -94,7 +97,9 @@ def _operand(source: str, cursor: int) -> tuple[tuple[int, ...], int]:
     return tuple(int(c) for c in text if not c.isspace()), end + 1
 
 
-def _parse(source: str, *, guard_binding: str = "opcode") -> tuple[_Instruction, ...]:
+def _parse(
+    source: str, *, guard_binding: str = DEFAULT_GUARD_BINDING
+) -> tuple[_Instruction, ...]:
     """Compile lexical groups and single-instruction guards without recursion."""
     guard_dialect(guard_binding)
     commands: list[_Instruction] = []
@@ -214,7 +219,9 @@ def _trits(text: str) -> tuple[int, ...]:
 class _Machine:
     """A queue with immutable control state and precompiled guard targets."""
 
-    def __init__(self, code: str, io: IO, *, guard_binding: str = "opcode") -> None:
+    def __init__(
+        self, code: str, io: IO, *, guard_binding: str = DEFAULT_GUARD_BINDING
+    ) -> None:
         self.code = _parse(code, guard_binding=guard_binding)
         self.state = _State(0, 0, first=True, stopped=not self.code)
         self.queue: deque[int] = deque()
@@ -266,12 +273,23 @@ class _Machine:
             self.io.print_str(effect.output)
 
 
-def _execute(code: str, io: IO, *, guard_binding: str = "opcode") -> CompletionReport:
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh NQ machines under the selected guard reading."""
+    if not isinstance(source, str):
+        raise TypeError("NQ machines require text source")
+    return partial(_Machine, source, **options)
+
+
+def _execute(
+    code: str, io: IO, *, guard_binding: str = DEFAULT_GUARD_BINDING
+) -> CompletionReport:
     """Run NQ until H; a nonempty source without H can wrap forever."""
     return drive(_Machine(code, io, guard_binding=guard_binding))
 
 
-def run(code: str, io: IO, *, guard_binding: str = "opcode") -> None:
+def run(code: str, io: IO, *, guard_binding: str = DEFAULT_GUARD_BINDING) -> None:
     """Run NQ until H; a nonempty source without H can wrap forever."""
     _execute(code, io, guard_binding=guard_binding)
 

@@ -63,12 +63,17 @@ class DialectSettings:
         """
         name = resolve(language)
         values: dict[str, Any] = dict(self._items)
-        dialect = LANGUAGES[name].runtime.dialect
+        runtime = LANGUAGES[name].runtime
+        dialect = runtime.dialect
         if dialect is None:
             if values:
                 raise ArgumentError(f"{name} supports no dialect settings")
         else:
-            keys = _dialect_keys(dialect)
+            keys = (
+                list(runtime.dialect_defaults)
+                if runtime.dialect_defaults is not None
+                else _dialect_keys(dialect)
+            )
             unknown = values.keys() - set(keys)
             if unknown:
                 raise ArgumentError(
@@ -138,13 +143,19 @@ class DialectOption(TypedDict):
 
 
 def dialect_choices(language: str) -> dict[str, DialectOption]:
-    """Return fresh choices and defaults drawn from the interpreter signature."""
+    """Return fresh choices and defaults; legacy machines supply undeclared defaults."""
     from esolangs.runtime._execution import interpreter_module
 
     name = resolve(language)
-    dialect = LANGUAGES[name].runtime.dialect
+    runtime = LANGUAGES[name].runtime
+    dialect = runtime.dialect
     if dialect is None:
         return {}
+    if runtime.dialect_defaults is not None:
+        return {
+            key: {"default": default, "choices": _CHOICES[key]}
+            for key, default in runtime.dialect_defaults.items()
+        }
     keys = _dialect_keys(dialect)
     machine = interpreter_module(name)._Machine  # noqa: SLF001 - interpreter adapter
     parameters = inspect.signature(machine).parameters

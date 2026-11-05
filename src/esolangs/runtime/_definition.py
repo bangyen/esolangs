@@ -41,3 +41,19 @@ class RuntimeSpec:
     completion_entrypoint: str = "_execute"
     #: Typed preparation hook in the interpreter module; legacy discovery if absent.
     machine_preparation: str | None = None
+    #: Explicit defaults avoid loading or inspecting the machine for dialect metadata.
+    dialect_defaults: Mapping[str, int | str] | None = None
+
+    def __post_init__(self) -> None:
+        """Require declared defaults to cover exactly the dialect's choices."""
+        if self.dialect_defaults is None:
+            return
+        choices = self.dialect_values or {}
+        if self.dialect is None or self.dialect_defaults.keys() != choices.keys():
+            raise ValueError("dialect defaults must match declared dialect choices")
+        for key, value in self.dialect_defaults.items():
+            if not any(
+                type(value) is type(choice) and value == choice
+                for choice in choices[key]
+            ):
+                raise ValueError(f"default for {key} must be a declared dialect choice")
