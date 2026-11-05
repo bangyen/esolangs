@@ -198,9 +198,10 @@ description = { growth = "linear", claim = "worst", template = "{claim} {formula
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter.py"
 tests = [
+    "src/esolangs/languages/dimensional/tests/oracle_checks.py::check_raw_dimensional",
     "src/esolangs/languages/dimensional/tests/test_dimensional.py::TestDimensional",
     "src/esolangs/languages/dimensional/tests/test_dimensional.py::test_dimensional_looping_run_is_detected_as_a_cycle",
 ]

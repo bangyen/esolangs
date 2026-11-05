@@ -175,9 +175,10 @@ description = { growth = "linear", claim = "worst", template = "{claim} {formula
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter.py"
 tests = [
+    "src/esolangs/languages/fish/tests/oracle_checks.py::check_raw_fish",
     "src/esolangs/languages/fish/tests/test_fish.py::test_literals_arithmetic_comparison_and_output",
     "src/esolangs/languages/fish/tests/test_fish.py::test_input_returns_minus_one_at_eof",
     "src/esolangs/languages/fish/tests/test_fish.py::test_stack_stack_register_and_rotations",
