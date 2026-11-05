@@ -75,22 +75,17 @@ Remaining migrations, in priority order. Migrate incrementally; retain existing
 contracts and gates. Price pilots before execution; refactors require corpus
 diffs and timings, and emitted-program changes follow the optimization gate.
 
-1. **Shared execution results:** expose output, input consumption, completion
-   evidence and available resource counts through one result contract. Check
-   native, stepped and isolated routes against it, including EOF and failures;
-   preserve justified fast paths. Done when route parity has executed witnesses
-   and unavailable counters are explicit.
-2. **Boolean construction representations:** organize existing analyses into
+1. **Boolean construction representations:** organize existing analyses into
    decision diagrams, algebraic forms and lookup structures, with bounded
    analysis and target-owned emission. Pilot one family across two backends;
    retain specialized constructions. Adopt only with byte-identical corpus
    output and generation timings preserving the growth bound.
-3. **Semantic state and storage:** define the abstract state counted by each
+2. **Semantic state and storage:** define the abstract state counted by each
    workspace proof separately from Python storage. Pilot a checked adapter
    retaining complete snapshots, input progress and pure transitions. Done
    when traces and exact resource witnesses agree and representation changes
    cannot silently change the accounting model.
-4. **Evidence and verification policy:** extend structured evidence to render
+3. **Evidence and verification policy:** extend structured evidence to render
    documented claims without parsing prescribed prose. Evaluate runtime budgets
    and demonstrated fault detection as replacements for test-line/count ratios;
    retain current budgets during evaluation. Done when claims remain executable
