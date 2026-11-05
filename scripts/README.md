@@ -29,5 +29,4 @@ Not run directly:
 - `verify/`, `docs/` -- the packages behind the commands above.
 - `_benchmark_worker.py` -- the subprocess `benchmark.py` supervises.
 - `baselines/` -- triaged results `deadcode` and `mutants` compare against:
-  `deadcode --update` rewrites its baseline; add swept packages to
-  `mutants_swept.toml` by hand, with the commit swept.
+  `deadcode --update` rewrites its baseline.

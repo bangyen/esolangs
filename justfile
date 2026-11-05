@@ -106,7 +106,7 @@ test-py *args:
 test-one +nodes:
     {{PYTHON}} -m pytest -q -n 0 -m "" "$@"
 
-# create interpreter, generator and test stubs; asks the category unless --category
+# create interpreter, generator and test stubs; requires --category
 [group('languages')]
 [no-exit-message]
 [positional-arguments]

@@ -1,4 +1,4 @@
-"""The ``[audits]`` dates the roadmap's progress lines are generated from."""
+"""The per-language ``[audits]`` dates and their evidence."""
 
 import datetime
 from pathlib import Path

@@ -726,15 +726,6 @@ requires a construction exemption rather than a sub-gate bound.
 - Dimensional is a lookup that names no decision-tree node.
 - LaserFuck's path-dependent leaf code makes equal subtables unequal text.
 
-<!-- SHARING-COUNTS:START -->
-
-A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 47
-of 73 tree-shaped generators build parity or a repeated-block table at most
-0.90x its dense or distinct-block twin (6 by a local helper); 26 are
-exempt with a reason. One shrinking probe does not establish complete sharing.
-
-<!-- SHARING-COUNTS:END -->
-
 - Underload references a canonical sharing helper.
 - Unlambda references a canonical sharing helper.
 - Circuit Diagram compares three complete residual folds against its fallback
@@ -1051,14 +1042,6 @@ INTERCAL 103, FALSE 91, Fish 91, Unlambda 89, Smallfuck 66, FRACTRAN
 
 Existing fame exceptions must still clear the bar. Whitespace was removed at
 58 backlinks under the 60 gate and readmitted at 50 (2026-10-28).
-
-<!-- CURATION-CENSUS:START -->
-
-The 2026-10-06 census (`snapshot.json`) records each
-language's backlinks and route: 24 clear the fame gate
-and 93 are first implementations.
-
-<!-- CURATION-CENSUS:END -->
 
 ### Removed languages
 

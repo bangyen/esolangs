@@ -4,7 +4,7 @@ import tomllib
 from pathlib import Path
 
 #: Each section's reader; a misspelled section is otherwise silently ignored
-#: (an ``[audit]`` date would drop the language from the roadmap's list).
+#: (an ``[audit]`` date would be ignored by the audit reader).
 KNOWN = {
     "ablations",  # scripts/docs/generate.py
     "audits",  # scripts/docs/audits.py

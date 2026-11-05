@@ -13,19 +13,12 @@ import inspect
 import pathlib
 import re
 import shlex
-import textwrap
 import typing
 
 import esolangs
-from docs.audits import rows as _audit_rows
-from docs.catalogue import load as _catalogue_load
-from docs.curation import FAME_BACKLINKS
-from docs.curation import dates as _curation_dates
-from docs.curation import rows as _curation_rows
 from docs.proof_status import splice, update_catalogue, update_docs
 from docs.writing import write_if_changed as _write_if_changed
 from esolangs.registry import LANGUAGES, SourceKind, wiki_url
-from esolangs.registry._language import Shape
 
 
 def main() -> int:
@@ -411,105 +404,6 @@ def render_collection_size_section() -> str:
     return f"The collection has {len(LANGUAGES)} languages."
 
 
-def render_curation_census_section() -> str:
-    """Render docs/limitations.md's census counts from the curation fixture.
-
-    The fixture records backlinks per registry language, and the route
-    follows: fame at ``FAME_BACKLINKS``, else first implementation;
-    ``tests/api/test_interpreter_only_admissions.py`` holds its keys to the
-    registry, so the counts here are the registry's too.
-    """
-    census = _curation_rows()
-    # A new language is scaffolded ``unassessed`` (finish flags it); counting
-    # it here raised KeyError inside check-language's docs step instead.
-    fame = [
-        e["backlinks"] >= FAME_BACKLINKS for e in census.values() if "backlinks" in e
-    ]
-    pending = len(census) - len(fame)
-    checked = _curation_dates()["checked"]
-    lines = [
-        f"The {checked} census (`snapshot.json`) records each",
-        f"language's backlinks and route: {fame.count(True)} clear the fame gate",
-        f"and {fame.count(False)} are first implementations.",
-    ]
-    if pending:
-        lines.append(f"{pending} more await their backlink count.")
-    return "\n".join(lines)
-
-
-def render_sharing_counts_section() -> str:
-    """Render docs/limitations.md's sharing counts from the catalogue.
-
-    ``test_boolean_sharing_catalogue.py`` measures every tree generator outside
-    ``[sharing.exempt]``, so the remainder is that count.
-    """
-    sharing = _catalogue_load()["sharing"]
-    tree = sum(
-        lang.boolean is not None and lang.shape is Shape.TREE
-        for lang in LANGUAGES.values()
-    )
-    local, exempt = len(sharing["local"]), len(sharing["exempt"])
-    return "\n".join(
-        [
-            "A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks"
-            f" that {tree - exempt}",
-            f"of {tree} tree-shaped generators build parity or a repeated-block"
-            " table at most",
-            f"0.90x its dense or distinct-block twin ({local} by a local helper);"
-            f" {exempt} are",
-            "exempt with a reason. One shrinking probe does not establish"
-            " complete sharing.",
-        ]
-    )
-
-
-def _names(names: list[str]) -> str:
-    return ", ".join(sorted(names, key=str.casefold))
-
-
-def render_blind_reimplementation_section() -> str:
-    """Render the roadmap's clean-room progress over the first implementations."""
-    first = {
-        name
-        for name, row in _curation_rows().items()
-        if row.get("backlinks", 0) < FAME_BACKLINKS
-    }
-    done = [
-        name
-        for name, row in _audit_rows().items()
-        if "blind_reimplementation" in row and name in first
-    ]
-    return textwrap.fill(
-        f"{len(done)} of the {len(first)} first implementations: {_names(done)}.",
-        width=76,
-    )
-
-
-def render_trick_prototype_section() -> str:
-    """Render the roadmap's trick-prototype progress over the generators."""
-    done = [
-        name
-        for name, row in _audit_rows().items()
-        if "trick_prototype" in row and LANGUAGES[name].boolean is not None
-    ]
-    count = sum(lang.boolean is not None for lang in LANGUAGES.values())
-    return textwrap.fill(
-        f"{len(done)} of the {count} generators: {_names(done)}.",
-        width=76,
-    )
-
-
-def update_roadmap(root: pathlib.Path = ROOT) -> bool:
-    """Rewrite the roadmap's audit progress between its markers."""
-    path = root / "docs" / "roadmap.md"
-    text = path.read_text()
-    text = splice(
-        text, "BLIND-REIMPLEMENTATIONS", render_blind_reimplementation_section()
-    )
-    text = splice(text, "TRICK-PROTOTYPES", render_trick_prototype_section())
-    return _write_if_changed(path, text)
-
-
 def update_usage(root: pathlib.Path = ROOT) -> bool:
     """Rewrite the generated tables in docs/usage.md between their markers."""
     path = root / "docs" / "usage.md"
@@ -526,8 +420,6 @@ def update_limitations(root: pathlib.Path = ROOT) -> bool:
     for name, render in (
         ("RASTER-SOURCES", render_raster_section),
         ("COLLECTION-SIZE", render_collection_size_section),
-        ("CURATION-CENSUS", render_curation_census_section),
-        ("SHARING-COUNTS", render_sharing_counts_section),
     ):
         text = splice(text, name, render())
     return _write_if_changed(path, text)
@@ -606,10 +498,6 @@ def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
     report(
         "updated the generated paragraphs of docs/limitations.md",
         changed=update_limitations(output_root),
-    )
-    report(
-        "updated the audit progress of docs/roadmap.md",
-        changed=update_roadmap(output_root),
     )
     update_contributing(output_root)
     print("validated the registry facts in docs/CONTRIBUTING.md")

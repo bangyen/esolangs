@@ -1,7 +1,5 @@
 """Seeded token mutants of a generator, run against its tests.
 
-``rank`` lists the largest generators ``mutants_swept.toml`` does not record,
-or records at a commit their code has since left.
 ``sweep`` takes package directories (``abcdirection``), prices one baseline
 run each, then applies ``--per-language`` seeded mutants one at a time:
 operator swaps (``+``/``-``, ``<``/``<=``, ``and``/``or``, ...) and integer
@@ -15,8 +13,7 @@ Mutants edit source in place, so a sweep refuses to run outside a git
 worktree.  Caps: a baseline gets 60 s; a mutant gets three times its baseline
 (60 s at least), always clipped to the remaining global budget. A language
 stops after three consecutive timeouts.  Records
-append to ``--out`` as JSON lines; add swept packages to
-``mutants_swept.toml`` once triaged.  A failure that is only a
+append to ``--out`` as JSON lines for manual triage. A failure that is only a
 duration-band flip (see ``_duration_flips``) never counts: a baseline
 passes when every one of its failures is a flip, and a mutant is recorded
 survived, with the flips listed, when no test functionally kills it.
@@ -25,7 +22,6 @@ survived, with the flips listed, when no test functionally kills it.
 from __future__ import annotations
 
 import argparse
-import ast
 import io
 import json
 import os
@@ -37,7 +33,6 @@ import subprocess
 import sys
 import time
 import tokenize
-import tomllib
 from pathlib import Path
 from typing import TypedDict
 
@@ -53,7 +48,6 @@ from verify.failures import (  # noqa: E402
 )
 
 LANGUAGES = ROOT / "src" / "esolangs" / "languages"
-SWEPT = Path(__file__).parent / "baselines/mutants_swept.toml"
 SWAP = {
     "+": "-",
     "-": "+",
@@ -347,80 +341,18 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
     return 0
 
 
-def _code(source: str) -> str:
-    """Return ``source``'s syntax tree without docstrings, as text."""
-    tree = ast.parse(source)
-    holders = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
-    for node in ast.walk(tree):
-        if not isinstance(node, holders) or not node.body:
-            continue
-        first = node.body[0]
-        if (
-            isinstance(first, ast.Expr)
-            and isinstance(first.value, ast.Constant)
-            and isinstance(first.value.value, str)
-        ):
-            node.body = node.body[1:] or [ast.Pass()]
-    return ast.dump(tree)
-
-
-def _git(*args: str) -> str:
-    return subprocess.run(
-        ["git", *args], cwd=ROOT, capture_output=True, text=True, check=True
-    ).stdout
-
-
-def changed_since(package: str, commit: str) -> bool:
-    """Whether the package's generator code differs from ``commit``'s.
-
-    Docstrings are ignored: ``Size:`` anchors move with every size change.
-    """
-    root = (LANGUAGES / package).relative_to(ROOT)
-    paths = _git("ls-tree", "-r", "--name-only", commit, f"{root}/generator.py")
-    paths += _git("ls-tree", "-r", "--name-only", commit, f"{root}/generator/")
-    old = {
-        path: _code(_git("show", f"{commit}:{path}"))
-        for path in paths.split()
-        if path.endswith(".py") and "/tests/" not in path
-    }
-    new = {
-        str(f.relative_to(ROOT)): _code(f.read_text(encoding="utf-8"))
-        for f in generator_files(package)
-    }
-    return old != new
-
-
-def rank(count: int) -> list[str]:
-    """Return the ``count`` largest unswept generators, by source lines."""
-    swept = tomllib.loads(SWEPT.read_text(encoding="utf-8"))["swept"]
-    sizes = []
-    for package in sorted(p.name for p in LANGUAGES.iterdir() if p.is_dir()):
-        files = generator_files(package)
-        if files and (package not in swept or changed_since(package, swept[package])):
-            lines = sum(len(f.read_text(encoding="utf-8").splitlines()) for f in files)
-            sizes.append((lines, package))
-    return [package for _, package in sorted(sizes, reverse=True)[:count]]
-
-
 def main(argv: list[str] | None = None) -> int:
     """Parse the subcommand and run it."""
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     commands = parser.add_subparsers(dest="command", required=True)
-    ranked = commands.add_parser(
-        "rank", help="largest generators unswept since their last change"
-    )
-    ranked.add_argument("--count", type=int, default=10)
     run = commands.add_parser("sweep", help="run seeded mutants of packages")
     run.add_argument("packages", nargs="+")
     run.add_argument("--out", type=Path, required=True)
     run.add_argument("--per-language", type=int, default=30)
     run.add_argument("--budget", type=float, default=2 * 3600, help="seconds")
     args = parser.parse_args(argv)
-    if args.command == "rank":
-        print("\n".join(rank(args.count)))
-        return 0
     if not _in_worktree():
         parser.error("mutants edit source in place: run a sweep in a git worktree")
     return sweep(args.packages, args.out, args.per_language, args.budget)

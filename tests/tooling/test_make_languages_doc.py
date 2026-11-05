@@ -123,7 +123,6 @@ def test_main_updates_all_registry_derived_docs(
     module.update_language_request = lambda _root: called.append("request") or True
     for relative in (
         "docs/proofs/index.md",
-        "docs/roadmap.md",
         "src/esolangs/languages/generators.py",
         "src/esolangs/registry/scaling.json",
     ):
@@ -140,8 +139,7 @@ def test_main_updates_all_registry_derived_docs(
     # no "updated" line -- only the summary counts them.
     assert "updated the generated exports" not in out, stale
     assert "updated the generated tables of docs/proofs" not in out, stale
-    assert "updated the audit progress of docs/roadmap.md" not in out, stale
-    assert "4 generated artifacts already up to date" in out
+    assert "3 generated artifacts already up to date" in out
 
 
 def test_the_writers_rewrite_the_committed_sections(tmp_path: Path) -> None:

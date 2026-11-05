@@ -122,24 +122,6 @@ history at `f35aa4023`.
       obstructions, or a real consumer for the other reading (the dialect
       branch is ready).
 
-<!-- BLIND-REIMPLEMENTATIONS:START -->
-
-93 of the 93 first implementations: 1 + i, 3x, 6-5, A Painter Ant,
-ABCDirection, AddSubJump, Algebraic Programming Language, Alight, Aprknia,
-ArrowQueue, Ascenic, B-tapemark, Back, Balik, BASICER, Basicfuck, Between,
-BFStack, Bitdeque, bit~, Bleh, Blindfolded Arithmetic, BrainIf, Caballo,
-CARP, Circlefuck, Circuit Diagram, Clockwise, Codesick, Collatz Multiverse,
-Container, CreativeScript v2, Crement, CV(N)(C), Decleq, Dig, Dimensional,
-DINAC, EGL, Eval, Fackward, Fargo, Flowchart, Forbin, Forþ, Freestajlo,
-Grapheme, Home Row, Hot, HQ9+ with headers, IEBEL, Inject, Interprogck8,
-Kiss, LaserFuck, Line, lol waht i cant edit talk pages, Minsky Swap,
-Modulous, Monotonic Boolfuck, Movesum, Nandypants, NOR machine, NQ, Object
-disoriented, Packlang, Painfuck, Parenthesys, Pilas, Pointless, Qoibl,
-Qrain, Quassaunt, RAM0, REFRACTRAN, Retrograde, ROTfuck, Rubic, S*bleq,
-SendStuff, SLOW ACV MAMMALIAN, Smu, Sonata, SStack, Stisp, Streetcode,
-Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat, Unsquare, What!?.
-
-<!-- BLIND-REIMPLEMENTATIONS:END -->
 - **Trick prototypes, round 2:** complete. All 325 named proposals from 109 raw
   files have recorded dispositions; five earlier zero-trick generators are
   also covered. The 2026-11-03 recheck includes both execution gates: six
@@ -147,25 +129,3 @@ Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat, Unsquare, What!?.
   costs. Proof-test arities are preserved. Line, Quassaunt and Stisp
   source and Suffolk workspace retain explicit upper bounds; their exact
   global maxima remain unproved.
-
-<!-- TRICK-PROTOTYPES:START -->
-
-114 of the 114 generators: ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection,
-AddSubJump, Algebraic Programming Language, Alight, Aprknia, ArrowQueue,
-Ascenic, B-tapemark, Back, Balik, BASICER, Basicfuck, Befunge, Between,
-BFStack, Bitdeque, Bitwise Cyclic Tag, bit~, Bleh, Blindfolded Arithmetic,
-Boolfuck, brainfuck, BrainIf, Caballo, CARP, Chicken, Circlefuck, Circuit
-Diagram, Clockwise, Codesick, Collatz Multiverse, Container, CreativeScript
-v2, Crement, CV(N)(C), Cyclic tag, Decleq, Dig, Dimensional, DINAC, EGL,
-Eval, Fackward, FALSE, Fargo, Fish, Flowchart, Forbin, Forþ, FRACTRAN,
-Freestajlo, Grapheme, Home Row, Hot, HQ9+ with headers, IEBEL, Inject,
-INTERCAL, Interprogck8, Kiss, LaserFuck, Line, lol waht i cant edit talk
-pages, Malbolge, Minsky Swap, Modulous, Monotonic Boolfuck, Movesum,
-Nandypants, NOR machine, NQ, Object disoriented, Packlang, Painfuck,
-Parenthesys, Piet, Pilas, Pointless, Qoibl, Qrain, Quassaunt, RAM0,
-REFRACTRAN, Retrograde, ROTfuck, Rubic, S*bleq, SendStuff, Shakespeare, SLOW
-ACV MAMMALIAN, Smallfuck, Smu, Sonata, SStack, Stisp, Streetcode, Subleq,
-Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat, Thue, Unary, Underload,
-Unlambda, Unsquare, What!?, Whitespace.
-
-<!-- TRICK-PROTOTYPES:END -->
