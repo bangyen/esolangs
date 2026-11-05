@@ -190,9 +190,10 @@ description = { growth = "linear", claim = "at most", template = "{claim} {formu
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter/__init__.py"
 tests = [
+    "src/esolangs/languages/algebraic_programming_language/tests/oracle_checks.py::check_raw_algebraic_programming_language",
     "src/esolangs/languages/algebraic_programming_language/tests/test_algebraic_programming_language.py::test_output",
     "src/esolangs/languages/algebraic_programming_language/tests/test_algebraic_programming_language.py::TestErrors",
     "src/esolangs/languages/algebraic_programming_language/tests/test_algebraic_programming_language.py::TestFrameBookkeeping::test_only_executed_lines_read_input",

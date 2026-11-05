@@ -53,6 +53,9 @@ Decisions:
     * ``[a b]`` and ``~`` draw through :mod:`esolangs.runtime.randomness`, so
       a caller can pin them; ``developer`` prints a fixed string rather than
       this file.
+    * Reads retain values above 255 until arithmetic wraps them: ``u`` of
+      ``λ`` stores 955, ``$py`` of 129 colons stores 258. The wiki's byte
+      accumulator disagrees; this compatibility discrepancy remains open.
 """
 
 from __future__ import annotations

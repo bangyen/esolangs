@@ -21,6 +21,8 @@ Decisions:
       programs do not depend on it: each chain is a pure product or a
       plus-first ``+``/``-``, equal under either association.
     * "``rr x rr y rr``" is read literally, a loop body being one statement.
+    * Division rounds down, including negative operands; the wiki's ``/``
+      names no rounding rule. This compatibility choice remains open.
 """
 
 import functools
