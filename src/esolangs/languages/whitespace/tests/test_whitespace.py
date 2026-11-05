@@ -147,3 +147,13 @@ def test_untaken_branches_skip_missing_label_lookup() -> None:
             wrun(push(-1 if value == 0 else 0) + branch + T + L + END)
         with pytest.raises(HaltError, match="empty"):
             wrun(branch + T + L + END)
+
+
+def test_character_output_uses_the_code_point_range() -> None:
+    for value in (0, 255, 256, 0xD800, 0xDFFF, 0x10000, 0x10FFFF):
+        assert wrun(push(value) + OUT_CHAR + END) == chr(value)
+    for value in (-1, 0x110000, -(2**80), 2**80):
+        io = ScriptedIO()
+        with pytest.raises(HaltError, match="character output"):
+            run(push(65) + OUT_CHAR + push(value) + OUT_CHAR + END, io)
+        assert io.getvalue() == "A"

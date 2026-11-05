@@ -24,7 +24,7 @@ Commands:
 Input/output:
     A read pops a heap address and stores the character code or the
     whitespace-delimited decimal integer read there.  A print pops a value;
-    a character prints its low byte.  A read at EOF propagates.
+    a character prints its Unicode code point (0..0x10FFFF). EOF propagates.
 
 Errors:
     ProgramError: an empty program; one that ends inside a command; an
@@ -33,7 +33,8 @@ Errors:
     ArgumentError: a number read given a non-integer token.
     HaltError: a pop from an empty stack; division or modulo by zero; a
     ``copy`` past the stack; a ``slide`` on an empty stack; a ``return``
-    with no call; a jump to a label that is never marked.
+    with no call; a jump to a label that is never marked; character output
+    outside 0..0x10FFFF.
 
 Decisions:
     * Division rounds down and the remainder takes the divisor's sign,
@@ -49,9 +50,11 @@ Decisions:
       each rendered line that is not a line feed: breaks are dropped and each
       glyph read as its character.
     * Canonical reference: https://github.com/wspace/whitespace-haskell,
-      VM.hs. Token-framed numeric input, byte output and zero-filled sparse
-      integer-addressed heap are this adapter's existing I/O/storage choices;
-      their compatibility with the canonical line/character/list VM is open.
+      VM.hs. Character output uses its Char range, including surrogate code
+      points in buffered output; encoding belongs to the output sink. Values
+      outside that range halt instead of reproducing host Int narrowing.
+      Token-framed numeric input and the zero-filled sparse integer-addressed
+      heap remain open compatibility choices against the line/list VM.
 """
 
 from __future__ import annotations
@@ -271,7 +274,9 @@ def _advance(
         stack = (*stack, _read_heap(heap, address))
     elif kind in {"out_char", "out_num"}:
         value, stack = _pop(stack)
-        effect = ("char", value & 0xFF) if kind == "out_char" else ("num", value)
+        if kind == "out_char" and not 0 <= value <= 0x10FFFF:
+            raise HaltError("character output is outside 0..0x10FFFF")
+        effect = ("char" if kind == "out_char" else "num", value)
     elif kind == "read_char":
         address, stack = _pop(stack)
         if char_input is None:

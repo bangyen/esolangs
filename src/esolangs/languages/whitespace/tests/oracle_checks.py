@@ -179,12 +179,12 @@ def _model(program, offsets, stdin):
                 memory[changed.pop()] = supplied
             elif kind in {"out_char", "out_num"}:
                 value = changed.pop()
-                text = str(value) if kind == "out_num" else chr(value % 256)
+                text = str(value) if kind == "out_num" else chr(value)
             elif kind in {"call", "jump", "jz", "jn", "return"}:
                 next_pc = _flow(kind, args, changed, frames, labels, pc)
             elif kind == "end":
                 done = True
-        except (IndexError, KeyError, ZeroDivisionError):
+        except (IndexError, KeyError, ZeroDivisionError, ValueError, OverflowError):
             return "halt", [*trace, row()]
         stack, heap, calls, pc = changed, memory, frames, next_pc
         output += text
@@ -204,6 +204,8 @@ def _check(factory, program, stdin="unused"):
 
 
 def check_raw_whitespace():
+    for value in (-1, 0, 255, 256, 0xD800, 0xDFFF, 0x10000, 0x10FFFF, 0x110000, 2**80):
+        _check(_Machine, (("push", value), ("out_char",), ("end",)))
     for address, left, right, operation in product(
         (-17, 0, 2**32 + 1),
         (-(2**80) - 1, -7, 0, 3, 256),
