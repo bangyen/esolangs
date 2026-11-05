@@ -1,6 +1,6 @@
 # Migration completion ledger
 
-Declaration audit: `49bcd6125`. [Language rows](migration-status.csv) cover all
+Declaration audit: `b66b55195`. [Language rows](migration-status.csv) cover all
 117 languages and 114 Boolean backends. Declarations and inherited adapters
 are recorded separately; neither proves acceptance. Every completion row stays
 open until its trace, resource, installed-package and retirement evidence is
@@ -49,7 +49,7 @@ acceptance audit after the active separation work lands. Storage policy needs
 its priced comparison and explicit decision. These remain open even where an
 implementation pilot already passed.
 
-Accounting now has eight explicit or inherited semantic adapters: Brainfuck,
-Unary, Whitespace, Boolfuck, Monotonic Boolfuck, Deadfish, HQ9+ and Nope.
-The remaining 109 language rows still use snapshot accounting. These declarations
+Accounting now has ten explicit or inherited semantic adapters: Brainfuck,
+Unary, Whitespace, Boolfuck, Monotonic Boolfuck, Deadfish, HQ9+, Nope, Home Row
+and ROTfuck. The remaining 107 language rows still use snapshot accounting. These declarations
 do not close lifecycle, storage-policy or catalog-wide acceptance requirements.

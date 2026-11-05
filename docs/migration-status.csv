@@ -57,7 +57,7 @@ Forþ,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pe
 FRACTRAN,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Freestajlo,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Grapheme,yes,legacy-discovery,signature-discovery,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-Home Row,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+Home Row,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,home-row-v1,pending-backend-audit,pending-acceptance-audit,open
 Hot,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 HQ9+,no,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,hq9-v1,not-applicable,pending-acceptance-audit,open
 HQ9+ with headers,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
@@ -91,7 +91,7 @@ Quassaunt,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback
 RAM0,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 REFRACTRAN,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Retrograde,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-ROTfuck,yes,legacy-discovery,signature-discovery,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+ROTfuck,yes,legacy-discovery,signature-discovery,legacy-discovery,owned-adapter,rotfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Rubic,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 S*bleq,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 SendStuff,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
