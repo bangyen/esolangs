@@ -104,8 +104,7 @@ def _single_lookup(used: list[int], table: str, n: int) -> str:
         cells.append(31)
     prog = [_plant(cells), ">" * (33 - cells[-1])]
     prog.extend(_SELECTOR if i in used else ">)>>~<<<" for i in range(n))
-    if not used:
-        prog.append("<{~>~<}>")
+    # Without a selector, cell32 stays zero; ignored reads touch cells34..41.
     return "".join([*prog, _FINISH])
 
 
