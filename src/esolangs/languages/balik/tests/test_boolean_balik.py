@@ -4,7 +4,7 @@ import pytest
 
 import esolangs
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output
+from tests.support.generator_support import assert_constant_output, assert_native_rows
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -16,22 +16,12 @@ def test_every_row_prints_its_answer(table: str) -> None:
     if table == "00":
         _check_constants()
         _check_projection()
-    n = len(table).bit_length() - 1
     program = esolangs.generate("Balik", table)
     if table == "10":
         assert len(program.splitlines()) == 3
-    for row in range(len(table)):
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        stdin = esolangs.encode_inputs("Balik", bits)
-        from esolangs.languages.balik.interpreter import run
+    from esolangs.languages.balik.interpreter import run
 
-        io = ReadFirstIO(stdin + "7", expected=len(stdin.rstrip()))
-        run(program, io)
-        got = io.getvalue()
-        assert io.past_end == 0
-        assert io.input_token() == "7"
-        # The answer as the contract reads it, not the raw output.
-        assert esolangs.read_answer("Balik", got) == table[row], (table, row)
+    assert_native_rows("Balik", table, program, run, token=True)
 
 
 def _check_constants() -> None:

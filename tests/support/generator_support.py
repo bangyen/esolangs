@@ -8,6 +8,7 @@ import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.runtime.io import ScriptedIO
 from tests.support.evaluation import _DEFAULT, _Default, _evaluate
+from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import parity, row_bits
 
 
@@ -23,6 +24,22 @@ def assert_every_row(
         stdin = esolangs.encode_inputs(language, bits)
         got = esolangs.run(language, program, stdin=stdin, timeout=5)
         assert esolangs.read_answer(language, got) == table[row], (table, row)
+
+
+def assert_native_rows(language, table, program, run, *, sentinel="7", token=False):
+    """Check native answers, read-before-write ordering and the following record."""
+    n = len(table).bit_length() - 1
+    for row, expected in enumerate(table):
+        stdin = esolangs.encode_inputs(language, row_bits(row, n))
+        io = ReadFirstIO(stdin + sentinel, expected=len(stdin.rstrip()) if token else n)
+        run(program, io)
+        got = io.getvalue()
+        assert io.past_end == 0
+        if token:
+            assert io.input_token() == sentinel
+        else:
+            assert io.input_char() == ord(sentinel)
+        assert esolangs.read_answer(language, got) == expected, (table, row)
 
 
 def assert_proved_resource_cap(name: str) -> None:

@@ -4,7 +4,11 @@ import pytest
 
 import esolangs
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output, measure_run
+from tests.support.generator_support import (
+    assert_constant_output,
+    assert_native_rows,
+    measure_run,
+)
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -18,20 +22,10 @@ def test_every_row_prints_its_answer(table: str) -> None:
         _check_quotient_guard()
     from esolangs.languages.aprknia.interpreter import run
 
-    n = len(table).bit_length() - 1
-
     program = esolangs.generate("Aprknia", table)
     assert isinstance(program, str)
-    for row in range(len(table)):
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        stdin = esolangs.encode_inputs("Aprknia", bits)
-        io = ReadFirstIO(stdin + "7", expected=n)
-        run(program, io)
-        got = io.getvalue()
-        assert io.past_end == 0
-        assert io.input_char() == ord("7")
-        # The answer as the contract reads it, not the raw output.
-        assert esolangs.read_answer("Aprknia", got) == table[row], (table, row)
+
+    assert_native_rows("Aprknia", table, program, run)
 
 
 def _check_constants() -> None:
