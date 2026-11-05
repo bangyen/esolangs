@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 from esolangs import vm
+from esolangs.registry import LANGUAGES
 from esolangs.runtime.io import ScriptedIO
 from tests.support.evaluation import _row_answerer
 from tests.support.generator_support import assert_proved_resource_cap
@@ -13,6 +14,7 @@ from tests.support.witness_tables import witnesses
 IGNORING = [
     "00000000",
     "11111111",
+    "01101001",  # parity keeps every branch, unlike constants
     "0101",
     "01100110",
     "0011",
@@ -112,6 +114,27 @@ def test_the_audit_checks_cycling_answers(monkeypatch) -> None:
     assert _audit(REFERENCE, ",[]", 1, monkeypatch) == (2, 0, 0, 0)
 
 
+@pytest.mark.medium
+@pytest.mark.parametrize("table", ["00000000", "01101001"])
+@pytest.mark.parametrize("failure", [RuntimeError, SystemExit])
+def test_the_audit_rejects_a_crash_after_the_final_read(monkeypatch, table, failure):
+    program = esolangs.generate(REFERENCE, table)
+    hits = []
+
+    class CrashIO(ScriptedIO):
+        def input_char(self, prompt="Input: "):
+            value = super().input_char(prompt)
+            if self.reads == 3:
+                hits.append(self.reads)
+                raise failure("input-audit crash control")
+            return value
+
+    monkeypatch.setattr(__name__ + ".ScriptedIO", CrashIO)
+    with pytest.raises(failure, match="input-audit crash control"):
+        _audit(REFERENCE, program, 3, monkeypatch, table=table)
+    assert hits == [3], "the control never reached the final input"
+
+
 # One case per language and path: the whole sweep in one test overran its band.
 @pytest.mark.medium
 @pytest.mark.parametrize(
@@ -126,12 +149,17 @@ def test_the_audit_checks_cycling_answers(monkeypatch) -> None:
 )
 def test_every_input_is_read(monkeypatch, name, path) -> None:
     built = 0
-    for table in IGNORING:
+    controls = LANGUAGES[name].certification.benchmark_tables if not path else ()
+    if controls:
+        assert_proved_resource_cap(name)
+    for table in dict.fromkeys((*IGNORING, *controls)):
         n = (len(table) - 1).bit_length()
         if n <= (INFOS[name]["generator_max_inputs"] or 6):
             try:
                 program = esolangs.generate(name, table, **path)
             except esolangs.GeneratorCapError:
+                if table in controls:
+                    raise
                 assert_proved_resource_cap(name)
                 continue
             built += 1

@@ -504,12 +504,15 @@ def quick_tests(name: str) -> list[str]:
         "tests/generators/test_boolean_sharing_catalogue.py",
         "tests/generators/test_generator_docstrings.py"
         "::test_the_size_anchor_is_what_generate_emits",
-        "tests/generators/test_boolean_contract.py"
-        "::test_every_table_reads_the_same_number_of_inputs",
         "tests/generators/test_boolean_canonical_catalogue.py"
         "::test_native_mechanisms_are_referenced",
         "tests/runtime/test_answer_plumbing.py::TestWhatHappensWhenAProgramIsUnderfed",
     ]
+    if not lang.parameterized:
+        nodes.append(
+            "tests/generators/test_reads_every_input.py"
+            f"::test_every_input_is_read[{name}-{{}}]"
+        )
     catalogue = "tests/generators/test_boolean_canonical_catalogue.py::"
     folding = _catalogue_load()["folding"]
     nodes.append(catalogue + "test_the_catalogue_covers_exactly_the_exceptions")

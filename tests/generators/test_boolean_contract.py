@@ -1,7 +1,5 @@
 """Contract tests every boolean generator must satisfy."""
 
-import contextlib
-import importlib
 from collections.abc import Callable
 
 import pytest
@@ -9,11 +7,9 @@ import pytest
 import esolangs
 import esolangs.languages.generators as boolean
 from esolangs.generation.helpers import essential_inputs
-from esolangs.raster import Raster
-from esolangs.registry import BY_BOOLEAN, INTERPRETERS, LANGUAGES
+from esolangs.registry import BY_BOOLEAN, LANGUAGES
 from esolangs.registry._backend import Shape
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _BranchingStepMachine, run_until_halt, run_until_halt_or_cycle
 from scripts.docs.proof_status import load as _load_proof_status
 from scripts.source_units import source_units
 from tests.support.generator_support import (
@@ -27,94 +23,6 @@ from tests.support.witness_tables import _one_minterm, dense, parity, row_bits
 # leaves it out.  42.9s of the fast band's 193.8s was this file alone.  The
 # per-param `slow` marks below still apply on top.
 pytestmark = pytest.mark.medium
-
-# A generator loses reads by folding, so compare a table that folds
-# completely against parity, which has no constant subtree above one row.
-_TABLES = ["00000000", "01101001"]
-
-
-def _input_reading_generators() -> list[object]:
-    """Every boolean generator whose language actually reads input."""
-    found = []
-    for name in sorted(boolean.__all__):
-        fn = getattr(boolean, name, None)
-        lang = BY_BOOLEAN.get(name)
-        if not callable(fn) or lang is None or lang.name not in INTERPRETERS:
-            continue
-        # A parameterized program embeds its inputs and reads none.
-        if esolangs.describe(lang.name)["parameterized"]:
-            continue
-        try:
-            run = importlib.import_module(INTERPRETERS[lang.name]).run
-        except Exception:  # pragma: no cover - interpreter lives outside the pkg
-            continue
-        found.append((name, (fn, lang, run)))
-    return found
-
-
-def _reads(entry: tuple, table: str) -> int:
-    """Run the generated program and report how many inputs it consumed."""
-    fn, lang, _run = entry
-    try:
-        emitted = fn(table)
-        program = (
-            emitted
-            if isinstance(emitted, (Raster, esolangs.CompressedText))
-            else str(emitted)
-        )
-    except ValueError:
-        # A generator that does not cover this table emits no program, and a
-        # program that does not exist reads nothing.  Reporting 0 routes the
-        # caller into its "does not read input" skip rather than failing on a
-        # coverage gap, which is not what this test measures.
-        return 0
-    io = ScriptedIO(esolangs.encode_inputs(lang.name, [0] * 8))
-    source = (
-        program.splitlines()
-        if lang.runtime.split and isinstance(program, str)
-        else program
-    )
-    module = importlib.import_module(INTERPRETERS[lang.name])
-    machine_cls = module._Machine
-    # Every interpreter names its state object ``_Machine``, so this reads
-    # the same count for every language.  It used to fall back to ``run``
-    # for the three that spelled the class ``State``: that measured a whole
-    # run rather than a stepped one, silently, for exactly those three.
-    # A program may halt through its own error path or call exit; either way the
-    # read count up to that point is what matters here.
-    with contextlib.suppress(Exception, SystemExit):
-        of = getattr(machine_cls, "of", None)
-        build = of if callable(of) else machine_cls
-        machine = build(source, io)
-        drive = (
-            run_until_halt
-            if isinstance(machine, _BranchingStepMachine)
-            else run_until_halt_or_cycle
-        )
-        drive(machine, limit=100_000)
-    return io.reads
-
-
-@pytest.mark.parametrize(
-    ("name", "entry"),
-    _input_reading_generators(),
-    ids=lambda v: v if isinstance(v, str) else "",
-)
-def test_every_table_reads_the_same_number_of_inputs(name: str, entry: tuple) -> None:
-    """A generator reads its ``n`` inputs whatever the truth table says."""
-    controls = LANGUAGES[esolangs.resolve(name)].certification.benchmark_tables
-    if controls:
-        assert_proved_resource_cap(name)
-        for table in controls:
-            assert _reads(entry, table) == len(table).bit_length() - 1
-        return
-    counts = {table: _reads(entry, table) for table in _TABLES}
-    baseline = counts["01101001"]
-    assert baseline > 0, f"{name} read no input from parity"
-    assert set(counts.values()) == {baseline}, (
-        f"{name} reads a different number of inputs depending on the table: "
-        f"{counts} -- a constant table must still consume all {baseline}"
-    )
 
 
 def _exported_generators() -> dict[str, str]:
