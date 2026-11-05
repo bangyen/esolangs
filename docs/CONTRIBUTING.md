@@ -151,9 +151,10 @@ Start from `src/esolangs/runtime/_template.py`. Every interpreter:
 - Guards input lines before indexing (`if val:`). Empty lines are legal;
   exhausted input raises `EOFError` either way.
 - Exposes `_Machine.step()`, `halted` and a complete `snapshot()`, including
-  the input cursor. Snapshot grouping affects exact written-workspace
-  accounting: regroup internal fields, not snapshot fields, and diff snapshots
-  directly without normalizing away changes.
+  the input cursor. Diff snapshots directly without normalizing changes away.
+  A declared `workspace_snapshot()` projects versioned semantic components for
+  written-bit proofs; storage and cycle snapshots do not define its grouping.
+  Legacy accounting still uses snapshot grouping: preserve it until migrated.
 - Treats public `_Machine` properties as debugger views. Declare `ip`,
   `memory` and `stack` only when meaningful; defaults are `ind`, empty, empty.
 - Uses a pure `_advance` transition over immutable state, with `step` doing

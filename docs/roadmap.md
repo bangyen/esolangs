@@ -69,7 +69,8 @@ Previous architecture migrations are integrated. All 117 languages execute a
 bounded independent semantic model and detect a live output fault. Models
 cover their declared fragments; broader regressions, purity and snapshot
 checks remain. Language-specific compatibility decisions stay in the
-interpreter contracts.
+interpreter contracts. Brainfuck now projects a versioned workspace model;
+cycle snapshots and Python backing storage retain separate contracts.
 
 Remaining migrations, in priority order. Migrate incrementally; retain existing
 contracts and gates. Price pilots before execution; refactors require corpus
@@ -80,12 +81,7 @@ diffs and timings, and emitted-program changes follow the optimization gate.
    analysis and target-owned emission. Pilot one family across two backends;
    retain specialized constructions. Adopt only with byte-identical corpus
    output and generation timings preserving the growth bound.
-2. **Semantic state and storage:** define the abstract state counted by each
-   workspace proof separately from Python storage. Pilot a checked adapter
-   retaining complete snapshots, input progress and pure transitions. Done
-   when traces and exact resource witnesses agree and representation changes
-   cannot silently change the accounting model.
-3. **Evidence and verification policy:** extend structured evidence to render
+2. **Evidence and verification policy:** extend structured evidence to render
    documented claims without parsing prescribed prose. Evaluate runtime budgets
    and demonstrated fault detection as replacements for test-line/count ratios;
    retain current budgets during evaluation. Done when claims remain executable

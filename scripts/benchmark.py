@@ -46,9 +46,16 @@ import esolangs.debugger as debugger_api
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.registry import LANGUAGES, resolve
 from esolangs.registry._describe import LanguageInfo
+from esolangs.runtime._state import WorkspaceSnapshot
 from esolangs.runtime._validate import check_timeout
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import VM, SnapshotVM, complete_vm, run_until_halt_or_cycle
+from esolangs.vm import (
+    VM,
+    SnapshotVM,
+    _capture_workspace,
+    complete_vm,
+    run_until_halt_or_cycle,
+)
 
 _TEXT_TYPES = (str, bytes, bytearray)
 _CONTAINER_TYPES = (tuple, list, frozenset, set)
@@ -233,6 +240,7 @@ class WrittenState:
 
     def __init__(self, state: object) -> None:
         """Start from a run's first snapshot."""
+        self._model = state.model if isinstance(state, WorkspaceSnapshot) else None
         self._memo: dict[int, tuple[object, int]] = {}
         self._start = self._parts(state)
         self._peaks = [0] * len(self._start)
@@ -243,10 +251,15 @@ class WrittenState:
 
     @staticmethod
     def _parts(state: object) -> tuple[object, ...]:
+        if isinstance(state, WorkspaceSnapshot):
+            return state.parts
         return state if isinstance(state, tuple) else (state,)
 
     def sample(self, state: object) -> None:
         """Record one snapshot."""
+        model = state.model if isinstance(state, WorkspaceSnapshot) else None
+        if model != self._model:
+            raise ValueError("workspace accounting model changed mid-run")
         parts = self._parts(state)
         memo, peaks, written = self._memo, self._peaks, self._written
         start, previous, counts = self._start, self._last, self._now
@@ -417,11 +430,11 @@ def _execute(
             # baseline's wrapper-step count, excluding its post-halt dump.
             vm = debugger_api.make_vm(language, source, stdin=stdin)
 
-        written = WrittenState(cast(SnapshotVM, vm).snapshot()) if track_store else None
+        written = WrittenState(_capture_workspace(vm)) if track_store else None
 
         def sample_store() -> None:
             if written is not None:
-                written.sample(cast(SnapshotVM, vm).snapshot())
+                written.sample(_capture_workspace(vm))
                 result["peak_written_bits"] = written.bits
                 result["peak_memory_cells"] = max(
                     result["peak_memory_cells"] or 0, len(vm.memory)

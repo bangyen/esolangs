@@ -103,6 +103,7 @@ from esolangs.runtime._lifecycle import Completion, CompletionReport
 from esolangs.runtime._program import Program
 from esolangs.runtime._result import ExecutionResult
 from esolangs.runtime._source import ProgramSource, check_scale_for
+from esolangs.runtime._state import WorkspaceSnapshot
 from esolangs.runtime._traits import trait, traits
 from esolangs.runtime._validate import check_seed, check_whole
 from esolangs.runtime._vm_views import machine_views
@@ -405,6 +406,19 @@ def _capture_observation(
         # Use owned code; unrelated instance attributes remain caller-owned.
         return _DelegatingVM._result(vm, report)  # noqa: SLF001
     return ExecutionResult(vm.output, None, None, None, report)
+
+
+def _capture_workspace(vm: VM) -> Hashable:
+    """Project owned semantic accounting state, retaining legacy snapshot models."""
+    if isinstance(vm, _DelegatingVM):
+        machine = vm._machine  # noqa: SLF001 - owned adapter
+        capture = getattr(type(machine), "workspace_snapshot", None)
+        if capture is not None:
+            state = capture(machine)
+            if not isinstance(state, WorkspaceSnapshot):
+                raise TypeError("workspace_snapshot must return a WorkspaceSnapshot")
+            return state
+    return cast(SnapshotVM, vm).snapshot()
 
 
 @cache

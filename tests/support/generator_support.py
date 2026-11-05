@@ -7,6 +7,7 @@ from math import isqrt
 import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import _capture_workspace
 from tests.support.evaluation import _DEFAULT, _Default, _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import parity, row_bits
@@ -207,7 +208,7 @@ def assert_shared_program(
         assert machine.halted
         if machine.dumps_on_the_post_halt_step:
             machine.step()
-            written.sample(machine.snapshot())
+            written.sample(_capture_workspace(machine))
             commands += 1
         assert esolangs.read_answer(language, machine.output) == expected
         assert commands <= command_bound
@@ -237,10 +238,10 @@ def measure_run(machine, *, limit=None):
     """Return step count and sampled written state, stopping past ``limit``."""
     from scripts.benchmark import WrittenState
 
-    written = WrittenState(machine.snapshot())
+    written = WrittenState(_capture_workspace(machine))
     commands = 0
     while not machine.halted and (limit is None or commands <= limit):
         machine.step()
-        written.sample(machine.snapshot())
+        written.sample(_capture_workspace(machine))
         commands += 1
     return commands, written

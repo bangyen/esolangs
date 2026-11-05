@@ -2,6 +2,7 @@
 
 import esolangs
 from esolangs.debugger import make_vm
+from esolangs.vm import _capture_workspace
 from scripts.benchmark import WrittenState
 from tests.proofs._witnesses import (
     _WITNESSES,
@@ -159,7 +160,7 @@ def measure(
                 esolangs.encode_inputs(name, bits, truth_table=table),
             )
         machine = make_vm(name, source, stdin=stdin)
-        state = WrittenState(machine.snapshot()) if written else None
+        state = WrittenState(_capture_workspace(machine)) if written else None
         steps = run_to_answer(
             machine, sample=state.sample if state is not None else None
         )

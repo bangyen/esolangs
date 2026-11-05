@@ -23,6 +23,7 @@ from functools import lru_cache
 
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import HALTED_REPORT, CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import match_brackets as matches
 from esolangs.runtime.io import IO
 
@@ -41,6 +42,11 @@ from esolangs.runtime.io import IO
 #: Order starts ``ind, ptr, tape`` because ``snapshot`` returns those three.
 type _State = tuple[int, int, tuple[int, ...]]
 type _Op = tuple[int, int]
+
+# Keep the proof's grouping even if state storage or cycle snapshots change.
+_WORKSPACE_MODEL = WorkspaceModel(
+    "brainfuck-v1", ("instruction", "pointer", "tape", "input_cursor")
+)
 
 _ADD = 0
 _RIGHT = 1
@@ -167,6 +173,15 @@ class _Machine:
             # an emoji while ``,+.`` printed ``\x01``.  CVNC does the same.
             state = (ind, ptr, _written(tape, ptr, self.io.input_char() % 256))
         self.state = _advance(state, self.code, self.brackets)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Project control, the whole allocated tape and consumed input for proofs."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.ind,
+            pointer=self.ptr,
+            tape=self.tape,
+            input_cursor=self.io.progress(),
+        )
 
 
 def _net_change(code: str, start: int) -> tuple[int, int]:

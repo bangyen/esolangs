@@ -18,6 +18,7 @@ import pytest
 import esolangs
 from esolangs.debugger import make_vm
 from esolangs.registry import LANGUAGES
+from esolangs.vm import _capture_workspace
 from scripts.benchmark import WrittenState
 from tests.proofs._witnesses import _SPARSE_BAND, _SPARSE_ROWS, SparseRows, band_marks
 from tests.proofs.deep.execution import run_to_answer
@@ -57,7 +58,7 @@ def _step_row(
     else:
         source, stdin = program, esolangs.encode_inputs(name, bits, truth_table=table)
     machine = make_vm(name, source, stdin=stdin)
-    state = WrittenState(machine.snapshot()) if written else None
+    state = WrittenState(_capture_workspace(machine)) if written else None
     steps = run_to_answer(machine, sample=state.sample if state is not None else None)
     assert steps is not None  # no cap
     if halts is None:
