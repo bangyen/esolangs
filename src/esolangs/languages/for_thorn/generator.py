@@ -7,7 +7,7 @@ unpopped key and ``;`` pops and calls.  Internal scopes share one dispatch,
 calls the child; leaves push ``48+result`` for ``.``. A final bit is
 converted directly to its output byte, leaving the scope index below it.
 Constant subtrees collapse to a leaf; a same-level twin is called by distance
-(``{}-:;``) when that beats inlining.  An ignored input is read and dropped.
+(``{}-:;``).  An ignored input is read and dropped.
 
 Size:
     O(T) dense, near-linear in n for parity and and; n=10 parity: 397 chars,
@@ -81,8 +81,8 @@ def _forth_ordered(truth_table: str, reads: str, *, share: bool = False) -> str:
     pending = deque((1, 2))
 
     ids = subtree_ids(truth_table) if share else []
-    # Heap order is level order, so a twin is at the same level; a folded
-    # scope is never recorded, so a call lands on a defined one.
+    # Heap order is level order. Every internal scope, including a fold
+    # or call, is recorded after its body is defined.
     emitted: dict[int, int] = {}
     previous = 0  # the index the accumulator holds; 0 before anything is pushed
     while pending:

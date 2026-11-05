@@ -115,3 +115,6 @@ contract = "interpreter.py"
 tests = [
     "src/esolangs/languages/malbolge/tests/test_malbolge.py::test_a_known_program_prints_its_greeting",
 ]
+
+[ablations.symmetric_readout_guard_20261104]
+verdict = "Reject negative or wrapped popcount readout addresses before placement or rendering. The shipped 20480 readouts remain in 6565..59040; seventeen-input parity emits identical bytes before/after and four boundary rows execute correctly. Existing proof bounds, pins and Size anchors are unchanged."

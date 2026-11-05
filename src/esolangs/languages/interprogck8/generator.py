@@ -31,7 +31,7 @@ constants use n reads and a fixed arithmetic tail, without windows.
 Size:
     O(T) at every arity: a window is at most 138 lines and the cursor walk is a
     recursion over (height, entry offset), so the worst table takes about
-    193.1 T characters at n = 10 (tests/formulas.py, exact at n = 3..12; 24,874
+    193.1 T characters at n = 10 (tests/formulas.py, exact at n = 3..10; 24,874
     at n = 7).  n=10 random 1847: 160,984 chars, n=10 parity: 143,940 chars,
     n=10 and: 8,160 chars. Constants use 2n+28+4bit chars and n+7+bit commands;
     n=8 zero: 44 chars.

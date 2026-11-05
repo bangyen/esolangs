@@ -92,8 +92,8 @@ def _qrain_ordered(table: str, perm: tuple[int, ...]) -> str:
                     table, perm, pos, result, shared_blocks=blocks, dialect=_DIALECT
                 )
             )
-    # A shared form is always shorter than the plain tree (0 of 65,536 n=4
-    # tables, 920 random n=4..8); the plain tree serves only tables with none.
+    # No shared form lost to the plain tree in 65,536 n=4 tables or
+    # 920 random n=4..8 tables; an over-budget form still falls back below.
     fits = [(body, c) for body, c in forms if c <= budget]
     if fits:
         best = min(fits, key=lambda form: len(form[0]))[0]

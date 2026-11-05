@@ -7,7 +7,7 @@ Each variable is factored as ``p = p0 ^ (x & p1)``, so every coefficient
 appears at most once, in identity order (no reads, so order only renames the
 ``@`` literals).  A node keeps its 0-arm (Davio0) unless the 1-arm is the
 constant one (``f0 | x``).  The program is
-``% 0 <expression>`` then ``$``; a constant table emits the literal.  Input
+``% 0 <expression>`` then ``$``; zero emits ``$``, one sets bit zero first.  Input
 ``i`` (most-significant-first) is bit ``n - 1 - i`` of the one line read
 before execution -- the only place the mapping appears.  A repeated node gets a
 shared definition where that is shorter (:func:`_packed_program`); the inline

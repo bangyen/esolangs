@@ -271,7 +271,7 @@ def _groups(width: int, *, raw: bool = False) -> list[int]:
     """Bit counts of normalized base64 or raw base32 digits, lowest first.
 
     The short digit goes lowest: a digit's walk text is four strides, and
-    its stride doubles per bit below it, so a short top digit spent 512
+    its stride doubles per bit below it, so the former six-bit top digit spent 512
     characters on a 128-cell stride at n = 7 ([ablations.short_digit_low]).
     """
     # [ablations.raw_five_execution_20261103]: raw byte carries cost more

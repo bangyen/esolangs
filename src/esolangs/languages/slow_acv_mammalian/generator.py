@@ -701,7 +701,7 @@ def _program(
     io_modulus: int = DEFAULT_MODULI.io_modulus,
     leapfrog_resume: str = DEFAULT_MODULI.leapfrog_resume,
 ) -> str:
-    """Build the dispatch, optionally retaining constant-input weights."""
+    """Build the dispatch and its leaf bank."""
     moduli = MammalianModuli(cell_modulus, io_modulus, leapfrog_resume)
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:

@@ -111,7 +111,7 @@ def _node_body(node: _Node, names: dict[str, str]) -> str:
 
 
 def _store_loop(root: str) -> str:
-    """Store a triple; its empty dummy key selects the root after the last pair."""
+    """Store a triple; its empty dummy key selects the root after the last triple."""
     return (
         "@@d?%%Swap?%%Empty?%%Makecontain?%%Store?%%Empty?%%Makecontain?%%Store?"
         "@@?@@?@@@@[_s]?@@d?%%Obtain?@@@@[" + root + "]?@@?%%Empty?%%Makecontain?"

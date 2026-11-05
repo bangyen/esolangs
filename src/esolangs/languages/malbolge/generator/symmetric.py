@@ -59,7 +59,7 @@ from .digits import (
     _seed_values,
 )
 from .emitter import _Planner
-from .isa import _program, _render
+from .isa import _WORDS, _program, _render
 
 #: The four-read gadget: the positional gadget's first two read
 #: blocks, a suffix folding in the fourth input, and a closing block
@@ -292,6 +292,8 @@ def _symmetric() -> _Symmetric:
     readout cells instead of its 32,768).
     """
     weights = _s_readouts()
+    if not weights or min(weights) < 0 or max(weights) >= _WORDS:
+        raise AssertionError("readouts wrap")
     cells_of_tables = set(weights)
     cells = _s_allocate_cells()
     _, pointer = _pointers(_D_LABEL, _seed_values().items())

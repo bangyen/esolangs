@@ -17,7 +17,7 @@ Size:
     random 1847: 230 chars. Constants: n + 2 chars and commands.
 
 Decisions:
-    A literal shares nothing; a constant is ``'c``, printed with no index.
+    A literal shares nothing; constants read every input, then print a bare digit.
 """
 
 from math import isqrt

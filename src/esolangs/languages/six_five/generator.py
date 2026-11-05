@@ -72,7 +72,7 @@ def _six_five_markers(table: str) -> int:
     One per internal node the fold leaves; a slice whose characters agree
     folds to a leaf.  Pass a permuted table for that order's count -- the
     35-label budget is a per-order gate.  Spans, not slices: O(2**n).  A
-    node that copies or inverts its bit spends no label but still counts:
+    skip node spends no label but still counts:
     the gate is a bound, so the tree-or-shared choice is unmoved (counted
     exactly, one n == 6 table took a tree 341 -> 561).
     """

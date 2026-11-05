@@ -14,7 +14,7 @@ line of single-spaced words, so the squarest layout is a plain re-wrap.
 
 Size:
     at most ``16 * T`` characters for ``T = 2**m`` rows of the essential inputs
-    plus ``O(m**2)`` for the readers, so linear in T; n=4 parity: 524 chars
+    plus ``O(m**2 + n)`` for the readers, so linear in T; n=4 parity: 524 chars
 
 Decisions:
     * A stack of ``Remember`` sentences would pop once per row. Packing

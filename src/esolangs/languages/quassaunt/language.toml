@@ -8,7 +8,7 @@ admitted = 2026-10-15T12:24:04-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "shared residuals read every input depth; a fixed helper stores all code before the root runs"
-definitions = ["N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables", "G = 96n+161+bl(n+1)+bl(n) for constants; otherwise 8(R+26+2B+3A+2H+K)+10+bl(P-1)+bl(n). R/P=word characters/count; A/B=payload name/body lengths; H=helper body length; K=longest key; payload excludes helper/dummy."]
+definitions = ["F = N(170+4u)+400+u+6n, u is the length of the base-89 name for node N-1", "N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables", "G = 96n+161+bl(n+1)+bl(n) for constants; otherwise 8(R+26+2B+3A+2H+K)+10+bl(P-1)+bl(n). R/P=word characters/count; A/B=payload name/body lengths; H=helper body length; K=longest key; payload excludes helper/dummy."]
 
 [generator_sizes]
 "00000001" = { commands = 293, commands_by_row = { "0" = 279, "1" = 279, "2" = 279, "3" = 279, "4" = 286, "5" = 286, "6" = 293, "7" = 293 }, source_units = 970 }

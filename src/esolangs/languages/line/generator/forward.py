@@ -62,7 +62,7 @@ def streaming_canvas(
 def _fold_canvas(
     table: str, old_area: int, *, unit: int
 ) -> tuple[Node, CanvasPlan] | None:
-    """Return a complete fold within 5n commands that beats ``old_area``, else None."""
+    """Return a fold within 3n+4 commands beating ``old_area``, else None."""
     dag = _load_dag(table)
     if dag is None:
         return None

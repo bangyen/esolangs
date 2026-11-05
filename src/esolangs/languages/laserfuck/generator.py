@@ -15,7 +15,7 @@ Size:
     n=16 and: 984,713 chars.
     Constants without a width use 2n+20+bit chars and 3(n+9+bit) cells;
     n=8 zero: 36 chars.
-    Balanced (tiled subtrees from n=9): about 110 cells of area a row at
+    Balanced (tiled subtrees from n=7): about 110 cells of area a row at
     n=10..12 (random 4242).
 
 Decisions:

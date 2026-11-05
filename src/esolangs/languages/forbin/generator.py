@@ -97,8 +97,9 @@ def _byte(bit: int) -> str:
 def forbin(truth_table: str, width: int | None = None) -> str:
     """Build a Forbin program computing the given truth table.
 
-    A supplied width uses disjoint guards and grammar-token wrapping, with
-    a four-column floor for ``main``. Unwrapped output retains early returns.
+    A supplied width keeps early returns when they fit; otherwise it uses
+    disjoint guards and grammar-token wrapping, with a four-column floor
+    for ``main``.
     The shortest block width in ``_BLOCK_WIDTHS`` is kept
     ([ablations.block_width_race]).
 
@@ -264,9 +265,8 @@ class _TreeBuilder:
     def _branch(self, level: int, row: int, span: int) -> list[str]:
         names = self.names
         if level == self.high:
-            # The literal block goes on a line of its own: it is one
-            # unbreakable token, and the wrapper holds a line to its width
-            # unless a single token already overruns it.
+            # The literal block starts on its own line; commas let the
+            # wrapper split its digits when the block exceeds the width.
             self.used.add(names.table)
             block = ",".join(self.truth_table[row : row + span])
             if self.narrow:

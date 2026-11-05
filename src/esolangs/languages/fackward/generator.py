@@ -24,7 +24,7 @@ from esolangs.languages.fackward.descriptor import _wrap as _wrap
 def _node(zero: str, one: str) -> str:
     """A level choosing ``zero``'s or ``one``'s contents by the bit read.
 
-    The dispatch padding is ``[!~)]``, not ``[!))[]]``: 2 of 34 template
+    The dispatch padding is ``[!~)]``, not ``[!))[]]``: 2 of the former 34 template
     chars, 4.2-4.4% at n=4..8 on random tables, parity 4.6%, and/or 3.0% at
     n=8; executed through the interpreter on 322 full programs.
     """

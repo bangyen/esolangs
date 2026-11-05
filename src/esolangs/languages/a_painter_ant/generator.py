@@ -9,8 +9,8 @@ corridor ends where the trailing run of equal answers starts: a walk halts
 there, and every index past it shares its answer.  Constant roots restore
 each input to one white origin, then leave it black or white.
 
-A table whose leading run is longer than its trailing run walks the mirror
-(:func:`_flipped`): the corridor holds the top index first, a zero input
+The mirror (:func:`_flipped`) trims the leading run instead: the corridor
+holds the top index first, a zero input
 walks the black lane east, and a white wall cell with its lane stopper
 clamps the walk.  Either corridor may paint its answers on the zeros
 instead of the ones, which reads complemented; a start ``S`` for ``N`` and a

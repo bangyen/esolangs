@@ -494,7 +494,7 @@ Symbols the formula cells use:
 - **Object disoriented:** c = 3 + the `n` and `d` letters; F = Σ_{j<2n+3} (bl(c) + p_j + 3(bl(6⌈j/2⌉+9)+1)) + 4bl(6n+9) + 5; p_j = 4 even j, else bl(16n+40); H = bl(c) + bl(16n+40) + 3(bl(6n+9)+1): reader frame; M = (n+1)(4bl(c)+8) + 6n + 9.
 - **Painfuck:** P = 4n^2+8n+5-6⌊n/2⌋: affine loops; B = ⌊(3n^2+3)/4⌋+20n+4: shared-form admission.
 - **Parenthesys:** G = 20q+r+6[r>1], H = 12q+r+4[r>1]; q=floor((n-4)/3), r=n-3-3q.
-- **Quassaunt:** N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables; G = 96n+161+bl(n+1)+bl(n) for constants; otherwise 8(R+26+2B+3A+2H+K)+10+bl(P-1)+bl(n). R/P=word characters/count; A/B=payload name/body lengths; H=helper body length; K=longest key; payload excludes helper/dummy..
+- **Quassaunt:** F = N(170+4u)+400+u+6n, u is the length of the base-89 name for node N-1; N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables; G = 96n+161+bl(n+1)+bl(n) for constants; otherwise 8(R+26+2B+3A+2H+K)+10+bl(P-1)+bl(n). R/P=word characters/count; A/B=payload name/body lengths; H=helper body length; K=longest key; payload excludes helper/dummy..
 - **ROTfuck:** E = 8T²+43T+15n-5, default normalized digits; R = sum of raw five-bit Horner and triangular-walk costs in proof_formulas._raw_execution, default from n=7; forward has its own upper; W = 2T + n + 8 + bl(2T+6) + bl(L) + bl(E) + bl(n), E the execution worst; V = 2T + 5n + 35 + bl(2080L) + bl(2T+6) + bl(L) + bl(n).
 - **S*bleq:** B = the program cells' bits, a sign one more; C = the program's cell count.
 - **SendStuff:** N_d = 1 + Σ_{j>d} V_j + V_d - 4, the node index of the last depth-d Input; V_j = 4b + min(2^j - b, 2^(s/2)), b = min(2^j, 2^s - 2^(s/2)), s = 2^(n-j).
@@ -509,7 +509,7 @@ Symbols the formula cells use:
 - **Taglate:** C = 5T/2+12n²+7n+13 literal-seed command tokens; Q = 7T/4+17n+20 queue bits after all reads; B = bootstrap setup tokens before the first h; A = total bootstrap-layout command tokens.
 - **Unary:** W = max t + bl(n) + bl(n+k): (k,t) = (0,8) (2,8) (3,8) (4,10) (5,17), n+k ≤ 9.
 - **Unlambda:** P = the program's leaves, each k and s counted twice; S = the same count for its largest X in an @-node's `N`dX.
-- **Unsquare:** d = max(0,⌊(n-3)/2⌋), the reads that branch.
+- **Unsquare:** d = max(0,⌊(n-3)/2⌋) for the bound; the construction uses essential arity m in place of n.
 - **What!?:** k = min(n,15); wide = 5 through n=15, otherwise 29; E = 5T+6n-5 through n=15, otherwise T+2^17+2^(n-15)+n+143; tokens = E through n=15, otherwise 5T+10·2^(n-15)+n+134.
 - **Whitespace:** S = 65 at n=1; otherwise T+4n+70.
 

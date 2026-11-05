@@ -6,7 +6,7 @@ sets ``p`` to ``p * p * (b + 1)``, ending at ``2^row``. ``o`` divides ``t`` by
 ``p`` and tests the quotient's parity against twice its half.
 
 Size:
-    Nonconstant: 317 + n chars plus the flow's n + 1 numbers, the checksum and the
+    Nonconstant: 317 + 2n chars plus the flow's n + 1 numbers, the checksum and the
     table's decimal digits, at most floor(T log10 2) + 1; 4n + 9 steps;
     n=10 parity: 661 chars, n=10 random 1847: 661 chars; n=8 zero: 180 chars.
 
