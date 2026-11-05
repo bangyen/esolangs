@@ -20,6 +20,7 @@ LANGUAGE = Language(
         category="grid_based",
         dialect=_dialect,
         dialect_values={"swap_marker": SWAP_MARKERS},
+        dialect_defaults={"swap_marker": "new"},
         empty_program="B-tapemark program needs exactly one start marker",
     ),
     backend=BooleanBackend(

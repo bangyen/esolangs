@@ -21,6 +21,7 @@ LANGUAGE = Language(
         category="tape_based",
         dialect=_dialect,
         dialect_values={"rotation": ROTATIONS},
+        dialect_defaults={"rotation": "backward"},
     ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(

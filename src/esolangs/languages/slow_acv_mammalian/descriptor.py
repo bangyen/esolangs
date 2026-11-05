@@ -22,6 +22,11 @@ LANGUAGE = Language(
             "io_modulus": MODULI,
             "leapfrog_resume": LEAPFROG_RESUMES,
         },
+        dialect_defaults={
+            "cell_modulus": 256,
+            "io_modulus": 255,
+            "leapfrog_resume": "after",
+        },
     ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(

@@ -40,14 +40,15 @@ assert module in sys.modules, 'loading control did not fire'
     )
 
 
-def test_nq_declared_defaults_match_constructor_and_refuse_invalid_metadata():
+def test_nq_refuses_invalid_dialect_metadata():
     runtime = LANGUAGES["NQ"].runtime
-    assert runtime.dialect_defaults == {
-        "guard_binding": inspect.signature(_Machine).parameters["guard_binding"].default
-    }
-    for defaults in ({}, {"other": "opcode"}, {"guard_binding": "bogus"}):
+    for defaults in (None, {}, {"other": "opcode"}, {"guard_binding": "bogus"}):
         with pytest.raises(ValueError, match="dialect"):
             replace(runtime, dialect_defaults=defaults)
+    with pytest.raises(ValueError, match="validator"):
+        replace(runtime, dialect=None)
+    with pytest.raises(ValueError, match="dialect"):
+        replace(runtime, dialect_values={"guard_binding": ()})
 
 
 @pytest.mark.parametrize("binding", ["opcode", "recursive"])
@@ -58,7 +59,7 @@ def test_nq_declared_construction_preserves_guard_readings(monkeypatch, binding)
     monkeypatch.setattr(_Machine, "completion", Completion.POST_HALT, raising=False)
     monkeypatch.setattr(_Machine, "ip_shape", "opaque", raising=False)
     monkeypatch.setattr(_Machine, "surprise", property(lambda _self: 99), raising=False)
-    monkeypatch.setattr(settings, "_dialect_keys", forbidden)
+    monkeypatch.setattr(inspect, "signature", forbidden)
     monkeypatch.setattr(
         vm,
         "interpreter_module",

@@ -8,14 +8,15 @@ import pytest
 
 import esolangs
 from esolangs import DialectSettings, Raster, compat
+from esolangs import settings as settings_api
 from esolangs.registry import LANGUAGES
+from esolangs.runtime import _execution
 from esolangs.tagged import _Tagged
 from esolangs.vm import make_vm
 from tests.support.cli_support import call_both
 from tests.support.dialect_support import (
     Unreadable,
     foreign_settings,
-    integer_setting,
 )
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
@@ -46,14 +47,6 @@ def _invalid() -> list[tuple[str, DialectSettings]]:
     return cases
 
 
-def test_constructor_refuses_a_value_outside_the_choices() -> None:
-    for _, key, bad in _out_of_range():
-        with pytest.raises(esolangs.ArgumentError, match="choices: "):
-            DialectSettings(**{key: bad})
-        with pytest.raises(esolangs.ArgumentError, match="choices: "):
-            DialectSettings(**{key: None})
-
-
 def test_every_dialect_declares_its_values() -> None:
     """A language's ``dialect`` and ``dialect_values`` name the same settings."""
     for name, language in LANGUAGES.items():
@@ -63,6 +56,13 @@ def test_every_dialect_declares_its_values() -> None:
             else set()
         )
         assert set(language.runtime.dialect_values or {}) == settings, name
+        if settings:
+            constructor = inspect.signature(
+                _execution.interpreter_module(name)._Machine
+            )
+            assert language.runtime.dialect_defaults == {
+                key: constructor.parameters[key].default for key in settings
+            }, name
 
 
 @pytest.mark.parametrize(
@@ -84,25 +84,10 @@ def test_invalid_settings_fail_before_reading(language, settings, options) -> No
         compat.generate(language, "01", settings=settings)
 
 
-def test_settings_are_immutable() -> None:
-    settings = foreign_settings()
-    with pytest.raises(FrozenInstanceError):
-        settings._items = ()
-    assert DialectSettings().options(REFERENCE) == {}
-
-
-def test_constructor_refuses_a_bool_integer() -> None:
-    with pytest.raises(esolangs.ArgumentError):
-        DialectSettings(**{integer_setting(): True})
-
-
-def test_settings_require_the_public_object() -> None:
+@pytest.mark.parametrize("operation", [esolangs.run, esolangs.generate])
+def test_settings_require_the_public_object(operation) -> None:
     with pytest.raises(esolangs.ArgumentError, match="DialectSettings"):
-        esolangs.run(
-            REFERENCE,
-            Unreadable(),
-            settings={"integer_conversion": "after_each_letter"},
-        )
+        operation(REFERENCE, Unreadable(), settings={})
 
 
 def test_cli_help_shows_literal_settings_json(capsys) -> None:
@@ -146,9 +131,13 @@ def test_inherited_choices_are_checked_before_input() -> None:
     "settings",
     [DialectSettings(), DialectSettings(expression_syntax="postfix")],
 )
-def test_the_repr_rebuilds_the_settings(settings: DialectSettings) -> None:
+def test_settings_are_immutable_and_repr_rebuilds_them(
+    settings: DialectSettings,
+) -> None:
     """It printed ``DialectSettings(_items=(...))``, a private field."""
     assert eval(repr(settings), {"DialectSettings": DialectSettings}) == settings
+    with pytest.raises(FrozenInstanceError):
+        settings._items = ()
 
 
 def test_default_pickle_has_no_retained_choices() -> None:
@@ -158,18 +147,23 @@ def test_default_pickle_has_no_retained_choices() -> None:
     assert esolangs.run(REFERENCE, restored, stdin="1").output == "1"
 
 
-def test_generation_rejects_untyped_settings() -> None:
-    with pytest.raises(esolangs.ArgumentError, match="DialectSettings"):
-        compat.generate(REFERENCE, "01", settings={})
+def test_every_reported_default_and_choice_is_accepted(monkeypatch) -> None:
+    def forbidden(*_args):
+        raise AssertionError("dialect discovery reached")
 
-
-@pytest.mark.medium
-def test_every_reported_default_and_choice_is_accepted() -> None:
+    monkeypatch.setattr(inspect, "signature", forbidden)
+    monkeypatch.setattr(_execution, "interpreter_module", forbidden)
+    assert not hasattr(settings_api, "_dialect_keys")
     for language in esolangs.list_languages():
-        schema = esolangs.describe(language)["dialect_settings"]
+        schema = settings_api.dialect_choices(language)
         defaults = {key: item["default"] for key, item in schema.items()}
-        DialectSettings(**defaults).options(language)
+        assert DialectSettings(**defaults).options(language) == defaults
         for key, item in schema.items():
             for value in item["choices"]:
                 selected = defaults | {key: value}
-                DialectSettings(**selected).options(language)
+                assert DialectSettings(**selected).options(language) == selected
+            choice = item["choices"][-1]
+            invalid = choice + 1 if type(choice) is int else "bogus"
+            for value in (None, invalid, True):
+                with pytest.raises(esolangs.ArgumentError, match="choices: "):
+                    DialectSettings(**{key: value})

@@ -28,8 +28,6 @@ def _capability_examples() -> tuple[str, str]:
             templates = f"  esolangs generate --bits 10 {quoted} 0110"
         if not dialects and lang.runtime.dialect_values:
             for key, values in sorted(lang.runtime.dialect_values.items()):
-                if not values:
-                    continue
                 settings = shlex.quote(
                     json.dumps({key: values[-1]}, separators=(",", ":"))
                 )

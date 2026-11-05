@@ -1,10 +1,8 @@
 """Immutable specification choices for generation and execution."""
 
-import inspect
-from collections.abc import Callable
 from dataclasses import dataclass
 from difflib import get_close_matches
-from typing import Any, TypedDict, cast
+from typing import Any, TypedDict
 
 from esolangs.exceptions import ArgumentError
 from esolangs.registry import LANGUAGES, resolve
@@ -69,11 +67,7 @@ class DialectSettings:
             if values:
                 raise ArgumentError(f"{name} supports no dialect settings")
         else:
-            keys = (
-                list(runtime.dialect_defaults)
-                if runtime.dialect_defaults is not None
-                else _dialect_keys(dialect)
-            )
+            keys = list(runtime.dialect_values or {})
             unknown = values.keys() - set(keys)
             if unknown:
                 raise ArgumentError(
@@ -88,11 +82,6 @@ class DialectSettings:
                     f"invalid dialect settings for {name}: {error}"
                 ) from error
         return values
-
-
-def _dialect_keys(dialect: Callable[..., Any]) -> list[str]:
-    """Return the setting names a dialect validator accepts."""
-    return list(inspect.signature(dialect).parameters)
 
 
 def dialect_options(language: str, settings: DialectSettings | None) -> dict[str, Any]:
@@ -138,31 +127,17 @@ def effective_settings(
 class DialectOption(TypedDict):
     """A dialect setting's default and its accepted choices."""
 
-    default: int | str | None
+    default: int | str
     choices: tuple[int | str, ...]
 
 
 def dialect_choices(language: str) -> dict[str, DialectOption]:
-    """Return fresh choices and defaults; legacy machines supply undeclared defaults."""
-    from esolangs.runtime._execution import interpreter_module
-
-    name = resolve(language)
-    runtime = LANGUAGES[name].runtime
-    dialect = runtime.dialect
-    if dialect is None:
+    """Return fresh choices and explicitly declared defaults."""
+    runtime = LANGUAGES[resolve(language)].runtime
+    if runtime.dialect is None:
         return {}
-    if runtime.dialect_defaults is not None:
-        return {
-            key: {"default": default, "choices": _CHOICES[key]}
-            for key, default in runtime.dialect_defaults.items()
-        }
-    keys = _dialect_keys(dialect)
-    machine = interpreter_module(name)._Machine  # noqa: SLF001 - interpreter adapter
-    parameters = inspect.signature(machine).parameters
+    assert runtime.dialect_defaults is not None
     return {
-        key: {
-            "default": cast("int | str | None", parameters[key].default),
-            "choices": _CHOICES[key],
-        }
-        for key in keys
+        key: {"default": default, "choices": _CHOICES[key]}
+        for key, default in runtime.dialect_defaults.items()
     }

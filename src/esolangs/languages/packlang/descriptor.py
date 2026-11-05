@@ -23,6 +23,7 @@ LANGUAGE = Language(
         category="variable_based",
         dialect=_dialect,
         dialect_values={"literal_policy": LITERAL_POLICIES},
+        dialect_defaults={"literal_policy": "decimal"},
         eof="an exhausted charGet is newline byte 10",
         empty_program="empty program",
     ),

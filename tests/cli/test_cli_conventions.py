@@ -37,7 +37,10 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
         "Dialect Choice": Language(
             "Dialect Choice",
             RuntimeSpec(
-                "dialect_choice", dialect_values={"mode": ("plain", "with spaces")}
+                "dialect_choice",
+                dialect=lambda mode="plain": mode,
+                dialect_values={"mode": ("plain", "with spaces")},
+                dialect_defaults={"mode": "plain"},
             ),
             backend=BooleanBackend(entrypoint=build),
         ),
@@ -49,8 +52,7 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
     assert shlex.split(commands[1])[3] == "mode=with spaces"
     del languages["Template Choice"]
     assert help_module._capability_examples()[0] == ""
-    # A cap below two inputs is not a runnable example, and a dialect with no
-    # values has nothing to name: both are skipped rather than quoted.
+    # A cap below two inputs is not a runnable example.
     languages.clear()
     languages["Capped"] = Language(
         "Capped",
@@ -59,12 +61,6 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
     )
     assert help_module._capability_examples() == ("", "")
     languages.clear()
-    languages["Empty Dialect"] = Language(
-        "Empty Dialect",
-        RuntimeSpec("empty_dialect", dialect_values={"mode": ()}),
-        backend=BooleanBackend(entrypoint=build),
-    )
-    assert help_module._capability_examples() == ("", "")
     languages.clear()
     assert help_module._capability_examples() == ("", "")
 

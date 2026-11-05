@@ -33,6 +33,7 @@ LANGUAGE = Language(
             "expression_syntax": EXPRESSION_SYNTAXES,
             "list_update": LIST_UPDATES,
         },
+        dialect_defaults={"expression_syntax": "infix", "list_update": "in_place"},
         split=True,
         eof="it raises its own error before the read is reached",
         underfed_raises=True,

@@ -19,6 +19,7 @@ LANGUAGE = Language(
             ("integer_conversion",),
         ),
         dialect_values={"integer_conversion": INTEGER_CONVERSIONS},
+        dialect_defaults={"integer_conversion": "between_letters"},
     ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
