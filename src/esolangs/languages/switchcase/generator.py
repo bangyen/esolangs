@@ -23,6 +23,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.languages.switchcase.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.runtime._definition import RuntimeSpec
@@ -98,6 +99,8 @@ LANGUAGE = Language(
     shape=Shape.TREE,
     contract=BooleanContract(input_shape="char_stream"),
     no_wrap="a line is one arm, and a case's arms follow its $ line",
-    proof_execution=(execution, True, (3, 5)),
-    proof_workspace=(workspace, False, (3, 5)),
+    certification=CertificationSpec(
+        proof_execution=(execution, True, (3, 5)),
+        proof_workspace=(workspace, False, (3, 5)),
+    ),
 )

@@ -49,6 +49,7 @@ from esolangs.languages.rotfuck.interpreter import (
     validate_rotation,
 )
 from esolangs.languages.rotfuck.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.runtime._definition import RuntimeSpec
@@ -459,9 +460,11 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
-    # Retain the even scaling rungs across bias phases; parity now measures
-    # 285/339/390 chars there ([ablations.constant_runs_by_multiplication]).
-    scaling_rungs=(10, 12, 14),
-    proof_execution=(execution, True, (3, 5)),
-    proof_workspace=(workspace, True, (3, 4, 5)),
+    certification=CertificationSpec(
+        # Retain the even scaling rungs across bias phases; parity now measures
+        # 285/339/390 chars there ([ablations.constant_runs_by_multiplication]).
+        scaling_rungs=(10, 12, 14),
+        proof_execution=(execution, True, (3, 5)),
+        proof_workspace=(workspace, True, (3, 4, 5)),
+    ),
 )

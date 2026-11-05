@@ -49,6 +49,7 @@ from esolangs.languages.line.generator.small_tree import small_tree_canvas
 from esolangs.languages.line.generator.tree_layout import tree_extents
 from esolangs.languages.line.proof_formulas import execution, workspace
 from esolangs.raster import Pixel, Raster, Rows, lazy_raster
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec, SourceKind
 
@@ -357,11 +358,13 @@ LANGUAGE = Language(
         source_kind=SourceKind.RASTER,
         empty_program="image contains no ink",
     ),
-    # A 2^12-row raster renders in about 24s.
-    slow_scaling=True,
+    certification=CertificationSpec(
+        # A 2^12-row raster renders in about 24s.
+        slow_scaling=True,
+        proof_execution=(execution, False, (3, 5)),
+        proof_workspace=(workspace, True, (5,)),
+    ),
     boolean=line,
     balance=balance,
     no_wrap="tree geometry fixes the width; balance chooses orientation",
-    proof_execution=(execution, False, (3, 5)),
-    proof_workspace=(workspace, True, (5,)),
 )

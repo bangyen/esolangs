@@ -29,13 +29,21 @@ def test_backend_and_example_changes_preserve_the_runtime_definition():
 
 
 @pytest.mark.medium
-def test_runtime_schema_loads_with_all_package_imports_blocked():
-    path = Path(esolangs.__file__).parent / "runtime/_definition.py"
+@pytest.mark.parametrize(
+    ("relative", "class_name"),
+    [
+        ("runtime/_definition.py", "RuntimeSpec"),
+        ("registry/_certification.py", "CertificationSpec"),
+    ],
+)
+def test_capability_schema_loads_with_all_package_imports_blocked(relative, class_name):
+    path = Path(esolangs.__file__).parent / relative
     code = """
 import importlib
 import importlib.abc
 import runpy
 import sys
+from dataclasses import is_dataclass, fields, FrozenInstanceError
 
 class Barrier(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path, target=None):
@@ -44,10 +52,15 @@ class Barrier(importlib.abc.MetaPathFinder):
 
 sys.meta_path.insert(0, Barrier())
 schema = runpy.run_path(sys.argv[1])
-runtime = schema['RuntimeSpec']('standalone', split=True)
-assert runtime.interpreter == 'standalone'
-assert runtime.split
-assert runtime.source_kind is schema['SourceKind'].TEXT
+record = schema[sys.argv[2]]()
+assert is_dataclass(record)
+field = fields(record)[0]
+try:
+    setattr(record, field.name, getattr(record, field.name))
+except FrozenInstanceError:
+    pass
+else:
+    raise AssertionError('schema record is mutable')
 try:
     importlib.import_module('esolangs')
 except ImportError as error:
@@ -55,4 +68,6 @@ except ImportError as error:
 else:
     raise AssertionError('import barrier did not fire')
 """
-    subprocess.run([sys.executable, "-c", code, str(path)], check=True, timeout=10)
+    subprocess.run(
+        [sys.executable, "-c", code, str(path), class_name], check=True, timeout=10
+    )

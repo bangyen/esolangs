@@ -39,6 +39,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.languages.laserfuck.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -891,8 +892,10 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     balance=balance_laserfuck,
-    proof_execution=(execution, True, (5, 6, 7)),
-    proof_workspace=(workspace, True, (5, 6, 7)),
+    certification=CertificationSpec(
+        proof_execution=(execution, True, (5, 6, 7)),
+        proof_workspace=(workspace, True, (5, 6, 7)),
+    ),
     example=Example(expected="0", kwargs=(("seed", 0),)),
     grid=True,
 )

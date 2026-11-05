@@ -81,7 +81,9 @@ def test_structured_witnesses_build_at_the_arity_cap(name) -> None:
 
 
 #: Generators whose ``GeneratorCapError`` never reaches a caller.
-_INTERNAL_CAPS = {name for name, lang in LANGUAGES.items() if lang.internal_cap}
+_INTERNAL_CAPS = {
+    name for name, lang in LANGUAGES.items() if lang.certification.internal_cap
+}
 
 
 def test_a_generator_that_can_refuse_declares_its_limit() -> None:

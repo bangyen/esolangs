@@ -339,7 +339,9 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
                                 name, bits, truth_table=table
                             )
                             programs.append((program, str(stdin)))
-    return programs + _random_programs(programs, count, language.fuzz_max_digits)
+    return programs + _random_programs(
+        programs, count, language.certification.fuzz_max_digits
+    )
 
 
 def differences(

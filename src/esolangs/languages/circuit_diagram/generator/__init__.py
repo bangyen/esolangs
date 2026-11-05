@@ -62,6 +62,7 @@ from esolangs.languages.circuit_diagram.generator.layout import (
     _resolve_order,
 )
 from esolangs.languages.circuit_diagram.proof_formulas import workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -799,20 +800,22 @@ LANGUAGE = Language(
         split=True,
         eof="resolves its inputs while laying the grid",
     ),
-    layout_switch=(7, 8),
+    certification=CertificationSpec(
+        layout_switch=(7, 8),
+        # The H-layout is not asymptotic below n=8, so it has no room for a
+        # third rung; the deep contract carries it on a backstop for the same
+        # reason, and its area recurrence is checked with the construction
+        # invariants.
+        scaling_rungs=(8, 9),
+        documented_sizes=(52_057, 106_751, 2.05),
+        proof_workspace=(workspace, False, (3, 6)),
+    ),
     example=Example(slow_build=True),
-    # The H-layout is not asymptotic below n=8, so it has no room for a
-    # third rung; the deep contract carries it on a backstop for the same
-    # reason, and its area recurrence is checked with the construction
-    # invariants.
-    scaling_rungs=(8, 9),
     boolean=circuit_diagram,
-    documented_sizes=(52_057, 106_751, 2.05),
     contract=BooleanContract(
         input_shape="char_stream",
         ignores_whitespace=True,
     ),
     balance=_balance,
-    proof_workspace=(workspace, False, (3, 6)),
     grid=True,
 )

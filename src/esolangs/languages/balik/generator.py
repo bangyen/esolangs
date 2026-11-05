@@ -31,6 +31,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.languages.balik.proof_formulas import execution
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language, Shape
 from esolangs.runtime._definition import RuntimeSpec
 
@@ -156,5 +157,5 @@ LANGUAGE = Language(
     boolean=balik,
     shape=Shape.TREE,
     no_wrap="a newline adds a grid row and moves every vertical path",
-    proof_execution=(execution, True, (3, 4, 5)),
+    certification=CertificationSpec(proof_execution=(execution, True, (3, 4, 5))),
 )

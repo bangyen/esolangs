@@ -28,6 +28,7 @@ Decisions:
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.hot.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -106,6 +107,8 @@ LANGUAGE = Language(
     boolean=hot,
     contract=BooleanContract(input_shape="char_stream"),
     wrap=wrap_chars,
-    proof_execution=(execution, True, (1, 2, 3, 6)),
-    proof_workspace=(workspace, True, (2, 3, 6)),
+    certification=CertificationSpec(
+        proof_execution=(execution, True, (1, 2, 3, 6)),
+        proof_workspace=(workspace, True, (2, 3, 6)),
+    ),
 )

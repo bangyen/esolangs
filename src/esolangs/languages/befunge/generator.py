@@ -30,6 +30,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.befunge.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Example, Language, Shape
 from esolangs.runtime._definition import RuntimeSpec
 from esolangs.runtime.source_hints import with_hint
@@ -372,7 +373,11 @@ LANGUAGE = Language(
         split=True,
         empty_program="Befunge program cannot be empty",
     ),
-    layout_switch=(2, 7, 8, 9),
+    certification=CertificationSpec(
+        layout_switch=(2, 7, 8, 9),
+        proof_execution=(execution, True, (3, 9, 11)),
+        proof_workspace=(workspace, True, (3, 9, 11)),
+    ),
     generator_max_inputs=MAX_INPUTS,
     boolean=befunge,
     # Not a tree: reads a packed grid cell with ``g``.
@@ -382,7 +387,5 @@ LANGUAGE = Language(
     # ``.`` writes the digit and a trailing space, so the committed
     # answer carries it and the sweep strips it.
     example=Example(expected="0 "),
-    proof_execution=(execution, True, (3, 9, 11)),
-    proof_workspace=(workspace, True, (3, 9, 11)),
     grid=True,
 )

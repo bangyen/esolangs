@@ -40,9 +40,9 @@ _ARITIES = formula_arities("execution")
 #: Generator -> (formula, exact?, arities): the ledger's own clause where
 #: it parses (``tests/proofs/_formula.py``), else ``_HAND``.
 _HAND.update(
-    (name, lang.proof_execution)
+    (name, lang.certification.proof_execution)
     for name, lang in LANGUAGES.items()
-    if lang.proof_execution is not None
+    if lang.certification.proof_execution is not None
 )
 FORMULAS = ledger_formulas(
     lambda row: row.execution_clause, _HAND, _ARITIES, column="execution"

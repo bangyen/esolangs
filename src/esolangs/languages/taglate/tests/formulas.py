@@ -1,6 +1,6 @@
 """Full-support literal-seed resource attainers."""
 
-from esolangs.registry._language import ProofFormula
+from esolangs.registry._certification import ProofFormula
 
 FORMULAS: dict[str, ProofFormula] = {}
 

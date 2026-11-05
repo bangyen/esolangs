@@ -35,6 +35,7 @@ from esolangs.generation.wrap import (
     wrap_space_delimited,
 )
 from esolangs.languages.modulous.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language, Shape
 from esolangs.runtime._definition import RuntimeSpec
 
@@ -200,8 +201,10 @@ LANGUAGE = Language(
     "Modulous",
     RuntimeSpec("modulous", category="stack_based", random=True),
     boolean=modulous,
-    proof_execution=(execution, True, (1, 2, 3, 5)),
-    proof_workspace=(workspace, True, (2, 3, 4, 6)),
+    certification=CertificationSpec(
+        proof_execution=(execution, True, (1, 2, 3, 5)),
+        proof_workspace=(workspace, True, (2, 3, 4, 6)),
+    ),
     # Not a tree: pops a ``PSH STR`` table down to the indexed character.
     shape=Shape.LOOKUP,
     balance=_balance,

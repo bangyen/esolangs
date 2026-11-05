@@ -41,6 +41,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.inject.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -322,6 +323,8 @@ LANGUAGE = Language(
     # ``send`` terminates every line it writes, so the answer arrives
     # with a newline after it -- there is no other output command.
     example=Example(expected="0\n"),
-    proof_workspace=(workspace, True, (5,)),
-    proof_execution=(execution, True, (5, 6)),
+    certification=CertificationSpec(
+        proof_workspace=(workspace, True, (5,)),
+        proof_execution=(execution, True, (5, 6)),
+    ),
 )

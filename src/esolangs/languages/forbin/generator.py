@@ -44,6 +44,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
 from esolangs.languages.forbin.proof_formulas import workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.runtime._definition import RuntimeSpec
@@ -349,5 +350,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     balance=_balance,
-    proof_workspace=(workspace, True, (3, 8)),
+    certification=CertificationSpec(proof_workspace=(workspace, True, (3, 8))),
 )

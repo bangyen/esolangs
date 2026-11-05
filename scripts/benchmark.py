@@ -327,9 +327,9 @@ def _payload_profile(language: str, vm: VM) -> dict[str, int] | None:
     """Count logical data and control integers where the language splits them.
 
     Excludes Python overhead, static parser indexes and I/O state; what a
-    machine's state holds is its ``LANGUAGE.payload``'s to say.
+    machine's state holds is its ``LANGUAGE.certification.payload``'s to say.
     """
-    split = LANGUAGES[language].payload
+    split = LANGUAGES[language].certification.payload
     if split is None:
         return None
     data, control, pc, flags = split(cast(SnapshotVM, vm).snapshot())

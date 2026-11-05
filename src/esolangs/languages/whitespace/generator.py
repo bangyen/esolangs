@@ -23,6 +23,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language, Shape
 from esolangs.runtime._definition import RuntimeSpec
 
@@ -94,7 +95,9 @@ LANGUAGE = Language(
     ),
     boolean=whitespace,
     shape=Shape.REDUCING,
-    proof_execution=(execution, True, (1, 2, 3, 5)),
-    proof_workspace=(workspace, True, (1, 2, 3, 5)),
+    certification=CertificationSpec(
+        proof_execution=(execution, True, (1, 2, 3, 5)),
+        proof_workspace=(workspace, True, (1, 2, 3, 5)),
+    ),
     no_wrap="a line feed is a token, so a break changes the command it splits",
 )

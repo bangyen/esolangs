@@ -102,7 +102,7 @@ def _reads(entry: tuple, table: str) -> int:
 )
 def test_every_table_reads_the_same_number_of_inputs(name: str, entry: tuple) -> None:
     """A generator reads its ``n`` inputs whatever the truth table says."""
-    controls = LANGUAGES[esolangs.resolve(name)].benchmark_tables
+    controls = LANGUAGES[esolangs.resolve(name)].certification.benchmark_tables
     if controls:
         assert_proved_resource_cap(name)
         for table in controls:
@@ -358,11 +358,11 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: Timings are deliberately absent.  The document states a few and calls
 #: them approximate, and asserting one here would fail whenever the machine
 #: is busy -- which, on a suite that runs four workers, is always.
-#: Each language holds its own row as ``documented_sizes=``.
+#: Each language holds its row in ``certification.documented_sizes``.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
-    name: lang.documented_sizes
+    name: lang.certification.documented_sizes
     for name, lang in LANGUAGES.items()
-    if lang.documented_sizes is not None
+    if lang.certification.documented_sizes is not None
 }
 
 
@@ -386,7 +386,7 @@ _LINEAR_SCALING = sorted(
     "name",
     [
         pytest.param(name, marks=pytest.mark.slow)
-        if LANGUAGES[name].slow_scaling
+        if LANGUAGES[name].certification.slow_scaling
         else name
         for name in _LINEAR_SCALING
     ],
@@ -396,10 +396,10 @@ def test_generators_scale_linearly(name: str) -> None:
     lang = LANGUAGES[name]
     fn = lang.boolean
     assert fn is not None
-    arities = lang.scaling_rungs
+    arities = lang.certification.scaling_rungs
     sizes = [source_units(fn(parity(n))) for n in arities]
-    if lang.size_bound is not None:
-        bound = lang.size_bound
+    if lang.certification.size_bound is not None:
+        bound = lang.certification.size_bound
         assert all(size <= bound(n) for size, n in zip(sizes, arities, strict=True))
         return
     if len(arities) == 2:
@@ -422,7 +422,7 @@ def test_the_expensive_generators_grow_as_documented(name: str) -> None:
     sizes = (len(esolangs.generate(name, dense(n))) for n in (8, 9))
     assert tuple(sizes) == (at_eight, at_nine), (
         f"{name}'s dense n=8 and n=9 sizes moved; update its "
-        "documented_sizes= in its LANGUAGE"
+        "documented_sizes= in its CertificationSpec"
     )
     assert at_nine / at_eight == pytest.approx(ratio, abs=0.35)
 
@@ -431,14 +431,14 @@ def test_the_expensive_generators_grow_as_documented(name: str) -> None:
 def test_nothing_else_is_anywhere_near_that_big() -> None:
     """The document's "every other generator is under 600KB at n=9"."""
     for lang in LANGUAGES.values():
-        if lang.benchmark_tables:
+        if lang.certification.benchmark_tables:
             assert_proved_resource_cap(lang.name)
     biggest = max(
         (len(esolangs.generate(name, dense(9))), name)
         for name in esolangs.list_languages()
         if name not in _DOCUMENTED_SIZES
         and LANGUAGES[name].boolean is not None
-        and not LANGUAGES[name].benchmark_tables
+        and not LANGUAGES[name].certification.benchmark_tables
         and esolangs.describe(name)["source_kind"] == "text"
     )
     # language-owners: ["Boolfuck", "SLOW ACV MAMMALIAN", "thisthat"]
@@ -450,6 +450,6 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
     size, name = biggest
     assert size < 600_000, (
         f"{name} emits {size} characters for a dense n=9 table; shrink its "
-        "generator, or document it and set documented_sizes= in its LANGUAGE "
+        "generator, or document it and set documented_sizes= in its CertificationSpec "
         "with its n=8 and n=9 sizes"
     )

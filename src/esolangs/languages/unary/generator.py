@@ -33,6 +33,7 @@ from esolangs.generation.helpers import (
     move_text,
 )
 from esolangs.generation.wrap import wrap_chars
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -94,7 +95,7 @@ LANGUAGE = Language(
     ),
     boolean=unary,
     generator_max_inputs=9,
-    benchmark_tables=("00", "01", "10", "11", "0001"),
+    certification=CertificationSpec(benchmark_tables=("00", "01", "10", "11", "0001")),
     generator_restrictions=(
         "raw export 32 Mi characters; generation 256 Mi characters; "
         "gzip 256 KiB; table-dependent caps"

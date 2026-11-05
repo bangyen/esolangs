@@ -53,6 +53,7 @@ from esolangs.languages.packlang.wrapping import (
     _PACKLANG_LEXEME,
     _packlang,
 )
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.runtime._definition import RuntimeSpec
@@ -401,6 +402,8 @@ LANGUAGE = Language(
     wrap_multiline=True,
     same_layout=same_ignoring_whitespace,
     balance=balance_packlang,
-    proof_execution=(execution, False, (3, 7)),
-    proof_workspace=(workspace, False, (3, 5)),
+    certification=CertificationSpec(
+        proof_execution=(execution, False, (3, 7)),
+        proof_workspace=(workspace, False, (3, 5)),
+    ),
 )

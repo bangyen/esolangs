@@ -60,6 +60,7 @@ from esolangs.languages.dig.generator._leaf import (
 )
 from esolangs.languages.dig.generator._shared import _dig_indexed_shared
 from esolangs.languages.dig.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
@@ -597,7 +598,9 @@ LANGUAGE = Language(
     ),
     boolean=dig,
     balance=_balance,
-    proof_execution=(execution, False, (7, 8, 9, 10, 11, 12)),
-    proof_workspace=(workspace, True, (5,)),
+    certification=CertificationSpec(
+        proof_execution=(execution, False, (7, 8, 9, 10, 11, 12)),
+        proof_workspace=(workspace, True, (5,)),
+    ),
     grid=True,
 )

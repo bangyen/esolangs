@@ -173,12 +173,16 @@ def test_shipped_example_selects_its_language(source_tree, extension, exists) ->
 
 
 def test_language_corpus_is_independent_of_other_examples(monkeypatch) -> None:
-    from types import SimpleNamespace
+    from esolangs.registry._certification import CertificationSpec
+    from esolangs.registry._language import Language
 
     monkeypatch.setattr(
         leaks,
         "LANGUAGES",
-        {name: SimpleNamespace(fuzz_max_digits=0) for name in ("before", "fixture")},
+        {
+            name: Language(name, certification=CertificationSpec(fuzz_max_digits=0))
+            for name in ("before", "fixture")
+        },
     )
     examples = {"before": ["a"], "fixture": ["+."]}
     old = leaks._corpus("fixture", examples)

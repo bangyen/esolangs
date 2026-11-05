@@ -69,7 +69,9 @@ SCHEMA = 4
 
 # Dense parity reaches each language's layout switch without folding inputs.
 BOUNDARIES = {
-    name: lang.layout_switch for name, lang in LANGUAGES.items() if lang.layout_switch
+    name: lang.certification.layout_switch
+    for name, lang in LANGUAGES.items()
+    if lang.certification.layout_switch
 }
 
 
@@ -83,7 +85,7 @@ def boundary_tables(name: str) -> tuple[str, ...]:
 
 def control_tables(name: str) -> tuple[str, ...]:
     """Return smaller controls only for a proved language resource cap."""
-    custom = LANGUAGES[name].benchmark_tables
+    custom = LANGUAGES[name].certification.benchmark_tables
     if custom:
         from docs.proof_status import load
 

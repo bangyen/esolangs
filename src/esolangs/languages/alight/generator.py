@@ -36,6 +36,7 @@ from esolangs.languages.alight.interpreter._dialect import (
     list_update as validate_list_update,
 )
 from esolangs.languages.alight.proof_formulas import workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.runtime._definition import RuntimeSpec
@@ -594,5 +595,5 @@ LANGUAGE = Language(
     ),
     balance=balance_alight,
     no_wrap="a command is a word walked cell by cell; a row end cuts it",
-    proof_workspace=(workspace, True, (3, 5)),
+    certification=CertificationSpec(proof_workspace=(workspace, True, (3, 5))),
 )

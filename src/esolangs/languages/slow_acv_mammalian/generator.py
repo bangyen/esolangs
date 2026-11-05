@@ -63,6 +63,7 @@ from esolangs.languages.slow_acv_mammalian.wrapping import (
     _balance_mammalian,
     _mammalian,
 )
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.runtime._definition import RuntimeSpec
@@ -869,7 +870,9 @@ LANGUAGE = Language(
     wrap=_mammalian,
     wrap_balance=_balance_mammalian,
     same_layout=same_token_layout,
-    slow_width_sweep=True,
-    proof_execution=(execution, False, (1, 2, 3, 4, 5, 6)),
-    proof_workspace=(workspace, False, (1, 2, 3, 4)),
+    certification=CertificationSpec(
+        slow_width_sweep=True,
+        proof_execution=(execution, False, (1, 2, 3, 4, 5, 6)),
+        proof_workspace=(workspace, False, (1, 2, 3, 4)),
+    ),
 )

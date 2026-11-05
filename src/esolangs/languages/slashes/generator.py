@@ -38,6 +38,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, _tokens, balance_score
 from esolangs.languages.slashes.proof_formulas import workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape, TemplateSpec
 from esolangs.runtime._definition import RuntimeSpec
@@ -164,6 +165,6 @@ LANGUAGE = Language(
     ),
     no_wrap="newlines are literal output and substitution data",
     wrap_balance=_balance,
-    proof_workspace=(workspace, True, (1, 2, 3, 5)),
+    certification=CertificationSpec(proof_workspace=(workspace, True, (1, 2, 3, 5))),
     template=TemplateSpec(pair=("a", "b"), unfilled=_is_unfilled_template),
 )

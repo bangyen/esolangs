@@ -52,6 +52,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.back.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, TemplateSpec
 from esolangs.runtime._definition import RuntimeSpec
@@ -583,7 +584,9 @@ LANGUAGE = Language(
     no_wrap="the beam path and embedded input occupy fixed grid coordinates",
     template=TemplateSpec(pair=PAIR),
     example=Example(expected="1 0 0"),
-    proof_execution=(execution, True, (1, 2, 3, 4, 5, 6, 7, 8, 9)),
-    proof_workspace=(workspace, True, (1, 2, 3, 6)),
+    certification=CertificationSpec(
+        proof_execution=(execution, True, (1, 2, 3, 4, 5, 6, 7, 8, 9)),
+        proof_workspace=(workspace, True, (1, 2, 3, 6)),
+    ),
     grid=True,
 )

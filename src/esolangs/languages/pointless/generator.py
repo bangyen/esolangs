@@ -26,6 +26,7 @@ import re
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import TokenWrapper
 from esolangs.languages.pointless.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -182,8 +183,10 @@ LANGUAGE = Language(
     "Pointless",
     RuntimeSpec("pointless", category="tape_based"),
     boolean=pointless,
-    proof_execution=(execution, True, (3, 6)),
-    proof_workspace=(workspace, False, (1, 2, 3, 6)),
+    certification=CertificationSpec(
+        proof_execution=(execution, True, (3, 6)),
+        proof_workspace=(workspace, False, (1, 2, 3, 6)),
+    ),
     contract=BooleanContract(input_shape="char_stream"),
     # Whitespace is a comment, so a newline anywhere outside a name is harmless.
     wrap=_wrap,

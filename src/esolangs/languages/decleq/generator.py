@@ -27,6 +27,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import wrap_grid
 from esolangs.languages.decleq.proof_formulas import workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -236,5 +237,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_grid,
-    proof_workspace=(workspace, True, (1, 2, 3, 4)),
+    certification=CertificationSpec(proof_workspace=(workspace, True, (1, 2, 3, 4))),
 )

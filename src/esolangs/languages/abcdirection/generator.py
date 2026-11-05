@@ -65,6 +65,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.abcdirection.proof_formulas import execution
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.runtime._definition import RuntimeSpec
@@ -509,6 +510,6 @@ LANGUAGE = Language(
     balance=_balance,
     contract=BooleanContract(input_shape="char_stream"),
     no_wrap="a newline adds a grid row and moves every vertical path",
-    proof_execution=(execution, True, (3, 7)),
+    certification=CertificationSpec(proof_execution=(execution, True, (3, 7))),
     grid=True,
 )

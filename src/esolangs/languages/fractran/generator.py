@@ -37,6 +37,7 @@ from esolangs.generation.wrap import (
 )
 from esolangs.languages.fractran.interpreter.index import SMALL_BASE
 from esolangs.languages.fractran.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, TemplateSpec
 from esolangs.runtime._definition import RuntimeSpec
@@ -232,6 +233,8 @@ LANGUAGE = Language(
     balance=_balance,
     template=TemplateSpec(pair=PAIR),
     example=Example(expected="1"),
-    proof_execution=(execution, True, (3, 5)),
-    proof_workspace=(workspace, True, (3, 5, 6)),
+    certification=CertificationSpec(
+        proof_execution=(execution, True, (3, 5)),
+        proof_workspace=(workspace, True, (3, 5, 6)),
+    ),
 )

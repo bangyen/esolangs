@@ -31,6 +31,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.home_row.proof_formulas import workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape, TemplateSpec
 from esolangs.runtime._definition import RuntimeSpec
@@ -121,7 +122,7 @@ LANGUAGE = Language(
     # A sum, not a tree: a lookup over the essential inputs only.
     shape=Shape.REDUCING,
     contract=BooleanContract(),
-    proof_workspace=(workspace, True, (2, 3, 4, 5, 6)),
+    certification=CertificationSpec(proof_workspace=(workspace, True, (2, 3, 4, 5, 6))),
     wrap=wrap_chars,
     template=TemplateSpec(pair=HOME_ROW_PAIR),
 )

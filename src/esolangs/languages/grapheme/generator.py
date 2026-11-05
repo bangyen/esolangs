@@ -19,6 +19,7 @@ from esolangs.languages.grapheme.interpreter import (
     GraphemeDialect,
 )
 from esolangs.languages.grapheme.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -168,6 +169,8 @@ LANGUAGE = Language(
         "answers the all-zeros row; esolangs encode spells them",
     ),
     wrap=wrap_chars,
-    proof_execution=(execution, True, (3, 5)),
-    proof_workspace=(workspace, True, (3, 5)),
+    certification=CertificationSpec(
+        proof_execution=(execution, True, (3, 5)),
+        proof_workspace=(workspace, True, (3, 5)),
+    ),
 )

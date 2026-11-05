@@ -19,9 +19,9 @@ _ARITIES = formula_arities("workspace")
 #: Generator -> (formula, exact?, arities): the ledger's own clause where
 #: it parses (``tests/proofs/_formula.py``), else ``_HAND``.
 _HAND.update(
-    (name, lang.proof_workspace)
+    (name, lang.certification.proof_workspace)
     for name, lang in LANGUAGES.items()
-    if lang.proof_workspace is not None
+    if lang.certification.proof_workspace is not None
 )
 FORMULAS = ledger_formulas(
     lambda row: row.workspace_clause if " bits" in row.workspace_clause else "",

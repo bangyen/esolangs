@@ -131,7 +131,7 @@ def _balanced_languages() -> list[str]:
             or _balances_whole_tokens(lang.wrap)
             or (lang.wrap is wrap_chars and lang.parameterized)
         )
-        and not lang.slow_width_sweep
+        and not lang.certification.slow_width_sweep
     )
 
 

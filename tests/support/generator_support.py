@@ -43,10 +43,12 @@ def probe_table(name: str, default: str = "0110") -> str:
     from esolangs.registry import LANGUAGES
 
     lang = LANGUAGES[esolangs.resolve(name)]
-    if lang.benchmark_tables:
+    if lang.certification.benchmark_tables:
         assert_proved_resource_cap(name)
         return next(
-            table for table in lang.benchmark_tables if "0" in table and "1" in table
+            table
+            for table in lang.certification.benchmark_tables
+            if "0" in table and "1" in table
         )
     return default
 

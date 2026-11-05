@@ -38,6 +38,7 @@ from esolangs.generation.wrap import (
     balance_score,
     wrap_program,
 )
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -551,7 +552,7 @@ LANGUAGE = Language(
     RuntimeSpec(
         "false", category="stack_based", eof="an exhausted '^' is the spec's -1"
     ),
-    reader_checked=True,
+    certification=CertificationSpec(reader_checked=True),
     boolean=false,
     contract=BooleanContract(
         input_shape="char_stream",

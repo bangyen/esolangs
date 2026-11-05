@@ -298,7 +298,12 @@ def test_custom_corpus_cannot_hide_an_unproved_scaling_failure(
     from checks import check_generator_sizes as sizes
     from docs import proof_status
 
-    lang = replace(sizes.LANGUAGES[REFERENCE], benchmark_tables=("01",))
+    lang = replace(
+        sizes.LANGUAGES[REFERENCE],
+        certification=replace(
+            sizes.LANGUAGES[REFERENCE].certification, benchmark_tables=("01",)
+        ),
+    )
     monkeypatch.setattr(sizes, "LANGUAGES", {REFERENCE: lang})
     rows = (
         ()

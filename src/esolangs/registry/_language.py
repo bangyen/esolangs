@@ -13,6 +13,7 @@ from enum import StrEnum
 from typing import Any
 
 from esolangs.generation.helpers import TEMPLATE_CHAR, Setters, check_setters
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._slug import canonical_id
 from esolangs.runtime._definition import RuntimeSpec, SourceKind
@@ -21,8 +22,6 @@ from esolangs.runtime._program import Program
 # ``generator(truth_table)`` returns a program computing it; the few that lay
 # out two dimensions also take a ``width``, hence ``...``.
 Generator = Callable[..., Program]
-ProofFormula = tuple[Callable[[int, str], float], bool, tuple[int, ...]]
-Payload = tuple[tuple[int, ...], tuple[int, ...], int, int]
 
 
 class Shape(StrEnum):
@@ -97,9 +96,6 @@ class Language:
     generator_max_inputs: int | None = None
     generator_restrictions: str = ""
     shape: Shape = Shape.TREE
-    #: Why its ``GeneratorCapError`` stays internal; limitations.md's sizes.
-    internal_cap: str = ""
-    documented_sizes: tuple[int, int, float] | None = None
     contract: BooleanContract = field(default_factory=BooleanContract)
     #: ``wrap(program, width)``: a meaning-preserving reflow, if one exists.
     wrap: Callable[[str, int], str] | None = None
@@ -115,22 +111,7 @@ class Language:
     balance: Callable[..., Any] | None = None
     #: The committed example, where the default AND reader does not fit.
     example: Example = field(default_factory=Example)
-    # Growth checks: linear rungs, a size ceiling, a layout switch's arities.
-    scaling_rungs: tuple[int, ...] = (8, 10, 12)
-    size_bound: Callable[[int], int] | None = None
-    layout_switch: tuple[int, ...] = ()
-    #: Executable baseline controls when the default corpus exceeds a proved cap.
-    benchmark_tables: tuple[str, ...] = ()
-    proof_execution: ProofFormula | None = None
-    proof_workspace: ProofFormula | None = None
-    # Shared sweeps that run long for it: marked slow, or left to its tests.
-    slow_scaling: bool = False
-    slow_width_sweep: bool = False
-    # Tooling: reader checks, payload split (data, control, pc, flag bits),
-    # leak-sweep digits.
-    reader_checked: bool = False
-    payload: Callable[[Any], Payload] | None = None
-    fuzz_max_digits: int | None = None
+    certification: CertificationSpec = field(default_factory=CertificationSpec)
 
     def __post_init__(self) -> None:
         """Fill the id from the name when none is given."""

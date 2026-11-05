@@ -30,6 +30,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.minsky_swap.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape, TemplateSpec
 from esolangs.runtime._definition import RuntimeSpec
@@ -238,6 +239,8 @@ LANGUAGE = Language(
     no_wrap="only line 1 is code; line 2 gives its numeric jump distances",
     template=TemplateSpec(setters=minsky_swap_setters),
     example=Example(expected="1 0"),
-    proof_execution=(execution, True, (3, 5)),
-    proof_workspace=(workspace, False, (3, 6)),
+    certification=CertificationSpec(
+        proof_execution=(execution, True, (3, 5)),
+        proof_workspace=(workspace, False, (3, 6)),
+    ),
 )

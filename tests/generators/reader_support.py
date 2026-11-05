@@ -21,7 +21,9 @@ def _reader(language_id: str) -> tuple[Callable[[str], Any], Callable[..., None]
 
 #: The tree readers whose ``LANGUAGE`` asks for these shared checks.
 _READERS = {
-    lang.id: _reader(lang.id) for lang in LANGUAGES.values() if lang.reader_checked
+    lang.id: _reader(lang.id)
+    for lang in LANGUAGES.values()
+    if lang.certification.reader_checked
 }
 
 

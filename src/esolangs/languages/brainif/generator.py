@@ -32,6 +32,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.languages.brainif.proof_formulas import workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -684,5 +685,5 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="each line is one instruction and goto targets are line numbers",
-    proof_workspace=(workspace, False, (3, 6)),
+    certification=CertificationSpec(proof_workspace=(workspace, False, (3, 6))),
 )

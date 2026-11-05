@@ -34,6 +34,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import wrap_space_delimited
 from esolangs.languages.codesick.proof_formulas import workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -140,5 +141,7 @@ LANGUAGE = Language(
     contract=BooleanContract(input_shape="char_stream"),
     # An argument holds no whitespace, so break only between arguments.
     wrap=wrap_space_delimited,
-    proof_workspace=(workspace, False, (3, 4, 5, 6, 7)),
+    certification=CertificationSpec(
+        proof_workspace=(workspace, False, (3, 4, 5, 6, 7))
+    ),
 )

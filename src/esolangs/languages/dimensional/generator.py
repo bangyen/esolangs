@@ -40,6 +40,7 @@ from esolangs.generation.wrap import (
     wrap_program,
 )
 from esolangs.languages.dimensional.proof_formulas import workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language, Shape
 from esolangs.runtime._definition import RuntimeSpec
 
@@ -238,5 +239,5 @@ LANGUAGE = Language(
     shape=Shape.LOOKUP,
     wrap=_dimensional,
     balance=_balance,
-    proof_workspace=(workspace, True, (3, 4)),
+    certification=CertificationSpec(proof_workspace=(workspace, True, (3, 4))),
 )

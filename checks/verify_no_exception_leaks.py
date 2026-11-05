@@ -314,7 +314,7 @@ def _corpus(lang: str, examples: dict[str, list[Program]]) -> list[Program]:
     for raw_src in examples[lang]:
         assert isinstance(raw_src, str)
         src = raw_src
-        if digits := LANGUAGES[lang].fuzz_max_digits:
+        if digits := LANGUAGES[lang].certification.fuzz_max_digits:
             src = _cap_numeric_runs(src, digits)
         progs.append(src)
         progs.extend(mutate(src, rng))

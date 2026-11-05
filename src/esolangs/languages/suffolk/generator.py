@@ -24,6 +24,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.suffolk.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.runtime._definition import RuntimeSpec
@@ -277,6 +278,8 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
-    proof_execution=(execution, True, (3, 6)),
-    proof_workspace=(workspace, False, (3, 5, 6)),
+    certification=CertificationSpec(
+        proof_execution=(execution, True, (3, 6)),
+        proof_workspace=(workspace, False, (3, 5, 6)),
+    ),
 )

@@ -121,7 +121,7 @@ def _generator(name: str, *, image_extra: bool) -> None:
 
     _evaluate = _evaluator()
 
-    controls = LANGUAGES[resolve(name)].benchmark_tables
+    controls = LANGUAGES[resolve(name)].certification.benchmark_tables
     table = next((t for t in controls if "0" in t and "1" in t), "0110")
     generated = esolangs.generate(name, table)
     if image_extra and isinstance(generated, esolangs.Raster):

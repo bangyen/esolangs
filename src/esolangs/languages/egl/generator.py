@@ -21,6 +21,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import balance_score, balance_width
 from esolangs.languages.egl.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.runtime._definition import RuntimeSpec
@@ -120,6 +121,8 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     balance=_balance,
-    proof_workspace=(workspace, True, (3, 5)),
-    proof_execution=(execution, True, (1, 2, 3, 5)),
+    certification=CertificationSpec(
+        proof_workspace=(workspace, True, (3, 5)),
+        proof_execution=(execution, True, (1, 2, 3, 5)),
+    ),
 )

@@ -67,6 +67,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.streetcode.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -990,14 +991,16 @@ LANGUAGE = Language(
         split=True,
         empty_program="Streetcode program cannot be empty",
     ),
-    layout_switch=(4, 5),
-    slow_scaling=True,
+    certification=CertificationSpec(
+        layout_switch=(4, 5),
+        slow_scaling=True,
+        proof_execution=(execution, True, (6, 8)),
+        proof_workspace=(workspace, False, (6, 7)),
+    ),
     boolean=streetcode,
     contract=BooleanContract(
         input_shape="char_stream",
     ),
     balance=_balance,
-    proof_execution=(execution, True, (6, 8)),
-    proof_workspace=(workspace, False, (6, 7)),
     grid=True,
 )

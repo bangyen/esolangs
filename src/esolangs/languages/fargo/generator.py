@@ -48,6 +48,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.fargo.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -463,11 +464,13 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="each physical line is one command; expressions have no continuation",
-    # Fargo reads one *number* before the program starts, not a bit per
-    # line, and ``@ k`` indexes that number's bits.  The boolean
-    # convention is therefore to feed the row index: the inputs
-    # most-significant-first are its binary digits, so the 0,1 row of a
-    # two-input table is the single line "1".
-    proof_execution=(execution, False, (3, 7)),
-    proof_workspace=(workspace, False, (6,)),
+    certification=CertificationSpec(
+        # Fargo reads one *number* before the program starts, not a bit per
+        # line, and ``@ k`` indexes that number's bits.  The boolean
+        # convention is therefore to feed the row index: the inputs
+        # most-significant-first are its binary digits, so the 0,1 row of a
+        # two-input table is the single line "1".
+        proof_execution=(execution, False, (3, 7)),
+        proof_workspace=(workspace, False, (6,)),
+    ),
 )

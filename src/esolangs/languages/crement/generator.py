@@ -44,6 +44,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
 from esolangs.languages.crement.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, TemplateSpec
 from esolangs.runtime._definition import RuntimeSpec
@@ -297,6 +298,8 @@ LANGUAGE = Language(
     no_wrap="jumps and patches name instruction numbers, so lines stay whole",
     template=TemplateSpec(setters=crement_setters),
     example=Example(expected=""),
-    proof_workspace=(workspace, False, (3, 6)),
-    proof_execution=(execution, True, (1, 2, 3, 5, 6)),
+    certification=CertificationSpec(
+        proof_workspace=(workspace, False, (3, 6)),
+        proof_execution=(execution, True, (1, 2, 3, 5, 6)),
+    ),
 )

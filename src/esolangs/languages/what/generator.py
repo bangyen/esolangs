@@ -26,6 +26,7 @@ Decisions:
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.wrap import TokenWrapper
 from esolangs.languages.what.proof_formulas import workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
@@ -79,5 +80,5 @@ LANGUAGE = Language(
     boolean=what,
     # Whitespace only separates tokens, so a newline between two is harmless.
     wrap=_wrap,
-    proof_workspace=(workspace, True, (3, 4, 5, 6)),
+    certification=CertificationSpec(proof_workspace=(workspace, True, (3, 4, 5, 6))),
 )

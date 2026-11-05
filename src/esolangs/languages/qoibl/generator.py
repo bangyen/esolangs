@@ -27,6 +27,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
 from esolangs.languages.qoibl.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.runtime._definition import RuntimeSpec
@@ -266,8 +267,10 @@ LANGUAGE = Language(
     "Qoibl",
     RuntimeSpec("qoibl", category="register_based", split=True),
     boolean=qoibl,
-    proof_execution=(execution, True, (1, 2, 3, 6)),
-    proof_workspace=(workspace, True, (1, 2, 3, 6)),
+    certification=CertificationSpec(
+        proof_execution=(execution, True, (1, 2, 3, 6)),
+        proof_workspace=(workspace, True, (1, 2, 3, 6)),
+    ),
     # Not a tree: the table is one binary literal the reads divide down.
     shape=Shape.LOOKUP,
     contract=BooleanContract(

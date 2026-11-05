@@ -116,9 +116,11 @@ class TestBfstack:
         assert io.getvalue() == "A"
         state = machine.snapshot()
         assert state[-1] > 0
-        assert LANGUAGE.payload is not None
-        assert LANGUAGE.payload(state) == (*state[:3], 0)
-        assert LANGUAGE.payload((*state[:-1], 100)) == LANGUAGE.payload(state)
+        assert LANGUAGE.certification.payload is not None
+        assert LANGUAGE.certification.payload(state) == (*state[:3], 0)
+        assert LANGUAGE.certification.payload(
+            (*state[:-1], 100)
+        ) == LANGUAGE.certification.payload(state)
 
 
 @pytest.mark.medium

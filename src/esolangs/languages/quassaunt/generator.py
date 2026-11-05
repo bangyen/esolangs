@@ -26,6 +26,7 @@ from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.token_balance import CELL_ASPECT, balanced_token_width
 from esolangs.generation.wrap import wrap_space_delimited
 from esolangs.languages.quassaunt.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -187,6 +188,8 @@ LANGUAGE = Language(
     # Whitespace separates words and a word holds none, so break only there.
     wrap=wrap_space_delimited,
     balance=_balance,
-    proof_execution=(execution, True, (3, 6)),
-    proof_workspace=(workspace, True, (3, 4, 5, 6)),
+    certification=CertificationSpec(
+        proof_execution=(execution, True, (3, 6)),
+        proof_workspace=(workspace, True, (3, 4, 5, 6)),
+    ),
 )

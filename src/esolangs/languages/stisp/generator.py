@@ -33,6 +33,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import TokenWrapper
 from esolangs.languages.stisp.proof_formulas import workspace
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, TemplateSpec
 from esolangs.runtime._definition import RuntimeSpec
@@ -112,5 +113,7 @@ LANGUAGE = Language(
     ),
     wrap=TokenWrapper(_TOKEN),
     template=TemplateSpec(pair=PAIR),
-    proof_workspace=(workspace, False, (3, 4, 5, 6, 7)),
+    certification=CertificationSpec(
+        proof_workspace=(workspace, False, (3, 4, 5, 6, 7))
+    ),
 )

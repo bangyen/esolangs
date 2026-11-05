@@ -28,6 +28,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
 )
 from esolangs.generation.wrap import _unlambda
+from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -136,7 +137,7 @@ LANGUAGE = Language(
         eof="an exhausted '@' hands its argument v, the spec's branch",
         empty_program="an Unlambda program cannot be empty",
     ),
-    reader_checked=True,
+    certification=CertificationSpec(reader_checked=True),
     boolean=unlambda,
     contract=BooleanContract(
         input_shape="char_stream",

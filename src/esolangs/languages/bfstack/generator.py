@@ -37,8 +37,9 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.bfstack.proof_formulas import execution, workspace
+from esolangs.registry._certification import CertificationSpec, Payload
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Payload, Shape
+from esolangs.registry._language import Language, Shape
 from esolangs.runtime._definition import RuntimeSpec
 
 
@@ -195,7 +196,11 @@ def _payload(state: Any) -> Payload:
 LANGUAGE = Language(
     "BFStack",
     RuntimeSpec("bfstack", category="stack_based"),
-    payload=_payload,
+    certification=CertificationSpec(
+        payload=_payload,
+        proof_execution=(execution, True, (8, 9, 10)),
+        proof_workspace=(workspace, False, (3, 6)),
+    ),
     boolean=bfstack,
     # A sum, not a tree: a lookup over the essential inputs only.
     shape=Shape.REDUCING,
@@ -203,6 +208,4 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
-    proof_execution=(execution, True, (8, 9, 10)),
-    proof_workspace=(workspace, False, (3, 6)),
 )
