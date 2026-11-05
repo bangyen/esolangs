@@ -6,7 +6,7 @@ from types import FrameType
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.languages.fargo.generator import _arm_expression, anf_coefficients, fargo
 from esolangs.languages.fargo.interpreter import run
 from esolangs.runtime.io import ScriptedIO
@@ -99,5 +99,5 @@ def test_balance_unshared_packing_squares_random_n12() -> None:
 
     rng = random.Random(12)
     table = "".join(rng.choice("01") for _ in range(4096))
-    program = str(compat.generate("fargo", table, balance=True))
+    program = str(esolangs.generate("fargo", table, balance=True).source)
     assert balance_score(program) == (256, 20187, 256)

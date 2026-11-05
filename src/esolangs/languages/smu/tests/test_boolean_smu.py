@@ -2,7 +2,7 @@
 
 import random
 
-from esolangs import compat
+import esolangs
 from esolangs.languages.smu import generator as tools
 from esolangs.languages.smu.interpreter import run
 from esolangs.runtime.io import ScriptedIO
@@ -94,7 +94,7 @@ def _check_terminal_leaves() -> None:
         n = len(table).bit_length() - 1
 
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = compat.generate("Smu", table, **options)
+            program = esolangs.generate("Smu", table, **options).source
             for row in (0, (1 << n) // 3, (1 << n) - 1):
                 io = ReadFirstIO(f"{row:0{n}b}", expected=n)
                 machine = _Machine(program, io)
@@ -138,7 +138,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Smu", bit * (1 << n), **options)
+                program = esolangs.generate("Smu", bit * (1 << n), **options).source
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     io = ReadFirstIO(f"{row:0{n}b}", expected=n)
                     machine = _Machine(program, io)

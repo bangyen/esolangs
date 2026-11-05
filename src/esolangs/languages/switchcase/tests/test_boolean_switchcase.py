@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -25,7 +24,9 @@ def test_constant_reads_precede_output_and_preserve_the_next_character() -> None
             commands = n + 6 + int(bit)
             workspace = 25 + (n + 1).bit_length() + n.bit_length()
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("SwitchCase", bit * (1 << n), **options)
+                program = esolangs.generate(
+                    "SwitchCase", bit * (1 << n), **options
+                ).source
                 if not options:
                     assert len(program) == n + 15 + 2 * int(bit)
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
@@ -46,7 +47,10 @@ def test_constant_reads_precede_output_and_preserve_the_next_character() -> None
                     assert io.getvalue() == bit
                     assert io.input_char() == ord("Q")
     assert (
-        sum(len(compat.generate("SwitchCase", format(v, "08b"))) for v in range(256))
+        sum(
+            len(esolangs.generate("SwitchCase", format(v, "08b")).source)
+            for v in range(256)
+        )
         == 31572
     )
 
@@ -63,7 +67,7 @@ def _check_shared_residuals() -> None:
     summed = 0
     for value in range(256):
         table = f"{value:08b}"
-        program = compat.generate("SwitchCase", table)
+        program = esolangs.generate("SwitchCase", table).source
         for row in range(8):
             io = ScriptedIO(f"{row:03b}Q")
             machine = _Machine(program, io)
@@ -83,7 +87,7 @@ def _check_shared_residuals() -> None:
     assert summed == 48400
     for n in range(1, 9):
         table = "".join(str(row.bit_count() % 2) for row in range(1 << n))
-        program = compat.generate("SwitchCase", table)
+        program = esolangs.generate("SwitchCase", table).source
         # Every parity path has n tests; a one prints after the increment.
         io = ScriptedIO(f"{1:0{n}b}")
         machine = _Machine(program, io)

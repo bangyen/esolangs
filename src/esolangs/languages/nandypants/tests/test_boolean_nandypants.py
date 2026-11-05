@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -27,7 +26,9 @@ def _check_constants() -> None:
         for bit in "01":
             commands = 8 * n + 11 + 2 * int(bit)
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Nandypants", bit * (1 << n), **options)
+                program = esolangs.generate(
+                    "Nandypants", bit * (1 << n), **options
+                ).source
                 peak = 0
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     stdin = esolangs.encode_inputs(
@@ -50,7 +51,8 @@ def _check_constants() -> None:
                     assert machine.state.remaining == 0
                     assert io.input_char() == ord("Q")
     assert (
-        sum(len(compat.generate("Nandypants", f"{v:08b}")) for v in range(256)) == 25214
+        sum(len(esolangs.generate("Nandypants", f"{v:08b}").source) for v in range(256))
+        == 25214
     )
 
 
@@ -61,7 +63,7 @@ def _check_forward() -> None:
     jumped = False
     for table in ("1101001101101101", "00110110", "00011110"):
         n = len(table).bit_length() - 1
-        program = compat.generate("Nandypants", table)
+        program = esolangs.generate("Nandypants", table).source
         for row in range(len(table)):
             io = ScriptedIO(f"{row:0{n}b}" + "7")
             machine = _Machine(program, io)

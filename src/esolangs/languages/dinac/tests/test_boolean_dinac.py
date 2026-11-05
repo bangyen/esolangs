@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs import run as execute
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_native_rows
@@ -17,7 +16,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
         _check_constants()
     from esolangs.languages.dinac.interpreter import run
 
-    program = compat.generate("DINAC", table)
+    program = esolangs.generate("DINAC", table).source
     assert_native_rows("DINAC", table, program, run, sentinel="Q")
 
 
@@ -26,7 +25,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
 )
 def test_larger_and_constant_tables(table: str) -> None:
     n = len(table).bit_length() - 1
-    program = compat.generate("DINAC", table)
+    program = esolangs.generate("DINAC", table).source
     for row in range(0, len(table), 3):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("DINAC", bits)
@@ -38,7 +37,8 @@ def test_larger_and_constant_tables(table: str) -> None:
 def test_size_is_linear_in_the_table(n: int) -> None:
     """A balanced table stays within the stated bound, names included."""
     assert (
-        len(compat.generate("DINAC", "01" * 2 ** (n - 1))) <= 40 * 2**n + 18 * n + 120
+        len(esolangs.generate("DINAC", "01" * 2 ** (n - 1)).source)
+        <= 40 * 2**n + 18 * n + 120
     )
 
 
@@ -49,7 +49,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("DINAC", bit * (1 << n), **options)
+                program = esolangs.generate("DINAC", bit * (1 << n), **options).source
                 if not options:
                     assert len(program) == 5 * n + 15
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
@@ -74,4 +74,7 @@ def _check_constants() -> None:
                             written.bits <= 56 + (n + 2).bit_length() + n.bit_length()
                         )
 
-    assert sum(len(compat.generate("DINAC", f"{v:08b}")) for v in range(256)) == 77660
+    assert (
+        sum(len(esolangs.generate("DINAC", f"{v:08b}").source) for v in range(256))
+        == 77660
+    )

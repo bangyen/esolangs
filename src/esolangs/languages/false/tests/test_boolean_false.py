@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs import run as execute
 from esolangs.languages.false.generator import _shared, false
 from tests.generators.plain_oracles import separated_tree_text
@@ -78,7 +78,7 @@ def test_false_runs_out_of_variables_and_writes_the_rest_inline(monkeypatch) -> 
 def test_false_single_character_floor_executes_every_small_table() -> None:
     for n in range(1, 4):
         for table in witnesses(n):
-            program = compat.generate("FALSE", table, width=1)
+            program = esolangs.generate("FALSE", table, width=1).source
             assert max(map(len, program.splitlines())) == 1
             for row, expected in enumerate(table):
                 stdin = format(row, f"0{n}b")
@@ -122,7 +122,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("FALSE", bit * (1 << n), **options)
+                program = esolangs.generate("FALSE", bit * (1 << n), **options).source
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row + "7", expected=n)
                     assert_constant_output(run, program, io, bit, n)

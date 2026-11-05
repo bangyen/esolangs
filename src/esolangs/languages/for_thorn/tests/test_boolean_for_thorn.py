@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.generation.helpers import essential_inputs, permute_truth_table
 from esolangs.languages.for_thorn import generator as boolean
 from tests.generators.sample_tables import five_input_sample
@@ -153,14 +153,13 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 
 
 def _check_constants() -> None:
-    import esolangs
     from esolangs.languages.for_thorn.interpreter import _Machine
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Forþ", bit * (1 << n), **options)
+                program = esolangs.generate("Forþ", bit * (1 << n), **options).source
                 if not options:
                     assert len(program) == 2 * n + 4
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):

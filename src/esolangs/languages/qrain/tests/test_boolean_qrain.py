@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -24,7 +23,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Qrain", bit * (1 << n), **options)
+                program = esolangs.generate("Qrain", bit * (1 << n), **options).source
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     stdin = esolangs.encode_inputs(
                         "Qrain", list(map(int, f"{row:0{n}b}"))
@@ -49,4 +48,7 @@ def _check_constants() -> None:
                         == control + 8 * n + 7 - int(bit) - (n == 1) + n.bit_length()
                     )
                     assert io.input_char() == ord("Q")
-    assert sum(len(compat.generate("Qrain", f"{v:08b}")) for v in range(256)) == 34181
+    assert (
+        sum(len(esolangs.generate("Qrain", f"{v:08b}").source) for v in range(256))
+        == 34181
+    )

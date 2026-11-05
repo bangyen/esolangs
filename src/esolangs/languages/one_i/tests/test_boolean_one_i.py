@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_constant_output, assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -25,7 +24,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("1 + i", bit * (1 << n), **options)
+                program = esolangs.generate("1 + i", bit * (1 << n), **options).source
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(
                         esolangs.encode_inputs("1 + i", [int(b) for b in row]) + "7\n",
@@ -61,7 +60,7 @@ def _check_arithmetic_tails() -> None:
     tables += [workspace_witness(n) for n in range(2, 10)]
     for table in tables:
         n = len(table).bit_length() - 1
-        program = compat.generate("1 + i", table)
+        program = esolangs.generate("1 + i", table).source
         for row in (0, (1 << n) // 3, 1 << (n - 1), (1 << n) - 1):
             io = ReadFirstIO(
                 esolangs.encode_inputs("1 + i", list(map(int, f"{row:0{n}b}"))) + "7\n",

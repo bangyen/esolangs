@@ -10,7 +10,6 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs import run as execute
 from esolangs.languages.qoibl import interpreter as qoibl
 from esolangs.languages.qoibl.interpreter import (
@@ -322,13 +321,13 @@ class TestTheTokenizerCarriesItsOwnStack:
 
     def test_a_program_past_the_old_wall_tokenizes(self) -> None:
         """4929 characters, against a default limit of 1000."""
-        program = compat.generate("Qoibl", self._majority(12))
+        program = esolangs.generate("Qoibl", self._majority(12)).source
         assert len(program) > 3000
         assert tokenize(program)
 
     def test_it_runs_under_a_limit_far_below_the_old_need(self) -> None:
         """The direct measure of shallowness, and it needed 1375 before."""
-        program = compat.generate("Qoibl", self._majority(6))
+        program = esolangs.generate("Qoibl", self._majority(6)).source
         stdin = esolangs.encode_inputs("Qoibl", [0] * 6, truth_table=self._majority(6))
         live = len(inspect.stack())
         previous = sys.getrecursionlimit()

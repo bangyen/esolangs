@@ -5,8 +5,7 @@ import random
 
 import pytest
 
-from esolangs import compat
-from esolangs.compat import generate
+import esolangs
 from esolangs.languages.thue import generator as boolean
 from esolangs.languages.thue.generator import thue
 from esolangs.languages.thue.interpreter import _Machine, _matches
@@ -32,7 +31,9 @@ def test_short_tree_interns_constant_residuals() -> None:
 def _execute(table: str, row: int, width: int | None) -> None:
     n = len(table).bit_length() - 1
     io = ScriptedIO("\n".join(f"{row:0{n}b}"))
-    machine = _Machine(generate("Thue", table, width=width), io, Seeded(row))
+    machine = _Machine(
+        esolangs.generate("Thue", table, width=width).source, io, Seeded(row)
+    )
     for _ in range(5 * len(table) + 4 * n + 10):
         if machine.halted:
             break
@@ -238,8 +239,8 @@ def test_a_constant_half_is_stored_once_and_stays_deterministic() -> None:
     dense = half + "".join(rng.choice("01") for _ in range(512))
     # Not balanced: the fold's queued rules leave its best side at 76 (596
     # chars), so balance keeps the unfolded side-64 layout (775 chars).
-    folded = generate("Thue", half + "1" * 512)
-    assert len(folded) < 0.85 * len(generate("Thue", dense))
+    folded = esolangs.generate("Thue", half + "1" * 512).source
+    assert len(folded) < 0.85 * len(esolangs.generate("Thue", dense).source)
 
 
 def test_the_emissions_grow_by_a_line() -> None:
@@ -298,8 +299,12 @@ def test_balance_root_payload_matches_the_swept_side() -> None:
     for n in (3, 4, 5, 6):
         for _ in range(8):
             table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
-            new += balance_score(generate("Thue", table, balance=True))[0]
-            old += balance_score(_swept_balance(table, generate("Thue", table)))[0]
+            new += balance_score(esolangs.generate("Thue", table, balance=True).source)[
+                0
+            ]
+            old += balance_score(
+                _swept_balance(table, esolangs.generate("Thue", table).source)
+            )[0]
     assert old <= new < 1.01 * old
 
 
@@ -311,7 +316,9 @@ def test_balanced_fold_tables_keep_their_square(
     from esolangs.generation.wrap import balance_score
 
     half = format(random.Random(1).getrandbits(1 << (n - 1)), f"0{1 << (n - 1)}b")
-    program = generate("Thue", half + "1" * (1 << (n - 1)), balance=True)
+    program = esolangs.generate(
+        "Thue", half + "1" * (1 << (n - 1)), balance=True
+    ).source
     assert balance_score(program) == score
 
 
@@ -323,7 +330,7 @@ def test_width_requests_keep_their_exact_size(
     table: str, width: int, size: int
 ) -> None:
     """The nearest layout to the width, then the shortest, fixes the source size."""
-    assert len(generate("Thue", table, width=width)) == size
+    assert len(esolangs.generate("Thue", table, width=width).source) == size
 
 
 @pytest.mark.medium
@@ -390,7 +397,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Thue", bit * (1 << n), **options)
+                program = esolangs.generate("Thue", bit * (1 << n), **options).source
                 if not options:
                     assert len(program) == n + 35
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):

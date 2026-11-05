@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs import compat, run
+from esolangs import run
 from esolangs.languages.rubic.generator import _OPENING, _TABLE
 from esolangs.languages.rubic.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
@@ -15,7 +15,7 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     n = len(table).bit_length() - 1
-    program = compat.generate("Rubic", table)
+    program = esolangs.generate("Rubic", table).source
     opening = _Machine(" ".join(_OPENING), ScriptedIO())
     while not opening.halted:
         opening.step()
@@ -82,7 +82,7 @@ def test_constant_reads_precede_output_and_preserve_the_next_character() -> None
                 + n.bit_length()
             )
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Rubic", bit * (1 << n), **options)
+                program = esolangs.generate("Rubic", bit * (1 << n), **options).source
                 if not options:
                     assert len(program) == 2 * n + 35
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
@@ -103,6 +103,8 @@ def test_constant_reads_precede_output_and_preserve_the_next_character() -> None
                     assert io.getvalue() == bit
                     assert io.input_char() == ord("Q")
     assert (
-        sum(len(compat.generate("Rubic", format(v, "08b"))) for v in range(256))
+        sum(
+            len(esolangs.generate("Rubic", format(v, "08b")).source) for v in range(256)
+        )
         == 63126
     )

@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_native_rows
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -16,7 +15,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
         _check_constants()
     from esolangs.languages.fackward.interpreter import run
 
-    program = compat.generate("Fackward", table)
+    program = esolangs.generate("Fackward", table).source
     assert_native_rows("Fackward", table, program, run, sentinel="Q")
 
 
@@ -27,7 +26,9 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Fackward", bit * (1 << n), **options)
+                program = esolangs.generate(
+                    "Fackward", bit * (1 << n), **options
+                ).source
                 if not options:
                     assert len(program) == 7 * n + 6
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):

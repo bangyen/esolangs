@@ -6,7 +6,6 @@ import random
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.languages.container import generator as boolean
 from tests.generators.boolean_runners import _runner
 from tests.generators.sample_tables import five_input_sample
@@ -264,7 +263,7 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 @pytest.mark.parametrize("table", ["01" * 64])
 def test_narrow_balance_regime_edge_executes(table) -> None:
     """The smallest tables reaching an otherwise-untaken balance arm."""
-    balanced = compat.generate("Container", table, balance=True)
+    balanced = esolangs.generate("Container", table, balance=True).source
     assert _evaluate("Container", balanced, inputs=len(table).bit_length() - 1) == table
 
 
@@ -274,7 +273,7 @@ def test_balanced_parity_is_the_block_program() -> None:
     from esolangs.generation.wrap import balance_score
 
     table = "".join(str(row.bit_count() & 1) for row in range(256))
-    balanced = compat.generate("Container", table, balance=True)
+    balanced = esolangs.generate("Container", table, balance=True).source
     assert balance_score(balanced) == (348, 1322, 9)
     assert _evaluate("Container", balanced, inputs=8) == table
     from esolangs.languages.container.interpreter import _Machine
@@ -363,8 +362,8 @@ def test_balance_closed_form_is_never_worse_than_the_swept_one() -> None:
     for n in (2, 3, 4, 5, 6):
         for _ in range(6):
             table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
-            new = compat.generate("Container", table, balance=True)
-            old = _swept_balance(table, compat.generate("Container", table))
+            new = esolangs.generate("Container", table, balance=True).source
+            old = _swept_balance(table, esolangs.generate("Container", table).source)
             assert balance_score(new) <= balance_score(old), table
 
 
@@ -389,7 +388,9 @@ def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Container", bit * (1 << n), **options)
+                program = esolangs.generate(
+                    "Container", bit * (1 << n), **options
+                ).source
                 if not options:
                     assert len(program) == 87 + len(str(n))
                 rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
@@ -408,6 +409,9 @@ def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
                     assert steps == 2 * n
                     assert io.input_char() == ord("Q")
     assert (
-        sum(len(compat.generate("Container", format(v, "08b"))) for v in range(256))
+        sum(
+            len(esolangs.generate("Container", format(v, "08b")).source)
+            for v in range(256)
+        )
         == 78589
     )

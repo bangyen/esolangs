@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -21,8 +20,8 @@ def test_the_bits_are_one_unseparated_string() -> None:
 
 def test_an_ignored_input_folds_its_subtree() -> None:
     """Inputs 0 and 1 are ignored, so their pairs are ``K`` of one half."""
-    folded = len(compat.generate("Hot", "0110" * 4))
-    assert folded < len(compat.generate("Hot", "0110100110010110"))
+    folded = len(esolangs.generate("Hot", "0110" * 4).source)
+    assert folded < len(esolangs.generate("Hot", "0110100110010110").source)
 
 
 @pytest.mark.parametrize("n", [1, 3, 4, 6, 7, 8, 12])
@@ -32,7 +31,7 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
     rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
     for bit in "01":
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = compat.generate("Hot", bit * (1 << n), **options)
+            program = esolangs.generate("Hot", bit * (1 << n), **options).source
             if not options:
                 assert len(program) == 4 * n + 3
             for row in rows:
@@ -53,7 +52,10 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
 def test_three_input_corpus_size() -> None:
     _check_majority()
     assert (
-        sum(len(compat.generate("Hot", format(value, "08b"))) for value in range(256))
+        sum(
+            len(esolangs.generate("Hot", format(value, "08b")).source)
+            for value in range(256)
+        )
         == 98234
     )
 
@@ -65,7 +67,7 @@ def _check_majority() -> None:
     for n, size in ((2, 253), (3, 353), (7, 1313), (8, 1999)):
         table = "".join(str(int(2 * row.bit_count() > n)) for row in range(1 << n))
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = compat.generate("Hot", table, **options)
+            program = esolangs.generate("Hot", table, **options).source
             if not options:
                 assert len(program) == size
             for row in (0, (1 << n) // 3, (1 << n) - 1):

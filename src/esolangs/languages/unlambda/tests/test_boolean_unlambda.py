@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.languages.unlambda import generator as boolean
 from esolangs.languages.unlambda.generator import unlambda
@@ -73,7 +73,6 @@ def unlambda_plain(truth_table: str) -> str:
 
 
 def _check_constants(arities: range) -> None:
-    import esolangs
     from esolangs.languages.unlambda.interpreter import _Machine
     from esolangs.languages.unlambda.tests.formulas import _workspace
     from scripts.benchmark import WrittenState
@@ -81,7 +80,9 @@ def _check_constants(arities: range) -> None:
     for n in arities:
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Unlambda", bit * (1 << n), **options)
+                program = esolangs.generate(
+                    "Unlambda", bit * (1 << n), **options
+                ).source
                 if not options:
                     assert len(program) == 4 * n + 2
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):

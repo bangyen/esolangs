@@ -7,9 +7,7 @@ import re
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs import run as execute_program
-from esolangs.compat import generate
 from esolangs.languages.algebraic_programming_language import generator as boolean
 from esolangs.languages.algebraic_programming_language.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
@@ -267,9 +265,9 @@ class TestAlgebraicProgrammingLanguageShapes:
 def test_apl_elementary_definitions_compute_every_small_table(width: int) -> None:
     for n in range(1, 4):
         for table in witnesses(n):
-            program = compat.generate(
+            program = esolangs.generate(
                 "Algebraic Programming Language", table, width=width
-            )
+            ).source
             for row, expected in enumerate(table):
                 bits = list(format(row, f"0{n}b"))
                 assert (
@@ -292,13 +290,13 @@ def test_apl_elementary_floor_and_corpus_size() -> None:
 
 
 @pytest.mark.parametrize("width", [1, 9, 17, 40])
-@pytest.mark.parametrize("as_string", [False, True])
-def test_apl_elementary_public_tagged_and_plain_source(
-    width: int, *, as_string: bool
+@pytest.mark.parametrize("as_source", [False, True])
+def test_apl_elementary_public_artifact_and_source(
+    width: int, *, as_source: bool
 ) -> None:
-    program = compat.generate("Algebraic Programming Language", "0110", width=width)
-    if as_string:
-        program = str(program)
+    program = esolangs.generate("Algebraic Programming Language", "0110", width=width)
+    if as_source:
+        program = program.source
     for bits, expected in (("00", "0"), ("01", "1"), ("10", "1"), ("11", "0")):
         stdin = "\n".join(bits) + "\n"
         assert (
@@ -314,8 +312,10 @@ def test_apl_width_layout_drops_an_ignored_input(width: int) -> None:
     """A width layout tests only the essential inputs, yet still reads all."""
     lang = "Algebraic Programming Language"
     table = "0110" * 8  # inputs 0, 1 and 2 ignored
-    program = compat.generate(lang, table, width=width)
-    assert len(str(program)) < len(compat.generate(lang, "01101001" * 4, width=width))
+    program = esolangs.generate(lang, table, width=width).source
+    assert len(str(program)) < len(
+        esolangs.generate(lang, "01101001" * 4, width=width).source
+    )
     for combo in range(32):
         stdin = "\n".join(format(combo, "05b")) + "\n"
         assert execute_program(lang, program, stdin=stdin).output == table[combo] + "\n"
@@ -334,7 +334,9 @@ def test_apl_width_layout_drops_an_ignored_input(width: int) -> None:
 )
 def test_operator_binding_reads_every_input_once(table: str, width: int) -> None:
     n = len(table).bit_length() - 1
-    program = generate("Algebraic Programming Language", table, width=width)
+    program = esolangs.generate(
+        "Algebraic Programming Language", table, width=width
+    ).source
     assert max(map(len, program.splitlines())) <= max(width, 5)
     for row, expected in enumerate(table):
         io = ScriptedIO("\n".join(format(row, f"0{n}b")))
@@ -353,7 +355,9 @@ def test_xor_arithmetic_family_reaches_four_columns() -> None:
         algebraic_programming_language,
     )
 
-    program = generate("Algebraic Programming Language", "0110", width=1)
+    program = esolangs.generate(
+        "Algebraic Programming Language", "0110", width=1
+    ).source
     assert max(map(len, program.splitlines())) == 4
     assert len(program) == 49
     for row, expected in enumerate("0110"):
@@ -401,7 +405,7 @@ def test_a_wide_table_keeps_its_one_line_tail_under_the_frame_floor() -> None:
     """Seven inputs raise the frame floor with n, so the short tail stays inline."""
     lang = "Algebraic Programming Language"
     table = "10" * 64  # NOT of the last input; the other six are ignored
-    program = generate(lang, table, width=1)
+    program = esolangs.generate(lang, table, width=1).source
     assert len(program) == 35
     for combo in (0, 1, 2, 127):
         stdin = "\n".join(format(combo, "07b")) + "\n"
@@ -414,9 +418,9 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate(
+                program = esolangs.generate(
                     "Algebraic Programming Language", bit * (1 << n), **options
-                )
+                ).source
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(
                         esolangs.encode_inputs(

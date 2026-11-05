@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs import run as execute
 from esolangs.languages.super_snusp import generator as boolean
 from esolangs.languages.super_snusp.generator import balance_super_snusp
@@ -64,7 +63,7 @@ def test_super_snusp_arithmetic_literals_preserve_stack_and_floor(
     import esolangs
 
     table = "".join(str(row.bit_count() % 2) for row in range(1 << inputs))
-    program = compat.generate("Super SNUSP", table, width=width)
+    program = esolangs.generate("Super SNUSP", table, width=width).source
     assert max(map(len, program.splitlines())) <= max(3, width)
     for row in (0, 1, len(table) // 2, len(table) - 1):
         bits = [int(bit) for bit in format(row, f"0{inputs}b")]
@@ -177,7 +176,7 @@ def test_super_snusp_balance_keeps_a_long_literal_whole() -> None:
 def test_balanced_chunked_literal_computes_the_table() -> None:
     """The balance hook's Horner-chunked literal (a ``[`` shift) is the same table."""
     table = "".join(str((r * 2654435761 >> 7) & 1) for r in range(1 << 7))
-    program = compat.generate("Super SNUSP", table, balance=True)
+    program = esolangs.generate("Super SNUSP", table, balance=True).source
     assert "[" in program
     for row in range(1 << 7):
         bits = [(row >> (6 - i)) & 1 for i in range(7)]
@@ -189,7 +188,7 @@ def test_balanced_chunked_literal_computes_the_table() -> None:
 
 
 def test_xor_has_one_column() -> None:
-    xor = compat.generate("Super SNUSP", "0110", width=1)
+    xor = esolangs.generate("Super SNUSP", "0110", width=1).source
     assert max(map(len, xor.splitlines())) == 1
 
 
@@ -218,7 +217,7 @@ class TestSuperSNUSPSweepPins:
         [("1100", (43, 5, 8)), ("1111", (11, 2, 5))],
     )
     def test_balanced_shapes_are_pinned(self, table: str, shape: tuple) -> None:
-        program = str(compat.generate("Super SNUSP", table, balance=True))
+        program = str(esolangs.generate("Super SNUSP", table, balance=True).source)
         assert (
             len(program),
             program.count("\n") + 1,
@@ -245,10 +244,10 @@ def _check_stacked_operands() -> None:
     )
     for table in tables:
         n = len(table).bit_length() - 1
-        flat = str(compat.generate("Super SNUSP", table))
+        flat = str(esolangs.generate("Super SNUSP", table).source)
         encoding = 49 if flat.startswith('"49{') else 48
         for options in ({}, {"width": 1}, {"width": 17}, {"balance": True}):
-            program = str(compat.generate("Super SNUSP", table, **options))
+            program = str(esolangs.generate("Super SNUSP", table, **options).source)
             for row in (0, (1 << n) // 3, (1 << n) - 1):
                 io = ReadFirstIO(f"{row:0{n}b}")
                 machine = _Machine(program.splitlines(), io)
@@ -269,7 +268,10 @@ def _check_stacked_operands() -> None:
                         )
                         assert written.bits <= bound
     assert (
-        sum(len(str(compat.generate("Super SNUSP", f"{v:08b}"))) for v in range(256))
+        sum(
+            len(str(esolangs.generate("Super SNUSP", f"{v:08b}").source))
+            for v in range(256)
+        )
         == 11236
     )
 
@@ -280,7 +282,9 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Super SNUSP", bit * (1 << n), **options)
+                program = esolangs.generate(
+                    "Super SNUSP", bit * (1 << n), **options
+                ).source
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row + "7", expected=n)
                     assert_constant_output(run, program.splitlines(), io, bit, n)

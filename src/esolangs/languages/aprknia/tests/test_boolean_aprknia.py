@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_constant_output,
@@ -20,7 +20,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
         _check_quotient_guard()
     from esolangs.languages.aprknia.interpreter import run
 
-    program = compat.generate("Aprknia", table)
+    program = esolangs.generate("Aprknia", table).source
     assert isinstance(program, str)
 
     assert_native_rows("Aprknia", table, program, run)
@@ -32,7 +32,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Aprknia", bit * (1 << n), **options)
+                program = esolangs.generate("Aprknia", bit * (1 << n), **options).source
                 assert isinstance(program, str)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row + "7", expected=n)

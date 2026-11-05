@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -25,7 +24,7 @@ def _check_constants() -> None:
         for bit in "01":
             commands = n + (1 if n <= 7 else 2)
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("IEBEL", bit * (1 << n), **options)
+                program = esolangs.generate("IEBEL", bit * (1 << n), **options).source
                 peak = 0
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     stdin = esolangs.encode_inputs(
@@ -46,4 +45,7 @@ def _check_constants() -> None:
                     peak = max(peak, written.bits)
                     assert written.bits == 266 + commands.bit_length() + n.bit_length()
                     assert io.input_char() == ord("Q")
-    assert sum(len(compat.generate("IEBEL", f"{v:08b}")) for v in range(256)) == 26774
+    assert (
+        sum(len(esolangs.generate("IEBEL", f"{v:08b}").source) for v in range(256))
+        == 26774
+    )

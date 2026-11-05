@@ -5,7 +5,6 @@ import random
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs import run as execute
 from esolangs.languages.sstack import generator as boolean
 from esolangs.vm import _capture_workspace
@@ -426,7 +425,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("SStack", bit * (1 << n), **options)
+                program = esolangs.generate("SStack", bit * (1 << n), **options).source
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row + "7", expected=n)
                     assert_constant_output(run, program, io, bit, n)

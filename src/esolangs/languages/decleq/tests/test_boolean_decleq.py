@@ -5,7 +5,7 @@ from itertools import product
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.generation.wrap import balance_program, balance_score, wrap_program
 from esolangs.languages.decleq import generator as boolean
 from tests.generators.boolean_runners import _runner
@@ -129,7 +129,6 @@ def test_multiline_source_is_untouched() -> None:
 
 @pytest.mark.medium
 def test_constants_reuse_scratch_and_print_after_every_read() -> None:
-    import esolangs
     from esolangs.languages.decleq.interpreter import _Machine
     from esolangs.languages.decleq.proof_formulas import workspace
     from scripts.benchmark import WrittenState
@@ -137,7 +136,7 @@ def test_constants_reuse_scratch_and_print_after_every_read() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Decleq", bit * (1 << n), **options)
+                program = esolangs.generate("Decleq", bit * (1 << n), **options).source
                 cells = list(map(int, program.split()))
                 assert len(cells) == 3 * n + 9
                 assert all(

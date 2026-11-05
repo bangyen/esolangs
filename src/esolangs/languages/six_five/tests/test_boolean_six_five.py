@@ -7,7 +7,6 @@ from itertools import permutations
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs import run as execute
 from esolangs.generation.examples import BOOLEAN_EXAMPLES
 from esolangs.generation.helpers import permute_truth_table
@@ -466,7 +465,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("6-5", bit * (1 << n), **options)
+                program = esolangs.generate("6-5", bit * (1 << n), **options).source
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row + "7", expected=n)
                     assert_constant_output(run, program, io, bit, n)

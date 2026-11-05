@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import compat, run
+from esolangs import run
 from esolangs.languages.bfstack import generator as boolean
 from esolangs.registry._certification import load as load_certification
 from tests.generators.boolean_runners import _runner
@@ -175,7 +175,7 @@ def _check_identities() -> None:
                 str((row >> (n - selected - 1)) & 1) for row in range(1 << n)
             )
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("BFStack", table, **options)
+                program = esolangs.generate("BFStack", table, **options).source
                 assert len(program.replace("\n", "")) == 2 * n
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     bits = f"{row:0{n}b}"
@@ -229,7 +229,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("BFStack", bit * (1 << n), **options)
+                program = esolangs.generate("BFStack", bit * (1 << n), **options).source
                 if not options:
                     assert len(program.replace("\n", "")) == 2 * n + 50 + int(bit)
                 peak = 0

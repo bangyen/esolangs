@@ -5,7 +5,6 @@ import random
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.languages.qoibl import generator as boolean
 from tests.generators.boolean_runners import _runner
 from tests.support.event_io import ReadFirstIO
@@ -22,7 +21,7 @@ class TestQoibl:
     @pytest.mark.parametrize("width", [1, 3, 80])
     def test_narrow_horner_literals_execute_small_tables(self, width: int) -> None:
         for table in witnesses(3):
-            program = compat.generate("Qoibl", table, width=width)
+            program = esolangs.generate("Qoibl", table, width=width).source
             assert max(map(len, program.splitlines())) <= max(width, 2)
             for row in range(8):
                 assert run_qoibl(program, list(format(row, "03b"))) == table[row]
@@ -113,8 +112,8 @@ def test_balance_stays_within_five_percent_of_the_retired_sweep(seed: int) -> No
     rng = random.Random(seed)
     for inputs in range(1, 8):
         table = format(rng.getrandbits(1 << inputs), f"0{1 << inputs}b")
-        default = compat.generate("Qoibl", table)
-        balanced = compat.generate("Qoibl", table, balance=True)
+        default = esolangs.generate("Qoibl", table).source
+        balanced = esolangs.generate("Qoibl", table, balance=True).source
         oracle = sweep_balance_qoibl(table, default)
         assert balance_score(balanced)[0] <= 1.05 * balance_score(oracle)[0]
         for row in (0, (1 << inputs) - 1, rng.randrange(1 << inputs)):
@@ -148,7 +147,7 @@ class TestQoiblSweepPins:
         ],
     )
     def test_balanced_shapes_are_pinned(self, table: str, shape: tuple) -> None:
-        program = str(compat.generate("Qoibl", table, balance=True))
+        program = str(esolangs.generate("Qoibl", table, balance=True).source)
         assert (
             len(program),
             program.count("\n") + 1,
@@ -163,7 +162,7 @@ def test_constant_audit_read_first_and_sentinel() -> None:
         rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Qoibl", bit * (1 << n), **options)
+                program = esolangs.generate("Qoibl", bit * (1 << n), **options).source
                 if not options:
                     assert len(program) == 9 * n + 10
                 for row in rows:
@@ -189,7 +188,9 @@ def test_constant_audit_read_first_and_sentinel() -> None:
 
 def test_constant_audit_three_input_corpus_size() -> None:
     assert (
-        sum(len(compat.generate("Qoibl", format(v, "08b"))) for v in range(256))
+        sum(
+            len(esolangs.generate("Qoibl", format(v, "08b")).source) for v in range(256)
+        )
         == 51216
     )
 

@@ -5,7 +5,7 @@ from itertools import pairwise
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.languages.flowchart import generator as boolean
 from esolangs.languages.flowchart.generator import (
     _flowchart_cells,
@@ -291,7 +291,7 @@ def test_constant_lookup_reads_without_deque_or_selector(bit) -> None:
 
     for n in (1, 3, 8, 12):
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = compat.generate("Flowchart", bit * (1 << n), **options)
+            program = esolangs.generate("Flowchart", bit * (1 << n), **options).source
             if not options:
                 assert len(program) == 32 * n + 29
             for row in (0, 1, (1 << n) - 1):
@@ -313,7 +313,7 @@ def test_balance_of_parity_n8_is_banded() -> None:
     from esolangs.generation.wrap import balance_score
 
     table = "".join(str((row).bit_count() & 1) for row in range(256))
-    program = compat.generate("Flowchart", table, balance=True)
+    program = esolangs.generate("Flowchart", table, balance=True).source
     assert balance_score(program) == (878, 200404, 878)
 
 
@@ -337,7 +337,7 @@ def test_balanced_tree_folds_and_still_computes(table: str, monkeypatch) -> None
         return _snake(cells, run, nodes)
 
     monkeypatch.setattr("esolangs.languages.flowchart.generator._snake", checked_snake)
-    program = compat.generate("Flowchart", table, balance=True)
+    program = esolangs.generate("Flowchart", table, balance=True).source
     assert shapes == {(2, 6), (3, 4), (4, 3), (6, 2)}
     assert padded_reads
     tall = _flowchart_render(_flowchart_cells(table))

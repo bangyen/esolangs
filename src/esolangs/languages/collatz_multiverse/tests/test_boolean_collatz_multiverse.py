@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.languages.collatz_multiverse import generator as boolean
 from tests.generators.boolean_runners import _runner
 from tests.support.event_io import ReadFirstIO
@@ -97,7 +97,7 @@ class TestCollatzMultiverse:
         for table in ("0000", "1111", "0110", "01101001", "10101010"):
             n = len(table).bit_length() - 1
             plain = boolean.collatz_multiverse(table)
-            program = compat.generate("Collatz Multiverse", table, width=width)
+            program = esolangs.generate("Collatz Multiverse", table, width=width).source
             assert max(map(len, program.splitlines())) <= max(
                 width, *map(len, plain.splitlines())
             )
@@ -284,8 +284,10 @@ def test_balance_scores_the_spellings_without_a_threshold_sweep() -> None:
     for n in (1, 2, 3, 4, 5):
         for _ in range(6):
             table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
-            new = compat.generate("Collatz Multiverse", table, balance=True)
-            old = _swept_balance(table, compat.generate("Collatz Multiverse", table))
+            new = esolangs.generate("Collatz Multiverse", table, balance=True).source
+            old = _swept_balance(
+                table, esolangs.generate("Collatz Multiverse", table).source
+            )
             assert balance_score(new) <= balance_score(old), table
 
 
@@ -311,7 +313,9 @@ def test_balance_scores_the_spellings_without_a_threshold_sweep() -> None:
     ],
 )
 def test_layout_sizes(table: str, width: int | None, size: int) -> None:
-    assert len(compat.generate("collatz_multiverse", table, width=width)) == size
+    assert (
+        len(esolangs.generate("collatz_multiverse", table, width=width).source) == size
+    )
 
 
 @pytest.mark.parametrize("family", ["and", "or", "parity"])
@@ -349,7 +353,9 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
 
     for bit in "01":
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = compat.generate("Collatz Multiverse", bit * (1 << n), **options)
+            program = esolangs.generate(
+                "Collatz Multiverse", bit * (1 << n), **options
+            ).source
             if not options:
                 assert len(program) == 23 * n + 228 + 20 * int(bit)
             rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
@@ -364,7 +370,7 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
 def test_three_input_corpus_size() -> None:
     assert (
         sum(
-            len(compat.generate("Collatz Multiverse", format(value, "08b")))
+            len(esolangs.generate("Collatz Multiverse", format(value, "08b")).source)
             for value in range(256)
         )
         == 194290

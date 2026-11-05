@@ -5,7 +5,6 @@ import random
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.generation.wrap import (
     balance_score,
     wrap_program,
@@ -98,7 +97,7 @@ def test_packlang_reduced_indent_crossing(indent) -> None:
     from esolangs.languages.packlang.generator import _balance_form
 
     for table in ("0110", "0001", "10010110"):
-        default = compat.generate("Packlang", table)
+        default = esolangs.generate("Packlang", table).source
         program = "\n".join(
             " " * indent + row.lstrip() if row else row for row in default.split("\n")
         )
@@ -186,7 +185,7 @@ def test_an_alias_is_taken_exactly_when_it_is_cheaper(hexed, size) -> None:
 
 def test_balance_keeps_the_widest_square_candidate() -> None:
     table = _bits("2aa42a2aa4a42aa42a2aa4a42a2aa42aa42aa42a2aa42a2aa42aa42a2aa4a4a4", 8)
-    program = compat.generate("Packlang", table, balance=True)
+    program = esolangs.generate("Packlang", table, balance=True).source
     rows = program.rstrip("\n").split("\n")
     assert (max(map(len, rows)), len(rows), len(program)) == (72, 34, 1646)
 
@@ -197,7 +196,7 @@ def test_balance_of_random_n10_refolds_the_body() -> None:
     _check_refolding_leaves_foreign_or_incomplete_bodies_alone()
     rng = random.Random(5)
     table = "".join(rng.choice("01") for _ in range(1024))
-    program = str(compat.generate("Packlang", table, balance=True))
+    program = str(esolangs.generate("Packlang", table, balance=True).source)
     assert balance_score(program) == (134, 6293, 115)
 
 
@@ -209,12 +208,12 @@ def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
         for bit in "01":
             for policy in ("decimal", "binary_digits"):
                 for options in ({}, {"width": 1}, {"balance": True}):
-                    program = compat.generate(
+                    program = esolangs.generate(
                         "Packlang",
                         bit * (1 << n),
                         settings=esolangs.DialectSettings(literal_policy=policy),
                         **options,
-                    )
+                    ).source
                     if not options:
                         assert "Array" not in program
                     rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
@@ -233,7 +232,10 @@ def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
                         assert steps == n + 2
                         assert io.input_char() == ord("Q")
     assert (
-        sum(len(compat.generate("Packlang", format(v, "08b"))) for v in range(256))
+        sum(
+            len(esolangs.generate("Packlang", format(v, "08b")).source)
+            for v in range(256)
+        )
         == 77662
     )
 

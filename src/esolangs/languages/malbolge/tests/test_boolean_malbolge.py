@@ -7,7 +7,7 @@ from collections.abc import Sequence
 
 import pytest
 
-from esolangs.compat import generate
+import esolangs
 from esolangs.exceptions import GeneratorCapError
 from esolangs.languages.malbolge import generator as boolean
 from esolangs.languages.malbolge.generator import digits as _digits
@@ -51,7 +51,7 @@ def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
 @pytest.mark.parametrize("table", ["0110", dense(5)])
 def test_wrapping_preserves_loaded_addresses_and_output(table: str, width: int) -> None:
     plain = boolean.malbolge(table)
-    wrapped = generate("Malbolge", table, width=width)
+    wrapped = esolangs.generate("Malbolge", table, width=width).source
     assert max(map(len, wrapped.splitlines())) <= width
     assert wrapped.replace("\n", "") == plain
     assert len(wrapped) == len(plain) + (len(plain) - 1) // width

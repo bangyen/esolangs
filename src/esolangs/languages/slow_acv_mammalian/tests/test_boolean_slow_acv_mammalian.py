@@ -8,7 +8,6 @@ from math import gcd
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs import run as execute
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.slow_acv_mammalian import generator as boolean
@@ -86,15 +85,15 @@ def test_mod255_ignored_inputs_keep_reads_and_the_smaller_candidate(
     )
     settings = esolangs.DialectSettings(cell_modulus=255, io_modulus=io_modulus)
     legacy = _unprojected_255(table, inputs, io_modulus)
-    program = compat.generate("SLOW ACV MAMMALIAN", table, settings=settings)
+    program = esolangs.generate("SLOW ACV MAMMALIAN", table, settings=settings).source
     assert len(program) <= len(legacy)
     if inputs >= 3 or io_modulus == 256:
         assert program.split().count("ACCEPT") == inputs
     if inputs == 8 and io_modulus == 255:
         assert len(program) < len(legacy)  # positive control for projection
-    balanced = compat.generate(
+    balanced = esolangs.generate(
         "SLOW ACV MAMMALIAN", table, settings=settings, balance=True
-    )
+    ).source
     assert balance_score(balanced) <= balance_score(
         balance_program(legacy, "slow_acv_mammalian")
     )
@@ -958,7 +957,7 @@ def test_constant_print_array_is_independent_of_every_input(cell, io, bit) -> No
 
     table = bit * 256
     settings = esolangs.DialectSettings(cell_modulus=cell, io_modulus=io)
-    program = compat.generate("SLOW ACV MAMMALIAN", table, settings=settings)
+    program = esolangs.generate("SLOW ACV MAMMALIAN", table, settings=settings).source
     assert program.split().count("ACCEPT") == 8
     assert "LEAPFROG" not in program
     assert (
@@ -975,9 +974,9 @@ def test_constant_print_array_still_consumes_the_whole_stream(cell, io, bit) -> 
     settings = esolangs.DialectSettings(cell_modulus=cell, io_modulus=io)
     for n in range(1, 13):
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = compat.generate(
+            program = esolangs.generate(
                 "SLOW ACV MAMMALIAN", bit * (1 << n), settings=settings, **options
-            )
+            ).source
             if not options:
                 assert len(program) == 7 * n + 63 - 5 * int(bit)
             for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):

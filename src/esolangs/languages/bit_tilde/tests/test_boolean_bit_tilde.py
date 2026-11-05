@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.languages.bit_tilde import generator as boolean
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_parity_at_most_doubles, measure_run
@@ -34,7 +34,7 @@ def test_every_constant_row_within_written_state_bound(bit: str) -> None:
 
     for n in range(1, 13):
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = compat.generate("bit~", bit * (1 << n), **options)
+            program = esolangs.generate("bit~", bit * (1 << n), **options).source
             commands = n + 17 + 9 * int(bit)
             # Tape through cell 18/22, four pointer bits, cursor and input.
             workspace = 23 + 4 * int(bit) + commands.bit_length() + n.bit_length()
@@ -89,7 +89,7 @@ def _check_split_inputs() -> None:
             for row in range(1 << n)
         )
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = compat.generate("bit~", table, **options)
+            program = esolangs.generate("bit~", table, **options).source
             for row in (0, (1 << n) // 3, (1 << n) - 1):
                 io = ScriptedIO(f"{row:0{n}b}Q")
                 machine = _Machine("".join(program.split()), io)

@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.languages.painfuck import generator as boolean
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
@@ -50,7 +50,6 @@ def test_shared_residual_executes_within_ledger() -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("table", multiple_tables())
 def test_multiple_flags_execute_with_their_native_command_price(table) -> None:
-    import esolangs
     from esolangs.debugger import make_vm
     from esolangs.generation.helpers import permute_truth_table
     from esolangs.generation.shared_block import repeated_bank
@@ -124,14 +123,15 @@ def test_admission_bound_keeps_the_winning_shared_form() -> None:
 
 
 def _check_constants() -> None:
-    import esolangs
     from esolangs.languages.painfuck.interpreter import run
     from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Painfuck", bit * (1 << n), **options)
+                program = esolangs.generate(
+                    "Painfuck", bit * (1 << n), **options
+                ).source
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(
                         esolangs.encode_inputs("Painfuck", [int(b) for b in row])

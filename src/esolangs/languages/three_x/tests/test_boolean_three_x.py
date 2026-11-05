@@ -6,7 +6,6 @@ from fractions import Fraction
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.languages.three_x import generator as boolean
 from esolangs.languages.three_x.generator import _constant, _gain
 from esolangs.languages.three_x.tests.formulas import _key
@@ -233,7 +232,7 @@ def test_three_x_keys_fit_their_bound() -> None:
     ],
 )
 def test_block_sharing_sizes(table: str, size: int) -> None:
-    assert len(compat.generate("three_x", table)) == size
+    assert len(esolangs.generate("three_x", table).source) == size
 
 
 def _check_constants() -> None:
@@ -242,7 +241,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("3x", bit * (1 << n), **options)
+                program = esolangs.generate("3x", bit * (1 << n), **options).source
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(
                         esolangs.encode_inputs("3x", [int(b) for b in row]) + " 7",

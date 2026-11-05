@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_native_rows
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -14,7 +13,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     from esolangs.languages.lol_waht_i_cant_edit_talk_pages.interpreter import run
 
-    program = compat.generate("lol waht i cant edit talk pages", table)
+    program = esolangs.generate("lol waht i cant edit talk pages", table).source
     assert_native_rows(
         "lol waht i cant edit talk pages", table, program, run, sentinel="Q", token=True
     )
@@ -27,9 +26,9 @@ def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate(
+                program = esolangs.generate(
                     "lol waht i cant edit talk pages", bit * (1 << n), **options
-                )
+                ).source
                 if not options:
                     assert len(program) == 28 * n + 23
                 rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
@@ -50,7 +49,11 @@ def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
                     assert io.input_token() == "Q"
     assert (
         sum(
-            len(compat.generate("lol waht i cant edit talk pages", format(v, "08b")))
+            len(
+                esolangs.generate(
+                    "lol waht i cant edit talk pages", format(v, "08b")
+                ).source
+            )
             for v in range(256)
         )
         == 110463

@@ -5,7 +5,7 @@ from itertools import pairwise
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs import run as execute
 from esolangs.languages.brainif import generator as boolean
 from tests.generators.boolean_runners import _runner
@@ -168,7 +168,7 @@ def test_brainif_zero_landing_public_and_larger_samples(width: int) -> None:
 
     for n in range(2, 7):
         table = "".join(str((row * 73 + row // 3) % 2) for row in range(2**n))
-        program = compat.generate("BrainIf", table, width=width)
+        program = esolangs.generate("BrainIf", table, width=width).source
         for row in [0, 1, 2**n // 3, 2**n - 1]:
             stdin = format(row, f"0{n}b")
             assert execute("BrainIf", program, stdin=stdin).output == table[row]
@@ -266,7 +266,7 @@ def test_a_narrow_five_input_lookup_has_an_exact_size() -> None:
     from tests.support.evaluation import _evaluate
 
     table = "0" * 31 + "1"
-    program = compat.generate("brainif", table, width=1)
+    program = esolangs.generate("brainif", table, width=1).source
     assert len(str(program)) == 2731
     assert _evaluate("BrainIf", program, inputs=5) == table
 
@@ -277,7 +277,7 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
 
     for bit in "01":
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = compat.generate("BrainIf", bit * (1 << n), **options)
+            program = esolangs.generate("BrainIf", bit * (1 << n), **options).source
             if not options:
                 assert len(program) == 22 * n + (483 if bit == "0" else 11)
             rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)

@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs import run as execute
 from esolangs.languages.taglate import generator as boolean
 from esolangs.languages.taglate.wrapping import _taglate
@@ -33,8 +33,10 @@ def test_constant_reads_every_input_before_printing(n: int, bit: str) -> None:
     if n == 1 and bit == "0":
         _check_constants()
     table = bit * (1 << n)
-    programs = [compat.generate("Taglate", table, width=w) for w in (None, 1, 20)]
-    programs.append(compat.generate("Taglate", table, balance=True))
+    programs = [
+        esolangs.generate("Taglate", table, width=w).source for w in (None, 1, 20)
+    ]
+    programs.append(esolangs.generate("Taglate", table, balance=True).source)
     for program in programs:
         for row in range(1 << n):
             io = ScriptedIO(f"{row:0{n}b}" + "extra")
@@ -185,7 +187,7 @@ def test_seed_bootstrap_exact_queue(count: int) -> None:
 
 def test_public_narrow_generator_route() -> None:
 
-    program = compat.generate("taglate", "0110", width=1)
+    program = esolangs.generate("taglate", "0110", width=1).source
     assert max(map(len, program.splitlines())) == 1
     assert run_taglate(program, ["0", "1"]) == "1"
 
@@ -200,7 +202,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Taglate", bit * (1 << n), **options)
+                program = esolangs.generate("Taglate", bit * (1 << n), **options).source
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row + "7", expected=n)
                     assert_constant_output(run, program.splitlines(), io, bit, n)
@@ -258,7 +260,7 @@ def _check_resource_layouts() -> None:
     for n in (1, 2, 3, 4, 5):
         table = resource_witness(n)
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = str(compat.generate("Taglate", table, **options))
+            program = str(esolangs.generate("Taglate", table, **options).source)
             row = (1 << n) - 4 if n >= 2 else 0
             io = ScriptedIO(f"{row:0{n}b}!")
             machine = _Machine(program.splitlines(), io)

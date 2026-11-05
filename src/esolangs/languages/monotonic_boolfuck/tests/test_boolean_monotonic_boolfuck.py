@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_native_rows
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -15,7 +15,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
         _check_constants()
     from esolangs.languages.monotonic_boolfuck.interpreter import run
 
-    program = compat.generate("Monotonic Boolfuck", table)
+    program = esolangs.generate("Monotonic Boolfuck", table).source
     assert_native_rows("Monotonic Boolfuck", table, program, run, sentinel="Q")
 
 
@@ -36,9 +36,9 @@ def _check_constants() -> None:
                 + sum(i.bit_length() for i in range(1, n))
             )
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate(
+                program = esolangs.generate(
                     "Monotonic Boolfuck", bit * (1 << n), **options
-                )
+                ).source
                 assert len("".join(program.split())) == length
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     io = ReadFirstIO(f"{row:0{n}b}" + "Q", expected=n)
@@ -55,6 +55,9 @@ def _check_constants() -> None:
                     assert (machine.state.remaining, io.past_end) == (0, 0)
                     assert io.input_char() == ord("Q")
     assert (
-        sum(len(compat.generate("Monotonic Boolfuck", f"{v:08b}")) for v in range(256))
+        sum(
+            len(esolangs.generate("Monotonic Boolfuck", f"{v:08b}").source)
+            for v in range(256)
+        )
         == 36526
     )

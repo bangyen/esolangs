@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import compat, run
+from esolangs import run
 from esolangs.languages.algebraic_programming_language.generator import (
     _apl_reduced_ordered,
     _apl_repeated_expressions,
@@ -80,7 +80,7 @@ def test_shared_expressions_obey_bounds_for_every_small_table(
 @pytest.mark.parametrize("n", [4, 5, 6])
 def test_public_parity_uses_arithmetic_twins(n) -> None:
     table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
-    source = compat.generate(NAME, table)
+    source = esolangs.generate(NAME, table).source
     assert "%2" in source
     assert "()=" not in source
 

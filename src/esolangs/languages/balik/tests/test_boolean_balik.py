@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_constant_output, assert_native_rows
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -14,7 +14,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
     if table == "00":
         _check_constants()
         _check_projection()
-    program = compat.generate("Balik", table)
+    program = esolangs.generate("Balik", table).source
     if table == "10":
         assert len(program.splitlines()) == 3
     from esolangs.languages.balik.interpreter import run
@@ -25,11 +25,14 @@ def test_every_row_prints_its_answer(table: str) -> None:
 def _check_constants() -> None:
     from esolangs.languages.balik.interpreter import run
 
-    assert sum(len(compat.generate("Balik", f"{k:08b}")) for k in range(256)) == 44929
+    assert (
+        sum(len(esolangs.generate("Balik", f"{k:08b}").source) for k in range(256))
+        == 44929
+    )
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Balik", bit * (1 << n), **options)
+                program = esolangs.generate("Balik", bit * (1 << n), **options).source
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row + "7", expected=n)
                     assert_constant_output(run, program, io, bit, n)

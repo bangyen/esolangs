@@ -5,7 +5,6 @@ from itertools import product
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.generation.helpers import essential_inputs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.b_tapemark import generator as tools
@@ -35,7 +34,9 @@ def test_each_dialect_answers_its_own_programs() -> None:
         settings = esolangs.DialectSettings(swap_marker=swap_marker)
         for table in tables:
             n = len(table).bit_length() - 1
-            program = str(compat.generate("B-tapemark", table, settings=settings))
+            program = str(
+                esolangs.generate("B-tapemark", table, settings=settings).source
+            )
             for row, expected in enumerate(table):
                 assert execute(program, format(row, f"0{n}b"), swap_marker) == (
                     expected,
@@ -120,7 +121,7 @@ def test_constant_reads_each_input_and_prints_a_literal(n, bit) -> None:
     assert len(default) == 2 * n + 2
     assert len(default) < len(_b_tapemark_program(table))
     for options in ({}, {"width": 1}, {"width": 8}, {"width": 40}, {"balance": True}):
-        program = compat.generate("B-tapemark", table, **options)
+        program = esolangs.generate("B-tapemark", table, **options).source
         for row in range(1 << n):
             bits = format(row, f"0{n}b")
             assert execute(program, bits) == (bit, n)
@@ -160,7 +161,7 @@ def test_narrow_short_projected_table_keeps_ignored_selectors_out(used) -> None:
         for row in range(1 << n)
     )
     for width in (1, 8, 40):
-        program = compat.generate("B-tapemark", table, width=width)
+        program = esolangs.generate("B-tapemark", table, width=width).source
         legacy = _b_tapemark_program(table, width, keep_full_narrow=True)
         assert len(program) <= len(legacy)
         if width <= 8:
@@ -185,14 +186,14 @@ def test_narrow_staircase_executes_every_small_table_in_input_order() -> None:
         max(
             map(
                 len,
-                compat.generate("B-tapemark", "0110", width=1).splitlines(),
+                esolangs.generate("B-tapemark", "0110", width=1).source.splitlines(),
             )
         )
         == 9
     )
     for n in range(1, 4):
         for table in witnesses(n):
-            program = compat.generate("B-tapemark", table, width=1)
+            program = esolangs.generate("B-tapemark", table, width=1).source
             for row, expected in enumerate(table):
                 assert execute(program, format(row, f"0{n}b")) == (expected, n)
 
@@ -273,12 +274,12 @@ def test_render_is_the_bounding_box() -> None:
 )
 def test_the_narrow_staircase_is_exactly_sized(table: str, length: int) -> None:
     """Row spacing and the zero pad before a short projected table, to the cell."""
-    assert len(compat.generate("B-tapemark", table, width=8)) == length
+    assert len(esolangs.generate("B-tapemark", table, width=8).source) == length
 
 
 def test_wide_reflection_turns_the_beam_right_after_the_copy() -> None:
     """The turn sits at 3 * size + 1: reflected, ``<`` follows the last copy."""
-    program = compat.generate("B-tapemark", "01", width=40)
+    program = esolangs.generate("B-tapemark", "01", width=40).source
     assert len(program) == 106
     assert next(row for row in program.splitlines() if "<" in row) == "   /|1*|0*<"
 
@@ -286,7 +287,7 @@ def test_wide_reflection_turns_the_beam_right_after_the_copy() -> None:
 def test_balance_of_a_three_ones_n8_table_is_exact() -> None:
     """The reduced copy length (17/20 of the closed form) stays in the folds tried."""
     table = "".join("1" if i in (13, 107, 141) else "0" for i in range(256))
-    program = str(compat.generate("B-tapemark", table, balance=True))
+    program = str(esolangs.generate("B-tapemark", table, balance=True).source)
     assert balance_score(program) == (170, 3303, 142)
 
 
@@ -333,7 +334,7 @@ def test_balance_folds_a_random_table() -> None:
     from esolangs.languages.b_tapemark.generator import _b_tapemark_program
 
     table = "".join(str((value * 73 + value // 3) & 1) for value in range(64))
-    balanced = compat.generate("B-tapemark", table, balance=True)
+    balanced = esolangs.generate("B-tapemark", table, balance=True).source
     # 202 columns unfolded; the stages' seven rows apiece floor the height.
     assert (
         balance_score(balanced)[0] < 130 < balance_score(_b_tapemark_program(table))[0]
@@ -373,7 +374,9 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("B-tapemark", bit * (1 << n), **options)
+                program = esolangs.generate(
+                    "B-tapemark", bit * (1 << n), **options
+                ).source
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row + "7", expected=n)
                     assert_constant_output(run, program, io, bit, n)

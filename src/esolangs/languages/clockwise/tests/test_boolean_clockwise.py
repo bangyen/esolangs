@@ -2,7 +2,8 @@
 
 import pytest
 
-from esolangs import compat, run
+import esolangs
+from esolangs import run
 from esolangs.languages.clockwise import generator as boolean
 from tests.support.witness_tables import parity, row_bits, witnesses
 
@@ -35,7 +36,7 @@ def test_balanced_ring_for_at_most_one_input_has_the_square_size(
     table: str, size: int
 ) -> None:
 
-    program = str(compat.generate("clockwise", table, balance=True))
+    program = str(esolangs.generate("clockwise", table, balance=True).source)
     assert len(program) == size
     n = len(table).bit_length() - 1
     for row in range(1 << n):
@@ -149,7 +150,7 @@ def test_width_rotates_the_lookup_without_changing_answers(width: int) -> None:
     for n in range(1, 7):
         table = ("01101001" * 8)[: 1 << n]
         plain = boolean.clockwise(table)
-        program = compat.generate("Clockwise", table, width=width)
+        program = esolangs.generate("Clockwise", table, width=width).source
         plain_width = max(map(len, plain.splitlines()))
         assert max(map(len, program.splitlines())) <= max(
             width, min(plain_width, 2 if n <= 2 else 2 * n + 5)
@@ -218,12 +219,12 @@ def test_balance_bands_a_random_table() -> None:
     from esolangs.generation.wrap import balance_score
 
     table = "".join(str((value * 73 + value // 3) & 1) for value in range(64))
-    balanced = compat.generate("Clockwise", table, balance=True)
+    balanced = esolangs.generate("Clockwise", table, balance=True).source
     # 184 columns by default; two selected strips of sixteen entries each.
     assert (
         balance_score(balanced)[0]
         < 120
-        < balance_score(compat.generate("Clockwise", table))[0]
+        < balance_score(esolangs.generate("Clockwise", table).source)[0]
     )
 
 

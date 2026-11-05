@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs import run as execute
 from esolangs.languages.circlefuck import generator as boolean
 from tests.generators.boolean_runners import _runner
@@ -33,11 +33,11 @@ def test_constant_reads_into_spent_code_and_prints_a_literal_tail(n, bit) -> Non
         _check_constants()
         _check_reader()
     table = bit * (1 << n)
-    program = compat.generate("Circlefuck", table)
+    program = esolangs.generate("Circlefuck", table).source
     assert program == "," * n + "<.@" + bit
     assert len(program) == n + 4
     for options in ({}, {"width": 1}, {"width": 8}, {"width": 40}, {"balance": True}):
-        wrapped = compat.generate("Circlefuck", table, **options)
+        wrapped = esolangs.generate("Circlefuck", table, **options).source
         assert _evaluate("Circlefuck", wrapped, inputs=n) == table
     for row in range(1 << n):
         io = ScriptedIO(format(row, f"0{n}b") + "0")
@@ -115,7 +115,9 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Circlefuck", bit * (1 << n), **options)
+                program = esolangs.generate(
+                    "Circlefuck", bit * (1 << n), **options
+                ).source
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row + "7", expected=n)
                     assert_constant_output(run, program, io, bit, n)
@@ -128,7 +130,7 @@ def _check_reader() -> None:
     total = 0
     for value in range(256):
         table = f"{value:08b}"
-        program = str(compat.generate("Circlefuck", table))
+        program = str(esolangs.generate("Circlefuck", table).source)
         total += len(program)
         for row in range(8):
             io = ReadFirstIO(f"{row:03b}" + "7", expected=3)
@@ -143,7 +145,7 @@ def _check_reader() -> None:
 
     table = "00110110"
     for options in ({}, {"width": 1}, {"balance": True}):
-        program = str(compat.generate("Circlefuck", table, **options))
+        program = str(esolangs.generate("Circlefuck", table, **options).source)
         io = ReadFirstIO("1117", expected=3)
         machine = _Machine(program, io)
         steps, written = measure_run(machine)

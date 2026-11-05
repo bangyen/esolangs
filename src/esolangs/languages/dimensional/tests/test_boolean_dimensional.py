@@ -5,8 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import compat, run
-from esolangs.compat import generate
+from esolangs import run
 from esolangs.generation.wrap import (
     wrap_program,
 )
@@ -29,8 +28,10 @@ def test_constant_reads_into_scratch_and_prints_a_fresh_literal(
     if n == 1 and bit == "0":
         _check_constants()
     table = bit * (1 << n)
-    programs = [generate("Dimensional", table, width=w) for w in (None, 1, 20)]
-    programs.append(generate("Dimensional", table, balance=True))
+    programs = [
+        esolangs.generate("Dimensional", table, width=w).source for w in (None, 1, 20)
+    ]
+    programs.append(esolangs.generate("Dimensional", table, balance=True).source)
     for program in programs:
         for row in range(1 << n):
             io = ScriptedIO("\n".join(f"{row:0{n}b}") + "\nextra")
@@ -47,7 +48,7 @@ def test_constant_reads_into_scratch_and_prints_a_fresh_literal(
 def test_bare_axis_leaves_execute_all_small_tables() -> None:
     for n in range(1, 4):
         for table in witnesses(n):
-            program = generate("Dimensional", table, width=1)
+            program = esolangs.generate("Dimensional", table, width=1).source
             assert max(map(len, program.splitlines())) == (1 if n <= 2 else 2)
             for row, expected in enumerate(table):
                 io = ScriptedIO("\n".join(format(row, f"0{n}b")))
@@ -79,7 +80,7 @@ def test_larger_tables_keep_the_established_index(n: int) -> None:
     if n == 4:
         _check_first_essential_read()
     table = "".join(str((row * 73 + row // 3) & 1) for row in range(1 << n))
-    program = generate("Dimensional", table, width=1)
+    program = esolangs.generate("Dimensional", table, width=1).source
     for row in (0, 1, len(table) // 2, len(table) - 1):
         io = ScriptedIO("\n".join(format(row, f"0{n}b")))
         machine = _Machine(program, io)
@@ -122,7 +123,7 @@ class TestDimensional:
         """Random tables pack two entries a cell and execute; or keeps its loop."""
         rng = random.Random(7)
         table = "".join(rng.choice("01") for _ in range(128))
-        program = generate("Dimensional", table)
+        program = esolangs.generate("Dimensional", table).source
         assert "[->4+<4[->5+<5[->4-<4]]]" in program
         for row in range(0, 128, 5):
             stdin = "\n".join(format(row, "07b"))
@@ -131,12 +132,12 @@ class TestDimensional:
                 == table[row]
             )
         either = "0" + "1" * 127
-        assert "[->4+<4[->5" not in generate("Dimensional", either)
+        assert "[->4+<4[->5" not in esolangs.generate("Dimensional", either).source
 
     def test_a_sparse_table_with_trailing_zeros_executes(self) -> None:
         """Trailing zeros are painted like any other run; every row answers."""
         table = "0" * 9 + "1" + "0" * 6
-        program = generate("Dimensional", table)
+        program = esolangs.generate("Dimensional", table).source
         for row, expected in enumerate(table):
             stdin = "\n".join(format(row, "04b"))
             assert (
@@ -199,7 +200,9 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Dimensional", bit * (1 << n), **options)
+                program = esolangs.generate(
+                    "Dimensional", bit * (1 << n), **options
+                ).source
                 if not options:
                     assert len(program) == n + 3
                 if options == {"width": 1}:
@@ -244,9 +247,9 @@ def _check_first_essential_read() -> None:
             for row in range(128)
         )
         programs = [
-            generate("Dimensional", table),
-            generate("Dimensional", table, width=1),
-            generate("Dimensional", table, balance=True),
+            esolangs.generate("Dimensional", table).source,
+            esolangs.generate("Dimensional", table, width=1).source,
+            esolangs.generate("Dimensional", table, balance=True).source,
         ]
         weights, projected = input_weights(table, 7)
         if (packed := _packed(projected, weights)) is not None:

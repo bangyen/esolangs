@@ -5,7 +5,7 @@ from functools import cache
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.languages.rotfuck import generator as boolean
 from tests.generators.boolean_runners import _runner
 from tests.interpreters.runner import run_program
@@ -341,7 +341,6 @@ def _search_pad_until(builder: object, done: Callable[[int], bool]) -> int | Non
 
 
 def _check_native_constants(bit: str) -> None:
-    import esolangs
     from esolangs.languages.rotfuck.interpreter import _Machine
     from esolangs.languages.rotfuck.proof_formulas import execution, workspace
     from scripts.benchmark import WrittenState
@@ -350,9 +349,9 @@ def _check_native_constants(bit: str) -> None:
         for rotation in ("backward", "forward"):
             settings = esolangs.DialectSettings(rotation=rotation)
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate(
+                program = esolangs.generate(
                     "ROTfuck", bit * (1 << n), settings=settings, **options
-                )
+                ).source
                 assert len("".join(program.split())) == n + 26 + int(bit)
                 commands = execution(n, program)
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
@@ -371,7 +370,10 @@ def _check_native_constants(bit: str) -> None:
                     assert io.getvalue() == bit
                     assert io.past_end == 0
                     assert io.input_char() == ord("Q")
-    assert sum(len(compat.generate("ROTfuck", f"{v:08b}")) for v in range(256)) == 71890
+    assert (
+        sum(len(esolangs.generate("ROTfuck", f"{v:08b}").source) for v in range(256))
+        == 71890
+    )
 
 
 def _check_symmetric_multipliers() -> None:

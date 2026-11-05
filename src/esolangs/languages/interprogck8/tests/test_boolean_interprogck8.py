@@ -6,7 +6,6 @@ from itertools import pairwise
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs import run as execute
 from esolangs.exceptions import GeneratorCapError
 from esolangs.languages.interprogck8 import generator
@@ -25,7 +24,7 @@ def _answer(program: str, n: int, row: int) -> str:
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     n = len(table).bit_length() - 1
-    program = compat.generate("Interprogck8", table)
+    program = esolangs.generate("Interprogck8", table).source
     for row in range(len(table)):
         assert _answer(program, n, row) == table[row], (table, row)
 
@@ -40,7 +39,7 @@ def test_a_deep_path_keeps_its_flights_apart(one: int) -> None:
     """
     n = 22
     table = "0" * one + "1" + "0" * ((1 << n) - one - 1)
-    program = compat.generate("Interprogck8", table)
+    program = esolangs.generate("Interprogck8", table).source
     for row in (one, one ^ 1, one ^ (1 << (n - 1)), 0):
         assert _answer(program, n, row) == table[row], row
 
@@ -52,7 +51,7 @@ def test_flights_land_on_their_stops_across_windows(seed: int) -> None:
     rng = random.Random(seed)
     n = 8
     table = "".join("1" if rng.random() < 0.1 else "0" for _ in range(1 << n))
-    program = compat.generate("Interprogck8", table)
+    program = esolangs.generate("Interprogck8", table).source
     assert len(str(program).split("\n")) > 126 * 4
     for row in range(1 << n):
         assert _answer(program, n, row) == table[row], (seed, row)
@@ -61,7 +60,7 @@ def test_flights_land_on_their_stops_across_windows(seed: int) -> None:
 def test_three_input_program_keeps_its_measured_length() -> None:
     """Three inputs take one cluster window and a tail: 472 lines."""
     table = "00011110"
-    program = compat.generate("Interprogck8", table)
+    program = esolangs.generate("Interprogck8", table).source
     assert len(str(program).split("\n")) == 472
     for row in range(8):
         assert _answer(program, 3, row) == table[row], row
@@ -72,7 +71,7 @@ def test_parity_windows_keep_measured_lengths() -> None:
     sizes = {}
     for n in (8, 10, 12):
         parity = "".join(str(i.bit_count() % 2) for i in range(1 << n))
-        program = str(compat.generate("Interprogck8", parity))
+        program = str(esolangs.generate("Interprogck8", parity).source)
         lines = program.split("\n")
         assert all(lines[k] == "DownAccLines" for k in range(0, len(lines) - 82, 138))
         sizes[n] = len(program)
@@ -167,7 +166,7 @@ def test_a_subtree_advances_at_most_two_to_the_h_minus_one_windows(n: int) -> No
 def test_constants_read_before_the_arithmetic_tail(n, bit) -> None:
     from esolangs.languages.interprogck8.interpreter import run
 
-    program = compat.generate("Interprogck8", bit * (1 << n))
+    program = esolangs.generate("Interprogck8", bit * (1 << n)).source
     assert len(program) == 2 * n + 28 + 4 * int(bit)
     rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
     for row in rows:
@@ -181,7 +180,7 @@ def test_constants_read_before_the_arithmetic_tail(n, bit) -> None:
 def test_three_input_corpus_size() -> None:
     assert (
         sum(
-            len(compat.generate("Interprogck8", format(value, "08b")))
+            len(esolangs.generate("Interprogck8", format(value, "08b")).source)
             for value in range(256)
         )
         == 339776

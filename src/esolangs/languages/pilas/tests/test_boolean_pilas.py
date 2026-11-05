@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs import run as execute
 from esolangs.languages.pilas.interpreter import run
 from esolangs.runtime.io import ScriptedIO
@@ -19,7 +18,8 @@ def test_every_row_prints_its_answer(table: str) -> None:
     n = len(table).bit_length() - 1
     if table == "01101001":
         assert (
-            sum(len(compat.generate("Pilas", f"{i:08b}")) for i in range(256)) == 24034
+            sum(len(esolangs.generate("Pilas", f"{i:08b}").source) for i in range(256))
+            == 24034
         )
 
     class ReadFirstIO(ScriptedIO):
@@ -27,7 +27,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
             assert self.progress() == n
             super()._write(value)
 
-    program = compat.generate("Pilas", table)
+    program = esolangs.generate("Pilas", table).source
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("Pilas", bits)
@@ -53,7 +53,7 @@ def _check_constants() -> None:
 
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Pilas", bit * (1 << n), **options)
+                program = esolangs.generate("Pilas", bit * (1 << n), **options).source
                 if not options:
                     assert len(program) == 3 * n + 13 - 2 * keep + 2 * int(bit)
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):

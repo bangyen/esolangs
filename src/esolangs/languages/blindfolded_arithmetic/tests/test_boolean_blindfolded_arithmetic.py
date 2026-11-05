@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from tests.support.generator_support import assert_every_row, measure_run
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
@@ -25,9 +24,9 @@ def test_the_input_is_the_row_number() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                source = compat.generate(
+                source = esolangs.generate(
                     "Blindfolded Arithmetic", bit * (1 << n), **options
-                )
+                ).source
                 assert len(source.replace("\n", "")) == 11
                 for row in (0, 1, (1 << n) - 1):
                     vm = make_vm("Blindfolded Arithmetic", source, stdin=f"{row + 1}\n")
@@ -51,7 +50,7 @@ def _check_alternating_rounds() -> None:
         "0110100110010110",
         "1001011001101001",
     ):
-        program = compat.generate("Blindfolded Arithmetic", table)
+        program = esolangs.generate("Blindfolded Arithmetic", table).source
         for row, bit in enumerate(table):
             io = ScriptedIO(f"{row + 1} 99")
             machine = _Machine(program, io)

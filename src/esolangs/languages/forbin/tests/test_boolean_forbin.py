@@ -8,7 +8,7 @@ from collections.abc import Callable
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.languages.forbin import generator as boolean
 from esolangs.languages.forbin.generator import _BLOCK_WIDTHS, _Names
@@ -26,7 +26,7 @@ class TestForbinBoolean:
         """The witness tables execute with a four-column grammar floor."""
         for n in range(1, 4):
             for table in witnesses(n):
-                program = compat.generate("Forbin", table, width=width)
+                program = esolangs.generate("Forbin", table, width=width).source
                 assert isinstance(program, str)
                 assert max(map(len, program.splitlines())) <= max(width, 4)
                 for row in range(2**n):
@@ -44,7 +44,7 @@ class TestForbinBoolean:
                 "".join(rng.choice("01") for _ in range(2**n)),
             ]
             for table in tables:
-                program = compat.generate("Forbin", table, width=width)
+                program = esolangs.generate("Forbin", table, width=width).source
                 assert isinstance(program, str)
                 assert max(map(len, program.splitlines())) <= max(width, 4)
                 for row in [0, 2**n - 1, *rng.sample(range(2**n), 16)]:
@@ -211,10 +211,10 @@ def test_host_recursion_fits_the_claimed_scaling_range() -> None:
             table = "".join(format(j + 1, "0128b") for j in range(1 << (n - 7)))
             if kind == "generate":
                 frames[n] = _frames_needed(
-                    lambda t=table: compat.generate("Forbin", t) and 1, 1
+                    lambda t=table: esolangs.generate("Forbin", t).source and 1, 1
                 )
             else:
-                program = compat.generate("Forbin", table)
+                program = esolangs.generate("Forbin", table).source
                 bits = ["1"] * n
                 frames[n] = _frames_needed(
                     lambda p=program, b=bits: run_forbin_boolean(p, b), table[-1]
@@ -234,7 +234,7 @@ def test_balanced_spaces_only_separate_word_tokens(n: int, side: int) -> None:
     from tests.support.evaluation import _evaluate
 
     table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
-    balanced = str(compat.generate("forbin", table, balance=True))
+    balanced = str(esolangs.generate("forbin", table, balance=True).source)
     assert balance_score(balanced)[0] == side
     assert not re.search(r"[^\w\n] | [^\w\n]", balanced)
     assert _evaluate("forbin", balanced, inputs=n) == table
@@ -249,7 +249,7 @@ def test_constants_read_whole_bytes_then_print_inline() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Forbin", bit * (1 << n), **options)
+                program = esolangs.generate("Forbin", bit * (1 << n), **options).source
                 if not options:
                     assert len(program) == (16 * n + 40 if n == 1 else 2 * n + 64)
                 rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
@@ -270,6 +270,9 @@ def test_constants_read_whole_bytes_then_print_inline() -> None:
                     if not options:
                         assert written.bits == workspace(n, program)
     assert (
-        sum(len(compat.generate("Forbin", format(v, "08b"))) for v in range(256))
+        sum(
+            len(esolangs.generate("Forbin", format(v, "08b")).source)
+            for v in range(256)
+        )
         == 46690
     )

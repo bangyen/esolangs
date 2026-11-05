@@ -7,7 +7,6 @@ from collections.abc import Iterable
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs import run as execute
 from esolangs.languages.dig import generator as boolean
 from esolangs.languages.dig.generator import _DIG_BRANCH, _DIG_STRIDE
@@ -235,7 +234,7 @@ class TestDig:
         from esolangs.languages.dig.interpreter import run
 
         # Every width up to 7 builds this same program.
-        program = compat.generate("Dig", "0110", width=1)
+        program = esolangs.generate("Dig", "0110", width=1).source
         assert max(map(len, program.splitlines())) == 4
         for row, expected in enumerate("0110"):
             io = ScriptedIO("\n".join(f"{row:02b}") + "\n")
@@ -386,7 +385,7 @@ def test_a_width_tree_reads_an_ignored_input_in_the_next_block(width: int) -> No
 @pytest.mark.parametrize("table", ["00", "0000"])
 def test_narrow_balance_regime_edge_executes(table) -> None:
     """The smallest tables reaching an otherwise-untaken balance arm."""
-    balanced = compat.generate("Dig", table, balance=True)
+    balanced = esolangs.generate("Dig", table, balance=True).source
     assert _evaluate("Dig", balanced, inputs=len(table).bit_length() - 1) == table
 
 
@@ -588,7 +587,7 @@ def test_balance_considers_the_discard_wrapper() -> None:
     table = "0000011100000111"
     wrapped = _dig_discarded(table, 4, essential_inputs(table, 4))
     assert wrapped is not None
-    program = compat.generate("Dig", table, balance=True)
+    program = esolangs.generate("Dig", table, balance=True).source
     assert balance_score(program) <= balance_score(wrapped)
     for candidate in (wrapped, program):
         for row, expected in enumerate(table):
@@ -792,7 +791,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Dig", bit * (1 << n), **options)
+                program = esolangs.generate("Dig", bit * (1 << n), **options).source
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(
                         esolangs.encode_inputs("Dig", [int(b) for b in row]) + "7\n",

@@ -60,6 +60,10 @@ execution. Size callbacks and native sample fixtures read explicit source after
 binding. Shared support modules no longer call the source facade; remaining
 owned test callers still require migration.
 
+Owned source-inspection tests for 91 text backends use explicit artifact source
+for native machines, layout checks and size pins. Template, raster, compressed
+and metadata-sensitive owned callers remain open.
+
 Accounting and analysis rows require owned witnesses, not just a declared hook
 or a recognized helper name. Certification needs an installed-package/lazy-import
 acceptance audit after the active separation work lands. Storage policy needs

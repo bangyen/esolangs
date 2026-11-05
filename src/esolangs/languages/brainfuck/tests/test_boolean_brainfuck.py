@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import measure_run
 from tests.support.reference import REFERENCE
@@ -87,7 +87,7 @@ def test_multiple_residuals_reduce_guarded_parity_within_ledger() -> None:
         table, tuple(range(n)), 2 * (n - 1), 2 * n, shared=repeated_block(table)
     )
     previous = ">>".join("," + "-" * 48 for _ in range(n)) + body + "+" * 48 + "."
-    assert len(compat.generate(REFERENCE, table)) < len(previous)
+    assert len(esolangs.generate(REFERENCE, table).source) < len(previous)
     assert_shared_program(
         REFERENCE,
         table,
@@ -137,7 +137,9 @@ def _check_constants() -> None:
     for n in range(2, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("brainfuck", bit * (1 << n), **options)
+                program = esolangs.generate(
+                    "brainfuck", bit * (1 << n), **options
+                ).source
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     stdin = esolangs.encode_inputs(
                         "brainfuck", list(map(int, f"{row:0{n}b}"))
@@ -159,7 +161,8 @@ def _check_constants() -> None:
                     )
                     assert io.input_char() == ord("Q")
     assert (
-        sum(len(compat.generate("brainfuck", f"{v:08b}")) for v in range(256)) == 64098
+        sum(len(esolangs.generate("brainfuck", f"{v:08b}").source) for v in range(256))
+        == 64098
     )
 
 
@@ -174,7 +177,7 @@ def _check_zero_guards() -> None:
             for row in range(1 << n)
         )
         for options in ({}, {"width": 1}, {"balance": True}):
-            source = compat.generate("brainfuck", table, **options)
+            source = esolangs.generate("brainfuck", table, **options).source
             inverted |= "-[+" in "".join(source.split())
             for row in (0, 1, (1 << n) - 1):
                 io = ReadFirstIO(f"{row:0{n}b}Q", expected=0)

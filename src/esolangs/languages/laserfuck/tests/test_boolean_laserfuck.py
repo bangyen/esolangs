@@ -6,7 +6,7 @@ import re
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.languages.laserfuck import generator as boolean
 from esolangs.languages.laserfuck.generator import MARGIN
 from esolangs.languages.laserfuck.tests.runners import run_laserfuck
@@ -432,7 +432,7 @@ def test_vertical_tree_preserves_fitting_public_layouts(width: int) -> None:
     legacy = _laserfuck_build(table, width)
     if max(map(len, legacy.splitlines())) > width:
         legacy = _laserfuck_raise_funnel(legacy)
-    source = compat.generate("LaserFuck", table, width=width)
+    source = esolangs.generate("LaserFuck", table, width=width).source
     if max(map(len, legacy.splitlines())) <= width:
         assert source == legacy
     for heading in range(4):
@@ -479,7 +479,7 @@ def test_balance_races_the_turned_tree(n: int, side: int) -> None:
     from tests.support.evaluation import _evaluate
 
     table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
-    balanced = compat.generate("LaserFuck", table, balance=True)
+    balanced = esolangs.generate("LaserFuck", table, balance=True).source
     assert balance_score(balanced)[0] == side
     assert _evaluate("LaserFuck", balanced, 60, inputs=n, max_rows=None) == table
     wrong = table[:-1] + str(1 - int(table[-1]))
@@ -493,7 +493,7 @@ def test_balance_tiles_subtrees_at_n9() -> None:
     from tests.support.evaluation import _evaluate
 
     table = format(random.Random(9).getrandbits(1 << 9), f"0{1 << 9}b")
-    balanced = compat.generate("LaserFuck", table, balance=True)
+    balanced = esolangs.generate("LaserFuck", table, balance=True).source
     assert balance_score(balanced) == (292, 25252, 292)
     assert _evaluate("LaserFuck", balanced, 60, inputs=9, max_rows=None) == table
 
@@ -520,7 +520,7 @@ def test_constants_drain_before_dump_at_every_heading(n, bit) -> None:
 def test_three_input_corpus_size() -> None:
     assert (
         sum(
-            len(compat.generate("LaserFuck", format(value, "08b")))
+            len(esolangs.generate("LaserFuck", format(value, "08b")).source)
             for value in range(256)
         )
         == 87555

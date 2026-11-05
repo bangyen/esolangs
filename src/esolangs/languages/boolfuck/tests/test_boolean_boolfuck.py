@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from tests.support.event_io import ReadFirstIO
 
 
@@ -37,7 +37,9 @@ def _check_constants() -> None:
         for bit in "01":
             commands = (14 * n + 11 if n >= 3 else 8 * n + 10) + 2 * int(bit)
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Boolfuck", bit * (1 << n), **options)
+                program = esolangs.generate(
+                    "Boolfuck", bit * (1 << n), **options
+                ).source
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     io = ReadFirstIO(f"{row:0{n}b}" + "Q", expected=n)
                     machine = _Machine(program, io)
@@ -54,7 +56,8 @@ def _check_constants() -> None:
                     assert (machine.state.remaining, io.past_end) == (0, 0)
                     assert io.input_char() == ord("Q")
     assert (
-        sum(len(compat.generate("Boolfuck", f"{v:08b}")) for v in range(256)) == 30652
+        sum(len(esolangs.generate("Boolfuck", f"{v:08b}").source) for v in range(256))
+        == 30652
     )
 
 

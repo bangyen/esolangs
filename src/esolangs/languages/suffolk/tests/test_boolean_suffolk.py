@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.languages.suffolk import generator as boolean
 from esolangs.languages.suffolk.tests.lookup_support import _suffolk_lookup
 from tests.generators.boolean_runners import _runner
@@ -34,7 +34,9 @@ class TestSuffolk:
             for bit in "01":
                 length = 2 * n + 51 + int(bit)
                 for options in ({}, {"width": 1}, {"balance": True}):
-                    program = compat.generate("Suffolk", bit * (1 << n), **options)
+                    program = esolangs.generate(
+                        "Suffolk", bit * (1 << n), **options
+                    ).source
                     for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                         stdin = f"{row:0{n}b}"
                         io = ReadFirstIO(stdin + "Q", expected=n)
@@ -101,7 +103,7 @@ def _check_stored_input_records() -> None:
             )
             records = (0, (1 << n) - 1, (1 << n) // 3)
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Suffolk", table, **options)
+                program = esolangs.generate("Suffolk", table, **options).source
                 commands = "".join(program.split())
                 io = ScriptedIO("".join(f"{r:0{n}b}" for r in records))
                 machine = _Machine(commands, io)

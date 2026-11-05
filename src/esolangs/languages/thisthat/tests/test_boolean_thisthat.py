@@ -5,7 +5,7 @@ from itertools import pairwise
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.languages.thisthat.generator import _Builder, _tree, thisthat
 from esolangs.languages.thisthat.interpreter import run
 from esolangs.runtime.io import ScriptedIO
@@ -133,7 +133,7 @@ def test_rotated_layout_keeps_ports_and_bistack_axes(width: int) -> None:
     for n in (1, 3, 5):
         table = parity(n)
         plain = thisthat(table)
-        program = compat.generate("thisthat", table, width=width)
+        program = esolangs.generate("thisthat", table, width=width).source
         floor = min(max(map(len, plain.splitlines())), len(plain.splitlines()))
         assert max(map(len, program.splitlines())) <= max(width, floor)
         for row, expected in enumerate(table):
@@ -154,7 +154,7 @@ def test_narrow_strip_executes_every_small_table() -> None:
     """Each narrow branch consumes the same input deque and prints once."""
     for n in range(1, 4):
         for table in witnesses(n):
-            source = compat.generate("thisthat", table, width=1)
+            source = esolangs.generate("thisthat", table, width=1).source
             assert max(map(len, source.splitlines())) <= 9
             for row, expected in enumerate(table):
                 io = ScriptedIO("".join(f"{bit}" for bit in f"{row:0{n}b}"))
@@ -176,7 +176,7 @@ def test_strip_preserves_fitting_layouts_and_public_answers(width: int) -> None:
             map(len, plain.splitlines())
         ):
             old = _rotate_tree(plain)
-        source = compat.generate("thisthat", table, width=width)
+        source = esolangs.generate("thisthat", table, width=width).source
         if max(map(len, old.splitlines())) <= width:
             assert source == old
         assert evaluate_generated("thisthat", table, width=width) == table
@@ -194,7 +194,7 @@ def test_larger_narrow_layout_retains_linear_area_construction(n: int) -> None:
         if len(raw.splitlines()) < max(map(len, raw.splitlines()))
         else raw
     )
-    source = compat.generate("thisthat", table, width=1)
+    source = esolangs.generate("thisthat", table, width=1).source
     assert source == expected
     for row in {0, (1 << n) - 1, *(rng.randrange(1 << n) for _ in range(4))}:
         io = ScriptedIO("".join(f"{bit}" for bit in f"{row:0{n}b}"))
@@ -204,13 +204,13 @@ def test_larger_narrow_layout_retains_linear_area_construction(n: int) -> None:
 
 def test_narrow_strip_counts_kept_inputs() -> None:
     table = "01101001" * 2  # four inputs, the first ignored
-    source = compat.generate("thisthat", table, width=1)
+    source = esolangs.generate("thisthat", table, width=1).source
     assert max(map(len, source.splitlines())) <= 9
     assert verify_generated("thisthat", table, width=1)
 
 
 def test_xor_has_one_column() -> None:
-    xor = compat.generate("thisthat", "0110", width=1)
+    xor = esolangs.generate("thisthat", "0110", width=1).source
     assert max(map(len, xor.splitlines())) == 1
 
 
@@ -358,7 +358,7 @@ def test_a_dag_over_the_cycle_bound_is_refused() -> None:
     from esolangs.languages.thisthat.generator import _admit_shared, shared_tree
 
     table = "0000111011101111"
-    source = compat.generate("thisthat", table)
+    source = esolangs.generate("thisthat", table).source
     assert len(source) == 395
     shared = shared_tree(table)
     assert shared is not None
@@ -376,7 +376,7 @@ def test_balance_races_the_flat_tree(n: int, side: int) -> None:
     from tests.support.evaluation import _evaluate
 
     table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
-    balanced = compat.generate("thisthat", table, balance=True)
+    balanced = esolangs.generate("thisthat", table, balance=True).source
     assert balance_score(balanced)[0] == side
     assert _evaluate("thisthat", balanced, 60, inputs=n, max_rows=None) == table
 
@@ -414,7 +414,9 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("thisthat", bit * (1 << n), **options)
+                program = esolangs.generate(
+                    "thisthat", bit * (1 << n), **options
+                ).source
                 if not options or "width" in options:
                     assert (
                         len(program.splitlines()) * max(map(len, program.splitlines()))
@@ -436,5 +438,6 @@ def _check_constants() -> None:
                     assert io.reads == n
                     assert io.input_char() == ord("1")
     assert (
-        sum(len(compat.generate("thisthat", f"{v:08b}")) for v in range(256)) == 47482
+        sum(len(esolangs.generate("thisthat", f"{v:08b}").source) for v in range(256))
+        == 47482
     )

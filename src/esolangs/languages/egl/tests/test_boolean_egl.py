@@ -4,7 +4,7 @@ import itertools
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.languages.egl import generator as tools
 from esolangs.languages.egl.interpreter import run
 from esolangs.runtime.io import ScriptedIO
@@ -79,7 +79,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("EGL", bit * (1 << n), **options)
+                program = esolangs.generate("EGL", bit * (1 << n), **options).source
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row + "7", expected=n)
                     assert_constant_output(run, program, io, bit, n)

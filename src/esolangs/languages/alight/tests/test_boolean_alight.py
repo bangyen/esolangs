@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import compat, run
+from esolangs import run
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.alight import generator as boolean
 from esolangs.languages.alight.interpreter import run as alight_run
@@ -27,10 +27,12 @@ def test_alight_balance_drops_ignored_inputs(syntax) -> None:
 
     settings = DialectSettings(expression_syntax=syntax)
     table = "0110" * 16  # 4 inputs ignored of 6
-    program = str(compat.generate("Alight", table, balance=True, settings=settings))
+    program = str(
+        esolangs.generate("Alight", table, balance=True, settings=settings).source
+    )
     assert _evaluate("Alight", program, inputs=6, settings=settings) == table
     full = "0" * 31 + "1" + "0" * 32  # every input matters
-    kept = compat.generate("Alight", full, balance=True, settings=settings)
+    kept = esolangs.generate("Alight", full, balance=True, settings=settings).source
     assert len(program) < len(str(kept))
 
 
@@ -46,7 +48,7 @@ def test_alight_layouts_stay_near_the_exhaustive_column_selector(inputs) -> None
 
     rng = random.Random(1025 + inputs)
     table = "".join(rng.choice("01") for _ in range(1 << inputs))
-    flat = compat.generate("Alight", table)
+    flat = esolangs.generate("Alight", table).source
     # The retired selector: every column's fold, rendered once.
     forms = [(1, 0, "\n".join(flat)), (len(flat), 1, flat)]
     for columns in range(1, len(flat) + 1):
@@ -73,9 +75,9 @@ def test_alight_layouts_stay_near_the_exhaustive_column_selector(inputs) -> None
         )
     ceiling = max(ready for ready, _, _ in ranked)
     for width in range(1, ceiling + 1):
-        built = compat.generate("Alight", table, width=width)
+        built = esolangs.generate("Alight", table, width=width).source
         assert max(map(len, built.splitlines())) <= width
-    balanced = compat.generate("Alight", table, balance=True)
+    balanced = esolangs.generate("Alight", table, balance=True).source
     winners = [flat] + [
         min((item for item in ranked if item[0] <= width), key=lambda item: item[1])[2]
         for width in range(1, ceiling + 1)
@@ -213,7 +215,7 @@ def test_constant_lookup_drops_every_index_input(syntax, update, bit) -> None:
     _check_native_constants(syntax, update, bit)
     table = bit * 256
     settings = esolangs.DialectSettings(expression_syntax=syntax, list_update=update)
-    program = compat.generate("Alight", table, settings=settings)
+    program = esolangs.generate("Alight", table, settings=settings).source
     assert _evaluate("Alight", program, inputs=8, settings=settings) == table
 
 
@@ -230,12 +232,12 @@ def test_constant_lookup_executes_every_layout(syntax, bit, width, n) -> None:
 
     table = bit * (1 << n)
     settings = esolangs.DialectSettings(expression_syntax=syntax)
-    program = compat.generate(
+    program = esolangs.generate(
         "Alight",
         table,
         settings=settings,
         **({"balance": True} if width == "balance" else {"width": width}),
-    )
+    ).source
     assert _evaluate("Alight", program, inputs=n, settings=settings) == table
 
 
@@ -265,9 +267,9 @@ def _check_native_constants(syntax: str, update: str, bit: str) -> None:
     settings = esolangs.DialectSettings(expression_syntax=syntax, list_update=update)
     for n in range(1, 13):
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = compat.generate(
+            program = esolangs.generate(
                 "Alight", bit * (1 << n), settings=settings, **options
-            )
+            ).source
             if not options:
                 assert (
                     program
@@ -294,4 +296,7 @@ def _check_native_constants(syntax: str, update: str, bit: str) -> None:
                 assert written.bits <= workspace(n, program)
                 if not options:
                     assert steps == n + 5
-    assert sum(len(compat.generate("Alight", f"{v:08b}")) for v in range(256)) == 24154
+    assert (
+        sum(len(esolangs.generate("Alight", f"{v:08b}").source) for v in range(256))
+        == 24154
+    )

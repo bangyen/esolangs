@@ -2,7 +2,8 @@
 
 import pytest
 
-from esolangs import compat, generate
+import esolangs
+from esolangs import generate
 from esolangs.generation.wrap import balance_score
 from tests.support.evaluation import _evaluate
 from tests.support.generator_support import evaluate_generated
@@ -11,13 +12,13 @@ from tests.support.generator_support import evaluate_generated
 @pytest.mark.medium
 @pytest.mark.parametrize("table", ["01" * 32, "0" * 64])
 def test_streetcode_indexed_regimes_are_balanced_and_execute(table) -> None:
-    default = compat.generate("Streetcode", table)
-    balanced = compat.generate("Streetcode", table, balance=True)
+    default = esolangs.generate("Streetcode", table).source
+    balanced = esolangs.generate("Streetcode", table, balance=True).source
     widest = max(map(len, default.split("\n")))
     optimum = min(
         [default]
         + [
-            compat.generate("Streetcode", table, width=width)
+            esolangs.generate("Streetcode", table, width=width).source
             for width in range(1, widest + 1)
         ],
         key=balance_score,

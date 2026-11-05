@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -23,7 +22,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Caballo", bit * (1 << n), **options)
+                program = esolangs.generate("Caballo", bit * (1 << n), **options).source
                 assert program.replace("\n", "") == "p" * n + (
                     "i" if bit == "1" else ""
                 )
@@ -36,4 +35,7 @@ def _check_constants() -> None:
                     assert io.position() == len(stdin)
                     assert io.past_end == 0
 
-    assert sum(len(compat.generate("Caballo", f"{v:08b}")) for v in range(256)) == 10072
+    assert (
+        sum(len(esolangs.generate("Caballo", f"{v:08b}").source) for v in range(256))
+        == 10072
+    )

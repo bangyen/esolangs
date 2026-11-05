@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import compat, run
+from esolangs import run
 from esolangs.generation.examples import BOOLEAN_EXAMPLES
 from esolangs.generation.wrap import wrap_program
 from esolangs.languages.packlang.generator import packlang
@@ -18,7 +18,7 @@ from tests.support.witness_tables import witnesses
 @pytest.mark.medium
 def test_every_small_packlang_table_executes_at_the_new_floor(inputs: int) -> None:
     for table in witnesses(inputs):
-        source = compat.generate("Packlang", table, width=1)
+        source = esolangs.generate("Packlang", table, width=1).source
         assert max(map(len, source.splitlines())) == 7
         assert evaluate_generated("Packlang", table, width=1) == table
 
@@ -27,7 +27,7 @@ def test_every_small_packlang_table_executes_at_the_new_floor(inputs: int) -> No
 @pytest.mark.parametrize("width", [1, 7, 11, 40, 80])
 def test_packlang_lexical_folds_execute_sampled_rows(inputs: int, width: int) -> None:
     table = format(random.Random(inputs).getrandbits(1 << inputs), f"0{1 << inputs}b")
-    source = compat.generate("Packlang", table, width=width)
+    source = esolangs.generate("Packlang", table, width=width).source
     assert max(map(len, source.splitlines())) <= max(width, 7)
     reflowed = wrap_program(source, "packlang", 1)
     assert _tokenize(reflowed) == _tokenize(source)
