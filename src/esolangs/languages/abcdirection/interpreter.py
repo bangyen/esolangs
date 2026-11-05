@@ -51,11 +51,16 @@ Decisions:
 """
 
 from collections import deque
-from typing import NamedTuple
+from collections.abc import Mapping
+from functools import partial
+from typing import Any, NamedTuple
 
+from esolangs.languages.abcdirection.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime.bits import put_bit, take_bit
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
@@ -300,9 +305,20 @@ class _Machine:
             self.length += 1
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh machines; abcdirection has no runtime options."""
+    if not isinstance(source, str):
+        raise TypeError("abcdirection machines require text source")
+    if options:
+        raise TypeError("abcdirection machines accept no runtime options")
+    return partial(_Machine, source)
+
+
 def _execute(code: str, io: IO) -> CompletionReport:
     """Run an ABCDirection program until it provably repeats in silence."""
-    return drive(_Machine(code, io))
+    return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO) -> None:

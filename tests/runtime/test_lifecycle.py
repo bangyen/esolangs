@@ -246,3 +246,96 @@ def test_native_completion_sets_preserve_the_stepped_policy():
     assert not dynamic.accepts_native(Completion.POST_HALT)
     assert dynamic.completion is Completion.HALTED
     assert traits(None, dynamic)["steppable_to_answer"]
+
+
+@pytest.mark.medium
+def test_declared_ordinary_text_factories_and_routes(monkeypatch):
+    from esolangs.runtime._lifecycle import POST_HALT_REPORT
+
+    selected = {
+        name: lang
+        for name, lang in LANGUAGES.items()
+        if lang.runtime.capabilities is not None
+        and lang.runtime.capabilities.completion is Completion.HALTED
+        and lang.runtime.capabilities.self_halts
+        and lang.runtime.source_kind.value == "text"
+        and not lang.runtime.compressed_source
+    }
+    assert selected
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            """
+import json, sys
+from esolangs.registry import LANGUAGES
+from esolangs.vm import machine_traits, make_vm
+samples = json.loads(sys.argv[1])
+modules = {f'esolangs.languages.{LANGUAGES[name].id}.interpreter' for name in samples}
+assert not modules.intersection(sys.modules)
+for name in samples:
+    traits = machine_traits(name)
+    assert traits['self_halts'] and traits['steppable_to_answer']
+    assert not traits['dumps_on_the_post_halt_step']
+assert not modules.intersection(sys.modules)
+for name, (source, stdin) in samples.items():
+    make_vm(name, source, stdin=stdin)
+assert modules <= sys.modules.keys(), 'loading control did not fire'
+""",
+            json.dumps({name: SAMPLES[name] for name in selected}),
+        ],
+        check=True,
+        timeout=10,
+    )
+    for name, language in selected.items():
+        caps = language.runtime.capabilities
+        source, stdin = SAMPLES[name]
+        seed = language.runtime.reproducible_seed if language.runtime.random else None
+        native = esolangs.run(name, source, stdin=stdin, seed=seed)
+        assert native.completion.kind is Completion.HALTED
+        assert (
+            esolangs.run(name, source, stdin=stdin, seed=seed, isolated=True) == native
+        )
+        module = interpreter_module(name)
+        with monkeypatch.context() as control:
+            control.setattr(
+                module._Machine, "completion", Completion.POST_HALT, raising=False
+            )
+            control.setattr(module._Machine, "ip_shape", "opaque", raising=False)
+            control.setattr(
+                module._Machine,
+                "incidental_view",
+                property(lambda _self: 99),
+                raising=False,
+            )
+            control.setattr(
+                module._Machine,
+                "eof_is_a_value",
+                not caps.eof_is_a_value,
+                raising=False,
+            )
+            preparation = language.runtime.machine_preparation
+            declared = SimpleNamespace(**{preparation: getattr(module, preparation)})
+            control.setattr(
+                vm, "interpreter_module", lambda _name, proxy=declared: proxy
+            )
+            debug = make_debugger(name, source, stdin=stdin, seed=seed)
+            assert debug.ip_shape == caps.debug.ip_shape
+            assert debug.eof_is_a_value == caps.eof_is_a_value
+            assert "incidental_view" not in dict(debug.views)
+            assert debug.run(max_steps=1000) == "halted"
+            result, snapshot = debug.result, debug.snapshot()
+            assert result == native._replace(steps=result.steps)
+            debug.step()
+            assert debug.result == result
+            assert debug.snapshot() == snapshot
+            assert debug.run(max_steps=0) == "halted"
+            assert debug.result == result
+            assert esolangs.run(name, source, stdin=stdin, seed=seed) == native
+            control.setattr(
+                module,
+                language.runtime.completion_entrypoint,
+                lambda *_args, **_options: POST_HALT_REPORT,
+            )
+            with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):
+                esolangs.run(name, source, stdin=stdin, seed=seed)

@@ -28,9 +28,16 @@ Decisions:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from functools import partial
+from typing import Any
+
+from esolangs.languages.deadfish.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
@@ -118,9 +125,20 @@ class _Machine:
             self.io.print_str(out)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh machines; deadfish has no runtime options."""
+    if not isinstance(source, str):
+        raise TypeError("deadfish machines require text source")
+    if options:
+        raise TypeError("deadfish machines accept no runtime options")
+    return partial(_Machine, source)
+
+
 def _execute(code: str, io: IO) -> CompletionReport:
     """Run a Deadfish program, printing a line per ``o``."""
-    return drive(_Machine(code, io))
+    return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO) -> None:

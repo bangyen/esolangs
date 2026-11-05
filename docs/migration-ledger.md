@@ -70,3 +70,7 @@ acceptance remain open.
 A Painter Ant declares periodic rendering after a repeated pass boundary. Suffolk
 keeps stepped EOF completion and declares both EOF and evidenced native repeats.
 Both declare factories and debug surfaces; retirement and package acceptance stay open.
+
+The first ordinary text batch declares Deadfish, HQ9+, Nope., Home Row, BFStack
+and ABCDirection. Their debug projections, EOF behavior and ordinary completion
+remain unchanged. Cached, inherited, compressed and raster factories remain open.

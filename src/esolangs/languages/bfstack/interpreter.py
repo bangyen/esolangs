@@ -18,12 +18,17 @@ Errors:
 
 from __future__ import annotations
 
-from typing import NamedTuple
+from collections.abc import Mapping
+from functools import partial
+from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.bfstack.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
@@ -212,10 +217,21 @@ class _Machine:
         self.state = _advance(self.state, self.code, self._jumps, byte)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh machines; bfstack has no runtime options."""
+    if not isinstance(source, str):
+        raise TypeError("bfstack machines require text source")
+    if options:
+        raise TypeError("bfstack machines accept no runtime options")
+    return partial(_Machine, source)
+
+
 def _execute(code: str, io: IO) -> CompletionReport:
     """Run a BFStack program, halting on an invalid empty-stack operation."""
     machine = _Machine(code, io)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO) -> None:

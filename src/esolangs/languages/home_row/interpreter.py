@@ -20,9 +20,16 @@ Decisions:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from functools import partial
+from typing import Any
+
+from esolangs.languages.home_row.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import unmatched
 from esolangs.runtime.io import IO
@@ -171,10 +178,21 @@ class _Machine:
         self.state = _advance(self.state, self.code, self.match)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh machines; home_row has no runtime options."""
+    if not isinstance(source, str):
+        raise TypeError("home_row machines require text source")
+    if options:
+        raise TypeError("home_row machines accept no runtime options")
+    return partial(_Machine, source)
+
+
 def _execute(code: str, io: IO) -> CompletionReport:
     """Run a Home Row program."""
     machine = _Machine(code, io)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO) -> None:

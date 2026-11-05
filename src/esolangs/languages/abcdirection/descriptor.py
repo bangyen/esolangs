@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for ABCDirection."""
 
+from esolangs.languages.abcdirection.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -13,6 +14,9 @@ LANGUAGE = Language(
         category="grid_based",
         eof="EOF supplies zero bits",
         empty_program="program must contain a line with DDDDDD",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
     ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
