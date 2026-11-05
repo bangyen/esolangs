@@ -60,6 +60,10 @@ class _State:
     program: tuple[_Instruction, ...]
 
 
+# Exact types a worker may reconstruct from this interpreter's snapshots.
+SNAPSHOT_RECORDS = (_State, _Instruction)
+
+
 def _decimal(source: str) -> int:
     """Parse ASCII digits without CPython's decimal conversion cap."""
     value = 0

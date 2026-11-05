@@ -28,7 +28,7 @@ from esolangs.runtime._execution import check_signal_timeout
 from esolangs.runtime._isolated import check_limits
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import ProgramSource, check_scale_for
-from esolangs.runtime._termination import _terminates
+from esolangs.runtime._termination import _termination_result
 from esolangs.runtime._validate import _TIMEOUT_FLOOR, check_timeout, check_whole
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.source_hints import with_hint
@@ -286,35 +286,29 @@ def _row_answerer(
                 settings=settings,
             ),
         )
-    # Which of halting and diverging means 1, as data.  It is
-    # ``("halts", "diverges")`` for all four, but reading the order
-    # rather than assuming it is what keeps this branch language-free.
+    # Derive each bit from its declared halt/diverge order.
     values = LANGUAGES[name].contract.answer_values
     diverges_is = str(values.index("diverges"))
     halts_is = str(values.index("halts"))
-    if isolated:
-        from esolangs.runtime._isolated import termination_isolated
 
-        return lambda source, stdin, bound: termination_isolated(
-            name,
-            cast("str", source),
-            stdin,
-            cast("float", bound),
-            halts_is,
-            diverges_is,
-            settings=settings,
-            max_output=max_output,
-            max_memory=max_memory,
-        )
-    return lambda source, stdin, bound: _terminates(
-        name,
-        cast("str", source),
-        stdin,
-        bound,
-        halts_is,
-        diverges_is,
-        settings=settings,
-    )
+    def answer(source: Program, stdin: str, bound: float | None) -> str:
+        if isolated:
+            from esolangs.runtime._isolated import termination_result_isolated
+
+            proof = termination_result_isolated(
+                name,
+                source,
+                stdin,
+                cast("float", bound),
+                settings=settings,
+                max_output=max_output,
+                max_memory=max_memory,
+            )
+        else:
+            proof = _termination_result(name, source, stdin, bound, settings=settings)
+        return halts_is if proof.decision.halts else diverges_is
+
+    return answer
 
 
 def _evaluate(

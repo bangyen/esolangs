@@ -56,10 +56,10 @@ def test_an_expired_call_does_not_return_a_false_verdict():
 def test_termination_returns_without_evidence_abort(monkeypatch, verdict):
     monkeypatch.setattr(_termination, "_halt_or_cycle_result", lambda _vm: verdict)
     with pytest.raises(esolangs.InterpreterLimitError, match="no decision evidence"):
-        _termination._terminates(REFERENCE, "", "", None, "0", "1")
+        _termination._termination_result(REFERENCE, "", "", None)
 
 
 def test_a_driver_that_never_ran_does_not_prove_divergence(monkeypatch):
     monkeypatch.setattr(esolangs, "_run", lambda *_args: None)
     with pytest.raises(esolangs.InterpreterLimitError, match="no decision evidence"):
-        _termination._terminates(REFERENCE, "", "", None, "0", "1")
+        _termination._termination_result(REFERENCE, "", "", None)

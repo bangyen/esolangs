@@ -7,6 +7,9 @@ import pytest
 
 import esolangs
 from esolangs.runtime._isolated import _decode, _worker
+from esolangs.runtime._lifecycle import HALTED_REPORT
+from esolangs.runtime._result import ExecutionResult
+from esolangs.runtime._result_wire import encode_result
 from tests.support.generator_support import evaluate_generated, verify_generated
 from tests.support.pick import one
 from tests.support.reference import REFERENCE
@@ -236,7 +239,7 @@ def test_isolated_row_timeout_stays_undecided(language, monkeypatch) -> None:
         raise error
 
     monkeypatch.setattr(esolangs, "run", expire)
-    monkeypatch.setattr(_isolated, "termination_isolated", expire)
+    monkeypatch.setattr(_isolated, "termination_result_isolated", expire)
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
         evaluate_generated(language, "0110", isolated=True)
     assert caught.value.partial_output == "prefix"
@@ -266,7 +269,14 @@ def test_process_creation_consumes_the_worker_deadline(
 
         def communicate(self, *_args, **kwargs):
             calls.append(kwargs.get("timeout"))
-            return '{"result":""}', ""
+            return json.dumps(
+                {
+                    "result": "",
+                    "execution": encode_result(
+                        ExecutionResult("", 0, 0, 0, HALTED_REPORT)
+                    ),
+                }
+            ), ""
 
     def spawn(*_args, **_kwargs):
         clock[0] += startup
@@ -274,7 +284,7 @@ def test_process_creation_consumes_the_worker_deadline(
 
     def bounded(_child, _request, timeout):
         calls.append(timeout)
-        return ""
+        return ExecutionResult("", 0, 0, 0, HALTED_REPORT)
 
     monkeypatch.setattr(_isolated, "monotonic", lambda: clock[0])
     monkeypatch.setattr(_isolated.subprocess, "Popen", spawn)
@@ -284,7 +294,7 @@ def test_process_creation_consumes_the_worker_deadline(
             _launch("{}", 1, max_output=max_output)
         assert calls == ["kill", None]
     else:
-        assert _launch("{}", 1, max_output=max_output) == ""
+        assert _launch("{}", 1, max_output=max_output).output == ""
         assert calls == [pytest.approx(0.6)]
 
 
@@ -303,7 +313,6 @@ def test_process_creation_consumes_the_worker_deadline(
 def test_raster_transport_preserves_every_pixel(rows, monkeypatch) -> None:
     from esolangs.runtime import _isolated
     from esolangs.runtime._isolated import _raster_rows, _raster_transport
-    from esolangs.runtime._result import ExecutionResult
 
     image = esolangs.Raster(rows)
     runs = _raster_transport(image)
@@ -312,7 +321,7 @@ def test_raster_transport_preserves_every_pixel(rows, monkeypatch) -> None:
         _isolated,
         "_launch",
         lambda request, *_args, **_kwargs: ExecutionResult(
-            json.dumps(json.loads(request)["program"]), None, None, None
+            json.dumps(json.loads(request)["program"]), None, None, None, HALTED_REPORT
         ),
     )
     language = one(source_kind="raster", boolean_generator=True)[0]
@@ -397,5 +406,7 @@ def test_worker_returns_a_termination_verdict(monkeypatch, capsys) -> None:
         "integer_max_output": True,
     }
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(request)))
+    original_io = esolangs.ScriptedIO, vm.ScriptedIO
     _worker()
-    assert _decode(capsys.readouterr().out, expired=False) == "0"
+    assert (esolangs.ScriptedIO, vm.ScriptedIO) == original_io
+    assert _decode(capsys.readouterr().out, expired=False).decision.halts is True

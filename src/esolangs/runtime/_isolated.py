@@ -22,12 +22,20 @@ from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry import resolve
 from esolangs.runtime._input import InputSource, read_input
 from esolangs.runtime._program import Program
+from esolangs.runtime._proof import TerminationResult
 from esolangs.runtime._result import ExecutionResult
-from esolangs.runtime._result_wire import decode_result, encode_result
+from esolangs.runtime._result_wire import (
+    decode_result,
+    decode_termination,
+    encode_decision,
+    encode_result,
+)
 from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._validate import check_timeout, check_whole
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
+
+type _WorkerResult = ExecutionResult | TerminationResult
 
 type _RasterRuns = tuple[tuple[int, tuple[tuple[int, Pixel], ...]], ...]
 
@@ -68,7 +76,7 @@ def _raster_rows(runs: _RasterRuns) -> Rows:
     )
 
 
-def _decode(text: str, *, expired: bool) -> str | ExecutionResult:
+def _decode(text: str, *, expired: bool) -> _WorkerResult:
     error: exceptions.EsolangError
     output: list[str] = []
     result: dict[str, Any] | None = None
@@ -111,16 +119,19 @@ def _decode(text: str, *, expired: bool) -> str | ExecutionResult:
         if "notes" in result:
             error.__notes__ = list(result["notes"])
         raise error
-    if "execution" in result:
-        try:
-            return decode_result(result["result"], result["execution"])
-        except (TypeError, ValueError, KeyError) as cause:
-            error = exceptions.InterpreterLimitError(
-                "invalid isolated execution result"
+    try:
+        if "termination" in result:
+            return decode_termination(
+                result["result"], result["execution"], result["termination"]
             )
-            error.partial_output = partial
-            raise error from cause
-    return cast("str", result["result"])
+        execution = decode_result(result["result"], result["execution"])
+        if execution.completion is None:
+            raise ValueError("worker omitted output completion")
+        return execution
+    except (TypeError, ValueError, KeyError) as cause:
+        error = exceptions.InterpreterLimitError("invalid isolated execution result")
+        error.partial_output = partial
+        raise error from cause
 
 
 #: The worker's output-cap message, which also tells the parent the cap hit.
@@ -253,11 +264,15 @@ def run_isolated_result(
         raise request
     with _timeout_named(timeout):
         result = _launch(request, remaining, max_output=max_output)
-    if not isinstance(result, ExecutionResult):
+    if not isinstance(result, ExecutionResult) or result.completion is None:
         error = exceptions.InterpreterLimitError(
             "isolated worker omitted execution metadata"
         )
-        error.partial_output = result
+        error.partial_output = (
+            result.output
+            if isinstance(result, ExecutionResult)
+            else result.observation.output
+        )
         raise error
     return result
 
@@ -276,7 +291,7 @@ def _timeout_named(timeout: float) -> Iterator[None]:
 
 def _launch(
     request: str, timeout: float, *, max_output: int | None = None
-) -> str | ExecutionResult:
+) -> _WorkerResult:
     """Run one JSON request, killing and reaping on deadline."""
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join(sys.path)
@@ -317,7 +332,7 @@ def _launch(
 
 def _bounded_output(
     child: subprocess.Popen[str], request: str, timeout: float
-) -> str | ExecutionResult:
+) -> _WorkerResult:
     """Read bounded worker records; kill and reap on an output limit or deadline."""
     records: Queue[str | BaseException | None] = Queue(maxsize=16)
     stopped = Event()
@@ -401,19 +416,17 @@ def _source_transport(source: Program) -> dict[str, Any]:
     }
 
 
-def termination_isolated(
+def termination_result_isolated(
     name: str,
     source: Program,
     stdin: str,
     timeout: float,
-    halts: str,
-    diverges: str,
     *,
     settings: DialectSettings | None = None,
     max_output: int | None = None,
     max_memory: int | None = None,
-) -> str:
-    """Prove halt or cycle in a child; deadline never means divergence."""
+) -> TerminationResult:
+    """Retain worker IO and exact proof evidence; a deadline remains undecided."""
     check_memory(max_memory, isolated=True)
     choices = dialect_options(name, settings)
     request = json.dumps(
@@ -422,7 +435,7 @@ def termination_isolated(
             **_source_transport(source),
             "stdin": stdin,
             "max_memory": max_memory,
-            "termination": [halts, diverges],
+            "termination": True,
             "settings": choices,
             "max_output": hex(max_output) if max_output is not None else None,
             "integer_max_output": max_output is not None,
@@ -430,10 +443,12 @@ def termination_isolated(
     )
     with _timeout_named(timeout):
         result = _launch(request, timeout, max_output=max_output)
-    if not isinstance(result, str):
-        raise exceptions.InterpreterLimitError(
-            "termination worker returned an execution result"
+    if not isinstance(result, TerminationResult):
+        error = exceptions.InterpreterLimitError(
+            "termination worker omitted decision evidence"
         )
+        error.partial_output = result.output
+        raise error
     return result
 
 
@@ -465,8 +480,22 @@ def _exit_with_parent() -> None:
 
 
 def _worker() -> None:
-    """Stream output and a structured verdict to the parent."""
+    """Serve one request, restoring patched IO classes for in-process callers."""
     import esolangs
+    from esolangs import vm
+
+    native_io, vm_io = esolangs.ScriptedIO, vm.ScriptedIO  # type: ignore[attr-defined]
+    try:
+        _serve_request()
+    finally:
+        esolangs.ScriptedIO = native_io  # type: ignore[attr-defined]
+        vm.ScriptedIO = vm_io  # type: ignore[attr-defined]
+
+
+def _serve_request() -> None:
+    """Stream live output and validated execution or termination metadata."""
+    import esolangs
+    from esolangs import vm
     from esolangs.runtime.io import ScriptedIO
 
     _exit_with_parent()
@@ -498,6 +527,7 @@ def _worker() -> None:
     # to the parent. ScriptedIO is deliberately absent from __all__; the
     # ignore marks this patch as intentional, not a typo.
     esolangs.ScriptedIO = StreamingIO  # type: ignore[attr-defined]
+    vm.ScriptedIO = StreamingIO  # type: ignore[attr-defined]
     request = json.load(sys.stdin)
     if request.get("integer_max_output", False):
         request["max_output"] = int(request["max_output"], 16)
@@ -525,23 +555,16 @@ def _worker() -> None:
             }
         )
         if "termination" in request:
-            from esolangs import vm
-            from esolangs.runtime._termination import _terminates
+            from esolangs.runtime._termination import _termination_result
 
-            if request.get("max_output") is not None:
-                # Same process-wide swap for the termination checker's vm import.
-                vm.ScriptedIO = StreamingIO  # type: ignore[attr-defined]
-
-            halts, diverges = request["termination"]
-            output = _terminates(
+            proved = _termination_result(
                 request["language"],
                 program,
                 request["stdin"],
                 None,
-                halts,
-                diverges,
                 settings=settings,
             )
+            result = proved.observation
         else:
             result = esolangs._run_result(  # noqa: SLF001 - same result route as public run
                 request["language"],
@@ -554,6 +577,15 @@ def _worker() -> None:
                 scale=request.get("scale"),
                 settings=settings,
             )
+        try:
+            message = {"result": result.output, "execution": encode_result(result)}
+            if "termination" in request:
+                message["termination"] = encode_decision(proved.decision)
+            send(message)
+        except (TypeError, ValueError) as encoding_error:
+            raise exceptions.InterpreterLimitError(
+                "cannot transport execution evidence"
+            ) from encoding_error
     except (MemoryError, exceptions.EsolangError) as error:
         # ``run`` translates an in-process MemoryError; here it is the cap.
         cause: BaseException | None = error
@@ -581,12 +613,6 @@ def _worker() -> None:
                 "output_limit": isinstance(error, exceptions.InterpreterLimitError)
                 and str(error) == _OUTPUT_LIMIT,
             }
-        )
-    else:
-        send(
-            {"result": output}
-            if "termination" in request
-            else {"result": result.output, "execution": encode_result(result)}
         )
 
 

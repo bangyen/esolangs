@@ -284,7 +284,7 @@ class _DelegatingVM:
     def output(self) -> str:
         return self._io.getvalue()
 
-    def _result(self, report: CompletionReport) -> ExecutionResult:
+    def _result(self, report: CompletionReport | None) -> ExecutionResult:
         """Capture public output with this VM's owned input counters."""
         return ExecutionResult(
             self.output,
@@ -389,6 +389,13 @@ def _capture_result(vm: VM) -> ExecutionResult:
     report = CompletionReport(
         Completion.POST_HALT if vm.dumps_on_the_post_halt_step else Completion.HALTED
     )
+    return _capture_observation(vm, report)
+
+
+def _capture_observation(
+    vm: VM, report: CompletionReport | None = None
+) -> ExecutionResult:
+    """Capture live IO without stepping or claiming output finalization."""
     if isinstance(vm, _DelegatingVM):
         # Use owned code; unrelated instance attributes remain caller-owned.
         return _DelegatingVM._result(vm, report)  # noqa: SLF001

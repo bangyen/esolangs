@@ -14,6 +14,7 @@ class ExecutionResult(NamedTuple):
     Input position counts characters in captured stdin; reads count successful
     IO calls and past-end counts failed reads, including caught EOFs.
     Counters are None for custom VMs without library-owned IO.
+    Completion is absent before output finalization.
     """
 
     output: str

@@ -1,55 +1,52 @@
-"""Answer a row by proving halting or a repeated machine state."""
+"""Observe IO while proving halting or a repeated machine state."""
 
 from functools import partial
 
 import esolangs
 from esolangs._cycles import _halt_or_cycle_result
-from esolangs.exceptions import InterpreterLimitError
-from esolangs.runtime._proof import CycleDecision, checked_decision
+from esolangs.exceptions import EsolangError, InterpreterLimitError
+from esolangs.runtime._program import Program
+from esolangs.runtime._proof import (
+    TerminationResult,
+    checked_termination,
+)
+from esolangs.runtime._result import ExecutionResult
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import DialectSettings, dialect_options
-from esolangs.vm import make_vm
+from esolangs.vm import _capture_observation, make_vm
 
 
-def _terminates(
+def _termination_result(
     name: str,
-    source: str,
-    stdin: str,
-    bound: float | None,
-    halts: str,
-    diverges: str,
-    *,
-    settings: DialectSettings | None = None,
-) -> str:
-    """Return this row's answer for a language that answers by terminating.
-
-    Repeated snapshots prove divergence; a growing state needs the deadline.
-    """
-    verdict = _termination_decision(name, source, stdin, bound, settings=settings)
-    return halts if verdict.halts else diverges
-
-
-def _termination_decision(
-    name: str,
-    source: str,
+    source: Program,
     stdin: str,
     bound: float | None,
     *,
     settings: DialectSettings | None = None,
-) -> CycleDecision:
-    """Return explicit halt or cycle evidence; a deadline remains undecided."""
+) -> TerminationResult:
+    """Retain live IO and proof evidence without taking a post-halt dump step."""
     dialect_options(name, settings)
 
-    def _drive(*_args: object) -> CycleDecision:
+    def _drive(*_args: object) -> TerminationResult:
         factory = make_vm if settings is None else partial(make_vm, settings=settings)
         machine = factory(name, source, stdin=stdin)
-        return _halt_or_cycle_result(machine)
+        try:
+            decision = _halt_or_cycle_result(machine)
+            return TerminationResult(_capture_observation(machine), decision)
+        except EsolangError as error:
+            error.partial_output = machine.output
+            raise
 
     verdict = esolangs._run(_drive, source, ScriptedIO(""), bound)  # noqa: SLF001
     try:
-        return checked_decision(verdict)
+        return checked_termination(verdict)
     except ValueError as error:
-        raise InterpreterLimitError(
+        failure = InterpreterLimitError(
             "termination driver returned no decision evidence",
             hint="check the termination driver or report this interpreter error",
-        ) from error
+        )
+        if isinstance(verdict, TerminationResult) and isinstance(
+            verdict.observation, ExecutionResult
+        ):
+            failure.partial_output = verdict.observation.output
+        raise failure from error

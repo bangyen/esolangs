@@ -93,7 +93,11 @@ def test_periodic_wire_report_cannot_drop_its_evidence():
 def test_normal_worker_cannot_omit_result_metadata(monkeypatch):
     from esolangs.runtime import _isolated
 
-    monkeypatch.setattr(_isolated, "_launch", lambda *_args, **_kwargs: "prefix")
+    monkeypatch.setattr(
+        _isolated,
+        "_launch",
+        lambda *_args, **_kwargs: ExecutionResult("prefix", 0, 0, 0),
+    )
     with pytest.raises(
         esolangs.InterpreterLimitError, match="omitted execution"
     ) as caught:

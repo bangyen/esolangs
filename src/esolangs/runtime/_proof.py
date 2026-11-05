@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import NamedTuple
 
 from esolangs.runtime._lifecycle import BoundaryCycle
+from esolangs.runtime._result import ExecutionResult
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,4 +82,24 @@ def checked_decision(value: object) -> CycleDecision:
         or value.cycle.repeat_pass != value.commands
     ):
         raise ValueError("divergence requires command-boundary evidence")
+    return value
+
+
+class TerminationResult(NamedTuple):
+    """Live IO observation and a proof; output finalization has not been requested."""
+
+    observation: ExecutionResult
+    decision: CycleDecision
+
+
+def checked_termination(value: object) -> TerminationResult:
+    """Require observed IO and valid proof without claiming finalized output."""
+    if (
+        not isinstance(value, TerminationResult)
+        or not isinstance(value.observation, ExecutionResult)
+        or not isinstance(value.observation.output, str)
+        or value.observation.completion is not None
+    ):
+        raise ValueError("termination requires an unfinalized IO observation")
+    checked_decision(value.decision)
     return value

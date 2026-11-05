@@ -12,7 +12,7 @@ from collections.abc import Callable
 from typing import Any
 
 import esolangs
-from esolangs.runtime._termination import _terminates
+from esolangs.runtime._termination import _termination_result
 from scripts import benchmark
 
 #: Step cap for a candidate row, matching the removed screen's.
@@ -97,14 +97,9 @@ def execute(
         if facts["answer_mode"] == "termination":
             assert isinstance(source, str)
             encoding = facts["answer_encoding"]
-            actual = _terminates(
-                name,
-                source,
-                stdin,
-                2,
-                str(encoding.index("halts")),
-                str(encoding.index("diverges")),
-                settings=settings,
+            proof = _termination_result(name, source, stdin, 2, settings=settings)
+            actual = str(
+                encoding.index("halts" if proof.decision.halts else "diverges")
             )
         else:
             actual = esolangs.read_answer(
