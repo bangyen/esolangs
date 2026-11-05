@@ -158,9 +158,10 @@ description = { growth = "linear", claim = "worst", template = "{claim} {formula
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter.py"
 tests = [
+    "src/esolangs/languages/object_disoriented/tests/oracle_checks.py::check_raw_object_disoriented",
     "src/esolangs/languages/object_disoriented/tests/test_object_disoriented.py::test_cat_echoes_until_input_runs_out",
     "src/esolangs/languages/object_disoriented/tests/test_object_disoriented.py::test_hello_world_repaired_pops_its_stack_last_in_first",
     "src/esolangs/languages/object_disoriented/tests/test_object_disoriented.py::test_bits_pack_most_significant_first",

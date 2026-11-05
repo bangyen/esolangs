@@ -265,9 +265,10 @@ description = { growth = "linear", claim = "worst", template = "{claim} {formula
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter/__init__.py"
 tests = [
+    "src/esolangs/languages/streetcode/tests/oracle_checks.py::check_raw_streetcode",
     "src/esolangs/languages/streetcode/tests/test_streetcode.py::TestStreetcodeHalt",
     "src/esolangs/languages/streetcode/tests/test_streetcode.py::TestStreetcodeIO",
     "src/esolangs/languages/streetcode/tests/test_streetcode.py::TestStreetcodeCPBounds",

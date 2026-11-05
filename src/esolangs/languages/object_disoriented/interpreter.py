@@ -32,6 +32,9 @@ Decisions:
       entered as ``flmain.z``.
     * Objects with the same function and members are equal, so ``n rz zz``
       is ``z`` and prints 0.
+      The page also calls ``n rs ss`` zero-equivalent; inside a nonzero
+      ``main`` its members copy ``main``, so eight outputs print ``ÿ`` here.
+      Structural versus behavioral zero equivalence remains open.
     * Whitespace is ignored outside comments; a class name runs to its ``.``
       with whitespace dropped.  Commands are lowercase.
     * A partial output byte at the halt is never printed: a char is printed

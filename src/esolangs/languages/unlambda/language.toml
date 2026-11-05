@@ -156,9 +156,10 @@ description = { growth = "linear", claim = "at most", template = "{claim} {formu
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter.py"
 tests = [
+    "src/esolangs/languages/unlambda/tests/oracle_checks.py::check_raw_unlambda",
     "src/esolangs/languages/unlambda/tests/test_unlambda.py::test_output",
     "src/esolangs/languages/unlambda/tests/test_unlambda.py::test_the_combinators",
     "src/esolangs/languages/unlambda/tests/test_unlambda.py::test_a_read_and_a_test_on_the_character",
