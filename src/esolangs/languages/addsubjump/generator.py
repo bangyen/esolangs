@@ -24,11 +24,7 @@ from esolangs.generation.helpers import (
     input_weights,
     stored_inputs,
 )
-from esolangs.generation.wrap import wrap_grid
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.addsubjump.descriptor import LANGUAGE as LANGUAGE
 
 #: The ``d`` operand of every instruction: cell 7, the last word of the
 #: first data block, which nothing writes, so ``*d > 0`` never holds and the
@@ -415,13 +411,3 @@ def _addsubjump_ordered(
     build(0, 0, 2**n, root)
 
     return " ".join(map(str, _memory(instructions, values, targets, [*named, *values])))
-
-
-LANGUAGE = Language(
-    "AddSubJump",
-    RuntimeSpec("addsubjump", category="register_based"),
-    backend=BooleanBackend(generate=addsubjump, wrap=wrap_grid),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

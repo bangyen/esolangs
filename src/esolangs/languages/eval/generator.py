@@ -24,11 +24,7 @@ from esolangs.generation.helpers import (
     permute_truth_table,
     read_at,
 )
-from esolangs.generation.wrap import _quote_literal
-from esolangs.registry._backend import BooleanBackend, TemplateSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.eval.descriptor import LANGUAGE as LANGUAGE
 
 # ``~`` swaps the active stack, ``*`` reverses it, ``=`` pops it onto the
 # other.  Moving values across reverses them (tests/eval_support.py).
@@ -134,16 +130,3 @@ def _eval_ordered(truth_table: str, ops: str) -> str:
         out.extend(("~=~?*", ";" * remaining))
     out.append(".")
     return "".join(out)
-
-
-LANGUAGE = Language(
-    "Eval",
-    RuntimeSpec("eval", category="stack_based"),
-    backend=BooleanBackend(
-        generate=eval,
-        # Print through a literal that must not be broken.
-        wrap=_quote_literal,
-        template=TemplateSpec(setters=eval_setters),
-    ),
-    contract=BooleanContract(),
-)

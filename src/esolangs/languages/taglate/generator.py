@@ -16,12 +16,8 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score, wrap_program
+from esolangs.languages.taglate.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.taglate.interpreter import _PREFIX, _SUFFIX, percent_encode
-from esolangs.languages.taglate.wrapping import _taglate, same_layout
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
 
 
 def _half_select(pairs: int, ahead: int, n: int) -> str:
@@ -209,19 +205,3 @@ def balance_taglate(_table: str, default: str) -> str:
             wrap_program(program, "taglate", min(upper, max(lower, crossing)))
         )
     return min(candidates, key=balance_score)
-
-
-LANGUAGE = Language(
-    "Taglate",
-    RuntimeSpec("taglate", category="queue_based", split=True),
-    backend=BooleanBackend(
-        generate=taglate,
-        # Both concatenate before tokenizing (Taglate after the queue seed; A
-        # Painter Ant drops whitespace), so no break can land inside a command.
-        wrap=_taglate,
-        wrap_multiline=True,
-        same_layout=same_layout,
-        balance=balance_taglate,
-    ),
-    contract=BooleanContract(input_shape="char_stream"),
-)

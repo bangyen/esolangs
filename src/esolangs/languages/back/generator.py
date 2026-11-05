@@ -52,10 +52,8 @@ from esolangs.generation.helpers import (
     symmetric_outputs,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.registry._backend import BooleanBackend, TemplateSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.back.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.back.descriptor import PAIR as PAIR
 
 _Node = tuple[int, int]
 _Grid = dict[tuple[int, int], str]
@@ -63,7 +61,6 @@ _Grid = dict[tuple[int, int], str]
 
 #: Finisher for a cell primed to 1: ``-`` flips it to 0, ``+`` is inert.
 #: Both are one grid cell, so a run is the exact width of its program.
-PAIR = ("-", "+")
 #: Pair leaves act on the input bit already held in the answer cell.
 _PAIR_FINISHERS = {"01": "*", "10": "-*", "00": "+-*", "11": "+--*"}
 _BACK_INPUT = TEMPLATE_CHAR
@@ -562,27 +559,3 @@ def _balance(table: str, default: str) -> str:
         if len(reduced) > 1 << base
     )
     return min(candidates, key=balance_score)
-
-
-LANGUAGE = Language(
-    "Back",
-    RuntimeSpec(
-        "back",
-        category="tape_based",
-        split=True,
-        empty_program="Back program cannot be empty",
-    ),
-    backend=BooleanBackend(
-        generate=back,
-        balance=_balance,
-        no_wrap="the beam path and embedded input occupy fixed grid coordinates",
-        template=TemplateSpec(pair=PAIR),
-        grid=True,
-    ),
-    contract=BooleanContract(
-        answer_mode="dump",
-        note="Back has no output instruction and dumps its tape at halt; "
-        "the answer is cell n; earlier cells are input storage or scratch",
-    ),
-    example=Example(expected="1 0 0"),
-)

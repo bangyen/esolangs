@@ -36,12 +36,9 @@ from esolangs.generation.helpers import (
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import (
     _DIMENSIONAL_COMMAND,
-    _dimensional,
     wrap_program,
 )
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.dimensional.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["dimensional"]
 
@@ -228,16 +225,3 @@ def _balance(table: str, default: str) -> str:
     tokens = re.findall(_DIMENSIONAL_COMMAND, default)
     width = balanced_token_width(tokens, minimum=2)
     return _program(table, width)
-
-
-LANGUAGE = Language(
-    "Dimensional",
-    RuntimeSpec("dimensional", category="tape_based"),
-    backend=BooleanBackend(
-        generate=dimensional,
-        # Not a tree: one painted cell per entry along dimension 1.
-        shape=Shape.LOOKUP,
-        wrap=_dimensional,
-        balance=_balance,
-    ),
-)

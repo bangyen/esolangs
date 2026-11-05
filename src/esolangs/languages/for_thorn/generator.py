@@ -26,10 +26,7 @@ from esolangs.generation.helpers import (
     permute_truth_table,
     subtree_ids,
 )
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.for_thorn.descriptor import LANGUAGE as LANGUAGE
 
 
 def _forth_const(value: int) -> str:
@@ -122,10 +119,3 @@ def _forth_ordered(truth_table: str, reads: str, *, share: bool = False) -> str:
     prog.append(reads)
     prog.append("1+:;.")
     return "".join(prog)
-
-
-LANGUAGE = Language(
-    "Forþ",
-    RuntimeSpec("for_thorn", category="stack_based"),
-    backend=BooleanBackend(generate=for_thorn, wrap=wrap_chars),
-)

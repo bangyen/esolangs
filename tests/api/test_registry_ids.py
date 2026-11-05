@@ -79,7 +79,7 @@ def test_a_language_cannot_both_wrap_and_refuse_to() -> None:
         Language(
             "X",
             backend=BooleanBackend(
-                generate=str, wrap=wrap_chars, no_wrap="a break changes it"
+                entrypoint=str, wrap=wrap_chars, no_wrap="a break changes it"
             ),
         )
 
@@ -92,7 +92,7 @@ def test_parameterized_follows_the_backend_independently_of_examples() -> None:
 
     embedded = Language(
         "X",
-        backend=BooleanBackend(generate=str, template=TemplateSpec(pair=("a", "b"))),
+        backend=BooleanBackend(entrypoint=str, template=TemplateSpec(pair=("a", "b"))),
     )
     assert embedded.parameterized
     assert replace(embedded, example=Example(table="01", bits=(1,))).parameterized

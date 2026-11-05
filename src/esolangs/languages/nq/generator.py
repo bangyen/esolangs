@@ -16,12 +16,8 @@ Size:
 """
 
 from esolangs.generation.helpers import _parity_bias, _validate_truth_table, subtree_ids
-from esolangs.generation.wrap import wrap_chars
-from esolangs.languages.nq.interpreter import GUARD_BINDINGS, guard_dialect
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.nq.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.nq.interpreter import guard_dialect
 
 
 def nq(truth_table: str, *, guard_binding: str = "opcode") -> str:
@@ -61,23 +57,3 @@ def nq(truth_table: str, *, guard_binding: str = "opcode") -> str:
             chunks.append(">1(")
             stack.extend(((depth + 1, 2 * k), ")", (depth + 1, 2 * k + 1)))
     return "".join(chunks)
-
-
-LANGUAGE = Language(
-    "NQ",
-    RuntimeSpec(
-        "nq",
-        category="queue_based",
-        dialect=guard_dialect,
-        dialect_values={"guard_binding": GUARD_BINDINGS},
-    ),
-    backend=BooleanBackend(generate=nq, wrap=wrap_chars),
-    contract=BooleanContract(
-        input_shape="char_stream",
-        answer_pattern="([ #])",
-        answer_values=(" ", "#"),
-        note="The whole output is a space for false or # for true.",
-        ignores_whitespace=True,
-    ),
-    example=Example(expected=" "),
-)

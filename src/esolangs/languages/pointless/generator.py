@@ -24,11 +24,8 @@ Size:
 import re
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.generation.wrap import TokenWrapper
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.pointless.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.pointless.descriptor import _wrap as _wrap
 
 _OUT = 50  # cell 50 holds "0", cell 51 holds "1"
 _X = 52  # level d's character and bit cell is 52 + 2d, its flag 53 + 2d
@@ -53,7 +50,6 @@ def _setup(n: int) -> str:
 
 
 #: Break anywhere but inside a quoted name, which a newline would rename.
-_wrap = TokenWrapper(r'"[^"]*"|[\s\S]')
 
 
 class _Functions:
@@ -176,15 +172,3 @@ def _expand(functions: dict[str, str], declared: set[str], key: str) -> str:
 
 #: A call in a body, ``"name"``; names hold no quote.
 _CALL = re.compile(r'"([^"]*)"')
-
-
-LANGUAGE = Language(
-    "Pointless",
-    RuntimeSpec("pointless", category="tape_based"),
-    backend=BooleanBackend(
-        generate=pointless,
-        # Whitespace is a comment, so a newline anywhere outside a name is harmless.
-        wrap=_wrap,
-    ),
-    contract=BooleanContract(input_shape="char_stream"),
-)

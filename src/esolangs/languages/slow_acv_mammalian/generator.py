@@ -36,7 +36,6 @@ from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
-    same_token_layout,
 )
 from esolangs.languages.slow_acv_mammalian._mammalian255 import decision_tree
 from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
@@ -51,22 +50,12 @@ from esolangs.languages.slow_acv_mammalian._sums import (
     _seeds_onto,
     _Sums,
 )
+from esolangs.languages.slow_acv_mammalian.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.slow_acv_mammalian.interpreter import (
     _ARRAYS,
     DEFAULT_MODULI,
-    LEAPFROG_RESUMES,
-    MODULI,
     MammalianModuli,
 )
-from esolangs.languages.slow_acv_mammalian.wrapping import (
-    _balance_mammalian,
-    _mammalian,
-)
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._certification import CertificationSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["slow_acv_mammalian"]
 
@@ -846,33 +835,3 @@ def _constant_read(bit: str, inputs: int) -> str:
             "PRONOUNCE",
         ]
     )
-
-
-LANGUAGE = Language(
-    "SLOW ACV MAMMALIAN",
-    RuntimeSpec(
-        "slow_acv_mammalian",
-        category="tape_based",
-        dialect=MammalianModuli,
-        dialect_values={
-            "cell_modulus": MODULI,
-            "io_modulus": MODULI,
-            "leapfrog_resume": LEAPFROG_RESUMES,
-        },
-    ),
-    backend=BooleanBackend(
-        generate=slow_acv_mammalian,
-        # Not a tree: a branch-free chain into a flat leaf table.
-        shape=Shape.LOOKUP,
-        # Four-character cells align the ``SEED`` runs; longer words span cells.
-        wrap=_mammalian,
-        wrap_balance=_balance_mammalian,
-        same_layout=same_token_layout,
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-    certification=CertificationSpec(
-        slow_width_sweep=True,
-    ),
-)

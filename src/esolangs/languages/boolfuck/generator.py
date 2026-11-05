@@ -49,11 +49,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.shared_block import ContinuationCost as _Cost
 from esolangs.generation.shared_flag import flag_tree_body
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.boolfuck.descriptor import LANGUAGE as LANGUAGE
 
 type _Kind = Literal["and", "xor"]
 type _Normal = tuple[_Kind | None, int, bool, bool, int | None]
@@ -426,13 +422,3 @@ def _boolfuck_tree(truth_table: str) -> str:
     out.printer()
 
     return "".join(out.out)
-
-
-LANGUAGE = Language(
-    "Boolfuck",
-    RuntimeSpec("boolfuck", category="tape_based", eof="EOF supplies zero bits"),
-    backend=BooleanBackend(generate=boolfuck, wrap=wrap_chars),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

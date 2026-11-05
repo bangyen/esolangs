@@ -37,10 +37,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, _tokens, balance_score
-from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.slashes.descriptor import LANGUAGE as LANGUAGE
 
 #: Binary to unary, most significant bit first: the row as that many ``*``.
 _UNARY = "/b/a*//*a/a**//a//"
@@ -148,23 +145,3 @@ def _is_unfilled_template(code: str) -> bool:
         return False
     bits = table.replace("qA", "0").replace("qB", "1")
     return prefix == head + _UNARY + _sweep_rules(bits)
-
-
-LANGUAGE = Language(
-    "///",
-    RuntimeSpec("slashes", category="program_based", path_like_source=True),
-    id="slashes",
-    aliases=("Slashalash",),
-    backend=BooleanBackend(
-        generate=slashes,
-        # Not a tree: an indexed table rewrite.
-        shape=Shape.LOOKUP,
-        no_wrap="newlines are literal output and substitution data",
-        wrap_balance=_balance,
-        template=TemplateSpec(pair=("a", "b"), unfilled=_is_unfilled_template),
-    ),
-    contract=BooleanContract(
-        note="Inputs fill the binary row index before unary selection; "
-        "constant tables parse the input letters as a nonmatching rule pattern.",
-    ),
-)

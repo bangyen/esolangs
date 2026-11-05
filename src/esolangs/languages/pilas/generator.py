@@ -22,10 +22,7 @@ Decisions:
 from functools import cache
 
 from esolangs.generation.helpers import _validate_truth_table, constant_span_test
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.pilas.descriptor import LANGUAGE as LANGUAGE
 
 #: Pushes 48, the byte ``'0'``.
 _ZERO_BYTE = "6:+:+:+"
@@ -79,14 +76,3 @@ def pilas(truth_table: str) -> str:
         else:
             line.append(char)
     return "".join(line) + "\n0{0}"
-
-
-LANGUAGE = Language(
-    "Pilas",
-    RuntimeSpec("pilas", category="stack_based"),
-    backend=BooleanBackend(
-        generate=pilas,
-        no_wrap="a newline starts line two, which runs a different stack",
-    ),
-    contract=BooleanContract(input_shape="char_stream"),
-)

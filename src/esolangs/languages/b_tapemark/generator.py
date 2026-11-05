@@ -35,14 +35,11 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.b_tapemark.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.b_tapemark.descriptor import _dialect as _dialect
 from esolangs.languages.b_tapemark.interpreter import (
-    SWAP_MARKERS,
     validate_swap_marker,
 )
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
 
 #: The stage, row by row, with its run of ``|`` left out.  The two ``*``
 #: copy a ``\`` and a ``%`` onto the blank grid beside the pointer, ``-``
@@ -245,11 +242,6 @@ def _b_tapemark_narrow(
     builder.put(depth + 1, tail + 1, "/")
     builder.row(0, tail + 1, "!+" + "|" * (depth - 1))
     return builder.render()
-
-
-def _dialect(swap_marker: str = "new") -> None:
-    """Validate which grid's marker moves after a swap."""
-    validate_swap_marker(swap_marker)
 
 
 def b_tapemark(
@@ -476,25 +468,3 @@ def _balance(table: str, default: str, *, swap_marker: str = "new") -> str:
         ],
         key=balance_score,
     )
-
-
-LANGUAGE = Language(
-    "B-tapemark",
-    RuntimeSpec(
-        "b_tapemark",
-        category="grid_based",
-        dialect=_dialect,
-        dialect_values={"swap_marker": SWAP_MARKERS},
-        empty_program="B-tapemark program needs exactly one start marker",
-    ),
-    backend=BooleanBackend(
-        generate=b_tapemark,
-        # Not a tree: the table copied onto the grid, one mark per row.
-        shape=Shape.LOOKUP,
-        balance=_balance,
-        grid=True,
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

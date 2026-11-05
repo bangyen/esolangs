@@ -33,16 +33,11 @@ from esolangs.generation.helpers import (
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import (
     _FALSE_COMMAND,
-    _false,
     _join_tokens,
     balance_score,
     wrap_program,
 )
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.false.descriptor import LANGUAGE as LANGUAGE
 
 #: ``'0`` and ``'1`` differ in their low bit, so ``1&`` is the bit and ``?``
 #: takes any nonzero flag; ``$`` leaves a copy under it for the ``0`` test.
@@ -546,21 +541,3 @@ def _balance(_table: str, default: str) -> str:
     tokens = re.findall(_FALSE_COMMAND, default)
     width = balanced_token_width(tokens, minimum=2)
     return min(default, _join_tokens(tokens, width, ""), key=balance_score)
-
-
-LANGUAGE = Language(
-    "FALSE",
-    RuntimeSpec(
-        "false", category="stack_based", eof="an exhausted '^' is the spec's -1"
-    ),
-    certification=CertificationSpec(reader_checked=True),
-    backend=BooleanBackend(
-        generate=false,
-        # ``'x`` and ``.x``/``?x`` take the character after them.
-        wrap=_false,
-        balance=_balance,
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

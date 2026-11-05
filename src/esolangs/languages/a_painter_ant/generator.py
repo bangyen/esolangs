@@ -37,16 +37,10 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.a_painter_ant.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.a_painter_ant.descriptor import PAIR as PAIR
 
 __all__ = ["a_painter_ant"]
-
-
-PAIR = ("n", "N")
 
 
 def a_painter_ant(truth_table: str) -> str:
@@ -149,27 +143,3 @@ def _westward_flipped(table: str, weights: list[int], *, invert: bool) -> str:
         out.append("e" * weight + "SN")
     out.append("s" + "nN" * invert)
     return "".join(out)
-
-
-LANGUAGE = Language(
-    "A Painter Ant",
-    RuntimeSpec(
-        "a_painter_ant", completion_entrypoint="_execute", category="grid_based"
-    ),
-    backend=BooleanBackend(
-        generate=a_painter_ant,
-        # Not a tree: one corridor cell per row, walked by the inputs' weights.
-        shape=Shape.LOOKUP,
-        wrap=wrap_chars,
-        template=TemplateSpec(pair=PAIR),
-    ),
-    contract=BooleanContract(
-        answer_mode="dump",
-        answer_pattern=r"(?m)^[.#o@]*([o@])[.#o@]*$",
-        answer_values=("o", "@"),
-        note="A Painter Ant has no output: it paints a grid and the answer "
-        "is the colour of the cell the ant rests on, "
-        "shown by 'o' (on black, a zero) or '@' (on white, a one)",
-    ),
-    example=Example(expected="....\n####\n.o.#"),
-)

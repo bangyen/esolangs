@@ -37,10 +37,7 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.fish.descriptor import LANGUAGE as LANGUAGE
 
 
 def fish(truth_table: str, width: int | None = None) -> str:
@@ -301,27 +298,3 @@ def balance_fish(truth_table: str, default: str) -> str:
         for scale in (0.9, 1.0, 1.1, 1.2)
     )
     return min(candidates, key=balance_score)
-
-
-LANGUAGE = Language(
-    "Fish",
-    RuntimeSpec(
-        "fish",
-        category="grid_based",
-        random=True,
-        split=True,
-        eof="an exhausted 'i' is the spec's -1",
-        empty_program="Fish program cannot be empty",
-    ),
-    backend=BooleanBackend(
-        generate=fish,
-        # Not a tree: an indexed table read.
-        shape=Shape.LOOKUP,
-        balance=balance_fish,
-        no_wrap="a row is a codebox row and the lookup table is indexed by column",
-        grid=True,
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

@@ -34,11 +34,8 @@ from esolangs.generation.shared_block import (
     repeated_mixed_bank,
 )
 from esolangs.generation.shared_flag import FlagDialect, flag_tree_body
-from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.painfuck.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.painfuck.interpreter import _CYCLES
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["painfuck"]
 
@@ -203,10 +200,3 @@ def _painfuck_shared(
         ),
     )
     return _encode(header + body + "o"), len(header) + commands + 1
-
-
-LANGUAGE = Language(
-    "Painfuck",
-    RuntimeSpec("painfuck", category="tape_based", random=True),
-    backend=BooleanBackend(generate=painfuck, wrap=wrap_chars),
-)

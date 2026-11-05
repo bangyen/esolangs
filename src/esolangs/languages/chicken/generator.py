@@ -27,10 +27,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.chicken.descriptor import LANGUAGE as LANGUAGE
 
 #: Opcodes, as chickens a line.
 _CHICKEN, _ADD, _SUB, _MUL, _CMP, _LOAD = 1, 2, 3, 4, 5, 6
@@ -90,22 +87,3 @@ def chicken(truth_table: str) -> str:
         # Explicit exit prints the pad zero; add the final data cell 1 for one.
         return _line(_ADD) + "\nchicken" if truth_table[0] == "1" else "\n"
     return _program(read_at(truth_table, essential, n), essential)
-
-
-LANGUAGE = Language(
-    "Chicken",
-    RuntimeSpec(
-        "chicken",
-        category="stack_based",
-        eof="a short input is a shorter string; a missing bit is not 1, so reads 0",
-    ),
-    backend=BooleanBackend(
-        generate=chicken,
-        shape=Shape.LOOKUP,
-        no_wrap="a line break is the instruction boundary and a blank line is a cell",
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-        note="Chicken's input is one string; input[i] is bit i",
-    ),
-)

@@ -43,10 +43,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.forbin.descriptor import LANGUAGE as LANGUAGE
 
 _FORBIN_ALPHABET = ascii_letters
 _FORBIN_RESERVED = {"for", "in", "main", "out", "return"}
@@ -333,22 +330,3 @@ def _balance(table: str, default: str) -> str:
     )
     rows = _join_tokens(spaced, width, "").split("\n")
     return "\n".join(row.rstrip() for row in rows)
-
-
-LANGUAGE = Language(
-    "Forbin",
-    RuntimeSpec(
-        "forbin",
-        category="variable_based",
-        empty_program="Forbin program has no main function",
-    ),
-    backend=BooleanBackend(
-        generate=forbin,
-        # Not a tree: one painted call argument per entry, halved down to the first.
-        shape=Shape.LOOKUP,
-        balance=_balance,
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

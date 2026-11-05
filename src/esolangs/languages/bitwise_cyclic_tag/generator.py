@@ -24,14 +24,10 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.bitwise_cyclic_tag.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.bitwise_cyclic_tag.descriptor import PAIR as PAIR
 
 #: One bit of the initial data-string, so an input's run is one TEMPLATE_CHAR.
-PAIR = ("0", "1")
 
 #: The constant bit held behind the inputs, read after every walk zero.
 _SENTINEL = "1"
@@ -61,23 +57,3 @@ def _program(truth_table: str) -> str:
         "1" + table[i] + "0" + table[i + 1] + "100" for i in range(0, len(table), 2)
     )
     return f"{reads}1{_SENTINEL}0{rows},{TEMPLATE_CHAR * n}{_SENTINEL}"
-
-
-LANGUAGE = Language(
-    "Bitwise Cyclic Tag",
-    RuntimeSpec("bitwise_cyclic_tag", category="queue_based"),
-    backend=BooleanBackend(
-        generate=bitwise_cyclic_tag,
-        # A positional walk, not a tree of callable residuals.
-        shape=Shape.LOOKUP,
-        # Safe anywhere: every space and newline is stripped before parsing.
-        wrap=wrap_chars,
-        template=TemplateSpec(pair=PAIR),
-    ),
-    contract=BooleanContract(
-        note="Bitwise Cyclic Tag has no I/O vocabulary at all: the inputs "
-        "are bits of the initial data-string, and the answer is the "
-        "bit the last 0 deletes, which the interpreter prints alone -- "
-        "so the output is the answer and there is no position to name",
-    ),
-)

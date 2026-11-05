@@ -117,9 +117,11 @@ and source citations remain checked.
 
 `Language` records names, interpreter, source shape, optional generator and
 typed I/O contract. `resolve` normalizes names; `RUNNERS` selects whole-source
-or split-line input. A generator declares `LANGUAGE = Language(...)`;
-`scripts/docs/generate.py` collects declarations into exports (`just docs`
-and `check`). Only interpreter-only entries live in `registry/_table.py`.
+or split-line input. Each language declares `LANGUAGE = Language(...)` in its `descriptor.py`,
+including interpreter-only entries. Callable references load implementations
+on use; generators re-export their descriptor for compatibility.
+`scripts/docs/generate.py` collects descriptors into exports (`just docs`
+and `check`).
 
 Execution follows this path:
 

@@ -26,10 +26,7 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.qoibl.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["qoibl"]
 
@@ -260,18 +257,3 @@ def balance_qoibl(table: str, default: str) -> str:
     literal = max(map(len, default.split()))
     widths = [(2 * len(default) + a * literal) ** 0.5 for a in (0, 3, 6)]
     return min((qoibl(table, round(width)) for width in widths), key=balance_score)
-
-
-LANGUAGE = Language(
-    "Qoibl",
-    RuntimeSpec("qoibl", category="register_based", split=True),
-    backend=BooleanBackend(
-        generate=qoibl,
-        # Not a tree: the table is one binary literal the reads divide down.
-        shape=Shape.LOOKUP,
-        balance=balance_qoibl,
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

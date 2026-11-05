@@ -246,9 +246,10 @@ def test_exports_use_the_canonical_generator_module(tmp_path) -> None:
     )
     package = tmp_path / "src/esolangs/languages/fixture"
     package.mkdir(parents=True)
-    (package / "generator.py").write_text(
+    (package / "descriptor.py").write_text(
         "def fixture(table): return table\n"
-        "LANGUAGE = Language('Fixture', backend=BooleanBackend(generate=fixture))\n"
+        "LANGUAGE = Language('Fixture', backend=BooleanBackend(entrypoint="
+        "FunctionRef('esolangs.languages.fixture.generator', 'fixture')))\n"
     )
     assert declared(tmp_path) == [("esolangs.languages.fixture.generator", "fixture")]
 
@@ -260,8 +261,10 @@ def test_discovery_ignores_noncanonical_declarations(tmp_path) -> None:
     package = language / "generator"
     package.mkdir(parents=True)
     source = (
-        "LANGUAGE = Language('Fixture', backend=BooleanBackend(generate=fixture))\n"
+        "LANGUAGE = Language('Fixture', backend=BooleanBackend(entrypoint="
+        "FunctionRef('esolangs.languages.fixture.generator', 'fixture')))\n"
     )
+    (language / "descriptor.py").write_text(source)
     (package / "__init__.py").write_text(source)
     (package / "helper.py").write_text(source)
     (language / "interpreter.py").write_text(source)
@@ -273,17 +276,16 @@ def test_exports_discover_independent_descriptors(tmp_path):
 
     package = tmp_path / "src/esolangs/languages/fixture"
     package.mkdir(parents=True)
-    descriptor = package / "definition.py"
+    descriptor = package / "descriptor.py"
     source = (
-        "LANGUAGE = Language('Fixture', backend=DeferredBackend("
-        "generate=GeneratorReference('esolangs.languages.fixture.generator', "
+        "LANGUAGE = Language('Fixture', backend=BooleanBackend("
+        "entrypoint=FunctionRef('esolangs.languages.fixture.generator', "
         "'fixture')))\n"
     )
     descriptor.write_text(source)
-    assert declared(tmp_path) == [("esolangs.languages.fixture.definition", "fixture")]
+    assert declared(tmp_path) == [("esolangs.languages.fixture.generator", "fixture")]
     exports = render(tmp_path)
-    assert "from esolangs.languages.fixture.definition import LANGUAGE" in exports
-    assert '"fixture": "esolangs.languages.fixture.generator"' in exports
+    assert "from esolangs.languages.fixture.generator import fixture" in exports
     descriptor.write_text(source.replace("fixture.generator", "fixture.unrelated"))
     with pytest.raises(ValueError, match="generator reference"):
         declared(tmp_path)

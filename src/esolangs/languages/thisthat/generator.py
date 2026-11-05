@@ -31,10 +31,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.thisthat.descriptor import LANGUAGE as LANGUAGE
 
 _STEP = {"E": (1, 0), "W": (-1, 0), "N": (0, -1), "S": (0, 1)}
 _OPPOSITE = {"E": "W", "W": "E", "N": "S", "S": "N"}
@@ -840,27 +837,3 @@ def shared_tree(table: str) -> tuple[str, int] | None:
     _hollow_crossings(builder)
     _draw_input_chain(builder, n, m, ess)
     return builder.render(), 2 * n + 2 * m + 4 + costs[nodes[0]]
-
-
-LANGUAGE = Language(
-    "thisthat",
-    RuntimeSpec(
-        "thisthat",
-        category="grid_based",
-        random=True,
-        split=True,
-        eof="an exhausted '◇' sends the spec's empty transfer",
-        empty_program="thisthat needs at least one start node",
-    ),
-    backend=BooleanBackend(
-        generate=thisthat,
-        balance=_balance,
-        no_wrap="the H-tree's nodes and wires occupy fixed grid coordinates",
-        grid=True,
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-        ignores_whitespace=True,
-        input_sets=True,
-    ),
-)

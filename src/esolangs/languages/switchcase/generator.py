@@ -22,10 +22,7 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.switchcase.descriptor import LANGUAGE as LANGUAGE
 
 
 def switchcase(truth_table: str) -> str:
@@ -89,15 +86,3 @@ def _diagram(n: int, essential: list[int], table: str) -> str:
     end = n + count + 4
     cases += [f"$a\n0?@'{end}", "$a\n0?+1@", "$_\n-1?+0"]
     return "\n".join(cases) + "\n"
-
-
-LANGUAGE = Language(
-    "SwitchCase",
-    RuntimeSpec("switchcase", category="variable_based"),
-    backend=BooleanBackend(
-        generate=switchcase,
-        shape=Shape.TREE,
-        no_wrap="a line is one arm, and a case's arms follow its $ line",
-    ),
-    contract=BooleanContract(input_shape="char_stream"),
-)

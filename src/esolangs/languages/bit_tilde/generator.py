@@ -25,11 +25,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.bit_tilde.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["bit_tilde"]
 
@@ -180,18 +176,3 @@ def _block_lookup(used: list[int], table: str, n: int) -> str:
             weight = 3 << (width - 2 - depth[i])
             prog.append("<" * 7 + ")>>~>~>>>>{" + "<" * weight + "}")
     return "".join([*prog, _FINISH])
-
-
-LANGUAGE = Language(
-    "bit~",
-    RuntimeSpec("bit_tilde", category="tape_based"),
-    backend=BooleanBackend(
-        generate=bit_tilde,
-        # Not a tree: planted entries a Horner jump addresses.
-        shape=Shape.LOOKUP,
-        wrap=wrap_chars,
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

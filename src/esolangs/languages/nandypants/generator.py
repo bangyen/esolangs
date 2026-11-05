@@ -25,10 +25,7 @@ Decisions:
 from heapq import heapify, heappop, heappush
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.nandypants.descriptor import LANGUAGE as LANGUAGE
 
 #: The answer byte (ASCII ``0`` / ``1``, low bit first) as ``\`` and ``^``
 #: after the pointer move onto the cell that holds 1; a starts at 1 and ends 0.
@@ -177,14 +174,3 @@ def nandypants(truth_table: str) -> str:
             out.append(" ")
         out.append(token)
     return "".join(out)
-
-
-LANGUAGE = Language(
-    "Nandypants",
-    RuntimeSpec("nandypants", category="tape_based"),
-    backend=BooleanBackend(
-        generate=nandypants,
-        no_wrap="a line break inside a label would split one number into two",
-    ),
-    contract=BooleanContract(input_shape="char_stream"),
-)

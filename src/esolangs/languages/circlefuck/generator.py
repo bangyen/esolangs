@@ -22,11 +22,7 @@ from esolangs.generation.helpers import (
     read_at,
     symmetric_weights,
 )
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.circlefuck.descriptor import LANGUAGE as LANGUAGE
 
 #: Bits an index digit carries: seven is the widest power of two a byte can
 #: also count out (:func:`_deleter` plants that many in the digit below).
@@ -132,23 +128,3 @@ def _deleter(digit: int) -> str:
     if digit == 0:
         return "[-<}]"
     return f"[-<{'+' * (1 << _DIGIT_BITS)}{_deleter(digit - 1)}>]"
-
-
-LANGUAGE = Language(
-    "Circlefuck",
-    RuntimeSpec(
-        "circlefuck",
-        category="tape_based",
-        eof="its input command is a no-op at EOF, as the spec says",
-        empty_program="Circlefuck program cannot be empty",
-    ),
-    backend=BooleanBackend(
-        generate=circlefuck,
-        # A sum, not a tree: a lookup over the essential inputs only.
-        shape=Shape.REDUCING,
-        wrap=wrap_chars,
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

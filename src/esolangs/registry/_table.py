@@ -1,35 +1,28 @@
-"""Every registered language: its interpreter, source shape, and generator.
+"""Collect language-owned descriptors without importing generators."""
 
-Generated exports collect generator and independent descriptor declarations.
-Only interpreter-only languages remain listed directly here.
-"""
+from collections.abc import Iterator
+from importlib import import_module
+from importlib.resources import files
 
-from __future__ import annotations
-
-from esolangs.languages.generators import _LANGUAGES
 from esolangs.registry._backend import Generator
 from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec, SourceKind
+from esolangs.runtime._definition import SourceKind
 
 __all__ = ["LANGUAGES", "Generator", "Language", "SourceKind"]
 
-# Interpreter-only entries qualify through the fame route.
-_INTERPRETER_ONLY = (
-    Language("HQ9+", RuntimeSpec("hq9", category="register_based"), id="hq9"),
-    Language(
-        "Nope.",
-        RuntimeSpec("nope", category="other"),
-    ),
-    Language(
-        "Deadfish",
-        RuntimeSpec("deadfish", category="register_based"),
-    ),
-)
+
+def _declarations() -> Iterator[Language]:
+    """Discover the same descriptor path for every installed language."""
+    for package in sorted(
+        files("esolangs.languages").iterdir(), key=lambda item: item.name
+    ):
+        if package.is_dir() and package.joinpath("descriptor.py").is_file():
+            yield import_module(
+                f"esolangs.languages.{package.name}.descriptor"
+            ).LANGUAGE
 
 
 LANGUAGES: dict[str, Language] = {
     lang.name: lang
-    for lang in sorted(
-        (*_LANGUAGES, *_INTERPRETER_ONLY), key=lambda lang: lang.name.casefold()
-    )
+    for lang in sorted(_declarations(), key=lambda lang: lang.name.casefold())
 }

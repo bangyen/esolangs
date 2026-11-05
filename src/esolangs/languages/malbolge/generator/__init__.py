@@ -34,6 +34,8 @@ from __future__ import annotations
 from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.malbolge.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.malbolge.descriptor import MAX_INPUTS as MAX_INPUTS
 from esolangs.languages.malbolge.proof_formulas import execution, workspace
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
@@ -45,8 +47,6 @@ from esolangs.runtime.source_hints import with_hint
 from .constant import _constant_program
 from .digits import _DIGITS_N, _digits_program, _seventeen_program
 from .symmetric import _symmetric_program
-
-MAX_INPUTS = _DIGITS_N
 
 
 def malbolge(truth_table: str) -> str:
@@ -83,34 +83,3 @@ def malbolge(truth_table: str) -> str:
             ),
         )
     return _digits_program(truth_table, n)
-
-
-LANGUAGE = Language(
-    "Malbolge",
-    RuntimeSpec(
-        "malbolge",
-        category="program_based",
-        eof="an exhausted read is the value 59048, not an error",
-    ),
-    certification=CertificationSpec(
-        # Every source loads into the fixed store, so every program -- this
-        # generator's or any other -- is bounded by a constant.
-        size_bound=lambda _n: 59_049,
-    ),
-    backend=BooleanBackend(
-        max_inputs=MAX_INPUTS + 1,
-        restrictions=(
-            "seventeen inputs only for a table that ignores an input "
-            "or is constant on Hamming-weight classes"
-        ),
-        generate=malbolge,
-        # Not a tree: straight-line code into the fixed store.
-        shape=Shape.LOOKUP,
-        # Loader whitespace is discarded before assigning memory addresses.
-        wrap=wrap_chars,
-    ),
-    contract=BooleanContract(
-        note="the answer is one character and is printed with no newline",
-        input_shape="char_stream",
-    ),
-)

@@ -43,11 +43,8 @@ from esolangs.generation.shared_block import (
     repeated_blocks,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import _RUN, balance_score, wrap_chars, wrap_program
-from esolangs.registry._backend import BooleanBackend, TemplateSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.generation.wrap import _RUN, balance_score, wrap_program
+from esolangs.languages.smallfuck.descriptor import LANGUAGE as LANGUAGE
 
 # Each input cell is fresh; zero needs no clear and one needs one flip.
 PAIR = ("x>>>", "*>>>")
@@ -840,19 +837,3 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
         if template.replace("\n", "") == str(layout(width)).replace("\n", ""):
             return True
     return same_up_to_wrapping(template, plain)
-
-
-LANGUAGE = Language(
-    "Smallfuck",
-    RuntimeSpec("smallfuck", category="tape_based"),
-    backend=BooleanBackend(
-        generate=smallfuck,
-        same_layout=_same_layout,
-        wrap=wrap_chars,
-        balance=_balance,
-        template=TemplateSpec(setters=smallfuck_setters),
-    ),
-    contract=BooleanContract(
-        note="Smallfuck defines no I/O; this implementation prints final cell 2",
-    ),
-)

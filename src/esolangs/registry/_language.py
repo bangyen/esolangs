@@ -1,7 +1,8 @@
 """The metadata a language declares about itself.
 
-Declarations may live in generator modules or independent descriptors.
-Descriptors retain metadata while loading implementations on demand.
+Each language owns ``descriptor.py`` with ``LANGUAGE = Language(...)``.
+The registry collects descriptors without importing generator implementations.  This
+module keeps declarations independent of example generation.
 """
 
 from __future__ import annotations

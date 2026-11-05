@@ -12,17 +12,13 @@ from tests.tooling.script_support import REPO_ROOT, load
 
 gendiff = load(REPO_ROOT / "scripts" / "gendiff.py")
 
-#: Appended to the reference generator: its LANGUAGE now prefixes a "+".
-_MUTATION = """
-import dataclasses as _dataclasses
+#: Appended to the reference generator: its selected entry point now prefixes a "+".
+_FUNCTION = LANGUAGES[REFERENCE].backend.generate.__name__
+_MUTATION = f"""
+_unmutated = {_FUNCTION}
 
-_unmutated = LANGUAGE.backend.generate
-LANGUAGE = _dataclasses.replace(
-    LANGUAGE, backend=_dataclasses.replace(
-        LANGUAGE.backend,
-        generate=lambda table, *a, **k: "+" + _unmutated(table, *a, **k)
-    )
-)
+def {_FUNCTION}(table, *args, **kwargs):
+    return "+" + _unmutated(table, *args, **kwargs)
 """
 
 

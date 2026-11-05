@@ -38,10 +38,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.flowchart.descriptor import LANGUAGE as LANGUAGE
 
 # Fewest table rows a subtree must span for the stacked layout to draw it once.
 _SHARE_ROWS = 8
@@ -978,25 +975,3 @@ def _balance(table: str, default: str) -> str:
         ),
         key=balance_score,
     )
-
-
-LANGUAGE = Language(
-    "Flowchart",
-    RuntimeSpec(
-        "flowchart",
-        category="grid_based",
-        split=True,
-        eof="reads at input nodes, including the constant skip chain",
-        empty_program="Flowchart program has no '( )' start node",
-    ),
-    backend=BooleanBackend(
-        generate=flowchart,
-        # Not a tree: one deque push per entry.
-        shape=Shape.LOOKUP,
-        balance=_balance,
-        grid=True,
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

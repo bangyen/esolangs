@@ -59,6 +59,7 @@ from functools import cache
 from itertools import product
 from typing import NamedTuple
 
+from esolangs.languages.malbolge.descriptor import _DIGITS_N as _DIGITS_N
 from esolangs.languages.malbolge.interpreter import _crazy
 
 from .core import (
@@ -104,7 +105,6 @@ from .isa import (
 
 #: The largest input count the generator builds: fifteen positional reads
 #: and the last input read by the stub.
-_DIGITS_N = 16
 #: Reads per gadget group.
 _READS = 3
 #: The ``_GADGET`` token index before which a discarded read drops a

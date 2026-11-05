@@ -31,20 +31,16 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     subtree_ids,
 )
-from esolangs.generation.wrap import TokenWrapper
-from esolangs.registry._backend import BooleanBackend, TemplateSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.stisp.descriptor import _TOKEN as _TOKEN
+from esolangs.languages.stisp.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.stisp.descriptor import PAIR as PAIR
 
 #: Each input is one atom, ``0`` or ``1``, inside its frame.
-PAIR = ("0", "1")
 #: The drain: under a leaf every remaining frame rewrites to the leaf.
 _DRAIN = "c->s[x]=c;"
 #: Native list-head selectors precede the variable-head drain.
 _CONS = "(l h)->s[0]=l;(l h)->s[1]=h;"
 #: A newline is whitespace, legal anywhere but inside an identifier or ``->``.
-_TOKEN = r"->|[A-Za-z0-9_]+|[\s\S]"
 
 
 def stisp(truth_table: str) -> str:
@@ -95,21 +91,3 @@ def stisp(truth_table: str) -> str:
     equations = "".join(definitions[node] for node in nodes if node in named)
     frames = f"->s[{TEMPLATE_CHAR}]" * n
     return prefix + equations + _DRAIN + heads[ids[0][0]] + frames
-
-
-LANGUAGE = Language(
-    "Stisp",
-    RuntimeSpec(
-        "stisp",
-        category="other",
-        empty_program="a Stisp program needs a stack expression",
-    ),
-    backend=BooleanBackend(
-        generate=stisp, wrap=TokenWrapper(_TOKEN), template=TemplateSpec(pair=PAIR)
-    ),
-    contract=BooleanContract(
-        answer_mode="dump",
-        note="Stisp has no input or output: each input is the atom 0 or 1 "
-        "in the template, and the result printed at halt is the answer atom",
-    ),
-)

@@ -90,10 +90,8 @@ Decisions:
     <describe a rejected alternative and the measurement that rejected it>
 """
 
-from esolangs.registry._language import Language
-from esolangs.registry._backend import BooleanBackend
-from esolangs.runtime._definition import RuntimeSpec
 from esolangs.generation.helpers import _validate_truth_table
+from esolangs.languages.{slug}.descriptor import LANGUAGE as LANGUAGE
 
 
 def {slug}(truth_table: str) -> str:
@@ -102,20 +100,29 @@ def {slug}(truth_table: str) -> str:
     raise NotImplementedError("{name} generator")
 
 
-# RuntimeSpec owns split=True if run() takes source lines, eof="..." for an
-# EOF value, empty_program="..." for an empty-source error, and random=True
-# for random instructions. Language owns contract=BooleanContract(...) for
-# input other than one 0/1 line per input (CONTRIBUTING's Boolean I/O contract).
-# BooleanBackend owns wrap=wrap_chars if a newline anywhere is harmless,
-# else no_wrap="<why a break changes the program>";
-# a generator taking a width needs balance=, picking its squarest regime;
-# template=TemplateSpec(pair=PAIR) for embedded inputs, and
-# Language owns example=Example(expected=...) when the output is not "0" (a
-# trailing newline, a dump).
+'''
+
+_DESCRIPTOR = '''"""Runtime and compiler capabilities for {name}."""
+
+from esolangs.registry._language import Language
+from esolangs.registry._backend import BooleanBackend
+from esolangs.registry._functions import FunctionRef
+from esolangs.runtime._definition import RuntimeSpec
+
 LANGUAGE = Language(
     "{name}", RuntimeSpec("{slug}", category="{category}"),
-    backend=BooleanBackend(generate={slug}),
+    backend=BooleanBackend(entrypoint=FunctionRef(
+        "esolangs.languages.{slug}.generator", "{slug}", ("truth_table",)
+    )),
 )
+'''
+
+_INTERPRETER_DESCRIPTOR = '''"""Runtime capabilities for {name}."""
+
+from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
+
+LANGUAGE = Language("{name}", RuntimeSpec("{slug}", category="{category}"))
 '''
 
 _GENERATOR_TEST = '''"""Tests for the {name} Boolean generator."""
@@ -144,6 +151,7 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
     """Create and return the interpreter, generator and test stubs."""
     slug = _slug(name)
     package = ROOT / "src/esolangs/languages" / slug
+    fields = {"name": name, "slug": slug, "category": category}
     files = {
         package / "interpreter.py": _interpreter_stub(name),
         package / "tests" / f"test_{slug}.py": (
@@ -158,8 +166,10 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
             '    assert io.getvalue() == "\\x01"\n'
         ),
     }
+    files[package / "descriptor.py"] = (
+        _DESCRIPTOR if generator else _INTERPRETER_DESCRIPTOR
+    ).format(**fields)
     if generator:
-        fields = {"name": name, "slug": slug, "category": category}
         files[package / "generator.py"] = _GENERATOR.format(**fields)
         files[package / "tests" / f"test_boolean_{slug}.py"] = _GENERATOR_TEST.format(
             **fields
@@ -222,28 +232,15 @@ def _source_file(base: Path) -> Path | None:
 
 
 def _unregistered(name: str, slug: str) -> list[Gap]:
-    package = ROOT / "src/esolangs/languages" / slug / "generator"
-    generator = _source_file(package)
-    if generator is None:
-        return [
-            Gap(
-                "src/esolangs/registry/_table.py",
-                f'add Language("{name}", RuntimeSpec("{slug}")) '
-                "to _INTERPRETER_ONLY; add "
-                "split=True inside RuntimeSpec only if run() takes list[str], "
-                "one string per line, and random=True for random instructions",
-            )
-        ]
+    descriptor = f"src/esolangs/languages/{slug}/descriptor.py"
     return [
         Gap(
-            str(generator.relative_to(ROOT)),
-            f'end it with LANGUAGE = Language("{name}", RuntimeSpec("{slug}"), '
-            f"backend=BooleanBackend(generate={slug})); "
-            "add split=True inside RuntimeSpec only if "
-            "run() takes list[str], "
-            "one string per source line, and contract=BooleanContract(...) if "
-            "its programs do not read one 0/1 line per input "
-            "(docs/CONTRIBUTING.md#the-boolean-io-contract)",
+            descriptor,
+            f'declare LANGUAGE = Language("{name}", RuntimeSpec("{slug}")); '
+            "add a BooleanBackend with a FunctionRef entrypoint for a generator, "
+            "split=True only when run() takes source lines, "
+            "and the Boolean I/O contract; "
+            "run `python scripts/docs/generate.py docs` to regenerate exports",
         )
     ]
 
@@ -372,7 +369,7 @@ def _generator_gaps(lang: Language) -> list[Gap]:
         gaps.append(
             Gap(
                 "src/esolangs/languages/generators.py",
-                "declare the generator's LANGUAGE and run "
+                "declare the language's descriptor and run "
                 "`python scripts/docs/generate.py docs` to regenerate the exports",
             )
         )
@@ -725,8 +722,7 @@ def _registered_name(name: str) -> str:
     """Return ``name`` as the registry spells it, or unchanged if new.
 
     Raises :class:`UnknownLanguageError` for a never-started name close to a
-    registered one: a typo otherwise reads as a new language, and ``check
-    "Brainfuk"`` asked to register it in ``_INTERPRETER_ONLY``.
+    registered one: a typo must not be treated as a new language.
     """
     from esolangs.exceptions import UnknownLanguageError
     from esolangs.registry import canonical_id, resolve

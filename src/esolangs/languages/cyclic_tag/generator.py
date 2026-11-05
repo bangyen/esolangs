@@ -24,14 +24,10 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.cyclic_tag.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.cyclic_tag.descriptor import PAIR as PAIR
 
 #: One bit of the initial data-string, so an input's run is one TEMPLATE_CHAR.
-PAIR = ("0", "1")
 
 
 def cyclic_tag(truth_table: str) -> str:
@@ -66,24 +62,3 @@ def _program(truth_table: str) -> str:
     # a 0 appends one 0 that is deleted last.
     rules.extend("" if answer == "1" else "0" for answer in table)
     return ";".join(rules) + "," + TEMPLATE_CHAR * n + "1"
-
-
-LANGUAGE = Language(
-    "Cyclic tag",
-    RuntimeSpec(
-        "cyclic_tag",
-        completion_entrypoint="_execute",
-        category="queue_based",
-        empty_program="Cyclic tag requires productions,queue using bits and semicolons",
-    ),
-    backend=BooleanBackend(
-        generate=cyclic_tag,
-        # A positional production walk, not a tree of callable residuals.
-        shape=Shape.LOOKUP,
-        wrap=wrap_chars,
-        template=TemplateSpec(pair=PAIR),
-    ),
-    contract=BooleanContract(
-        note="Inputs fill the initial queue; the final deleted bit is the answer.",
-    ),
-)

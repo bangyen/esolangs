@@ -1,0 +1,38 @@
+"""Runtime and compiler capabilities for A Painter Ant."""
+
+from esolangs.generation.wrap import wrap_chars
+from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._functions import FunctionRef
+from esolangs.registry._language import Example, Language
+from esolangs.runtime._definition import RuntimeSpec
+
+PAIR = ("n", "N")
+
+
+LANGUAGE = Language(
+    "A Painter Ant",
+    RuntimeSpec(
+        "a_painter_ant", completion_entrypoint="_execute", category="grid_based"
+    ),
+    backend=BooleanBackend(
+        entrypoint=FunctionRef(
+            "esolangs.languages.a_painter_ant.generator",
+            "a_painter_ant",
+            ("truth_table",),
+        ),
+        # Not a tree: one corridor cell per row, walked by the inputs' weights.
+        shape=Shape.LOOKUP,
+        wrap=wrap_chars,
+        template=TemplateSpec(pair=PAIR),
+    ),
+    contract=BooleanContract(
+        answer_mode="dump",
+        answer_pattern=r"(?m)^[.#o@]*([o@])[.#o@]*$",
+        answer_values=("o", "@"),
+        note="A Painter Ant has no output: it paints a grid and the answer "
+        "is the colour of the cell the ant rests on, "
+        "shown by 'o' (on black, a zero) or '@' (on white, a one)",
+    ),
+    example=Example(expected="....\n####\n.o.#"),
+)

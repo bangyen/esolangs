@@ -275,7 +275,7 @@ def _register() -> None:
         spec = lang.example
         if lang.backend.template is not None:
             example = _embedded(
-                cast(Callable[[str], str], lang.backend.generate),
+                cast(Callable[[str], str], lang.backend.entrypoint),
                 lang.runtime.interpreter,
                 table=spec.table,
                 bits=spec.bits,
@@ -288,7 +288,7 @@ def _register() -> None:
         else:
             stdin = encode_inputs(lang.name, spec.bits, truth_table=spec.table)
             example = _reader(
-                lang.backend.generate,
+                lang.backend.entrypoint,
                 lang.runtime.interpreter,
                 table=spec.table,
                 inputs=(stdin,)

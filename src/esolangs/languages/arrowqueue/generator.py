@@ -40,13 +40,10 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.registry._backend import BooleanBackend, TemplateSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.arrowqueue.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.arrowqueue.descriptor import PAIR as PAIR
 
 #: Each input's cell: ``~`` pushes a down heading, ``.`` nothing.
-PAIR = (".", "~")
 
 _MIDDLE = ["*~* ", "*  *", "*  *", "~ ~ ", "*~* ", "**  ", "*  *"]
 
@@ -309,26 +306,3 @@ def _balance(table: str, default: str) -> str:
     if len(set(table)) == 1:
         return default
     return min([default, *_folds(table)], key=balance_score)
-
-
-LANGUAGE = Language(
-    "ArrowQueue",
-    RuntimeSpec("arrowqueue", category="grid_based", split=True),
-    backend=BooleanBackend(
-        generate=arrowqueue,
-        balance=_balance,
-        no_wrap="the queue and decision tree occupy fixed grid coordinates",
-        template=TemplateSpec(pair=PAIR),
-        grid=True,
-    ),
-    contract=BooleanContract(
-        answer_mode="termination",
-        answer_values=("halts", "diverges"),
-        note="ArrowQueue answers by termination -- it halts for a 0 result "
-        "and loops forever for a 1, so only the halting branch is "
-        "committed.  The headings printed are its interpreter-only "
-        "queue dump, which the verdict does not read: the answer is "
-        "that the program halted at all",
-    ),
-    example=Example(expected=""),
-)

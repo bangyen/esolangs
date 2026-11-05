@@ -33,10 +33,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.container.descriptor import LANGUAGE as LANGUAGE
 
 #: The names Container gives its own meaning, which a generated container
 #: may not take.  The names draw from a mixed-case alphabet and so reach
@@ -645,24 +642,3 @@ def balance_container(table: str, default: str) -> str:
     if len(table) >= 16:
         candidates.append(_container_blocks(table))
     return min(candidates, key=balance_score)
-
-
-LANGUAGE = Language(
-    "Container",
-    RuntimeSpec(
-        "container",
-        category="variable_based",
-        split=True,
-        # Wiki: the empty container sets IN "with EOF returning 0".
-        eof="an exhausted read sets IN to the spec's 0",
-    ),
-    backend=BooleanBackend(
-        generate=container,
-        balance=balance_container,
-        no_wrap="each line declares a container or one of its rules",
-    ),
-    contract=BooleanContract(
-        note="Container prints the answer; module.run returns the EXIT code.",
-        input_shape="char_stream",
-    ),
-)

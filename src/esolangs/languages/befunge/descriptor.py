@@ -1,0 +1,42 @@
+"""Runtime and compiler capabilities for Befunge."""
+
+from esolangs.registry._backend import BooleanBackend, Shape
+from esolangs.registry._certification import CertificationSpec
+from esolangs.registry._functions import FunctionRef
+from esolangs.registry._language import Example, Language
+from esolangs.runtime._definition import RuntimeSpec
+
+MAX_INPUTS = 13
+
+
+LANGUAGE = Language(
+    "Befunge",
+    RuntimeSpec(
+        "befunge",
+        category="grid_based",
+        random=True,
+        split=True,
+        empty_program="Befunge program cannot be empty",
+    ),
+    certification=CertificationSpec(
+        layout_switch=(2, 7, 8, 9),
+    ),
+    backend=BooleanBackend(
+        max_inputs=MAX_INPUTS,
+        entrypoint=FunctionRef(
+            "esolangs.languages.befunge.generator", "befunge", ("truth_table", "width")
+        ),
+        # Not a tree: reads a packed grid cell with ``g``.
+        shape=Shape.LOOKUP,
+        balance=FunctionRef(
+            "esolangs.languages.befunge.generator",
+            "balance_befunge",
+            ("truth_table", "default"),
+        ),
+        no_wrap="a row is a grid row and the lookup table is indexed by column",
+        grid=True,
+    ),
+    # ``.`` writes the digit and a trailing space, so the committed
+    # answer carries it and the sweep strips it.
+    example=Example(expected="0 "),
+)

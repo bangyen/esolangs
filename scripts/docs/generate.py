@@ -465,14 +465,10 @@ LINE_LIMIT = 88
 
 
 def declared(root: pathlib.Path = ROOT) -> list[tuple[str, str]]:
-    """Return declaration modules and generator export names."""
+    """Return canonical module and function names for declared generators."""
     found = []
     languages = root / "src/esolangs/languages"
-    paths = (
-        *languages.glob("*/definition.py"),
-        *languages.glob("*/generator.py"),
-        *languages.glob("*/generator/__init__.py"),
-    )
+    paths = languages.glob("*/descriptor.py")
     for path in sorted(paths):
         text = path.read_text(encoding="utf-8")
         for statement in ast.parse(text).body:
@@ -486,31 +482,28 @@ def declared(root: pathlib.Path = ROOT) -> list[tuple[str, str]]:
             ):
                 continue
             backend = next(
-                kw.value
-                for kw in statement.value.keywords
-                if kw.arg == "backend" and isinstance(kw.value, ast.Call)
+                (
+                    kw.value
+                    for kw in statement.value.keywords
+                    if kw.arg == "backend" and isinstance(kw.value, ast.Call)
+                ),
+                None,
             )
-            parts = path.relative_to(root / "src").with_suffix("").parts
-            module = ".".join(parts[:-1] if path.name == "__init__.py" else parts)
-            generate = next(kw.value for kw in backend.keywords if kw.arg == "generate")
-            if isinstance(generate, ast.Name):
-                generator = generate.id
-            elif (
-                path.name == "definition.py"
-                and isinstance(generate, ast.Call)
-                and isinstance(generate.func, ast.Name)
-                and generate.func.id == "GeneratorReference"
-                and not generate.keywords
-                and len(generate.args) == 2
-                and isinstance(generate.args[0], ast.Constant)
-                and generate.args[0].value
-                == module.removesuffix(".definition") + ".generator"
-                and isinstance(generate.args[1], ast.Constant)
-                and isinstance(generate.args[1].value, str)
+            if backend is None:
+                continue
+            entrypoint = next(
+                kw.value
+                for kw in backend.keywords
+                if kw.arg == "entrypoint" and isinstance(kw.value, ast.Call)
+            )
+            module, generator = (ast.literal_eval(arg) for arg in entrypoint.args[:2])
+            expected = f"esolangs.languages.{path.parent.name}.generator"
+            if (
+                module != expected
+                or not isinstance(generator, str)
+                or not generator.isidentifier()
             ):
-                generator = generate.args[1].value
-            else:
-                raise ValueError(f"{path}: unsupported generator reference")
+                raise ValueError(f"{path}: invalid canonical generator reference")
             found.append((module, generator))
     return sorted(found)
 
@@ -519,43 +512,19 @@ def render(root: pathlib.Path = ROOT) -> str:
     """Return the import block and ``__all__`` for :data:`declared`."""
     pairs = declared(root)
     lines = []
-    for m, g in pairs:
+    for module, name in pairs:
         # language-owners: ["Eval"]
-        exports = [("LANGUAGE", f"_{g.upper()}_LANGUAGE")]
-        if not m.endswith(".definition"):
-            exports.append((g, ""))
-        for name, alias in exports:
-            comment = (
-                "  # noqa: A004 - the language's name"
-                if hasattr(builtins, name)
-                else ""
-            )
-            item = f"{name} as {alias}" if alias else name
-            line = f"from {m} import {item}"
-            if len(line + comment) > LINE_LIMIT:
-                lines.append(f"from {m} import (\n    {item},{comment}\n)")
-            else:
-                lines.append(line + comment)
-    deferred_imports = [
-        f"    from {m.removesuffix('.definition')}.generator import {g} as {g}"
-        for m, g in pairs
-        if m.endswith(".definition")
-    ]
-    if deferred_imports:
-        lines.extend(["", "if TYPE_CHECKING:", *deferred_imports])
+        comment = (
+            "  # noqa: A004 - the language's name" if hasattr(builtins, name) else ""
+        )
+        line = f"from {module} import {name}"
+        if len(line + comment) > LINE_LIMIT:
+            lines.append(f"from {module} import (\n    {name},{comment}\n)")
+        else:
+            lines.append(line + comment)
     imports = "\n".join(lines)
-    names = sorted(g for _, g in pairs)
-    listed = "\n".join(f'    "{name}",' for name in names)
-    declarations = "\n".join(f"    _{g.upper()}_LANGUAGE," for _, g in pairs)
-    deferred = "\n".join(
-        f'    "{g}": "{m.removesuffix(".definition")}.generator",'
-        for m, g in pairs
-        if m.endswith(".definition")
-    )
-    return (
-        f"{imports}\n\n_LANGUAGES = (\n{declarations}\n)\n\n"
-        f"_DEFERRED = {{\n{deferred}\n}}\n\n__all__ = [\n{listed}\n]"
-    )
+    listed = "\n".join(f'    "{name}",' for name in sorted(g for _, g in pairs))
+    return f"{imports}\n\n__all__ = [\n{listed}\n]"
 
 
 def update_exports(

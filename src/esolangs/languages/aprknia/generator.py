@@ -26,11 +26,7 @@ Decisions:
 from functools import cache
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.aprknia.descriptor import LANGUAGE as LANGUAGE
 
 #: ``11*`` pushes 2, 0, 1, 1, 0.  Its top 0 is a read selector (``_SKIP``);
 #: ``!!!`` leaves 2, 0 so ``~*`` after the read is byte mod 2, the bit.
@@ -84,11 +80,3 @@ def aprknia(truth_table: str) -> str:
 
     emit(0, 0)
     return "".join(pieces)
-
-
-LANGUAGE = Language(
-    "Aprknia",
-    RuntimeSpec("aprknia", category="stack_based"),
-    backend=BooleanBackend(generate=aprknia, wrap=wrap_chars),
-    contract=BooleanContract(input_shape="char_stream"),
-)

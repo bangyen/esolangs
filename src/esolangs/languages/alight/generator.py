@@ -25,20 +25,8 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.alight.interpreter._dialect import (
-    EXPRESSION_SYNTAXES,
-    LIST_UPDATES,
-)
-from esolangs.languages.alight.interpreter._dialect import (
-    expression_syntax as validate_expression_syntax,
-)
-from esolangs.languages.alight.interpreter._dialect import (
-    list_update as validate_list_update,
-)
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.alight.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.alight.descriptor import _dialect as _dialect
 
 __all__ = ["alight"]
 
@@ -469,12 +457,6 @@ def _postfix_units(
     return _alight_units(table, n, chunk, essential, postfix=True)
 
 
-def _dialect(expression_syntax: str = "infix", list_update: str = "in_place") -> None:
-    """Validate Alight's dialect settings, one keyword per setting."""
-    validate_expression_syntax(expression_syntax)
-    validate_list_update(list_update)
-
-
 #: ``2 * size / scale`` is the squared chunk count at which a fold's width
 #: (a chunk plus its guard, about ``size / count + 41``) meets its height (about
 #: 11 rows per chunk, doubled when ranked by ``balance_score``).  Fitted on
@@ -569,31 +551,3 @@ def _balance_projected(
             table, n, {len(table)}, essential, postfix=postfix, columns=columns
         )
     return min(candidates, key=balance_score)
-
-
-LANGUAGE = Language(
-    "Alight",
-    RuntimeSpec(
-        "alight",
-        category="grid_based",
-        dialect=_dialect,
-        dialect_values={
-            "expression_syntax": EXPRESSION_SYNTAXES,
-            "list_update": LIST_UPDATES,
-        },
-        split=True,
-        eof="it raises its own error before the read is reached",
-        underfed_raises=True,
-        empty_program="empty program",
-    ),
-    backend=BooleanBackend(
-        generate=alight,
-        # Not a tree: a Horner row index into a string literal.
-        shape=Shape.LOOKUP,
-        balance=balance_alight,
-        no_wrap="a command is a word walked cell by cell; a row end cuts it",
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

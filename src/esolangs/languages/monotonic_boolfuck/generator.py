@@ -22,11 +22,7 @@ Size:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.monotonic_boolfuck.descriptor import LANGUAGE as LANGUAGE
 
 #: Read onto ``p``, then consume the byte's other seven bits on a set bit.
 _READ = ">1<,>,,,,,,,<"
@@ -70,13 +66,3 @@ def monotonic_boolfuck(truth_table: str) -> str:
 
     # Opposite adjacent moves touch no cell on the infinite zero tape.
     return ("1>" + tree(0, 0, 0)).replace("><", "")
-
-
-LANGUAGE = Language(
-    "Monotonic Boolfuck",
-    RuntimeSpec(
-        "monotonic_boolfuck", category="tape_based", eof="EOF supplies zero bits"
-    ),
-    backend=BooleanBackend(generate=monotonic_boolfuck, wrap=wrap_chars),
-    contract=BooleanContract(input_shape="char_stream"),
-)

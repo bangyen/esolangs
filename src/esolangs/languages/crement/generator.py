@@ -43,10 +43,7 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
-from esolangs.registry._backend import BooleanBackend, TemplateSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.crement.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["crement"]
 
@@ -279,24 +276,3 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
         or same_tokens(template, layout(layout_width(template)))
         or same_up_to_wrapping(template, plain)
     )
-
-
-LANGUAGE = Language(
-    "Crement",
-    RuntimeSpec("crement", category="program_based"),
-    backend=BooleanBackend(
-        generate=crement,
-        same_layout=_same_layout,
-        balance=_balance,
-        no_wrap="jumps and patches name instruction numbers, so lines stay whole",
-        template=TemplateSpec(setters=crement_setters),
-    ),
-    contract=BooleanContract(
-        answer_mode="termination",
-        answer_values=("halts", "diverges"),
-        note="Crement answers by termination: the tree's nodes patch a "
-        "per-input tester's jump targets, and the row lands past the "
-        "end (halts, 0) or on a self-jump (diverges, 1)",
-    ),
-    example=Example(expected=""),
-)

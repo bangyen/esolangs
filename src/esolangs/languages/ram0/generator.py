@@ -21,23 +21,19 @@ from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     in_input_order,
-    same_token_layout,
     subtree_ids,
     subtree_slot,
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
-from esolangs.registry._backend import BooleanBackend, TemplateSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.ram0.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.ram0.descriptor import PAIR as PAIR
 
 #: A fixed Z precedes each slot; the one-command pair selects zero or one.
 #: RAM0 has no input command, so each input run is a fixed-length ``Z``,
 #: ``Z``/``A`` unit independent of the incoming register (``Z`` resets
 #: absolutely); a variable-length setter would shift the absolute ``goto``
 #: operands.
-PAIR = ("Z", "A")
 _RAM0_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 
 
@@ -252,25 +248,3 @@ def _balance(_table: str, default: str) -> str:
     tokens = default.split()
     width = balanced_token_width(tokens, " ")
     return _join_tokens(tokens, width, " ")
-
-
-LANGUAGE = Language(
-    "RAM0",
-    RuntimeSpec("ram0", category="register_based"),
-    backend=BooleanBackend(
-        generate=ram0,
-        same_layout=same_token_layout,
-        # Multi-character tokens (``vs``, ``0b1``, ``L C 19``); space is the
-        # only safe break.
-        wrap=wrap_space_delimited,
-        balance=_balance,
-        template=TemplateSpec(pair=PAIR),
-    ),
-    contract=BooleanContract(
-        answer_mode="dump",
-        answer_pattern=r"z: (\d+)",
-        note="RAM0 has no output instruction and dumps its whole state "
-        "at halt; the answer is the 'z' register",
-    ),
-    example=Example(expected="z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}"),
-)

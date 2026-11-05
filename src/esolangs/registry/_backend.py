@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from enum import StrEnum
-from importlib import import_module
-from typing import Any, cast
+from typing import Any
 
 from esolangs.generation.helpers import TEMPLATE_CHAR, Setters, check_setters
+from esolangs.registry._functions import FunctionRef
 from esolangs.runtime._program import Program
 
 # The width-aware generators also take ``width``, hence ``...``.
@@ -53,11 +53,18 @@ class TemplateSpec:
         return self.setters(template, inputs)
 
 
-@dataclass(frozen=True)
+class _Unset:
+    pass
+
+
+_UNSET = _Unset()
+
+
+@dataclass(frozen=True, init=False)
 class BooleanBackend:
     """Generator, accepted tables, input binding and source layout rules."""
 
-    generate: Generator
+    entrypoint: Generator
     template: TemplateSpec | None = None
     max_inputs: int | None = None
     restrictions: str = ""
@@ -77,52 +84,49 @@ class BooleanBackend:
     #: ``balance(table, default)``: the squarest layout a reflow cannot find.
     balance: Callable[..., Any] | None = None
 
-    def __post_init__(self) -> None:
-        """Require a generator and consistent wrapping declarations."""
-        if not callable(object.__getattribute__(self, "generate")):
-            raise ValueError("a Boolean backend requires a callable generator")
-        if self.wrap is not None and self.no_wrap:
-            raise ValueError("wrap and no_wrap exclude each other")
+    def __init__(
+        self,
+        entrypoint: Generator | _Unset | None = _UNSET,
+        template: TemplateSpec | None = None,
+        max_inputs: int | None = None,
+        restrictions: str = "",
+        shape: Shape = Shape.TREE,
+        grid: bool = False,  # noqa: FBT001, FBT002
+        wrap: Callable[[str, int], str] | None = None,
+        wrap_multiline: bool = False,  # noqa: FBT001, FBT002
+        wrap_balance: Callable[[str], str] | None = None,
+        no_wrap: str = "",
+        same_layout: Callable[[str, str, Callable[[int], Any]], bool] | None = None,
+        balance: Callable[..., Any] | None = None,
+        *,
+        generate: Generator | _Unset | None = _UNSET,
+    ) -> None:
+        """Accept the legacy alias, including ``replace(backend, generate=...)``."""
+        # Keep the former dataclass positional arguments, including its flags.
+        # replace() supplies the old entrypoint too; the explicit alias wins.
+        selected = entrypoint if isinstance(generate, _Unset) else generate
+        if isinstance(selected, _Unset):
+            raise TypeError("a Boolean backend requires a generator argument")
+        values = locals()
+        for field in fields(BooleanBackend):
+            value = selected if field.name == "entrypoint" else values[field.name]
+            object.__setattr__(self, field.name, value)
+        self.__post_init__()
 
     @property
     def generator_name(self) -> str:
-        """Return the export name without loading a deferred implementation."""
-        generate = object.__getattribute__(self, "generate")
-        return (
-            generate.name
-            if isinstance(generate, GeneratorReference)
-            else generate.__name__
-        )
+        """Return the declared export name without loading its implementation."""
+        return self.entrypoint.__name__
 
+    @property
+    def generate(self) -> Generator:
+        """Load only the selected generator; ordinary callables remain unchanged."""
+        entrypoint = self.entrypoint
+        return entrypoint.load() if isinstance(entrypoint, FunctionRef) else entrypoint
 
-@dataclass(frozen=True)
-class GeneratorReference:
-    """An import target that remains callable during backend validation."""
-
-    module: str
-    name: str
-
-    def load(self) -> Generator:
-        """Return the real function, preserving identity and source inspection."""
-        generate = getattr(import_module(self.module), self.name)
-        if not callable(generate):
-            raise TypeError(f"{self.module}.{self.name} is not a callable generator")
-        return cast(Generator, generate)
-
-    def __call__(self, *args: Any, **kwargs: Any) -> Program:
-        """Load and call the implementation."""
-        return self.load()(*args, **kwargs)
-
-
-@dataclass(frozen=True)
-class DeferredBackend(BooleanBackend):
-    """Keep metadata eager while resolving the generator on attribute access."""
-
-    width_aware: bool = False
-
-    def __getattribute__(self, name: str) -> Any:
-        """Expose a real function so existing introspection and replacement work."""
-        value = super().__getattribute__(name)
-        if name == "generate" and isinstance(value, GeneratorReference):
-            return value.load()
-        return value
+    def __post_init__(self) -> None:
+        """Require a generator and consistent wrapping declarations."""
+        if not callable(self.entrypoint):
+            raise ValueError("a Boolean backend requires a callable generator")
+        if self.wrap is not None and self.no_wrap:
+            raise ValueError("wrap and no_wrap exclude each other")

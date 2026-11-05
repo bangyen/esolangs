@@ -25,12 +25,8 @@ from __future__ import annotations
 from esolangs.generation.helpers import TEMPLATE_CHAR, _validate_truth_table
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
-from esolangs.registry._backend import BooleanBackend, TemplateSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.runtime._definition import RuntimeSpec
-
-PAIR = ("0", "1")
+from esolangs.languages.refractran.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.refractran.descriptor import PAIR as PAIR
 
 
 def _primes(count: int) -> list[int]:
@@ -153,26 +149,3 @@ def _balance(_table: str, default: str) -> str:
     tokens = default.split()
     width = balanced_token_width(tokens, " ", minimum=max(map(len, tokens)))
     return min([default, wrap_space_delimited(default, width)], key=balance_score)
-
-
-LANGUAGE = Language(
-    "REFRACTRAN",
-    RuntimeSpec(
-        "refractran",
-        category="register_based",
-        empty_program="REFRACTRAN needs an initial integer",
-    ),
-    backend=BooleanBackend(
-        generate=refractran,
-        wrap=wrap_space_delimited,
-        balance=_balance,
-        template=TemplateSpec(pair=PAIR),
-    ),
-    contract=BooleanContract(
-        answer_mode="dump",
-        answer_pattern=r"([01])$",
-        note="Inputs are ordered prime exponents in the initial integer; "
-        "the final binary state ends in the answer bit.",
-    ),
-    example=Example(expected_compared=False),
-)

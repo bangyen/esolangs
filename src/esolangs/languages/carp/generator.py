@@ -28,12 +28,10 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.carp.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.carp.descriptor import MAX_INPUTS as MAX_INPUTS
 from esolangs.runtime.source_hints import with_hint
 
-MAX_INPUTS = 14
 _K = 15  # register held at 15: ``INC r15 L`` is a jump to L
 
 
@@ -137,16 +135,3 @@ class _Builder:
         if not self.reference(level + 1, row + half, branch, jump=False):
             self.code[branch][2] = self.line()
             self.node(level + 1, row + half)
-
-
-LANGUAGE = Language(
-    "CARP",
-    RuntimeSpec(
-        "carp",
-        category="register_based",
-        empty_program="a program needs at least one instruction",
-    ),
-    backend=BooleanBackend(
-        generate=carp, max_inputs=MAX_INPUTS, no_wrap="a line break ends an instruction"
-    ),
-)

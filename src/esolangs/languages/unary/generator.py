@@ -32,12 +32,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     move_text,
 )
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.unary.descriptor import LANGUAGE as LANGUAGE
 
 _MAX_SOURCE = 256 * 1024 * 1024
 _LIMITS = TextLimits(32 * 1024 * 1024, _MAX_SOURCE, 256 * 1024)
@@ -87,29 +82,3 @@ def _zeros(brainfuck: str) -> int:
                 "Unary source exceeds the 256 Mi-character generation-work cap"
             )
     return count
-
-
-LANGUAGE = Language(
-    "Unary",
-    RuntimeSpec(
-        "unary", category="tape_based", compressed_source=True, eof="stores zero"
-    ),
-    backend=BooleanBackend(
-        generate=unary,
-        max_inputs=9,
-        restrictions=(
-            "raw export 32 Mi characters; generation 256 Mi characters; "
-            "gzip 256 KiB; table-dependent caps"
-        ),
-        wrap=wrap_chars,
-    ),
-    certification=CertificationSpec(benchmark_tables=("00", "01", "10", "11", "0001")),
-    contract=BooleanContract(
-        alphabet=("\x00", "\xff"),
-        input_shape="char_stream",
-        answer_mode="termination",
-        answer_values=("halts", "diverges"),
-        note="Bytes 0/255 encode inputs; halt means 0, a fixed cycle means 1.",
-    ),
-    example=Example(expected="", expected_compared=False, slow_build=True),
-)

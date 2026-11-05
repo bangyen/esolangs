@@ -29,14 +29,12 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.token_balance import CELL_ASPECT
-from esolangs.generation.wrap import TokenWrapper, balance_program, balance_score
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.generation.wrap import balance_program, balance_score
+from esolangs.languages.freestajlo.descriptor import _UNIT as _UNIT
+from esolangs.languages.freestajlo.descriptor import LANGUAGE as LANGUAGE
 
 #: A string, ``'`` and its character, or a digit run is one unit: a break
 #: inside pushes a newline or splits a number.
-_UNIT = r'"[^"]*"|\'[\s\S]|\d+|[\s\S]'
 
 
 #: Table bits a packed character carries, and the code of its zero word: 64
@@ -107,19 +105,3 @@ def _pack(table: str) -> str:
         chr(_BASE + int(table[start : start + _WORD][::-1], 2))
         for start in range(0, len(table), _WORD)
     )
-
-
-LANGUAGE = Language(
-    "Freestajlo",
-    RuntimeSpec(
-        "freestajlo",
-        category="stack_based",
-        eof="an exhausted ',' is the spec's -1, an exhausted ';' its 0",
-    ),
-    backend=BooleanBackend(
-        generate=freestajlo,
-        shape=Shape.LOOKUP,
-        wrap=TokenWrapper(_UNIT),
-        balance=_balance,
-    ),
-)

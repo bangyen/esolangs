@@ -39,7 +39,7 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
             RuntimeSpec(
                 "dialect_choice", dialect_values={"mode": ("plain", "with spaces")}
             ),
-            backend=BooleanBackend(generate=build),
+            backend=BooleanBackend(entrypoint=build),
         ),
     }
     monkeypatch.setattr(help_module, "LANGUAGES", languages)
@@ -55,14 +55,14 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
     languages["Capped"] = Language(
         "Capped",
         RuntimeSpec("capped"),
-        backend=BooleanBackend(generate=build, max_inputs=1),
+        backend=BooleanBackend(entrypoint=build, max_inputs=1),
     )
     assert help_module._capability_examples() == ("", "")
     languages.clear()
     languages["Empty Dialect"] = Language(
         "Empty Dialect",
         RuntimeSpec("empty_dialect", dialect_values={"mode": ()}),
-        backend=BooleanBackend(generate=build),
+        backend=BooleanBackend(entrypoint=build),
     )
     assert help_module._capability_examples() == ("", "")
     languages.clear()

@@ -44,10 +44,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import wrap_tokens
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.blindfolded_arithmetic.descriptor import LANGUAGE as LANGUAGE
 
 #: One instruction and its separator; a break after ``;`` is whitespace.
 _INSTRUCTION = r"[^;]*;?"
@@ -191,24 +188,3 @@ def blindfolded_arithmetic(truth_table: str) -> str:
 
 def _wrap(program: str, width: int) -> str:
     return wrap_tokens(program, width, _INSTRUCTION)
-
-
-LANGUAGE = Language(
-    "Blindfolded Arithmetic",
-    RuntimeSpec(
-        "blindfolded_arithmetic",
-        category="register_based",
-        empty_program="a Blindfolded Arithmetic program needs at least one instruction",
-    ),
-    backend=BooleanBackend(
-        generate=blindfolded_arithmetic,
-        wrap=_wrap,
-        # No flow control: the table is data, indexed by arithmetic, not a tree.
-        shape=Shape.LOOKUP,
-    ),
-    contract=BooleanContract(
-        input_shape="row_number",
-        note="the input must be a positive integer, so the committed input is "
-        "the row index plus one",
-    ),
-)

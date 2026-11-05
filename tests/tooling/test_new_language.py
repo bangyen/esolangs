@@ -20,8 +20,8 @@ def root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 @pytest.mark.usefixtures("root")
 def test_scaffold_creates_source_generator_and_tests() -> None:
-    source, test, generator, generator_test, *packages = new_language.scaffold(
-        "Tiny Lang", "other"
+    source, test, descriptor, generator, generator_test, *packages = (
+        new_language.scaffold("Tiny Lang", "other")
     )
     assert (source.name, generator.name) == ("interpreter.py", "generator.py")
     assert (
@@ -30,6 +30,9 @@ def test_scaffold_creates_source_generator_and_tests() -> None:
         == new_language.ROOT / "src/esolangs/languages/tiny_lang"
     )
     assert {path.name for path in packages} == {"__init__.py", "language.toml"}
+    assert descriptor.name == "descriptor.py"
+    assert descriptor.parent == source.parent
+    assert "FunctionRef" in descriptor.read_text()
     assert test.parent == generator_test.parent == source.parent / "tests"
     assert (test.name, generator_test.name) == (
         "test_tiny_lang.py",
@@ -47,6 +50,7 @@ def test_an_interpreter_only_language_gets_no_generator() -> None:
     paths = new_language.scaffold("Tiny", "other", generator=False)
     assert [path.name for path in paths[:2]] == ["interpreter.py", "test_tiny.py"]
     assert paths[1].parent == paths[0].parent / "tests"
+    assert any(path.name == "descriptor.py" for path in paths)
     assert not any(path.name == "generator.py" for path in paths)
     assert not (new_language.ROOT / "src/esolangs/generation/tiny.py").exists()
 
@@ -88,7 +92,7 @@ def test_registration_ignores_old_generator_locations(root: Path) -> None:
     old.parent.mkdir(parents=True)
     old.write_text("owned")
     (gap,) = new_language._unregistered("Tiny", "tiny")
-    assert gap.where == "src/esolangs/registry/_table.py"
+    assert gap.where == "src/esolangs/languages/tiny/descriptor.py"
 
 
 def test_the_slug_is_the_registry_id() -> None:
@@ -223,7 +227,7 @@ def test_gap_report_prints_a_shell_safe_followup(
 def test_scaffold_reports_the_canonical_generator() -> None:
     new_language.scaffold("Tiny", "other")
     (gap,) = new_language._unregistered("Tiny", "tiny")
-    assert gap.where == "src/esolangs/languages/tiny/generator.py"
+    assert gap.where == "src/esolangs/languages/tiny/descriptor.py"
 
 
 def test_scaffold_collision_is_atomic(root: Path) -> None:

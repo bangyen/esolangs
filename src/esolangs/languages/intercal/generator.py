@@ -28,14 +28,11 @@ from esolangs.generation.helpers import (
     in_input_order,
 )
 from esolangs.generation.wrap import _join_tokens, balance_score
-from esolangs.registry._backend import BooleanBackend, TemplateSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.intercal.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.intercal.descriptor import PAIR as PAIR
+from esolangs.languages.intercal.descriptor import TEMPLATE_CHAR as TEMPLATE_CHAR
 
-TEMPLATE_CHAR = "@"
 _VARIABLE_MAX = 65535  # the largest INTERCAL variable number
-PAIR = ("#0", "#1")
 
 
 @dataclass(frozen=True, slots=True)
@@ -463,26 +460,3 @@ def _same_layout(template: str, _plain: str, layout: Callable[[int], Any]) -> bo
     return isinstance(narrow, str) and _intercal_tokens(template) == _intercal_tokens(
         narrow
     )
-
-
-LANGUAGE = Language(
-    "INTERCAL",
-    RuntimeSpec(
-        "intercal",
-        category="variable_based",
-        random=True,
-        empty_program="INTERCAL program is insufficiently or excessively polite (E099)",
-    ),
-    backend=BooleanBackend(
-        generate=intercal,
-        same_layout=_same_layout,
-        balance=balance_intercal,
-        template=TemplateSpec(pair=PAIR, char=TEMPLATE_CHAR),
-    ),
-    contract=BooleanContract(
-        answer_pattern=r"(?s)^(_\n|I)\n$",
-        answer_values=("_\n", "I"),
-        note="INTERCAL READ OUT prints a lone overbar for zero and I for one",
-    ),
-    example=Example(expected="_\n\n"),
-)

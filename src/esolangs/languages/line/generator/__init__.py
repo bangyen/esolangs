@@ -33,6 +33,7 @@ from esolangs.generation.helpers import (
     permute_truth_table,
     read_at,
 )
+from esolangs.languages.line.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.line.generator.forward import streaming_canvas
 from esolangs.languages.line.generator.layout import (
     Node,
@@ -349,23 +350,3 @@ def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> 
         ),
         selected,
     )
-
-
-LANGUAGE = Language(
-    "Line",
-    RuntimeSpec(
-        "line",
-        category="tape_based",
-        source_kind=SourceKind.RASTER,
-        empty_program="image contains no ink",
-    ),
-    certification=CertificationSpec(
-        # A 2^12-row raster renders in about 24s.
-        slow_scaling=True,
-    ),
-    backend=BooleanBackend(
-        generate=line,
-        balance=balance,
-        no_wrap="tree geometry fixes the width; balance chooses orientation",
-    ),
-)

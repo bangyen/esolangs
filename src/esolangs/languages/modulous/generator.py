@@ -34,9 +34,7 @@ from esolangs.generation.wrap import (
     balance_score,
     wrap_space_delimited,
 )
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.modulous.descriptor import LANGUAGE as LANGUAGE
 
 # Characters around the table in its literal push: ``[PSH STR "`` opens it
 # (10 chars) and ``"]`` closes the literal (2 chars).
@@ -194,15 +192,3 @@ def _balance(table: str, default: str) -> str:
     centre = _chunked_columns(size, list(map(len, suffix)))
     candidates.extend(modulous(table, centre + offset) for offset in (-3, -1, 1, 3))
     return min(candidates, key=balance_score)
-
-
-LANGUAGE = Language(
-    "Modulous",
-    RuntimeSpec("modulous", category="stack_based", random=True),
-    backend=BooleanBackend(
-        generate=modulous,
-        # Not a tree: pops a ``PSH STR`` table down to the indexed character.
-        shape=Shape.LOOKUP,
-        balance=_balance,
-    ),
-)

@@ -19,11 +19,8 @@ Size:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.generation.wrap import TokenWrapper
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.sendstuff.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.sendstuff.descriptor import _wrap as _wrap
 
 _MACROS = "@o(>(Subtract 49>%))@z(>(Divide 48>(Subtract 1>%)))@y(Input!o %)"
 
@@ -76,16 +73,3 @@ def sendstuff(truth_table: str) -> str:
 
 
 #: Break between words: a newline inside ``>17``, ``>%`` or ``!o`` splits a name.
-_wrap = TokenWrapper(r"[|<>!@]?[A-Za-z0-9_.%]+|[\s\S]")
-
-
-LANGUAGE = Language(
-    "SendStuff",
-    RuntimeSpec(
-        "sendstuff",
-        category="other",
-        eof="an exhausted Input or InputNumber sends nothing, as the spec says",
-    ),
-    backend=BooleanBackend(generate=sendstuff, wrap=_wrap),
-    contract=BooleanContract(input_shape="char_stream"),
-)

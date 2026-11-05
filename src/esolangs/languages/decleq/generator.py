@@ -25,11 +25,7 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
-from esolangs.generation.wrap import wrap_grid
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.decleq.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["decleq"]
 
@@ -226,13 +222,3 @@ class _OwnerBuilder(_CodeBuilder):
                 key = one
         for address, key in fixups:
             self.mem[address] = addresses[key]
-
-
-LANGUAGE = Language(
-    "Decleq",
-    RuntimeSpec("decleq", category="register_based"),
-    backend=BooleanBackend(generate=decleq, wrap=wrap_grid),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

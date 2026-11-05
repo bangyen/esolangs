@@ -26,11 +26,7 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.hot.descriptor import LANGUAGE as LANGUAGE
 
 #: ``R_i`` with ``{}`` for ``R_(i+1)``.
 _READ = "S(KK)(S(K(S(0K)))(S(KK)(S(KK)(S(K(S(0K)))(S(K(S(0K)))(S(KK)(S(K({})))))))))"
@@ -93,16 +89,3 @@ def hot(truth_table: str) -> str:
         (bit == "1") == (2 * row.bit_count() > n) for row, bit in enumerate(truth_table)
     )
     return f"{program}({_tree(truth_table, majority=majority)})"
-
-
-LANGUAGE = Language(
-    "Hot",
-    RuntimeSpec(
-        "hot",
-        category="other",
-        eof="the stream past the input string is 0 bits",
-        empty_program="a Hot program needs at least one combinator",
-    ),
-    backend=BooleanBackend(generate=hot, wrap=wrap_chars),
-    contract=BooleanContract(input_shape="char_stream"),
-)

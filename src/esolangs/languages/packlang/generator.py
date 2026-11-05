@@ -35,7 +35,6 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     grid_width,
     input_weights,
-    same_ignoring_whitespace,
     subtree_ids,
 )
 from esolangs.generation.token_balance import balanced_token_width, run_widths
@@ -44,18 +43,15 @@ from esolangs.generation.wrap import (
     balance_score,
     wrap_program,
 )
+from esolangs.languages.packlang.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.packlang.descriptor import _dialect as _dialect
 from esolangs.languages.packlang.interpreter._literals import (
-    LITERAL_POLICIES,
     PacklangLiterals,
 )
 from esolangs.languages.packlang.wrapping import (
     _PACKLANG_LEXEME,
     _packlang,
 )
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["packlang"]
 
@@ -371,36 +367,3 @@ def _folded(statements: list[str]) -> list[str]:
         else:
             lines.append(statement)
     return lines
-
-
-def _dialect(literal_policy: str = "decimal") -> None:
-    """Validate how Packlang reads a literal of only 0s and 1s."""
-    PacklangLiterals(policy=literal_policy)
-
-
-LANGUAGE = Language(
-    "Packlang",
-    RuntimeSpec(
-        "packlang",
-        category="variable_based",
-        dialect=_dialect,
-        dialect_values={"literal_policy": LITERAL_POLICIES},
-        eof="an exhausted charGet is newline byte 10",
-        empty_program="empty program",
-    ),
-    backend=BooleanBackend(
-        generate=packlang,
-        # Not a tree: one painted array cell per differing row, read by index.
-        shape=Shape.LOOKUP,
-        # One statement a line; each folds on its own.
-        # Generators emit indented blocks; fold only an over-wide line.
-        # Packlang punctuation separates tokens even without a space.
-        wrap=_packlang,
-        wrap_multiline=True,
-        same_layout=same_ignoring_whitespace,
-        balance=balance_packlang,
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

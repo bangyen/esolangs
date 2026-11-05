@@ -55,6 +55,7 @@ from esolangs.generation.helpers import (
     narrowest_grid,
     read_at,
 )
+from esolangs.languages.circuit_diagram.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.circuit_diagram.generator.columns import _FreeColumns
 from esolangs.languages.circuit_diagram.generator.layout import (
     _Layout,
@@ -791,29 +792,3 @@ def _balance(table: str, default: Any, **options: Any) -> Any:
     )
 
     return balance_circuit_diagram(table, default, **options)
-
-
-LANGUAGE = Language(
-    "Circuit Diagram",
-    RuntimeSpec(
-        "circuit_diagram",
-        category="grid_based",
-        split=True,
-        eof="resolves its inputs while laying the grid",
-    ),
-    certification=CertificationSpec(
-        layout_switch=(7, 8),
-        # The H-layout is not asymptotic below n=8, so it has no room for a
-        # third rung; the deep contract carries it on a backstop for the same
-        # reason, and its area recurrence is checked with the construction
-        # invariants.
-        scaling_rungs=(8, 9),
-        documented_sizes=(52_057, 106_751, 2.05),
-    ),
-    example=Example(slow_build=True),
-    backend=BooleanBackend(generate=circuit_diagram, balance=_balance, grid=True),
-    contract=BooleanContract(
-        input_shape="char_stream",
-        ignores_whitespace=True,
-    ),
-)

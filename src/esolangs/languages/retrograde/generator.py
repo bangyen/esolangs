@@ -17,13 +17,8 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     subtree_ids,
 )
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend, TemplateSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
-
-PAIR = ("\\", "*")
+from esolangs.languages.retrograde.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.retrograde.descriptor import PAIR as PAIR
 
 
 def _moves(source: str) -> str:
@@ -122,17 +117,3 @@ def retrograde(truth_table: str) -> str:
         stack.extend(reversed(parts))
     chunks.append(">" * n)
     return _moves("".join(chunks))
-
-
-LANGUAGE = Language(
-    "Retrograde",
-    RuntimeSpec("retrograde", category="tape_based"),
-    backend=BooleanBackend(
-        generate=retrograde, wrap=wrap_chars, template=TemplateSpec(pair=PAIR)
-    ),
-    contract=BooleanContract(
-        answer_mode="dump",
-        note="Inputs are ordered one-instruction setters; the final current "
-        "tape bit is the whole answer dump.",
-    ),
-)

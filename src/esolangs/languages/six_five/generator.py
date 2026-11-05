@@ -33,11 +33,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
     subtree_slot,
 )
-from esolangs.generation.wrap import _six_five
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.six_five.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["six_five"]
 
@@ -576,17 +572,3 @@ def _six_five_const(value: int) -> str:
     q, r = divmod(value, 6)
     # A remainder of five already satisfies 5*k <= value.
     return "6" * q + "62" * r
-
-
-LANGUAGE = Language(
-    "6-5",
-    RuntimeSpec("six_five", category="tape_based"),
-    backend=BooleanBackend(
-        generate=six_five,
-        # 7n/8n are two-character tokens; see ``_SIX_FIVE_COMMAND``.
-        wrap=_six_five,
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

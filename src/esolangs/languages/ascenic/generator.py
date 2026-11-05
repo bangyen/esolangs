@@ -42,9 +42,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.ascenic.descriptor import LANGUAGE as LANGUAGE
 
 _PRINT, _INPUT, _PUSH, _ADD, _SUB, _MUL, _DIV, _MOD = 1, 2, 3, 4, 5, 6, 7, 8
 _POP = 10
@@ -182,12 +180,3 @@ def ascenic(truth_table: str) -> str:
     # changes sit at the end is cheaper read from the other end.
     mirrored = _scan(table[::-1], n, used, mirror=True)
     return min(forward, mirrored, key=len)
-
-
-LANGUAGE = Language(
-    "Ascenic",
-    RuntimeSpec("ascenic", category="stack_based", random=True),
-    backend=BooleanBackend(
-        generate=ascenic, no_wrap="a line's length is its opcode and argument"
-    ),
-)

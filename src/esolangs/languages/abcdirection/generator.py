@@ -64,10 +64,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.abcdirection.descriptor import LANGUAGE as LANGUAGE
 
 RIGHT, DOWN, LEFT, UP = range(4)
 _STEPS = ((1, 0), (0, 1), (-1, 0), (0, -1))
@@ -494,22 +491,3 @@ def abcdirection(truth_table: str) -> str:
     """Build an ABCDirection program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
     return _layout(truth_table, n)
-
-
-LANGUAGE = Language(
-    "ABCDirection",
-    RuntimeSpec(
-        "abcdirection",
-        category="grid_based",
-        eof="EOF supplies zero bits",
-        empty_program="program must contain a line with DDDDDD",
-    ),
-    backend=BooleanBackend(
-        generate=abcdirection,
-        shape=Shape.REDUCING,
-        balance=_balance,
-        no_wrap="a newline adds a grid row and moves every vertical path",
-        grid=True,
-    ),
-    contract=BooleanContract(input_shape="char_stream"),
-)

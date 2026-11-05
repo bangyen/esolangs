@@ -21,15 +21,11 @@ from itertools import pairwise
 from string import ascii_letters
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.generation.wrap import TokenWrapper
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.bleh.descriptor import _TOKEN as _TOKEN
+from esolangs.languages.bleh.descriptor import LANGUAGE as LANGUAGE
 
 #: a name or ``::``.
 #: a name.
-_TOKEN = r'"[^"]*"|::|\w+|[\s\S]'
 
 #: ``io``'s import name: the first letter name, which no function takes.
 _IO = "a"
@@ -91,17 +87,3 @@ def _name(node: int, level: int) -> str:
         index, digit = divmod(index - 1, len(ascii_letters))
         letters.append(ascii_letters[digit])
     return "".join(reversed(letters))
-
-
-LANGUAGE = Language(
-    "Bleh",
-    RuntimeSpec(
-        "bleh",
-        category="other",
-        eof="an exhausted io::next() is the empty bitstring",
-        underfed_raises=True,
-        empty_program="a Bleh program needs a main function",
-    ),
-    backend=BooleanBackend(generate=bleh, wrap=TokenWrapper(_TOKEN)),
-    contract=BooleanContract(input_shape="char_stream"),
-)

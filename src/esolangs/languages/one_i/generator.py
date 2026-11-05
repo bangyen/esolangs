@@ -29,10 +29,7 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.one_i.descriptor import LANGUAGE as LANGUAGE
 
 _CONSTANT = ("iic+", "ici*")
 
@@ -137,10 +134,3 @@ def _parity_reader(t: str, used: list[int], n: int) -> str | None:
         + ("<" if t[0] == "0" else ">")
         + "p"
     )
-
-
-LANGUAGE = Language(
-    "1 + i",
-    RuntimeSpec("one_i", category="stack_based"),
-    backend=BooleanBackend(generate=one_i, wrap=wrap_chars),
-)

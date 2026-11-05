@@ -32,11 +32,7 @@ from esolangs.generation.helpers import (
     reflected_table,
     subtree_ids,
 )
-from esolangs.generation.wrap import wrap_space_delimited
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.codesick.descriptor import LANGUAGE as LANGUAGE
 
 # Non-bit ASCII words keep bit+marker tests unique without a # separator.
 _ALPHABET = "".join(
@@ -127,19 +123,3 @@ def codesick(truth_table: str) -> str:
     lines += [f"{c} codesick out {c} * *;" for c in sorted(printed)]
     # Spaces, not newlines: one line per instruction is too short to wrap.
     return " ".join(lines)
-
-
-LANGUAGE = Language(
-    "Codesick",
-    RuntimeSpec(
-        "codesick",
-        category="other",
-        eof="the whole input is read once to replace every `in`; no read meets EOF",
-    ),
-    backend=BooleanBackend(
-        generate=codesick,
-        # An argument holds no whitespace, so break only between arguments.
-        wrap=wrap_space_delimited,
-    ),
-    contract=BooleanContract(input_shape="char_stream"),
-)

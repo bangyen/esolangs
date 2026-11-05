@@ -32,10 +32,7 @@ from esolangs.generation.helpers import (
     short_name,
     subtree_ids,
 )
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.basicfuck.descriptor import LANGUAGE as LANGUAGE
 
 #: Single-character names: no reserved word is one, and 53 cover every table
 #: a string can hold (n + 1 <= 53 up to 2**52 rows).
@@ -156,19 +153,3 @@ def _program(truth_table: str, n: int, mark: str, base: int) -> str:
     blocks = "".join(f"if({flags[key]}){{{text(key)}}}" for key in flags)
     head = f"#basicfuck t={len(names)} r=0~255 o=wrap\n#allocate {','.join(names)}\n"
     return f"{head}{reads}{arm(root)}{blocks}{answer}+={base};write<-{answer};"
-
-
-LANGUAGE = Language(
-    "Basicfuck",
-    RuntimeSpec(
-        "basicfuck",
-        category="tape_based",
-        empty_program="missing directive or #allocate",
-        eof="`read` at EOF raises: the page's cat covers three EOF conventions",
-    ),
-    backend=BooleanBackend(
-        generate=basicfuck, no_wrap="the directive and #allocate are lines one and two"
-    ),
-    contract=BooleanContract(input_shape="char_stream"),
-    example=Example(expected="0"),
-)

@@ -23,9 +23,7 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._language import Example, Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.movesum.descriptor import LANGUAGE as LANGUAGE
 
 #: Cells: 0 sum/test, 1/2/3/4 addends (4 stays 0), 5 V,
 #: 8 one, 9 counter seed, 10 the input.
@@ -52,21 +50,3 @@ def movesum(truth_table: str) -> str:
         lines.append("move 2 -1" if bit == "1" else "move 4 -1")
         lines.append("move 5 0")
     return "\n".join(lines) + "\n"
-
-
-LANGUAGE = Language(
-    "Movesum",
-    RuntimeSpec(
-        "movesum",
-        category="tape_based",
-        eof="a read at EOF is 0",
-        empty_program="Movesum program is empty",
-    ),
-    backend=BooleanBackend(
-        generate=movesum,
-        # Not a tree: one rung per row, whatever the table says.
-        shape=Shape.LOOKUP,
-        no_wrap="each line is one instruction and a break splits it",
-    ),
-    example=Example(expected="0 0"),
-)

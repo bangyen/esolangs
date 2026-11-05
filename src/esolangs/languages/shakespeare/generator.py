@@ -30,10 +30,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.generation.wrap import wrap_space_delimited
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.shakespeare.descriptor import LANGUAGE as LANGUAGE
 
 #: Bits packed by one sentence; bounds the parser's nesting.
 _CHUNK = 64
@@ -159,16 +156,3 @@ def shakespeare(truth_table: str) -> str:
         return _parity(n, essential, invert=invert)
     # A rule, not a race: see [ablations.polarity].
     return _program(table, n, essential, invert=2 * table.count("1") > len(table))
-
-
-LANGUAGE = Language(
-    "Shakespeare",
-    RuntimeSpec(
-        "shakespeare",
-        category="stack_based",
-        empty_program="Shakespeare line 1: empty play",
-    ),
-    backend=BooleanBackend(
-        generate=shakespeare, shape=Shape.LOOKUP, wrap=wrap_space_delimited
-    ),
-)

@@ -402,7 +402,7 @@ def test_multiline_reflow_follows_registry_metadata(monkeypatch, structural) -> 
     language = replace(
         next(iter(LANGUAGES.values())),
         id="synthetic",
-        backend=BooleanBackend(generate=str, wrap=wrapper, wrap_multiline=structural),
+        backend=BooleanBackend(entrypoint=str, wrap=wrapper, wrap_multiline=structural),
     )
     monkeypatch.setattr(registry, "LANGUAGES", {language.name: language})
     source = "first\nsecond"

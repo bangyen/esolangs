@@ -18,10 +18,7 @@ Decisions:
 """
 
 from esolangs.generation.helpers import subtree_ids
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.basicer.descriptor import LANGUAGE as LANGUAGE
 
 
 def basicer(truth_table: str) -> str:
@@ -50,14 +47,3 @@ def basicer(truth_table: str) -> str:
         if bit < used[-1]:  # the last leaf halts by falling off
             rows.append("GOTO 0")
     return "\n".join(f"{num} {row}" for num, row in enumerate(rows, 1))
-
-
-LANGUAGE = Language(
-    "BASICER",
-    RuntimeSpec("basicer", category="program_based"),
-    backend=BooleanBackend(
-        generate=basicer, no_wrap="each line is one instruction and a break splits it"
-    ),
-    contract=BooleanContract(alphabet=("1", "2")),
-    example=Example(expected="0\n"),
-)

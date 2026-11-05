@@ -33,17 +33,13 @@ from esolangs.generation.wrap import (
     _join_tokens,
     balance_score,
     wrap_program,
-    wrap_space_delimited,
 )
+from esolangs.languages.fractran.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.fractran.descriptor import PAIR as PAIR
 from esolangs.languages.fractran.interpreter.index import SMALL_BASE
-from esolangs.registry._backend import BooleanBackend, TemplateSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.runtime._definition import RuntimeSpec
 
 #: How each input is set: the exponent of its prime in the starting value.
 #: One digit wide, so the run is one :data:`TEMPLATE_CHAR`.
-PAIR = ("0", "1")
 
 
 @dataclass(frozen=True)
@@ -208,30 +204,3 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
         same_tokens(template, program)
         for program in (layout(1), layout(layout_width(template)), plain)
     )
-
-
-LANGUAGE = Language(
-    "FRACTRAN",
-    RuntimeSpec(
-        "fractran",
-        category="register_based",
-        empty_program="a FRACTRAN program needs a starting value",
-    ),
-    backend=BooleanBackend(
-        generate=fractran,
-        same_layout=_same_layout,
-        # Whitespace- or comma-separated tokens, and a break inside one would
-        # change a number.
-        wrap=wrap_space_delimited,
-        balance=_balance,
-        template=TemplateSpec(pair=PAIR),
-    ),
-    contract=BooleanContract(
-        answer_mode="dump",
-        answer_values=("1", "2"),
-        note="FRACTRAN has neither input nor output: the inputs are the "
-        "exponents of n primes in the starting value, and the answer "
-        "is the value the run stops on -- 1 for a zero and 2 for a one",
-    ),
-    example=Example(expected="1"),
-)

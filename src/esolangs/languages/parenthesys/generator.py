@@ -16,9 +16,7 @@ Size:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.parenthesys.descriptor import LANGUAGE as LANGUAGE
 
 #: Rows a packed character holds are ``2**_BITS``; the offset is a multiple of that.
 _BITS = 3
@@ -56,15 +54,3 @@ def parenthesys(truth_table: str) -> str:
     )
     column = f"[ord|[ind|{_grouped(n - _BITS)}|{table}]|0]"
     return f"([gt|[%|[*|[^|2|{_grouped(_BITS)}]|{column}]|256]|127])"
-
-
-LANGUAGE = Language(
-    "Parenthesys",
-    RuntimeSpec("parenthesys", category="other"),
-    backend=BooleanBackend(
-        generate=parenthesys,
-        # Not a tree: one string literal the row indexes.
-        shape=Shape.LOOKUP,
-        no_wrap="a line break is a literal: inside the table it shifts every row",
-    ),
-)

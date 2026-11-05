@@ -29,11 +29,7 @@ from itertools import count, product
 from string import ascii_letters, digits
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.object_disoriented.descriptor import LANGUAGE as LANGUAGE
 
 #: ``I`` is the bit 1; ``N`` is 1 until a 1 bit calls it.
 _HEADER = "dI.fpzrzzzdN.fpzcbsrzzzdB.iiiiiiicitclN.pftprtzzdmain.ozozolI.olI.ozozoz"
@@ -144,23 +140,3 @@ def _shared_names(ids: list[list[int]], n: int) -> dict[tuple[int, int], str]:
             below.setdefault(one, [0, 0])[0] += texts
         uses = below
     return names
-
-
-LANGUAGE = Language(
-    "Object disoriented",
-    RuntimeSpec(
-        "object_disoriented",
-        category="other",
-        empty_program="Object disoriented program defines no 'main' class",
-    ),
-    backend=BooleanBackend(
-        generate=object_disoriented,
-        # Whitespace is ignored everywhere, class names included.
-        wrap=wrap_chars,
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-        note="Object disoriented reads input bits most significant first, so "
-        "a program keeps each input byte's eighth bit and drops the seven before it",
-    ),
-)

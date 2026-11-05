@@ -14,7 +14,7 @@ from esolangs.registry import (
     resolve,
     wiki_url,
 )
-from esolangs.registry._backend import DeferredBackend, Shape
+from esolangs.registry._backend import Shape
 from esolangs.registry._contracts import (
     AnswerMode,
     GeneratorShape,
@@ -206,11 +206,7 @@ def _width_effect(lang: Language) -> WidthEffect:
     backend = lang.backend
     if backend is None:
         return "none"
-    if (
-        backend.width_aware
-        if isinstance(backend, DeferredBackend)
-        else _takes_width(backend.generate)
-    ):
+    if _takes_width(backend.entrypoint):
         return "layout"
     return "wrap" if backend.wrap is not None else "none"
 

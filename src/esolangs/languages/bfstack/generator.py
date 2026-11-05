@@ -35,12 +35,8 @@ from esolangs.generation.helpers import (
     input_weights,
     symmetric_weights,
 )
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._certification import CertificationSpec, Payload
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.bfstack.descriptor import LANGUAGE as LANGUAGE
+from esolangs.registry._certification import Payload
 
 
 def _bfstack_encoder(weights: list[int], start: int = 1) -> str:
@@ -191,21 +187,3 @@ def _payload(state: Any) -> Payload:
     """Split out the data stack, loop stack and pc; the cursor is I/O state."""
     data, control, pc, _cursor = state
     return data, control, pc, 0
-
-
-LANGUAGE = Language(
-    "BFStack",
-    RuntimeSpec("bfstack", category="stack_based"),
-    certification=CertificationSpec(
-        payload=_payload,
-    ),
-    backend=BooleanBackend(
-        generate=bfstack,
-        # A sum, not a tree: a lookup over the essential inputs only.
-        shape=Shape.REDUCING,
-        wrap=wrap_chars,
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

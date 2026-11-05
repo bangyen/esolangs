@@ -20,10 +20,7 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.wrap import balance_score, balance_width
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.egl.descriptor import LANGUAGE as LANGUAGE
 
 
 def egl(truth_table: str, width: int | None = None) -> str:
@@ -104,22 +101,3 @@ def _balance(_table: str, default: str) -> str:
     return min(
         default, _wrap(default, max(floor, balance_width(default))), key=balance_score
     )
-
-
-LANGUAGE = Language(
-    "EGL",
-    RuntimeSpec(
-        "egl",
-        category="grid_based",
-        empty_program="EGL program must begin with 'width,height:'",
-    ),
-    backend=BooleanBackend(
-        generate=egl,
-        # Not a tree: one painted grid cell per entry, walked to by weighted guards.
-        shape=Shape.LOOKUP,
-        balance=_balance,
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

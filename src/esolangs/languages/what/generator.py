@@ -24,10 +24,8 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.generation.wrap import TokenWrapper
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.what.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.what.descriptor import _wrap as _wrap
 
 #: Row literals stay below 2^15, at most 5 digits.
 _LOW_INPUTS = 15
@@ -70,15 +68,3 @@ def what(truth_table: str) -> str:
 
 
 #: Break between tokens, never inside a literal, a ``?`` run or a test.
-_wrap = TokenWrapper(r'\[(?:\d+>|"[01]+":)|\d+|[?!]+|[\s\S]')
-
-
-LANGUAGE = Language(
-    "What!?",
-    RuntimeSpec("what", category="tape_based", eof="a read at EOF yields 0"),
-    backend=BooleanBackend(
-        generate=what,
-        # Whitespace only separates tokens, so a newline between two is harmless.
-        wrap=_wrap,
-    ),
-)

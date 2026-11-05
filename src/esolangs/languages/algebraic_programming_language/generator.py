@@ -36,10 +36,9 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.algebraic_programming_language.descriptor import (
+    LANGUAGE as LANGUAGE,
+)
 
 #: Input variable names in harness order; a variable is bound by being
 #: named on an executed line, so these must be codepoint-ascending
@@ -599,20 +598,3 @@ def balance_apl(table: str, default: str) -> str:
         program, width = _apl_narrow_layout(table, perm, width)
         candidates.append(program)
     return min(candidates, key=balance_score)
-
-
-LANGUAGE = Language(
-    "Algebraic Programming Language",
-    RuntimeSpec("algebraic_programming_language", category="variable_based"),
-    backend=BooleanBackend(
-        generate=algebraic_programming_language,
-        balance=balance_apl,
-        no_wrap="a line with '=' defines, one without runs",
-    ),
-    contract=BooleanContract(
-        note="an executed line prints its result, so the answer ends in a newline",
-    ),
-    # An executed line prints its result and nothing else, so the
-    # answer arrives with the newline that ends that line.
-    example=Example(expected="0\n"),
-)

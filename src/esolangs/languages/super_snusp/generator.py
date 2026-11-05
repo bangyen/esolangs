@@ -28,10 +28,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.super_snusp.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["super_snusp"]
 
@@ -258,26 +255,3 @@ def _balance(table: str, default: str) -> str:
             for divisor in (2, 4, 8)
         ]
     return min(layouts, key=balance_score)
-
-
-LANGUAGE = Language(
-    "Super SNUSP",
-    RuntimeSpec(
-        "super_snusp",
-        category="grid_based",
-        random=True,
-        split=True,
-        empty_program="Super SNUSP program cannot be empty",
-    ),
-    backend=BooleanBackend(
-        generate=super_snusp,
-        # A sum, not a tree: a lookup over the essential inputs only.
-        shape=Shape.REDUCING,
-        balance=_balance,
-        no_wrap="a row is a grid row; a break moves code, it does not reflow",
-        grid=True,
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

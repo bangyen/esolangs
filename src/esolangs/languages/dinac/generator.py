@@ -26,10 +26,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.dinac.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["dinac"]
 
@@ -118,19 +115,3 @@ def _scan(truth_table: str, mark: str, reads: list[str]) -> str:
     visit(0, len(truth_table), None)
     lines += ["IF a", f"    OUT '{mark}", "ELSE", f"    OUT '{1 - int(mark)}"]
     return "\n".join(lines)
-
-
-LANGUAGE = Language(
-    "DINAC",
-    RuntimeSpec(
-        "dinac",
-        category="other",
-        eof="reading past the input yields \\0 / 00, the value the cat example needs",
-    ),
-    backend=BooleanBackend(
-        generate=dinac,
-        shape=Shape.LOOKUP,
-        no_wrap="each line is one statement and indentation is the block structure",
-    ),
-    contract=BooleanContract(input_shape="char_stream"),
-)

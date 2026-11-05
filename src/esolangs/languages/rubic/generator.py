@@ -30,11 +30,7 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.generation.wrap import wrap_space_delimited
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.rubic.descriptor import LANGUAGE as LANGUAGE
 
 _OPENING: tuple[str, ...] = ("r'", "d'")
 _TABLE: dict[str, tuple[str, ...]] = {
@@ -104,11 +100,3 @@ def rubic(truth_table: str) -> str:
 
     node(0, 0)
     return " ".join(out)
-
-
-LANGUAGE = Language(
-    "Rubic",
-    RuntimeSpec("rubic", category="register_based"),
-    backend=BooleanBackend(generate=rubic, wrap=wrap_space_delimited),
-    contract=BooleanContract(input_shape="char_stream"),
-)

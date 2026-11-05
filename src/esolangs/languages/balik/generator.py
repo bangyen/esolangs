@@ -30,9 +30,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.balik.descriptor import LANGUAGE as LANGUAGE
 
 
 @dataclass
@@ -148,14 +146,3 @@ def balik(truth_table: str) -> str:
         "".join(row.get(c, " ") for c in range(max(row, default=-1) + 1))
         for row in rows
     )
-
-
-LANGUAGE = Language(
-    "Balik",
-    RuntimeSpec("balik", category="grid_based"),
-    backend=BooleanBackend(
-        generate=balik,
-        shape=Shape.TREE,
-        no_wrap="a newline adds a grid row and moves every vertical path",
-    ),
-)

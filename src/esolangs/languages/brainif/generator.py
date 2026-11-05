@@ -31,10 +31,7 @@ from esolangs.generation.helpers import (
     input_weights,
     read_at,
 )
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.brainif.descriptor import LANGUAGE as LANGUAGE
 
 
 def _resolve(lines: list[str], width: int | None = None) -> str:
@@ -673,17 +670,3 @@ def _emit_loop(lines: list[str], strip: _Strip, level: int, size: int) -> None:
 def _balance(_table: str, default: str) -> str:
     """Return the DAG; the full and small zero-jump trees never won (n=1..8)."""
     return default
-
-
-LANGUAGE = Language(
-    "BrainIf",
-    RuntimeSpec("brainif", category="tape_based", split=True),
-    backend=BooleanBackend(
-        generate=brainif,
-        balance=_balance,
-        no_wrap="each line is one instruction and goto targets are line numbers",
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

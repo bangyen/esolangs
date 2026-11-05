@@ -32,10 +32,7 @@ from esolangs.generation.helpers import (
     input_weights,
     subtree_ids,
 )
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.cvnc.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["cvnc"]
 
@@ -400,16 +397,3 @@ def cvnc(truth_table: str) -> str:
     if len(program) >= _reach(squarings):  # pragma: no cover - sharing never grows
         raise AssertionError("shared body outgrew the unshared bound")
     return program
-
-
-LANGUAGE = Language(
-    "CV(N)(C)",
-    RuntimeSpec("cvnc", category="other", empty_program="program is empty"),
-    # The parentheses mark optional slots; the language is written as one word.
-    id="cvnc",
-    backend=BooleanBackend(
-        generate=cvnc,
-        # LF-only source-format deviation: discard breaks before parsing or addressing.
-        wrap=wrap_chars,
-    ),
-)

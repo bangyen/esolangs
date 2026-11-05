@@ -29,16 +29,12 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.home_row.descriptor import HOME_ROW_PAIR as HOME_ROW_PAIR
+from esolangs.languages.home_row.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["HOME_ROW_PAIR", "home_row"]
 
 
-HOME_ROW_PAIR = ("s", "j")
 _CONSTANT_SETUP = "aaaaaalsfaaaaaaaaffffl"
 # Cell 0 is the index, cell 2 the gates' scratch.  Flags: cell 1 = 49 - x,
 # cell 3 = 48 + x, cell 5 = 48, cell 15 = 49.  A mismatch lands one move past
@@ -112,17 +108,3 @@ def _program(truth_table: str, *, negated: bool = False) -> str:
         for at, (pair, length) in enumerate(runs[:-1], 1)
     ]
     return _SETUP + gates + "fff" + "".join(leaves) + _FLAGS[runs[-1][0]][2] + "k"
-
-
-LANGUAGE = Language(
-    "Home Row",
-    RuntimeSpec("home_row", category="tape_based"),
-    backend=BooleanBackend(
-        generate=home_row,
-        # A sum, not a tree: a lookup over the essential inputs only.
-        shape=Shape.REDUCING,
-        wrap=wrap_chars,
-        template=TemplateSpec(pair=HOME_ROW_PAIR),
-    ),
-    contract=BooleanContract(),
-)

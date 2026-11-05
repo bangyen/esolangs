@@ -12,16 +12,11 @@ Size:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, essential_inputs, read_at
-from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.grapheme.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.grapheme.interpreter import (
     DEFAULT_GRAPHEME,
-    INTEGER_CONVERSIONS,
     GraphemeDialect,
 )
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
 from esolangs.runtime.memory import format_integer
 
 #: Int-mode digits: ``Z`` is 0 and ``A``-``Y`` are 1 to 25, so the one value
@@ -147,24 +142,3 @@ def _program(
     )
     literal = _grapheme_literal(_grapheme_table(entries), dialect)
     return head + literal + shift + low_bit + ("T" if negate else "") + "Y"
-
-
-LANGUAGE = Language(
-    "Grapheme",
-    RuntimeSpec(
-        "grapheme",
-        category="stack_based",
-        dialect=GraphemeDialect,
-        dialect_values={"integer_conversion": INTEGER_CONVERSIONS},
-    ),
-    backend=BooleanBackend(generate=grapheme, wrap=wrap_chars),
-    # Each input line is normalized with ord(line[0]) - 65 and then zero is
-    # mapped to 1; the second step is what makes 'A' a 1 -- ord('A') - 65 is
-    # 0, so the subtraction alone says the opposite.
-    contract=BooleanContract(
-        alphabet=("%", "A"),
-        note="input bits are spelled % and A: a line starting with A is a 1 "
-        "and any other line a 0, so a 0/1 line reads as 0 and the program "
-        "answers the all-zeros row; esolangs encode spells them",
-    ),
-)

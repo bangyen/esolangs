@@ -29,17 +29,14 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._certification import CertificationSpec
-from esolangs.registry._language import Example, Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.befunge.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.befunge.descriptor import MAX_INPUTS as MAX_INPUTS
 from esolangs.runtime.source_hints import with_hint
 
 #: ``6 * 8``: Befunge has no multi-digit literal, so 48 is built arithmetically.
 _ASCII_ZERO = "68*"
 _END = ".@"
 
-MAX_INPUTS = 13
 #: Header cells beyond the input reads: narrow (single-digit columns), wide
 #: (two-digit columns), packed (two-digit columns plus the six-bit decode).
 _BOUND_NARROW = 22
@@ -362,30 +359,3 @@ def balance_befunge(truth_table: str, default: str) -> str:
     if n <= 10 and _parity_bias(truth_table) is not None:
         candidates.append(befunge(truth_table, 1))
     return min(candidates, key=balance_score)
-
-
-LANGUAGE = Language(
-    "Befunge",
-    RuntimeSpec(
-        "befunge",
-        category="grid_based",
-        random=True,
-        split=True,
-        empty_program="Befunge program cannot be empty",
-    ),
-    certification=CertificationSpec(
-        layout_switch=(2, 7, 8, 9),
-    ),
-    backend=BooleanBackend(
-        max_inputs=MAX_INPUTS,
-        generate=befunge,
-        # Not a tree: reads a packed grid cell with ``g``.
-        shape=Shape.LOOKUP,
-        balance=balance_befunge,
-        no_wrap="a row is a grid row and the lookup table is indexed by column",
-        grid=True,
-    ),
-    # ``.`` writes the digit and a trailing space, so the committed
-    # answer carries it and the sweep strips it.
-    example=Example(expected="0 "),
-)

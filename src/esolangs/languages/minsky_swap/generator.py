@@ -29,10 +29,7 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.minsky_swap.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["MINSKY_SWAP_PAIR", "minsky_swap", "minsky_swap_setters"]
 
@@ -220,24 +217,3 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
     return template in (layout(1), layout(10), layout(15)) or same_up_to_wrapping(
         template, plain
     )
-
-
-LANGUAGE = Language(
-    "Minsky Swap",
-    RuntimeSpec("minsky_swap", category="register_based"),
-    backend=BooleanBackend(
-        generate=minsky_swap,
-        same_layout=_same_layout,
-        # Each input adds its weight; a ``~`` cascade picks one of two leaves.
-        shape=Shape.LOOKUP,
-        balance=_balance,
-        no_wrap="only line 1 is code; line 2 gives its numeric jump distances",
-        template=TemplateSpec(setters=minsky_swap_setters),
-    ),
-    contract=BooleanContract(
-        answer_mode="dump",
-        note="Minsky Swap has no output instruction and dumps its "
-        "registers at halt; the answer is the second one",
-    ),
-    example=Example(expected="1 0"),
-)

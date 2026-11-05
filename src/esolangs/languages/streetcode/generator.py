@@ -66,11 +66,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.streetcode.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["streetcode"]
 
@@ -981,23 +977,3 @@ def _balance(table: str, default: str) -> str:
     candidates.extend(streetcode(table, grid_width(shape)) for shape in shapes)
     candidates.append(_streetcode_folded(_streetcode_flat(table, n)))
     return min(candidates, key=balance_score)
-
-
-LANGUAGE = Language(
-    "Streetcode",
-    RuntimeSpec(
-        "streetcode",
-        completion_entrypoint="_execute_program",
-        category="grid_based",
-        split=True,
-        empty_program="Streetcode program cannot be empty",
-    ),
-    certification=CertificationSpec(
-        layout_switch=(4, 5),
-        slow_scaling=True,
-    ),
-    backend=BooleanBackend(generate=streetcode, balance=_balance, grid=True),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

@@ -39,11 +39,7 @@ from collections import Counter
 from string import ascii_letters
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.smu.descriptor import LANGUAGE as LANGUAGE
 
 #: ``k`` drops a run's bit and outputs nothing; ``n`` is a node less its
 #: halves, ``m`` a pad; ``z``/``o`` print ``'0'`` (0x30), ``'1'`` (0x31) low bit first.
@@ -121,20 +117,3 @@ def smu(truth_table: str) -> str:
 
     used = render("XYW")[len(_MACROS) + 12 :]
     return render("".join(c for c in "XYW" if used.count(c) > 4))
-
-
-LANGUAGE = Language(
-    "Smu",
-    RuntimeSpec(
-        "smu",
-        category="stack_based",
-        # Every run pushes its input bit, and the spec's EOF bit is ``=``.
-        eof="an exhausted read pushes the spec's '=' bit",
-    ),
-    backend=BooleanBackend(generate=smu, wrap=wrap_chars),
-    contract=BooleanContract(
-        input_shape="char_stream",
-        note="Smu reads one bit a run, low bit of each byte first, and "
-        "packs its output bits into bytes the same way",
-    ),
-)

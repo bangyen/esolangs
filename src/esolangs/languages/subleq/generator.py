@@ -16,12 +16,8 @@ from typing import Any
 from esolangs.generation.branch_decoder import hoisted_tree
 from esolangs.generation.helpers import _validate_truth_table, in_input_order
 from esolangs.generation.packed_decoder import packed_decoder
-from esolangs.generation.wrap import wrap_grid
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._certification import CertificationSpec, Payload
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.subleq.descriptor import LANGUAGE as LANGUAGE
+from esolangs.registry._certification import Payload
 
 
 def subleq(truth_table: str) -> str:
@@ -42,21 +38,3 @@ def _payload(state: Any) -> Payload:
     """Split out memory, mutable code included, and pc; no control stack."""
     data, pc, _cursor = state
     return data, (), pc, 0
-
-
-LANGUAGE = Language(
-    "Subleq",
-    RuntimeSpec("subleq", category="tape_based"),
-    certification=CertificationSpec(
-        payload=_payload,
-    ),
-    backend=BooleanBackend(
-        generate=subleq,
-        # Shared tree or packed lookup.
-        shape=Shape.LOOKUP,
-        wrap=wrap_grid,
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

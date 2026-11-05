@@ -38,6 +38,7 @@ from esolangs.generation.shared_block import (
     repeated_block,
 )
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.sstack.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.sstack.generator._binary import _PROLOGUE, best_binary_bank
 from esolangs.languages.sstack.generator._walk import _Hooks, _TreeWalk
 from esolangs.languages.sstack.proof_formulas import workspace
@@ -198,17 +199,3 @@ def _sstack_tree(table: str, shared: tuple[int, int] | None = None) -> tuple[str
         out.append("]")
         cost = dispatch_cost(cost, normal_cost(body) + 4, 1)
     return "".join(out), normal_cost(cost) + 2
-
-
-LANGUAGE = Language(
-    "SStack",
-    RuntimeSpec("sstack", category="stack_based"),
-    backend=BooleanBackend(
-        generate=sstack,
-        # Whitespace is discarded anywhere, inside a token too.
-        wrap=wrap_chars,
-    ),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

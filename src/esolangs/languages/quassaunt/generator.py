@@ -25,10 +25,7 @@ from typing import NamedTuple
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.token_balance import CELL_ASPECT, balanced_token_width
 from esolangs.generation.wrap import wrap_space_delimited
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.quassaunt.descriptor import LANGUAGE as LANGUAGE
 
 
 class _Node(NamedTuple):
@@ -177,16 +174,3 @@ def _balance(_table: str, default: str) -> str:
     if isqrt(CELL_ASPECT * len(default)) < max(map(len, words)):
         words = [t for w in words for t in _cut(w, _CUT)]
     return wrap_space_delimited(" ".join(words), balanced_token_width(words, " "))
-
-
-LANGUAGE = Language(
-    "Quassaunt",
-    RuntimeSpec("quassaunt", category="stack_based"),
-    backend=BooleanBackend(
-        generate=quassaunt,
-        # Whitespace separates words and a word holds none, so break only there.
-        wrap=wrap_space_delimited,
-        balance=_balance,
-    ),
-    contract=BooleanContract(input_shape="char_stream"),
-)

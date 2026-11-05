@@ -27,12 +27,7 @@ from esolangs.generation.helpers import (
     SubtreeDiagram,
     _validate_truth_table,
 )
-from esolangs.generation.wrap import _unlambda
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.unlambda.descriptor import LANGUAGE as LANGUAGE
 
 #: ``@`` reads a character and applies its argument -- the promise of everything
 #: after the read -- to ``i``, or to ``v`` at end of input.
@@ -128,19 +123,3 @@ def unlambda(truth_table: str) -> str:
         return _READ * n + f".{root}"
     # The root is applied to a share either way: ``v`` when nothing is bound.
     return min(("`" + node(root, None) + "v", *bound(root)), key=len)
-
-
-LANGUAGE = Language(
-    "Unlambda",
-    RuntimeSpec(
-        "unlambda",
-        category="other",
-        eof="an exhausted '@' hands its argument v, the spec's branch",
-        empty_program="an Unlambda program cannot be empty",
-    ),
-    certification=CertificationSpec(reader_checked=True),
-    backend=BooleanBackend(generate=unlambda, wrap=_unlambda),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

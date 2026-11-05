@@ -1,0 +1,34 @@
+"""Runtime and compiler capabilities for Flowchart."""
+
+from esolangs.registry._backend import BooleanBackend, Shape
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._functions import FunctionRef
+from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
+
+LANGUAGE = Language(
+    "Flowchart",
+    RuntimeSpec(
+        "flowchart",
+        category="grid_based",
+        split=True,
+        eof="reads at input nodes, including the constant skip chain",
+        empty_program="Flowchart program has no '( )' start node",
+    ),
+    backend=BooleanBackend(
+        entrypoint=FunctionRef(
+            "esolangs.languages.flowchart.generator",
+            "flowchart",
+            ("truth_table", "width"),
+        ),
+        # Not a tree: one deque push per entry.
+        shape=Shape.LOOKUP,
+        balance=FunctionRef(
+            "esolangs.languages.flowchart.generator", "_balance", ("table", "default")
+        ),
+        grid=True,
+    ),
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

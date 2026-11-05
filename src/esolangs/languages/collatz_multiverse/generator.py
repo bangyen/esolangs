@@ -35,9 +35,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.collatz_multiverse.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["balance_collatz_multiverse", "collatz_multiverse"]
 
@@ -508,14 +506,3 @@ def _cm_constants(
     if pending is not None:
         pending.difference_update(plan)
     return lines
-
-
-LANGUAGE = Language(
-    "Collatz Multiverse",
-    RuntimeSpec("collatz_multiverse", category="register_based"),
-    backend=BooleanBackend(
-        generate=collatz_multiverse,
-        balance=balance_collatz_multiverse,
-        no_wrap="each line is one complete register assignment",
-    ),
-)

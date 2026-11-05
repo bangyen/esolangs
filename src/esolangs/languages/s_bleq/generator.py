@@ -21,11 +21,7 @@ from esolangs.generation.packed_decoder import (
     _sbleq_constant,
     packed_decoder,
 )
-from esolangs.generation.wrap import wrap_grid
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.s_bleq.descriptor import LANGUAGE as LANGUAGE
 
 #: Tables up to this many rows keep the shared tree; larger ones also try
 #: the packed decoder.
@@ -172,17 +168,3 @@ def _tree_min_chars(truth_table: str, n: int) -> int:
         + 13 * leaf_bits.bit_count()
         + digits(code_base)
     )
-
-
-LANGUAGE = Language(
-    "S*bleq",
-    RuntimeSpec(
-        "s_bleq",
-        category="tape_based",
-        eof="a failed read leaves the cell alone and the program runs on",
-    ),
-    backend=BooleanBackend(generate=s_bleq, wrap=wrap_grid),
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-)

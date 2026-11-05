@@ -16,15 +16,15 @@ from dataclasses import replace
 
 import esolangs
 from esolangs import registry
-from esolangs.languages import generators
-from esolangs.registry._backend import DeferredBackend
+from esolangs.registry._functions import FunctionRef
 from tests.support.evaluation import _evaluate
 
 pilots = [lang for lang in registry.LANGUAGES.values()
-          if isinstance(lang.backend, DeferredBackend)]
+          if lang.backend is not None
+          and isinstance(lang.backend.entrypoint, FunctionRef)]
 assert pilots, 'no deferred descriptor exercised'
 assert 'GENERATORS' in dir(registry)
-modules = {object.__getattribute__(lang.backend, 'generate').module for lang in pilots}
+modules = {lang.backend.entrypoint.module for lang in pilots}
 assert not modules.intersection(sys.modules), 'pilot imported during initialization'
 
 class Block(importlib.abc.MetaPathFinder):
@@ -47,6 +47,8 @@ try:
 finally:
     sys.meta_path.remove(block)
 
+assert 'generators' in dir(esolangs.languages)
+generators = esolangs.languages.generators
 for lang in pilots:
     backend = lang.backend
     generate = backend.generate
@@ -56,10 +58,15 @@ for lang in pilots:
     assert generate.__name__ in dir(generators)
     assert module.LANGUAGE is lang
     assert inspect.getsourcefile(generate) == module.__file__
-    assert ('width' in inspect.signature(generate).parameters) == backend.width_aware
+    assert (tuple(inspect.signature(generate).parameters)
+            == backend.entrypoint.parameters)
     assert replace(backend, generate=generate).generate is generate
-    program = esolangs.generate(lang.name, '00110101')
-    assert _evaluate(lang.name, program, inputs=3) == '00110101'
+    assert registry.LANGUAGES[lang.name].backend.generate is generate
+sample = next(lang for lang in pilots if not lang.parameterized
+              and lang.backend.max_inputs is None
+              and lang.runtime.source_kind.value == 'text')
+program = esolangs.generate(sample.name, '00110101')
+assert _evaluate(sample.name, program, inputs=3) == '00110101'
 assert [esolangs.describe(name) for name in esolangs.list_languages()] == before
 assert isinstance(registry.GENERATORS, dict)
 assert registry.GENERATORS[pilots[0].name] is pilots[0].backend.generate

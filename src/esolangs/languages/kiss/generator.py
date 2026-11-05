@@ -18,11 +18,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     subtree_ids,
 )
-from esolangs.generation.wrap import wrap_chars
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.kiss.descriptor import LANGUAGE as LANGUAGE
 
 #: Each leaf outputs its bit and halts.
 _LEAF = {"0": "KK", "1": "SK"}
@@ -56,15 +52,3 @@ def kiss(truth_table: str) -> str:
             parts.append("S(")
             work += [")", (depth + 1, hi), ")(", (depth + 1, lo)]
     return "".join(parts)
-
-
-LANGUAGE = Language(
-    "Kiss",
-    RuntimeSpec(
-        "kiss",
-        category="other",
-        empty_program="a Kiss program needs at least one combinator",
-    ),
-    backend=BooleanBackend(generate=kiss, wrap=wrap_chars),
-    contract=BooleanContract(input_shape="char_stream"),
-)

@@ -23,9 +23,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.whitespace.descriptor import LANGUAGE as LANGUAGE
 
 _SPACE = " "
 _TAB = "\t"
@@ -82,18 +80,3 @@ def whitespace(truth_table: str) -> str:
     if shared:
         parts += [_mark(""), step, _RETURN]
     return "".join(parts)
-
-
-LANGUAGE = Language(
-    "Whitespace",
-    RuntimeSpec(
-        "whitespace",
-        category="stack_based",
-        empty_program="Whitespace program is empty",
-    ),
-    backend=BooleanBackend(
-        generate=whitespace,
-        shape=Shape.REDUCING,
-        no_wrap="a line feed is a token, so a break changes the command it splits",
-    ),
-)

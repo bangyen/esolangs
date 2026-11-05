@@ -47,6 +47,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.dig.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.dig.generator._layout import _DIG_LEAF_BITS, _dig_layout
 from esolangs.languages.dig.generator._leaf import (
     _DIG_DIGITS,
@@ -587,15 +588,3 @@ def _balance(table: str, default: str) -> str:
         if grid_width(banded) < grid_width(flat):
             candidates.append(banded)
     return min(candidates, key=balance_score)
-
-
-LANGUAGE = Language(
-    "Dig",
-    RuntimeSpec(
-        "dig",
-        category="grid_based",
-        split=True,
-        empty_program="Dig program cannot be empty",
-    ),
-    backend=BooleanBackend(generate=dig, balance=_balance, grid=True),
-)

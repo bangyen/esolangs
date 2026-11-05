@@ -24,7 +24,7 @@ def test_backend_fields_have_one_owner():
 
 def test_a_present_backend_requires_a_generator():
     with pytest.raises(ValueError, match="callable generator"):
-        BooleanBackend(generate=None)
+        BooleanBackend(entrypoint=None)
 
 
 @pytest.mark.parametrize(
@@ -38,3 +38,23 @@ def test_interpreter_only_contract_adapters_remain_available(language):
         esolangs.generate(language, "01")
     with pytest.raises(esolangs.ArgumentError, match="reads no stdin"):
         esolangs.encode_inputs(language, [1])
+
+
+@pytest.mark.parametrize("keyword", ["generate", "entrypoint"])
+def test_constructor_and_replacement_accept_both_generator_names(keyword):
+    from dataclasses import replace
+
+    backend = BooleanBackend(**{keyword: str}, max_inputs=3, no_wrap="one line")
+    assert backend.generate is str
+    changed = replace(backend, **{keyword: repr})
+    assert changed.generate is repr
+    assert (changed.max_inputs, changed.no_wrap) == (3, "one line")
+    with pytest.raises(ValueError, match="callable generator"):
+        BooleanBackend(**{keyword: None})
+    with pytest.raises(ValueError, match="callable generator"):
+        replace(backend, **{keyword: None})
+
+
+def test_backend_still_requires_a_generator():
+    with pytest.raises(TypeError, match="generator argument"):
+        BooleanBackend()

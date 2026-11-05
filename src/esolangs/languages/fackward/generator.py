@@ -17,11 +17,8 @@ Size:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.generation.wrap import TokenWrapper
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.fackward.descriptor import LANGUAGE as LANGUAGE
+from esolangs.languages.fackward.descriptor import _wrap as _wrap
 
 
 def _node(zero: str, one: str) -> str:
@@ -66,16 +63,3 @@ def fackward(truth_table: str) -> str:
 
 
 #: Break anywhere but inside a number, which a newline would split.
-_wrap = TokenWrapper(r"\d+|[\s\S]")
-
-
-LANGUAGE = Language(
-    "Fackward",
-    RuntimeSpec("fackward", category="stack_based", eof="a read at EOF halts the run"),
-    backend=BooleanBackend(
-        generate=fackward,
-        # Whitespace only separates tokens, so a newline between two is harmless.
-        wrap=_wrap,
-    ),
-    contract=BooleanContract(input_shape="char_stream"),
-)

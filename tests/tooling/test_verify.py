@@ -451,7 +451,7 @@ def test_generator_scope_keeps_transitive_dependents(
         build.__module__ = f"esolangs.languages.{name}.generator"
         build.__name__ = name
         languages[name] = registry.Language(
-            name, id=name, backend=BooleanBackend(generate=build)
+            name, id=name, backend=BooleanBackend(entrypoint=build)
         )
     monkeypatch.setattr(registry, "LANGUAGES", languages)
     consumer = (
@@ -907,7 +907,7 @@ def colocated_scope(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Any:
 
         generate.__module__ = f"esolangs.languages.{slug}.generator"
         languages[slug] = registry.Language(
-            slug, id=slug, backend=BooleanBackend(generate=generate)
+            slug, id=slug, backend=BooleanBackend(entrypoint=generate)
         )
         for relative in (
             f"src/esolangs/languages/{slug}/generator.py",

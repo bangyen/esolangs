@@ -47,10 +47,7 @@ from esolangs.generation.helpers import (
     short_name,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.languages.fargo.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["fargo"]
 
@@ -448,21 +445,3 @@ def anf_coefficients(truth_table: str) -> list[int]:
                 words[offset + stride] ^= words[offset]
         stride *= 2
     return [(value >> bit) & 1 for value in words for bit in range(width)]
-
-
-LANGUAGE = Language(
-    "Fargo",
-    RuntimeSpec(
-        "fargo", category="other", eof="the interpreter reads before the program starts"
-    ),
-    backend=BooleanBackend(
-        generate=fargo,
-        balance=_balance,
-        no_wrap="each physical line is one command; expressions have no continuation",
-    ),
-    contract=BooleanContract(
-        input_shape="row_index",
-        note="Fargo reads one number whose bits are the inputs, so the "
-        "committed input is the row index rather than a bit per line",
-    ),
-)
