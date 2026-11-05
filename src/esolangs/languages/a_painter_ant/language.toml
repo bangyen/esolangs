@@ -106,3 +106,22 @@ workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 300 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
 verdict = "kept: decode movement spelling once. 2495 paired native traces, 0 clean halts, no differences; changed-site mutant differs on 2479. Complete-run savings 6.02\u20136.64%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 6684
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant"
+
+[[evidence.anchors]]
+arity = 10
+rule = "and"
+size = 1071
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant"

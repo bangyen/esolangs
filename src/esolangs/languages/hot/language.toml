@@ -97,3 +97,22 @@ workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
 verdict = "kept: reuse head arity. 5197 paired native traces, 3165 clean halts, no differences; changed-site mutant differs on 3014. Complete-run savings 2.42\u20134.37%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 8
+rule = "majority"
+size = 1999
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.hot.generator:hot"
+
+[[evidence.anchors]]
+arity = 8
+rule = "zero"
+size = 35
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.hot.generator:hot"

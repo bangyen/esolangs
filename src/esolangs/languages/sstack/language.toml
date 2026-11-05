@@ -97,3 +97,32 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: decode stack names by code point. 245 programs, 147 halt cleanly; no structural trace differences, control differs on 145. Step throughput at longest 10/20/40 workload breadths: -1.52%/-1.54%/-2.58%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 13658
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.sstack.generator:sstack"
+
+[[evidence.anchors]]
+arity = 12
+rule = "random"
+seed = 1847
+size = 53351
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.sstack.generator:sstack"
+
+[[evidence.anchors]]
+arity = 16
+rule = "parity"
+size = 16617
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.sstack.generator:sstack"

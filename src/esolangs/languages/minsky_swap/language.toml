@@ -116,3 +116,33 @@ workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
 verdict = "kept: hoist literal regex compilation. 5193 paired native traces, 4612 clean halts, no differences; changed-site mutant differs on 2175. Complete-run savings 0.74\u20132.74%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 8
+rule = "random"
+seed = 1847
+size = 684
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.minsky_swap.generator:minsky_swap"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 2343
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.minsky_swap.generator:minsky_swap"
+
+[[evidence.anchors]]
+arity = 12
+rule = "random"
+seed = 1847
+size = 8913
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.minsky_swap.generator:minsky_swap"

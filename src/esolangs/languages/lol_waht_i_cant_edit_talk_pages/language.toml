@@ -81,3 +81,14 @@ workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
 verdict = "kept: hoist literal regex compilation. 5193 paired native traces, 2203 clean halts, no differences; changed-site mutant differs on 2193. Complete-run savings 0.38\u20132.50%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 1222
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.lol_waht_i_cant_edit_talk_pages.generator:lol_waht_i_cant_edit_talk_pages"

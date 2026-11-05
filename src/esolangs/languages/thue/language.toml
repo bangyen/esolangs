@@ -88,3 +88,32 @@ workload = "complete run; parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
 verdict = "kept: construct immutable named tuples through tuple.__new__; 5200 paired native traces, 2196 clean halts, zero differences; changed-site control detected on 2200. Complete-run wall savings 0.09\u20130.50%, including parsing and final I/O. Snapshot fields and grouping preserved."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "random"
+seed = 1847
+size = 203
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.thue.generator:thue"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 735
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.thue.generator:thue"
+
+[[evidence.anchors]]
+arity = 10
+rule = "and"
+size = 585
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.thue.generator:thue"

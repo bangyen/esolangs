@@ -151,3 +151,23 @@ workload = "complete run; parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
 verdict = "kept: slotted immutable dataclasses; 5195 paired native traces, 2308 clean halts, zero differences; changed-site control detected on 2574. Complete-run wall savings 1.65\u20132.41%, including parsing and final I/O. Snapshot fields and grouping preserved."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 80
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.fargo.generator:fargo"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 1810
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.fargo.generator:fargo"

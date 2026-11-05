@@ -122,3 +122,31 @@ workload = "complete run; parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
 verdict = "kept: slotted immutable call records; 5198 paired native traces, 2195 clean halts, zero differences; changed-site control detected on 2198. Complete-run wall savings 0.55\u20131.00%, including parsing and final I/O. Snapshot fields and grouping preserved."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 8
+rule = "and"
+size = 659
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.packlang.generator:packlang"
+
+[[evidence.anchors]]
+arity = 10
+rule = "and"
+size = 796
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.packlang.generator:packlang"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 6677
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.packlang.generator:packlang"

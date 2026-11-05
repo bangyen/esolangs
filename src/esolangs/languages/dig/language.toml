@@ -176,3 +176,23 @@ workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
 verdict = "kept: construct immutable named tuples through tuple.__new__. 5201 paired native traces, 4774 clean halts, no differences; changed-site mutant differs on 2304. Complete-run savings 3.74\u20136.89%, including source parsing and output. Only full positional records bypass the wrapper; keyword-defined defaults remain centralized. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 405
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.dig.generator:dig"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 7097
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.dig.generator:dig"

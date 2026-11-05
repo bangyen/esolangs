@@ -81,3 +81,32 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: byte wrap bit mask. 450 programs, 152 halt cleanly; no structural trace differences, control differs on 157. Step throughput at longest 10/20/40 workload breadths: +0.09%/-0.35%/-0.09%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 317
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.cvnc.generator:cvnc"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 5215
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.cvnc.generator:cvnc"
+
+[[evidence.anchors]]
+arity = 12
+rule = "random"
+seed = 1847
+size = 22086
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.cvnc.generator:cvnc"

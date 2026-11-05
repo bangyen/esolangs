@@ -95,3 +95,23 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: slotted machine fields. 249 programs, 179 halt cleanly; no structural trace differences, control differs on 249. Step throughput at longest 10/20/40 workload breadths: -0.33%/-0.03%/+0.33%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 1754
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.eval.generator:eval"
+
+[[evidence.anchors]]
+arity = 16
+rule = "and"
+size = 98450
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.eval.generator:eval"

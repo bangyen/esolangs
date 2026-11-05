@@ -94,3 +94,23 @@ workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
 verdict = "kept: hoist literal regex compilation. 5196 paired native traces, 2221 clean halts, no differences; changed-site mutant differs on 2313. Complete-run savings 4.59\u20135.83%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 188
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.switchcase.generator:switchcase"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 4139
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.switchcase.generator:switchcase"

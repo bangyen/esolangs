@@ -115,3 +115,30 @@ workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
 verdict = "kept: construct immutable named tuples through tuple.__new__. 5197 paired native traces, 4450 clean halts, no differences; changed-site mutant differs on 5189. Complete-run savings 9.07\u201310.31%, including source parsing and output. Only full positional records bypass the wrapper; keyword-defined defaults remain centralized. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 2
+rule = "parity"
+size = 16
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.super_snusp.generator:super_snusp"
+
+[[evidence.anchors]]
+arity = 16
+rule = "and"
+size = 19876
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.super_snusp.generator:super_snusp"
+
+[[evidence.anchors]]
+arity = 16
+rule = "parity"
+size = 19875
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.super_snusp.generator:super_snusp"

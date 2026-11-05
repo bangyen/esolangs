@@ -18,6 +18,7 @@ import pytest
 import esolangs
 from esolangs import exceptions
 from esolangs.registry import LANGUAGES
+from scripts.evidence import source_anchors
 from scripts.new_language import _GENERATOR, PLACEHOLDER
 from tests.generators.generator_sections import (
     PUBLIC_ERRORS,
@@ -28,7 +29,7 @@ from tests.generators.generator_sections import (
     named_table,
     raises_entries,
 )
-from tests.interpreters.spec_sections import headers
+from tests.interpreters.spec_sections import headers, section
 from tests.support.cases import cases
 
 pytestmark = pytest.mark.medium
@@ -139,6 +140,10 @@ def test_generator_docstrings_follow_the_template() -> None:
         name: _doc_issues(_doc(name), capped=_capped(name)) for name in _generated()
     }
     assert {name: issues for name, issues in failures.items() if issues} == {}
+    for name in _generated():
+        text = " ".join(" ".join(section(_doc(name), "Size")).split()).replace(",", "")
+        for anchor in source_anchors(name):
+            assert anchor.text.replace(",", "") in text, (name, anchor.text)
 
 
 def _notes(source: str) -> list[tuple[int, str]]:
@@ -313,7 +318,11 @@ def _size(program: esolangs.Program) -> tuple[int, str]:
     return sum(len(row) for row in program.rows), "codels"
 
 
-_ANCHORS = [(name, *anchor) for name in _generated() for anchor in anchors(_doc(name))]
+_ANCHORS = [
+    (name, anchor.witness.arity, anchor.witness.name, anchor.size, anchor.unit)
+    for name in _generated()
+    for anchor in source_anchors(name)
+]
 
 
 @pytest.mark.parametrize(
@@ -347,6 +356,45 @@ def test_the_named_tables_are_the_functions_they_name() -> None:
     assert anchors("A.\n\nSize:\n    n=2 parity: 4 pixels") == [
         (2, "parity", 4, "pixels")
     ]
+    from scripts.evidence import parse_anchors
+    from tests.support.reference import REFERENCE
+
+    language = LANGUAGES[REFERENCE]
+    data = tomllib.loads((_LANGUAGES_DIR / language.id / "language.toml").read_text())[
+        "evidence"
+    ]
+    assert parse_anchors(REFERENCE, data) == source_anchors(REFERENCE)
+    base = data["anchors"][0]
+    for changes in (
+        {"arity": True},
+        {"arity": 0},
+        {"rule": "unknown"},
+        {"rule": "random", "seed": True},
+        {"rule": "parity", "seed": 7},
+        {"size": -1},
+        {"size": True},
+        {"unit": "bytes"},
+        {"unit": "pixels"},
+        {"scale": 2},
+        {"construction": "other:generate"},
+        {"unexpected": 0},
+    ):
+        with pytest.raises(ValueError, match=r"witness|anchor|evidence|schema"):
+            parse_anchors(REFERENCE, {"version": 1, "anchors": [base | changes]})
+    for broken in (
+        {"version": True, "anchors": [base]},
+        {"version": 2, "anchors": [base]},
+        {"version": 1, "anchors": []},
+        {"version": 1, "anchors": [base, base]},
+        {
+            "version": 1,
+            "anchors": [
+                {k: v for k, v in (base | {"rule": "random"}).items() if k != "seed"}
+            ],
+        },
+    ):
+        with pytest.raises(ValueError, match=r"witness|anchor|evidence|schema"):
+            parse_anchors(REFERENCE, broken)
 
 
 def triggers_of(name: str) -> dict[str, object]:

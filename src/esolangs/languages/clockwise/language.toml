@@ -114,3 +114,33 @@ workload = "complete run; parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
 verdict = "kept: four-way wrap bit mask; 5197 paired native traces, 2208 clean halts, zero differences; changed-site control detected on 5197. Complete-run wall savings 0.63\u20131.07%, including parsing and final I/O. Snapshot fields and grouping preserved."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 8
+rule = "random"
+seed = 1847
+size = 6223
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.clockwise.generator:clockwise"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 23967
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.clockwise.generator:clockwise"
+
+[[evidence.anchors]]
+arity = 12
+rule = "random"
+seed = 1847
+size = 94703
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.clockwise.generator:clockwise"

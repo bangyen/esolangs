@@ -93,3 +93,14 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "all n<=3 generated tables/rows where supported, examples and 300 seeded mutations; 400-step cap"
 verdict = "prototype only: bit mask heading wrap. 2493 programs, 1397 halt cleanly; no structural trace differences, control differs on 2493. Step throughput at longest 10/20/40 workload breadths: -0.02%/+0.40%/+0.45%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "and"
+size = 4893
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.arrowqueue.generator:arrowqueue"

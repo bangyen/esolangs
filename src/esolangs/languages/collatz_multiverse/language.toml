@@ -133,3 +133,39 @@ workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
 verdict = "kept: binary insertion of sorted registers. 5193 paired native traces, 2204 clean halts, no differences; changed-site mutant differs on 2193. Complete-run savings 18.26\u201321.92%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 1531
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"
+
+[[evidence.anchors]]
+arity = 10
+rule = "and"
+size = 3689
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 11408
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"
+
+[[evidence.anchors]]
+arity = 8
+rule = "zero"
+size = 412
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"

@@ -110,3 +110,31 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: byte wrap bit mask. 445 programs, 167 halt cleanly; no structural trace differences, control differs on 445. Step throughput at longest 10/20/40 workload breadths: +0.27%/+0.39%/+0.37%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 633
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.bfstack.generator:bfstack"
+
+[[evidence.anchors]]
+arity = 10
+rule = "and"
+size = 640
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.bfstack.generator:bfstack"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 5211
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.bfstack.generator:bfstack"

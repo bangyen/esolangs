@@ -68,3 +68,23 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: reuse unchanged variable binding. 251 programs, 146 halt cleanly; no structural trace differences, control differs on 145. Step throughput at longest 10/20/40 workload breadths: -1.28%/-1.03%/-1.31%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 193
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.between.generator:between"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 4333
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.between.generator:between"

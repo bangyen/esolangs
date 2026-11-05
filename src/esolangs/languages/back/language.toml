@@ -134,3 +134,24 @@ workload = "complete run; parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
 verdict = "kept: C-level width reduction; 5195 paired native traces, 3359 clean halts, zero differences; changed-site control detected on 3850. Complete-run wall savings 2.17\u20132.86%, including parsing and final I/O. Snapshot fields and grouping preserved."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 8
+rule = "random"
+seed = 1847
+size = 2000
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.back.generator:back"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 12341
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.back.generator:back"

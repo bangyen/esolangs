@@ -113,3 +113,23 @@ workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
 verdict = "kept: predecode replacement capture indices. 5196 paired native traces, 2222 clean halts, no differences; changed-site mutant differs on 2153. Complete-run savings 3.88\u20134.80%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 97
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.sonata.generator:sonata"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 667
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.sonata.generator:sonata"

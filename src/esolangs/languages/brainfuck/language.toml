@@ -127,3 +127,39 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: byte wrap bit mask. 458 programs, 367 halt cleanly; no structural trace differences, control differs on 381. Step throughput at longest 10/20/40 workload breadths: +0.84%/+0.84%/-0.43%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 760
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.brainfuck.generator:brainfuck"
+
+[[evidence.anchors]]
+arity = 12
+rule = "parity"
+size = 902
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.brainfuck.generator:brainfuck"
+
+[[evidence.anchors]]
+arity = 10
+rule = "and"
+size = 501
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.brainfuck.generator:brainfuck"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 9648
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.brainfuck.generator:brainfuck"

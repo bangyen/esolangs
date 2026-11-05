@@ -12,6 +12,7 @@ KNOWN = {
     "catalogue",  # scripts/docs/catalogue.py
     "curation",  # scripts/docs/curation.py
     "deep_arities",  # tests/proofs/deep
+    "evidence",  # scripts/evidence.py
     "formula_arities",  # tests/proofs/_arities.py
     "generator_sizes",  # checks/generator_sizes.py
     "interpreter_ablations",  # a record: interpreter audit verdicts

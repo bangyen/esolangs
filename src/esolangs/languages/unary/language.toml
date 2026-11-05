@@ -94,3 +94,31 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=1 plus 20 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: validate zero chunks without copying. 39 programs, 10 halt cleanly; no structural trace differences, control differs on 19. Step throughput at longest 10/20/39 workload breadths: +1.17%/+2.97%/+2.24%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 1
+rule = "parity"
+size = 887
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.unary.generator:unary"
+
+[[evidence.anchors]]
+arity = 2
+rule = "and"
+size = 27452351
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.unary.generator:unary"
+
+[[evidence.anchors]]
+arity = 2
+rule = "random"
+seed = 1847
+size = 109
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.unary.generator:unary"

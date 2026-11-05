@@ -90,3 +90,32 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: word wrap bit mask. 247 programs, 203 halt cleanly; no structural trace differences, control differs on 231. Step throughput at longest 10/20/40 workload breadths: +0.54%/+1.01%/+0.43%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 4454
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.taglate.generator:taglate"
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 4454
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.taglate.generator:taglate"
+
+[[evidence.anchors]]
+arity = 9
+rule = "random"
+seed = 1847
+size = 2673
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.taglate.generator:taglate"

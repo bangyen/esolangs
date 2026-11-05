@@ -126,3 +126,23 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: slotted immutable dataclasses. 248 programs, 221 halt cleanly; no structural trace differences, control differs on 247. Step throughput at longest 10/20/40 workload breadths: +0.39%/+0.09%/+0.06%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 132
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.painfuck.generator:painfuck"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 10156
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.painfuck.generator:painfuck"

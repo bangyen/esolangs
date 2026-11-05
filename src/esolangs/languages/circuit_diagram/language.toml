@@ -158,3 +158,39 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap; index keys verified against actual wiring identities, then canonicalized to positions; all snapshot fields unchanged"
 verdict = "prototype only: slotted machine storage. 245 programs, 154 halt cleanly; no structural trace differences, control differs on 245. Step throughput at longest 10/20/40 workload breadths: -0.73%/+0.17%/+1.48%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 8
+rule = "and"
+size = 1207
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 211
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 300724
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
+
+[[evidence.anchors]]
+arity = 8
+rule = "zero"
+size = 19
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"

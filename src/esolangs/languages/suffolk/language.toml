@@ -96,3 +96,31 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: inline nonnegative clamp. 246 programs, 117 halt cleanly; no structural trace differences, control differs on 164. Step throughput at longest 10/20/40 workload breadths: -1.26%/-1.06%/-1.18%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "and"
+size = 1910
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.suffolk.generator:suffolk"
+
+[[evidence.anchors]]
+arity = 10
+rule = "majority"
+size = 5933
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.suffolk.generator:suffolk"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 7405
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.suffolk.generator:suffolk"

@@ -80,3 +80,22 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: constant validation alphabet. 445 programs, 205 halt cleanly; no structural trace differences, control differs on 208. Step throughput at longest 10/20/40 workload breadths: -0.31%/+0.21%/+0.45%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 8
+rule = "and"
+size = 534
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.cyclic_tag.generator:cyclic_tag"
+
+[[evidence.anchors]]
+arity = 16
+rule = "and"
+size = 131110
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.cyclic_tag.generator:cyclic_tag"

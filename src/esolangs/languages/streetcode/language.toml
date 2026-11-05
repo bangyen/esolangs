@@ -173,3 +173,39 @@ workload = "complete public run; existing geometry cache warm"
 seed = 0
 tables = "all generated tables/rows through n=3 plus 3000 seeded raw programs; random/parity complete runs at n=3/5/7, seed 1847+n, four asymmetric rows"
 verdict = "kept: retain the pure transition's frozen private tape in the shell instead of copying it back to a dict. Preserve the immutable input proxy, including the first transition. Complete-run savings 17.48\u201335.11%; cold geometry batches also checked. 5193 native traces through the production factory match, 224 clean halts, 2267 changed-site controls; 48 uncached/cached constructor comparisons match. Expanded native check takes 38.2s. The original copy-only-on-write proposal aliases mutable transition inputs and is rejected; the pure transition still copies every input tape."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 1851
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.streetcode.generator:streetcode"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 16705
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.streetcode.generator:streetcode"
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 16705
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.streetcode.generator:streetcode"
+
+[[evidence.anchors]]
+arity = 8
+rule = "zero"
+size = 251
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.streetcode.generator:streetcode"

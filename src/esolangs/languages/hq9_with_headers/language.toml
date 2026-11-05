@@ -65,3 +65,31 @@ workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
 verdict = "kept: direct frozen record reconstruction. 5193 paired native traces, 2193 clean halts, no differences; changed-site mutant differs on 2153. Complete-run savings 2.40\u20133.28%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 661
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 661
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers"
+
+[[evidence.anchors]]
+arity = 8
+rule = "zero"
+size = 180
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers"

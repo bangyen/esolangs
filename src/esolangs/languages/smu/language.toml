@@ -109,3 +109,31 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: single output-bit lookup. 245 programs, 156 halt cleanly; no structural trace differences, control differs on 152. Step throughput at longest 10/20/40 workload breadths: -0.56%/+0.14%/+0.39%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 224
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.smu.generator:smu"
+
+[[evidence.anchors]]
+arity = 10
+rule = "and"
+size = 182
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.smu.generator:smu"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 1190
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.smu.generator:smu"

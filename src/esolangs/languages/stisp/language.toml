@@ -85,3 +85,23 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: reverse paired match worklist once. 247 programs, 168 halt cleanly; no structural trace differences, control differs on 147. Step throughput at longest 10/20/40 workload breadths: +0.17%/+0.32%/+0.08%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 139
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.stisp.generator:stisp"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 1964
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.stisp.generator:stisp"

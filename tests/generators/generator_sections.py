@@ -3,9 +3,9 @@
 The shape is the ``_GENERATOR`` stub in ``scripts/new_language.py``.
 """
 
-import random
 import re
 
+from scripts.evidence import TableWitness
 from tests.interpreters.spec_sections import section
 
 #: The sections, in the order a docstring gives them; ``Size:`` is required.
@@ -44,17 +44,8 @@ def measured(doc: str) -> set[str]:
 
 def named_table(n: int, name: str) -> str:
     """Return the ``2**n``-row table an anchor names, MSB-first rows."""
-    if name.startswith("random "):
-        rng = random.Random(int(name.split()[1]))
-        return format(rng.getrandbits(1 << n), f"0{1 << n}b")
-    rule = {
-        "parity": lambda ones: ones % 2,
-        "and": lambda ones: ones == n,
-        "or": lambda ones: ones > 0,
-        "majority": lambda ones: 2 * ones > n,
-        "zero": lambda _: 0,
-    }[name]
-    return "".join(str(int(rule(row.bit_count()))) for row in range(1 << n))
+    rule, separator, seed = name.partition(" ")
+    return TableWitness(n, rule, int(seed) if separator else None).table()
 
 
 def anchors(doc: str) -> list[tuple[int, str, int, str]]:

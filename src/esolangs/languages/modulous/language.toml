@@ -104,3 +104,24 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap; plus four signed-variable arithmetic probes"
 verdict = "prototype only: partition variable arithmetic token. 253 programs, 149 halt cleanly; no structural trace differences, control differs on 4. Step throughput at longest 10/20/40 workload breadths: +0.36%/-1.79%/+0.11%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 1165
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.modulous.generator:modulous"
+
+[[evidence.anchors]]
+arity = 12
+rule = "random"
+seed = 1847
+size = 2804
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.modulous.generator:modulous"

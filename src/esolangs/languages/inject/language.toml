@@ -125,3 +125,33 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap; plus nested-block skip or local-function probe"
 verdict = "prototype only: select innermost block without sorting. 250 programs, 249 halt cleanly; no structural trace differences, control differs on 1. Step throughput at longest 10/20/40 workload breadths: -0.96%/-1.26%/-0.31%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "random"
+seed = 1847
+size = 262
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.inject.generator:inject"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 1851
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.inject.generator:inject"
+
+[[evidence.anchors]]
+arity = 12
+rule = "random"
+seed = 1847
+size = 5093
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.inject.generator:inject"

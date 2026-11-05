@@ -94,3 +94,39 @@ workload = "complete run; parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
 verdict = "kept: slotted immutable dataclasses; 5193 paired native traces, 2208 clean halts, zero differences; changed-site control detected on 5193. Complete-run wall savings 0.94\u20132.24%, including parsing and final I/O. Snapshot fields and grouping preserved."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 160984
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.interprogck8.generator:interprogck8"
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 143940
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.interprogck8.generator:interprogck8"
+
+[[evidence.anchors]]
+arity = 10
+rule = "and"
+size = 8160
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.interprogck8.generator:interprogck8"
+
+[[evidence.anchors]]
+arity = 8
+rule = "zero"
+size = 44
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.interprogck8.generator:interprogck8"

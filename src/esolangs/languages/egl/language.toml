@@ -108,3 +108,31 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: retain immutable grid on nonwrites. 248 programs, 148 halt cleanly; no structural trace differences, control differs on 136. Step throughput at longest 10/20/40 workload breadths: -2.32%/-3.50%/-2.09%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 288
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.egl.generator:egl"
+
+[[evidence.anchors]]
+arity = 10
+rule = "and"
+size = 284
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.egl.generator:egl"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 1936
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.egl.generator:egl"

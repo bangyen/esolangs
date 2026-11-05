@@ -138,3 +138,40 @@ workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
 verdict = "kept: direct immutable state construction. 5195 paired native traces, 3110 clean halts, no differences; changed-site mutant differs on 3132. Complete-run savings 13.67\u201315.27%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 175
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.boolfuck.generator:boolfuck"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 7353
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.boolfuck.generator:boolfuck"
+
+[[evidence.anchors]]
+arity = 16
+rule = "random"
+seed = 1847
+size = 462301
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.boolfuck.generator:boolfuck"
+
+[[evidence.anchors]]
+arity = 12
+rule = "majority"
+size = 356
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.boolfuck.generator:boolfuck"

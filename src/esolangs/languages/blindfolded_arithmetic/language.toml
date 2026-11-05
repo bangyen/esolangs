@@ -101,3 +101,22 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap; plus cyclic addition programs with 1/8/64 instructions"
 verdict = "prototype only: conditional cyclic instruction wrap. 250 programs, 145 halt cleanly; no structural trace differences, control differs on 3. Step throughput at longest 10/20/40 workload breadths: -0.46%/-0.53%/-0.22%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 323
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic"
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 4391
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic"

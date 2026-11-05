@@ -329,6 +329,9 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
 
 def _generator_gaps(lang: Language) -> list[Gap]:
     """List the steps a language with a Boolean generator needs."""
+    from docs.fragments import section
+    from evidence import parse_anchors
+
     from esolangs.generation.wrap import takes_width
     from esolangs.languages import generators
 
@@ -339,6 +342,13 @@ def _generator_gaps(lang: Language) -> list[Gap]:
     source = _source_file(base) or base / "__init__.py"
     source_rel = str(source.relative_to(ROOT))
     gaps = []
+    metadata = ROOT / f"src/esolangs/languages/{lang.id}/language.toml"
+    try:
+        parse_anchors(lang.name, section(metadata, "evidence") or {})
+    except (ValueError, FileNotFoundError) as error:
+        gaps.append(
+            Gap(str(metadata.relative_to(ROOT)), f"record source evidence: {error}")
+        )
     if source.exists() and PLACEHOLDER in source.read_text(encoding="utf-8"):
         gaps.append(Gap(source_rel, "write the docstring"))
     if source.exists() and "raise NotImplementedError(" in source.read_text(
@@ -590,7 +600,7 @@ def size_anchors(name: str) -> list[str]:
     Each is re-measured as ``test_the_size_anchor_is_what_generate_emits``
     does; Sonata's and SwitchCase's went stale twice while being built.
     """
-    import inspect
+    from evidence import source_anchors
 
     import esolangs
     from esolangs.registry import LANGUAGES
@@ -598,20 +608,16 @@ def size_anchors(name: str) -> list[str]:
     backend = LANGUAGES[name].backend
     if backend is None:
         return []
-    boolean = backend.generate
-    doc = inspect.cleandoc(importlib.import_module(boolean.__module__).__doc__ or "")
-    sections = importlib.import_module("tests.generators.generator_sections")
-    named_table = sections.named_table
     lines = []
-    for n, table, size, unit in sections.anchors(doc):
-        program = esolangs.generate(name, named_table(n, table))
+    for anchor in source_anchors(name):
+        program = esolangs.generate(name, anchor.witness.table())
         got = (
             len(program)
             if isinstance(program, (str, esolangs.CompressedText))
             else sum(len(row) for row in program.rows)
         )
-        verdict = "ok" if got == size else f"STALE: emits {got:,}"
-        lines.append(f"  n={n} {table}: {size:,} {unit}  {verdict}")
+        verdict = "ok" if got == anchor.size else f"STALE: emits {got:,}"
+        lines.append(f"  {anchor.text}  {verdict}")
     return lines
 
 

@@ -108,3 +108,23 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: decode byte by shifts. 245 programs, 188 halt cleanly; no structural trace differences, control differs on 178. Step throughput at longest 10/20/40 workload breadths: -3.35%/-3.61%/-3.46%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 3104
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.bit_tilde.generator:bit_tilde"
+
+[[evidence.anchors]]
+arity = 10
+rule = "and"
+size = 2610
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.bit_tilde.generator:bit_tilde"

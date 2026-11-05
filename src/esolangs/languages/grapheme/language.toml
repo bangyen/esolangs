@@ -78,3 +78,24 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: C-level conversion prefix split. 445 programs, 194 halt cleanly; no structural trace differences, control differs on 339. Step throughput at longest 10/20/40 workload breadths: +0.44%/+0.27%/-0.51%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 492
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.grapheme.generator:grapheme"
+
+[[evidence.anchors]]
+arity = 16
+rule = "random"
+seed = 1847
+size = 20015
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.grapheme.generator:grapheme"

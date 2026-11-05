@@ -96,3 +96,23 @@ workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
 verdict = "kept: construct immutable named tuples through tuple.__new__. 5193 paired native traces, 2809 clean halts, no differences; changed-site mutant differs on 2809. Complete-run savings 1.77\u20134.88%, including source parsing and output. Only full positional records bypass the wrapper; keyword-defined defaults remain centralized. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "and"
+size = 38
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.caballo.generator:caballo"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 5541
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.caballo.generator:caballo"

@@ -90,3 +90,23 @@ workload = "complete public run; parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3 plus 3000 seeded mutations capped to three total digits; complete random/parity runs at n=3/5/7, seed 1847+n, four asymmetric rows"
 verdict = "kept: hoist the four fixed special-command arities instead of allocating a dict per lookup. Complete-run savings 0.79\u20132.85%; 5193 native traces match, 3569 clean halts and 2404 changed-site controls, in 10.6s. Only random mutations have a digit budget: an unrestricted case requests 95,283,322 repeated values inside one VM command. Generated programs and production language limits are unchanged."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 21219
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.fackward.generator:fackward"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 18655
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.fackward.generator:fackward"

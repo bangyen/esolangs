@@ -51,3 +51,22 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: set opcode membership. 245 programs, 145 halt cleanly; no structural trace differences, control differs on 133. Step throughput at longest 10/20/40 workload breadths: +0.46%/+0.02%/+0.09%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 359
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.carp.generator:carp"
+
+[[evidence.anchors]]
+arity = 8
+rule = "parity"
+size = 519
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.carp.generator:carp"

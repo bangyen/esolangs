@@ -137,3 +137,15 @@ workload = "complete run; parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=1; 20 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
 verdict = "kept: unroll five fixed crazy digits; 38 paired native traces, 1 clean halts, zero differences; changed-site control detected on 18. Complete-run wall savings 1.14\u20131.43%, including parsing and final I/O. Snapshot fields and grouping preserved."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 13340
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.malbolge.generator:malbolge"

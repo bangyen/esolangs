@@ -73,3 +73,23 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: byte wrap bit mask. 245 programs, 175 halt cleanly; no structural trace differences, control differs on 162. Step throughput at longest 10/20/40 workload breadths: +0.32%/+0.69%/-1.26%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 1060
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.pointless.generator:pointless"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 6253
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.pointless.generator:pointless"

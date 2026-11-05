@@ -86,3 +86,23 @@ workload = "complete run; parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n; complete timings only for zero-result halting rows; bounded traces also include deliberate loops"
 verdict = "kept: direct frozen instruction construction; 5193 paired native traces, 1124 clean halts, zero differences; changed-site control detected on 2193. Complete-run wall savings 2.05\u20135.04%, including parsing and final I/O. Snapshot fields and grouping preserved."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 398
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.crement.generator:crement"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 6283
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.crement.generator:crement"

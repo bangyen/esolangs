@@ -118,3 +118,30 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: four-way direction bit mask. 244 programs, 144 halt cleanly; no structural trace differences, control differs on 52. Step throughput at longest 10/20/40 workload breadths: +0.14%/+0.37%/+0.28%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 6477
+unit = "codels"
+scale = 1
+construction = "esolangs.languages.piet.generator:piet"
+
+[[evidence.anchors]]
+arity = 10
+rule = "and"
+size = 66
+unit = "codels"
+scale = 1
+construction = "esolangs.languages.piet.generator:piet"
+
+[[evidence.anchors]]
+arity = 8
+rule = "majority"
+size = 87
+unit = "codels"
+scale = 1
+construction = "esolangs.languages.piet.generator:piet"

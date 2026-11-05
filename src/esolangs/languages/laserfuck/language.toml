@@ -147,3 +147,58 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: four-way wrap bit mask. 448 programs, 299 halt cleanly; no structural trace differences, control differs on 448. Step throughput at longest 10/20/40 workload breadths: -0.06%/-0.04%/-0.58%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "random"
+seed = 1847
+size = 548
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.laserfuck.generator:laserfuck"
+
+[[evidence.anchors]]
+arity = 5
+rule = "random"
+seed = 1847
+size = 1640
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.laserfuck.generator:laserfuck"
+
+[[evidence.anchors]]
+arity = 6
+rule = "random"
+seed = 1847
+size = 4241
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.laserfuck.generator:laserfuck"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 15387
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.laserfuck.generator:laserfuck"
+
+[[evidence.anchors]]
+arity = 16
+rule = "and"
+size = 984713
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.laserfuck.generator:laserfuck"
+
+[[evidence.anchors]]
+arity = 8
+rule = "zero"
+size = 36
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.laserfuck.generator:laserfuck"

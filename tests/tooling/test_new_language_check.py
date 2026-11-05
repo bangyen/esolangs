@@ -1,7 +1,6 @@
 """``new_language.py check`` agrees with the suite on every registered language."""
 
 import dataclasses
-import importlib
 import inspect
 import subprocess
 from pathlib import Path
@@ -136,9 +135,16 @@ def test_quick_tests_spell_ids_as_pytest_does() -> None:
 def test_bounds_flags_a_stale_size_anchor(monkeypatch: pytest.MonkeyPatch) -> None:
     """Positive control: an anchor one char off is named with the real size."""
     name = first(boolean_generator=True, parameterized=False, answer_mode="output")
-    module = importlib.import_module(LANGUAGES[name].backend.generate.__module__)
+    import evidence
+
     size = len(str(esolangs.generate(name, "0110")))
-    monkeypatch.setattr(module, "__doc__", f"Size:\n    n=2 parity: {size + 1} chars.")
+    anchor = dataclasses.replace(
+        evidence.source_anchors(name)[0],
+        witness=evidence.TableWitness(2, "parity"),
+        size=size + 1,
+        unit="chars",
+    )
+    monkeypatch.setattr(evidence, "source_anchors", lambda _: (anchor,))
     assert new_language.size_anchors(name) == [
         f"  n=2 parity: {size + 1:,} chars  STALE: emits {size:,}"
     ]

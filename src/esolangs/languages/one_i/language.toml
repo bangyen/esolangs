@@ -116,3 +116,23 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap; plus two function-call probes and literal sequences of 32/128/512 functions"
 verdict = "prototype only: index literal closing brackets. 250 programs, 154 halt cleanly; no structural trace differences, control differs on 5. Step throughput at longest 10/20/40 workload breadths: +3.76%/+3.84%/+0.88%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "and"
+size = 136
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.one_i.generator:one_i"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 3294
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.one_i.generator:one_i"

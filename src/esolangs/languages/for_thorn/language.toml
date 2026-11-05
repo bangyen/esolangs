@@ -81,3 +81,31 @@ workload = "complete run; parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
 verdict = "kept: slotted immutable dataclasses; 5195 paired native traces, 3235 clean halts, zero differences; changed-site control detected on 5195. Complete-run wall savings 0.89\u20131.21%, including parsing and final I/O. Snapshot fields and grouping preserved."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 397
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.for_thorn.generator:for_thorn"
+
+[[evidence.anchors]]
+arity = 10
+rule = "and"
+size = 264
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.for_thorn.generator:for_thorn"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 5094
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.for_thorn.generator:for_thorn"

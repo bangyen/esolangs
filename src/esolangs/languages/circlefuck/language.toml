@@ -120,3 +120,31 @@ workload = "complete public run, parsing and final output included"
 seed = 1847
 tables = "random/parity at n=3/5/7; seed 1847+n; four asymmetric rows; five interleaved pairs at 0.2s per lap"
 verdict = "not adopted: byte masks remain mixed on complete runs (-0.22% at n=3 random; other minimum-lap savings 0.29–0.69%). Longer laps do not establish a consistent gain. The earlier expanded native timeout is not counted as a passing audit; production is unchanged."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 1541
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.circlefuck.generator:circlefuck"
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 423
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.circlefuck.generator:circlefuck"
+
+[[evidence.anchors]]
+arity = 16
+rule = "and"
+size = 753
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.circlefuck.generator:circlefuck"

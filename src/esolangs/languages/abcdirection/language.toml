@@ -87,3 +87,32 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "all n<=3 generated tables/rows where supported, examples and 300 seeded mutations; 400-step cap"
 verdict = "prototype only: bit mask heading wrap. 2493 programs, 269 halt cleanly; no structural trace differences, control differs on 2193. Step throughput at longest 10/20/40 workload breadths: +0.06%/+0.05%/-1.18%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 6
+rule = "random"
+seed = 1847
+size = 1079
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.abcdirection.generator:abcdirection"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 8199
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.abcdirection.generator:abcdirection"
+
+[[evidence.anchors]]
+arity = 8
+rule = "zero"
+size = 559
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.abcdirection.generator:abcdirection"

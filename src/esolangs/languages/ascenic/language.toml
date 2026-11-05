@@ -84,3 +84,31 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "all n<=3 generated tables/rows where supported, examples and 300 seeded mutations; 400-step cap"
 verdict = "prototype only: evaluate only selected arithmetic. 2493 programs, 2261 halt cleanly; no structural trace differences, control differs on 2236. Step throughput at longest 10/20/40 workload breadths: +0.42%/-1.86%/+0.25%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 616
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.ascenic.generator:ascenic"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 1176242
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.ascenic.generator:ascenic"
+
+[[evidence.anchors]]
+arity = 8
+rule = "zero"
+size = 263
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.ascenic.generator:ascenic"

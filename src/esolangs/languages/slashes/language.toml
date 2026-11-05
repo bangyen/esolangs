@@ -93,3 +93,24 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "all n<=3 generated tables/rows where supported, examples and 300 seeded mutations; 400-step cap"
 verdict = "prototype only: C-level single replacement. 2511 programs, 2501 halt cleanly; no structural trace differences, control differs on 2511. Step throughput at longest 10/20/40 workload breadths: -48.45%/-45.85%/-41.79%. No production change or global performance conclusion; adoption needs broader validation."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 2404
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.slashes.generator:slashes"
+
+[[evidence.anchors]]
+arity = 12
+rule = "random"
+seed = 1847
+size = 9297
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.slashes.generator:slashes"
