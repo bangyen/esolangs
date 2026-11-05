@@ -214,9 +214,9 @@ def test_six_bit_labels_include_the_ascii_constants_and_last_label() -> None:
 @pytest.mark.parametrize(
     ("table", "blocks", "message"),
     [
-        ("01101001", ((-1, 0),), "increasing depths"),
-        ("01101001", ((2, 0),), "increasing depths"),
-        ("0110100110010110", ((2, 0), (1, 0)), "increasing depths"),
+        ("01101001", ((-1, 0),), "nondecreasing depths"),
+        ("01101001", ((2, 0),), "nondecreasing depths"),
+        ("0110100110010110", ((2, 0), (1, 0)), "nondecreasing depths"),
         ("01101001", ((1, -1),), "aligned table spans"),
         ("01101001", ((1, 1),), "aligned table spans"),
         ("01101001", ((1, 8),), "aligned table spans"),

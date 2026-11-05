@@ -95,7 +95,7 @@
   "slow_acv_mammalian": "linear: at most V characters",
   "smallfuck": "linear: at most Q characters: coefficient recurrence plus a 20n+100 tail",
   "smu": "linear: at most C characters to n = 16, 6T+86 after",
-  "sonata": "linear: worst T+4n+101-21min(1,(n-2)^2) characters, n = 1..6; at most beyond",
+  "sonata": "linear: worst T+4n+101-21min(1,(n-2)^2) characters: exact n=1..6, upper bound thereafter",
   "sstack": "linear: at most 24T-9 characters: 21 a node, 3 a leaf, 12 prologue",
   "stisp": "linear: at most F+28 characters past n = 2: named-diagram ceiling plus selectors",
   "streetcode": "linear: worst S cells from n = 2: tree, then the flat street",

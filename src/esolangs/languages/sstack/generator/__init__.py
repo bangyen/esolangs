@@ -88,7 +88,7 @@ def _sstack_shared(
     if any(depth < 0 or depth > n - 2 for depth in depths) or any(
         left > right for left, right in pairwise(depths)
     ):
-        raise ValueError("definitions need increasing depths and two unread inputs")
+        raise ValueError("definitions need nondecreasing depths and two unread inputs")
     if any(
         row < 0 or row % (1 << (n - depth)) or row + (1 << (n - depth)) > len(table)
         for depth, row in blocks

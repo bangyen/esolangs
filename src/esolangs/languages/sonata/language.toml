@@ -107,7 +107,7 @@ first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.sonata.generator:sonata"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n = 1..6; at most beyond", formula = "T+4n+101-21min(1,(n-2)^2)" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: exact n=1..6, upper bound thereafter", formula = "T+4n+101-21min(1,(n-2)^2)" }
 
 [semantic_evidence]
 version = 1
