@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import IO
 
+from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import ArgumentError, ProgramError, ProgramNotFoundError
 from esolangs.raster import Raster
@@ -14,7 +15,7 @@ from esolangs.runtime._program import Program
 from esolangs.runtime._validate import check_scale
 from esolangs.runtime.source_hints import syntax_error, with_hint
 
-type ProgramSource = Program | bytes | os.PathLike[str] | IO[str] | IO[bytes]
+type ProgramSource = Program | Artifact | bytes | os.PathLike[str] | IO[str] | IO[bytes]
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,6 +36,10 @@ def _read_container(
     source: ProgramSource | _FileSource,
 ) -> tuple[Program | bytes, bool]:
     try:
+        if isinstance(source, (ProgramArtifact, TemplateArtifact)):
+            from esolangs.tagged import source_adapter
+
+            source = source_adapter(source)
         if isinstance(source, _FileSource):
             return source.read(), True
         if isinstance(source, os.PathLike):

@@ -5,14 +5,14 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Self
 
-from esolangs.generation.helpers import TEMPLATE_CHAR, Setters
-from esolangs.raster import Raster
-from esolangs.runtime._artifacts import (
+from esolangs.artifacts import (
     Artifact,
     ProgramArtifact,
     TemplateArtifact,
     TemplateBindings,
 )
+from esolangs.generation.helpers import TEMPLATE_CHAR, Setters
+from esolangs.raster import Raster
 from esolangs.runtime._program import Program
 
 if TYPE_CHECKING:

@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 import esolangs
+from esolangs.artifacts import Artifact
 from esolangs.registry import resolve
 from esolangs.registry._describe import LanguageInfo
 from esolangs.runtime._input import InputSource
@@ -50,9 +51,32 @@ class Language:
             settings=settings,
         )
 
+    def generate_artifact(
+        self,
+        truth_table: str,
+        *,
+        width: int | None = None,
+        balance: bool = False,
+        scale: int = 1,
+        settings: DialectSettings | None = None,
+    ) -> Artifact:
+        """Build an explicit record; see :func:`esolangs.generate_artifact`."""
+        return esolangs.generate_artifact(
+            self.name,
+            truth_table,
+            width=width,
+            balance=balance,
+            scale=scale,
+            settings=settings,
+        )
+
+    def load_artifact(self, document: str) -> Artifact:
+        """Restore an explicit record; errors follow :func:`esolangs.load_artifact`."""
+        return esolangs.load_artifact(self.name, document)
+
     def instantiate(
         self,
-        template: Program,
+        template: Program | Artifact,
         bits: list[int] | tuple[int, ...],
         *,
         width: int | None = None,
@@ -73,7 +97,7 @@ class Language:
         )
 
     def dump_program(
-        self, program: Program, *, settings: DialectSettings | None = None
+        self, program: Program | Artifact, *, settings: DialectSettings | None = None
     ) -> str:
         """Return portable JSON retaining source and dialect choices.
 

@@ -59,14 +59,14 @@ def _first(trait: str) -> str:
     )
 
 
-def _over_cap() -> object:
+def _over_cap(generate=esolangs.generate) -> object:
     """Generate one input past the smallest declared arity cap."""
     cap, name = min(
         (d["generator_max_inputs"], n)
         for n in esolangs.list_languages()
         if (d := esolangs.describe(n))["generator_max_inputs"]
     )
-    return esolangs.generate(name, "01" * 2**cap)
+    return generate(name, "01" * 2**cap)
 
 
 def _halting_trigger() -> str:
@@ -99,9 +99,9 @@ def _run_png_without_pillow() -> object:
     return _without_pillow(lambda: esolangs.run(_first("raster"), data))
 
 
-def _load_png_without_pillow() -> object:
+def _load_png_without_pillow(load=esolangs.load_program) -> object:
     document = esolangs.dump_program(_first("raster"), _raster_png())
-    return _without_pillow(lambda: esolangs.load_program(_first("raster"), document))
+    return _without_pillow(lambda: load(_first("raster"), document))
 
 
 def _no_docstrings(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -315,6 +315,48 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
         None,
     ),
     ("load_program", x.MissingDependencyError, _load_png_without_pillow, None),
+]
+
+
+TRIGGERS += [
+    (
+        "generate_artifact",
+        x.UnknownLanguageError,
+        lambda: esolangs.generate_artifact("Nolang", "01"),
+        None,
+    ),
+    (
+        "generate_artifact",
+        x.TruthTableError,
+        lambda: esolangs.generate_artifact(R, "012"),
+        None,
+    ),
+    (
+        "generate_artifact",
+        x.ArgumentError,
+        lambda: esolangs.generate_artifact(R, "01", scale=2),
+        None,
+    ),
+    (
+        "generate_artifact",
+        x.GeneratorCapError,
+        lambda: _over_cap(esolangs.generate_artifact),
+        None,
+    ),
+    (
+        "load_artifact",
+        x.UnknownLanguageError,
+        lambda: esolangs.load_artifact("Nolang", "{}"),
+        None,
+    ),
+    ("load_artifact", x.ArgumentError, lambda: esolangs.load_artifact(R, b"{}"), None),
+    ("load_artifact", x.ProgramError, lambda: esolangs.load_artifact(R, "{}"), None),
+    (
+        "load_artifact",
+        x.MissingDependencyError,
+        lambda: _load_png_without_pillow(esolangs.load_artifact),
+        None,
+    ),
 ]
 
 

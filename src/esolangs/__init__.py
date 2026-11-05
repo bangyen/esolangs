@@ -2,14 +2,16 @@
 
 Public operations split by who supplies the program:
 
-* Generator-made: ``generate`` builds source from a truth table and
+* Generator-made: ``generate_artifact`` builds an explicit program or template;
+  ``generate`` returns compatible source from a truth table and
   ``instantiate`` fills a generator-made template.
 * Caller-supplied: ``run`` executes source the caller supplies.
   Stepping and debugging live in :mod:`esolangs.debugger`.
 * Contract adapters: ``encode_inputs`` spells input bits as stdin,
   ``read_answer`` extracts an answer bit from output,
   ``save_program`` writes native source files, and
-  ``dump_program``/``load_program`` preserve source in portable JSON.
+  ``dump_program``/``load_program`` preserve source in portable JSON;
+  ``load_artifact`` restores an explicit record.
 * Catalog: ``describe`` and ``list_languages`` provide registry facts.
 
 Boolean evaluation over every row is private certification machinery,
@@ -26,6 +28,12 @@ from math import isqrt
 from typing import TYPE_CHECKING, Any, cast
 
 from esolangs._language import Language
+from esolangs.artifacts import (
+    Artifact,
+    ProgramArtifact,
+    TemplateArtifact,
+    TemplateBindings,
+)
 from esolangs.compressed import CompressedText, TextLimits
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import (
@@ -60,7 +68,7 @@ from esolangs.generation.wrap import (
     wrap_program,
 )
 from esolangs.generation.wrap import takes_width as _takes_width
-from esolangs.portable import dump_program, load_program, save_program
+from esolangs.portable import dump_program, load_artifact, load_program, save_program
 from esolangs.raster import Raster
 from esolangs.registry import (
     LANGUAGES,
@@ -76,12 +84,6 @@ from esolangs.registry._describe import (
     list_languages,
 )
 from esolangs.runtime._answers import encode_inputs, read_answer
-from esolangs.runtime._artifacts import (
-    Artifact,
-    ProgramArtifact,
-    TemplateArtifact,
-    TemplateBindings,
-)
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._execution import (
     check_signal_timeout,
@@ -148,11 +150,17 @@ def _bind_annotation_names() -> None:
     under ``TYPE_CHECKING`` (``settings`` imports the registry, which imports
     them), so ``get_type_hints(Raster)`` raised NameError on 3.12 to 3.14.
     """
+    import esolangs.artifacts
     import esolangs.compressed
     import esolangs.raster
     import esolangs.tagged
 
-    for module in (esolangs.compressed, esolangs.raster, esolangs.tagged):
+    for module in (
+        esolangs.artifacts,
+        esolangs.compressed,
+        esolangs.raster,
+        esolangs.tagged,
+    ):
         module.DialectSettings = DialectSettings  # type: ignore[attr-defined]
 
 
@@ -165,6 +173,7 @@ _bind_annotation_names()
 #: from the outside which was which.
 __all__ = [
     "ArgumentError",
+    "Artifact",
     "CompressedText",
     "DialectSettings",
     "EsolangError",
@@ -178,10 +187,13 @@ __all__ = [
     "LanguageInfo",
     "MissingDependencyError",
     "Program",
+    "ProgramArtifact",
     "ProgramError",
     "ProgramNotFoundError",
     "ProgramSource",
     "Raster",
+    "TemplateArtifact",
+    "TemplateBindings",
     "TemplateError",
     "TextLimits",
     "TruthTableError",
@@ -190,8 +202,10 @@ __all__ = [
     "dump_program",
     "encode_inputs",
     "generate",
+    "generate_artifact",
     "instantiate",
     "list_languages",
+    "load_artifact",
     "load_program",
     "read_answer",
     "run",
@@ -248,7 +262,7 @@ def generate(
             ``["generator_restrictions"]``).
     """
     return _source_adapter(
-        _generate_artifact(
+        generate_artifact(
             language,
             truth_table,
             width=width,
@@ -259,7 +273,7 @@ def generate(
     )
 
 
-def _generate_artifact(
+def generate_artifact(
     language: str,
     truth_table: str,
     *,
@@ -268,7 +282,17 @@ def _generate_artifact(
     scale: int = 1,
     settings: DialectSettings | None = None,
 ) -> Artifact:
-    """Build and lay out source before creating a public compatibility adapter."""
+    """Return an immutable program or template with explicit source and provenance.
+
+    Options follow :func:`generate`. Templates expose ``fill(bits)``; runnable
+    records and templates both expose ``source`` for explicit extraction.
+
+    Raises:
+        UnknownLanguageError: ``language`` is not registered.
+        TruthTableError: The table is not binary with power-of-two length.
+        ArgumentError: A generation option is invalid or unsupported.
+        GeneratorCapError: The table exceeds the generator's supported domain.
+    """
     options = dialect_options(language, settings)
     check_scale(scale)
     check_flag(balance, "balance")
@@ -280,7 +304,7 @@ def _generate_artifact(
             )
         artifact = cast(
             ProgramArtifact[Raster],
-            _generate_artifact(
+            generate_artifact(
                 language, truth_table, width=width, balance=balance, settings=settings
             ),
         )
@@ -348,7 +372,7 @@ def _generate_balanced(
     settings: DialectSettings | None,
 ) -> Artifact:
     """Return ``generate(..., balance=True)``: the default, rebuilt squarest."""
-    default = _generate_artifact(language, truth_table, settings=settings)
+    default = generate_artifact(language, truth_table, settings=settings)
     source = default.source
     name = resolve(language)
     lang = LANGUAGES[name]
@@ -496,7 +520,7 @@ def _check_template_source(
 
 def instantiate(
     language: str,
-    template: Program,
+    template: Program | Artifact,
     bits: list[int] | tuple[int, ...],
     *,
     width: int | None = None,
@@ -525,6 +549,10 @@ def instantiate(
         ArgumentError: A bit is not an integer 0 or 1, or an option is
             invalid.
     """
+    if isinstance(template, ProgramArtifact):
+        raise TemplateError("a runnable program has no template bindings")
+    if isinstance(template, TemplateArtifact):
+        template = _source_adapter(template)
     settings = effective_settings(language, template, settings)
     dialect_options(language, settings)
     check_width(width)
@@ -669,6 +697,8 @@ def _check_runnable(language: str, program: Program) -> None:
 def _read_source(language: str, program: ProgramSource | _FileSource) -> Program:
     """Load source and check its kind and origin, allowing unfilled templates."""
     name = resolve(language)
+    if isinstance(program, (ProgramArtifact, TemplateArtifact)):
+        program = _source_adapter(program)
     module = interpreter_module(name)
     loader = getattr(module, "load_source", text_source)
     program = loader(program)
@@ -706,6 +736,8 @@ def _check_program(
     being consumed; execution snapshots their remaining text.
     """
     name = resolve(language)
+    if isinstance(program, TemplateArtifact):
+        raise TemplateError("fill the template before execution")
     program = _read_source(name, program)
     check_input(stdin)
     _check_runnable(name, program)

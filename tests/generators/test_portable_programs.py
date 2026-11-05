@@ -15,8 +15,10 @@ from tests.support.reference import REFERENCE
 @pytest.mark.medium
 @pytest.mark.parametrize("language", [name for name, _ in CASES])
 def test_restored_isolated_execution(language) -> None:
-    source = esolangs.generate(language, "01", settings=dict(CASES)[language])
-    restored = esolangs.load_program(language, esolangs.dump_program(language, source))
+    choices = dict(CASES)[language]
+    source = esolangs.generate_artifact(language, "01", settings=choices)
+    restored = esolangs.load_artifact(language, esolangs.dump_program(language, source))
+    assert restored.settings == source.settings == choices
     assert _evaluate(language, restored, inputs=1, isolated=True) == "01"
 
 

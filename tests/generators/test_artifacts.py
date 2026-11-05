@@ -7,12 +7,12 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs.registry import LANGUAGES
-from esolangs.runtime._artifacts import (
+from esolangs.artifacts import (
     ProgramArtifact,
     TemplateArtifact,
     TemplateBindings,
 )
+from esolangs.registry import LANGUAGES
 from esolangs.tagged import _Tagged, _Template
 from tests.support.evaluation import _evaluate
 from tests.support.pick import languages, one, one_where
@@ -41,11 +41,20 @@ def test_artifact_persistence_executes_the_same_table(
     language: str, table: str, tmp_path: Path
 ) -> None:
     inputs = len(table).bit_length() - 1
-    source = esolangs.generate(language, table)
+    choices = esolangs.DialectSettings()
+    source = esolangs.generate_artifact(language, table, settings=choices)
     document = esolangs.dump_program(language, source)
-    restored = esolangs.load_program(language, document)
+    restored = esolangs.load_artifact(language, document)
     assert esolangs.dump_program(language, restored) == document
+    assert type(source) is type(restored)
+    assert source.settings == restored.settings == choices
+    assert source.language == restored.language == language
+    assert isinstance(source, (esolangs.ProgramArtifact, esolangs.TemplateArtifact))
+    assert esolangs.Language(language).load_artifact(document) == restored
     for program in (source, restored, pickle.loads(pickle.dumps(source))):
+        if isinstance(program, TemplateArtifact):
+            with pytest.raises(esolangs.TemplateError):
+                esolangs.run(language, program)
         assert _evaluate(language, program, inputs=inputs) == table
     path = tmp_path / ("program" + LANGUAGES[language].source_suffix)
     esolangs.save_program(source, path)
@@ -160,11 +169,11 @@ def test_generation_adapts_only_the_final_record(language, table, options, monke
 def test_template_record_reuses_validated_runs_and_retains_provenance(
     language, monkeypatch
 ):
+    import esolangs.artifacts as artifacts
     import esolangs.generation.helpers as helpers
-    import esolangs.runtime._artifacts as artifacts
 
     choices = esolangs.DialectSettings()
-    artifact = esolangs._generate_artifact(language, "0110", settings=choices)
+    artifact = esolangs.generate_artifact(language, "0110", settings=choices)
     assert isinstance(artifact, TemplateArtifact)
     source = esolangs._source_adapter(artifact)
 
@@ -181,3 +190,61 @@ def test_template_record_reuses_validated_runs_and_retains_provenance(
         assert filled.settings is choices
         assert esolangs.run(language, filled.source) == answer
         assert restored.fill(bits).source == filled.source == source.fill(bits)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("language", _EMBEDDING)
+def test_public_template_fill_executes_all_routes(language):
+    artifact = esolangs.Language(language).generate_artifact("0110")
+    assert isinstance(artifact, TemplateArtifact)
+    document = esolangs.dump_program(language, artifact)
+    restored = esolangs.load_artifact(language, document)
+    assert isinstance(restored, TemplateArtifact)
+    assert restored.bindings == artifact.bindings
+    for isolated, max_steps in [(False, None), (False, 10_000), (True, 10_000)]:
+        with pytest.raises(esolangs.TemplateError):
+            esolangs.run(language, restored, isolated=isolated, max_steps=max_steps)
+        assert (
+            esolangs.run(
+                language, restored.fill([0, 1]), isolated=isolated, max_steps=max_steps
+            )
+            == "1"
+        )
+
+
+@pytest.mark.medium
+def test_record_provenance_and_scaled_raster_round_trip():
+    settings = esolangs.DialectSettings()
+    language = one(source_kind="raster", boolean_generator=True, answer_mode="output")[
+        0
+    ]
+    artifact = esolangs.generate_artifact(language, "01", scale=2, settings=settings)
+    restored = esolangs.load_artifact(
+        language, esolangs.dump_program(language, artifact)
+    )
+    assert restored.scale == artifact.scale == 2
+    assert restored.settings == settings
+    with pytest.raises(esolangs.ProgramError):
+        esolangs.run(REFERENCE, restored)
+    assert _evaluate(language, restored, inputs=1) == "01"
+
+
+@pytest.mark.parametrize("source", [None, 1, b"+."])
+def test_public_record_rejects_invalid_source(source):
+    with pytest.raises(esolangs.ProgramError):
+        ProgramArtifact(source, REFERENCE)
+
+
+def test_public_records_canonicalize_and_validate_metadata():
+    artifact = ProgramArtifact("+.", REFERENCE.upper())
+    assert artifact.language == REFERENCE
+    assert esolangs.run(REFERENCE, artifact) == "\x01"
+    with pytest.raises(esolangs.ArgumentError):
+        ProgramArtifact("+.", REFERENCE, scale=1)
+    with pytest.raises(esolangs.ArgumentError):
+        ProgramArtifact("+.", REFERENCE, settings={})
+    with pytest.raises(esolangs.TemplateError):
+        TemplateBindings(char="")
+    template = TemplateArtifact("", REFERENCE.upper(), TemplateBindings())
+    with pytest.raises(esolangs.TemplateError):
+        esolangs.run(REFERENCE, template)

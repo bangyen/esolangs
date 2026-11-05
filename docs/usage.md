@@ -86,7 +86,14 @@ One kind of language needs a different call:
   assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin=stdin)) == "1"
   ```
 
-`generate` returns a `Program`, which is one of:
+`generate_artifact` returns an immutable `ProgramArtifact` or `TemplateArtifact`.
+Both carry explicit `.source`, language and dialect settings; raster programs
+also retain scale. `TemplateArtifact.fill(bits)` returns a runnable record.
+`run`, `instantiate`, `dump_program` and `save_program` accept records;
+`load_artifact` restores them, including template bindings. Unfilled templates
+cannot run. `Language` binds `generate_artifact` and `load_artifact` too.
+
+`generate` remains the source compatibility API. It returns a `Program`, one of:
 
 - a `str` subclass, for text;
 - a `Raster`, for images;
@@ -148,8 +155,10 @@ Functions:
 - `esolangs.dump_program` -- return version-1 JSON preserving source, choices, and template setters
 - `esolangs.encode_inputs` -- return the stdin that feeds `bits` to a `language` program
 - `esolangs.generate` -- return a program in `language` computing `truth_table`
+- `esolangs.generate_artifact` -- return an immutable program or template with explicit source and provenance
 - `esolangs.instantiate` -- fill a parameterized generator's template with `bits`
 - `esolangs.list_languages` -- return the supported language names, sorted
+- `esolangs.load_artifact` -- restore version-1 JSON as an explicit program or template record
 - `esolangs.load_program` -- restore version-1 JSON as tagged source for the requested language
 - `esolangs.read_answer` -- return the answer bit, `"0"` or `"1"`, a program's `output` carries
 - `esolangs.run` -- execute `program` and return its output
@@ -157,14 +166,18 @@ Functions:
 
 Types:
 
+- `esolangs.Artifact` -- `ProgramArtifact[Program] | TemplateArtifact`
 - `esolangs.CompressedText` -- validated UTF-8 gzip source; len counts expanded characters
 - `esolangs.DialectSettings` -- explicit overrides; omitted choices retain each language's defaults
 - `esolangs.InputSource` -- `str | bytes | IO[str] | IO[bytes]`
 - `esolangs.Language` -- bind a canonical language name to the package's existing functions
 - `esolangs.LanguageInfo` -- what `describe` returns, as a type a caller can annotate with
 - `esolangs.Program` -- `str | Raster | CompressedText`
-- `esolangs.ProgramSource` -- `Program | bytes | PathLike[str] | IO[str] | IO[bytes]`
+- `esolangs.ProgramArtifact` -- runnable source with its language and retained dialect choices
+- `esolangs.ProgramSource` -- `Program | Artifact | bytes | PathLike[str] | IO[str] | IO[bytes]`
 - `esolangs.Raster` -- an immutable 8-bit RGB image source, stored row by row
+- `esolangs.TemplateArtifact` -- text with explicit input bindings; never runnable source
+- `esolangs.TemplateBindings` -- ordered, equal-width input bindings, independent of source storage
 - `esolangs.TextLimits` -- independent raw-export, generation-work and compressed-file budgets
 
 Exceptions:

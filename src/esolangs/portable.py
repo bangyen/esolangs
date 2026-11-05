@@ -11,16 +11,16 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
-from esolangs.compressed import CompressedText, TextLimits
-from esolangs.exceptions import ArgumentError, ProgramError
-from esolangs.raster import Raster
-from esolangs.registry import LANGUAGES, resolve, template_char
-from esolangs.runtime._artifacts import (
+from esolangs.artifacts import (
     Artifact,
     ProgramArtifact,
     TemplateArtifact,
     TemplateBindings,
 )
+from esolangs.compressed import CompressedText, TextLimits
+from esolangs.exceptions import ArgumentError, ProgramError
+from esolangs.raster import Raster
+from esolangs.registry import LANGUAGES, resolve, template_char
 from esolangs.runtime._program import Program
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 from esolangs.tagged import _Tagged, source_adapter
@@ -28,7 +28,7 @@ from esolangs.tagged import _Tagged, source_adapter
 _FORMAT = "esolangs.program"
 
 
-def save_program(program: Program, path: str | PathLike[str]) -> None:
+def save_program(program: Program | Artifact, path: str | PathLike[str]) -> None:
     """Write a program as a native source file.
 
     Text is UTF-8 with one file terminator, compressed source stays gzip,
@@ -41,6 +41,8 @@ def save_program(program: Program, path: str | PathLike[str]) -> None:
         MissingDependencyError: A raster needs ``esolangs[image]`` for PNG.
     """
     try:
+        if isinstance(program, (ProgramArtifact, TemplateArtifact)):
+            program = source_adapter(program)
         if isinstance(program, CompressedText):
             source = program.to_gzip()
         elif isinstance(program, Raster):
@@ -61,7 +63,10 @@ def save_program(program: Program, path: str | PathLike[str]) -> None:
 
 
 def dump_program(
-    language: str, program: Program, *, settings: DialectSettings | None = None
+    language: str,
+    program: Program | Artifact,
+    *,
+    settings: DialectSettings | None = None,
 ) -> str:
     """Return version-1 JSON preserving source, choices, and template setters.
 
@@ -236,8 +241,8 @@ _LOADERS: dict[
 }
 
 
-def load_program(language: str, document: str) -> Program:
-    """Restore version-1 JSON as tagged source for the requested language.
+def load_artifact(language: str, document: str) -> Artifact:
+    """Restore version-1 JSON as an explicit program or template record.
 
     Raises:
         UnknownLanguageError: ``language`` is not registered.
@@ -279,7 +284,22 @@ def load_program(language: str, document: str) -> Program:
         settings = _settings(value["settings"], name)
         if not isinstance(kind, str) or kind not in _LOADERS:
             raise ValueError("unknown source kind")
-        source = source_adapter(_LOADERS[kind](value, name, settings))
-        return _read_source(name, source)
+        artifact = _LOADERS[kind](value, name, settings)
+        _read_source(name, source_adapter(artifact))
+        return artifact
     except (ValueError, TypeError) as error:
         raise ProgramError(f"invalid portable program: {error}") from error
+
+
+def load_program(language: str, document: str) -> Program:
+    """Restore version-1 JSON as tagged source for the requested language.
+
+    Raises:
+        UnknownLanguageError: ``language`` is not registered.
+        ArgumentError: ``document`` is not a string.
+        ProgramError: The document is invalid for the requested language.
+        MissingDependencyError: A PNG source needs ``esolangs[image]``.
+    """
+    from esolangs import _read_source
+
+    return _read_source(language, source_adapter(load_artifact(language, document)))

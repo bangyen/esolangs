@@ -19,6 +19,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from typing import Any, cast
 
+from esolangs.artifacts import TemplateArtifact
 from esolangs.compressed import CompressedText
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
@@ -34,7 +35,6 @@ from esolangs.registry._contracts import (
     BooleanContract,
     InputShape,
 )
-from esolangs.runtime._artifacts import TemplateArtifact
 from esolangs.runtime._program import Program
 
 # Examples use AND2 on 0,1 unless the source budget requires a smaller
@@ -136,10 +136,10 @@ class BooleanExample:
         ``balance`` uses the balanced artifact pipeline instead of ``width``.
         """
         if balance:
-            from esolangs import _generate_artifact
+            from esolangs import generate_artifact
             from esolangs.tagged import source_adapter
 
-            artifact = _generate_artifact(
+            artifact = generate_artifact(
                 self.language, self.table, balance=True, scale=self.scale
             )
             if self.fill is not None:

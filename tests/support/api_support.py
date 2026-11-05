@@ -14,11 +14,16 @@ SIGNATURES: dict[str, str] = json.loads(
 
 
 PUBLIC_MEMBERS = {
+    esolangs.ProgramArtifact: {"source", "language", "settings", "scale"},
+    esolangs.TemplateArtifact: {"source", "language", "bindings", "settings", "fill"},
+    esolangs.TemplateBindings: {"char", "setters", "inputs", "fill"},
     esolangs.Language: {
         "describe",
         "dump_program",
         "encode_inputs",
         "generate",
+        "generate_artifact",
+        "load_artifact",
         "instantiate",
         "load_program",
         "name",

@@ -105,6 +105,7 @@ def effective_settings(
     language: str, program: object, settings: DialectSettings | None
 ) -> DialectSettings | None:
     """Merge explicit choices over retained same-language source provenance."""
+    from esolangs.artifacts import ProgramArtifact, TemplateArtifact
     from esolangs.compressed import CompressedText
     from esolangs.raster import Raster
     from esolangs.tagged import _Tagged
@@ -114,7 +115,7 @@ def effective_settings(
             f"settings must be a DialectSettings object, got {type(settings).__name__}"
         )
     if not isinstance(
-        program, (_Tagged, Raster, CompressedText)
+        program, (_Tagged, Raster, CompressedText, ProgramArtifact, TemplateArtifact)
     ) or program.language != resolve(language):
         return settings
     retained = program.settings

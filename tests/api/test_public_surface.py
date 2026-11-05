@@ -24,6 +24,7 @@ class TestPackageSurface:
         """Adding or removing a public name is a deliberate edit here."""
         assert sorted(esolangs.__all__) == [
             "ArgumentError",
+            "Artifact",
             "CompressedText",
             "DialectSettings",
             "EsolangError",
@@ -37,10 +38,13 @@ class TestPackageSurface:
             "LanguageInfo",
             "MissingDependencyError",
             "Program",
+            "ProgramArtifact",
             "ProgramError",
             "ProgramNotFoundError",
             "ProgramSource",
             "Raster",
+            "TemplateArtifact",
+            "TemplateBindings",
             "TemplateError",
             "TextLimits",
             "TruthTableError",
@@ -49,8 +53,10 @@ class TestPackageSurface:
             "dump_program",
             "encode_inputs",
             "generate",
+            "generate_artifact",
             "instantiate",
             "list_languages",
+            "load_artifact",
             "load_program",
             "read_answer",
             "run",
@@ -284,9 +290,23 @@ class TestProgramObjectsRefuseMisuse:
         """``DialectSettings`` was a TYPE_CHECKING-only name: NameError."""
         import typing
 
-        for cls in (esolangs.Raster, esolangs.CompressedText):
+        for cls in (
+            esolangs.Raster,
+            esolangs.CompressedText,
+            esolangs.ProgramArtifact,
+            esolangs.TemplateArtifact,
+            esolangs.TemplateBindings,
+        ):
             typing.get_type_hints(cls)
-            typing.get_type_hints(cls.tagged)
+            for member in vars(cls).values():
+                if inspect.isfunction(member):
+                    typing.get_type_hints(
+                        member,
+                        localns={
+                            param.__name__: param
+                            for param in getattr(cls, "__type_params__", ())
+                        },
+                    )
 
     def test_a_scaled_raster_pickles(self) -> None:
         """Its renderer was a local closure: PicklingError."""
