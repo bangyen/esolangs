@@ -30,11 +30,12 @@ Decisions:
     * ``t`` starts as ``z``.  ``l"id".`` is the macro the wiki calls it: the
       class's ``n(f)**``, members evaluated where it is written.  ``main`` is
       entered as ``flmain.z``.
-    * Objects with the same function and members are equal, so ``n rz zz``
-      is ``z`` and prints 0.
-      The page also calls ``n rs ss`` zero-equivalent; inside a nonzero
-      ``main`` its members copy ``main``, so eight outputs print ``ÿ`` here.
-      Structural versus behavioral zero equivalence remains open.
+    * Output uses structural zero: z's compiled body plus zero members.
+      ``n rz zz`` prints 0; merely returning z does not make an object zero.
+      The page calls ``n rs ss`` "functionally equivalent" to z, but inside
+      nonzero ``main`` it returns itself and eight outputs print ``ÿ``.
+      We retain structural classification; function behavior is not an
+      output-equality rule.
     * Whitespace is ignored outside comments; a class name runs to its ``.``
       with whitespace dropped.  Commands are lowercase.
     * A partial output byte at the halt is never printed: a char is printed
@@ -264,7 +265,7 @@ class _State(NamedTuple):
 
 
 def _obj(code: int, a: _Obj, b: _Obj) -> _Obj:
-    """Build an object; ``z``'s own function and members make ``z``."""
+    """Build an object; z's code id and zero members canonicalize to z."""
     return 0 if code == 0 and a == 0 and b == 0 else (code, a, b)
 
 

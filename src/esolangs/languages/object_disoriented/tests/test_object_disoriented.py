@@ -88,9 +88,12 @@ def test_bits_pack_most_significant_first() -> None:
     assert _run(_bits("z", "i", *["z"] * 5, "i"), "\x80") == "\x40"
 
 
-def test_any_object_but_z_prints_one() -> None:
-    """``n rz zz`` has z's function and members, so it is z."""
+def test_output_zero_is_structural_not_the_call_result() -> None:
+    """Direct output distinguishes objects whose calls both return zero."""
     assert _run(_bits("z", "nrzzz", "nrsss", "z", "z", "z", "z", "nrpzz")) == "\x21"
+    for obj, returned in (("nrsss", "\xff"), ("nrznrpzzz", "\0"), ("ncztrzzz", "\0")):
+        assert _run(_bits(*[obj] * 8)) == "\xff"
+        assert _run(_bits(*["f" + obj + "z"] * 8)) == returned
 
 
 def test_a_partial_byte_is_never_printed() -> None:
