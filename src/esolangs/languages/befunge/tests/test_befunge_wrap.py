@@ -324,11 +324,11 @@ def _check_one_row_nibbles() -> None:
     assert io.getvalue().strip() != "1"
 
 
-@pytest.mark.parametrize("width", [10, 11, 12, 13])
-def test_packed_header_reserves_a_two_digit_offset(width: int) -> None:
-    table = "".join(str(row.bit_count() % 2) for row in range(256))
-    program = befunge(table, width)
-    assert len(program.splitlines()) <= 25
-    for row, expected in enumerate(table):
-        stdin = esolangs.encode_inputs("Befunge", list(map(int, f"{row:08b}")))
-        assert esolangs.run("Befunge", program, stdin=stdin).strip() == expected
+def test_packed_header_reserves_a_two_digit_offset() -> None:
+    for width in (10, 11, 12, 13):
+        table = "".join(str(row.bit_count() % 2) for row in range(256))
+        program = befunge(table, width)
+        assert len(program.splitlines()) <= 25
+        for row, expected in enumerate(table):
+            stdin = esolangs.encode_inputs("Befunge", list(map(int, f"{row:08b}")))
+            assert esolangs.run("Befunge", program, stdin=stdin).strip() == expected

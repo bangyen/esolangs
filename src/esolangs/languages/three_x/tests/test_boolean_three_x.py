@@ -252,29 +252,25 @@ def _check_constants() -> None:
                     assert io.input_num() == 7
 
 
-@pytest.mark.parametrize(
-    ("n", "used"),
-    [(5, list(range(5))), (6, list(range(5))), (8, list(range(3, 8)))],
-)
-def test_initial_shared_block_and_ignored_inputs_execute(n, used) -> None:
+def test_initial_shared_block_and_ignored_inputs_execute() -> None:
     from esolangs.languages.three_x.generator import _shared_blocks, _three_x_emit
     from esolangs.languages.three_x.interpreter import run
 
     core = "01101001" * 3 + "00000000"
     shares = _shared_blocks(core, 5)
     assert shares == (core[:8],)
-    perm = tuple(range(n))
-    plain = _three_x_emit(core, perm, used, n, ())
-    shared = _three_x_emit(core, perm, used, n, shares)
-    assert len(shared) == 310 + n - 5 < len(plain)
-    table = "".join(
-        core[int("".join(f"{row:0{n}b}"[i] for i in used), 2)] for row in range(1 << n)
-    )
-    for program in (plain, shared, boolean.three_x(table)):
-        for row, expected in enumerate(table):
-            bits = [int(bit) for bit in f"{row:0{n}b}"]
-            io = ReadFirstIO(esolangs.encode_inputs("3x", bits) + "7\n", expected=n)
-            run(program, io)
-            assert io.getvalue() == expected
-            assert io.reads == n
-            assert io.input_num() == 7
+    for n, used in ((5, list(range(5))), (6, list(range(5))), (8, list(range(3, 8)))):
+        perm = tuple(range(n))
+        plain = _three_x_emit(core, perm, used, n, ())
+        shared = _three_x_emit(core, perm, used, n, shares)
+        assert len(shared) == 310 + n - 5 < len(plain)
+        table = "".join(
+            core[int("".join(f"{row:0{n}b}"[i] for i in used), 2)]
+            for row in range(1 << n)
+        )
+        for program in (plain, shared, boolean.three_x(table)):
+            for row, expected in enumerate(table):
+                bits = [int(bit) for bit in f"{row:0{n}b}"]
+                io = ReadFirstIO(esolangs.encode_inputs("3x", bits) + "7\n", expected=n)
+                run(program, io)
+                assert (io.getvalue(), io.reads, io.input_num()) == (expected, n, 7)

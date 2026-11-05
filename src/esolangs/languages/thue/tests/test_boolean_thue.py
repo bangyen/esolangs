@@ -464,5 +464,4 @@ def test_single_entry_chunks_sweep_before_reading() -> None:
                     machine.step()
                     steps += 1
                     assert steps < 1000
-                assert (io.getvalue(), io.reads) == (bit, n)
-                assert io.input_str() == "7"
+                assert (io.getvalue(), io.reads, io.input_str()) == (bit, n, "7")
