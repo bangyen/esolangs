@@ -269,7 +269,6 @@ def b_tapemark(
         # Each vertical | moves to a fresh mark; the final mirror turns right
         # so the literal digit prints rather than comparing the data mark.
         return "v\n" + "-\n|\n" * (depth - 1) + "-\n\\" + answer + "!"
-    program = _b_tapemark_program(truth_table, width)
     program = _b_tapemark_program(truth_table, width, swap_marker=swap_marker)
     if width is not None:
         return program

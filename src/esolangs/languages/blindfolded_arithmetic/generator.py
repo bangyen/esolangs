@@ -117,20 +117,21 @@ def _parity_integer(table: str) -> list[str]:
         code.append("b=b+d")
         if table[start] == "1":
             code.append("b=b+c")
-    return code
+    # Restore the common lookup divisor; generic octal setup already leaves 2.
+    return [*code, "c=a+a"]
 
 
 def _lookup(n: int, essential: list[int], *, mirror: bool = False) -> list[str]:
     """Return the code shifting ``b`` right by the essential bits of ``i - 1``.
 
-    ``c`` stays 2; ``e`` holds Q-1 and squares by (Q-1)(Q+1).
+    ``c`` must start at 2 and stays there; ``e`` holds Q-1 and squares by (Q-1)(Q+1).
     The counter alternates with its quotient scratch, removing copies.
     An ignored input's bit is dropped from the counter unused; rounds stop at the
     most significant essential input.  Every divisor is 2 or
     ``1 + bit * (Q - 1)``, never 0, until the halt.  ``mirror`` divides by
     ``Q - bit * (Q - 1)`` instead, so every input reads negated.
     """
-    code = ["i=i-a", "c=a+a", "e=a*a"]
+    code = ["i=i-a", "e=a*a"]
     counter, scratch = "i", "d"
     left = len(essential)
     for k in range(n - 1, (essential or [n])[0] - 1, -1):

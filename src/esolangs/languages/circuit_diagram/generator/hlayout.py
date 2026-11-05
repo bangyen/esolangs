@@ -1,14 +1,7 @@
-"""The H-layout: an O(T)-area Circuit Diagram drawing for eight inputs and up.
+"""Shared H-lattice geometry for balancing and cofactor-pool fallbacks.
 
-:func:`circuit_diagram` uses it from eight inputs when a nonconstant,
-unconstrained folded circuit exceeds its linear work or area budget.
-The recursively quartered blocks have side C sqrt(T), hence O(T) area.
-Eight is where the registry's linearity contract starts measuring.
-
-The public path first tries the shared fold at up to twice sqrt(T) distinct
-nodes, admitting its drawing inside the H-layout's unavoidable minterm box.
-Larger folds compare fixed-size cofactor pools against this lattice over
-essential inputs; ignored inputs keep their original ports and drive no gates.
+Recursively quartered blocks have side C sqrt(T), hence O(T) area.
+Layouts use essential inputs; ignored inputs keep their original ports.
 """
 
 from __future__ import annotations

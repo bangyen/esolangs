@@ -377,3 +377,18 @@ def _check_constants() -> None:
                     io = ReadFirstIO(row + "7", expected=n)
                     assert_constant_output(run, program, io, bit, n)
                     assert io.input_char() == ord("7")
+
+
+def test_requested_dialect_does_not_build_the_default_first(monkeypatch) -> None:
+    from esolangs.languages.b_tapemark import generator
+
+    build = generator._b_tapemark_program
+
+    def old_only(table: str, width=None, *, swap_marker="new") -> str:
+        assert swap_marker == "old"
+        return build(table, width, swap_marker=swap_marker)
+
+    monkeypatch.setattr(generator, "_b_tapemark_program", old_only)
+    program = generator.b_tapemark("0110", width=1, swap_marker="old")
+    for row, bit in enumerate("0110"):
+        assert execute(program, f"{row:02b}", "old") == (bit, 2)

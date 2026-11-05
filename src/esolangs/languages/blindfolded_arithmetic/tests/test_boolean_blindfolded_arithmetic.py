@@ -37,7 +37,6 @@ def test_the_input_is_the_row_number() -> None:
 
 
 def _check_alternating_rounds() -> None:
-    from esolangs.languages.blindfolded_arithmetic.generator import _lookup
     from esolangs.languages.blindfolded_arithmetic.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
 
@@ -62,4 +61,3 @@ def _check_alternating_rounds() -> None:
             assert io.getvalue() == bit
             assert io.reads == 1
             assert io.input_num() == 99
-    assert _lookup(3, [0, 2]).count("c=a+a") == 1

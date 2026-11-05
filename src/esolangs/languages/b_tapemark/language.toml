@@ -122,3 +122,6 @@ contract = "interpreter.py"
 tests = [
     "src/esolangs/languages/b_tapemark/tests/oracle_checks.py::check_raw_b_tapemark",
 ]
+
+[ablations.single_dialect_build_20261104]
+verdict = "Remove the discarded default-dialect build before the requested build. No generated source changes; both dialects match the previous bytes through n=3 at default and width=1, with every default row executed. A regression refuses any default-dialect call when old is requested. Existing bounds, pins and Size anchors stay unchanged. The earlier area_default derivation predates area_copy; current tests/formulas.py traces arbitrary run lengths, and proof_formulas.py bounds the area fold using c>=5 and r>=3."

@@ -34,9 +34,8 @@ __all__ = ["super_snusp"]
 
 
 _TWO_INPUT_SHORT = {
-    # These executed forms reuse 48 both to decode each input and to encode
-    # the answer, keeping the literal at the bottom of the stack.  n=2 is the
-    # only arity ([ablations.two_input_short_forms]).
+    # These n=2 forms decode both inputs and print without retaining a
+    # bottom-of-stack literal ([ablations.two_input_short_forms]).
     "0011": "48{,-> ,-<^.",
     "0101": "48{,-> ,-<>^.",
     "0110": "48{,-> ,-<^{>^.",
@@ -193,7 +192,8 @@ def _super_snusp_folded(program: str, width: int) -> str:
 def super_snusp(truth_table: str, width: int | None = None) -> str:
     """Build a Super SNUSP program; ``width`` folds it (:func:`_super_snusp_folded`).
 
-    A width under the floor returns the narrowest program rather than refusing.
+    Positive widths below the fold floor use the vertical layout;
+    nonpositive widths fold at the floor.
     """
     return _super_snusp_layout(_super_snusp_flat(truth_table), width)
 

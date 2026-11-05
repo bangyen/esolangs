@@ -1,4 +1,4 @@
-"""Model selection for n>=8: every candidate layout races on area.
+"""Model selection for n>=4: every candidate layout races on area.
 
 Lives apart from ``__init__`` because the candidates import it back (a real
 cycle), so ``__init__`` imports this module lazily, once.  Every name tests
@@ -56,7 +56,7 @@ _CANDIDATES: tuple[_Candidate, ...] = (
 
 
 def select_competing_model(truth_table: str, inputs: int) -> _Layout:
-    """Return the smallest-area model over every n>=8 candidate layout.
+    """Return the smallest-area model over every n>=4 candidate layout.
 
     Each candidate is bounded by the best area so far and replaces it only
     when strictly smaller.  Raises AssertionError when none builds, which the

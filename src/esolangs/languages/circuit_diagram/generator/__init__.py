@@ -44,7 +44,6 @@ Decisions:
     tiled at random 0.83 / 0.48 / 0.35, four 0.84 / 0.62 / 0.47.
 """
 
-from collections.abc import Iterator
 from functools import cache
 from typing import Any, Literal, NamedTuple
 
@@ -440,7 +439,7 @@ def _mux(
     if zero == "0" and one == "1":
         return selector
     # The plain rail's two rules come first: a level that only ever takes
-    # them has no complement to read (see :func:`_complemented_levels`).
+    # them has no complement to read.
     if zero == "0":
         return builder.gate(_glyph("a", flip=flip), selector, _signal(one))
     if one == "1":
