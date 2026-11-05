@@ -1,6 +1,6 @@
 # Migration completion ledger
 
-Declaration audit: `0cfd01d7b`. [Language rows](migration-status.csv) cover all
+Declaration audit: 2026-11-05. [Language rows](migration-status.csv) cover all
 117 languages and 114 Boolean backends. Declarations and inherited adapters
 are recorded separately; neither proves acceptance. Every completion row stays
 open until its trace, resource, installed-package and retirement evidence is
@@ -57,7 +57,7 @@ acceptance audit after the active separation work lands. Storage policy needs
 its priced comparison and explicit decision. These remain open even where an
 implementation pilot already passed.
 
-Accounting now has forty-five explicit or inherited semantic adapters; 72 language
+Accounting now has sixty explicit or inherited semantic adapters; 57 language
 rows still use snapshot accounting. Declarations do not close lifecycle,
 storage-policy or catalog-wide acceptance requirements.
 
@@ -85,3 +85,8 @@ Trace comparison takes declared completion policy explicitly, including mutant
 controls and speed workloads; final dumps retain their views, state and output.
 Historical class flags no longer select trace completion. Factory/RNG discovery
 and remaining direct-machine completion consumers stay open.
+
+The logical-store batch declares fifteen further models, flattening persistent
+RAM and continuation spines and freezing unordered stores. Bitwise Cyclic Tag
+counts live data and its answer, excluding the deleted-prefix storage cursor.
+Read-only source tables and shell-only dump guards are excluded.

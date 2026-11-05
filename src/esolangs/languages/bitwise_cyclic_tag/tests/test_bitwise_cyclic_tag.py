@@ -139,3 +139,28 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     looping_program = "11,0"
     state_views = ("ip", "memory", "head", "read", "answer", "live")
     viewing_program = "00,11"
+
+
+def test_workspace_drops_deleted_storage_but_keeps_the_answer():
+    machines = []
+    for prefix in ("", "000"):
+        machine = _Machine("0," + prefix + "101", ScriptedIO())
+        for _ in range(len(prefix) + 1):
+            machine.step()
+        machines.append(machine)
+    early, late = machines
+    assert early.state != late.state
+    assert early.workspace_snapshot() == late.workspace_snapshot()
+    late.data[late.state[1] - 1] = "0"
+    assert early.workspace_snapshot() != late.workspace_snapshot()
+
+
+def test_raw_resource_witnesses_use_the_owned_projection(monkeypatch):
+    from tests.support.generator_support import measure_run
+
+    machine = _Machine("0,101", ScriptedIO())
+    steps, written = measure_run(machine)
+    assert (steps, written.bits) == (3, 32)  # live queue: 24; answer: 8
+    monkeypatch.setattr(_Machine, "workspace_snapshot", lambda _self: ())
+    with pytest.raises(TypeError, match="WorkspaceSnapshot"):
+        measure_run(_Machine("0,101", ScriptedIO()))

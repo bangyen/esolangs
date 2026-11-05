@@ -75,6 +75,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -308,6 +309,11 @@ def _advance(
     return (variables, nxt, False), out
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "between-v1", ("instruction", "variables", "exited", "input_cursor")
+)
+
+
 class _Machine:
     """A Between run: the variables and the index of the next instruction."""
 
@@ -325,6 +331,15 @@ class _Machine:
     @property
     def _state(self) -> _State:
         return (self.variables, self.ind, self.exited)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.ind,
+            variables=frozenset(self.variables.items()),
+            exited=self.exited,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

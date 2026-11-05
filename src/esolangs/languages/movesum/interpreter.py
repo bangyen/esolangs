@@ -51,6 +51,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -125,6 +126,11 @@ def _advance(
     return ((ind + 1) % len(program), array, quiet, printed or out is not None), out
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "movesum-v1", ("instruction", "cells", "quiet", "printed", "input_cursor")
+)
+
+
 class _Machine:
     """The seeded array, the cursor, and the unchanged-command count."""
 
@@ -146,6 +152,22 @@ class _Machine:
     @property
     def memory(self) -> dict[int, int]:
         return dict(self.state[1]) if self.state else {}
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        cells: frozenset[tuple[int, int]]
+        if self.state is None:
+            instruction, cells, quiet, printed = -1, frozenset(), 0, False
+        else:
+            instruction, array, quiet, printed = self.state
+            cells = frozenset(array.items())
+        return _WORKSPACE_MODEL.capture(
+            instruction=instruction,
+            cells=cells,
+            quiet=quiet,
+            printed=printed,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         if self.state is None:

@@ -1,11 +1,16 @@
 """Semantic workspace components survive storage and cycle-snapshot regrouping."""
 
+import csv
+from pathlib import Path
+
 import pytest
 
+import esolangs
 from esolangs.languages.brainfuck.interpreter import _WORKSPACE_MODEL, _Machine
+from esolangs.registry import LANGUAGES
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace, make_vm
+from esolangs.vm import _capture_workspace, complete_vm, make_vm
 from scripts.benchmark import WrittenState
 from tests.interpreters.semantic_oracles import brainfuck
 
@@ -149,3 +154,52 @@ def test_an_invalid_owned_adapter_cannot_fall_back(monkeypatch):
     monkeypatch.setattr(_Machine, "workspace_snapshot", lambda self: self.snapshot())
     with pytest.raises(TypeError, match="WorkspaceSnapshot"):
         _capture_workspace(make_vm("Brainfuck", "+."))
+
+
+def _declared_boolean_models():
+    ledger = Path(__file__).resolve().parents[2] / "docs/migration-status.csv"
+    with ledger.open() as source:
+        return [
+            (row["language"], row["workspace_model"])
+            for row in csv.DictReader(source)
+            if row["workspace"] != "snapshot-fallback"
+            and row["boolean_backend"] == "yes"
+        ]
+
+
+@pytest.mark.parametrize(("name", "model"), _declared_boolean_models())
+def test_declared_models_keep_immutable_accounting_without_cycle_keys(
+    name, model, monkeypatch
+):
+    contract = LANGUAGES[name].contract
+    termination = contract.answer_mode == "termination"
+    expected = str(contract.answer_values.index("halts")) if termination else "0"
+    table = str(1 - int(expected)) + expected
+    artifact = esolangs.generate(name, table)
+    if isinstance(artifact, esolangs.TemplateArtifact):
+        artifact = esolangs.instantiate(name, artifact, [1])
+        stdin = ""
+    else:
+        stdin = str(esolangs.encode_inputs(name, [1], truth_table=table))
+    vm = make_vm(name, artifact, stdin=stdin)
+    saved = _capture_workspace(vm)
+    assert isinstance(saved, WorkspaceSnapshot)
+    assert saved.model.name == model
+    retained = {saved}
+    measured = WrittenState(saved)
+    monkeypatch.setattr(type(vm._machine), "snapshot", lambda _self: ())
+    for _ in range(5000):
+        if vm.halted:
+            break
+        vm.step()
+        measured.sample(_capture_workspace(vm))
+        assert saved in retained
+    else:
+        pytest.fail("one-input accounting witness did not halt")
+    complete_vm(vm)
+    measured.sample(_capture_workspace(vm))
+    assert measured.bits > 0
+    if termination:
+        assert vm.halted
+    else:
+        assert esolangs.read_answer(name, vm.output) == expected

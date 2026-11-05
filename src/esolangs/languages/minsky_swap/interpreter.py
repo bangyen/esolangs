@@ -30,6 +30,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -109,6 +110,11 @@ def _parse(code: str) -> tuple[str, list[int]]:
     return prog, nums
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "minsky-swap-v1", ("instruction", "selected", "registers", "input_cursor")
+)
+
+
 class _Machine:
     """Per-run Minsky Swap state: the program, both registers, and the cursor."""
 
@@ -177,6 +183,15 @@ class _Machine:
     def memory(self) -> list[int]:
         """The addressable cells."""
         return list(self.state[2])
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.state[0],
+            selected=self.state[1],
+            registers=self.state[2],
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

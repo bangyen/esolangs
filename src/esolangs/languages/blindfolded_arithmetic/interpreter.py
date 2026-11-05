@@ -36,6 +36,7 @@ from esolangs.exceptions import ArgumentError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import trunc_div
 from esolangs.runtime.source_hints import syntax_error
@@ -97,6 +98,11 @@ def _advance(state: _State, instruction: _Instruction, count: int) -> _State | N
     return changed, (ind + 1) % count
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "blindfolded-arithmetic-v1", ("configuration", "stopped", "input_cursor")
+)
+
+
 class _Machine:
     """The six registers, the instruction cursor, and whether ``i`` is printed."""
 
@@ -122,6 +128,14 @@ class _Machine:
     def ip(self) -> int:
         """The source offset of the next instruction."""
         return self.offsets[self.state[1]]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            configuration=(self.state[0], self.state[1]),
+            stopped=self.halted,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         return (self.state, self.halted, self.io.progress())

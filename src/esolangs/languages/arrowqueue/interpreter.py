@@ -24,6 +24,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 # (d_row, d_col) per heading, in the clockwise order right, down, left, up.
@@ -67,6 +68,11 @@ def _advance(state: _State, grid: Sequence[str], width: int) -> _State:
     row += d_row
     col += d_col
     return (row, col, d, queue, _outside(row, col, grid, width))
+
+
+_WORKSPACE_MODEL = WorkspaceModel(
+    "arrowqueue-v1", ("row", "column", "direction", "queue", "input_cursor")
+)
 
 
 class _Machine:
@@ -145,6 +151,16 @@ class _Machine:
     def stack(self) -> list[object]:
         """The stack."""
         return list(self.state[3])
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            row=self.state[0],
+            column=self.state[1],
+            direction=self.state[2],
+            queue=self.state[3],
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

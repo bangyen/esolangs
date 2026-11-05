@@ -238,12 +238,23 @@ def assert_constant_output(run, code, io, expected, reads, **run_kwargs):
 
 def measure_run(machine, *, limit=None):
     """Return step count and sampled written state, stopping past ``limit``."""
+    from esolangs.runtime._state import WorkspaceSnapshot
     from scripts.benchmark import WrittenState
 
-    written = WrittenState(_capture_workspace(machine))
+    project = getattr(type(machine), "workspace_snapshot", None)
+
+    def capture():
+        if project is None:
+            return _capture_workspace(machine)
+        state = project(machine)
+        if not isinstance(state, WorkspaceSnapshot):
+            raise TypeError("workspace_snapshot must return a WorkspaceSnapshot")
+        return state
+
+    written = WrittenState(capture())
     commands = 0
     while not machine.halted and (limit is None or commands <= limit):
         machine.step()
-        written.sample(_capture_workspace(machine))
+        written.sample(capture())
         commands += 1
     return commands, written

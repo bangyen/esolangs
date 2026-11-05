@@ -110,15 +110,15 @@ def test_constants_execute_every_fixed_width_setter() -> None:
                     program = compat.instantiate("RAM0", template, row_bits(row, n))
                     io = ScriptedIO()
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                         assert steps <= 2 * n + 1 + int(bit)
                     machine.step()  # RAM0's post-halt dump is one command.
-                    written.sample(machine.snapshot())
+                    written.sample(machine.workspace_snapshot())
                     assert steps + 1 == 2 * n + 2 + int(bit)
                     assert esolangs.read_answer("RAM0", io.getvalue()) == bit
                     assert written.bits <= workspace(n, template)

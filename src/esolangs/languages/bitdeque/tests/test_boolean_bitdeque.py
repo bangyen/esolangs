@@ -180,11 +180,11 @@ def test_constant_native_and_short_loads_keep_all_slots() -> None:
                     assert len(program) == len(template)
                     io = ScriptedIO()
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted and steps < 500:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                     assert machine.halted
                     assert machine.deq == (int(bit),)

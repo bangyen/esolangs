@@ -32,6 +32,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
@@ -104,6 +105,11 @@ def _reject_stray_text(code: str) -> None:
         )
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "bitdeque-v1", ("instruction", "register", "deque", "input_cursor")
+)
+
+
 class _Machine:
     """Per-run Bitdeque state: the token cursor, register, and deque."""
 
@@ -161,6 +167,15 @@ class _Machine:
     def stack(self) -> list[object]:
         """The single register, as a one-element stack."""
         return [self.state.reg]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.state.ind,
+            register=self.state.reg,
+            deque=self.state.deq,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

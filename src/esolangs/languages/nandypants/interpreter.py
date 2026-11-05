@@ -39,6 +39,7 @@ from typing import NamedTuple
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.bits import flush_byte, put_bit, take_bit
 from esolangs.runtime.io import IO
 
@@ -141,6 +142,11 @@ def _set(tape: set[int], ptr: int, bit: int) -> None:
         tape.discard(ptr)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "nandypants-v1", ("control", "first_tape", "second_tape", "input_cursor")
+)
+
+
 class _Machine:
     """Two sparse bit tapes and buffered byte streams."""
 
@@ -170,6 +176,24 @@ class _Machine:
     def memory(self) -> list[int]:
         ones = self.a_ones | {self.state.a_ptr, 0}
         return [int(i in self.a_ones) for i in range(min(ones), max(ones) + 1)]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        s = self.state
+        return _WORKSPACE_MODEL.capture(
+            control=(
+                s.pc,
+                s.a_ptr,
+                s.b_ptr,
+                s.incoming,
+                s.remaining,
+                s.outgoing,
+                s.used,
+            ),
+            first_tape=frozenset(self.a_ones),
+            second_tape=frozenset(self.b_ones),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         return (

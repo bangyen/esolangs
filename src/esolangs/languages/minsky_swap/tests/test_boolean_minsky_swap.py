@@ -157,16 +157,16 @@ def _check_constant_templates() -> None:
                     sizes.add(len(program))
                     io = ScriptedIO()
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                         assert steps <= 1 + 3 * int(bit)
                     assert steps == 1 + 3 * int(bit)
                     machine.step()
-                    written.sample(machine.snapshot())
+                    written.sample(machine.workspace_snapshot())
                     assert esolangs.read_answer("Minsky Swap", io.getvalue()) == bit
                     assert written.bits == (
                         3 * n + 3 * int(bit)

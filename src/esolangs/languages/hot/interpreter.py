@@ -38,6 +38,7 @@ from esolangs.exceptions import ArgumentError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.combinators import Args as _Args
 from esolangs.runtime.combinators import State as _State
 from esolangs.runtime.combinators import Term as _Term
@@ -102,6 +103,19 @@ def _advance(state: _State, bit: int | None) -> tuple[_State, int | None]:
     return _settle(term, args), out
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "hot-v1",
+    (
+        "expression",
+        "pending_bit",
+        "input_ended",
+        "output_odd",
+        "stopped",
+        "input_cursor",
+    ),
+)
+
+
 class _Machine:
     """The expression, the input stream's position, and the output parity."""
 
@@ -139,6 +153,22 @@ class _Machine:
     def stack(self) -> list[object]:
         """The head, then its arguments, first argument first."""
         return stack(self.state)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        args = []
+        rest = self.state[1]
+        while rest is not None:
+            term, rest = rest
+            args.append(term)
+        return _WORKSPACE_MODEL.capture(
+            expression=(self.state[0], tuple(args)),
+            pending_bit=self.pending,
+            input_ended=self.ended,
+            output_odd=self.odd,
+            stopped=self.halted,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

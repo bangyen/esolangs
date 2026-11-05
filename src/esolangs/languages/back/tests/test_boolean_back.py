@@ -9,6 +9,7 @@ from esolangs import compat
 from esolangs import run as execute
 from esolangs.generation.helpers import TEMPLATE_CHAR, permute_truth_table, runs
 from esolangs.languages.back.generator import _back_ordered
+from esolangs.vm import _capture_workspace
 from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import _drawing, row_bits, witnesses
 
@@ -53,13 +54,13 @@ class TestParameterizedBack:
                         source = instantiate("Back", template, row_bits(row, n)).source
                         sizes.add(len(source))
                         machine = make_vm("Back", source)
-                        written = WrittenState(machine.snapshot())
+                        written = WrittenState(_capture_workspace(machine))
                         steps = run_to_answer(
                             machine, cap=execution(n, template), sample=written.sample
                         )
                         assert steps is not None
                         machine.step()  # Back dumps on the post-halt step.
-                        written.sample(machine.snapshot())
+                        written.sample(_capture_workspace(machine))
                         assert read_answer("Back", machine.output) == bit
                         assert written.bits <= workspace(n, template)
                         if width is None:
@@ -75,13 +76,13 @@ class TestParameterizedBack:
         for row, expected in enumerate(table):
             source = instantiate("Back", template, row_bits(row, 6)).source
             machine = make_vm("Back", source)
-            written = WrittenState(machine.snapshot())
+            written = WrittenState(_capture_workspace(machine))
             steps = run_to_answer(
                 machine, cap=execution(6, template), sample=written.sample
             )
             assert steps is not None
             machine.step()
-            written.sample(machine.snapshot())
+            written.sample(_capture_workspace(machine))
             assert read_answer("Back", machine.output) == expected
             commands = max(commands, steps)
             bits = max(bits, written.bits)
@@ -161,11 +162,11 @@ class TestParameterizedBack:
                         assert len(program) == len(template)
                         io = ScriptedIO()
                         machine = _Machine(program.splitlines(), io)
-                        written = WrittenState(machine.snapshot())
+                        written = WrittenState(machine.workspace_snapshot())
                         steps = 0
                         while not machine.halted and steps < 3 * n + 4:
                             machine.step()
-                            written.sample(machine.snapshot())
+                            written.sample(machine.workspace_snapshot())
                             steps += 1
                         assert machine.halted
                         assert machine.tape == (0,) * n + (int(bit),)
@@ -567,6 +568,6 @@ def _check_exact_preload_bounds() -> None:
         assert esolangs.read_answer("Back", machine.output) == table[-1]
         if n in (3, 6):
             machine = make_vm("Back", source)
-            state = WrittenState(machine.snapshot())
+            state = WrittenState(_capture_workspace(machine))
             run_to_answer(machine, sample=state.sample)
             assert state.bits == workspace(n, template)

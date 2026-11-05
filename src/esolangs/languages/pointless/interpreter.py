@@ -40,6 +40,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 _COMMANDS = frozenset('<>:!=+-[].,"{}')
@@ -170,6 +171,11 @@ def _advance(
     return frames, pointer, write, out, banged
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "pointless-v1", ("frames", "pointer", "tape", "banged", "input_cursor")
+)
+
+
 class _Machine:
     """The shell around :func:`_advance`: the tape, input and output."""
 
@@ -198,6 +204,21 @@ class _Machine:
     def memory(self) -> list[int]:
         """The tape cells written so far."""
         return list(self.tape)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        frames = []
+        rest = self.frames
+        while rest is not None:
+            frame, rest = rest
+            frames.append(frame)
+        return _WORKSPACE_MODEL.capture(
+            frames=tuple(frames),
+            pointer=self.pointer,
+            tape=bytes(self.tape).rstrip(b"\0"),
+            banged=self.banged,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

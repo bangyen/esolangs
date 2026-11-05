@@ -55,6 +55,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 _MAX_CHAR = 0x10FFFF
@@ -367,6 +368,9 @@ def _advance(
     return rest, out
 
 
+_WORKSPACE_MODEL = WorkspaceModel("sendstuff-v1", ("frames", "input_cursor"))
+
+
 class _Machine:
     """The shell around :func:`_advance`: it reads input and prints."""
 
@@ -399,6 +403,18 @@ class _Machine:
             nodes.append(state[0][0])
             state = state[1]
         return nodes[::-1]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        frames = []
+        rest = self.state
+        while rest is not None:
+            frame, rest = rest
+            frames.append(frame)
+        return _WORKSPACE_MODEL.capture(
+            frames=tuple(frames),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

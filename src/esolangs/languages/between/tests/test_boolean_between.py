@@ -52,11 +52,11 @@ def _check_constants() -> None:
                     )
                     io = ReadFirstIO(stdin + "7\n", expected=n)
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                         assert steps <= n + 2
                     assert io.getvalue() == bit

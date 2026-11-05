@@ -31,6 +31,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.persistent import (
     Chunked,
@@ -125,6 +126,12 @@ def _advance(state: _State, op: str, index: _Index) -> _State:
     return _State(ind + 1, z, n, ram, state.dumped)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "ram0-v1",
+    ("instruction", "zero_register", "number_register", "cells", "input_cursor"),
+)
+
+
 class _Machine:
     """A RAM0 run: one immutable ``_State``, rebound per step."""
 
@@ -192,6 +199,16 @@ class _Machine:
         # The store is in insertion order, so sort here -- this view is
         # documented as address-ordered and is read by the VM, not printed.
         return [z, n, *(value for _addr, value in sorted(flatten(ram)))]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.state.ind,
+            zero_register=self.state.z,
+            number_register=self.state.n,
+            cells=flatten(self.state.ram),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

@@ -41,6 +41,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.memory import parse_integer as _integer
@@ -515,6 +516,20 @@ def _advance(
     return value, (memory, c, zf, nf, fum)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "addsubjump-v1",
+    (
+        "cells",
+        "extent",
+        "instruction",
+        "zero",
+        "negative",
+        "flag_update",
+        "input_cursor",
+    ),
+)
+
+
 class _Machine:
     """Per-run ASJ state: the self-modifying memory, ip, and flags."""
 
@@ -565,6 +580,19 @@ class _Machine:
         """Whether the pointer is off the end of memory or a special address."""
         (_cells, length), ip = self.state[0], self.state[1]
         return ip < 0 or ip >= length
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        cells, length = self.state[0]
+        return _WORKSPACE_MODEL.capture(
+            cells=frozenset(cells.items()),
+            extent=length,
+            instruction=self.state[1],
+            zero=self.state[2],
+            negative=self.state[3],
+            flag_update=self.state[4],
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

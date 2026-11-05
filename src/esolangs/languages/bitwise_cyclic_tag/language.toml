@@ -85,14 +85,14 @@ construction = "esolangs.languages.bitwise_cyclic_tag.generator:bitwise_cyclic_t
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: input segments, then the walk" }
 
 [resource_evidence.workspace]
-expression = "12T + 16 + bl(13T/2+n) + bl(3T/2+n+2)"
+expression = "12T + 16 + bl(13T/2+n)"
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bitwise_cyclic_tag.generator:bitwise_cyclic_tag"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: a data queue of 3T/2 + 1 bits" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: a live queue of 3T/2 + 1 bits, its answer and program head" }
 
 [resource_evidence.scaling]
 expression = "13T/2+2n+3"

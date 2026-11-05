@@ -53,6 +53,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -99,6 +100,20 @@ def _advance(state: _State, code: Sequence[str], size: int) -> _State:
         # Stops in place; the dump is the shell's.
         return (row, col, a, b, tape, cell, True)
     return ((row + a) % len(code), (col + b) % size, a, b, tape, cell, False)
+
+
+_WORKSPACE_MODEL = WorkspaceModel(
+    "back-v1",
+    (
+        "row",
+        "column",
+        "direction_row",
+        "direction_column",
+        "tape",
+        "cell",
+        "input_cursor",
+    ),
+)
 
 
 class _Machine:
@@ -195,6 +210,18 @@ class _Machine:
     def memory(self) -> list[int]:
         """The addressable cells."""
         return list(self.state[4])
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            row=self.state[0],
+            column=self.state[1],
+            direction_row=self.state[2],
+            direction_column=self.state[3],
+            tape=self.state[4],
+            cell=self.state[5],
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
