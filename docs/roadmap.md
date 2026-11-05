@@ -78,6 +78,33 @@ weighted lookups retain specialized emitters. Resource claims render from
 structured evidence. The cost/fault pilot retained the current verification
 budgets. Further migrations retain corpus, timing and growth gates.
 
+Next experiments, in priority order. Price each pilot within the standing
+compute budget before running it; these proposals do not change contracts.
+
+1. **Artifact-first API:** prototype explicit source/file construction and
+   program/template results using the existing artifacts and execution results.
+   Map compatibility adapters that disappear and caller migrations required;
+   changing public defaults needs a versioned compatibility plan.
+2. **Typed interpreter lifecycle:** pilot declared preparation, machine factories
+   and optional debugging/completion capabilities in place of private-name and
+   signature discovery. Preserve lazy loading, source-step accounting, dialects
+   and completion evidence; compare corpus traces and timings before expansion.
+3. **State-storage policy:** measure an owned mutable-store prototype against
+   the immutable core, including snapshot isolation, independent semantics and
+   trace equivalence. Retain purity gates; adopting mutable storage requires an
+   explicit policy decision backed by the pilot's costs and guarantees.
+4. **Generator analysis boundaries:** identify duplicated analysis beyond the
+   existing decision, affine and lookup helpers. Pilot shared validated inputs
+   and analysis only where emitters benefit; associate the selected construction
+   with its bounds and witnesses. Require byte-identical corpus output and
+   preserved growth and timings; keep language-specific emission and selection.
+5. **Certification boundaries:** audit operational imports and remaining
+   duplicated evidence. Pilot moving certification dependencies outside runtime
+   descriptors and rendering duplicated claims from structured evidence.
+   Preserve lazy catalog access, installed-package behavior, independent oracles
+   and live fault detection; replace private-name discovery with declarations
+   only when equivalent checks execute.
+
 ## Engineering
 
 Next experiments; budgets are wall time, not permission for an unpriced search.
