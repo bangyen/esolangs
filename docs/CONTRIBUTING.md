@@ -200,9 +200,9 @@ ship at any saving unless inapplicable or larger on average for their target
 at the largest measured arity; cite that measurement. Minimal spelling
 (no redundant grouping or trailing no-op) also needs no percentage gate.
 
-Shared analyses return decision layers/DAGs (`generation/decision.py`), affine
-forms and weighted lookups (`generation/helpers.py`). Analysis stays O(T);
-target emitters own reads, labels, layout and candidate selection.
+Shared analyses return decision layers/DAGs, `AffineForm` and `WeightedLookup`.
+Analysis stays O(T); target emitters own reads, labels, layout and candidate
+selection.
 
 Size counts characters. Packed literals may carry at most 8 bits per
 character or grid cell; code points above U+00FF merely hide wider UTF-8.
