@@ -59,7 +59,7 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     # At most R/4 one-runs makes R>=8n+4 sufficient, without a program race.
     if 0 in used and 2 ** len(used) >= 8 * n + 4:
         return _eval_dual(table, used, n)
-    return _eval_ordered(table, "")
+    return _ordered(table, "", n, used)
 
 
 def eval_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
@@ -109,7 +109,11 @@ def _eval_dual(table: str, used: list[int], n: int) -> str:
 def _eval_ordered(truth_table: str, ops: str) -> str:
     """Emit one input order's linear lookup; see :func:`eval`."""
     n = _validate_truth_table(truth_table)
-    used = essential_inputs(truth_table, n)
+    return _ordered(truth_table, ops, n, essential_inputs(truth_table, n))
+
+
+def _ordered(truth_table: str, ops: str, n: int, used: list[int]) -> str:
+    """Render a validated table with its already known essential inputs."""
     reduced = read_at(truth_table, used, n)
     bits = _EVAL_INPUT * n
     values = "".join("`" if bit == "1" else "0" for bit in _gray_order(reduced))

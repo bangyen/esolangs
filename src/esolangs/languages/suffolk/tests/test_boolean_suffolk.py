@@ -144,3 +144,19 @@ def _check_reader_cutoff() -> None:
             assert steps <= 3 * len(program) + program.index(",") + 1
         assert machine.io.getvalue() == "".join(table[r] for r in records)
         assert machine.io.past_end == 1
+
+
+def test_public_candidates_share_validation(monkeypatch: pytest.MonkeyPatch) -> None:
+    from esolangs.languages.suffolk import generator
+
+    original = generator._validate_truth_table
+    calls = 0
+
+    def counted(table: str) -> int:
+        nonlocal calls
+        calls += 1
+        return original(table)
+
+    monkeypatch.setattr(generator, "_validate_truth_table", counted)
+    assert generator.suffolk("00010111")
+    assert calls == 1

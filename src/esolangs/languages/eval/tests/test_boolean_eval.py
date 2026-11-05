@@ -1,5 +1,7 @@
 """Covers :mod:`esolangs.languages.eval.generator`."""
 
+import pytest
+
 from esolangs.generation.helpers import TEMPLATE_CHAR
 from esolangs.languages import generators as boolean
 from esolangs.languages.eval.generator import PAIR
@@ -245,3 +247,19 @@ def _check_constants() -> None:
                     assert io.getvalue() == bit
                     assert io.reads == 0
                     assert io.input_char() == ord("7")
+
+
+def test_public_lookup_reuses_essential_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
+    from esolangs.languages.eval import generator
+
+    original = generator.essential_inputs
+    calls = 0
+
+    def counted(table: str, n: int) -> list[int]:
+        nonlocal calls
+        calls += 1
+        return original(table, n)
+
+    monkeypatch.setattr(generator, "essential_inputs", counted)
+    assert generator.eval("00010111")
+    assert calls == 1

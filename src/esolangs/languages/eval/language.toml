@@ -22,7 +22,7 @@ definitions = ["S = 2T+7n at n=4,5; 7T/4+9n+1 from n=6 (unwrapped)", "W = 8L+T+2
 
 [catalogue]
 sharing_exempt = "one literal table halved by position"
-folding_constant_local = "_eval_ordered"  # one projected table entry
+folding_constant_local = "_ordered"  # one projected table entry
 
 [schemes]
 folds_without_tree = true

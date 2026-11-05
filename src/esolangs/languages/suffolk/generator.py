@@ -56,8 +56,9 @@ def suffolk(truth_table: str) -> str:
     The DAG route is only admitted when it fits the workspace ledger;
     otherwise -- or when it is longer -- the countdown sweep wins.
     """
-    lookup = _suffolk_lookup(truth_table)
-    shared = shared_dag(truth_table, _validate_truth_table(truth_table))
+    n = _validate_truth_table(truth_table)
+    lookup = _lookup(truth_table, n)
+    shared = shared_dag(truth_table, n)
     return lookup if shared is None or len(shared) >= len(lookup) else shared
 
 
@@ -73,7 +74,11 @@ def _suffolk_lookup(truth_table: str) -> str:
     between two steps the table is constant.  The top input splits the table
     in half and each half gets its own pair of counters, halving the sweep.
     """
-    n = _validate_truth_table(truth_table)
+    return _lookup(truth_table, _validate_truth_table(truth_table))
+
+
+def _lookup(truth_table: str, n: int) -> str:
+    """Render the countdown sweep for a validated table."""
     if len(set(truth_table)) == 1:
         # Reads clamp cell zero to zero; reuse it for the ASCII answer.
         return ",!" * n + "!" * (_ASCII_ONE + int(truth_table[0])) + "<."
