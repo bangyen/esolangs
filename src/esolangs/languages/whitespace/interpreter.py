@@ -23,14 +23,14 @@ Commands:
 
 Input/output:
     A read pops a heap address and stores the character code or the
-    whitespace-delimited decimal integer read there.  A print pops a value;
+    signed ASCII decimal integer on one whole line. A print pops a value;
     a character prints its Unicode code point (0..0x10FFFF). EOF propagates.
 
 Errors:
     ProgramError: an empty program; one that ends inside a command; an
     unassigned subcommand.
     InputExhaustedError: a read at EOF.
-    ArgumentError: a number read given a non-integer token.
+    ArgumentError: a number read given a blank or non-integer line.
     HaltError: a pop from an empty stack; division or modulo by zero; a
     ``copy`` past the stack; a ``slide`` on an empty stack; a ``return``
     with no call; a jump to a label that is never marked; character output
@@ -53,21 +53,26 @@ Decisions:
       VM.hs. Character output uses its Char range, including surrogate code
       points in buffered output; encoding belongs to the output sink. Values
       outside that range halt instead of reproducing host Int narrowing.
-      Token-framed numeric input and the zero-filled sparse integer-addressed
-      heap remain open compatibility choices against the line/list VM.
+      Numeric reads consume a line, matching getLine; signed ASCII decimal
+      syntax is retained rather than Haskell's full Read Integer grammar.
+      The zero-filled sparse integer-addressed heap remains an open
+      compatibility choice against the list VM.
 """
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Mapping
 from operator import floordiv, mod
 from typing import Any
 
-from esolangs.exceptions import HaltError, ProgramError
+from esolangs.exceptions import ArgumentError, HaltError, ProgramError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import parse_integer
+from esolangs.runtime.source_hints import syntax_error
 
 _SPACE, _TAB, _LINE = " ", "\t", "\n"
 type _Instruction = tuple[str, int | str]
@@ -300,6 +305,20 @@ def _advance(
     return (jump, stack, heap, calls, done), effect
 
 
+def _parse_number(line: str) -> int:
+    """Parse one complete signed ASCII decimal line."""
+    # VM.hs ReadNum calls getLine: input_num would accept "2 3" and leave
+    # its separator for a following character read.
+    line = line.strip()
+    if not re.fullmatch(r"[+-]?[0-9]+", line):
+        raise syntax_error(
+            f"input must be an integer line, got {line!r}",
+            "supply one signed decimal integer per line, for example 42",
+            error_type=ArgumentError,
+        )
+    return parse_integer(line)
+
+
 class _Machine:
     """Protocol shell holding one immutable Whitespace state value."""
 
@@ -339,7 +358,9 @@ class _Machine:
             return
         kind = self.instructions[self.state[0]][0]
         char_input = self.io.input_char() if kind == "read_char" else None
-        number_input = self.io.input_num() if kind == "read_num" else None
+        number_input = (
+            _parse_number(self.io.input_str()) if kind == "read_num" else None
+        )
         self.state, effect = _advance(
             self.state, self.instructions, self.labels, char_input, number_input
         )

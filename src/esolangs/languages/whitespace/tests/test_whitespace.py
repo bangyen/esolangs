@@ -2,7 +2,12 @@
 
 import pytest
 
-from esolangs.exceptions import HaltError, InputExhaustedError, ProgramError
+from esolangs.exceptions import (
+    ArgumentError,
+    HaltError,
+    InputExhaustedError,
+    ProgramError,
+)
 from esolangs.languages.whitespace.interpreter import _advance, run
 from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.runner import run_program
@@ -157,3 +162,21 @@ def test_character_output_uses_the_code_point_range() -> None:
         with pytest.raises(HaltError, match="character output"):
             run(push(65) + OUT_CHAR + push(value) + OUT_CHAR + END, io)
         assert io.getvalue() == "A"
+
+
+def test_numeric_reads_consume_one_complete_line() -> None:
+    read = push(65) + OUT_CHAR + push(0) + T + L + T + T
+    code = read + push(0) + RETRIEVE + OUT_NUM + END
+    valid = {"12\nQ": "12", " -12 \nQ": "-12", "+7": "7", "3\r\nQ": "3"}
+    for stdin, expected in valid.items():
+        io = ScriptedIO(stdin)
+        run(code, io)
+        assert io.getvalue() == "A" + expected
+        end = stdin.find("\n") + 1 if "\n" in stdin else len(stdin)
+        assert (io.position(), io.reads) == (end, 1)
+    for stdin in ("", "\n7\n", " \n7\n", "2 3\nQ", "12 x\nQ", "1_0\nQ", "٣\nQ"):
+        io = ScriptedIO(stdin)
+        with pytest.raises(ArgumentError if stdin else InputExhaustedError):
+            run(code, io)
+        assert io.getvalue() == "A"
+        assert (io.position(), io.reads) == (stdin.find("\n") + 1, int(bool(stdin)))

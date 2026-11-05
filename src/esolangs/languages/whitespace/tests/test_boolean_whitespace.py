@@ -46,12 +46,12 @@ def _check_constants() -> None:
                     peak = max(peak, written.bits)
                     assert (
                         written.bits
-                        <= 5 + (2 * n + 3).bit_length() + (2 * n - 1).bit_length()
+                        <= 5 + (2 * n + 3).bit_length() + (2 * n).bit_length()
                     )
                     assert io.getvalue() == bit
                     assert io.past_end == 0
                     assert io.input_num() == 7
-                assert peak == 5 + (2 * n + 3).bit_length() + (2 * n - 1).bit_length()
+                assert peak == 5 + (2 * n + 3).bit_length() + (2 * n).bit_length()
     assert (
         sum(len(esolangs.generate("Whitespace", f"{v:08b}")) for v in range(256))
         == 22640

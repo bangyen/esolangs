@@ -81,7 +81,7 @@ version = 1
 [resource_evidence.execution]
 provider = "esolangs.languages.whitespace.proof_formulas:execution"
 exact = true
-arities = [1, 2, 3, 5]
+arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
@@ -91,12 +91,12 @@ description = { growth = "poly n", claim = "worst", template = "{claim} {formula
 [resource_evidence.workspace]
 provider = "esolangs.languages.whitespace.proof_formulas:workspace"
 exact = true
-arities = [1, 2, 3, 5]
+arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.whitespace.generator:whitespace"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: stack, sparse heap and cursors", formula = "14 at n=1, otherwise 5T-3+bl(n+17)+bl(n+2)+bl(2n-1)" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: stack, sparse heap and cursors", formula = "15 at n=1, otherwise 5T-3+bl(n+17)+bl(n+2)+bl(2n)" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.whitespace.tests.formulas:_chars"

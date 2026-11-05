@@ -113,17 +113,14 @@ def _read(kind, stdin, cursor):
         if cursor == len(stdin):
             return None, cursor, "input"
         return ord(stdin[cursor]), cursor + 1, None
-    while cursor < len(stdin) and stdin[cursor].isspace():
-        cursor += 1
-    start = cursor
-    while cursor < len(stdin) and not stdin[cursor].isspace():
-        cursor += 1
-    if start == cursor:
+    if cursor == len(stdin):
         return None, cursor, "input"
-    token = stdin[start:cursor]
+    end = stdin.find("\n", cursor)
+    stop = len(stdin) if end < 0 else end + 1
+    token = stdin[cursor : len(stdin) if end < 0 else end].strip()
     if re.fullmatch(r"[+-]?[0-9]+", token) is None:
-        return None, cursor, "argument"
-    return int(token), cursor, None
+        return None, stop, "argument"
+    return int(token), stop, None
 
 
 def _model(program, offsets, stdin):
@@ -282,7 +279,8 @@ def check_raw_whitespace():
     )
     _check(_Machine, (("mark", "0"), ("jump", "0")))
     for kind, stdin in product(
-        ("read_num", "read_char"), ("", "  -12 x", "λ\n", "2 3", "\n")
+        ("read_num", "read_char"),
+        ("", "  -12 x", "λ\n", "2 3", "\n", "12\nQ", "-7", " \n9\n"),
     ):
         _check(
             _Machine,
