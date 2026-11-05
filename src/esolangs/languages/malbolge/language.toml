@@ -117,4 +117,12 @@ tests = [
 ]
 
 [ablations.symmetric_readout_guard_20261104]
-verdict = "Reject negative or wrapped popcount readout addresses before placement or rendering. The shipped 20480 readouts remain in 6565..59040; seventeen-input parity emits identical bytes before/after and four boundary rows execute correctly. Existing proof bounds, pins and Size anchors are unchanged."
+kind = "measurement"
+audited = 2026-11-05
+witness = { arity = 3, rule = "random", seed = 1847 }
+source = { unit = "chars", value = 13340 }
+scale = 1
+budget = 10
+band = "fast"
+construction = "esolangs.languages.malbolge.generator:malbolge"
+notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Reject negative or wrapped popcount readout addresses before placement or rendering. The shipped 20480 readouts remain in 6565..59040; seventeen-input parity emits identical bytes before/after and four boundary rows execute correctly. Existing proof bounds, pins and Size anchors are unchanged."

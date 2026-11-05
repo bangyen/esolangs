@@ -155,4 +155,12 @@ tests = [
 ]
 
 [ablations.narrow_kerb_and_cache_repair_20261104]
-verdict = "correctness/selection repair: all width fallbacks rotate the shared-kerb lookup, even when nine columns fit. Actual n3/7/8 areas1485/5436/7668 ->1155/4228/5964 cells,22.22% less; old/new controls execute. All6360 small public variant rows pass. Large folded trees now recurse outside the memo above16entries: n6 AND previously cached32, now at most16. Tree drawings and defaults are byte-identical in the compared corpus; default pins, bounds and anchors unchanged."
+kind = "measurement"
+audited = 2026-11-05
+witness = { arity = 3, rule = "random", seed = 1847 }
+source = { unit = "cells", value = 492 }
+scale = 1
+budget = 10
+band = "fast"
+construction = "esolangs.languages.streetcode.generator:streetcode"
+notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: correctness/selection repair: all width fallbacks rotate the shared-kerb lookup, even when nine columns fit. Actual n3/7/8 areas1485/5436/7668 ->1155/4228/5964 cells,22.22% less; old/new controls execute. All6360 small public variant rows pass. Large folded trees now recurse outside the memo above16entries: n6 AND previously cached32, now at most16. Tree drawings and defaults are byte-identical in the compared corpus; default pins, bounds and anchors unchanged."

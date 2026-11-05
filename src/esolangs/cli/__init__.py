@@ -268,7 +268,9 @@ def _emit(program: Program, *, plain: bool) -> None:
         sys.stdout.buffer.write(program.to_png())
     else:
         origin = getattr(program, "language", None)
-        ending = "\n" if origin is None or LANGUAGES[origin].runtime.file_newline else ""
+        ending = (
+            "\n" if origin is None or LANGUAGES[origin].runtime.file_newline else ""
+        )
         sys.stdout.write(program + ending)
 
 

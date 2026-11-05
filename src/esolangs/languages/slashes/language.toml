@@ -115,4 +115,12 @@ tests = [
 ]
 
 [ablations.ignored_slot_recognition_20261104]
-verdict = "Require an ignored X marker to prefix its own filled or unfilled slot. XX$$ formerly passed the canonical-template recognizer despite having no valid slot ordering. Ordinary emitted bytes, source/command/workspace bounds, size pins and Size anchors remain unchanged. All-ignored legacy templates remain recognized."
+kind = "measurement"
+audited = 2026-11-05
+witness = { arity = 3, rule = "random", seed = 1847 }
+source = { unit = "chars", value = 93 }
+scale = 1
+budget = 10
+band = "fast"
+construction = "esolangs.languages.slashes.generator:slashes"
+notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Require an ignored X marker to prefix its own filled or unfilled slot. XX$$ formerly passed the canonical-template recognizer despite having no valid slot ordering. Ordinary emitted bytes, source/command/workspace bounds, size pins and Size anchors remain unchanged. All-ignored legacy templates remain recognized."

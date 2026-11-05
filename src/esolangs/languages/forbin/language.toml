@@ -128,4 +128,12 @@ tests = [
 ]
 
 [ablations.reused_construction_20261104]
-verdict = "Project essential inputs once per public block-size race and reuse the projection for both natural and narrow spellings. Clamp candidate block sizes to the retained arity before deduplication. The legacy private _build wrapper still validates arbitrary direct calls. No emitted program, numerical bound, pin or Size anchor changes."
+kind = "measurement"
+audited = 2026-11-05
+witness = { arity = 3, rule = "random", seed = 1847 }
+source = { unit = "chars", value = 147 }
+scale = 1
+budget = 10
+band = "fast"
+construction = "esolangs.languages.forbin.generator:forbin"
+notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Project essential inputs once per public block-size race and reuse the projection for both natural and narrow spellings. Clamp candidate block sizes to the retained arity before deduplication. The legacy private _build wrapper still validates arbitrary direct calls. No emitted program, numerical bound, pin or Size anchor changes."

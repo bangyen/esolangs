@@ -165,4 +165,12 @@ tests = [
 ]
 
 [ablations.reused_construction_20261104]
-verdict = "Reuse the first narrow banded build below the five-column gate floor. With next_column>=1 and narrow stride4, limits1..4 make identical room decisions; free-column reuse is also limit-independent. Larger widths still reserve the output dash and colon through the second build. No emitted program, numerical bound, pin or Size anchor changes."
+kind = "measurement"
+audited = 2026-11-05
+witness = { arity = 3, rule = "random", seed = 1847 }
+source = { unit = "cells", value = 247 }
+scale = 1
+budget = 10
+band = "fast"
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
+notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Reuse the first narrow banded build below the five-column gate floor. With next_column>=1 and narrow stride4, limits1..4 make identical room decisions; free-column reuse is also limit-independent. Larger widths still reserve the output dash and colon through the second build. No emitted program, numerical bound, pin or Size anchor changes."

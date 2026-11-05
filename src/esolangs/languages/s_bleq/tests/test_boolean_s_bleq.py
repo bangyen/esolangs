@@ -199,28 +199,28 @@ def _check_compacted_trees() -> None:
                 assert io.input_char() == ord("!")
 
 
-@pytest.mark.parametrize("n", [5, 6, 10])
-def test_packed_execution_bound_recognizes_the_emitted_cells(n: int) -> None:
-    from esolangs.languages.s_bleq.proof_formulas import _packed_steps, execution
+def test_packed_execution_bound_recognizes_the_emitted_cells() -> None:
+    for n in (5, 6, 10):
+        from esolangs.languages.s_bleq.proof_formulas import _packed_steps, execution
 
-    table = format(random.Random(1847).getrandbits(1 << n), f"0{1 << n}b")
-    program = packed_decoder(table)
-    bound = _packed_steps(n, list(map(int, program.split())))
-    assert bound is not None
-    assert execution(n, program) == bound
-    peak = 0
-    rows = range(1 << n) if n <= 6 else (0, 1, 511, 512, 1023)
-    for row in rows:
-        io = ScriptedIO(f"{row:0{n}b}" + "Q")
-        machine = _Machine(program, io)
-        steps = 0
-        while not machine.halted:
-            machine.step()
-            steps += 1
-            assert steps <= bound
-        assert io.getvalue() == table[row]
-        assert io.reads == n
-        assert io.input_char() == ord("Q")
-        peak = max(peak, steps)
-    if n <= 6:
-        assert peak == bound
+        table = format(random.Random(1847).getrandbits(1 << n), f"0{1 << n}b")
+        program = packed_decoder(table)
+        bound = _packed_steps(n, list(map(int, program.split())))
+        assert bound is not None
+        assert execution(n, program) == bound
+        peak = 0
+        rows = range(1 << n) if n <= 6 else (0, 1, 511, 512, 1023)
+        for row in rows:
+            io = ScriptedIO(f"{row:0{n}b}" + "Q")
+            machine = _Machine(program, io)
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                steps += 1
+                assert steps <= bound
+            assert io.getvalue() == table[row]
+            assert io.reads == n
+            assert io.input_char() == ord("Q")
+            peak = max(peak, steps)
+        if n <= 6:
+            assert peak == bound

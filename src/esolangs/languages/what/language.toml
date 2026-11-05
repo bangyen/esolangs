@@ -82,7 +82,7 @@ first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.what.generator:what"
-description = { growth = "T log T", claim = "worst", template = "{claim} {formula} {unit}: alternating answers, every conditional true, the first row", formula = "E" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: alternating answers, every conditional true, the first row", formula = "E" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.what.proof_formulas:workspace"
@@ -113,4 +113,12 @@ tests = [
 ]
 
 [ablations.redundant_preconditions_20261104]
-verdict = "Past the <=15-input return, low is15 and high is positive. Remove min and the empty-prefix alternative on that branch. High-block sources remain identical at16/17 inputs, with native output controls; all bounds and pins stay unchanged."
+kind = "measurement"
+audited = 2026-11-05
+witness = { arity = 3, rule = "random", seed = 1847 }
+source = { unit = "chars", value = 38 }
+scale = 1
+budget = 10
+band = "fast"
+construction = "esolangs.languages.what.generator:what"
+notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Past the <=15-input return, low is15 and high is positive. Remove min and the empty-prefix alternative on that branch. High-block sources remain identical at16/17 inputs, with native output controls; all bounds and pins stay unchanged."

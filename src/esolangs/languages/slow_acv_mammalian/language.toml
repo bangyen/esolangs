@@ -126,4 +126,12 @@ tests = [
 ]
 
 [ablations.leaf_carry_deltas_20261104]
-verdict = "construction repair: precompute weight-minus-suffix carry deltas, then update a leaf address at the lowest set bit of each binary row. Weight reads n5/6/7 fall160/384/896->5/6/7, removing the nT scan without changing leaf order or tokens.562 before/after programs are byte-identical;102 native controls include generic n5..12 and both IO moduli. All8 pins and Size anchors remain unchanged; numerical proof bounds/scopes unchanged. Pool wording now distinguishes the four blind pooled weights from the first light read arm."
+kind = "measurement"
+audited = 2026-11-05
+witness = { arity = 3, rule = "random", seed = 1847 }
+source = { unit = "chars", value = 24423 }
+scale = 1
+budget = 10
+band = "fast"
+construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammalian"
+notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: construction repair: precompute weight-minus-suffix carry deltas, then update a leaf address at the lowest set bit of each binary row. Weight reads n5/6/7 fall160/384/896->5/6/7, removing the nT scan without changing leaf order or tokens.562 before/after programs are byte-identical;102 native controls include generic n5..12 and both IO moduli. All8 pins and Size anchors remain unchanged; numerical proof bounds/scopes unchanged. Pool wording now distinguishes the four blind pooled weights from the first light read arm."

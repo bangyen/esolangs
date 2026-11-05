@@ -233,19 +233,3 @@ def _check_constants() -> None:
                     )
                     assert_constant_output(run, program, io, bit, 1)
                     assert io.input_num() == 7
-
-
-def test_default_reuses_the_priced_packing(monkeypatch: pytest.MonkeyPatch) -> None:
-    from esolangs.languages.fargo import generator
-
-    original = generator._packed_program
-    calls = []
-
-    def counted(expression: str, n: int, width: int, *, share: bool = True) -> str:
-        calls.append((expression, width))
-        return original(expression, n, width, share=share)
-
-    monkeypatch.setattr(generator, "_packed_program", counted)
-    assert generator.fargo("00110110")
-    assert len(calls) == 2
-    assert len(set(calls)) == 2

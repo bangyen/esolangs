@@ -123,4 +123,12 @@ tests = [
 ]
 
 [ablations.redundant_preconditions_20261104]
-verdict = "Each recursive expression state has2**len(positions) rows, so the <=6-variable disjunct is already covered by the <=512-row guard. Remove only that redundant disjunct; split choices and emitted programs are unchanged."
+kind = "measurement"
+audited = 2026-11-05
+witness = { arity = 3, rule = "random", seed = 1847 }
+source = { unit = "chars", value = 22 }
+scale = 1
+budget = 10
+band = "fast"
+construction = "esolangs.languages.false.generator:false"
+notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Each recursive expression state has2**len(positions) rows, so the <=6-variable disjunct is already covered by the <=512-row guard. Remove only that redundant disjunct; split choices and emitted programs are unchanged."

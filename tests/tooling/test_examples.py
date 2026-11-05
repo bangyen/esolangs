@@ -83,7 +83,7 @@ def test_boolean_example_matches_generator(name: str) -> None:
         # PNG compression differs across platforms; the pixels are the program.
         assert Raster.from_png(path.read_bytes()) == program, stale
     else:
-        ending = "\n" if LANGUAGES[esolangs.resolve(name)].file_newline else ""
+        ending = "\n" if LANGUAGES[esolangs.resolve(name)].runtime.file_newline else ""
         expected = (program + ending).encode("utf-8")
         assert path.read_bytes() == expected, stale
 

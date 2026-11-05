@@ -121,4 +121,12 @@ tests = [
 ]
 
 [ablations.plain_label_guard_20261104]
-verdict = "Plain trees now reject labels above 35 instead of clamping silently. Shared probe/final text still clamps while counting, then the existing marker gate discards an over-budget candidate. Valid builds, proof bounds, pins and Size anchors stay unchanged."
+kind = "measurement"
+audited = 2026-11-05
+witness = { arity = 3, rule = "random", seed = 1847 }
+source = { unit = "chars", value = 39 }
+scale = 1
+budget = 10
+band = "fast"
+construction = "esolangs.languages.six_five.generator:six_five"
+notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Plain trees now reject labels above 35 instead of clamping silently. Shared probe/final text still clamps while counting, then the existing marker gate discards an over-budget candidate. Valid builds, proof bounds, pins and Size anchors stay unchanged."

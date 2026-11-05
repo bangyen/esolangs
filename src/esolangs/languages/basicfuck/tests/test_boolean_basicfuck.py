@@ -63,26 +63,27 @@ def test_constant_reads_precede_output_and_preserve_the_next_character() -> None
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("n", [1, 2, 3, 7, 8, 20])
-def test_parity_does_not_depend_on_the_tree_flag_budget(n: int) -> None:
-    from esolangs.languages.basicfuck.interpreter import _Machine
-    from tests.support.generator_support import measure_run
+def test_parity_does_not_depend_on_the_tree_flag_budget() -> None:
+    for n in (1, 2, 3, 7, 8, 20):
+        from esolangs.languages.basicfuck.interpreter import _Machine
+        from tests.support.generator_support import measure_run
 
-    parity = "".join(str(row.bit_count() % 2) for row in range(1 << n))
-    for bias in (0, 1):
-        table = parity if not bias else parity.translate(str.maketrans("01", "10"))
-        program = esolangs.generate("Basicfuck", table)
-        assert len(program) == 13 * n + 59
-        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-            io = ReadFirstIO(f"{row:0{n}b}Q", expected=n)
-            machine = _Machine(program, io)
-            steps, written = measure_run(machine)
-            assert steps == 2 * n + 2
-            assert (
-                written.bits <= 6 * n + 60 + len(program).bit_length() + n.bit_length()
-            )
-            assert io.getvalue() == table[row]
-            assert io.input_char() == ord("Q")
+        parity = "".join(str(row.bit_count() % 2) for row in range(1 << n))
+        for bias in (0, 1):
+            table = parity if not bias else parity.translate(str.maketrans("01", "10"))
+            program = esolangs.generate("Basicfuck", table)
+            assert len(program) == 13 * n + 59
+            for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                io = ReadFirstIO(f"{row:0{n}b}Q", expected=n)
+                machine = _Machine(program, io)
+                steps, written = measure_run(machine)
+                assert steps == 2 * n + 2
+                assert (
+                    written.bits
+                    <= 6 * n + 60 + len(program).bit_length() + n.bit_length()
+                )
+                assert io.getvalue() == table[row]
+                assert io.input_char() == ord("Q")
 
 
 def test_parity_needs_both_its_modulus_and_every_input() -> None:
@@ -95,21 +96,21 @@ def test_parity_needs_both_its_modulus_and_every_input() -> None:
     assert esolangs.run("Basicfuck", broken, stdin="11") != "0"
 
 
-@pytest.mark.parametrize("table", ["0011", "0101", "00111100", "01011010"])
-def test_projected_parity_reads_ignored_inputs_without_adding_them(table: str) -> None:
-    from esolangs.languages.basicfuck.generator import affine_form
-    from esolangs.languages.basicfuck.interpreter import _Machine
-    from tests.support.generator_support import measure_run
+def test_projected_parity_reads_ignored_inputs_without_adding_them() -> None:
+    for table in ("0011", "0101", "00111100", "01011010"):
+        from esolangs.languages.basicfuck.generator import affine_form
+        from esolangs.languages.basicfuck.interpreter import _Machine
+        from tests.support.generator_support import measure_run
 
-    n = len(table).bit_length() - 1
-    form = affine_form(table, n)
-    assert form is not None
-    m = sum(form[1])
-    source = esolangs.generate("Basicfuck", table)
-    assert len(source) == 8 * n + 5 * m + 59
-    for row, expected in enumerate(table):
-        io = ReadFirstIO(f"{row:0{n}b}Q", expected=n)
-        steps, _ = measure_run(_Machine(source, io))
-        assert steps == n + m + 2
-        assert io.getvalue() == expected
-        assert io.input_char() == ord("Q")
+        n = len(table).bit_length() - 1
+        form = affine_form(table, n)
+        assert form is not None
+        m = sum(form[1])
+        source = esolangs.generate("Basicfuck", table)
+        assert len(source) == 8 * n + 5 * m + 59
+        for row, expected in enumerate(table):
+            io = ReadFirstIO(f"{row:0{n}b}Q", expected=n)
+            steps, _ = measure_run(_Machine(source, io))
+            assert steps == n + m + 2
+            assert io.getvalue() == expected
+            assert io.input_char() == ord("Q")

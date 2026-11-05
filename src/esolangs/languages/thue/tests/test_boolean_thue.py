@@ -447,21 +447,22 @@ def _check_constants() -> None:
     assert io.input_str() == "7"
 
 
-@pytest.mark.parametrize(("n", "width"), [(1, 1), (3, 7), (12, 13)])
-@pytest.mark.parametrize("bit", ["0", "1"])
-def test_single_entry_chunks_sweep_before_reading(n: int, width: int, bit: str) -> None:
-    from esolangs.languages.thue.generator import _thue_layout
+def test_single_entry_chunks_sweep_before_reading() -> None:
+    for n, width, bit in (
+        (n, w, b) for n, w in ((1, 1), (3, 7), (12, 13)) for b in "01"
+    ):
+        from esolangs.languages.thue.generator import _thue_layout
 
-    for limit in (None, width):
-        program = _thue_layout(bit, "S" * n, (), limit)
-        for input_bit in "01":
-            io = ScriptedIO(f"{input_bit}\n" * n + "7\n")
-            machine = _Machine(program, io, Seeded(0))
-            steps = 0
-            while not machine.halted:
-                assert len(_matches(machine.state, machine.rules)) == 1
-                machine.step()
-                steps += 1
-                assert steps < 1000
-            assert (io.getvalue(), io.reads) == (bit, n)
-            assert io.input_str() == "7"
+        for limit in (None, width):
+            program = _thue_layout(bit, "S" * n, (), limit)
+            for input_bit in "01":
+                io = ScriptedIO(f"{input_bit}\n" * n + "7\n")
+                machine = _Machine(program, io, Seeded(0))
+                steps = 0
+                while not machine.halted:
+                    assert len(_matches(machine.state, machine.rules)) == 1
+                    machine.step()
+                    steps += 1
+                    assert steps < 1000
+                assert (io.getvalue(), io.reads) == (bit, n)
+                assert io.input_str() == "7"

@@ -491,11 +491,18 @@ class TestEntryPointConventions:
         # equality: the shape has to be among what `run` takes, not the only
         # thing it takes.
         accepted = {part.strip() for part in ast.unparse(annotation).split("|")}
-        wanted = (
-            "Raster"
-            if shape == "loaded"
-            else ("str" if shape == "text" else "list[str]")
-        )
+        if shape == "loaded":
+            loader = next(
+                (
+                    node
+                    for node in tree.body
+                    if isinstance(node, ast.FunctionDef) and node.name == "load_source"
+                ),
+                None,
+            )
+            wanted = ast.unparse(loader.returns) if loader is not None else "Raster"
+        else:
+            wanted = "str" if shape == "text" else "list[str]"
         assert wanted in accepted, (
             f"{path.name}: shape={shape!r} but run takes {accepted}"
         )

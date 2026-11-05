@@ -10,13 +10,13 @@ from tests.support.generator_support import assert_every_row, measure_run
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(1, 2**2**n - 1)]
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
-    from esolangs.languages.bleh.tests.ablations import ablate
+def test_every_row_prints_its_answer() -> None:
+    for table in [*TABLES, "00010111", "01101001", "11101000"]:
+        from esolangs.languages.bleh.tests.ablations import ablate
 
-    program = esolangs.generate("Bleh", table)
-    assert program == ablate(table, "default")
-    assert_every_row("Bleh", table, program=program)
+        program = esolangs.generate("Bleh", table)
+        assert program == ablate(table, "default")
+        assert_every_row("Bleh", table, program=program)
 
 
 @pytest.mark.medium
@@ -54,21 +54,19 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
     )
 
 
-@pytest.mark.parametrize(
-    ("table", "stdin"), [("00", ""), ("0011", "0"), ("0101", ""), ("01", "")]
-)
-def test_skipped_reads_reject_eof(table: str, stdin: str) -> None:
+def test_skipped_reads_reject_eof() -> None:
     from esolangs.exceptions import HaltError
 
-    with pytest.raises(HaltError, match="no branch"):
-        esolangs.run("Bleh", esolangs.generate("Bleh", table), stdin=stdin)
+    for table, stdin in (("00", ""), ("0011", "0"), ("0101", ""), ("01", "")):
+        with pytest.raises(HaltError, match="no branch"):
+            esolangs.run("Bleh", esolangs.generate("Bleh", table), stdin=stdin)
 
 
-@pytest.mark.parametrize("table", ["01", "10", "0110", "0011"])
-def test_entrypoint_name_is_escaped_without_widening(monkeypatch, table: str) -> None:
+def test_entrypoint_name_is_escaped_without_widening(monkeypatch) -> None:
+    from esolangs.generation import decision
     from esolangs.languages.bleh import generator
 
-    ids = generator.subtree_ids
+    ids = decision.subtree_ids
 
     def reserved_id(truth_table: str) -> list[list[int]]:
         return [
@@ -77,8 +75,9 @@ def test_entrypoint_name_is_escaped_without_widening(monkeypatch, table: str) ->
         ]
 
     assert generator._name(1831090, 0) == "mai0"
-    monkeypatch.setattr(generator, "subtree_ids", reserved_id)
-    program = generator.bleh(table)
-    n = len(table).bit_length() - 1
-    for row in range(len(table)):
-        assert esolangs.run("Bleh", program, stdin=f"{row:0{n}b}") == table[row]
+    monkeypatch.setattr(decision, "subtree_ids", reserved_id)
+    for table in ["01", "10", "0110", "0011"]:
+        program = generator.bleh(table)
+        n = len(table).bit_length() - 1
+        for row in range(len(table)):
+            assert esolangs.run("Bleh", program, stdin=f"{row:0{n}b}") == table[row]
