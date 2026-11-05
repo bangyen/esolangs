@@ -48,6 +48,7 @@ from collections.abc import Iterator
 from functools import cache
 from typing import Any, Literal, NamedTuple
 
+from esolangs.generation.decision import reduced_diagram
 from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
@@ -524,27 +525,24 @@ def _dag(truth_table: str, n: int) -> _Dag:
     its signal read by every parent.  ``needed`` is the selector levels whose
     rule reads ``~selector``; ``reads`` is how many gates read each node.
     """
-    stack: list[tuple[int, int]] = []
-    nodes: dict[tuple[int, int, int], int] = {}
+    nodes, root = reduced_diagram(truth_table, n)
     ops: list[tuple[int, int, int, int]] = []
     needed: set[int] = set()
     reads: dict[int, int] = {}
-    for bit in truth_table:
-        identity, level = int(bit), 0
-        while stack and stack[-1][1] == level:
-            zero, _ = stack.pop()
-            if zero != identity:
-                key = (level, zero, identity)
-                if key not in nodes:
-                    nodes[key] = len(nodes) + 2
-                    ops.append((level, zero, identity, nodes[key]))
-                    _note_mux(needed, reads, n - 1 - level, zero, identity)
-                identity = nodes[key]
-            level += 1
-        stack.append((identity, level))
-    [(root, level)] = stack
-    if level != n:  # pragma: no cover - validation guarantees 2**n entries
-        raise AssertionError("incomplete Shannon fold")
+    identities = {0: 0, 1: 1}
+
+    def visit(key: int) -> int:
+        if key not in identities:
+            level, zero, one = nodes[key]
+            zero, one = visit(zero), visit(one)
+            identity = identities[key] = len(identities)
+            level = n - 1 - level
+            ops.append((level, zero, one, identity))
+            _note_mux(needed, reads, n - 1 - level, zero, one)
+        return identities[key]
+
+    # Preserve the carry fold's left-first postorder: layout ties use these ids.
+    root = visit(root)
     return _Dag(ops, root, needed, reads)
 
 

@@ -18,6 +18,7 @@ _PRIMITIVES = frozenset(
         "constant_span_test",
         "subtree_ids",
         "decision_layers",
+        "reduced_diagram",
         "_residual_ids",
         "SubtreeDiagram",
         "in_input_order",

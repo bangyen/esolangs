@@ -39,7 +39,6 @@ evidence = "docs/proofs/circuit-diagram-sharing.md"
 
 [catalogue]
 sharing_local = "_dag"  # hash-consed mux fold
-folding_constant = "both constants are one self-fed gate"
 
 # Plain-rewrite audit record: each trick's saving measured in shipped
 # context at the largest arity where it runs (area; seeded random

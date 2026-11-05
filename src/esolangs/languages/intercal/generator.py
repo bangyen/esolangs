@@ -23,6 +23,8 @@ from dataclasses import dataclass
 from math import isqrt
 from typing import Any, NamedTuple
 
+from esolangs.generation.decision import DecisionNode as _Node
+from esolangs.generation.decision import reduced_diagram
 from esolangs.generation.helpers import (
     _validate_truth_table,
     in_input_order,
@@ -181,7 +183,7 @@ def _intercal_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     duplicate their children. Both alias and node passes take O(T) work.
     """
     n = _validate_truth_table(truth_table)
-    nodes, root = _diagram(truth_table, n)
+    nodes, root = reduced_diagram(truth_table, n)
     selectors = [_Expr("input", n - 1 - perm[level]) for level in range(n)]
     negated, mask_names = _aliases(nodes, selectors)
     masks = [
@@ -245,47 +247,9 @@ def _intercal_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     return _program(n, assigned, exprs[root], width)
 
 
-class _Node(NamedTuple):
-    """A diagram node: a selector level and the ids of its two halves."""
-
-    level: int
-    zero: int
-    one: int
-
-
 def _interior(nodes: list[_Node]) -> list[_Node]:
     """Return the nodes after the two constants (ids 0 and 1)."""
     return nodes[2:]
-
-
-def _diagram(truth_table: str, n: int) -> tuple[list[_Node], int]:
-    """Return the table's reduced Shannon diagram and its root's id.
-
-    Subtables are interned level by level, bottom-up, by the ids of their
-    two halves: ``O(T)`` dictionary lookups and no search.  Ids 0 and 1 are
-    the constants; every later id is a ``(level, zero, one)`` node, listed
-    after both its halves.  A subtable whose halves are the same id is that
-    id -- a constant span, or a node whose
-    selector cannot change its value.
-    """
-    nodes = [_Node(n, 0, 0), _Node(n, 1, 1)]
-    # Plain tuples key the index: a NamedTuple per row pair was most of the
-    # build at 21 inputs, and the two hash and compare alike.
-    index: dict[tuple[int, int, int], int] = {}
-    ids = [int(bit) for bit in truth_table]
-    for level in range(n - 1, -1, -1):
-        halves, ids = ids, []
-        for zero, one in zip(halves[::2], halves[1::2], strict=True):
-            if zero == one:
-                ids.append(zero)
-                continue
-            key = (level, zero, one)
-            found = index.get(key)
-            if found is None:
-                found = index[key] = len(nodes)
-                nodes.append(_Node(*key))
-            ids.append(found)
-    return nodes, ids[0]
 
 
 def _mux_chars(

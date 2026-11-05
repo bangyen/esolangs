@@ -21,8 +21,6 @@ definitions = ["S = emitted DO/PLEASE statement count, including GIVE UP, indepe
 
 [catalogue]
 sharing_local = "_intercal_shared"  # named shared diagram variables
-folding_ignored_local = "_diagram"  # equal children replace their selector
-folding_constant_local = "_diagram"  # equal-child reduction to a constant id
 
 [ablations]
 archive_refs = [

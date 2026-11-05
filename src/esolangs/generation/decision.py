@@ -1,4 +1,4 @@
-"""Ordered decision layers; each emitter owns its input-consumption policy."""
+"""Ordered decision layers and reduced Shannon diagrams."""
 
 from itertools import pairwise
 from typing import NamedTuple
@@ -33,3 +33,37 @@ def decision_layers(truth_table: str) -> DecisionLayers:
         layers.append(layer)
         frontier = following
     return DecisionLayers(ids[0][0], layers)
+
+
+class DecisionNode(NamedTuple):
+    """A diagram node: a selector level and the ids of its two halves."""
+
+    level: int
+    zero: int
+    one: int
+
+
+def reduced_diagram(truth_table: str, n: int) -> tuple[list[DecisionNode], int]:
+    """Return a reduced Shannon DAG and root for a validated n-input table.
+
+    Constants have ids 0/1; other nodes follow their children, level by level
+    and left to right. Equal halves collapse; interning costs O(T).
+    """
+    nodes = [DecisionNode(n, 0, 0), DecisionNode(n, 1, 1)]
+    # Plain tuples key the index: a NamedTuple per row pair was most of the
+    # build at 21 inputs, and the two hash and compare alike.
+    index: dict[tuple[int, int, int], int] = {}
+    ids = [int(bit) for bit in truth_table]
+    for level in range(n - 1, -1, -1):
+        halves, ids = ids, []
+        for zero, one in zip(halves[::2], halves[1::2], strict=True):
+            if zero == one:
+                ids.append(zero)
+                continue
+            key = (level, zero, one)
+            found = index.get(key)
+            if found is None:
+                found = index[key] = len(nodes)
+                nodes.append(DecisionNode(*key))
+            ids.append(found)
+    return nodes, ids[0]
