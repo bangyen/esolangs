@@ -6,7 +6,6 @@ import contextlib
 import importlib
 import io
 import json
-import reprlib
 import sys
 from pathlib import Path
 from typing import Any
@@ -25,12 +24,6 @@ class Results:
     def __init__(self) -> None:
         """Start all execution counters at zero."""
         self.passed = self.assertions = self.other = self.calls = self.hits = 0
-
-    @pytest.hookimpl(tryfirst=True)
-    def pytest_assertrepr_compare(self, op: str, left: Any, right: Any) -> list[str]:
-        """Bound diagnostics for deliberately unequal mutation-control traces."""
-        # Python 3.12's difflib exceeded 30s on these expected differences.
-        return [f"{reprlib.repr(left)} {op} {reprlib.repr(right)}"]
 
     def pytest_runtest_makereport(self, item: Any, call: Any) -> None:
         """Record call assertions without accepting setup or collection errors."""
@@ -94,6 +87,8 @@ def main() -> None:
                 else "python_functions=test_*",
                 "-q",
                 "--tb=short",
+                # Expected trace mismatches took >30s in Python 3.12 difflib.
+                "--assert=plain",
                 *(["-x"] if request["fault"] else []),
                 *request["tests"],
             ],

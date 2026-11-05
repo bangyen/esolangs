@@ -11,6 +11,10 @@ from scripts.docs.fragments import section
 
 
 def _check_trace_diagnostics(tmp_path, monkeypatch):
+    (tmp_path / "conftest.py").write_text(
+        "def pytest_assertrepr_compare(op, left, right):\n"
+        "    raise RuntimeError('semantic probes must not render comparison diffs')\n"
+    )
     path = tmp_path / "test_trace_control.py"
     path.write_text(
         "import pytest\n"
