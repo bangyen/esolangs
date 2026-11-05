@@ -147,9 +147,10 @@ description = { growth = "linear", claim = "at most", template = "{claim} {formu
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter.py"
 tests = [
+    "src/esolangs/languages/grapheme/tests/oracle_checks.py::check_raw_grapheme",
     "src/esolangs/languages/grapheme/tests/test_grapheme.py::test_prints",
     "src/esolangs/languages/grapheme/tests/test_grapheme.py::test_refuses",
     "src/esolangs/languages/grapheme/tests/test_grapheme.py::TestIO",
