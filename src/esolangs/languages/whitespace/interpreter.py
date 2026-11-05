@@ -72,8 +72,8 @@ from esolangs.exceptions import ArgumentError, HaltError, ProgramError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime._source import ProgramSource, _read_container, text_source
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
