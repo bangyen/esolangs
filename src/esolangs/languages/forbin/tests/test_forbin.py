@@ -10,6 +10,7 @@ from esolangs.languages.forbin.interpreter._step import _advance
 from esolangs.languages.forbin.tests.forbin_support import run_program
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
+from tests.interpreters.oracle_support import check_terminal
 from tests.support.event_io import EventIO
 
 
@@ -66,19 +67,14 @@ class TestStepMachine:
     def test_main_with_parameters_defaults_to_zero(self) -> None:
         # main's own parameters are set to 0 (per the wiki), same as any
         # other function's unpassed arguments
-        from esolangs.languages.forbin.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
 
-        machine = _Machine("main a { out 0,0,0,0,0,0,0,a; }", ScriptedIO())
+        machine = Forbin("main a { out 0,0,0,0,0,0,0,a; }", ScriptedIO())
         while not machine.halted:
             machine.step()
         assert machine.io.getvalue() == "\x00"
 
     def test_snapshot_is_hashable(self) -> None:
-        from esolangs.languages.forbin.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
-
-        machine = _Machine("main { out 0,0,0,0,0,0,0,1; }", ScriptedIO())
+        machine = Forbin("main { out 0,0,0,0,0,0,0,1; }", ScriptedIO())
         assert hash(machine.snapshot()) is not None
         machine.step()
         assert hash(machine.snapshot()) is not None
@@ -90,10 +86,8 @@ class TestForbinMutationSurvivors:
     @staticmethod
     def _drive(code: str, stdin: str = "") -> tuple[int, str, int]:
         """Run ``code`` to a halt; return (steps, output, deepest frame stack)."""
-        from esolangs.languages.forbin.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
 
-        machine = _Machine(code, ScriptedIO(stdin))
+        machine = Forbin(code, ScriptedIO(stdin))
         steps, deepest = 0, 0
         # The programs here settle in fifteen steps or fewer.  The cap is
         # headroom, not a timeout: a mutant that stops one halting should
@@ -130,9 +124,7 @@ class TestForbinAncestorHangDetection:
 
     @staticmethod
     def _verdict(code: str, stdin: str = "") -> bool:
-        from esolangs.languages.forbin.interpreter import _Machine
-
-        return walk_until_halt_or_ancestor(_Machine(code, ScriptedIO(stdin)))
+        return walk_until_halt_or_ancestor(Forbin(code, ScriptedIO(stdin)))
 
     def test_an_unconditional_self_call_is_a_proven_hang(self) -> None:
         """``f`` calls itself with nothing changed, so it never returns."""
@@ -167,9 +159,8 @@ class TestForbinAncestorHangDetection:
 
     def test_an_undecided_walk_raises_rather_than_claiming_a_halt(self) -> None:
         """Exhausting the bound is not a verdict, and must not read as one."""
-        from esolangs.languages.forbin.interpreter import _Machine
 
-        class _NeverRepeats(_Machine):
+        class _NeverRepeats(Forbin):
             """Stands in for any mutant whose key stops repeating."""
 
             counter = 0
@@ -188,10 +179,9 @@ class TestSnapshotWithoutTheCycleDetector:
 
     def test_a_snapshot_distinguishes_the_states_it_must(self) -> None:
         """Every component of the snapshot has to move something."""
-        from esolangs.languages.forbin.interpreter import _Machine
 
         def at(code: str, steps: int, stdin: str = "") -> tuple[object, ...]:
-            machine = _Machine(code, ScriptedIO(stdin))
+            machine = Forbin(code, ScriptedIO(stdin))
             for _ in range(steps):
                 if machine.halted:
                     break
@@ -223,9 +213,8 @@ class TestSnapshotWithoutTheCycleDetector:
         minted a new key, and a recycled ``id`` made 11 of 5,197 programs
         snapshot differently on two runs.
         """
-        from esolangs.languages.forbin.interpreter import _Machine
 
-        machine = _Machine("main { x = 1; x = 0; }", ScriptedIO(""))
+        machine = Forbin("main { x = 1; x = 0; }", ScriptedIO(""))
         machine.step()
         scopes = machine.snapshot()[5]
         assert [key for key, _locals in scopes] == [1, 2]
@@ -237,11 +226,8 @@ class TestSnapshotWithoutTheCycleDetector:
 
     def test_an_anonymous_function_is_named_by_the_empty_string(self) -> None:
         """``""`` is a real value here, not a placeholder nobody reads."""
-        from esolangs.languages.forbin.interpreter import _Machine
 
-        machine = _Machine(
-            "main { f = { out 0,1,0,0,1,0,0,0; }; f 0; }", ScriptedIO("")
-        )
+        machine = Forbin("main { f = { out 0,1,0,0,1,0,0,0; }; f 0; }", ScriptedIO(""))
         keys, steps, depth = [], 0, len(machine.frames)
         while not machine.halted and steps < 200:
             machine.step()
@@ -259,10 +245,9 @@ class TestSnapshotWithoutTheCycleDetector:
 
     def test_a_frame_outside_a_loop_reports_a_sentinel(self) -> None:
         """The two loop counters need a value meaning "not in a loop"."""
-        from esolangs.languages.forbin.interpreter import _Machine
 
         def frames(code: str, steps: int) -> tuple[object, ...]:
-            machine = _Machine(code, ScriptedIO(""))
+            machine = Forbin(code, ScriptedIO(""))
             for _ in range(steps):
                 if machine.halted:
                     break
@@ -414,11 +399,7 @@ class TestScopingIsLexical:
 
 
 def test_forbin_for_loop_halts_without_a_false_cycle() -> None:
-    # Every row sets the same local to the same value, so only the loop's
-    # own row index (in the snapshot) keeps this from reading as a repeat.
-    machine = Forbin("main { for i:0..1 { x = 0; } }", ScriptedIO())
-    assert run_until_halt_or_cycle(machine) is True
-
+    """Independent full-byte reverse/negation model; calls, IO and empty frames."""
     flip = "flip bit { return !bit; }"
     for value in range(256):
         names = "a,b,c,d,e,f,g,h"
@@ -426,11 +407,19 @@ def test_forbin_for_loop_halts_without_a_false_cycle() -> None:
             f"(flip {bit})" for bit in reversed(names.split(","))
         )
         source = f"{flip} main {{ {names} = (in 0); out {inverted_reverse}; }}"
-        io = ScriptedIO(chr(value) + "unused")
-        run(source, io)
         reversed_byte = int(f"{value:08b}"[::-1], 2)
-        assert io.getvalue() == chr(255 - reversed_byte)
-        assert io.position() == 1
+        assert run_program(source, chr(value) + "unused") == chr(255 - reversed_byte)
+        check_terminal(
+            Forbin,
+            source,
+            chr(value) + "unused",
+            lambda m: m.state.frames,
+            ((), True, chr(255 - reversed_byte), 1, 1),
+        )
+    # Every row sets the same local to the same value, so only the loop's
+    # own row index (in the snapshot) keeps this from reading as a repeat.
+    machine = Forbin("main { for i:0..1 { x = 0; } }", ScriptedIO())
+    assert run_until_halt_or_cycle(machine) is True
 
 
 class TestPureTransition:

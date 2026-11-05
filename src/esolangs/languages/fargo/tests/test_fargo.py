@@ -17,6 +17,7 @@ from esolangs.languages.fargo.interpreter import (
 )
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_ancestor
+from tests.interpreters.oracle_support import check_terminal
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
 
 # The wiki's truth machine, verbatim apart from the zero-width spaces it
@@ -31,18 +32,6 @@ def run_program(code: str, stdin: str = "0\n") -> str:
 
 
 class TestBuiltins:
-    def test_output_number_starts_at_zero(self) -> None:
-        assert run_program("$") == "0"
-
-    def test_set_and_print_a_bit(self) -> None:
-        assert run_program("% 0 1\n$") == "1"
-        assert run_program("% 11 1\n$") == "8"
-
-    def test_setting_one_bit_leaves_the_others_alone(self) -> None:
-        """Each ``%`` adds to the number rather than replacing it."""
-        assert run_program("% 0 1\n% 1 1\n$") == "3"
-        assert run_program("% 1 1\n% 0 1\n$") == "3"
-
     def test_shifts_move_exactly_one_place(self) -> None:
         """Pin the distance, which ``%`` alone cannot see."""
         # elements, by index: 0 0 1 0 0
@@ -53,12 +42,7 @@ class TestBuiltins:
         assert run_program(f"% 0 [?] {arr} 1\n$") == "0"
 
     def test_bitwise_operators(self) -> None:
-        assert run_program("% 0 & 1 1\n$") == "1"
-        assert run_program("% 0 & 1 0\n$") == "0"
-        assert run_program("% 0 | 0 1\n$") == "1"
-        assert run_program("% 0 ^ 1 1\n$") == "0"
-        assert run_program("% 0 ^ 1 0\n$") == "1"
-
+        """Independent 3-bit AND/OR/XOR model, including overwritten output bits."""
         for left, right, (symbol, evaluate) in product(
             range(8), range(8), (("&", and_), ("|", or_), ("^", xor))
         ):
@@ -68,12 +52,18 @@ class TestBuiltins:
             ]
             preset = [f"% {index:b} | 1 0" for index in range(3)]
             source = "\n".join([*preset, *writes, "$"])
-            assert run_program(source) == str(evaluate(left, right))
+            result = evaluate(left, right)
+            assert run_program(source) == str(result)
+            check_terminal(
+                _Machine,
+                source,
+                "0\n",
+                lambda m: (m.number, m.output, m.ind, tuple(m.frames)),
+                ((0, result, 7, ()), True, str(result), 1, 1),
+            )
 
     def test_binary_operators_read_both_arguments(self) -> None:
         """Each operand must come from its own position."""
-        assert run_program("% 0 & 0 1\n$") == "0"
-        assert run_program("% 0 | 1 0\n$") == "1"
         # `+[] x y` concatenates in order, so index 0 comes from the left.
         assert run_program("% 0 [?] +[] [] 1 [] 0 0\n$") == "1"
         assert run_program("% 0 [?] +[] [] 1 [] 0 1\n$") == "0"

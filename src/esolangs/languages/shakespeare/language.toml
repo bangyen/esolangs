@@ -109,9 +109,10 @@ description = { growth = "linear", claim = "at most", template = "{claim} {formu
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter.py"
 tests = [
+    "src/esolangs/languages/shakespeare/tests/test_shakespeare.py::test_the_page_fragment_prints_minus_two_then_hamlet_plus_two",
     "src/esolangs/languages/shakespeare/tests/test_shakespeare.py::test_hello_world_prints_hello_world",
     "src/esolangs/languages/shakespeare/tests/test_shakespeare.py::test_truth_machine_halts_on_zero_and_repeats_one",
     "src/esolangs/languages/shakespeare/tests/test_shakespeare.py::test_values_and_operations",

@@ -91,3 +91,10 @@ def observed(factory, code, stdin, state, *, cap=64, post_halt=3):
             if failure:
                 break
     return failure, trace
+
+
+def check_terminal(factory, code, stdin, view, expected, *, cap=64):
+    """Compare a bounded run's terminal state/IO, with stable post-halt steps."""
+    error, trace = observed(factory, code, stdin, stable_halt(view), cap=cap)
+    assert error is None
+    assert trace[-1] == expected

@@ -8,8 +8,9 @@ import pytest
 import esolangs
 from esolangs.exceptions import ExecutionTimeoutError, HaltError
 from esolangs.languages.shakespeare._syntax import parse
-from esolangs.languages.shakespeare.interpreter import run
+from esolangs.languages.shakespeare.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.oracle_support import check_terminal
 
 FIXTURES = Path(__file__).parent / "fixtures"
 HEAD = (
@@ -33,12 +34,7 @@ def test_hello_world_prints_hello_world() -> None:
 
 
 def test_the_page_fragment_prints_minus_two_then_hamlet_plus_two() -> None:
-    """The page's ``-2<Hamlet+2>`` example, in a play: Hamlet holds 0."""
-    out = _run(
-        "Thou art a vile coward! Open thy heart!\nJuliet:\n"
-        "You are as lovely as the sum of Hamlet and a brave tree. Open thy heart."
-    )
-    assert out == "-22"
+    """Bounded signed powers, sum/product, stage and halt; Hamlet stays zero."""
 
     def noun(sign: int, adjectives: int) -> str:
         return "a " + "big " * adjectives + ("rose" if sign > 0 else "coward")
@@ -51,10 +47,20 @@ def test_the_page_fragment_prints_minus_two_then_hamlet_plus_two() -> None:
             "You are the sum of Romeo and Juliet! Open your heart!\n"
             "Romeo:\nYou are the product of Romeo and Juliet! Open your heart!"
         )
-        io = ScriptedIO("unused")
-        run(_play(body), io)
-        assert io.getvalue() == f"{a + b}{a * (a + b)}"
-        assert io.position() == 0
+        assert _run(body, "unused") == f"{a + b}{a * (a + b)}"
+        state = ((a + b, a * (a + b), 0), (None,) * 3, (0, 1), False)
+        check_terminal(
+            _Machine,
+            _play(body),
+            "unused",
+            lambda m: (m.state.values, m.state.stacks, m.state.stage, m.state.flag),
+            (state, True, f"{a + b}{a * (a + b)}", 0, 0),
+        )
+    out = _run(
+        "Thou art a vile coward! Open thy heart!\nJuliet:\n"
+        "You are as lovely as the sum of Hamlet and a brave tree. Open thy heart."
+    )
+    assert out == "-22"
 
 
 def test_truth_machine_halts_on_zero_and_repeats_one() -> None:
@@ -76,9 +82,6 @@ def test_the_cats_repaired_spelling_runs_and_the_pages_typo_does_not() -> None:
 @pytest.mark.parametrize(
     ("value", "shown"),
     [
-        ("a rose", 1),
-        ("a big rose", 2),
-        ("a bad big coward", -4),
         ("zero", 0),
         ("the sum of a big big rose and a rose", 5),
         ("the difference between a rose and a big big big rose", -7),

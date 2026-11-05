@@ -143,9 +143,10 @@ description = { growth = "linear", claim = "at most", template = "{claim} {formu
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter/__init__.py"
 tests = [
+    "src/esolangs/languages/forbin/tests/test_forbin.py::test_forbin_for_loop_halts_without_a_false_cycle",
     "src/esolangs/languages/forbin/tests/test_forbin.py::test_output",
     "src/esolangs/languages/forbin/tests/test_forbin.py::test_rejected",
     "src/esolangs/languages/forbin/tests/test_forbin.py::test_in_running_out_raises_eof",
