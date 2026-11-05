@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import _check_program
+from esolangs import _check_program, compat
 from esolangs.raster import Raster, lazy_raster
 from esolangs.registry import LANGUAGES, SourceKind
 from tests.support.dialect_support import integer_setting
@@ -51,19 +51,19 @@ def test_a_raster_hashes_by_pixels() -> None:
 def test_a_raster_language_has_no_template_to_instantiate() -> None:
     """``instantiate`` reaches ``_is_template_for`` first, which must refuse it."""
     with pytest.raises(esolangs.TemplateError):
-        esolangs.instantiate(
+        compat.instantiate(
             RASTER_LANGUAGES[0], "not a template", [0], truth_table="0110"
         )
 
 
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
 def test_every_raster_language_generates_shared_source(language: str) -> None:
-    program = esolangs.generate(language, "01")
+    program = compat.generate(language, "01")
     assert isinstance(program, Raster)
     assert program.rows
     assert program.rows[0]
     assert esolangs.describe(language)["source_kind"] == "raster"
-    assert esolangs.run(language, program, stdin="1\n") == "1"
+    assert compat.run(language, program, stdin="1\n") == "1"
 
 
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
@@ -72,17 +72,17 @@ def test_every_raster_generator_rejects_zero_inputs(
     language: str, truth_table: str
 ) -> None:
     with pytest.raises(esolangs.TruthTableError, match="needs at least one input"):
-        esolangs.generate(language, truth_table)
+        compat.generate(language, truth_table)
 
 
 @pytest.mark.slow
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
 def test_every_raster_language_runs_its_png(language: str, tmp_path: Path) -> None:
-    program = esolangs.generate(language, "01")
+    program = compat.generate(language, "01")
     assert isinstance(program, Raster)
     path = tmp_path / f"{language.lower()}.png"
     path.write_bytes(program.to_png())
-    assert esolangs.run(language, path, stdin="0\n") == "0"
+    assert compat.run(language, path, stdin="0\n") == "0"
 
 
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
@@ -147,10 +147,10 @@ def test_bounded_raster_run_preserves_explicit_scale(language: str) -> None:
     from esolangs.debugger import make_debugger
     from esolangs.vm import make_vm
 
-    source = esolangs.generate(language, "01", scale=2)
+    source = compat.generate(language, "01", scale=2)
     assert isinstance(source, Raster)
     source = Raster.from_png(source.to_png())
-    assert esolangs.run(language, source, stdin="1\n", scale=2, max_steps=1000) == "1"
+    assert compat.run(language, source, stdin="1\n", scale=2, max_steps=1000) == "1"
     vm = make_vm(language, source, stdin="0\n", scale=2)
     while not vm.halted:
         vm.step()
@@ -221,7 +221,7 @@ def test_raster_repr_names_its_size() -> None:
 
 def test_an_oversized_upscale_is_refused_before_rendering() -> None:
     """``scale=99999`` was OOM-killed with no message."""
-    program = esolangs.generate(RASTER_LANGUAGES[0], "0110", scale=10**4)
+    program = compat.generate(RASTER_LANGUAGES[0], "0110", scale=10**4)
     with pytest.raises(esolangs.ArgumentError, match="pixel limit"):
         program.to_png()
 
@@ -231,7 +231,7 @@ def test_an_oversized_upscale_is_refused_before_rendering() -> None:
 @pytest.mark.parametrize("scale", [1, 2])
 def test_png_metadata_round_trip_executes(language, scale) -> None:
     settings = esolangs.DialectSettings()
-    source = esolangs.generate(language, "0110", scale=scale, settings=settings)
+    source = compat.generate(language, "0110", scale=scale, settings=settings)
     restored = Raster.from_png(source.to_png())
     assert restored.rows == source.rows
     assert restored.language == language
@@ -252,7 +252,7 @@ def test_plain_png_has_no_source_metadata() -> None:
 
 
 def test_scaling_composes_retained_factors() -> None:
-    source = esolangs.generate(RASTER_LANGUAGES[0], "01", scale=2)
+    source = compat.generate(RASTER_LANGUAGES[0], "01", scale=2)
     assert Raster.from_png(source.upscaled(3).to_png()).scale == 6
 
 
@@ -277,9 +277,9 @@ def test_png_settings_retain_integer_choices() -> None:
 
 
 def test_png_language_tag_refuses_cross_language_execution() -> None:
-    source = esolangs.generate(RASTER_LANGUAGES[0], "01")
+    source = compat.generate(RASTER_LANGUAGES[0], "01")
     with pytest.raises(esolangs.ProgramError, match="generated for"):
-        esolangs.run(RASTER_LANGUAGES[1], source.to_png(), max_steps=1000)
+        compat.run(RASTER_LANGUAGES[1], source.to_png(), max_steps=1000)
 
 
 def test_tagging_unknown_pixels_preserves_automatic_scale_detection() -> None:
@@ -298,12 +298,12 @@ def test_retained_scale_is_validated(scale) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
 def test_explicit_scale_overrides_png_metadata(language) -> None:
-    source = esolangs.generate(language, "01", scale=2)
+    source = compat.generate(language, "01", scale=2)
     changed = Raster(source.rows, language=language, scale=7)
     assert (
         esolangs.read_answer(
             language,
-            esolangs.run(
+            compat.run(
                 language,
                 changed.to_png(),
                 stdin=esolangs.encode_inputs(language, [1]),

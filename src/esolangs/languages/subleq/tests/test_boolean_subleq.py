@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.languages.subleq.generator import subleq
 from esolangs.languages.subleq.interpreter import _Machine
@@ -28,7 +29,7 @@ def test_constant_reads_once_and_falls_off_after_output(n: int, bit: str) -> Non
         _check_constants()
     table = bit * (1 << n)
     for width in (None, 1, 20):
-        program = esolangs.generate("Subleq", table, width=width)
+        program = compat.generate("Subleq", table, width=width)
         for row in range(1 << n):
             io = ScriptedIO(f"{row:0{n}b}" + "extra")
             machine = _Machine(str(program), io)
@@ -75,7 +76,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Subleq", bit * (1 << n), **options)
+                program = compat.generate("Subleq", bit * (1 << n), **options)
                 if not options:
                     assert len(program) == 7 * n + 7
                 peak = 0

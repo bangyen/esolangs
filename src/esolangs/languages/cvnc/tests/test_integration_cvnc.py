@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs import compat
 
 
 class TestNameResolutionIsTrulyCaseInsensitive:
@@ -23,17 +24,17 @@ class TestPathAndTextTrailingNewline:
 
     def test_lf_ignored_by_cvnc_makes_path_and_text_agree(self, tmp_path: Path) -> None:
         path = tmp_path / "c.txt"
-        path.write_text(esolangs.generate("CV(N)(C)", "0110", width=3) + "\n")
+        path.write_text(compat.generate("CV(N)(C)", "0110", width=3) + "\n")
         stdin = esolangs.encode_inputs("CV(N)(C)", [0, 0], truth_table="0110")
-        assert esolangs.run("CV(N)(C)", path, stdin=stdin, timeout=5) == "0"
-        assert esolangs.run("CV(N)(C)", path.read_text(), stdin=stdin, timeout=5) == "0"
+        assert compat.run("CV(N)(C)", path, stdin=stdin, timeout=5) == "0"
+        assert compat.run("CV(N)(C)", path.read_text(), stdin=stdin, timeout=5) == "0"
 
     def test_they_agree_without_one(self, tmp_path: Path) -> None:
         """The difference is the newline and nothing else."""
         path = tmp_path / "c.txt"
-        path.write_text(esolangs.generate("CV(N)(C)", "0110"))
+        path.write_text(compat.generate("CV(N)(C)", "0110"))
         stdin = esolangs.encode_inputs("CV(N)(C)", [0, 0], truth_table="0110")
-        assert esolangs.run("CV(N)(C)", path, stdin=stdin, timeout=5) == esolangs.run(
+        assert compat.run("CV(N)(C)", path, stdin=stdin, timeout=5) == compat.run(
             "CV(N)(C)", path.read_text(), stdin=stdin, timeout=5
         )
 

@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._execution import interpreter_module, run_prepared
 from esolangs.runtime._lifecycle import Completion
@@ -23,7 +24,7 @@ def test_bounded_and_native_input_usage_agree():
     assert bounded[:4] == native[:4] == ("é", 1, 1, 0)
     assert native.completion.kind is Completion.HALTED
     assert bounded.completion.kind is Completion.HALTED
-    assert esolangs.run(REFERENCE, ",.", stdin="é", max_steps=2) == bounded.output
+    assert compat.run(REFERENCE, ",.", stdin="é", max_steps=2) == bounded.output
 
 
 def test_post_halt_result_follows_the_final_dump():
@@ -34,7 +35,7 @@ def test_post_halt_result_follows_the_final_dump():
         and lang.contract.answer_mode != "termination"
         and esolangs.describe(name)["dumps_on_the_post_halt_step"]
     )
-    source = esolangs.instantiate(name, esolangs.generate(name, "01"), [1])
+    source = compat.instantiate(name, compat.generate(name, "01"), [1])
     result = esolangs._run_bounded_result(name, source, max_steps=1000)
     assert result.completion.kind is Completion.POST_HALT
     assert result.completion.cycle is None
@@ -123,7 +124,7 @@ def test_post_halt_completion_stays_pending_until_dump():
         and lang.contract.answer_mode != "termination"
         and esolangs.describe(name)["dumps_on_the_post_halt_step"]
     )
-    source = esolangs.instantiate(name, esolangs.generate(name, "01"), [1])
+    source = compat.instantiate(name, compat.generate(name, "01"), [1])
     debugger = make_debugger(name, source)
     # Stop at halt before the completion step.
     while not debugger.halted:
@@ -166,7 +167,7 @@ def test_failed_dump_remains_unfinished_and_can_be_retried(monkeypatch, drive):
         dumps_on_the_post_halt_step=True,
         steppable_to_answer=True,
     )[0]
-    source = esolangs.instantiate(name, esolangs.generate(name, "01"), [1])
+    source = compat.instantiate(name, compat.generate(name, "01"), [1])
     debugger = make_debugger(name, source)
     assert debugger.run(max_steps=0) == "max_steps"
     while not debugger.halted:

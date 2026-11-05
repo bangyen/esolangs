@@ -5,7 +5,7 @@ from typing import ClassVar
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.exceptions import HaltError
 from esolangs.languages.taglate.interpreter import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
@@ -146,7 +146,7 @@ class TestTaglate:
     def test_a_literal_line_is_printed_by_one_i_per_character(self) -> None:
         """``i`` advances one character of the line above it."""
         program = "Hello, World!\niiiiiiiiiiiii"
-        assert esolangs.run("Taglate", program) == "Hello, World!"
+        assert compat.run("Taglate", program) == "Hello, World!"
 
     def test_google_translate_url(self) -> None:
         expected = "https://translate.google.com/?sl=en&tl=es&text=Hi&op=translate"
@@ -226,8 +226,8 @@ class TestTheTwoQueueLanguagesDifferOnPurpose:
 
     def test_taglate_still_skips_a_non_command(self) -> None:
         """Deliberately unchanged, and the docstring now says why."""
-        assert esolangs.run("Taglate", "1\nix", stdin="", timeout=5) == "1"
-        assert esolangs.run("Taglate", "1\ngi", stdin="", timeout=5) == "1"
+        assert compat.run("Taglate", "1\nix", stdin="", timeout=5) == "1"
+        assert compat.run("Taglate", "1\ngi", stdin="", timeout=5) == "1"
 
     def test_taglate_says_it_skips(self) -> None:
         """A surprising choice is only defensible while it is documented."""

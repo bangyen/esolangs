@@ -2,7 +2,7 @@
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.languages.cyclic_tag.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from tests.support.evaluation import _evaluate
@@ -17,15 +17,15 @@ def test_constant_uses_one_empty_production_and_deletes_each_embedded_input(
     if n == 1 and bit == "0":
         _check_constants()
     table = bit * (1 << n)
-    template = esolangs.generate("Cyclic tag", table)
+    template = compat.generate("Cyclic tag", table)
     assert template == "," + "$" * n + bit
     assert len(template) == n + 2
     for options in ({}, {"width": 1}, {"width": 8}, {"width": 40}, {"balance": True}):
-        program = esolangs.generate("Cyclic tag", table, **options)
+        program = compat.generate("Cyclic tag", table, **options)
         assert _evaluate("Cyclic tag", program, inputs=n) == table
     for row in range(1 << n):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        filled = esolangs.instantiate("Cyclic tag", template, bits)
+        filled = compat.instantiate("Cyclic tag", template, bits)
         io = ScriptedIO("")
         machine = _Machine(filled, io)
         assert machine.program == ("",)
@@ -46,10 +46,10 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = esolangs.generate("Cyclic tag", bit * (1 << n), **options)
+                template = compat.generate("Cyclic tag", bit * (1 << n), **options)
                 assert template.count("$") == n
                 for bits in ([0] * n, [1] * n):
-                    program = esolangs.instantiate("Cyclic tag", template, bits)
+                    program = compat.instantiate("Cyclic tag", template, bits)
                     io = ScriptedIO("7")
                     machine = _Machine(program, io)
                     assert machine.data == [str(b) for b in bits] + [bit]
@@ -72,17 +72,17 @@ def test_minority_marker_keeps_answer_after_padding() -> None:
         size = 1 << n
         for table in ("0" * (size - 1) + "1", "1" + "0" * (size - 1)):
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = esolangs.generate("Cyclic tag", table, **options)
+                template = compat.generate("Cyclic tag", table, **options)
                 assert template.count("$") == n
                 assert _evaluate("Cyclic tag", template, inputs=n) == table
     for table in ("00000101", "10100000"):
         assert (
-            _evaluate("Cyclic tag", esolangs.generate("Cyclic tag", table), inputs=3)
+            _evaluate("Cyclic tag", compat.generate("Cyclic tag", table), inputs=3)
             == table
         )
     totals = [
         sum(
-            len(esolangs.generate("Cyclic tag", f"{table:0{1 << n}b}"))
+            len(compat.generate("Cyclic tag", f"{table:0{1 << n}b}"))
             for table in range(1 << (1 << n))
         )
         for n in (2, 3)

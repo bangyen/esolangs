@@ -7,7 +7,7 @@ from collections.abc import Sequence
 
 import pytest
 
-from esolangs import generate
+from esolangs.compat import generate
 from esolangs.exceptions import GeneratorCapError
 from esolangs.languages import generators as boolean
 from esolangs.languages.malbolge.generator import digits as _digits

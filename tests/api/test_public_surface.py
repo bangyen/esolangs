@@ -9,6 +9,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs import compat
 from tests.support.api_support import PUBLIC_MEMBERS, SIGNATURES
 from tests.support.paths import ROOT
 from tests.support.pick import first
@@ -18,8 +19,6 @@ TEMPLATE_LANGUAGE = first(parameterized=True, source_kind="text")
 
 
 class TestPackageSurface:
-    """What ``dir(esolangs)`` advertises is what the package supports."""
-
     def test_all_is_exactly_the_public_surface(self) -> None:
         """Adding or removing a public name is a deliberate edit here."""
         assert sorted(esolangs.__all__) == [
@@ -50,6 +49,7 @@ class TestPackageSurface:
             "TextLimits",
             "TruthTableError",
             "UnknownLanguageError",
+            "compat",
             "describe",
             "dump_program",
             "encode_inputs",
@@ -197,8 +197,6 @@ class TestPackageSurface:
 
 
 class TestTheSignaturesAgreeWithThemselves:
-    """Two functions taking the same argument should describe it the same."""
-
     def test_bits_is_annotated_the_same_in_both_places(self) -> None:
         """``encode_inputs`` promised more than it accepts."""
         annotations = {
@@ -211,8 +209,10 @@ class TestTheSignaturesAgreeWithThemselves:
         "call",
         [
             lambda bits: esolangs.encode_inputs(REFERENCE, bits),
-            lambda bits: esolangs.instantiate(
-                TEMPLATE_LANGUAGE, esolangs.generate(TEMPLATE_LANGUAGE, "0110"), bits
+            lambda bits: compat.instantiate(
+                TEMPLATE_LANGUAGE,
+                compat.generate(TEMPLATE_LANGUAGE, "0110"),
+                bits,
             ),
         ],
     )
@@ -229,14 +229,14 @@ class TestWidthIsCheckedWhereverItIsTaken:
 
     @pytest.mark.parametrize("width", [0, "8", 2.5])
     def test_instantiate_refuses_what_generate_refuses(self, width: object) -> None:
-        template = esolangs.generate(TEMPLATE_LANGUAGE, "0110")
+        template = compat.generate(TEMPLATE_LANGUAGE, "0110")
         with pytest.raises(esolangs.ArgumentError, match="width"):
-            esolangs.instantiate(TEMPLATE_LANGUAGE, template, [1, 0], width=width)
+            compat.instantiate(TEMPLATE_LANGUAGE, template, [1, 0], width=width)
 
     @pytest.mark.parametrize("width", [0, "8", 2.5])
     def test_generate_still_refuses_them(self, width: object) -> None:
         with pytest.raises(esolangs.ArgumentError, match="width"):
-            esolangs.generate(REFERENCE, "0110", width=width)
+            compat.generate(REFERENCE, "0110", width=width)
 
 
 class TestBitsAreBits:
@@ -247,25 +247,25 @@ class TestBitsAreBits:
         """A dict was iterated as its *keys*, answering a different row."""
         with pytest.raises(esolangs.ArgumentError, match="bits"):
             esolangs.encode_inputs(REFERENCE, bits)
-        template = esolangs.generate(TEMPLATE_LANGUAGE, "0110")
+        template = compat.generate(TEMPLATE_LANGUAGE, "0110")
         with pytest.raises(esolangs.ArgumentError, match="bits"):
-            esolangs.instantiate(TEMPLATE_LANGUAGE, template, bits)
+            compat.instantiate(TEMPLATE_LANGUAGE, template, bits)
 
     def test_a_non_string_template_is_refused(self) -> None:
         with pytest.raises(esolangs.TemplateError, match="template must be"):
-            esolangs.instantiate(TEMPLATE_LANGUAGE, None, [1, 0])
+            compat.instantiate(TEMPLATE_LANGUAGE, None, [1, 0])
 
 
 class TestProgramObjectsRefuseMisuse:
     """1.0 audit, round 2: each slipped past ``except EsolangError``."""
 
     def test_fill_refuses_the_wrong_bit_count(self) -> None:
-        template = esolangs.generate(TEMPLATE_LANGUAGE, "0110")
+        template = compat.generate(TEMPLATE_LANGUAGE, "0110")
         with pytest.raises(esolangs.TemplateError):
             template.fill([0])  # type: ignore[union-attr]
 
     def test_a_generated_programs_tag_is_read_only(self) -> None:
-        program = esolangs.generate(REFERENCE, "0110")
+        program = compat.generate(REFERENCE, "0110")
         with pytest.raises(AttributeError, match="immutable"):
             program.language = TEMPLATE_LANGUAGE  # type: ignore[union-attr]
 
@@ -286,7 +286,7 @@ class TestProgramObjectsRefuseMisuse:
             REFERENCE.upper()
         )
         assert tagged.language == REFERENCE
-        assert esolangs.run(REFERENCE, tagged) == "\x01"
+        assert compat.run(REFERENCE, tagged) == "\x01"
 
     def test_public_annotations_resolve_at_runtime(self) -> None:
         """``DialectSettings`` was a TYPE_CHECKING-only name: NameError."""
@@ -346,9 +346,9 @@ class TestProgramObjectsRefuseMisuse:
                 raise RuntimeError("boom")
 
         with pytest.raises(esolangs.ArgumentError, match="'x at 0xdead'"):
-            esolangs.run(REFERENCE, "+", isolated="x at 0xdead")  # type: ignore[arg-type]
+            compat.run(REFERENCE, "+", isolated="x at 0xdead")  # type: ignore[arg-type]
         with pytest.raises(esolangs.ArgumentError, match="<Raises>"):
-            esolangs.run(REFERENCE, "+", isolated=Raises())  # type: ignore[arg-type]
+            compat.run(REFERENCE, "+", isolated=Raises())  # type: ignore[arg-type]
 
     def test_quoted_text_in_a_container_is_kept(self) -> None:
         with pytest.raises(esolangs.ArgumentError, match=r"\['x at 0xdead'\]"):
@@ -372,7 +372,7 @@ class TestProgramObjectsRefuseMisuse:
     def test_a_portable_surrogate_is_refused_like_a_file(self) -> None:
         document = esolangs.dump_program(REFERENCE, "+.").replace('"+."', '"+.\\ud800"')
         with pytest.raises(esolangs.ProgramError, match="surrogates"):
-            esolangs.load_program(REFERENCE, document)
+            compat.load_program(REFERENCE, document)
 
     def test_a_debugger_needs_a_vm(self) -> None:
         vm = debugger_api.make_vm(REFERENCE, "+")
@@ -391,12 +391,12 @@ class TestProgramObjectsRefuseMisuse:
 
         document = json.loads(
             esolangs.dump_program(
-                TEMPLATE_LANGUAGE, esolangs.generate(TEMPLATE_LANGUAGE, "0110")
+                TEMPLATE_LANGUAGE, compat.generate(TEMPLATE_LANGUAGE, "0110")
             )
         )
         document["setters"] = [["\ud800", "\udfff"]] * len(document["setters"])
         with pytest.raises(esolangs.ProgramError):
-            esolangs.load_program(TEMPLATE_LANGUAGE, json.dumps(document))
+            compat.load_program(TEMPLATE_LANGUAGE, json.dumps(document))
 
     def test_break_at_takes_a_negative_position(self) -> None:
         """AddSubJump and Subleq halt at -8 and -1; break_at refused them."""
@@ -408,7 +408,7 @@ class TestProgramObjectsRefuseMisuse:
 
     def test_a_stepped_timeout_reads_as_an_unstepped_one(self) -> None:
         with pytest.raises(esolangs.ExecutionTimeoutError, match=r"0\.2-second"):
-            esolangs.run(REFERENCE, "+[]", timeout=0.2, max_steps=10**9)
+            compat.run(REFERENCE, "+[]", timeout=0.2, max_steps=10**9)
 
     def test_settings_need_a_language(self) -> None:
         """Untagged, ``run`` ignored them silently."""
@@ -424,15 +424,15 @@ class TestProgramObjectsRefuseMisuse:
     def test_flags_must_be_bools(self) -> None:
         """A truthy ``isolated="no"`` switched the sandbox on."""
         with pytest.raises(esolangs.ArgumentError, match="isolated"):
-            esolangs.run(REFERENCE, "+", isolated="no")  # type: ignore[arg-type]
+            compat.run(REFERENCE, "+", isolated="no")  # type: ignore[arg-type]
         with pytest.raises(esolangs.ArgumentError, match="balance"):
-            esolangs.generate(REFERENCE, "0110", balance="no")  # type: ignore[arg-type]
+            compat.generate(REFERENCE, "0110", balance="no")  # type: ignore[arg-type]
 
     @pytest.mark.medium
     def test_both_routes_word_a_timeout_alike(self) -> None:
         messages = set()
         for isolated in (False, True):
             with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-                esolangs.run(REFERENCE, "+[]", timeout=0.5, isolated=isolated)
+                compat.run(REFERENCE, "+[]", timeout=0.5, isolated=isolated)
             messages.add(str(caught.value))
         assert messages == {"execution exceeded the 0.5-second timeout"}

@@ -7,6 +7,7 @@ import re
 
 import pytest
 
+from esolangs import compat
 from esolangs.generation.examples import BooleanExample
 from tests.proofs.conventions import _embedding, _tables
 
@@ -68,12 +69,11 @@ def _measure(example: BooleanExample) -> dict[str, bool]:
 
 def test_the_structural_conventions_hold_where_the_template_is_made() -> None:
     """Single embed, constant width and slot order are the template's shape."""
-    import esolangs
 
     for name in _embedding():
         for n in _ARITIES:
             for table in _tables(n):
-                template = esolangs.generate(name, table)
+                template = compat.generate(name, table)
                 assert template.inputs == n
                 assert all(len(zero) == len(one) for zero, one in template.setters)
 

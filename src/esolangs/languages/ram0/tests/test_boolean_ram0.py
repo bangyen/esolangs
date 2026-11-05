@@ -5,6 +5,7 @@ import re
 
 import pytest
 
+from esolangs import compat
 from esolangs.languages import generators as boolean
 from tests.support.generator_support import assert_parity_at_most_doubles
 from tests.support.witness_tables import row_bits
@@ -101,12 +102,12 @@ def test_constants_execute_every_fixed_width_setter() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = esolangs.generate("RAM0", bit * (1 << n), **options)
+                template = compat.generate("RAM0", bit * (1 << n), **options)
                 assert len(runs(template, TEMPLATE_CHAR, (PAIR,) * n)) == n
                 assert len(template) == 4 * n + 1 + 2 * int(bit)
                 peak = 0
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    program = esolangs.instantiate("RAM0", template, row_bits(row, n))
+                    program = compat.instantiate("RAM0", template, row_bits(row, n))
                     io = ScriptedIO()
                     machine = _Machine(program, io)
                     written = WrittenState(machine.snapshot())

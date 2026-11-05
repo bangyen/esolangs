@@ -14,8 +14,9 @@ from urllib.parse import unquote
 
 import pytest
 
-from esolangs import encode_inputs, generate, run
+from esolangs import encode_inputs
 from esolangs.cli import HELP, USAGE
+from esolangs.compat import generate, run
 from esolangs.registry import LANGUAGES
 
 ROOT = pathlib.Path(__file__).parents[2]

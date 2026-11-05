@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.registry import LANGUAGES
 from scripts import new_language
 from tests.support import samples
@@ -137,7 +138,7 @@ def test_bounds_flags_a_stale_size_anchor(monkeypatch: pytest.MonkeyPatch) -> No
     name = first(boolean_generator=True, parameterized=False, answer_mode="output")
     from docs import evidence
 
-    size = len(str(esolangs.generate(name, "0110")))
+    size = len(str(compat.generate(name, "0110")))
     anchor = dataclasses.replace(
         evidence.source_anchors(name)[0],
         witness=evidence.TableWitness(2, "parity"),
@@ -171,7 +172,7 @@ def test_a_generator_language_needs_no_hand_sample() -> None:
     # new worktree.
     name = first(boolean_generator=True, parameterized=False, answer_mode="output")
     program, stdin = samples._generated(name)
-    assert esolangs.read_answer(name, esolangs.run(name, program, stdin=stdin)) == "1"
+    assert esolangs.read_answer(name, compat.run(name, program, stdin=stdin)) == "1"
 
 
 def test_sources_names_the_interpreter_and_generator() -> None:

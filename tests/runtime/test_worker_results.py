@@ -5,6 +5,7 @@ import json
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._isolated import _decode
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
@@ -34,9 +35,9 @@ def test_worker_retains_actual_unicode_input_usage(max_output):
     ],
 )
 def test_declared_completion_survives_a_worker(language):
-    template = esolangs.generate(language, "01")
+    template = compat.generate(language, "01")
     source = (
-        esolangs.instantiate(language, template, [1])
+        compat.instantiate(language, template, [1])
         if LANGUAGES[language].parameterized
         else template
     )
@@ -154,11 +155,9 @@ def test_normal_worker_cannot_omit_result_metadata(monkeypatch):
     "language", [name for name, lang in LANGUAGES.items() if lang.runtime.random]
 )
 def test_seeded_worker_result_matches_native(language):
-    template = esolangs.generate(language, "01")
+    template = compat.generate(language, "01")
     parameterized = LANGUAGES[language].parameterized
-    source = (
-        esolangs.instantiate(language, template, [1]) if parameterized else template
-    )
+    source = compat.instantiate(language, template, [1]) if parameterized else template
     stdin = "" if parameterized else esolangs.encode_inputs(language, [1])
     native = esolangs._run_result(language, source, stdin=stdin, seed=7)
     worker = esolangs._run_result(

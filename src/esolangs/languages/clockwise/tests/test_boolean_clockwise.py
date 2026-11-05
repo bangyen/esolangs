@@ -2,15 +2,15 @@
 
 import pytest
 
+from esolangs import compat
 from esolangs.languages import generators as boolean
 from tests.support.witness_tables import parity, row_bits, witnesses
 
 
 def run_clockwise(program: str, inputs: list[str] | list[int]) -> str:
-    import esolangs
 
     # Clockwise loads the complete character stream (7 bits per char).
-    return esolangs.run("Clockwise", program, stdin="".join(map(str, inputs)))
+    return compat.run("Clockwise", program, stdin="".join(map(str, inputs)))
 
 
 @pytest.mark.parametrize("n", [1, 3, 8])
@@ -34,9 +34,8 @@ def test_constant_ring_reads_and_prints_without_a_lookup(n: int, bit: str) -> No
 def test_balanced_ring_for_at_most_one_input_has_the_square_size(
     table: str, size: int
 ) -> None:
-    import esolangs
 
-    program = str(esolangs.generate("clockwise", table, balance=True))
+    program = str(compat.generate("clockwise", table, balance=True))
     assert len(program) == size
     n = len(table).bit_length() - 1
     for row in range(1 << n):
@@ -146,12 +145,11 @@ class TestClockwise:
 @pytest.mark.parametrize("width", [1, 3, 9, 10, 11, 20, 27, 80])
 def test_width_rotates_the_lookup_without_changing_answers(width: int) -> None:
     """Both lookup orientations execute every row, including floor widths."""
-    import esolangs
 
     for n in range(1, 7):
         table = ("01101001" * 8)[: 1 << n]
         plain = boolean.clockwise(table)
-        program = esolangs.generate("Clockwise", table, width=width)
+        program = compat.generate("Clockwise", table, width=width)
         plain_width = max(map(len, plain.splitlines()))
         assert max(map(len, program.splitlines())) <= max(
             width, min(plain_width, 2 if n <= 2 else 2 * n + 5)
@@ -217,16 +215,15 @@ def test_banded_lookup_selects_a_strip_by_the_first_inputs(split: int) -> None:
 
 
 def test_balance_bands_a_random_table() -> None:
-    import esolangs
     from esolangs.generation.wrap import balance_score
 
     table = "".join(str((value * 73 + value // 3) & 1) for value in range(64))
-    balanced = esolangs.generate("Clockwise", table, balance=True)
+    balanced = compat.generate("Clockwise", table, balance=True)
     # 184 columns by default; two selected strips of sixteen entries each.
     assert (
         balance_score(balanced)[0]
         < 120
-        < balance_score(esolangs.generate("Clockwise", table))[0]
+        < balance_score(compat.generate("Clockwise", table))[0]
     )
 
 

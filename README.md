@@ -62,15 +62,15 @@ import esolangs
 
 program = esolangs.generate("brainfuck", "0110")
 stdin = esolangs.encode_inputs("brainfuck", [0, 1])
-output = esolangs.run("brainfuck", program, stdin=stdin, max_steps=10_000)
-assert esolangs.read_answer("brainfuck", output) == "1"
+result = esolangs.run("brainfuck", program, stdin=stdin, max_steps=10_000)
+assert esolangs.read_answer("brainfuck", result.output) == "1"
 ```
 
 | Call | Does |
 |---|---|
-| `generate` | Turns a truth table into a program. |
+| `generate` | Returns a program artifact or input template for a truth table. |
 | `encode_inputs` | Builds the stdin for one input row; each language reads input its own way. |
-| `run` | Runs a program. |
+| `run` | Returns output, input consumption, and completion evidence. |
 | `read_answer` | Pulls the `0`/`1` answer out of the output. |
 | `describe` | Says how a language takes input and where its answer lands. |
 | `instantiate` | Fills a template: some languages put inputs in the source, so `generate` returns a template instead. |
@@ -81,6 +81,10 @@ Bound a run with:
 - `timeout`: wall time. On Windows or in a worker thread, pass
   `isolated=True, timeout=5`.
 - `max_output`, and `max_memory` on Linux: need `isolated=True`.
+
+Generated artifacts expose `.source`; templates expose `.fill(bits)`.
+The [2.0 migration guide](docs/usage.md#compatibility) covers the changed return
+types and explicit `esolangs.compat` adapters for 1.x source/output callers.
 
 The [usage guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md)
 covers [input](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#feeding-a-program),

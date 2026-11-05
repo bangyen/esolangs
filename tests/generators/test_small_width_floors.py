@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.exceptions import TemplateError
 from tests.support.evaluation import _evaluate
 from tests.support.generator_support import assert_proved_resource_cap, probe_table
@@ -17,22 +18,22 @@ from tests.support.pick import languages
 def test_width_one_layouts_compute_the_table(language: str, n: int) -> None:
     table = "".join(str((row * 17 + row // 3).bit_count() % 2) for row in range(1 << n))
     try:
-        program = esolangs.generate(language, table, width=1)
+        program = compat.generate(language, table, width=1)
     except esolangs.GeneratorCapError:
         assert_proved_resource_cap(language)
         table = probe_table(language)
         n = len(table).bit_length() - 1
-        program = esolangs.generate(language, table, width=1)
+        program = compat.generate(language, table, width=1)
     assert _evaluate(language, program, inputs=n) == table
 
 
 @pytest.mark.parametrize("name", languages(parameterized=True))
 def test_narrow_templates_fill_like_their_text(name: str) -> None:
-    template = esolangs.generate(name, "0110", width=1)
+    template = compat.generate(name, "0110", width=1)
     for row in range(4):
         bits = [int(char) for char in format(row, "02b")]
-        code = esolangs.instantiate(name, template, bits, truth_table="0110")
-        plain = esolangs.instantiate(name, str(template), bits, truth_table="0110")
+        code = compat.instantiate(name, template, bits, truth_table="0110")
+        plain = compat.instantiate(name, str(template), bits, truth_table="0110")
         assert code == plain
         with pytest.raises(TemplateError, match="template"):
-            esolangs.instantiate(name, str(template), bits, truth_table="0001")
+            compat.instantiate(name, str(template), bits, truth_table="0001")

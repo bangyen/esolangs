@@ -4,7 +4,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import DialectSettings
+from esolangs import DialectSettings, compat
 from esolangs.debugger import make_debugger
 from tests.support.cli_support import call_both, call_main
 from tests.support.evaluation import _evaluate
@@ -17,10 +17,10 @@ class TestGraphemeReadsWhatTheDocsNowSay:
 
     def test_only_an_a_line_reads_as_one(self) -> None:
         """'0', '1', 'x' and ' ' are all non-empty and all read as 0."""
-        program = esolangs.generate("Grapheme", "01")
+        program = compat.generate("Grapheme", "01")
         answers = {}
         for line in ("A", "%", "0", "1", "x", " "):
-            output = esolangs.run("Grapheme", program, stdin=line + "\n", timeout=10)
+            output = compat.run("Grapheme", program, stdin=line + "\n", timeout=10)
             answers[line] = esolangs.read_answer("Grapheme", output)
         assert answers == {
             "A": "1",
@@ -35,7 +35,7 @@ class TestGraphemeReadsWhatTheDocsNowSay:
 def test_conversion_reaches_debugger_and_bound_language() -> None:
     settings = DialectSettings(integer_conversion="after_each_letter")
     language = esolangs.Language("Grapheme")
-    assert language.run("FAFY", settings=settings) == "10"
+    assert language.run("FAFY", settings=settings).output == "10"
     debugger = make_debugger("Grapheme", "FAFY", settings=settings)
     debugger.run(max_steps=10)
     assert debugger.vm.output == "10"
@@ -45,7 +45,7 @@ def test_conversion_reaches_debugger_and_bound_language() -> None:
 @pytest.mark.parametrize("source", ["EFAFYEG", "FZFHFAFYMHZ"])
 def test_called_code_uses_selected_conversion(source) -> None:
     assert (
-        esolangs.run(
+        compat.run(
             "Grapheme",
             source,
             settings=DialectSettings(integer_conversion="after_each_letter"),
@@ -56,7 +56,7 @@ def test_called_code_uses_selected_conversion(source) -> None:
 
 def test_numeric_and_function_conversion_remain_literal() -> None:
     assert (
-        esolangs.run(
+        compat.run(
             "Grapheme",
             "FAFJYHABHJY",
             settings=DialectSettings(integer_conversion="after_each_letter"),
@@ -68,13 +68,13 @@ def test_numeric_and_function_conversion_remain_literal() -> None:
 def test_string_skip_count_uses_conversion() -> None:
     source = "FZFEAEFZFV" + "P" * 9 + "TY"
     settings = DialectSettings(integer_conversion="after_each_letter")
-    assert esolangs.run("Grapheme", source, settings=settings) == "0"
-    assert esolangs.run("Grapheme", source) == "1"
+    assert compat.run("Grapheme", source, settings=settings) == "0"
+    assert compat.run("Grapheme", source) == "1"
 
 
 @pytest.mark.parametrize(("source", "expected"), [("FAFDY", "1"), ("EABEDY", "AB")])
 def test_unset_names_read_as_themselves(source, expected) -> None:
-    assert esolangs.run("Grapheme", source) == expected
+    assert compat.run("Grapheme", source) == expected
 
 
 @pytest.mark.medium
@@ -83,7 +83,7 @@ def test_generated_corpus() -> None:
     for n in range(1, 4):
         for table in witnesses(n):
             for balance in (False, True):
-                source = esolangs.generate(
+                source = compat.generate(
                     "Grapheme", table, settings=settings, balance=balance
                 )
                 assert _evaluate("Grapheme", source, inputs=n) == table
@@ -92,7 +92,7 @@ def test_generated_corpus() -> None:
 @pytest.mark.medium
 def test_prose_conversion_at_six_inputs() -> None:
     table = "".join(str(row.bit_count() & 1) for row in range(64))
-    source = esolangs.generate(
+    source = compat.generate(
         "Grapheme",
         table,
         settings=DialectSettings(integer_conversion="after_each_letter"),
@@ -152,7 +152,7 @@ class TestInputUsesTheDeclaredAlphabet:
     ) -> None:
         """Doing it right must stay quiet, or the check is noise."""
         path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate(REFERENCE, "0101"))
+        path.write_text(compat.generate(REFERENCE, "0101"))
         out, err = call_both(["run", REFERENCE, str(path)], capsys, stdin="01")
         assert out.strip() == "1"
         assert err == ""
@@ -160,9 +160,9 @@ class TestInputUsesTheDeclaredAlphabet:
     def test_the_alphabet_check_reads_the_declared_alphabet(self) -> None:
         """Grapheme's own bits are %/A, so 0/1 is what is wrong there."""
         assert esolangs.encode_inputs("Grapheme", [0, 1]) == "%\nA\n"
-        source = esolangs.generate("Grapheme", "0101")
-        assert esolangs.run("Grapheme", source, stdin="%\nA\n") == "1"
-        assert esolangs.run("Grapheme", source, stdin="0\n1\n") == "0"
+        source = compat.generate("Grapheme", "0101")
+        assert compat.run("Grapheme", source, stdin="%\nA\n") == "1"
+        assert compat.run("Grapheme", source, stdin="0\n1\n") == "0"
 
 
 class TestRawInputKeepsItsNativeMeaning:
@@ -170,7 +170,7 @@ class TestRawInputKeepsItsNativeMeaning:
         self, tmp_path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         path = tmp_path / "g.txt"
-        path.write_text(esolangs.generate("Grapheme", "0110"))
+        path.write_text(compat.generate("Grapheme", "0110"))
         raw = call_main(["run", "Grapheme", str(path)], capsys, stdin="1\n0\n")
         capsys.readouterr()
         stdin = esolangs.encode_inputs("Grapheme", [1, 0])
@@ -188,9 +188,9 @@ def test_grapheme_names_its_input_alphabet() -> None:
 def test_the_named_alphabet_is_the_one_that_works() -> None:
     """The point of the key: using it reproduces the truth table."""
     zero, one = esolangs.describe("Grapheme")["input_encoding"]
-    program = esolangs.generate("Grapheme", XOR)
+    program = compat.generate("Grapheme", XOR)
     got = "".join(
-        esolangs.run("Grapheme", program, stdin=f"{[zero, one][a]}\n{[zero, one][b]}\n")
+        compat.run("Grapheme", program, stdin=f"{[zero, one][a]}\n{[zero, one][b]}\n")
         for a in (0, 1)
         for b in (0, 1)
     )
@@ -198,13 +198,13 @@ def test_the_named_alphabet_is_the_one_that_works() -> None:
 
 
 def test_digit_lines_are_read_as_zero() -> None:
-    program = esolangs.generate("Grapheme", "0110")
-    assert esolangs.run("Grapheme", program, stdin="0\n1\n", timeout=10) == "0"
+    program = compat.generate("Grapheme", "0110")
+    assert compat.run("Grapheme", program, stdin="0\n1\n", timeout=10) == "0"
 
 
 def test_a_zero_line_reads_as_true_so_zero_is_percent() -> None:
     assert esolangs.encode_inputs("Grapheme", [1, 0, 1]) == "A\n%\nA\n"
     assert (
-        _evaluate("Grapheme", esolangs.generate("Grapheme", "10010110"), inputs=3)
+        _evaluate("Grapheme", compat.generate("Grapheme", "10010110"), inputs=3)
         == "10010110"
     )

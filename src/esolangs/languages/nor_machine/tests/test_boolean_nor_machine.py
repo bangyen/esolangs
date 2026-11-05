@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from tests.support.generator_support import assert_every_row
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
@@ -34,7 +35,7 @@ def test_constants_consume_the_queue_then_print_once() -> None:
 
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("NOR machine", bit * (1 << n), **options)
+                program = compat.generate("NOR machine", bit * (1 << n), **options)
                 if not options:
                     assert len(program) == n + 4 + 5 * int(bit)
                 rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
@@ -55,7 +56,7 @@ def test_constants_consume_the_queue_then_print_once() -> None:
                     assert steps == n + 4 + 5 * int(bit)
                     assert written.bits <= workspace(n, "".join(program.split()))
     assert (
-        sum(len(esolangs.generate("NOR machine", format(v, "08b"))) for v in range(256))
+        sum(len(compat.generate("NOR machine", format(v, "08b"))) for v in range(256))
         == 83041
     )
 
@@ -84,7 +85,7 @@ def _check_single_accumulator_boundaries() -> None:
                 str((row >> int(ignored)).bit_count() % 2) for row in range(1 << n)
             )
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("NOR machine", table, **options)
+                program = compat.generate("NOR machine", table, **options)
                 commands = "".join(program.split())
                 for row in (0, 1, (1 << n) - 1):
                     io = ScriptedIO(

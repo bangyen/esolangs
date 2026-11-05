@@ -2,6 +2,7 @@
 
 import pytest
 
+from esolangs import compat
 from tests.support.event_io import ReadFirstIO
 
 
@@ -28,7 +29,6 @@ def test_program_stays_within_the_command_bound(table) -> None:
 
 
 def _check_constants() -> None:
-    import esolangs
     from esolangs.languages.boolfuck.interpreter import _Machine
     from esolangs.languages.boolfuck.proof_formulas import workspace
     from scripts.benchmark import WrittenState
@@ -37,7 +37,7 @@ def _check_constants() -> None:
         for bit in "01":
             commands = (14 * n + 11 if n >= 3 else 8 * n + 10) + 2 * int(bit)
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Boolfuck", bit * (1 << n), **options)
+                program = compat.generate("Boolfuck", bit * (1 << n), **options)
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     io = ReadFirstIO(f"{row:0{n}b}" + "Q", expected=n)
                     machine = _Machine(program, io)
@@ -56,7 +56,7 @@ def _check_constants() -> None:
                     assert io.getvalue() == bit
                     assert io.input_char() == ord("Q")
     assert (
-        sum(len(esolangs.generate("Boolfuck", f"{v:08b}")) for v in range(256)) == 30652
+        sum(len(compat.generate("Boolfuck", f"{v:08b}")) for v in range(256)) == 30652
     )
 
 

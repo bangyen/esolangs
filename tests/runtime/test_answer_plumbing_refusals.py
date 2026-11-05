@@ -10,7 +10,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import _check_program, _run
+from esolangs import _check_program, _run, compat
 from tests.support.generator_support import evaluate_generated, verify_generated
 from tests.support.pick import first, languages, one
 from tests.support.reference import REFERENCE
@@ -42,7 +42,7 @@ class TestEveryAuditedCapIsCatchable:
         escaped = []
         for name in esolangs.list_languages():
             try:
-                esolangs.generate(name, table)
+                compat.generate(name, table)
             except esolangs.EsolangError:
                 pass
             except Exception as exc:
@@ -57,9 +57,9 @@ class TestErrorsSurviveAProcessBoundary:
         """It built its message in ``__init__``, so unpickling passed one arg."""
         import pickle
 
-        program = esolangs.generate(REFERENCE, "10010110")
+        program = compat.generate(REFERENCE, "10010110")
         with pytest.raises(esolangs.InputExhaustedError) as caught:
-            esolangs.run(REFERENCE, program, stdin="10", timeout=10)
+            compat.run(REFERENCE, program, stdin="10", timeout=10)
         restored = pickle.loads(pickle.dumps(caught.value))
         assert str(restored) == str(caught.value)
         assert restored.reads == caught.value.reads
@@ -115,21 +115,21 @@ class TestATableLengthNamesTheNearestLegalOnes:
     def test_the_brackets_are_named(self, table: str, expected: str) -> None:
         """And singular where it should be: "1 input", not "1 inputs"."""
         with pytest.raises(esolangs.TruthTableError, match=re.escape(expected)):
-            esolangs.generate(REFERENCE, table)
+            compat.generate(REFERENCE, table)
 
     def test_an_empty_table_gets_no_brackets(self) -> None:
         """``2 ** -1`` is 0.5, so the arithmetic does not apply to nothing."""
         with pytest.raises(esolangs.TruthTableError) as caught:
-            esolangs.generate(REFERENCE, "")
+            compat.generate(REFERENCE, "")
         assert "is between" not in str(caught.value)
 
     def test_the_brackets_are_actually_legal_lengths(self) -> None:
         """The message would be worse than none if it named an unusable size."""
         with pytest.raises(esolangs.TruthTableError) as caught:
-            esolangs.generate(REFERENCE, "0" * 6)
+            compat.generate(REFERENCE, "0" * 6)
         for length in (4, 8):
             assert f"{length} (" in str(caught.value)
-            esolangs.generate(REFERENCE, "0" * length)  # so it builds
+            compat.generate(REFERENCE, "0" * length)  # so it builds
 
 
 class TestASurroundingSpaceResolves:
@@ -148,7 +148,7 @@ class TestABadStdinIsAnArgumentFault:
     @pytest.mark.parametrize(
         "call",
         [
-            lambda: esolangs.run(REFERENCE, ",.", stdin=["0"]),
+            lambda: compat.run(REFERENCE, ",.", stdin=["0"]),
             lambda: _check_program(REFERENCE, ",.", ["0"]),
             lambda: debugger_api.make_vm(REFERENCE, ",.", stdin=["0"]),
             lambda: debugger_api.make_debugger(REFERENCE, ",.", stdin=["0"]),
@@ -162,7 +162,7 @@ class TestABadStdinIsAnArgumentFault:
     def test_a_bad_program_is_still_a_program_error(self) -> None:
         """The change must not blur the distinction the other way."""
         with pytest.raises(esolangs.ProgramError, match="program must be a string"):
-            esolangs.run(REFERENCE, 42, stdin="")
+            compat.run(REFERENCE, 42, stdin="")
 
 
 class TestBoolsAreRefusedForAStatedReason:
@@ -176,9 +176,9 @@ class TestBoolsAreRefusedForAStatedReason:
 
 class TestRawInputKeepsItsNativeMeaning:
     def test_extra_input_does_not_change_the_row(self) -> None:
-        program = esolangs.generate(REFERENCE, "00011011")
+        program = compat.generate(REFERENCE, "00011011")
         assert (
-            esolangs.run(REFERENCE, program, stdin="1\n1\n0\n0\n1\n1\n", timeout=10)
+            compat.run(REFERENCE, program, stdin="1\n1\n0\n0\n1\n1\n", timeout=10)
             == "0"
         )
 
@@ -239,7 +239,7 @@ class TestATimeoutCannotKillTheProcess:
     def test_a_bound_too_short_to_service_is_refused(self) -> None:
         """The floor, which is what makes restoring the disposition safe."""
         with pytest.raises(esolangs.ArgumentError, match=r"at least 0\.001"):
-            esolangs.run(REFERENCE, "+.", stdin="", timeout=0.0001)
+            compat.run(REFERENCE, "+.", stdin="", timeout=0.0001)
 
     @pytest.mark.parametrize(
         "handler",
@@ -251,9 +251,9 @@ class TestATimeoutCannotKillTheProcess:
     def test_the_caller_gets_their_disposition_back(self, handler: object) -> None:
         previous = signal.signal(signal.SIGALRM, handler)
         try:
-            program = esolangs.generate(REFERENCE, "0110")
+            program = compat.generate(REFERENCE, "0110")
             stdin = esolangs.encode_inputs(REFERENCE, [0, 1], truth_table="0110")
-            esolangs.run(REFERENCE, program, stdin=stdin, timeout=5)
+            compat.run(REFERENCE, program, stdin=stdin, timeout=5)
             assert signal.getsignal(signal.SIGALRM) is handler
         finally:
             signal.signal(signal.SIGALRM, previous)
@@ -262,11 +262,11 @@ class TestATimeoutCannotKillTheProcess:
         """A timer left armed is the next run's stray alarm."""
         import signal
 
-        program = esolangs.generate(REFERENCE, "0110")
+        program = compat.generate(REFERENCE, "0110")
         stdin = esolangs.encode_inputs(REFERENCE, [0, 1], truth_table="0110")
         for bound in (10, 0.001):
             with contextlib.suppress(esolangs.ExecutionTimeoutError):
-                esolangs.run(REFERENCE, program, stdin=stdin, timeout=bound)
+                compat.run(REFERENCE, program, stdin=stdin, timeout=bound)
             assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
 
     @pytest.mark.slow
@@ -274,13 +274,13 @@ class TestATimeoutCannotKillTheProcess:
         """The stress the floor was chosen against, in process."""
         import signal
 
-        program = esolangs.generate(REFERENCE, "0110")
+        program = compat.generate(REFERENCE, "0110")
         stdin = esolangs.encode_inputs(REFERENCE, [0, 1], truth_table="0110")
         previous = signal.signal(signal.SIGALRM, signal.SIG_DFL)
         try:
             for _ in range(400):
                 with contextlib.suppress(esolangs.ExecutionTimeoutError):
-                    esolangs.run(REFERENCE, program, stdin=stdin, timeout=0.001)
+                    compat.run(REFERENCE, program, stdin=stdin, timeout=0.001)
                 assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
                 assert signal.getsignal(signal.SIGALRM) is signal.SIG_DFL
         finally:

@@ -5,6 +5,7 @@ import random
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.languages import generators as boolean
 from scripts import new_language
 from tests.generators.boolean_runners import _runner
@@ -92,7 +93,7 @@ def test_a_constant_subtree_still_reads_its_inputs() -> None:
     program = boolean.sstack("0" * 8 + "01" * 4)
     assert program.count(";d;") == 5  # 3 folded, 2 at nodes whose halves agree
     stdin = esolangs.encode_inputs("SStack", [0, 1, 1, 0]) + "B"
-    assert esolangs.run("SStack", program + ";e;:e:", stdin=stdin) == "0B"
+    assert compat.run("SStack", program + ";e;:e:", stdin=stdin) == "0B"
 
 
 def test_popping_before_descent_admits_shared_parity_without_nested_test_bytes() -> (
@@ -118,7 +119,7 @@ def test_popping_before_descent_admits_shared_parity_without_nested_test_bytes()
         assert commands <= 7 * n + 3
         assert machine.snapshot()[1][0] is None
         assert (
-            esolangs.run("SStack", program + ";e;:e:", stdin=f"{row:06b}" + "B")
+            compat.run("SStack", program + ";e;:e:", stdin=f"{row:06b}" + "B")
             == expected + "B"
         )
 
@@ -168,7 +169,7 @@ def test_multiple_definitions_preserve_inputs_commands_and_workspace() -> None:
         assert commands <= limit
         assert written.bits <= bound
         assert (
-            esolangs.run("SStack", program + ";e;:e:", stdin=f"{row:08b}" + "B")
+            compat.run("SStack", program + ";e;:e:", stdin=f"{row:08b}" + "B")
             == expected + "B"
         )
 
@@ -300,7 +301,7 @@ def test_binary_bank_shares_more_than_sixty_three_residuals_within_ledger() -> N
                 assert machine.state[1][0] is None
                 assert machine.state[1][4] is None
     assert (
-        esolangs.run("SStack", program + ";e;:e:", stdin="1" * 16 + "B")
+        compat.run("SStack", program + ";e;:e:", stdin="1" * 16 + "B")
         == table[-1] + "B"
     )
 
@@ -334,7 +335,7 @@ def test_binary_codes_preserve_completed_outputs_and_fixed_digits(words) -> None
         assert commands <= limit
         assert machine.snapshot()[1][4] is None
         assert (
-            esolangs.run("SStack", program + ";e;:e:", stdin=f"{row:0{n}b}" + "B")
+            compat.run("SStack", program + ";e;:e:", stdin=f"{row:0{n}b}" + "B")
             == expected + "B"
         )
 
@@ -418,13 +419,12 @@ def test_check_runs_the_formula_case_bounds_measures() -> None:
 
 
 def _check_constants() -> None:
-    import esolangs
     from esolangs.languages.sstack.interpreter import run
 
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("SStack", bit * (1 << n), **options)
+                program = compat.generate("SStack", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row + "7", expected=n)
                     assert_constant_output(run, program, io, bit, n)

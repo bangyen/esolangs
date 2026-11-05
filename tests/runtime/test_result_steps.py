@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.results import ExecutionResult
 from esolangs.runtime._result_wire import decode_result, encode_result
 from esolangs.vm import complete_vm, make_vm
@@ -44,7 +45,7 @@ def test_final_dump_is_outside_the_command_budget(isolated):
         dumps_on_the_post_halt_step=True,
         steppable_to_answer=True,
     )[0]
-    source = esolangs.instantiate(name, esolangs.generate(name, "01"), [1])
+    source = compat.instantiate(name, compat.generate(name, "01"), [1])
     vm = make_vm(name, source)
     steps = 0
     while not vm.halted:

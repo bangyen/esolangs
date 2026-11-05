@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
@@ -30,7 +31,7 @@ def test_constant_output_consumes_every_input(bit: str) -> None:
                 super()._write(value)
 
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = esolangs.generate("HQ9+ with headers", bit * (1 << n), **options)
+            program = compat.generate("HQ9+ with headers", bit * (1 << n), **options)
             for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                 stdin = esolangs.encode_inputs(
                     "HQ9+ with headers", list(map(int, format(row, f"0{n}b")))
@@ -50,7 +51,7 @@ def test_constant_output_consumes_every_input(bit: str) -> None:
                 assert len(program) == 180
     assert (
         sum(
-            len(esolangs.generate("HQ9+ with headers", format(v, "08b")))
+            len(compat.generate("HQ9+ with headers", format(v, "08b")))
             for v in range(256)
         )
         == 84802

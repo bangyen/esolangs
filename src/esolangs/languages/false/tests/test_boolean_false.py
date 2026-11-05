@@ -2,7 +2,7 @@
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.languages.false.generator import _shared, false
 from tests.generators.plain_oracles import separated_tree_text
 from tests.generators.reader_support import assert_emissions_grow_by_a_line
@@ -69,7 +69,7 @@ def test_false_runs_out_of_variables_and_writes_the_rest_inline(monkeypatch) -> 
     )
     assert false(table) == program
     for row in (0, 1, 127, 255, 511):
-        output = esolangs.run("FALSE", program, stdin=f"{row:09b}", max_steps=10000)
+        output = compat.run("FALSE", program, stdin=f"{row:09b}", max_steps=10000)
         assert output == table[row]
 
 
@@ -77,12 +77,12 @@ def test_false_runs_out_of_variables_and_writes_the_rest_inline(monkeypatch) -> 
 def test_false_single_character_floor_executes_every_small_table() -> None:
     for n in range(1, 4):
         for table in witnesses(n):
-            program = esolangs.generate("FALSE", table, width=1)
+            program = compat.generate("FALSE", table, width=1)
             assert max(map(len, program.splitlines())) == 1
             for row, expected in enumerate(table):
                 stdin = format(row, f"0{n}b")
                 assert (
-                    esolangs.run("FALSE", program, stdin=stdin, max_steps=100_000)
+                    compat.run("FALSE", program, stdin=stdin, max_steps=100_000)
                     == expected
                 )
 
@@ -116,13 +116,12 @@ def false_plain(truth_table: str, n: int) -> str:
 
 
 def _check_constants() -> None:
-    import esolangs
     from esolangs.languages.false.interpreter import run
 
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("FALSE", bit * (1 << n), **options)
+                program = compat.generate("FALSE", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row + "7", expected=n)
                     assert_constant_output(run, program, io, bit, n)

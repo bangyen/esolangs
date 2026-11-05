@@ -2,7 +2,7 @@
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
@@ -13,11 +13,11 @@ def test_every_row_prints_its_answer(table: str) -> None:
     if table == "00":
         _check_constants()
     n = len(table).bit_length() - 1
-    program = esolangs.generate("Chicken", table)
+    program = compat.generate("Chicken", table)
     # Missing characters are false; arithmetic coercion would produce NaN.
     for prefix in ("", "0", "1"):
         row = int(prefix.ljust(n, "0"), 2)
-        assert esolangs.run("Chicken", program, stdin=prefix, timeout=5) == table[row]
+        assert compat.run("Chicken", program, stdin=prefix, timeout=5) == table[row]
     assert_every_row("Chicken", table, program=program)
 
 
@@ -37,7 +37,7 @@ def _check_constants() -> None:
 
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Chicken", bit * (1 << n), **options)
+                program = compat.generate("Chicken", bit * (1 << n), **options)
                 assert program == ("chicken chicken\n\nchicken" if bit == "1" else "\n")
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     io = ReadFirstIO(f"{row:0{n}b}")
@@ -54,5 +54,5 @@ def _check_constants() -> None:
                     assert written.bits == 8 * n + 4 + 4 * int(bit)
                     assert io.past_end == 0
     assert (
-        sum(len(esolangs.generate("Chicken", f"{v:08b}")) for v in range(256)) == 305139
+        sum(len(compat.generate("Chicken", f"{v:08b}")) for v in range(256)) == 305139
     )

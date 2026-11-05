@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.cli import main
 from esolangs.cli.io import (
     _bounded_read,
@@ -107,7 +108,7 @@ class TestNonTextInputIsRefusedNotCrashed:
         path = tmp_path / "binary.txt"
         path.write_bytes(bytes(range(256)))
         with pytest.raises(esolangs.ProgramError, match="not text"):
-            esolangs.run(REFERENCE, path)
+            compat.run(REFERENCE, path)
 
 
 # 8.5s over 9 tests: drives the CLI as a subprocess.
@@ -135,7 +136,7 @@ class TestReadingTheProgramFileIsBounded:
     def test_an_ordinary_program_still_reads(self, tmp_path: Path) -> None:
         """The guard is worth nothing if it costs the normal path."""
         path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate(REFERENCE, "0110"))
+        path.write_text(compat.generate(REFERENCE, "0110"))
         result = run_cli("run", REFERENCE, str(path), stdin="10")
         assert result.returncode == 0
         assert result.stdout.strip() == "1"
@@ -331,7 +332,7 @@ class TestProgramFilesLoad:
     ) -> None:
         """``esolangs generate > f`` wrote a newline three interpreters reject."""
         path = tmp_path / "g.txt"
-        path.write_text(esolangs.generate(spelled, "0110") + "\n")
+        path.write_text(compat.generate(spelled, "0110") + "\n")
         stdin = esolangs.encode_inputs(spelled, [0, 1])
         out = call_main(["run", spelled, str(path)], capsys, stdin=stdin)
         assert esolangs.read_answer(spelled, out) == "1"

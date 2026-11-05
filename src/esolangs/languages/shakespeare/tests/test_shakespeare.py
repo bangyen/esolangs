@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.exceptions import ExecutionTimeoutError, HaltError
 from esolangs.languages.shakespeare._syntax import parse
 from esolangs.languages.shakespeare.interpreter import _Machine, run
@@ -24,13 +24,13 @@ def _play(body: str, stage: str = ON_STAGE) -> str:
 
 
 def _run(body: str, stdin: str = "", stage: str = ON_STAGE) -> str:
-    return esolangs.run("Shakespeare", _play(body, stage), stdin=stdin, timeout=10)
+    return compat.run("Shakespeare", _play(body, stage), stdin=stdin, timeout=10)
 
 
 def test_hello_world_prints_hello_world() -> None:
     """The page's Hello World; its output is unstated, so this is the intent."""
     source = (FIXTURES / "hello_world.spl").read_text()
-    assert esolangs.run("Shakespeare", source, timeout=10) == "Hello, World!\n"
+    assert compat.run("Shakespeare", source, timeout=10) == "Hello, World!\n"
 
 
 def test_the_page_fragment_prints_minus_two_then_hamlet_plus_two() -> None:
@@ -65,9 +65,9 @@ def test_the_page_fragment_prints_minus_two_then_hamlet_plus_two() -> None:
 
 def test_truth_machine_halts_on_zero_and_repeats_one() -> None:
     source = (FIXTURES / "truth_machine.spl").read_text()
-    assert esolangs.run("Shakespeare", source, stdin="0\n", timeout=10) == "0"
+    assert compat.run("Shakespeare", source, stdin="0\n", timeout=10) == "0"
     with pytest.raises(ExecutionTimeoutError) as info:
-        esolangs.run("Shakespeare", source, stdin="1\n", max_steps=100)
+        compat.run("Shakespeare", source, stdin="1\n", max_steps=100)
     assert info.value.partial_output.startswith("1111")
 
 
@@ -76,7 +76,7 @@ def test_the_cats_repaired_spelling_runs_and_the_pages_typo_does_not() -> None:
     typo = (FIXTURES / "cat_wiki.spl").read_text()
     assert cat.replace("Open", "Ooen") == typo
     with pytest.raises(ValueError, match="ooen"):
-        esolangs.run("Shakespeare", typo, stdin="x")
+        compat.run("Shakespeare", typo, stdin="x")
 
 
 @pytest.mark.parametrize(
@@ -141,7 +141,7 @@ def test_a_goto_loops_within_its_act() -> None:
         "Open thy heart! You are the difference between yourself and a rose. "
         "Am I worse than you? If so, let us proceed to scene II.\n"
     )
-    assert esolangs.run("Shakespeare", source, timeout=10) == "21"
+    assert compat.run("Shakespeare", source, timeout=10) == "21"
 
 
 def test_stacks_remember_onto_the_listener_and_recall_into_it() -> None:

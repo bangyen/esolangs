@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs import compat
 from esolangs.debugger import STOP_REASONS
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
@@ -44,7 +45,7 @@ class TestTheNamespaceIsTheSurface:
     def test_a_bad_table_names_the_bad_character(self) -> None:
         """``01a`` was answered with a complaint about its *length*."""
         with pytest.raises(esolangs.TruthTableError, match="only '0' and '1'"):
-            esolangs.generate(REFERENCE, "01a")
+            compat.generate(REFERENCE, "01a")
 
 
 class TestTheChecksAreSymmetric:
@@ -53,7 +54,7 @@ class TestTheChecksAreSymmetric:
     @pytest.mark.parametrize("timeout", ["5", float("inf"), float("nan"), True, 0])
     def test_both_runs_refuse_the_same_timeout(self, timeout: object) -> None:
         with pytest.raises(esolangs.ArgumentError, match="timeout"):
-            esolangs.run(REFERENCE, "+.", timeout=timeout)
+            compat.run(REFERENCE, "+.", timeout=timeout)
         with pytest.raises(esolangs.ArgumentError, match="timeout"):
             _debugger().run(timeout=timeout)
 
@@ -74,7 +75,7 @@ class TestTheChecksAreSymmetric:
         self, program: object, stdin: object, expected: type[Exception]
     ) -> None:
         with pytest.raises(expected):
-            esolangs.run(REFERENCE, program, stdin=stdin)
+            compat.run(REFERENCE, program, stdin=stdin)
         with pytest.raises(expected):
             debugger_api.make_debugger(REFERENCE, program, stdin=stdin)
 

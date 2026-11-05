@@ -5,6 +5,7 @@ import random
 import pytest
 
 import esolangs
+from esolangs import compat
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -23,10 +24,10 @@ def test_every_row_prints_its_answer(table: str) -> None:
 def test_a_table_past_the_low_input_cap_labels_its_blocks() -> None:
     """n=16 splits into two labelled blocks; rows on both sides answer."""
     table = format(random.Random(1).getrandbits(1 << 16), "065536b")
-    program = esolangs.generate("What!?", table)
+    program = compat.generate("What!?", table)
     for row in (0, 32767, 32768, 65535):
         stdin = esolangs.encode_inputs("What!?", [int(b) for b in format(row, "016b")])
-        got = esolangs.run("What!?", program, stdin=stdin, timeout=10)
+        got = compat.run("What!?", program, stdin=stdin, timeout=10)
         assert esolangs.read_answer("What!?", got) == table[row], row
 
 
@@ -37,7 +38,7 @@ def _check_constants() -> None:
     for n in range(1, 17):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("What!?", bit * (1 << n), **options)
+                program = compat.generate("What!?", bit * (1 << n), **options)
                 if not options:
                     assert len(program.replace("\n", "")) <= 3 * n + 2
                 peak = 0
@@ -74,7 +75,7 @@ def _check_copyless() -> None:
     total = 0
     for value in range(256):
         table = f"{value:08b}"
-        program = esolangs.generate("What!?", table)
+        program = compat.generate("What!?", table)
         total += len(program)
         for row in range(8):
             stdin = esolangs.encode_inputs("What!?", list(map(int, f"{row:03b}")))

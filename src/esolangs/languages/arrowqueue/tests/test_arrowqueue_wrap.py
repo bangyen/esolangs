@@ -2,7 +2,7 @@
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.languages.arrowqueue.generator import arrowqueue
 from tests.generators.fills import fill
 from tests.support.divergence import diverges
@@ -18,7 +18,7 @@ _instantiate_arrowqueue = fill("ArrowQueue")
     ["0110", "00010111", "01101001" * 4],
 )
 def test_arrowqueue_width_preserves_every_row(table: str, width: int | None) -> None:
-    template = esolangs.generate("ArrowQueue", table, width=width)
+    template = compat.generate("ArrowQueue", table, width=width)
     plain = arrowqueue(table)
     if width is None:
         assert template == plain
@@ -34,15 +34,15 @@ def test_arrowqueue_width_preserves_every_row(table: str, width: int | None) -> 
 @pytest.mark.parametrize("tagged", [False, True])
 def test_arrowqueue_four_columns_preserve_public_provenance(*, tagged: bool) -> None:
     table = "0110"
-    template = esolangs.generate("ArrowQueue", table, width=1)
+    template = compat.generate("ArrowQueue", table, width=1)
     source = template if tagged else str(template)
     for row, expected in enumerate(table):
         bits = [row >> 1, row & 1]
-        program = esolangs.instantiate("ArrowQueue", source, bits, truth_table=table)
+        program = compat.instantiate("ArrowQueue", source, bits, truth_table=table)
         assert max(map(len, program.splitlines())) == 4
         assert diverges("ArrowQueue", program, "") is (expected == "1")
     with pytest.raises(ValueError, match="does not compute that table"):
-        esolangs.instantiate("ArrowQueue", source, [0, 1], truth_table="1001")
+        compat.instantiate("ArrowQueue", source, [0, 1], truth_table="1001")
 
 
 def test_width_six_builds_the_wide_cascade() -> None:
@@ -58,8 +58,8 @@ def test_width_six_builds_the_wide_cascade() -> None:
 @pytest.mark.parametrize("width", [4, 5, 6])
 def test_a_narrow_template_fills_against_its_table(width: int) -> None:
     """Width 5 shifts the setter column and was refused as a foreign template."""
-    template = esolangs.generate("ArrowQueue", "0110", width=width)
-    program = esolangs.instantiate("ArrowQueue", template, [0, 1], truth_table="0110")
+    template = compat.generate("ArrowQueue", "0110", width=width)
+    program = compat.instantiate("ArrowQueue", template, [0, 1], truth_table="0110")
     assert diverges("ArrowQueue", program, "") is True
 
 
@@ -83,7 +83,7 @@ def test_balanced_fold_computes_every_row_and_is_squarer(table: str) -> None:
     from esolangs.generation.wrap import balance_score
     from tests.support.evaluation import _evaluate
 
-    program = str(esolangs.generate("ArrowQueue", table, balance=True))
+    program = str(compat.generate("ArrowQueue", table, balance=True))
     inputs = len(table).bit_length() - 1
     assert _evaluate("ArrowQueue", program, inputs=inputs) == table
     flat = min((arrowqueue(table, w) for w in (None, 1, 5, 6)), key=balance_score)
@@ -106,7 +106,7 @@ def test_balanced_three_input_sizes_are_pinned(
     """Balanced 3-input programs keep their measured shape and still compute."""
     from tests.support.evaluation import _evaluate
 
-    program = str(esolangs.generate("ArrowQueue", table, balance=True))
+    program = str(compat.generate("ArrowQueue", table, balance=True))
     lines = program.split("\n")
     assert (len(lines), max(map(len, lines)), len(program)) == (rows, cols, chars)
     assert _evaluate("ArrowQueue", program, inputs=3) == table

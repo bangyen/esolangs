@@ -8,6 +8,7 @@ from math import gcd
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
@@ -56,7 +57,7 @@ def test_mod255_projected_chain_runs_nonadjacent_input_coordinates(
     settings = esolangs.DialectSettings(cell_modulus=255, io_modulus=io_modulus)
     for row in (0, 1, 85, 128, 170, 255):
         bits = [int(bit) for bit in f"{row:08b}"]
-        output = esolangs.run(
+        output = compat.run(
             "SLOW ACV MAMMALIAN",
             program,
             stdin=esolangs.encode_inputs("SLOW ACV MAMMALIAN", bits),
@@ -84,13 +85,13 @@ def test_mod255_ignored_inputs_keep_reads_and_the_smaller_candidate(
     )
     settings = esolangs.DialectSettings(cell_modulus=255, io_modulus=io_modulus)
     legacy = _unprojected_255(table, inputs, io_modulus)
-    program = esolangs.generate("SLOW ACV MAMMALIAN", table, settings=settings)
+    program = compat.generate("SLOW ACV MAMMALIAN", table, settings=settings)
     assert len(program) <= len(legacy)
     if inputs >= 3 or io_modulus == 256:
         assert program.split().count("ACCEPT") == inputs
     if inputs == 8 and io_modulus == 255:
         assert len(program) < len(legacy)  # positive control for projection
-    balanced = esolangs.generate(
+    balanced = compat.generate(
         "SLOW ACV MAMMALIAN", table, settings=settings, balance=True
     )
     assert balance_score(balanced) <= balance_score(
@@ -956,7 +957,7 @@ def test_constant_print_array_is_independent_of_every_input(cell, io, bit) -> No
 
     table = bit * 256
     settings = esolangs.DialectSettings(cell_modulus=cell, io_modulus=io)
-    program = esolangs.generate("SLOW ACV MAMMALIAN", table, settings=settings)
+    program = compat.generate("SLOW ACV MAMMALIAN", table, settings=settings)
     assert program.split().count("ACCEPT") == 8
     assert "LEAPFROG" not in program
     assert (
@@ -973,7 +974,7 @@ def test_constant_print_array_still_consumes_the_whole_stream(cell, io, bit) -> 
     settings = esolangs.DialectSettings(cell_modulus=cell, io_modulus=io)
     for n in range(1, 13):
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = esolangs.generate(
+            program = compat.generate(
                 "SLOW ACV MAMMALIAN", bit * (1 << n), settings=settings, **options
             )
             if not options:

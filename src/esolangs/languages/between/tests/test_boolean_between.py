@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -16,21 +17,21 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 def test_ignored_inputs_are_read_but_never_tested() -> None:
     """An ignored input reads into the scratch variable; no line tests it."""
-    program = esolangs.generate("Between", "00110011")  # depends on input 1 only
+    program = compat.generate("Between", "00110011")  # depends on input 1 only
     assert program.count("]i.") == 3
     assert program.count("f([") == 1
 
 
 def test_constant_table_reads_every_input() -> None:
     _check_constants()
-    program = esolangs.generate("Between", "1111")
+    program = compat.generate("Between", "1111")
     assert program.count("]i.") == 2
     assert "f(" not in program
 
 
 def test_equal_subtables_are_one_block() -> None:
     """A repeated subtable is placed once and branched to."""
-    once = esolangs.generate("Between", "01100110")
+    once = compat.generate("Between", "01100110")
     assert once.count("p.") == 2
 
 
@@ -41,7 +42,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Between", bit * (1 << n), **options)
+                program = compat.generate("Between", bit * (1 << n), **options)
                 if not options:
                     assert len(program) == 6 * n + 11
                 peak = 0

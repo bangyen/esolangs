@@ -4,6 +4,7 @@ import random
 
 import pytest
 
+from esolangs import compat
 from esolangs.languages.boolfuck.generator import (
     affine_stream,
     boolfuck,
@@ -205,14 +206,12 @@ def test_public_program_stays_within_the_command_bound_past_gate_costs(
 
 
 def test_six_input_table_keeps_its_shared_gate_size() -> None:
-    import esolangs
 
     table = "0001111111110001101100011011110111110000110100010001111110110001"
-    assert len(esolangs.generate("Boolfuck", table)) == 633
+    assert len(compat.generate("Boolfuck", table)) == 633
 
 
 def test_four_input_table_keeps_its_gate_size() -> None:
-    import esolangs
 
     # The gates race starts at n = 4, where the workspace first holds;
     # this table's winner is the gates program, not the shared tree.
@@ -220,5 +219,5 @@ def test_four_input_table_keeps_its_gate_size() -> None:
 
     table = "0001110100101101"
     program = boolfuck(table)
-    assert len(esolangs.generate("Boolfuck", table)) == 191
+    assert len(compat.generate("Boolfuck", table)) == 191
     assert _evaluate("Boolfuck", program, inputs=4) == table

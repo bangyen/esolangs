@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs import compat
 from esolangs.vm import VM
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
@@ -16,7 +17,7 @@ class TestProtocol:
         "language", languages(source_kind="raster", boolean_generator=True)
     )
     def test_raster_languages_step_their_pixels(self, language: str) -> None:
-        source = esolangs.generate(language, "01")
+        source = compat.generate(language, "01")
         pixels = esolangs.Raster.from_png(source.to_png())
         vm = debugger_api.make_vm(language, pixels, stdin="1\n")
         assert isinstance(vm, VM)

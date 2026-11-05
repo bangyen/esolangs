@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.generation import wrap as _wrap
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score, wrap_chars, wrap_program
@@ -84,7 +84,7 @@ def _width_layouts(language, table, default, widths):
     yield default
     for width in widths:
         if native:
-            yield esolangs.generate(language, table, width=width)
+            yield compat.generate(language, table, width=width)
         elif lang.parameterized:
             yield render_template(lang.id, default, inputs, width)[0]
         else:
@@ -136,8 +136,8 @@ def _balance_cases():
 
 @pytest.mark.parametrize(("language", "table"), _balance_cases())
 def test_balance_reaches_the_supported_minimum(language, table) -> None:
-    default = esolangs.generate(language, table)
-    balanced = esolangs.generate(language, table, balance=True)
+    default = compat.generate(language, table)
+    balanced = compat.generate(language, table, balance=True)
     widest = max(map(len, default.split("\n")))
     # Grid cases subsume the former aligned sweep, including every width to 128.
     limit = max(65, widest + 1) if table in _REGIME_TABLES else 0

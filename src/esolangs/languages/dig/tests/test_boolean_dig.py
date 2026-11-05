@@ -7,6 +7,7 @@ from collections.abc import Iterable
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.languages import generators as boolean
 from esolangs.languages.dig.generator import _DIG_BRANCH, _DIG_STRIDE
 from esolangs.languages.dig.interpreter import _Machine
@@ -199,7 +200,7 @@ class TestDig:
         table = "1" * 128  # n == 7, constant
         program = boolean.dig(table)
         assert program.count("$") > 1  # more than one window
-        assert esolangs.run("Dig", program, stdin="\n".join(["1"] * 7)).strip() == "1"
+        assert compat.run("Dig", program, stdin="\n".join(["1"] * 7)).strip() == "1"
 
     def test_a_width_turns_the_tree_round_and_it_still_computes(self) -> None:
         """A narrower grid is the same walk, folded back over its own columns."""
@@ -233,7 +234,7 @@ class TestDig:
         from esolangs.languages.dig.interpreter import run
 
         # Every width up to 7 builds this same program.
-        program = esolangs.generate("Dig", "0110", width=1)
+        program = compat.generate("Dig", "0110", width=1)
         assert max(map(len, program.splitlines())) == 4
         for row, expected in enumerate("0110"):
             io = ScriptedIO("\n".join(f"{row:02b}") + "\n")
@@ -384,7 +385,7 @@ def test_a_width_tree_reads_an_ignored_input_in_the_next_block(width: int) -> No
 @pytest.mark.parametrize("table", ["00", "0000"])
 def test_narrow_balance_regime_edge_executes(table) -> None:
     """The smallest tables reaching an otherwise-untaken balance arm."""
-    balanced = esolangs.generate("Dig", table, balance=True)
+    balanced = compat.generate("Dig", table, balance=True)
     assert _evaluate("Dig", balanced, inputs=len(table).bit_length() - 1) == table
 
 
@@ -586,7 +587,7 @@ def test_balance_considers_the_discard_wrapper() -> None:
     table = "0000011100000111"
     wrapped = _dig_discarded(table, 4, essential_inputs(table, 4))
     assert wrapped is not None
-    program = esolangs.generate("Dig", table, balance=True)
+    program = compat.generate("Dig", table, balance=True)
     assert balance_score(program) <= balance_score(wrapped)
     for candidate in (wrapped, program):
         for row, expected in enumerate(table):
@@ -785,13 +786,12 @@ def test_shared_leaves_around_constant_spans_keep_the_execution_bound() -> None:
 
 
 def _check_constants() -> None:
-    import esolangs
     from esolangs.languages.dig.interpreter import run
 
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Dig", bit * (1 << n), **options)
+                program = compat.generate("Dig", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(
                         esolangs.encode_inputs("Dig", [int(b) for b in row]) + "7\n",

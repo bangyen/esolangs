@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.generation.helpers import grid_area
 from esolangs.registry import LANGUAGES
 from scripts.docs import ablation_replay, ablations
@@ -146,8 +147,8 @@ def _controls(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="source anchor"):
         ablations.parse_audits(REFERENCE, "ablations", retired)
     revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
-    source = esolangs.generate(REFERENCE, "0110")
-    balanced = esolangs.generate(REFERENCE, "0110", balance=True)
+    source = compat.generate(REFERENCE, "0110")
+    balanced = compat.generate(REFERENCE, "0110", balance=True)
     generate = LANGUAGES[REFERENCE].backend.generate
     raw = {
         "kind": "replay",
@@ -195,14 +196,22 @@ def _controls(tmp_path, monkeypatch):
             ),
             tmp_path,
         )
-    monkeypatch.setattr(esolangs, "generate", lambda *_args, **_kwargs: ".")
+    monkeypatch.setattr(
+        esolangs,
+        "generate",
+        lambda *_args, **_kwargs: esolangs.ProgramArtifact(".", REFERENCE),
+    )
     with pytest.raises(ablation_replay.AuditError, match=r"answer|execution|input"):
         ablation_replay.verify_replay(REFERENCE, record, tmp_path)
     skipped = copy.deepcopy(initial)
     skipped["witness"] = {"arity": 1, "rule": "zero"}
     skipped["source"] = {"unit": "chars", "value": 49}
     del skipped["balanced"]
-    monkeypatch.setattr(esolangs, "generate", lambda *_args, **_kwargs: "+" * 48 + ".")
+    monkeypatch.setattr(
+        esolangs,
+        "generate",
+        lambda *_args, **_kwargs: esolangs.ProgramArtifact("+" * 48 + ".", REFERENCE),
+    )
     with pytest.raises(ablation_replay.AuditError, match="input-consumption"):
         ablation_replay.verify_replay(
             REFERENCE, ablation_replay.parse_replay(REFERENCE, skipped), tmp_path
@@ -212,7 +221,7 @@ def _controls(tmp_path, monkeypatch):
 def _pilot(language, tmp_path):
     lang = LANGUAGES[language]
     generate = lang.backend.generate
-    candidate = esolangs.generate(language, "01")
+    candidate = compat.generate(language, "01")
     unit = (
         "codels"
         if lang.runtime.source_kind == "raster"

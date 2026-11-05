@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.exceptions import ArgumentError
 from esolangs.generation.helpers import mark
 from esolangs.generation.wrap import (
@@ -66,8 +67,8 @@ CELLED = list(
 @pytest.mark.parametrize("name", BALANCED)
 @pytest.mark.parametrize("table", ["0110", "10010110"])
 def test_balance_executes(name: str, table: str) -> None:
-    default = esolangs.generate(name, table)
-    program = esolangs.generate(name, table, balance=True)
+    default = compat.generate(name, table)
+    program = compat.generate(name, table, balance=True)
     assert isinstance(default, str)
     assert isinstance(program, str)
     assert balance_score(program) <= balance_score(default)
@@ -75,12 +76,12 @@ def test_balance_executes(name: str, table: str) -> None:
     for row, expected in enumerate(table):
         bits = row_bits(row, inputs)
         if esolangs.describe(name)["parameterized"]:
-            source, stdin = esolangs.instantiate(name, program, bits), ""
+            source, stdin = compat.instantiate(name, program, bits), ""
         else:
             source, stdin = program, esolangs.encode_inputs(name, bits)
         assert (
             esolangs.read_answer(
-                name, esolangs.run(name, source, stdin=stdin, timeout=10)
+                name, compat.run(name, source, stdin=stdin, timeout=10)
             )
             == expected
         )
@@ -88,7 +89,7 @@ def test_balance_executes(name: str, table: str) -> None:
 
 def test_balance_rejects_width() -> None:
     with pytest.raises(ArgumentError, match="mutually exclusive"):
-        esolangs.generate("Brainfuck", "0110", width=80, balance=True)
+        compat.generate("Brainfuck", "0110", width=80, balance=True)
 
 
 def test_character_balance() -> None:
@@ -103,7 +104,7 @@ def test_character_balance() -> None:
 
 def test_cli_balance(capsys: pytest.CaptureFixture[str]) -> None:
     output = call_main(["generate", "--balance", "Brainfuck", "0110"], capsys)
-    assert output.rstrip("\n") == esolangs.generate("Brainfuck", "0110", balance=True)
+    assert output.rstrip("\n") == compat.generate("Brainfuck", "0110", balance=True)
     with pytest.raises(SystemExit):
         call_main(["generate", "--balance", "--width", "Brainfuck", "0110"], capsys)
 

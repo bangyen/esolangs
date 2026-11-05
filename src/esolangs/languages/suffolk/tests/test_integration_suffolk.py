@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs import compat
 from esolangs.debugger import complete_vm
 from esolangs.vm import (
     make_vm,
@@ -22,7 +23,7 @@ class TestSelfHaltsIsAWarningNotAGuarantee:
     """``False`` promised the step loop never returns.  It can."""
 
     def test_a_bare_step_loop_halts_and_the_wording_says_so(self) -> None:
-        program = esolangs.generate("Suffolk", "0110")
+        program = compat.generate("Suffolk", "0110")
         vm = debugger_api.make_vm(
             "Suffolk", program, stdin=esolangs.encode_inputs("Suffolk", [1, 0])
         )
@@ -58,7 +59,7 @@ def test_a_non_self_halting_machine_can_already_be_finished() -> None:
     vm = make_vm("Suffolk", ",", stdin="1")
     assert not vm.self_halts
     assert run_until_halt(vm, 2)
-    assert complete_vm(vm, max_steps=0) == esolangs.run("Suffolk", ",", stdin="1")
+    assert complete_vm(vm, max_steps=0) == compat.run("Suffolk", ",", stdin="1")
 
 
 def test_the_value_growth_detector_proves_a_climb_and_declines_a_repeat() -> None:
@@ -81,9 +82,9 @@ def test_the_value_growth_detector_proves_a_climb_and_declines_a_repeat() -> Non
 def test_documented_eof_halts_with_the_answer() -> None:
     """Suffolk's programs end *by* running out of input."""
 
-    program = esolangs.generate("Suffolk", "0110")
+    program = compat.generate("Suffolk", "0110")
     stdin = esolangs.encode_inputs("Suffolk", [1, 0], truth_table="0110")
-    assert esolangs.run("Suffolk", program, stdin=stdin, timeout=20) == "1"
+    assert compat.run("Suffolk", program, stdin=stdin, timeout=20) == "1"
 
 
 def test_suffolk_no_longer_disagrees_with_itself() -> None:
@@ -91,7 +92,7 @@ def test_suffolk_no_longer_disagrees_with_itself() -> None:
     table = "0110"
     for bits, want in (([0, 0], "0"), ([0, 1], "1"), ([1, 0], "1"), ([1, 1], "0")):
         program, stdin = _row("Suffolk", table, bits)
-        assert esolangs.run("Suffolk", program, stdin=stdin, timeout=20) == want
+        assert compat.run("Suffolk", program, stdin=stdin, timeout=20) == want
         debugger = debugger_api.make_debugger("Suffolk", program, stdin=stdin)
         assert debugger.run(max_steps=_STEP_BUDGET) == "halted"
         assert debugger.output == want

@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
 from tests.support.event_io import ReadFirstIO
@@ -24,7 +24,6 @@ def _rows(program: str, table: str, n: int) -> None:
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_reads_into_spent_code_and_prints_a_literal_tail(n, bit) -> None:
-    import esolangs
     from esolangs.languages.circlefuck.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
     from tests.support.evaluation import _evaluate
@@ -33,11 +32,11 @@ def test_constant_reads_into_spent_code_and_prints_a_literal_tail(n, bit) -> Non
         _check_constants()
         _check_reader()
     table = bit * (1 << n)
-    program = esolangs.generate("Circlefuck", table)
+    program = compat.generate("Circlefuck", table)
     assert program == "," * n + "<.@" + bit
     assert len(program) == n + 4
     for options in ({}, {"width": 1}, {"width": 8}, {"width": 40}, {"balance": True}):
-        wrapped = esolangs.generate("Circlefuck", table, **options)
+        wrapped = compat.generate("Circlefuck", table, **options)
         assert _evaluate("Circlefuck", wrapped, inputs=n) == table
     for row in range(1 << n):
         io = ScriptedIO(format(row, f"0{n}b") + "0")
@@ -106,17 +105,16 @@ class TestCirclefuck:
 
 def test_run_uses_native_eof() -> None:
     program = boolean.circlefuck("10")  # reads one input bit
-    assert esolangs.run("Circlefuck", program, stdin="") == "0"
+    assert compat.run("Circlefuck", program, stdin="") == "0"
 
 
 def _check_constants() -> None:
-    import esolangs
     from esolangs.languages.circlefuck.interpreter import run
 
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Circlefuck", bit * (1 << n), **options)
+                program = compat.generate("Circlefuck", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row + "7", expected=n)
                     assert_constant_output(run, program, io, bit, n)
@@ -129,7 +127,7 @@ def _check_reader() -> None:
     total = 0
     for value in range(256):
         table = f"{value:08b}"
-        program = str(esolangs.generate("Circlefuck", table))
+        program = str(compat.generate("Circlefuck", table))
         total += len(program)
         for row in range(8):
             io = ReadFirstIO(f"{row:03b}" + "7", expected=3)
@@ -144,7 +142,7 @@ def _check_reader() -> None:
 
     table = "00110110"
     for options in ({}, {"width": 1}, {"balance": True}):
-        program = str(esolangs.generate("Circlefuck", table, **options))
+        program = str(compat.generate("Circlefuck", table, **options))
         io = ReadFirstIO("1117", expected=3)
         machine = _Machine(program, io)
         steps, written = measure_run(machine)

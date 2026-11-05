@@ -33,6 +33,10 @@ def test_proven_verdict_never_uses_a_clock(diverges) -> None:
 def test_halting_fallback_returns_true() -> None:
     with (
         patch.object(divergence, "diverges", return_value=None),
-        patch.object(divergence.esolangs, "run", return_value=""),
+        patch.object(
+            divergence.esolangs,
+            "run",
+            return_value=divergence.esolangs.ExecutionResult("", None, None, None),
+        ),
     ):
         assert divergence.terminates("fixture", "source", "", 0.001)

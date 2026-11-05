@@ -5,6 +5,7 @@ import random
 
 import pytest
 
+from esolangs import compat
 from esolangs.languages import generators as boolean
 from tests.interpreters.runner import run_program
 from tests.support.event_io import ReadFirstIO
@@ -162,10 +163,9 @@ def test_a_width_request_keeps_the_exact_fit_and_counts_every_use(
     table: str, width: int, size: int
 ) -> None:
     """Both programs fit their width exactly or inline shared uses; sizes are exact."""
-    import esolangs
     from tests.support.evaluation import _evaluate
 
-    program = esolangs.generate("fargo", table, width=width)
+    program = compat.generate("fargo", table, width=width)
     assert len(str(program)) == size
     assert _evaluate("Fargo", program, inputs=1 if len(table) == 2 else 2) == table
 
@@ -178,11 +178,10 @@ def test_balanced_layout_scores_are_exact(
     table: str, score: tuple[int, int, int]
 ) -> None:
     """The squarest packing the width walk finds, as side, length and width."""
-    import esolangs
     from esolangs.generation.wrap import balance_score
     from tests.support.evaluation import _evaluate
 
-    program = esolangs.generate("fargo", table, balance=True)
+    program = compat.generate("fargo", table, balance=True)
     assert balance_score(str(program)) == score
     assert _evaluate("Fargo", program, inputs=len(table).bit_length() - 1) == table
 
@@ -225,7 +224,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Fargo", bit * (1 << n), **options)
+                program = compat.generate("Fargo", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(
                         esolangs.encode_inputs("Fargo", [int(b) for b in row]) + "7\n",

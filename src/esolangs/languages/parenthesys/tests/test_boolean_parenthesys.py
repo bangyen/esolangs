@@ -2,7 +2,7 @@
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.languages.parenthesys.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 from tests.support.generator_support import assert_native_rows
@@ -18,7 +18,7 @@ PACKED = ["0110100110010110" * 2, "00010111" * 8, "1" + "0" * 63, "0" * 63 + "1"
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
 
-    program = esolangs.generate("Parenthesys", table)
+    program = compat.generate("Parenthesys", table)
     assert_native_rows("Parenthesys", table, program, run, sentinel="Q", token=True)
 
 
@@ -26,7 +26,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
 @pytest.mark.parametrize("bit", "01")
 def test_constants_read_every_input_and_leave_the_next(n: int, bit: str) -> None:
     for row in sorted({0, (1 << n) // 3, (1 << n) - 1}):
-        program = esolangs.generate("Parenthesys", bit * (1 << n))
+        program = compat.generate("Parenthesys", bit * (1 << n))
         if n == 8:
             assert len(program) == 11
         io = ScriptedIO("\n".join(f"{row:0{n}b}") + "\n9\n")

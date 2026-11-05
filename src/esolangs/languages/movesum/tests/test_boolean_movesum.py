@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.languages.movesum.generator import movesum
 from esolangs.languages.movesum.interpreter import run
 from esolangs.runtime.io import ScriptedIO
@@ -75,7 +75,7 @@ def test_registry_contract_round_trip(table: str) -> None:
 @pytest.mark.parametrize("bit", "01")
 def test_constants_read_every_input_and_leave_the_next(n: int, bit: str) -> None:
     for row in sorted({0, (1 << n) // 3, (1 << n) - 1}):
-        program = esolangs.generate("Movesum", bit * (1 << n))
+        program = compat.generate("Movesum", bit * (1 << n))
         if n == 8:
             assert len(program) == 179
         io = ScriptedIO("\n".join(f"{row:0{n}b}") + "\n9\n")

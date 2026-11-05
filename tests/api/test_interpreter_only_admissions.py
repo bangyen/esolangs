@@ -5,6 +5,7 @@ from datetime import datetime
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.registry import LANGUAGES
 from esolangs.vm import make_vm
 from scripts.docs.curation import FAME_BACKLINKS
@@ -54,7 +55,7 @@ def test_every_first_implementation_was_one_when_admitted() -> None:
 @pytest.mark.parametrize("language", languages(boolean_generator=False))
 def test_api_and_vm(language: str) -> None:
     code, stdin = SAMPLES[language]
-    output = esolangs.run(language, code, stdin=stdin)
+    output = compat.run(language, code, stdin=stdin)
     vm = make_vm(language, code, stdin=stdin)
     while not vm.halted:
         hash(vm.snapshot())
@@ -65,4 +66,4 @@ def test_api_and_vm(language: str) -> None:
     assert vm.snapshot() == final
     assert esolangs.describe(language)["boolean_generator"] is False
     with pytest.raises(ValueError, match="no boolean generator"):
-        esolangs.generate(language, "01")
+        compat.generate(language, "01")

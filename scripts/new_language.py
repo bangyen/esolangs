@@ -137,11 +137,11 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     n = len(table).bit_length() - 1
-    program = esolangs.generate("{name}", table)
+    program = esolangs.compat.generate("{name}", table)
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("{name}", bits)
-        got = esolangs.run("{name}", program, stdin=stdin, timeout=5)
+        got = esolangs.compat.run("{name}", program, stdin=stdin, timeout=5)
         # The answer as the contract reads it, not the raw output.
         assert esolangs.read_answer("{name}", got) == table[row], (table, row)
 '''
@@ -600,7 +600,7 @@ def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str
     rows = []
     for n in arities:
         worst = {t: measure(name, t, written=True) for t in tables(name, n)}
-        size = max(len(str(esolangs.generate(name, t))) for t in tables(name, n))
+        size = max(len(str(esolangs.compat.generate(name, t))) for t in tables(name, n))
         steps = max(worst, key=lambda t: worst[t][0])
         bits = max(worst, key=lambda t: worst[t][1])
         # Mean program size per row: ``size`` covers 2**n rows.
@@ -628,7 +628,7 @@ def size_anchors(name: str) -> list[str]:
     except (KeyError, FileNotFoundError):
         return []
     for anchor in anchors:
-        program = esolangs.generate(name, anchor.witness.table())
+        program = esolangs.compat.generate(name, anchor.witness.table())
         got = (
             len(program)
             if isinstance(program, (str, esolangs.CompressedText))

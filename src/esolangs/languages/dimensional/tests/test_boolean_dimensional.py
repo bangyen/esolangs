@@ -4,7 +4,8 @@ import random
 
 import pytest
 
-from esolangs import generate, run
+from esolangs import compat
+from esolangs.compat import generate, run
 from esolangs.generation.wrap import (
     wrap_program,
 )
@@ -197,7 +198,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Dimensional", bit * (1 << n), **options)
+                program = compat.generate("Dimensional", bit * (1 << n), **options)
                 if not options:
                     assert len(program) == n + 3
                 if options == {"width": 1}:

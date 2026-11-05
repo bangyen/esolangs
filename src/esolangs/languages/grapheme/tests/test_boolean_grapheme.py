@@ -5,6 +5,7 @@ import importlib
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.languages import generators as boolean
 from esolangs.languages.grapheme.generator import (
     _grapheme_literal,
@@ -66,11 +67,11 @@ class TestGraphemeTable:
     def test_a_literal_past_the_int_str_cap_computes(self) -> None:
         """n=14's ~5,000-digit literal raised at CPython's 4,300-digit cap."""
         table = "".join(str(row.bit_count() & 1) for row in range(1 << 14))
-        program = esolangs.generate("Grapheme", table)
+        program = compat.generate("Grapheme", table)
         for row in (0, 5461, len(table) - 1):
             bits = [(row >> (13 - i)) & 1 for i in range(14)]
             stdin = esolangs.encode_inputs("Grapheme", bits)
-            got = esolangs.run("Grapheme", program, stdin=stdin, timeout=60)
+            got = compat.run("Grapheme", program, stdin=stdin, timeout=60)
             assert esolangs.read_answer("Grapheme", got) == table[row], row
 
     def test_an_off_by_one_shift_returns_a_wrong_answer(
@@ -132,7 +133,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Grapheme", bit * (1 << n), **options)
+                program = compat.generate("Grapheme", bit * (1 << n), **options)
                 assert isinstance(program, str)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(

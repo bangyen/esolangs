@@ -5,6 +5,7 @@ from itertools import product
 
 import pytest
 
+from esolangs import compat
 from esolangs.generation.wrap import balance_program, balance_score, wrap_program
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
@@ -136,7 +137,7 @@ def test_constants_reuse_scratch_and_print_after_every_read() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Decleq", bit * (1 << n), **options)
+                program = compat.generate("Decleq", bit * (1 << n), **options)
                 cells = list(map(int, program.split()))
                 assert len(cells) == 3 * n + 9
                 assert all(

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.languages.piet.interpreter import _command, _Machine, run
 from esolangs.raster import Raster
 from esolangs.runtime.io import ScriptedIO
@@ -141,7 +141,7 @@ def test_public_api_loads_a_png(tmp_path: Path) -> None:
     )
     path = tmp_path / "program.png"
     path.write_bytes(program.to_png())
-    assert esolangs.run("Piet", path) == "3"
+    assert compat.run("Piet", path) == "3"
 
 
 @pytest.mark.parametrize(

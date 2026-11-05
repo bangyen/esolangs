@@ -6,6 +6,7 @@ import itertools
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 
+from esolangs import compat
 from tests.support.witness_tables import dense as _dense
 from tests.support.witness_tables import parity as _parity
 
@@ -176,7 +177,6 @@ def _language_of(fn: Builder) -> str | None:
 
 def check_embedding(fn: Builder, max_n: int = 4) -> str:
     """Each input embeds exactly once, at a width independent of the bit."""
-    import esolangs
     from esolangs.generation.helpers import runs
     from esolangs.registry import LANGUAGES, parameterized_ids
 
@@ -191,7 +191,7 @@ def check_embedding(fn: Builder, max_n: int = 4) -> str:
         # degenerate shape corrupted the arity ladder before it was caught.
         if build(fn, _dense(n)) is None:
             continue
-        template = esolangs.generate(name, _dense(n))
+        template = compat.generate(name, _dense(n))
         assert "{X" not in template, f"n={n}: marks left in the public template"
         setters = template.setters
         spans = runs(str(template), template.char, setters)

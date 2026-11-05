@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_native_rows
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -16,7 +17,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
         _check_native_constants()
     from esolangs.languages.object_disoriented.interpreter import run
 
-    program = esolangs.generate("Object disoriented", table)
+    program = compat.generate("Object disoriented", table)
     assert_native_rows(
         "Object disoriented", table, program, run, sentinel="Q", token=True
     )
@@ -29,7 +30,7 @@ def _check_native_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
+                program = compat.generate(
                     "Object disoriented", bit * (1 << n), **options
                 )
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
@@ -62,8 +63,6 @@ def _check_native_constants() -> None:
     assert list(islice(_names(), before, before + 2)) == ["maim", "maio"]
 
     assert (
-        sum(
-            len(esolangs.generate("Object disoriented", f"{v:08b}")) for v in range(256)
-        )
+        sum(len(compat.generate("Object disoriented", f"{v:08b}")) for v in range(256))
         == 48562
     )

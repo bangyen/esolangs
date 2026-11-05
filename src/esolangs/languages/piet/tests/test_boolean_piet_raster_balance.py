@@ -2,7 +2,7 @@
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.generation.raster_lookup.balance import (
     _bounded_operations,
     _emit,
@@ -51,7 +51,7 @@ def test_dense_bends_and_final_halt_execute(width: int) -> None:
     program = Raster.from_png(_emit(operations, plan).to_png())
     for row in range(8):
         assert (
-            esolangs.run(
+            compat.run(
                 "Piet", program, stdin="\n".join(f"{row:03b}") + "\n", max_steps=1000
             )
             == table[row]
@@ -70,7 +70,7 @@ def test_tight_routing_never_grows_and_executes(width: int) -> None:
             program = Raster.from_png(_emit(operations, plan).to_png())
             for row in range(2**inputs):
                 assert (
-                    esolangs.run(
+                    compat.run(
                         "Piet",
                         program,
                         stdin="\n".join(f"{row:0{inputs}b}") + "\n",
@@ -101,7 +101,7 @@ def test_white_bridge_lanes_execute_exhaustively(
             )
             for row in range(2**inputs):
                 assert (
-                    esolangs.run(
+                    compat.run(
                         "Piet",
                         program,
                         stdin="\n".join(f"{row:0{inputs}b}") + "\n",
@@ -128,7 +128,7 @@ def test_white_bridge_turn_colors_and_halt_execute(table: str) -> None:
     from esolangs.languages.piet.interpreter import BLACK, WHITE
 
     operations = _bounded_operations(table)
-    default = esolangs.generate("Piet", table)
+    default = compat.generate("Piet", table)
     old = _emit(operations, _balanced_plan(operations, default, compact=True))
     program = Raster.from_png(pack(operations, old).to_png())
     assert any(pixel == WHITE for row in program.rows for pixel in row)
@@ -139,7 +139,7 @@ def test_white_bridge_turn_colors_and_halt_execute(table: str) -> None:
     inputs = len(table).bit_length() - 1
     for row in range(len(table)):
         assert (
-            esolangs.run(
+            compat.run(
                 "Piet",
                 program,
                 stdin="\n".join(f"{row:0{inputs}b}") + "\n",

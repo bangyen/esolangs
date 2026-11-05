@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.languages.stisp.interpreter import _Machine
 from esolangs.languages.stisp.proof_formulas import workspace
 from esolangs.runtime.io import ScriptedIO
@@ -17,11 +18,11 @@ def test_every_row_results_in_its_answer(table: str) -> None:
     if table == "00":
         _check_constants()
     n = len(table).bit_length() - 1
-    template = esolangs.generate("Stisp", table)
+    template = compat.generate("Stisp", table)
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        program = esolangs.instantiate("Stisp", template, bits)
-        got = esolangs.run("Stisp", program, timeout=5)
+        program = compat.instantiate("Stisp", template, bits)
+        got = compat.run("Stisp", program, timeout=5)
         assert esolangs.read_answer("Stisp", got) == table[row], (table, row)
         io = ScriptedIO("7")
         machine = _Machine(program, io)
@@ -44,13 +45,13 @@ def test_every_row_results_in_its_answer(table: str) -> None:
 
 
 def test_the_and_template_is_the_documented_one() -> None:
-    assert esolangs.generate("Stisp", "0001") == (
+    assert compat.generate("Stisp", "0001") == (
         "(l h)->s[0]=l;(l h)->s[1]=h;c->s[x]=c;(0 (0 1))->s[$]->s[$]"
     )
 
 
 def test_an_ignored_input_still_selects_one_of_two_identical_children() -> None:
-    assert esolangs.generate("Stisp", "0101") == (
+    assert compat.generate("Stisp", "0101") == (
         "(l h)->s[0]=l;(l h)->s[1]=h;c->s[x]=c;((0 1) (0 1))->s[$]->s[$]"
     )
 
@@ -60,11 +61,11 @@ def _check_constants() -> None:
     from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
-    assert sum(len(esolangs.generate("Stisp", f"{i:08b}")) for i in range(256)) == 20552
+    assert sum(len(compat.generate("Stisp", f"{i:08b}")) for i in range(256)) == 20552
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = esolangs.generate("Stisp", bit * (1 << n), **options)
+                template = compat.generate("Stisp", bit * (1 << n), **options)
                 assert str(template).count("$") == n
                 if not options:
                     assert len(template) == (15 if n == 1 else 2 * n + 15)

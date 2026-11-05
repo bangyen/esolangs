@@ -10,6 +10,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.languages.qoibl import interpreter as qoibl
 from esolangs.languages.qoibl.interpreter import (
     _advance,
@@ -267,12 +268,12 @@ class TestQoiblParserGuards:
     )
     def test_mismatched_markers_are_rejected_at_execution(self, source: str) -> None:
         with pytest.raises(esolangs.ProgramError):
-            esolangs.run("Qoibl", source)
+            compat.run("Qoibl", source)
 
     def test_matched_markers_execute(self) -> None:
-        assert esolangs.run("Qoibl", "tt y tt") == chr(1)
-        assert esolangs.run("Qoibl", "tt e yr ee yr y tt") == chr(0)
-        assert esolangs.run("Qoibl", "tt e ry ee ry y tt") == chr(1)
+        assert compat.run("Qoibl", "tt y tt") == chr(1)
+        assert compat.run("Qoibl", "tt e yr ee yr y tt") == chr(0)
+        assert compat.run("Qoibl", "tt e ry ee ry y tt") == chr(1)
 
     def test_steal_declines_a_literal_without_the_character(self) -> None:
         """Nothing is given back unless the literal actually ends in it."""
@@ -320,21 +321,19 @@ class TestTheTokenizerCarriesItsOwnStack:
 
     def test_a_program_past_the_old_wall_tokenizes(self) -> None:
         """4929 characters, against a default limit of 1000."""
-        program = esolangs.generate("Qoibl", self._majority(12))
+        program = compat.generate("Qoibl", self._majority(12))
         assert len(program) > 3000
         assert tokenize(program)
 
     def test_it_runs_under_a_limit_far_below_the_old_need(self) -> None:
         """The direct measure of shallowness, and it needed 1375 before."""
-        program = esolangs.generate("Qoibl", self._majority(6))
+        program = compat.generate("Qoibl", self._majority(6))
         stdin = esolangs.encode_inputs("Qoibl", [0] * 6, truth_table=self._majority(6))
         live = len(inspect.stack())
         previous = sys.getrecursionlimit()
         try:
             sys.setrecursionlimit(live + 200)
-            assert esolangs.run("Qoibl", program, stdin=stdin, timeout=120).endswith(
-                "0"
-            )
+            assert compat.run("Qoibl", program, stdin=stdin, timeout=120).endswith("0")
         finally:
             sys.setrecursionlimit(previous)
 

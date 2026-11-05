@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.runtime.io import IO, ScriptedIO
 from tests.support.input_convention import (
     assert_echoes_a_newline,
@@ -26,7 +26,7 @@ def test_newline_is_distinct_from_eof() -> None:
 
 
 def test_stream_echo_preserves_characters_on_the_same_line() -> None:
-    assert esolangs.run(REFERENCE, ",.,.,.", stdin="ab\n") == "ab\n"
+    assert compat.run(REFERENCE, ",.,.,.", stdin="ab\n") == "ab\n"
 
 
 def test_interactive_empty_line_is_a_newline_character() -> None:

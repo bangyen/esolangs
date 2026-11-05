@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from tests.generators.fills import _run_form
 from tests.support.witness_tables import row_bits
 
@@ -18,14 +18,14 @@ def test_constant_setters_leave_scratch_zero(n: int, bit: str) -> None:
     if n == 1 and bit == "0":
         _check_constants()
     table = bit * (1 << n)
-    programs = [esolangs.generate("Home Row", table, width=w) for w in (None, 1, 20)]
-    programs.append(esolangs.generate("Home Row", table, balance=True))
+    programs = [compat.generate("Home Row", table, width=w) for w in (None, 1, 20)]
+    programs.append(compat.generate("Home Row", table, balance=True))
     for program in programs:
         assert str(program).count("$") == n
         for row in range(1 << n):
             bits = [int(value) for value in f"{row:0{n}b}"]
             io = ScriptedIO("")
-            machine = _Machine(str(esolangs.instantiate("Home Row", program, bits)), io)
+            machine = _Machine(str(compat.instantiate("Home Row", program, bits)), io)
             for _ in range(1000):
                 if machine.halted:
                     break
@@ -130,14 +130,14 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Home Row", bit * (1 << n), **options)
+                program = compat.generate("Home Row", bit * (1 << n), **options)
                 template = "".join(program.split())
                 slots = {i for i, char in enumerate(template) if char == "$"}
                 assert len(slots) == n
                 for bits in ([0] * n, [1] * n):
                     io = ScriptedIO("7")
                     machine = _Machine(
-                        str(esolangs.instantiate("Home Row", program, bits)), io
+                        str(compat.instantiate("Home Row", program, bits)), io
                     )
                     visited = set()
                     steps = 0

@@ -6,7 +6,8 @@ from functools import cache
 import pytest
 
 import esolangs
-from esolangs import generate, run
+from esolangs import compat
+from esolangs.compat import generate, run
 from esolangs.generation.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.generation.examples import BooleanExample
 from esolangs.generation.wrap import (
@@ -244,7 +245,7 @@ def _grown(name: str, table: str, width: int | None) -> str:
     if _example(name).fill is None:
         return generate(name, table, width=width)
     arity = len(table).bit_length() - 1
-    return esolangs.instantiate(name, generate(name, table), [0] * arity, width=width)
+    return compat.instantiate(name, generate(name, table), [0] * arity, width=width)
 
 
 _RUN_TIMEOUT = 2.0

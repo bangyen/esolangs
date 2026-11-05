@@ -4,6 +4,7 @@ import random
 
 import pytest
 
+from esolangs import compat
 from esolangs.languages import generators as boolean
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
@@ -130,7 +131,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Painfuck", bit * (1 << n), **options)
+                program = compat.generate("Painfuck", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(
                         esolangs.encode_inputs("Painfuck", [int(b) for b in row])

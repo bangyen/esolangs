@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.languages.pilas.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 from tests.support.event_io import ReadFirstIO
@@ -17,8 +18,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
     n = len(table).bit_length() - 1
     if table == "01101001":
         assert (
-            sum(len(esolangs.generate("Pilas", f"{i:08b}")) for i in range(256))
-            == 24034
+            sum(len(compat.generate("Pilas", f"{i:08b}")) for i in range(256)) == 24034
         )
 
     class ReadFirstIO(ScriptedIO):
@@ -26,11 +26,11 @@ def test_every_row_prints_its_answer(table: str) -> None:
             assert self.progress() == n
             super()._write(value)
 
-    program = esolangs.generate("Pilas", table)
+    program = compat.generate("Pilas", table)
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("Pilas", bits)
-        got = esolangs.run("Pilas", program, stdin=stdin, timeout=5)
+        got = compat.run("Pilas", program, stdin=stdin, timeout=5)
         io = ReadFirstIO(stdin + "7")
         run(program, io)
         assert io.getvalue() == table[row]
@@ -52,7 +52,7 @@ def _check_constants() -> None:
 
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Pilas", bit * (1 << n), **options)
+                program = compat.generate("Pilas", bit * (1 << n), **options)
                 if not options:
                     assert len(program) == 3 * n + 13 - 2 * keep + 2 * int(bit)
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):

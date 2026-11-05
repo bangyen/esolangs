@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import DialectSettings
+from esolangs import DialectSettings, compat
 from tests.support.cli_support import call_both
 from tests.support.dialect_support import Unreadable
 from tests.support.evaluation import _evaluate
@@ -53,7 +53,7 @@ def test_unknown_settings_key_suggests_the_fix(capsys) -> None:
 def test_balanced_postfix_chunks_execute(inputs) -> None:
     table = "01" * (1 << (inputs - 1))
     settings = DialectSettings(expression_syntax="postfix")
-    program = esolangs.generate("Alight", table, balance=True, settings=settings)
+    program = compat.generate("Alight", table, balance=True, settings=settings)
     assert _evaluate("Alight", program, inputs=inputs, settings=settings) == table
 
 
@@ -76,7 +76,7 @@ def test_cli_generate_and_run_share_settings(tmp_path: Path, capsys) -> None:
 
 def test_single_choice_languages_refuse_other_keys() -> None:
     with pytest.raises(esolangs.ArgumentError):
-        esolangs.run("Alight", Unreadable(), settings=DialectSettings(cell_modulus=255))
+        compat.run("Alight", Unreadable(), settings=DialectSettings(cell_modulus=255))
 
 
 @pytest.mark.medium
@@ -84,23 +84,23 @@ def test_postfix_one_entry_chunks() -> None:
     # Width 1 forces 64 one-entry chunks; parity would hide reversed inputs.
     table = "".join(str(((row * 37) ^ (row >> 1)).bit_count() % 2) for row in range(64))
     settings = DialectSettings(expression_syntax="postfix")
-    source = esolangs.generate("Alight", table, width=1, settings=settings)
+    source = compat.generate("Alight", table, width=1, settings=settings)
     assert _evaluate("Alight", source, inputs=6, settings=settings) == table
 
 
 def test_foreign_language_guard_precedes_retained_choices() -> None:
-    source = esolangs.generate(
+    source = compat.generate(
         "Alight", "01", settings=DialectSettings(expression_syntax="postfix")
     )
     with pytest.raises(esolangs.ProgramError, match="generated for"):
-        esolangs.run("Brainfuck", source)
+        compat.run("Brainfuck", source)
 
 
 def test_short_settings_flag(capsys) -> None:
     settings = '{"expression_syntax":"postfix"}'
     output, error = call_both(["generate", "-s", settings, "Alight", "0110"], capsys)
     assert error == ""
-    expected = esolangs.generate(
+    expected = compat.generate(
         "Alight", "0110", settings=DialectSettings(expression_syntax="postfix")
     )
     assert output.rstrip("\n") == expected
@@ -111,7 +111,7 @@ class TestBreakAtChecksTheKindOfPosition:
 
     def test_a_tuple_is_refused_where_the_ip_is_an_index(self) -> None:
         """brainfuck's ip is an int."""
-        program = esolangs.generate(REFERENCE, "0110")
+        program = compat.generate(REFERENCE, "0110")
         debugger = debugger_api.make_debugger(REFERENCE, program, stdin="0\n1\n")
         # The message names the kind ("an index"), not the value at hand.
         with pytest.raises(esolangs.ArgumentError, match=r"is an index.*never fire"):
@@ -119,28 +119,28 @@ class TestBreakAtChecksTheKindOfPosition:
 
     def test_an_index_is_refused_where_the_ip_is_a_coordinate(self) -> None:
         """Alight's is a 4-tuple."""
-        program = esolangs.generate("Alight", "0110")
+        program = compat.generate("Alight", "0110")
         debugger = debugger_api.make_debugger("Alight", program, stdin="0\n1\n")
         with pytest.raises(esolangs.ArgumentError, match="could never fire"):
             debugger.break_at(10)
 
     def test_the_right_kind_is_accepted(self) -> None:
         """And still fires, which is the point of checking the other."""
-        program = esolangs.generate(REFERENCE, "0110")
+        program = compat.generate(REFERENCE, "0110")
         debugger = debugger_api.make_debugger(REFERENCE, program, stdin="0\n1\n")
         debugger.break_at(0)
         assert debugger.run(max_steps=100) == "breakpoint"
 
     def test_the_arity_is_not_checked(self) -> None:
         """It varies within a run, so checking it would refuse valid ones."""
-        program = esolangs.generate("Alight", "0110")
+        program = compat.generate("Alight", "0110")
         debugger = debugger_api.make_debugger("Alight", program, stdin="0\n1\n")
         debugger.break_at((1, 2))  # wrong arity for Alight, accepted
 
 
 def test_alight_refuses_instead_of_warning() -> None:
     """The documented exception, pinned so it stays a *loud* one."""
-    program = esolangs.generate("Alight", "0110")
+    program = compat.generate("Alight", "0110")
     full = esolangs.encode_inputs("Alight", [1, 0])
     short = "\n".join(full.split("\n")[:-2]) + "\n"
     dbg = debugger_api.make_debugger("Alight", program, stdin=short)

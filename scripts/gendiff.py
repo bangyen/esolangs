@@ -53,7 +53,7 @@ def outputs(name: str, max_n: int = 3) -> Outputs:
             for option in options:
                 key = f"{table} {json.dumps(option)}"
                 try:
-                    program = esolangs.generate(name, table, **option)
+                    program = esolangs.generate_artifact(name, table, **option)
                     found[key] = esolangs.dump_program(name, program)
                 except Exception as error:
                     found[key] = f"{type(error).__name__}: {error}"

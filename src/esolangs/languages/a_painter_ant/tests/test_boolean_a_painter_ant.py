@@ -6,6 +6,7 @@ from itertools import product
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.languages.a_painter_ant.generator import PAIR, a_painter_ant
 from esolangs.languages.a_painter_ant.interpreter import run as run_a_painter_ant
@@ -102,7 +103,7 @@ def test_constant_roots_keep_one_origin(bit: str) -> None:
     table = bit * 8
     assert a_painter_ant(table) == "P" + "$S" * 3 + ("p" if bit == "0" else "")
     for options in ({}, {"width": 40}, {"balance": True}):
-        program = esolangs.generate("A Painter Ant", table, **options)
+        program = compat.generate("A Painter Ant", table, **options)
         assert _evaluate("A Painter Ant", program, inputs=3) == table
 
 
@@ -161,10 +162,10 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = esolangs.generate("A Painter Ant", bit * (1 << n), **options)
+                template = compat.generate("A Painter Ant", bit * (1 << n), **options)
                 assert template.count("$") == n
                 for bits in ([0] * n, [1] * n):
-                    program = esolangs.instantiate("A Painter Ant", template, bits)
+                    program = compat.instantiate("A Painter Ant", template, bits)
                     io = ScriptedIO("7")
                     machine = _Machine(program, io)
                     for _ in machine.prog:
@@ -191,11 +192,11 @@ def _check_near_unanimity() -> None:
         plain = "".join(str(int(row.bit_count() >= n - 1)) for row in range(1 << n))
         for table in (plain, plain.translate(str.maketrans("01", "10"))):
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = esolangs.generate("A Painter Ant", table, **options)
+                template = compat.generate("A Painter Ant", table, **options)
                 assert template.count("$") == n
                 for row in range(1 << n):
                     bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-                    source = esolangs.instantiate("A Painter Ant", template, bits)
+                    source = compat.instantiate("A Painter Ant", template, bits)
                     io = ScriptedIO("Q")
                     machine = _Machine(source, io)
                     written = WrittenState(machine.snapshot()) if row == 0 else None

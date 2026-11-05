@@ -2,6 +2,7 @@
 
 import pytest
 
+from esolangs import compat
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
 from tests.support.event_io import ReadFirstIO
@@ -70,13 +71,12 @@ class TestUnsquare:
 
 
 def _check_constants() -> None:
-    import esolangs
     from esolangs.languages.unsquare.interpreter import run
 
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Unsquare", bit * (1 << n), **options)
+                program = compat.generate("Unsquare", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row + "7", expected=n)
                     assert_constant_output(run, program, io, bit, n)

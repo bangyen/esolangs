@@ -5,7 +5,7 @@ from itertools import pairwise
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs, in_input_order
 from esolangs.languages.smallfuck.generator import (
     PAIR,
@@ -56,12 +56,12 @@ def test_constant_arms_and_banded_results_shrink_the_tree() -> None:
             assert _run(table, row) == expected
 
     table = multiple_tables()[0]
-    template = esolangs.generate("Smallfuck", table)
+    template = compat.generate("Smallfuck", table)
     assert len(template) <= 641
     for row, expected in enumerate(table):
         bits = [int(bit) for bit in format(row, "06b")]
-        program = esolangs.instantiate("Smallfuck", template, bits)
-        assert esolangs.run("Smallfuck", program, max_steps=10_000) == expected
+        program = compat.instantiate("Smallfuck", template, bits)
+        assert compat.run("Smallfuck", program, max_steps=10_000) == expected
 
 
 @pytest.mark.medium
@@ -69,27 +69,27 @@ def test_fresh_setters_lower_the_public_floor() -> None:
     for inputs in (1, 2, 3):
         for value in range(1 << (1 << inputs)):
             table = format(value, f"0{1 << inputs}b")
-            template = esolangs.generate("Smallfuck", table, width=1)
+            template = compat.generate("Smallfuck", table, width=1)
             assert max(map(len, template.splitlines())) == 1
             for row, expected in enumerate(table):
                 bits = [int(bit) for bit in format(row, f"0{inputs}b")]
-                source = esolangs.instantiate("Smallfuck", template, bits, width=1)
-                assert esolangs.run("Smallfuck", source) == expected
+                source = compat.instantiate("Smallfuck", template, bits, width=1)
+                assert compat.run("Smallfuck", source) == expected
 
 
 @pytest.mark.parametrize("tagged", [False, True])
 def test_narrow_smallfuck_saved_provenance(*, tagged: bool) -> None:
     table = "0110"
-    template = esolangs.generate("Smallfuck", table, width=1)
+    template = compat.generate("Smallfuck", table, width=1)
     source = template if tagged else str(template)
     for row, expected in enumerate(table):
-        program = esolangs.instantiate(
+        program = compat.instantiate(
             "Smallfuck", source, [row >> 1, row & 1], width=1, truth_table=table
         )
         assert max(map(len, program.splitlines())) == 1
-        assert esolangs.run("Smallfuck", program) == expected
+        assert compat.run("Smallfuck", program) == expected
     with pytest.raises(ValueError, match="does not compute that table"):
-        esolangs.instantiate("Smallfuck", source, [0, 1], truth_table="1001")
+        compat.instantiate("Smallfuck", source, [0, 1], truth_table="1001")
 
 
 def test_narrow_smallfuck_preserves_fitting_and_large_execution() -> None:
@@ -100,10 +100,11 @@ def test_narrow_smallfuck_preserves_fitting_and_large_execution() -> None:
         assert smallfuck(table, len(natural)) == natural
         for row in (0, 1, 2, 3, 2**n - 1):
             bits = [int(bit) for bit in format(row, f"0{n}b")]
-            template = esolangs.generate("Smallfuck", table, width=1)
+            template = compat.generate("Smallfuck", table, width=1)
             assert (
-                esolangs.run(
-                    "Smallfuck", esolangs.instantiate("Smallfuck", template, bits)
+                compat.run(
+                    "Smallfuck",
+                    compat.instantiate("Smallfuck", template, bits),
                 )
                 == table[row]
             )
@@ -313,7 +314,7 @@ def test_one_pair_keeps_completed_constant_paths_and_fixed_code_bits(word) -> No
         program = fill_runs(
             template, TEMPLATE_CHAR, [PAIR] * 4, [int(bit) for bit in f"{row:04b}"]
         )
-        assert esolangs.run("Smallfuck", program) == expected
+        assert compat.run("Smallfuck", program) == expected
 
 
 @pytest.mark.parametrize("n", [4, 9])
@@ -354,9 +355,9 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = esolangs.generate("Smallfuck", bit * (1 << n), **options)
+                template = compat.generate("Smallfuck", bit * (1 << n), **options)
                 for bits in ([0] * n, [1] * n):
-                    program = esolangs.instantiate("Smallfuck", template, bits)
+                    program = compat.instantiate("Smallfuck", template, bits)
                     assert "[" not in program
                     assert "]" not in program
                     io = ScriptedIO("7")

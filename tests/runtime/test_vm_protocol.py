@@ -9,6 +9,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs import compat
 from esolangs import vm as vm_module
 from esolangs.debugger import complete_vm
 from esolangs.exceptions import InterpreterLimitError, ProgramError
@@ -130,7 +131,7 @@ def _check_protocol(language: str, program: str, stdin: str) -> _Observed:
     vm.step()
     assert (vm.output != at_halt) == vm.dumps_on_the_post_halt_step
     if language not in NONDETERMINISTIC_AGAINST_RUN:
-        assert vm.output == esolangs.run(language, program, stdin=stdin)
+        assert vm.output == compat.run(language, program, stdin=stdin)
 
     settled = _observe(vm)
     state = vm.snapshot()
@@ -230,7 +231,7 @@ def test_completion_agrees_with_running(name) -> None:
         with pytest.raises(esolangs.ArgumentError, match="self-halts"):
             complete_vm(vm)
         return
-    expected = esolangs.run(name, source, stdin=stdin)
+    expected = compat.run(name, source, stdin=stdin)
     assert complete_vm(vm) == expected
     state = vm.snapshot()
     assert complete_vm(vm, max_steps=0) == expected

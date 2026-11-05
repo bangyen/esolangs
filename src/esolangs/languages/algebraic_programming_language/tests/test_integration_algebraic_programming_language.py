@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs import compat
 from esolangs.vm import make_vm, run_until_halt_or_ancestor
 from tests.support.reference import REFERENCE
 
@@ -40,7 +41,7 @@ class TestTheVmPathRefusesLikeRunDoes:
             with pytest.raises(esolangs.ProgramError) as stepped:
                 entry(REFERENCE, "]")
             with pytest.raises(esolangs.ProgramError) as ran:
-                esolangs.run(REFERENCE, "]")
+                compat.run(REFERENCE, "]")
             assert str(stepped.value) == str(ran.value)
 
     def test_a_recursion_limit_is_an_interpreter_limit(self) -> None:

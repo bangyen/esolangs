@@ -5,7 +5,7 @@ from itertools import pairwise
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
 from tests.support.event_io import ReadFirstIO
@@ -164,15 +164,14 @@ def test_brainif_zero_landing_output_floor_and_corpus_size() -> None:
 
 @pytest.mark.parametrize("width", [1, 80])
 def test_brainif_zero_landing_public_and_larger_samples(width: int) -> None:
-    import esolangs
 
     for n in range(2, 7):
         table = "".join(str((row * 73 + row // 3) % 2) for row in range(2**n))
-        program = esolangs.generate("BrainIf", table, width=width)
+        program = compat.generate("BrainIf", table, width=width)
         for row in [0, 1, 2**n // 3, 2**n - 1]:
             stdin = format(row, f"0{n}b")
-            assert esolangs.run("BrainIf", program, stdin=stdin) == table[row]
-            assert esolangs.run("BrainIf", str(program), stdin=stdin) == table[row]
+            assert compat.run("BrainIf", program, stdin=stdin) == table[row]
+            assert compat.run("BrainIf", str(program), stdin=stdin) == table[row]
 
 
 def test_brainif_unpruned_large_tree_uses_spatial_fallback() -> None:
@@ -190,8 +189,10 @@ def test_linear_lookup_drops_ignored_inputs() -> None:
 
     small = "".join(str((row * 73 + row // 3) % 2) for row in range(32))
     table = "".join(bit * 2 for bit in small)
-    program = generate("BrainIf", table, width=1)
-    assert len(program) < 0.8 * len(generate("BrainIf", small + small[::-1], width=1))
+    program = generate("BrainIf", table, width=1).source
+    assert len(program) < 0.8 * len(
+        generate("BrainIf", small + small[::-1], width=1).source
+    )
     for row in range(64):
         assert run_brainif(program, list(format(row, "06b"))) == table[row]
 
@@ -216,7 +217,7 @@ def test_linear_lookup_loops_stop_at_a_shared_marker_cell() -> None:
     assert _Strip(small + "0" * n, weights).levels == [0]
     # Contiguous inputs keep both loops; the ignored-input gap causes the collision.
     assert _Strip(small + "0" * 5, [16, 8, 4, 2, 1]).levels == [0, 1]
-    program = generate("BrainIf", table, width=1)
+    program = generate("BrainIf", table, width=1).source
     for essential in range(32):
         for ignored in "01":
             bits = [ignored] * n
@@ -261,11 +262,10 @@ def test_loop_depth_rule_is_within_the_bar_of_the_measured_best(monkeypatch) -> 
 
 def test_a_narrow_five_input_lookup_has_an_exact_size() -> None:
     """The single-one table's strip walks every unlooped level's guards in full."""
-    import esolangs
     from tests.support.evaluation import _evaluate
 
     table = "0" * 31 + "1"
-    program = esolangs.generate("brainif", table, width=1)
+    program = compat.generate("brainif", table, width=1)
     assert len(str(program)) == 2731
     assert _evaluate("BrainIf", program, inputs=5) == table
 
@@ -276,7 +276,7 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
 
     for bit in "01":
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = esolangs.generate("BrainIf", bit * (1 << n), **options)
+            program = compat.generate("BrainIf", bit * (1 << n), **options)
             if not options:
                 assert len(program) == 22 * n + (483 if bit == "0" else 11)
             rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)

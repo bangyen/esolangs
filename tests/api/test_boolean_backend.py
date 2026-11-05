@@ -5,6 +5,7 @@ from dataclasses import fields
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.registry import LANGUAGES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
@@ -35,7 +36,7 @@ def test_interpreter_only_contract_adapters_remain_available(language):
     assert esolangs.read_answer(language, "0") == "0"
     assert esolangs.read_answer(language, "1") == "1"
     with pytest.raises(esolangs.ArgumentError, match="no boolean generator"):
-        esolangs.generate(language, "01")
+        compat.generate(language, "01")
     with pytest.raises(esolangs.ArgumentError, match="reads no stdin"):
         esolangs.encode_inputs(language, [1])
 

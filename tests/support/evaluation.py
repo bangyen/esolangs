@@ -12,6 +12,7 @@ from time import monotonic
 from typing import cast
 
 import esolangs
+from esolangs.artifacts import TemplateArtifact
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -179,6 +180,7 @@ def _iter_evaluate(
         timeout, terminating=terminating, isolated=isolated, total=total_timeout
     )
     deadline = None if total_timeout is None else started + total_timeout
+    explicit_template = program if isinstance(program, TemplateArtifact) else None
     program = _prepare(
         lambda: esolangs._read_source(name, program),
         deadline,
@@ -202,7 +204,10 @@ def _iter_evaluate(
 
         def prepare_row(bits: list[int] = bits) -> tuple[Program, str]:
             if parameterized:
-                return instantiator(name, cast("str", program), bits), ""
+                template = (
+                    explicit_template if explicit_template is not None else program
+                )
+                return instantiator(name, template, bits).source, ""
             # A language with no generator reads no stdin at all.
             return program, (
                 encode_inputs(name, bits) if LANGUAGES[name].backend is not None else ""
@@ -284,7 +289,7 @@ def _row_answerer(
                 max_output=max_output,
                 max_memory=max_memory,
                 settings=settings,
-            ),
+            ).output,
         )
     # Derive each bit from its declared halt/diverge order.
     values = LANGUAGES[name].contract.answer_values

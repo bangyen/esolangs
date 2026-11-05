@@ -266,7 +266,7 @@ def _baseline(
         check=True,
         timeout=_remaining(deadline),
     )
-    return esolangs.load_program(language, generated.stdout)
+    return esolangs.compat.load_program(language, generated.stdout)
 
 
 def _source_size(program: Program, unit: str) -> int:
@@ -293,7 +293,7 @@ def _observe(
     if lang.parameterized:
         if not isinstance(program, str):
             raise AuditError("input bindings require a text template")
-        program, stdin = esolangs.instantiate(language, program, bits), ""
+        program, stdin = esolangs.compat.instantiate(language, program, bits), ""
     else:
         stdin = esolangs.encode_inputs(language, bits, truth_table=table)
     bound = min(5.0, _remaining(deadline))
@@ -359,7 +359,7 @@ def verify_replay(language: str, record: ReplayRecord, scratch: Path) -> None:
                         balanced=balanced,
                     )
             candidate = _run(
-                lambda *_args, balanced=balanced: esolangs.generate(
+                lambda *_args, balanced=balanced: esolangs.compat.generate(
                     language, table, balance=balanced
                 ),
                 "",

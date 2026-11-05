@@ -329,7 +329,7 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
             for table in map("".join, itertools.product("01", repeat=1 << n)):
                 for width in (None, 8) if n < 3 else (None,):
                     try:
-                        program = esolangs.generate(name, table, width=width)
+                        program = esolangs.compat.generate(name, table, width=width)
                     except GeneratorCapError:
                         continue  # Unary's n=3 programs are too long to build
                     for row in range(1 << n):
@@ -337,7 +337,7 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
                         # Kept as generated: a raster or compressed program
                         # stringified is no longer that program.
                         if parameterized:
-                            code = esolangs.instantiate(name, program, bits)
+                            code = esolangs.compat.instantiate(name, program, bits)
                             programs.append((code, ""))
                         else:
                             stdin = esolangs.encode_inputs(

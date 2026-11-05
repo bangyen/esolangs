@@ -7,6 +7,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs import compat
 from esolangs.cli import HELP
 from esolangs.runtime._execution import interpreter_module
 from esolangs.vm import make_vm, run_until_halt_or_all_branches_cycle
@@ -22,7 +23,7 @@ from tests.support.vm_support import (
 
 def test_bound_execution_passes_the_seed() -> None:
     language = esolangs.Language("LaserFuck")
-    assert [language.run("o+++.\n", seed=0) for _ in range(6)] == ["3"] * 6
+    assert [language.run("o+++.\n", seed=0).output for _ in range(6)] == ["3"] * 6
 
 
 def test_seeded_run_accepts_an_opaque_runner(monkeypatch):
@@ -33,7 +34,7 @@ def test_seeded_run_accepts_an_opaque_runner(monkeypatch):
         return original(*args, **kwargs)
 
     monkeypatch.setattr(module, "run", opaque)
-    assert esolangs.run("LaserFuck", "o+++.\n", seed=0) == "3"
+    assert compat.run("LaserFuck", "o+++.\n", seed=0) == "3"
 
 
 def test_reproducible_vm_accepts_an_opaque_factory(monkeypatch):
@@ -55,10 +56,10 @@ def test_reproducible_vm_accepts_an_opaque_factory(monkeypatch):
 def test_isolation_preserves_integer_seeds_beyond_the_decimal_rendering_limit() -> None:
     seeds = [*range(8), 10**5000, -(10**5000)]  # strings are refused now
     direct = [
-        esolangs.run("LaserFuck", "o+++.\n", seed=seed, timeout=5) for seed in seeds
+        compat.run("LaserFuck", "o+++.\n", seed=seed, timeout=5) for seed in seeds
     ]
     isolated = [
-        esolangs.run("LaserFuck", "o+++.\n", seed=seed, timeout=5, isolated=True)
+        compat.run("LaserFuck", "o+++.\n", seed=seed, timeout=5, isolated=True)
         for seed in seeds
     ]
     assert set(direct) == {"", "3"}
@@ -114,7 +115,7 @@ class TestASeedMakesARunRepeat:
     def test_a_seeded_run_repeats(self) -> None:
         """Six runs, one answer."""
         answers = {
-            esolangs.run("LaserFuck", self.PROGRAM, stdin="", timeout=5, seed=0)
+            compat.run("LaserFuck", self.PROGRAM, stdin="", timeout=5, seed=0)
             for _ in range(6)
         }
         assert len(answers) == 1
@@ -122,9 +123,7 @@ class TestASeedMakesARunRepeat:
     def test_the_seed_selects_rather_than_fixes_one_outcome(self) -> None:
         """A seed that always gave the same answer would prove nothing."""
         by_seed = {
-            seed: esolangs.run(
-                "LaserFuck", self.PROGRAM, stdin="", timeout=5, seed=seed
-            )
+            seed: compat.run("LaserFuck", self.PROGRAM, stdin="", timeout=5, seed=seed)
             for seed in range(8)
         }
         assert len(set(by_seed.values())) == 2
@@ -132,12 +131,15 @@ class TestASeedMakesARunRepeat:
 
     def test_no_seed_is_the_language_as_specified(self) -> None:
         """The default has to stay the system's randomness, not a fixed draw."""
-        assert esolangs.run("LaserFuck", self.PROGRAM, stdin="", timeout=5) in {"", "3"}
+        assert compat.run("LaserFuck", self.PROGRAM, stdin="", timeout=5) in {
+            "",
+            "3",
+        }
 
     def test_a_seed_for_a_language_that_draws_nothing_is_refused(self) -> None:
         """Ignoring it would be right by accident and hide the likelier fault."""
         with pytest.raises(esolangs.ArgumentError, match="draws no random values"):
-            esolangs.run(REFERENCE, "+++.", stdin="", timeout=5, seed=1)
+            compat.run(REFERENCE, "+++.", stdin="", timeout=5, seed=1)
 
     @pytest.mark.parametrize("seed", ["x", "\ud800", 1.5, True, object()])
     def test_a_seed_that_is_not_an_integer_is_an_argument_error(
@@ -145,7 +147,7 @@ class TestASeedMakesARunRepeat:
     ) -> None:
         """``random.Random`` took ``"x"`` and ``1.5`` and ran; others leaked."""
         with pytest.raises(esolangs.ArgumentError, match="seed must be an integer"):
-            esolangs.run("LaserFuck", self.PROGRAM, timeout=5, seed=seed)
+            compat.run("LaserFuck", self.PROGRAM, timeout=5, seed=seed)
 
     def test_the_languages_that_draw_are_the_ones_named(self) -> None:
         """The message lists them and ``random`` marks them, so both must be right."""
@@ -156,7 +158,7 @@ class TestASeedMakesARunRepeat:
         ]
         assert drawing
         with pytest.raises(esolangs.ArgumentError) as caught:
-            esolangs.run(REFERENCE, "+++.", stdin="", timeout=5, seed=1)
+            compat.run(REFERENCE, "+++.", stdin="", timeout=5, seed=1)
         seed_help = " ".join(HELP["run"].split("\n  --seed N", 1)[1].split())
         for name in drawing:
             assert name in str(caught.value)
@@ -213,7 +215,7 @@ class TestASeedMakesARunRepeat:
 def test_width_floor_matches_its_source_and_overrun_count() -> None:
     """Warnings follow actual rendered widths, including narrower constructions."""
     assert esolangs.describe("LaserFuck")["width_effect"] == "layout"
-    source = esolangs.generate("LaserFuck", "10010110", width=1)
+    source = compat.generate("LaserFuck", "10010110", width=1)
     assert max(map(len, source.splitlines())) == 8
     assert overruns("LaserFuck", "10010110") == (2, 7)
     assert evaluate_generated("LaserFuck", "10010110", width=1) == "10010110"
@@ -229,9 +231,9 @@ def test_the_branching_detector_takes_a_vm() -> None:
 def test_run_still_takes_one_because_it_takes_any_program() -> None:
     """The distinction: ``run`` executes what a caller wrote."""
     assert {
-        esolangs.run("LaserFuck", "o+++.\n", stdin="", timeout=5, seed=0)
+        compat.run("LaserFuck", "o+++.\n", stdin="", timeout=5, seed=0)
         for _ in range(4)
-    } == {esolangs.run("LaserFuck", "o+++.\n", stdin="", timeout=5, seed=0)}
+    } == {compat.run("LaserFuck", "o+++.\n", stdin="", timeout=5, seed=0)}
 
 
 def test_stepping_through_the_random_instruction_is_reproducible() -> None:

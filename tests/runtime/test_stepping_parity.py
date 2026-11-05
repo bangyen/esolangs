@@ -9,6 +9,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs import compat
 from esolangs.vm import machine_traits, run_until_halt
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
@@ -77,7 +78,7 @@ class TestSteppingReachesTheSameAnswer:
         for name in languages:
             for row, bits in enumerate(([0, 0], [0, 1], [1, 0], [1, 1])):
                 program, stdin = _row(name, table, bits)
-                want = esolangs.run(name, program, stdin=stdin, timeout=30)
+                want = compat.run(name, program, stdin=stdin, timeout=30)
                 try:
                     got = _drive(debugger_api.make_vm(name, program, stdin=stdin))
                 except esolangs.EsolangError as exc:

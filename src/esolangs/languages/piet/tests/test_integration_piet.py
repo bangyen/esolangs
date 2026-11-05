@@ -6,7 +6,7 @@ from dataclasses import replace
 import pytest
 
 import esolangs
-from esolangs import Raster
+from esolangs import Raster, compat
 from esolangs.exceptions import TemplateError
 from esolangs.registry import LANGUAGES, SourceKind
 from tests.support.evaluation import _evaluate
@@ -25,7 +25,7 @@ def first_other_raster() -> str:
 
 def test_bound_raster_language_loads_and_evaluates_png(tmp_path) -> None:
     language = esolangs.Language("Piet")
-    program = language.generate("0110")
+    program = language.generate("0110").source
     assert isinstance(program, esolangs.Raster)
     path = tmp_path / "program.png"
     path.write_bytes(program.to_png())
@@ -34,14 +34,14 @@ def test_bound_raster_language_loads_and_evaluates_png(tmp_path) -> None:
 
 def test_a_raster_is_not_a_path() -> None:
     """``_looks_like_a_path`` is typed for text; a Raster must answer False."""
-    program = esolangs.generate("Piet", "01")
+    program = compat.generate("Piet", "01")
     assert not esolangs._looks_like_a_path(program)
 
 
 def test_raster_interpreter_owns_loading_and_scale_support(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    program = esolangs.generate("Piet", "01", scale=2)
+    program = compat.generate("Piet", "01", scale=2)
     monkeypatch.setitem(
         LANGUAGES,
         "Piet",
@@ -51,8 +51,8 @@ def test_raster_interpreter_owns_loading_and_scale_support(
             backend=None,
         ),
     )
-    assert esolangs.run("Piet", program.to_png(), stdin="1", scale=2) == "1"
-    assert esolangs.run("Piet", program, stdin="1", scale=2, max_steps=100) == "1"
+    assert compat.run("Piet", program.to_png(), stdin="1", scale=2) == "1"
+    assert compat.run("Piet", program, stdin="1", scale=2, max_steps=100) == "1"
 
 
 class TestSpecAbortsRatherThanReturningNothing:
@@ -72,14 +72,14 @@ class TestSpecAbortsRatherThanReturningNothing:
 def test_raster_interpreter_retains_geometry_hint() -> None:
     image = Raster((((255, 255, 255),),))
     with pytest.raises(esolangs.ProgramError, match=r".+") as caught:
-        esolangs.run("Piet", image, scale=2, timeout=1)
+        compat.run("Piet", image, scale=2, timeout=1)
     assert "dividing both image dimensions" in caught.value.__notes__[0]
 
 
 def test_a_raster_is_refused_as_a_template() -> None:
     """Typed ``Program`` so generate's result type-checks; no raster embeds."""
     with pytest.raises(TemplateError, match="raster programs read"):
-        esolangs.instantiate("Piet", esolangs.generate("Piet", XOR), [0, 1])
+        compat.instantiate("Piet", compat.generate("Piet", XOR), [0, 1])
 
 
 @pytest.mark.medium
@@ -89,22 +89,22 @@ def test_piet_explicit_scale_resolves_ambiguous_image() -> None:
         ((light, black, terminal), (light, red, terminal), (black, black, terminal))
     )
     image = Raster.from_png(logical.upscaled(2).to_png())
-    assert esolangs.run("Piet", image) == "2"
-    assert esolangs.run("Piet", image, scale=1) == "8"
-    assert esolangs.run("Piet", image, scale=2, isolated=True) == "2"
+    assert compat.run("Piet", image) == "2"
+    assert compat.run("Piet", image, scale=1) == "8"
+    assert compat.run("Piet", image, scale=2, isolated=True) == "2"
 
 
 def test_empty_piet_operation_path_halts() -> None:
     from esolangs.generation.raster_lookup.balance import _emit, _plan
 
     image = _emit([], _plan([], 13, 14))
-    assert esolangs.run("Piet", image) == ""
+    assert compat.run("Piet", image) == ""
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("scale", [2, 17])
 def test_piet_detects_its_scale(scale: int) -> None:
-    image = esolangs.generate("Piet", "0001", scale=scale)
+    image = compat.generate("Piet", "0001", scale=scale)
     assert _evaluate("Piet", Raster.from_png(image.to_png()), inputs=2) == "0001"
 
 

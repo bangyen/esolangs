@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 import esolangs
-from esolangs import _check_program
+from esolangs import _check_program, compat
 from esolangs.debugger import make_debugger
 from tests.support.evaluation import _evaluate
 from tests.support.pick import languages
@@ -30,7 +30,7 @@ _RASTERS = languages(source_kind="raster", boolean_generator=True)
     ],
 )
 def test_execution_container_parity(language: str, holder: str, mode: str) -> None:
-    program = esolangs.generate(language, "01")
+    program = compat.generate(language, "01")
     data = (
         program.to_png() if isinstance(program, esolangs.Raster) else program.encode()
     )
@@ -49,7 +49,7 @@ def test_execution_container_parity(language: str, holder: str, mode: str) -> No
         bounds["max_steps"] = 10000
     elif mode == "isolated":
         bounds["isolated"] = True
-    assert esolangs.run(language, source, stdin=stdin, **bounds) == "1"
+    assert compat.run(language, source, stdin=stdin, **bounds) == "1"
     assert stdin.tell() == 1
     assert not stdin.closed
     if hasattr(source, "closed"):
@@ -59,7 +59,7 @@ def test_execution_container_parity(language: str, holder: str, mode: str) -> No
 @pytest.mark.parametrize("language", [REFERENCE, *_RASTERS])
 def test_streams_work_with_bound_api_debugging_and_evaluation(language: str) -> None:
     api = esolangs.Language(language)
-    program = api.generate("01")
+    program = api.generate("01").source
     data = (
         program.to_png() if isinstance(program, esolangs.Raster) else program.encode()
     )
@@ -83,25 +83,25 @@ def test_nonseekable_streams_are_read_once_from_the_current_position() -> None:
     program, stdin = Stream(b",.,."), Stream("\n\x00")
     assert _check_program(REFERENCE, program, stdin) == ",.,."
     assert stdin.reads == 0
-    assert esolangs.run(REFERENCE, ",.,.", stdin=stdin) == "\n\x00"
+    assert compat.run(REFERENCE, ",.,.", stdin=stdin) == "\n\x00"
     assert (program.reads, stdin.reads) == (1, 1)
     source = io.StringIO("ignored,.")
     source.seek(7)
-    assert esolangs.run(REFERENCE, source, stdin="Z") == "Z"
+    assert compat.run(REFERENCE, source, stdin="Z") == "Z"
 
 
 @pytest.mark.parametrize(
     "stdin", ["é", "é".encode(), io.StringIO("é"), io.BytesIO("é".encode())]
 )
 def test_binary_stdin_uses_the_same_unicode_character_stream(stdin: Any) -> None:
-    assert esolangs.run(REFERENCE, ",.", stdin=stdin) == "é"
+    assert compat.run(REFERENCE, ",.", stdin=stdin) == "é"
 
 
 def test_path_loading_retains_existing_newline_normalization(tmp_path: Path) -> None:
     path = tmp_path / "source.txt"
     path.write_bytes(b"+,\r\n.\r\n")
     assert _check_program(REFERENCE, path) == "+,\n."
-    assert esolangs.run(REFERENCE, path, stdin="Q") == "Q"
+    assert compat.run(REFERENCE, path, stdin="Q") == "Q"
 
 
 @pytest.mark.parametrize("mode", ["normal", "steps", "isolated"])
@@ -126,9 +126,9 @@ def test_stream_failures_keep_public_error_types(mode: str) -> None:
 
     for stream in (Broken(), Wrong(), NeedsArgument()):
         with pytest.raises(esolangs.ProgramError):
-            esolangs.run(REFERENCE, stream, **bounds)
+            compat.run(REFERENCE, stream, **bounds)
         with pytest.raises(esolangs.ArgumentError):
-            esolangs.run(REFERENCE, ",.", stdin=stream, **bounds)
+            compat.run(REFERENCE, ",.", stdin=stream, **bounds)
 
 
 @pytest.mark.parametrize("blocked", ["program", "stdin"])
@@ -154,7 +154,7 @@ def test_isolated_deadline_bounds_stream_acquisition(
     stdin: Any = Stream() if blocked == "stdin" else "A"
     try:
         with pytest.raises(esolangs.ExecutionTimeoutError, match="loading input"):
-            esolangs.run(REFERENCE, program, stdin=stdin, isolated=True, timeout=0.1)
+            compat.run(REFERENCE, program, stdin=stdin, isolated=True, timeout=0.1)
         assert entered.is_set()
         assert not finished.is_set()
     finally:

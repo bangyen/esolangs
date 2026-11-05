@@ -6,6 +6,7 @@ from types import FrameType
 
 import pytest
 
+from esolangs import compat
 from esolangs.languages.fargo.generator import _arm_expression, anf_coefficients, fargo
 from esolangs.languages.fargo.interpreter import run
 from esolangs.runtime.io import ScriptedIO
@@ -94,10 +95,9 @@ def test_narrow_packed_constants_consume_input() -> None:
 def test_balance_unshared_packing_squares_random_n12() -> None:
     """Shared one-line definitions floor the line count at 2H > side; the
     unshared walk trades characters for squareness: (side, length, width)."""
-    import esolangs
     from esolangs.generation.wrap import balance_score
 
     rng = random.Random(12)
     table = "".join(rng.choice("01") for _ in range(4096))
-    program = str(esolangs.generate("fargo", table, balance=True))
+    program = str(compat.generate("fargo", table, balance=True))
     assert balance_score(program) == (256, 20187, 256)

@@ -26,7 +26,7 @@ def loaded():
     return sorted(m for m in sys.modules
                   if m.startswith("esolangs.languages.") and ".generator" in m)
 assert not loaded(), loaded()
-esolangs.generate(sys.argv[1], "01")
+esolangs.compat.generate(sys.argv[1], "01")
 assert loaded(), "positive control did not load a generator"
 print(json.dumps(names))
 """

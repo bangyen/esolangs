@@ -138,7 +138,7 @@ def _run(rest: list[str]) -> None:
                 max_memory=max_memory,
                 max_steps=max_steps,
                 settings=settings,
-            )
+            ).output
     except TemplateError as exc:
         _fail(_template_hint(exc, language))
     except ExecutionTimeoutError as exc:

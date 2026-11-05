@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.runtime._isolated import _decode, _worker
 from esolangs.runtime._lifecycle import HALTED_REPORT
 from esolangs.runtime._result import ExecutionResult
@@ -30,16 +31,16 @@ def test_generated_xor_runs_every_row_in_a_worker(language) -> None:
 @pytest.mark.medium
 def test_timeout_retains_streamed_output() -> None:
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-        esolangs.run(REFERENCE, "+.[]", timeout=1, isolated=True)
+        compat.run(REFERENCE, "+.[]", timeout=1, isolated=True)
     assert caught.value.partial_output == "\x01"
-    assert esolangs.run(REFERENCE, "++.", isolated=True) == "\x02"
+    assert compat.run(REFERENCE, "++.", isolated=True) == "\x02"
     assert caught.value.execution is None
 
 
 @pytest.mark.medium
 def test_input_error_retains_counts_and_output() -> None:
     with pytest.raises(esolangs.InputExhaustedError) as caught:
-        esolangs.run(REFERENCE, "+.,", isolated=True)
+        compat.run(REFERENCE, "+.,", isolated=True)
     assert caught.value.reads == 0
     assert caught.value.supplied == 0
     assert caught.value.partial_output == "\x01"
@@ -49,7 +50,7 @@ def test_input_error_retains_counts_and_output() -> None:
 @pytest.mark.parametrize("timeout", [0, float("inf")])
 def test_refuses_an_invalid_deadline(timeout) -> None:
     with pytest.raises(esolangs.ArgumentError):
-        esolangs.run(REFERENCE, "", timeout=timeout, isolated=True)
+        compat.run(REFERENCE, "", timeout=timeout, isolated=True)
 
 
 def test_decode_missing_result_and_notes() -> None:
@@ -111,7 +112,7 @@ def test_unknown_error_reconstructs_suggestions() -> None:
 @pytest.mark.parametrize("limit", [0, 1, 4097])
 def test_output_limit_stops_an_infinite_writer_and_reaps(limit, spawned) -> None:
     with pytest.raises(esolangs.InterpreterLimitError, match="output limit") as caught:
-        esolangs.run(REFERENCE, "+[.]", isolated=True, max_output=limit)
+        compat.run(REFERENCE, "+[.]", isolated=True, max_output=limit)
     assert caught.value.partial_output == "\x01" * limit
     assert len(spawned) == 1
     assert spawned[0].poll() is not None
@@ -119,13 +120,13 @@ def test_output_limit_stops_an_infinite_writer_and_reaps(limit, spawned) -> None
 
 @pytest.mark.medium
 def test_output_limit_beyond_the_decimal_rendering_limit_accepts_small_output() -> None:
-    assert esolangs.run(REFERENCE, "++.", isolated=True, max_output=10**5000) == "\x02"
+    assert compat.run(REFERENCE, "++.", isolated=True, max_output=10**5000) == "\x02"
 
 
 @pytest.mark.medium
 def test_capped_timeout_retains_output_and_reaps(spawned) -> None:
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-        esolangs.run(REFERENCE, "+.[]", timeout=1, isolated=True, max_output=10)
+        compat.run(REFERENCE, "+.[]", timeout=1, isolated=True, max_output=10)
     assert caught.value.partial_output == "\x01"
     assert spawned[0].poll() is not None
 
@@ -133,12 +134,12 @@ def test_capped_timeout_retains_output_and_reaps(spawned) -> None:
 @pytest.mark.parametrize("limit", [-1, True, 1.5, "1"])
 def test_refuses_invalid_output_limits(limit) -> None:
     with pytest.raises(esolangs.ArgumentError, match="max_output"):
-        esolangs.run(REFERENCE, "", isolated=True, max_output=limit)
+        compat.run(REFERENCE, "", isolated=True, max_output=limit)
 
 
 def test_output_limit_requires_isolation() -> None:
     with pytest.raises(esolangs.ArgumentError, match="isolated"):
-        esolangs.run(REFERENCE, "", max_output=1)
+        compat.run(REFERENCE, "", max_output=1)
 
 
 def test_capped_worker_splits_and_truncates_a_single_large_write(
@@ -173,7 +174,7 @@ def test_capped_worker_splits_and_truncates_a_single_large_write(
 @pytest.mark.medium
 def test_capped_input_error_retains_public_class_and_prefix() -> None:
     with pytest.raises(esolangs.InputExhaustedError) as caught:
-        esolangs.run(REFERENCE, "+.,", isolated=True, max_output=2)
+        compat.run(REFERENCE, "+.,", isolated=True, max_output=2)
     assert caught.value.partial_output == "\x01"
     assert caught.value.reads == 0
     assert caught.value.supplied == 0
@@ -329,7 +330,7 @@ def test_raster_transport_preserves_every_pixel(rows, monkeypatch) -> None:
         ),
     )
     language = one(source_kind="raster", boolean_generator=True)[0]
-    wire = esolangs.run(language, image, isolated=True)
+    wire = compat.run(language, image, isolated=True)
     assert _raster_rows(json.loads(wire)) == rows
 
 
@@ -341,7 +342,7 @@ def test_worker_executes_compact_raster_pixels(monkeypatch, capsys) -> None:
     from esolangs.runtime._isolated import _raster_runs
 
     language = one(source_kind="raster", boolean_generator=True)[0]
-    image = esolangs.generate(language, "0110")
+    image = compat.generate(language, "0110")
     payload = {
         "language": language,
         "program": _raster_runs(image.rows),
@@ -402,7 +403,7 @@ def test_worker_returns_a_termination_verdict(monkeypatch, capsys) -> None:
     monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
     request = {
         "language": language,
-        **_source_transport(esolangs.generate(language, "00")),
+        **_source_transport(compat.generate(language, "00")),
         "stdin": esolangs.encode_inputs(language, [0]),
         "seed": None,
         "termination": ["0", "1"],

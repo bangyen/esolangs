@@ -333,7 +333,7 @@ def render_xor_section() -> str:
     if match is None:
         raise ValueError("README XOR example must name its language")
     (language,) = shlex.split(match.group(1))
-    program = str(esolangs.generate(language, "0110"))
+    program = str(esolangs.compat.generate(language, "0110"))
     return "\n".join(
         [
             f"`esolangs generate {shlex.quote(language)} 0110` emits"

@@ -6,7 +6,7 @@ from importlib import import_module
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
@@ -228,10 +228,9 @@ def test_quarter_turned_rendered_size_is_linear() -> None:
 
 @pytest.mark.parametrize("row", [0, 37, 63])
 def test_balance_folds_the_lookup_into_strips(row: int) -> None:
-    import esolangs
 
     table = "".join(str((value * 73 + value // 3) & 1) for value in range(64))
-    program = str(esolangs.generate("Streetcode", table, balance=True))
+    program = str(compat.generate("Streetcode", table, balance=True))
     rows = program.splitlines()
     # 409x9 flat; the fold is about square.
     assert max(map(len, rows)) < 2 * 2 * len(rows) < 409
@@ -240,13 +239,12 @@ def test_balance_folds_the_lookup_into_strips(row: int) -> None:
 
 def test_balance_fold_target_uses_the_western_margin() -> None:
     """The fold's target squares the span east of the first used column."""
-    import esolangs
 
     parity = "".join(str(index.bit_count() & 1) for index in range(64))
-    program = str(esolangs.generate("Streetcode", parity, balance=True))
+    program = str(compat.generate("Streetcode", parity, balance=True))
     rows = program.splitlines()
     assert (len(rows), max(map(len, rows))) == (48, 98)
-    constant = str(esolangs.generate("Streetcode", "0" * 64, balance=True))
+    constant = str(compat.generate("Streetcode", "0" * 64, balance=True))
     rows = constant.splitlines()
     assert (len(rows), max(map(len, rows))) == (21, 50)
 
@@ -254,10 +252,9 @@ def test_balance_fold_target_uses_the_western_margin() -> None:
 def test_balance_of_parity_n10_stacks_the_big_rooms() -> None:
     """Rooms over 4 * sqrt(T) fold into stacks; chained, they held one
     uncuttable block T/2 wide: (side, length, width)."""
-    import esolangs
 
     parity = "".join(str(index.bit_count() & 1) for index in range(1024))
-    program = str(esolangs.generate("Streetcode", parity, balance=True))
+    program = str(compat.generate("Streetcode", parity, balance=True))
     assert balance_score(program) == (240, 16188, 186)
 
 
@@ -346,7 +343,6 @@ def test_the_folded_street_computes_every_table(n: int) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize(("n", "count"), [(4, 4), (5, 4), (6, 2), (7, 1)])
 def test_the_folded_street_computes_random_tables(n: int, count: int) -> None:
-    import esolangs
 
     generator = import_module("esolangs.languages.streetcode.generator")
     rng = random.Random(100 + n)
@@ -355,7 +351,7 @@ def test_the_folded_street_computes_random_tables(n: int, count: int) -> None:
         fold = generator._streetcode_folded(generator._streetcode_flat(table, n))
         assert len(fold.splitlines()) > 9
         assert _evaluate("Streetcode", fold, inputs=n) == table
-        balanced = esolangs.generate("Streetcode", table, balance=True)
+        balanced = compat.generate("Streetcode", table, balance=True)
         assert _evaluate("Streetcode", balanced, inputs=n) == table
 
 
@@ -365,7 +361,7 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
 
     for bit in "01":
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = esolangs.generate("Streetcode", bit * (1 << n), **options)
+            program = compat.generate("Streetcode", bit * (1 << n), **options)
             if not options:
                 assert len(program) == 4 * n + 219 + 4 * int(bit)
             if options.get("balance") and n <= 5:
@@ -382,7 +378,7 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
 def test_three_input_corpus_size() -> None:
     assert (
         sum(
-            len(esolangs.generate("Streetcode", format(value, "08b")))
+            len(compat.generate("Streetcode", format(value, "08b")))
             for value in range(256)
         )
         == 227464

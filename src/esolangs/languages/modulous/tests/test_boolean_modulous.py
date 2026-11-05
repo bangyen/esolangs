@@ -5,6 +5,7 @@ import random
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
 from tests.support.event_io import ReadFirstIO
@@ -19,7 +20,7 @@ class TestModulous:
     def test_narrow_chunks_execute_every_small_table(self, width: int) -> None:
         for n in range(1, 4):
             for table in witnesses(n):
-                program = esolangs.generate("Modulous", table, width=width)
+                program = compat.generate("Modulous", table, width=width)
                 assert max(map(len, program.splitlines())) <= max(width, 4)
                 for row in range(2**n):
                     bits = list(format(row, f"0{n}b"))
@@ -34,7 +35,7 @@ class TestModulous:
             format(rng.getrandbits(2**n), f"0{2**n}b"),
         ):
             for width in (1, 4, 13, 80):
-                program = esolangs.generate("Modulous", table, width=width)
+                program = compat.generate("Modulous", table, width=width)
                 for row in [0, 2**n - 1, *rng.sample(range(2**n), 12)]:
                     assert (
                         run_modulous(program, list(format(row, f"0{n}b"))) == table[row]
@@ -68,7 +69,7 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
         for row in range(128)
     )
     for options in ({}, {"width": 1}, {"balance": True}):
-        program = esolangs.generate("Modulous", table, **options)
+        program = compat.generate("Modulous", table, **options)
         for row in range(128):
             io = ScriptedIO("\n".join(f"{row:07b}") + "\n7")
             machine = _Machine(program, io)
@@ -90,7 +91,7 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
         if n == 1:
             for table in ("01", "10"):
                 for options in ({}, {"width": 1}, {"balance": True}):
-                    program = esolangs.generate("Modulous", table, **options)
+                    program = compat.generate("Modulous", table, **options)
                     for bit in "01":
                         io = ReadFirstIO(bit + "\nQ", expected=n)
                         machine = _Machine(program, io)
@@ -107,7 +108,7 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
                         assert io.input_token() == "Q"
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Modulous", bit * (1 << n), **options)
+                program = compat.generate("Modulous", bit * (1 << n), **options)
                 if not options and n == 8:
                     assert len(program) == 138
                 rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
@@ -124,7 +125,7 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
                     assert written.bits <= workspace(n, program)
                     assert io.input_token() == "Q"
     assert (
-        sum(len(esolangs.generate("Modulous", format(v, "08b"))) for v in range(256))
+        sum(len(compat.generate("Modulous", format(v, "08b"))) for v in range(256))
         == 37030
     )
 
@@ -140,7 +141,7 @@ def _check_pair_resources() -> None:
     for n in range(2, 9):
         table = resource_witness(n)
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = str(esolangs.generate("Modulous", table, **options))
+            program = str(compat.generate("Modulous", table, **options))
             row = (1 << n) - 1
             io = ScriptedIO("\n".join(f"{row:0{n}b}") + "\nQ")
             machine = _Machine(program, io)
@@ -161,7 +162,7 @@ def _check_pair_resources() -> None:
             if not options:
                 assert steps == bound
                 assert written.bits == workspace(n, program)
-    program = str(esolangs.generate("Modulous", "0010"))
+    program = str(compat.generate("Modulous", "0010"))
     machine = _Machine(program, ScriptedIO("0\n"))
 
     def finish() -> None:
@@ -172,7 +173,7 @@ def _check_pair_resources() -> None:
         finish()
 
     table = resource_witness(5)
-    mutant = str(esolangs.generate("Modulous", table)).replace("[SUB 3]", "[SUB 2]")
+    mutant = str(compat.generate("Modulous", table)).replace("[SUB 3]", "[SUB 2]")
     io = ScriptedIO("1\n" * 5)
     machine = _Machine(mutant, io)
     for _ in range(40):

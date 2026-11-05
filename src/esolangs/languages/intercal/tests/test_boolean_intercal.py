@@ -6,6 +6,7 @@ import re
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -158,7 +159,7 @@ def test_every_name_of_the_widest_witness_is_a_legal_variable() -> None:
 @pytest.mark.parametrize("table", ["00"])
 def test_narrow_balance_regime_edge_executes(table) -> None:
     """The smallest tables reaching an otherwise-untaken balance arm."""
-    balanced = esolangs.generate("INTERCAL", table, balance=True)
+    balanced = compat.generate("INTERCAL", table, balance=True)
     assert _evaluate("INTERCAL", balanced, inputs=len(table).bit_length() - 1) == table
 
 
@@ -193,7 +194,7 @@ def test_constants_reuse_one_variable_and_print_the_literal() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = esolangs.generate("INTERCAL", bit * (1 << n), **options)
+                template = compat.generate("INTERCAL", bit * (1 << n), **options)
                 assert template.count(TEMPLATE_CHAR) == 2 * n
                 if not options:
                     assert template.count(".1 <-") == n
@@ -202,7 +203,7 @@ def test_constants_reuse_one_variable_and_print_the_literal() -> None:
                         assert len(template) == 129
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     inputs = list(map(int, format(row, f"0{n}b")))
-                    program = esolangs.instantiate("INTERCAL", str(template), inputs)
+                    program = compat.instantiate("INTERCAL", str(template), inputs)
                     assert len(program) == len(template)
                     stream = ScriptedIO()
                     machine = _Machine(program, stream)
@@ -213,7 +214,7 @@ def test_constants_reuse_one_variable_and_print_the_literal() -> None:
                     if not options:
                         assert written.bits == workspace(n, template)
     assert (
-        sum(len(esolangs.generate("INTERCAL", format(v, "08b"))) for v in range(256))
+        sum(len(compat.generate("INTERCAL", format(v, "08b"))) for v in range(256))
         == 34795
     )
 

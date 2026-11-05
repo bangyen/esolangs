@@ -2,7 +2,7 @@
 
 import pytest
 
-import esolangs
+from esolangs import compat, generate
 from esolangs.generation.wrap import balance_score
 from tests.support.evaluation import _evaluate
 from tests.support.generator_support import evaluate_generated
@@ -11,13 +11,13 @@ from tests.support.generator_support import evaluate_generated
 @pytest.mark.medium
 @pytest.mark.parametrize("table", ["01" * 32, "0" * 64])
 def test_streetcode_indexed_regimes_are_balanced_and_execute(table) -> None:
-    default = esolangs.generate("Streetcode", table)
-    balanced = esolangs.generate("Streetcode", table, balance=True)
+    default = compat.generate("Streetcode", table)
+    balanced = compat.generate("Streetcode", table, balance=True)
     widest = max(map(len, default.split("\n")))
     optimum = min(
         [default]
         + [
-            esolangs.generate("Streetcode", table, width=width)
+            compat.generate("Streetcode", table, width=width)
             for width in range(1, widest + 1)
         ],
         key=balance_score,
@@ -37,7 +37,7 @@ def test_streetcode_lays_out_every_two_input_table(width: int) -> None:
 
 def test_fitting_narrow_lookup_still_shares_its_kerb() -> None:
     table = "00000011"
-    program = esolangs.generate("Streetcode", table, width=40)
+    program = generate("Streetcode", table, width=40).source
     rows = program.splitlines()
     assert len(rows) == 165
     assert max(map(len, rows)) == 7

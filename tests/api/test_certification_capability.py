@@ -80,7 +80,7 @@ import esolangs
 for name in esolangs.list_languages():
     esolangs.describe(name)
 program = esolangs.generate(sys.argv[1], '01')
-assert esolangs.run(sys.argv[1], program, stdin='1') == '1'
+assert esolangs.run(sys.argv[1], program, stdin='1').output == '1'
 try:
     import esolangs.registry._certification
 except ImportError as error:

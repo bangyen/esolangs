@@ -380,7 +380,7 @@ def _execute(
     source: esolangs.Program
     if facts["parameterized"]:
         assert isinstance(program, str)
-        source, stdin = esolangs.instantiate(language, program, bits), ""
+        source, stdin = esolangs.compat.instantiate(language, program, bits), ""
     else:
         source, stdin = (
             program,
@@ -413,7 +413,7 @@ def _execute(
 
     def drive(*_args: object) -> None:
         if not supported:
-            output = esolangs.run(language, source, stdin=stdin)
+            output = esolangs.compat.run(language, source, stdin=stdin)
             result["execution_status"] = "halted"
             result["actual_answer"] = esolangs.read_answer(language, output)
             return
@@ -509,7 +509,7 @@ def _measure(
     program: esolangs.Program | None = None
     for _ in range(repeat):
         started = time.perf_counter_ns()
-        program = esolangs.generate(language, table)
+        program = esolangs.compat.generate(language, table)
         source_units(program)
         timings.append(time.perf_counter_ns() - started)
     assert program is not None

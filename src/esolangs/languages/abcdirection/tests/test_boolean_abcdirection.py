@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.generation.token_balance import rendered_side
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.abcdirection.generator import _floor, _plan, abcdirection
@@ -16,7 +16,7 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 @pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    program = esolangs.generate("ABCDirection", table)
+    program = compat.generate("ABCDirection", table)
     from esolangs.languages.abcdirection.interpreter import run
 
     assert_native_rows("ABCDirection", table, program, run, sentinel="Q")
@@ -41,7 +41,7 @@ def test_balance_is_near_the_swept_optimum() -> None:
     ]
     got = swept = 0
     for table in tables:
-        program = str(esolangs.generate("ABCDirection", table, balance=True))
+        program = str(compat.generate("ABCDirection", table, balance=True))
         got += balance_score(program)[0]
         swept += _swept_side(table)
     assert swept <= got <= 1.1 * swept
@@ -49,20 +49,20 @@ def test_balance_is_near_the_swept_optimum() -> None:
 
 def test_balance_of_the_constant_zero_n3_is_exact() -> None:
     """The helix's print units are priced at their real width: (side, length, width)."""
-    program = str(esolangs.generate("ABCDirection", "00000000", balance=True))
+    program = str(compat.generate("ABCDirection", "00000000", balance=True))
     assert balance_score(program) == (34, 559, 34)
 
 
 def test_balance_of_xor_n2_is_exact() -> None:
     """The tight width charges reads and band cells, not the write: 37x16."""
-    program = str(esolangs.generate("ABCDirection", "0110", balance=True))
+    program = str(compat.generate("ABCDirection", "0110", balance=True))
     assert balance_score(program) == (37, 607, 37)
 
 
 def test_balance_of_a_four_input_table_is_exact() -> None:
     """The width model prices each print unit at five columns; pricing
     one at six widens the helix a full lap: (side, length, width)."""
-    program = str(esolangs.generate("ABCDirection", "1010010010000110", balance=True))
+    program = str(compat.generate("ABCDirection", "1010010010000110", balance=True))
     assert balance_score(program) == (45, 919, 45)
 
 
@@ -70,14 +70,14 @@ def test_balance_of_parity_n8_cuts_the_long_runs() -> None:
     """Runs over 2 * sqrt(T) split into gadgets; uncut, the 136-column first
     gadget held the side at 140: (side, length, width)."""
     table = "".join(str((row).bit_count() & 1) for row in range(256))
-    program = str(esolangs.generate("ABCDirection", table, balance=True))
+    program = str(compat.generate("ABCDirection", table, balance=True))
     assert balance_score(program) == (84, 3059, 84)
 
 
 def test_balance_of_not_n1_is_exact() -> None:
     """The tight width's slack is four columns, for the lap's landing
     and drop; a fifth widens even the one-input helix: (34, 559, 34)."""
-    program = str(esolangs.generate("ABCDirection", "01", balance=True))
+    program = str(compat.generate("ABCDirection", "01", balance=True))
     assert balance_score(program) == (34, 559, 34)
 
 
@@ -87,7 +87,7 @@ def test_balance_of_not_n1_is_exact() -> None:
 def test_constant_teeth_consume_whole_bytes(n, bit, balanced) -> None:
     from esolangs.languages.abcdirection.interpreter import run
 
-    program = esolangs.generate("ABCDirection", bit * (1 << n), balance=balanced)
+    program = compat.generate("ABCDirection", bit * (1 << n), balance=balanced)
     if n == 8 and not balanced:
         assert len(program) == 559
     rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
@@ -102,7 +102,7 @@ def test_constant_teeth_consume_whole_bytes(n, bit, balanced) -> None:
 def test_three_input_corpus_size() -> None:
     assert (
         sum(
-            len(esolangs.generate("ABCDirection", format(value, "08b")))
+            len(compat.generate("ABCDirection", format(value, "08b")))
             for value in range(256)
         )
         == 133684

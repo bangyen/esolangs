@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import vm
+from esolangs import compat, vm
 from esolangs.exceptions import HaltError
 from esolangs.vm import make_vm
 from tests.support.cli_support import _failure, call_both, call_main
@@ -28,7 +28,7 @@ class TestModulousSaysWhatWentWrong:
     def test_each_halt_names_its_cause(self, program: str, expected: str) -> None:
         """Not the class, the sentence: an empty message helps nobody."""
         with pytest.raises(esolangs.HaltError, match=expected):
-            esolangs.run("Modulous", program, stdin="")
+            compat.run("Modulous", program, stdin="")
 
 
 @pytest.mark.medium
@@ -56,7 +56,7 @@ def test_cli_prints_runtime_hints(tmp_path: Path, capsys) -> None:
 @pytest.mark.medium
 def test_runtime_error_keeps_partial_output_and_one_hint(isolated) -> None:
     with pytest.raises(HaltError) as caught:
-        esolangs.run("Modulous", "[PSH INT 65][PRT][SWP]", isolated=isolated)
+        compat.run("Modulous", "[PSH INT 65][PRT][SWP]", isolated=isolated)
     assert str(caught.value) == "SWP needs two values on the stack and there are 0"
     assert caught.value.partial_output == "A"
     assert caught.value.__notes__[0] == "hint: push two values before SWP"
@@ -75,7 +75,7 @@ def test_fixed_input_does_not_make_branch_input_forkable() -> None:
     )
     assert "seeded single-path run" in caught.value.__notes__[0]
     assert "does not decide all random paths" in caught.value.__notes__[0]
-    assert esolangs.run("Modulous", source, stdin="42\n", seed=1, timeout=1) == "42"
+    assert compat.run("Modulous", source, stdin="42\n", seed=1, timeout=1) == "42"
 
 
 # 2.0s over 21 tests: drives the CLI as a subprocess.
@@ -93,33 +93,33 @@ class TestOutputSurvivesAFailure:
     def test_a_halt_carries_what_was_printed(self) -> None:
         """The attribute, which is what the CLI reads."""
         with pytest.raises(esolangs.HaltError) as caught:
-            esolangs.run("Modulous", self.PRINTS_THEN_FAILS, stdin="")
+            compat.run("Modulous", self.PRINTS_THEN_FAILS, stdin="")
         assert caught.value.partial_output == "Hi"
 
     def test_it_is_in_the_traceback_too(self) -> None:
         """The note, for anyone who only sees the traceback."""
         with pytest.raises(esolangs.HaltError) as caught:
-            esolangs.run("Modulous", self.PRINTS_THEN_FAILS, stdin="")
+            compat.run("Modulous", self.PRINTS_THEN_FAILS, stdin="")
         assert "printed 'Hi'" in "\n".join(getattr(caught.value, "__notes__", []))
 
     def test_a_timeout_carries_it(self) -> None:
         """The case that matters most: a loop you meant to be finite."""
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-            esolangs.run("Modulous", self.LOOPS_PRINTING, stdin="", timeout=0.01)
+            compat.run("Modulous", self.LOOPS_PRINTING, stdin="", timeout=0.01)
         assert caught.value.partial_output.startswith("999")
 
     def test_an_error_before_the_run_carries_nothing(self) -> None:
         """Empty is the honest answer when the program never started."""
         with pytest.raises(esolangs.UnknownLanguageError) as unknown:
-            esolangs.run("nosuchlang", "+", stdin="")
+            compat.run("nosuchlang", "+", stdin="")
         assert unknown.value.partial_output == ""
         with pytest.raises(esolangs.ProgramError) as bad:
-            esolangs.run(REFERENCE, "[[[", stdin="")
+            compat.run(REFERENCE, "[[[", stdin="")
         assert bad.value.partial_output == ""
 
     def test_a_successful_run_is_unchanged(self) -> None:
         """The attribute is for failures; success returns as it always did."""
-        assert esolangs.run(REFERENCE, "+++.", stdin="") == "\x03"
+        assert compat.run(REFERENCE, "+++.", stdin="") == "\x03"
 
     def test_the_cli_prints_it_before_the_error(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path

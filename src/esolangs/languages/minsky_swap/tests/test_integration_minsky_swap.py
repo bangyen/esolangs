@@ -2,6 +2,7 @@
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs import compat
 from tests.support.reference import REFERENCE
 from tests.support.samples import SAMPLES
 
@@ -45,14 +46,14 @@ class TestARunFinishesTheDump:
         """The bug was invisible on the non-dumping languages; compare."""
         empty = []
         for name in self._dumping():
-            program = esolangs.generate(name, "0110")
+            program = compat.generate(name, "0110")
             if esolangs.describe(name)["parameterized"]:
-                program, stdin = esolangs.instantiate(name, program, [0, 0]), ""
+                program, stdin = compat.instantiate(name, program, [0, 0]), ""
             else:
                 stdin = esolangs.encode_inputs(name, [0, 0], truth_table="0110")
             debugger = debugger_api.make_debugger(name, program, stdin=stdin)
             assert debugger.run(timeout=30) == "halted"
-            assert debugger.output == esolangs.run(
+            assert debugger.output == compat.run(
                 name, program, stdin=stdin, timeout=30
             ), name
             if not debugger.output:

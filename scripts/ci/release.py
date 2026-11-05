@@ -96,7 +96,7 @@ def _refuses_timeout() -> None:
 
     refusal = _refused(
         esolangs.ArgumentError,
-        lambda: esolangs.run("brainfuck", "+.", timeout=0.1),
+        lambda: esolangs.compat.run("brainfuck", "+.", timeout=0.1),
         "unsupported signal timeout was accepted",
     )
     assert "Unix main thread" in str(refusal)
@@ -124,7 +124,7 @@ def _generator(name: str, *, image_extra: bool) -> None:
 
     controls = load_certification(LANGUAGES[resolve(name)]).benchmark_tables
     table = next((t for t in controls if "0" in t and "1" in t), "0110")
-    generated = esolangs.generate(name, table)
+    generated = esolangs.compat.generate(name, table)
     if image_extra and isinstance(generated, esolangs.Raster):
         generated = esolangs.Raster.from_png(generated.to_png())
     assert (
@@ -206,13 +206,14 @@ def _smoke_install(package: Path) -> None:
         _evaluate(bound.name, program, inputs=2, isolated=True, max_output=1) == "0110"
     )
     assert (
-        bound.read_answer(bound.run(program, stdin=bound.encode_inputs([0, 1]))) == "1"
+        bound.read_answer(bound.run(program, stdin=bound.encode_inputs([0, 1])).output)
+        == "1"
     )
-    assert esolangs.run("brainfuck", "+.", max_steps=2) == "\x01"
-    assert esolangs.run("brainfuck", "+.", timeout=1, isolated=True) == "\x01"
+    assert esolangs.compat.run("brainfuck", "+.", max_steps=2) == "\x01"
+    assert esolangs.compat.run("brainfuck", "+.", timeout=1, isolated=True) == "\x01"
     _refused(
         esolangs.ExecutionTimeoutError,
-        lambda: esolangs.run("brainfuck", "+[]", max_steps=10),
+        lambda: esolangs.compat.run("brainfuck", "+[]", max_steps=10),
         "the bounded runner accepted a diverging program",
     )
     executable = Path(sys.executable).with_name(
@@ -245,7 +246,7 @@ def _smoke_generators(package: Path, *, image_extra: bool) -> None:
     example = package / examples[0]
     assert (
         esolangs.read_answer(
-            "brainfuck", esolangs.run("brainfuck", example, stdin="0\n1\n")
+            "brainfuck", esolangs.compat.run("brainfuck", example, stdin="0\n1\n")
         )
         == "0"
     )
@@ -308,7 +309,7 @@ def _smoke_rasters(*, image_extra: bool) -> None:
         2,
     )
     for language in rasters:
-        raster = esolangs.generate(language, "0110")
+        raster = esolangs.compat.generate(language, "0110")
         assert isinstance(raster, esolangs.Raster)
         if image_extra:
             decoded = esolangs.Raster.from_png(raster.to_png())
@@ -323,7 +324,7 @@ def _smoke_rasters(*, image_extra: bool) -> None:
                 assert "esolangs[image]" in str(refusal)
         for row in range(4):
             bits = [row >> 1, row & 1]
-            output = esolangs.run(
+            output = esolangs.compat.run(
                 language, decoded, stdin=esolangs.encode_inputs(language, bits)
             )
             assert esolangs.read_answer(language, output) == "0110"[row]
@@ -338,13 +339,16 @@ def _smoke_deadlines() -> None:
     if hasattr(signal, "SIGALRM"):
         assert (
             _evaluate(
-                "brainfuck", esolangs.generate("brainfuck", "0110"), timeout=1, inputs=2
+                "brainfuck",
+                esolangs.compat.generate("brainfuck", "0110"),
+                timeout=1,
+                inputs=2,
             )
             == "0110"
         )
         _refused(
             esolangs.ExecutionTimeoutError,
-            lambda: esolangs.run("brainfuck", "+[]", timeout=0.02),
+            lambda: esolangs.compat.run("brainfuck", "+[]", timeout=0.02),
             "signal timeout did not stop a loop",
         )
     else:
@@ -361,7 +365,7 @@ def _smoke_deadlines() -> None:
                 pool.submit(
                     _evaluate,
                     language,
-                    esolangs.generate(language, "0110"),
+                    esolangs.compat.generate(language, "0110"),
                     inputs=2,
                     isolated=True,
                 ).result(timeout=30)
@@ -373,19 +377,25 @@ def _smoke_deadlines() -> None:
     for language in terminating:
         assert (
             _evaluate(
-                language, esolangs.generate(language, "01"), inputs=1, isolated=True
+                language,
+                esolangs.compat.generate(language, "01"),
+                inputs=1,
+                isolated=True,
             )
             == "01"
         )
     _refused(
         esolangs.ExecutionTimeoutError,
-        lambda: esolangs.run("brainfuck", "+[]", timeout=0.5, isolated=True),
+        lambda: esolangs.compat.run("brainfuck", "+[]", timeout=0.5, isolated=True),
         "isolated timeout did not stop a loop",
     )
     for language in terminating:
         assert (
             _evaluate(
-                language, esolangs.generate(language, "01"), timeout=None, inputs=1
+                language,
+                esolangs.compat.generate(language, "01"),
+                timeout=None,
+                inputs=1,
             )
             == "01"
         )

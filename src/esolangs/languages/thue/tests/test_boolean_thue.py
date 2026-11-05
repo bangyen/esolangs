@@ -5,7 +5,8 @@ import random
 
 import pytest
 
-from esolangs import generate
+from esolangs import compat
+from esolangs.compat import generate
 from esolangs.languages import generators as boolean
 from esolangs.languages.thue.generator import thue
 from esolangs.languages.thue.interpreter import _Machine, _matches
@@ -389,7 +390,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Thue", bit * (1 << n), **options)
+                program = compat.generate("Thue", bit * (1 << n), **options)
                 if not options:
                     assert len(program) == n + 35
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):

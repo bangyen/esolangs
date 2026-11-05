@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.languages.rubic.generator import _OPENING, _TABLE
 from esolangs.languages.rubic.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
@@ -14,7 +15,7 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     n = len(table).bit_length() - 1
-    program = esolangs.generate("Rubic", table)
+    program = compat.generate("Rubic", table)
     opening = _Machine(" ".join(_OPENING), ScriptedIO())
     while not opening.halted:
         opening.step()
@@ -27,7 +28,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("Rubic", bits)
-        got = esolangs.run("Rubic", program, stdin=stdin, timeout=5)
+        got = compat.run("Rubic", program, stdin=stdin, timeout=5)
         io = ReadFirstIO(stdin + "Q")
         machine = _Machine(program, io)
         while not machine.halted:
@@ -46,7 +47,7 @@ def test_the_table_holds_on_both_cube_states() -> None:
     every expression the generator emits has its stated value on both."""
 
     def out(*tokens: str) -> str:
-        return esolangs.run("Rubic", " ".join(tokens))
+        return compat.run("Rubic", " ".join(tokens))
 
     for store in ((), ("r2",)):
         state = (*_OPENING, *store)
@@ -81,7 +82,7 @@ def test_constant_reads_precede_output_and_preserve_the_next_character() -> None
                 + n.bit_length()
             )
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Rubic", bit * (1 << n), **options)
+                program = compat.generate("Rubic", bit * (1 << n), **options)
                 if not options:
                     assert len(program) == 2 * n + 35
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
@@ -102,6 +103,6 @@ def test_constant_reads_precede_output_and_preserve_the_next_character() -> None
                     assert io.getvalue() == bit
                     assert io.input_char() == ord("Q")
     assert (
-        sum(len(esolangs.generate("Rubic", format(v, "08b"))) for v in range(256))
+        sum(len(compat.generate("Rubic", format(v, "08b"))) for v in range(256))
         == 63126
     )

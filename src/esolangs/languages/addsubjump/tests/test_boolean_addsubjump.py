@@ -7,6 +7,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs import compat
 from esolangs.generation.helpers import in_input_order
 from esolangs.languages import generators as boolean
 from esolangs.languages.addsubjump.generator import (
@@ -75,7 +76,7 @@ def test_wide_packed_projection_keeps_reads(kind) -> None:
     legacy = _full_packed(table)
     assert len(program) < len(legacy)
     assert _evaluate("AddSubJump", program, inputs=8) == table
-    balanced = esolangs.generate("AddSubJump", table, balance=True)
+    balanced = compat.generate("AddSubJump", table, balance=True)
     assert _evaluate("AddSubJump", balanced, inputs=8) == table
     for row in (0, 1, 128, 255):
         bits = [int(c) for c in f"{row:08b}"]
@@ -203,7 +204,7 @@ def test_sharing_boundaries(n: int) -> None:
     assert len(program) <= len(_parent(table))
     for row, expected in enumerate(table):
         bits = [(row >> shift) & 1 for shift in reversed(range(n))]
-        output = esolangs.run(
+        output = compat.run(
             "AddSubJump",
             program,
             stdin=esolangs.encode_inputs("AddSubJump", bits),
@@ -235,7 +236,7 @@ def test_packed_cells_execute(n: int) -> None:
         rows = range(len(table)) if n == 6 else (0, 1, len(table) // 2, len(table) - 1)
         for row in rows:
             bits = [(row >> shift) & 1 for shift in reversed(range(n))]
-            output = esolangs.run(
+            output = compat.run(
                 "AddSubJump",
                 program,
                 stdin=esolangs.encode_inputs("AddSubJump", bits),
@@ -248,8 +249,8 @@ def test_six_input_table_with_five_essential_rows_pins_both_sizes() -> None:
     """Five essential inputs at n=6 take the packed route; balancing weighs the
     default layout alone; both sizes are pinned."""
     table = "0010100100101001011011100110111010011011100110110110101101101011"
-    assert len(esolangs.generate("AddSubJump", table)) == 793
-    assert len(esolangs.generate("AddSubJump", table, balance=True)) == 1429
+    assert len(compat.generate("AddSubJump", table)) == 793
+    assert len(compat.generate("AddSubJump", table, balance=True)) == 1429
 
 
 def test_packed_program_prints_then_halts_on_the_special_address() -> None:
@@ -282,8 +283,8 @@ def test_five_input_all_essential_table_pins_its_balanced_size() -> None:
     """Every input essential at n=5: balancing weighs the default layout
     alone, never the legacy packed candidate; both sizes are pinned."""
     table = "00111001011001101010100000100011"
-    assert len(esolangs.generate("AddSubJump", table)) == 775
-    assert len(esolangs.generate("AddSubJump", table, balance=True)) == 1409
+    assert len(compat.generate("AddSubJump", table)) == 775
+    assert len(compat.generate("AddSubJump", table, balance=True)) == 1409
 
 
 def _check_native_constants() -> None:
@@ -294,7 +295,7 @@ def _check_native_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("AddSubJump", bit * (1 << n), **options)
+                program = compat.generate("AddSubJump", bit * (1 << n), **options)
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     stdin = esolangs.encode_inputs(
                         "AddSubJump", list(map(int, f"{row:0{n}b}"))
@@ -323,8 +324,8 @@ def _check_packed_reader() -> None:
         table = "".join(str((row >> (5 - position)) & 1) for row in range(64))
         for program in (
             _addsubjump_packed(table),
-            esolangs.generate("AddSubJump", table, width=1),
-            esolangs.generate("AddSubJump", table, balance=True),
+            compat.generate("AddSubJump", table, width=1),
+            compat.generate("AddSubJump", table, balance=True),
         ):
             for row in (0, 21, 42, 63):
                 io = ReadFirstIO(f"{row:06b}" + "Q", expected=6)

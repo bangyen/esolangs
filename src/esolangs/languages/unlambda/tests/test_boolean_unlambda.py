@@ -2,6 +2,7 @@
 
 import pytest
 
+from esolangs import compat
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.languages import generators as boolean
 from esolangs.languages.unlambda.generator import unlambda
@@ -80,7 +81,7 @@ def _check_constants(arities: range) -> None:
     for n in arities:
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Unlambda", bit * (1 << n), **options)
+                program = compat.generate("Unlambda", bit * (1 << n), **options)
                 if not options:
                     assert len(program) == 4 * n + 2
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):

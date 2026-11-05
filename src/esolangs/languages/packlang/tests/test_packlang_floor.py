@@ -5,6 +5,7 @@ import random
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.generation.examples import BOOLEAN_EXAMPLES
 from esolangs.generation.wrap import wrap_program
 from esolangs.languages.packlang.generator import packlang
@@ -17,7 +18,7 @@ from tests.support.witness_tables import witnesses
 @pytest.mark.medium
 def test_every_small_packlang_table_executes_at_the_new_floor(inputs: int) -> None:
     for table in witnesses(inputs):
-        source = esolangs.generate("Packlang", table, width=1)
+        source = compat.generate("Packlang", table, width=1)
         assert max(map(len, source.splitlines())) == 7
         assert evaluate_generated("Packlang", table, width=1) == table
 
@@ -26,15 +27,15 @@ def test_every_small_packlang_table_executes_at_the_new_floor(inputs: int) -> No
 @pytest.mark.parametrize("width", [1, 7, 11, 40, 80])
 def test_packlang_lexical_folds_execute_sampled_rows(inputs: int, width: int) -> None:
     table = format(random.Random(inputs).getrandbits(1 << inputs), f"0{1 << inputs}b")
-    source = esolangs.generate("Packlang", table, width=width)
+    source = compat.generate("Packlang", table, width=width)
     assert max(map(len, source.splitlines())) <= max(width, 7)
     reflowed = wrap_program(source, "packlang", 1)
     assert _tokenize(reflowed) == _tokenize(source)
     for row in [0, 1, len(table) // 2, len(table) - 2, len(table) - 1]:
         bits = [int(bit) for bit in format(row, f"0{inputs}b")]
         stdin = esolangs.encode_inputs("Packlang", bits)
-        assert esolangs.run("Packlang", source, stdin=stdin) == table[row]
-        assert esolangs.run("Packlang", reflowed, stdin=stdin) == table[row]
+        assert compat.run("Packlang", source, stdin=stdin) == table[row]
+        assert compat.run("Packlang", reflowed, stdin=stdin) == table[row]
 
 
 def test_packlang_default_and_fitting_source_stay_unchanged() -> None:
@@ -50,6 +51,6 @@ def test_wrapping_only_breaks_between_tokens() -> None:
     plain = example.build(13)
     wrapped = wrap_program(plain, "packlang", 6)
     assert _tokenize(wrapped) == _tokenize(plain)
-    assert esolangs.run("Packlang", wrapped, stdin=example.stdin) == esolangs.run(
+    assert compat.run("Packlang", wrapped, stdin=example.stdin) == compat.run(
         "Packlang", plain, stdin=example.stdin
     )

@@ -2,7 +2,7 @@
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.languages.codesick.generator import codesick
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_constant_output, assert_every_row
@@ -14,7 +14,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     from esolangs.languages.codesick.tests.ablations import ablate
 
-    program = esolangs.generate("Codesick", table)
+    program = compat.generate("Codesick", table)
     assert program == ablate(table, "default")
     assert_every_row("Codesick", table, program=program)
 
@@ -36,13 +36,12 @@ def test_only_a_constant_table_spends_the_missing_test(table: str) -> None:
 
 
 def _check_constants() -> None:
-    import esolangs
     from esolangs.languages.codesick.interpreter import run
 
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Codesick", bit * (1 << n), **options)
+                program = compat.generate("Codesick", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row, expected=1)
                     assert_constant_output(run, program, io, bit, 1)

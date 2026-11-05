@@ -4,6 +4,7 @@ import random
 
 import pytest
 
+from esolangs import compat
 from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.languages.arrowqueue.generator import PAIR
 from tests.generators.fills import fill
@@ -104,17 +105,16 @@ class TestParameterizedArrowQueue:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_balance_and_setters_off_path(bit: str) -> None:
     """Constant roots keep their setters off the halt/ring path, balanced."""
-    import esolangs
     from tests.support.evaluation import _evaluate
 
     if bit == "0":
         _check_constants()
     n = 8
     table = bit * (1 << n)
-    template = esolangs.generate("ArrowQueue", table)
+    template = compat.generate("ArrowQueue", table)
     assert template.count(TEMPLATE_CHAR) == n
     for options in ({}, {"width": 1}, {"width": 5}, {"width": 6}, {"balance": True}):
-        program = esolangs.generate("ArrowQueue", table, **options)
+        program = compat.generate("ArrowQueue", table, **options)
         assert _evaluate("ArrowQueue", program, inputs=n) == table
 
 
@@ -166,16 +166,15 @@ def test_ring_pops_rdlu_then_sustains() -> None:
 
 
 def _check_constants() -> None:
-    import esolangs
     from esolangs.languages.arrowqueue.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
         for bit in "01":
             table = bit * (1 << n)
-            default = esolangs.generate("ArrowQueue", table)
+            default = compat.generate("ArrowQueue", table)
             span = max(map(len, default.splitlines()))
-            assert esolangs.generate("ArrowQueue", table, width=span) == default
+            assert compat.generate("ArrowQueue", table, width=span) == default
             for options in (
                 {},
                 {"width": 1},
@@ -183,7 +182,7 @@ def _check_constants() -> None:
                 {"width": 7},
                 {"balance": True},
             ):
-                template = esolangs.generate("ArrowQueue", table, **options)
+                template = compat.generate("ArrowQueue", table, **options)
                 rows = template.splitlines()
                 slots = {
                     (r, c)
@@ -196,7 +195,7 @@ def _check_constants() -> None:
                     assert max(map(len, rows)) <= max(4, options["width"])
                 for bits in ([0] * n, [1] * n):
                     io = ScriptedIO("7")
-                    program = esolangs.instantiate("ArrowQueue", template, bits)
+                    program = compat.instantiate("ArrowQueue", template, bits)
                     machine = _Machine(program.splitlines(), io)
                     seen = set()
                     for _ in range(32):

@@ -5,6 +5,7 @@ import random
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.languages import generators as boolean
 from esolangs.registry._certification import load as load_certification
 from tests.generators.boolean_runners import _runner
@@ -43,7 +44,7 @@ class TestBfstack:
             assert run_bfstack(program, bits) == table[row]
         constant = boolean.bfstack(bit * 4096)
         stdin = esolangs.encode_inputs("BFStack", [1] * 12) + "0\n"
-        assert esolangs.run("BFStack", constant + ",.", stdin=stdin) == bit + "0"
+        assert compat.run("BFStack", constant + ",.", stdin=stdin) == bit + "0"
 
     @pytest.mark.medium
     def test_a_block_ignoring_an_input_reads_it_once(self) -> None:
@@ -70,7 +71,7 @@ class TestBfstack:
             bits = list(f"{row:010b}")
             stdin = esolangs.encode_inputs("BFStack", list(map(int, bits))) + "7"
             assert (
-                esolangs.run("BFStack", program + ",.", stdin=stdin) == table[row] + "7"
+                compat.run("BFStack", program + ",.", stdin=stdin) == table[row] + "7"
             )
 
     @pytest.mark.medium
@@ -142,7 +143,7 @@ def test_constant_leaf_preserves_shape_and_input_consumption(n: int, bit: str) -
     for row in range(1 << n):
         assert run_bfstack(program, list(format(row, f"0{n}b"))) == bit
     stdin = esolangs.encode_inputs("BFStack", [1] * n) + "0"
-    assert esolangs.run("BFStack", program + ",.", stdin=stdin) == bit + "0"
+    assert compat.run("BFStack", program + ",.", stdin=stdin) == bit + "0"
 
 
 def test_small_tables_do_not_grow_and_execute() -> None:
@@ -174,7 +175,7 @@ def _check_identities() -> None:
                 str((row >> (n - selected - 1)) & 1) for row in range(1 << n)
             )
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("BFStack", table, **options)
+                program = compat.generate("BFStack", table, **options)
                 assert len(program.replace("\n", "")) == 2 * n
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     bits = f"{row:0{n}b}"
@@ -228,7 +229,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("BFStack", bit * (1 << n), **options)
+                program = compat.generate("BFStack", bit * (1 << n), **options)
                 if not options:
                     assert len(program.replace("\n", "")) == 2 * n + 50 + int(bit)
                 peak = 0

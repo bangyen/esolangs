@@ -70,8 +70,8 @@ import esolangs
 table = "0110"
 program = esolangs.generate("brainfuck", table)
 stdin = esolangs.encode_inputs("brainfuck", [0, 1])
-output = esolangs.run("brainfuck", program, stdin=stdin)
-assert esolangs.read_answer("brainfuck", output) == "1"
+result = esolangs.run("brainfuck", program, stdin=stdin)
+assert esolangs.read_answer("brainfuck", result.output) == "1"
 ```
 
 One kind of language needs a different call:
@@ -80,13 +80,13 @@ One kind of language needs a different call:
 
   ```python
   raster = esolangs.generate("Piet", table)
-  assert isinstance(raster, esolangs.Raster)
-  raster.to_png()  # PNG I/O needs esolangs[image] (Pillow)
+  assert isinstance(raster.source, esolangs.Raster)
+  raster.source.to_png()  # PNG I/O needs esolangs[image] (Pillow)
   stdin = esolangs.encode_inputs("Piet", [0, 1])
-  assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin=stdin)) == "1"
+  assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin=stdin).output) == "1"
   ```
 
-`generate_artifact` returns an immutable `ProgramArtifact` or `TemplateArtifact`.
+`generate` (also named `generate_artifact`) returns an immutable `ProgramArtifact` or `TemplateArtifact`.
 Both carry explicit `.source`, language and dialect settings; raster programs
 also retain scale. `TemplateArtifact.fill(bits)` returns a runnable record.
 `run`, `instantiate`, `dump_program` and `save_program` accept records;
@@ -98,11 +98,10 @@ text that resembles a filename. `Language.from_file(path)` reads native source
 with file newline handling and retains embedded dialect settings and scale.
 Both return `ProgramArtifact`; parsing still happens when the program executes.
 
-`generate` remains the source compatibility API. It returns a `Program`, one of:
-
-- a `str` subclass, for text;
-- a `Raster`, for images;
-- a `CompressedText` (Unary).
+`generate` and `load_program` return artifacts; `instantiate` returns a filled
+`ProgramArtifact`. `run` returns `ExecutionResult` (`run_result` is an alias).
+Extract `.source` for native source operations and `.output` for output text.
+Source is a string, `Raster`, or `CompressedText` (Unary).
 
 `str()` of a `Raster` is a summary, not source; of a `CompressedText`, the
 expanded text. A `CompressedText` carries its `limits`, a
@@ -122,8 +121,8 @@ import esolangs
 
 bf = esolangs.Language("brainfuck")
 program = bf.generate("0110", balance=True)
-output = bf.run(program, stdin=bf.encode_inputs([0, 1]))
-assert bf.read_answer(output) == "1"
+result = bf.run(program, stdin=bf.encode_inputs([0, 1]))
+assert bf.read_answer(result.output) == "1"
 info = bf.describe()
 ```
 
@@ -159,15 +158,15 @@ Functions:
 - `esolangs.describe` -- return a structured description of `language`
 - `esolangs.dump_program` -- return version-1 JSON preserving source, choices, and template setters
 - `esolangs.encode_inputs` -- return the stdin that feeds `bits` to a `language` program
-- `esolangs.generate` -- return a program in `language` computing `truth_table`
-- `esolangs.generate_artifact` -- return an immutable program or template with explicit source and provenance
+- `esolangs.generate` -- return an immutable program or template computing `truth_table`
+- `esolangs.generate_artifact` -- return an immutable program or template computing `truth_table`
 - `esolangs.instantiate` -- fill a parameterized generator's template with `bits`
 - `esolangs.list_languages` -- return the supported language names, sorted
 - `esolangs.load_artifact` -- restore version-1 JSON as an explicit program or template record
-- `esolangs.load_program` -- restore version-1 JSON as tagged source for the requested language
+- `esolangs.load_program` -- restore version-1 JSON as an explicit program or template record
 - `esolangs.read_answer` -- return the answer bit, `"0"` or `"1"`, a program's `output` carries
-- `esolangs.run` -- execute `program` and return its output
-- `esolangs.run_result` -- execute source and return immutable output, input usage and completion
+- `esolangs.run` -- execute `program` and return output, input usage and completion evidence
+- `esolangs.run_result` -- execute `program` and return output, input usage and completion evidence
 - `esolangs.save_program` -- write a program as a native source file
 
 Types:
@@ -186,6 +185,7 @@ Types:
 - `esolangs.TemplateArtifact` -- text with explicit input bindings; never runnable source
 - `esolangs.TemplateBindings` -- ordered, equal-width input bindings, independent of source storage
 - `esolangs.TextLimits` -- independent raw-export, generation-work and compressed-file budgets
+- `esolangs.compat` -- explicit 1.x source/output adapters; new code uses the artifact-first API
 
 Exceptions:
 
@@ -478,6 +478,18 @@ wherever a name is. `spec`, `answer_convention` and
 regex, instead.
 
 ## Compatibility
+
+Version 2.0 changes the default return types: `generate` and `load_program`
+return `ProgramArtifact | TemplateArtifact`, `instantiate` returns a runnable
+`ProgramArtifact`, and `run` returns `ExecutionResult`. `Language` methods use
+these same defaults. Existing serialized documents and CLI source/output formats
+remain compatible.
+
+For 1.x code that requires tagged strings, rasters, compressed source or output
+text, call `esolangs.compat.generate`, `.instantiate`, `.load_program` and `.run`.
+These adapters are explicit projections of the artifact-first implementation;
+new code should retain records and extract `.source` or `.output` where needed.
+
 
 The CLI is a deliberate subset of the Python API, not a mirror of it:
 every command calls public functions, a capability lands in the API first,

@@ -6,7 +6,7 @@ import re
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.languages import generators as boolean
 from esolangs.languages.laserfuck.generator import MARGIN
 from esolangs.languages.laserfuck.tests.runners import run_laserfuck
@@ -423,7 +423,6 @@ def test_overhead_funnel_larger_tables(n: int) -> None:
 
 @pytest.mark.parametrize("width", [1, 7, 9, 10, 15, 18, 20, 40, 80])
 def test_vertical_tree_preserves_fitting_public_layouts(width: int) -> None:
-    import esolangs
     from esolangs.languages.laserfuck.generator import (
         _laserfuck_build,
         _laserfuck_raise_funnel,
@@ -433,7 +432,7 @@ def test_vertical_tree_preserves_fitting_public_layouts(width: int) -> None:
     legacy = _laserfuck_build(table, width)
     if max(map(len, legacy.splitlines())) > width:
         legacy = _laserfuck_raise_funnel(legacy)
-    source = esolangs.generate("LaserFuck", table, width=width)
+    source = compat.generate("LaserFuck", table, width=width)
     if max(map(len, legacy.splitlines())) <= width:
         assert source == legacy
     for heading in range(4):
@@ -476,12 +475,11 @@ def test_a_width_tree_tests_only_essential_inputs(width: int) -> None:
 @pytest.mark.parametrize(("n", "side"), [(7, 92), (8, 162)])
 def test_balance_races_the_turned_tree(n: int, side: int) -> None:
     """The tree stood on end is the balanced square (upright: 166-172 / 322+)."""
-    import esolangs
     from esolangs.generation.wrap import balance_score
     from tests.support.evaluation import _evaluate
 
     table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
-    balanced = esolangs.generate("LaserFuck", table, balance=True)
+    balanced = compat.generate("LaserFuck", table, balance=True)
     assert balance_score(balanced)[0] == side
     assert _evaluate("LaserFuck", balanced, 60, inputs=n, max_rows=None) == table
     wrong = table[:-1] + str(1 - int(table[-1]))
@@ -491,12 +489,11 @@ def test_balance_races_the_turned_tree(n: int, side: int) -> None:
 @pytest.mark.medium
 def test_balance_tiles_subtrees_at_n9() -> None:
     """The tree cut at depth 2, subtrees side by side: (side, length, width)."""
-    import esolangs
     from esolangs.generation.wrap import balance_score
     from tests.support.evaluation import _evaluate
 
     table = format(random.Random(9).getrandbits(1 << 9), f"0{1 << 9}b")
-    balanced = esolangs.generate("LaserFuck", table, balance=True)
+    balanced = compat.generate("LaserFuck", table, balance=True)
     assert balance_score(balanced) == (292, 25252, 292)
     assert _evaluate("LaserFuck", balanced, 60, inputs=9, max_rows=None) == table
 
@@ -523,7 +520,7 @@ def test_constants_drain_before_dump_at_every_heading(n, bit) -> None:
 def test_three_input_corpus_size() -> None:
     assert (
         sum(
-            len(esolangs.generate("LaserFuck", format(value, "08b")))
+            len(compat.generate("LaserFuck", format(value, "08b")))
             for value in range(256)
         )
         == 87555

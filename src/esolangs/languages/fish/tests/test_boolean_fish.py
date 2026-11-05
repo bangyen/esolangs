@@ -6,6 +6,7 @@ from itertools import pairwise
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.generation.helpers import input_weights
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.fish.generator import (
@@ -77,12 +78,12 @@ def test_fish_balance_matches_all_power_of_two_folds(table) -> None:
     layouts += [_packed_folded(reads, reduced, columns) for columns in range(4, 65)]
     optimum = min(layouts, key=balance_score)
     assert balance_score(balanced)[0] <= 1.05 * balance_score(optimum)[0]
-    assert esolangs.generate("Fish", table, balance=True) == balanced
+    assert compat.generate("Fish", table, balance=True) == balanced
     assert _evaluate("Fish", balanced, inputs=len(table).bit_length() - 1) == table
 
 
 def test_xor_has_one_column() -> None:
-    xor = esolangs.generate("Fish", "0110", width=1)
+    xor = compat.generate("Fish", "0110", width=1)
     assert max(map(len, xor.splitlines())) == 1
 
 
@@ -91,11 +92,11 @@ def test_a_balanced_table_past_225_code_rows_uses_a_doubling_height_literal() ->
     """n=23 balanced needs more than a*b rows of code; the doubling literal answers."""
     inputs = 23
     table = format(random.Random(2).getrandbits(1 << inputs), f"0{1 << inputs}b")
-    program = esolangs.generate("Fish", table, balance=True)
+    program = compat.generate("Fish", table, balance=True)
     for row in (0, 5000001, (1 << inputs) - 1):
         bits = [int(bit) for bit in format(row, f"0{inputs}b")]
         stdin = esolangs.encode_inputs("Fish", bits)
-        got = esolangs.run("Fish", program, stdin=stdin, timeout=60)
+        got = compat.run("Fish", program, stdin=stdin, timeout=60)
         assert esolangs.read_answer("Fish", got) == table[row], row
 
 
@@ -172,7 +173,7 @@ def test_the_fold_height_past_225_doubles_from_the_body_length() -> None:
 def test_balance_folds_the_packed_row(n: int, side: int) -> None:
     """Seed n: the packed row folded (an unpacked fold gave side 30 / 34)."""
     table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
-    balanced = esolangs.generate("Fish", table, balance=True)
+    balanced = compat.generate("Fish", table, balance=True)
     assert balance_score(balanced)[0] == side
     assert _evaluate("Fish", balanced, inputs=n) == table
     wrong = table[:-1] + str(1 - int(table[-1]))
@@ -186,7 +187,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Fish", bit * (1 << n), **options)
+                program = compat.generate("Fish", bit * (1 << n), **options)
                 if not options:
                     assert len(program) == 2 * n + 3
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
@@ -236,7 +237,7 @@ def _check_precision_guards(monkeypatch) -> None:
     monkeypatch.setattr(generator, "_EXACT", 0)
     for table in ("00110110", "01011010", "00000001", "11111110"):
         for options in ({}, {"balance": True}, {"width": 1}, {"width": 3}):
-            program = esolangs.generate("Fish", table, **options)
+            program = compat.generate("Fish", table, **options)
             assert _evaluate("Fish", program, inputs=3) == table
     # Logical large addresses need only the coordinate prefix, not a huge table.
     for n, columns, row in (

@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 import esolangs
+from esolangs import compat
 from tests.support.divergence import terminates
 from tests.support.generator_support import probe_table
 from tests.support.pick import first, languages
@@ -42,18 +43,18 @@ def _verify(name: str, table: str) -> str:
     """Return what ``name``'s program answers on every row of ``table``."""
     facts = esolangs.describe(name)
     inputs = len(table).bit_length() - 1
-    program = esolangs.generate(name, table)
+    program = compat.generate(name, table)
     got = ""
     for row in range(len(table)):
         bits = row_bits(row, inputs)
         if facts["parameterized"]:
-            source, stdin = esolangs.instantiate(name, program, bits), ""
+            source, stdin = compat.instantiate(name, program, bits), ""
         else:
             source, stdin = program, esolangs.encode_inputs(name, bits)
         if facts["answer_mode"] == "termination":
             got += _terminates(name, source, stdin)
         else:
-            output = esolangs.run(name, source, stdin=stdin, timeout=_RUN_TIMEOUT)
+            output = compat.run(name, source, stdin=stdin, timeout=_RUN_TIMEOUT)
             got += esolangs.read_answer(name, output)
     return got
 
@@ -93,6 +94,6 @@ class TestTheFactsThatMakeItPossible:
     def test_a_timeout_is_distinguishable_from_a_faulting_halt(self) -> None:
         """``except HaltError`` would score an invalid-op halt as a 1."""
         with pytest.raises(esolangs.ExecutionTimeoutError) as exc:
-            esolangs.run(REFERENCE, "+[]", timeout=0.01)
+            compat.run(REFERENCE, "+[]", timeout=0.01)
         assert isinstance(exc.value, esolangs.HaltError)
         assert isinstance(exc.value, TimeoutError)

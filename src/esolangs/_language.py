@@ -74,8 +74,8 @@ class Language:
         balance: bool = False,
         scale: int = 1,
         settings: DialectSettings | None = None,
-    ) -> Program:
-        """Return a program computing ``truth_table``.
+    ) -> Artifact:
+        """Return a program artifact or template computing ``truth_table``.
 
         Arguments and errors: :func:`esolangs.generate`.
         """
@@ -119,7 +119,7 @@ class Language:
         width: int | None = None,
         truth_table: str | None = None,
         settings: DialectSettings | None = None,
-    ) -> str:
+    ) -> ProgramArtifact[str]:
         """Fill a parameterized template with ``bits``.
 
         Arguments and errors: :func:`esolangs.instantiate`.
@@ -142,8 +142,8 @@ class Language:
         """
         return esolangs.dump_program(self.name, program, settings=settings)
 
-    def load_program(self, document: str) -> Program:
-        """Restore portable JSON as this language's tagged source.
+    def load_program(self, document: str) -> Artifact:
+        """Restore portable JSON as this language's program or template artifact.
 
         Arguments and errors: :func:`esolangs.load_program`.
         """
@@ -162,8 +162,8 @@ class Language:
         max_memory: int | None = None,
         settings: DialectSettings | None = None,
         scale: int | None = None,
-    ) -> str:
-        """Execute source.
+    ) -> ExecutionResult:
+        """Execute source and return output, input usage and completion evidence.
 
         Arguments and errors: :func:`esolangs.run`.
         """

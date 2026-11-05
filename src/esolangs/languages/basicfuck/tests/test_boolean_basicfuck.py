@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -36,7 +37,7 @@ def test_constant_reads_precede_output_and_preserve_the_next_character() -> None
             commands = n + 2
             workspace = 12 + (n + 2).bit_length() + n.bit_length()
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Basicfuck", bit * (1 << n), **options)
+                program = compat.generate("Basicfuck", bit * (1 << n), **options)
                 if not options:
                     assert len(program) == 8 * n + 48
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
@@ -57,7 +58,7 @@ def test_constant_reads_precede_output_and_preserve_the_next_character() -> None
                     assert io.getvalue() == bit
                     assert io.input_char() == ord("Q")
     assert (
-        sum(len(esolangs.generate("Basicfuck", format(v, "08b"))) for v in range(256))
+        sum(len(compat.generate("Basicfuck", format(v, "08b"))) for v in range(256))
         == 38742
     )
 
@@ -71,7 +72,7 @@ def test_parity_does_not_depend_on_the_tree_flag_budget() -> None:
         parity = "".join(str(row.bit_count() % 2) for row in range(1 << n))
         for bias in (0, 1):
             table = parity if not bias else parity.translate(str.maketrans("01", "10"))
-            program = esolangs.generate("Basicfuck", table)
+            program = compat.generate("Basicfuck", table)
             assert len(program) == 13 * n + 59
             for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                 io = ReadFirstIO(f"{row:0{n}b}Q", expected=n)
@@ -89,11 +90,11 @@ def test_parity_does_not_depend_on_the_tree_flag_budget() -> None:
 def test_parity_needs_both_its_modulus_and_every_input() -> None:
     from esolangs.exceptions import InputExhaustedError
 
-    program = esolangs.generate("Basicfuck", "0110")
+    program = compat.generate("Basicfuck", "0110")
     with pytest.raises(InputExhaustedError):
-        esolangs.run("Basicfuck", program, stdin="0")
+        compat.run("Basicfuck", program, stdin="0")
     broken = program.replace("48~49", "48~50")
-    assert esolangs.run("Basicfuck", broken, stdin="11") != "0"
+    assert compat.run("Basicfuck", broken, stdin="11") != "0"
 
 
 def test_projected_parity_reads_ignored_inputs_without_adding_them() -> None:
@@ -106,7 +107,7 @@ def test_projected_parity_reads_ignored_inputs_without_adding_them() -> None:
         form = affine_form(table, n)
         assert form is not None
         m = sum(form[1])
-        source = esolangs.generate("Basicfuck", table)
+        source = compat.generate("Basicfuck", table)
         assert len(source) == 8 * n + 5 * m + 59
         for row, expected in enumerate(table):
             io = ReadFirstIO(f"{row:0{n}b}Q", expected=n)

@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs import compat
 from tests.support.cli_support import _program, call_both, call_main
 from tests.support.generator_support import evaluate_generated
 from tests.support.screen_support import _worst
@@ -62,8 +63,8 @@ def test_a_painter_ant_is_the_one_that_cannot_be_stepped() -> None:
 def test_run_read_answer_prints_the_bit_for_a_dump(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    program = esolangs.instantiate(
-        "A Painter Ant", esolangs.generate("A Painter Ant", "0110"), [0, 1]
+    program = compat.instantiate(
+        "A Painter Ant", compat.generate("A Painter Ant", "0110"), [0, 1]
     )
     out = call_main(["run", "A Painter Ant", _program(tmp_path, program)], capsys)
     assert esolangs.read_answer("A Painter Ant", out).strip() == "1"

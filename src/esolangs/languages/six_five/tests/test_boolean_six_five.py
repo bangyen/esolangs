@@ -7,7 +7,8 @@ from itertools import permutations
 import pytest
 
 import esolangs
-from esolangs import run
+from esolangs import compat
+from esolangs.compat import run
 from esolangs.generation.examples import BOOLEAN_EXAMPLES
 from esolangs.generation.helpers import permute_truth_table
 from esolangs.generation.wrap import (
@@ -458,13 +459,12 @@ def test_internal_route_budget_is_not_a_generator_restriction() -> None:
 
 
 def _check_constants() -> None:
-    import esolangs
     from esolangs.languages.six_five.interpreter import run
 
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("6-5", bit * (1 << n), **options)
+                program = compat.generate("6-5", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row + "7", expected=n)
                     assert_constant_output(run, program, io, bit, n)

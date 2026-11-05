@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs import vm
+from esolangs import compat, vm
 from esolangs.registry import LANGUAGES
 from esolangs.registry._certification import load as load_certification
 from esolangs.runtime.io import ScriptedIO
@@ -67,7 +67,7 @@ def _audit(
     for row in range(1 << n) if selected is None else selected:
         stdin = esolangs.encode_inputs(name, [row >> s & 1 for s in reversed(range(n))])
         if INFOS[name]["answer_mode"] != "termination":
-            output = esolangs.run(name, program, stdin=stdin, timeout=10)
+            output = compat.run(name, program, stdin=stdin, timeout=10)
             if table is not None:
                 assert esolangs.read_answer(name, output) == table[row], (name, row)
         else:
@@ -119,7 +119,7 @@ def test_the_audit_checks_cycling_answers(monkeypatch) -> None:
 @pytest.mark.parametrize("table", ["00000000", "01101001"])
 @pytest.mark.parametrize("failure", [RuntimeError, SystemExit])
 def test_the_audit_rejects_a_crash_after_the_final_read(monkeypatch, table, failure):
-    program = esolangs.generate(REFERENCE, table)
+    program = compat.generate(REFERENCE, table)
     hits = []
 
     class CrashIO(ScriptedIO):
@@ -157,7 +157,7 @@ def test_every_input_is_read(monkeypatch, name, path) -> None:
         n = (len(table) - 1).bit_length()
         if n <= (INFOS[name]["generator_max_inputs"] or 6):
             try:
-                program = esolangs.generate(name, table, **path)
+                program = compat.generate(name, table, **path)
             except esolangs.GeneratorCapError:
                 if table in controls:
                     raise
@@ -192,7 +192,7 @@ def _audit_tables(monkeypatch, name, n, tables):
     for table in tables:
         attempted += 1
         try:
-            program = esolangs.generate(name, table)
+            program = compat.generate(name, table)
         except esolangs.GeneratorCapError:
             assert_proved_resource_cap(name)
             continue
@@ -300,10 +300,10 @@ def test_arity_audit_executes_remaining_witnesses(monkeypatch):
     )
     generate = esolangs.generate
 
-    def partial(language, table):
+    def partial(language, table, **options):
         if table == "00":
             raise esolangs.GeneratorCapError("partial refusal control")
-        return generate(language, table)
+        return generate(language, table, **options)
 
     monkeypatch.setattr(esolangs, "generate", partial)
     try:

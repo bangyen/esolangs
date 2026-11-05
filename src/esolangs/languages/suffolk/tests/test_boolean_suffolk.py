@@ -2,6 +2,7 @@
 
 import pytest
 
+from esolangs import compat
 from esolangs.languages import generators as boolean
 from esolangs.languages.suffolk.tests.lookup_support import _suffolk_lookup
 from tests.generators.boolean_runners import _runner
@@ -26,7 +27,6 @@ class TestSuffolk:
         _check_stored_input_records()
         _check_reader_cutoff()
 
-        import esolangs
         from esolangs.languages.suffolk.interpreter import _Machine
         from scripts.benchmark import WrittenState
 
@@ -34,7 +34,7 @@ class TestSuffolk:
             for bit in "01":
                 length = 2 * n + 51 + int(bit)
                 for options in ({}, {"width": 1}, {"balance": True}):
-                    program = esolangs.generate("Suffolk", bit * (1 << n), **options)
+                    program = compat.generate("Suffolk", bit * (1 << n), **options)
                     for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                         stdin = f"{row:0{n}b}"
                         io = ReadFirstIO(stdin + "Q", expected=n)
@@ -89,7 +89,6 @@ class TestSuffolk:
 
 
 def _check_stored_input_records() -> None:
-    import esolangs
     from esolangs.languages.suffolk.interpreter import _Machine
     from esolangs.languages.suffolk.proof_formulas import workspace
     from esolangs.runtime.io import ScriptedIO
@@ -102,7 +101,7 @@ def _check_stored_input_records() -> None:
             )
             records = (0, (1 << n) - 1, (1 << n) // 3)
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Suffolk", table, **options)
+                program = compat.generate("Suffolk", table, **options)
                 commands = "".join(program.split())
                 io = ScriptedIO("".join(f"{r:0{n}b}" for r in records))
                 machine = _Machine(commands, io)

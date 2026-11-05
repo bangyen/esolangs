@@ -5,6 +5,8 @@ from collections.abc import Iterator
 
 import pytest
 
+from esolangs import compat
+
 
 @contextlib.contextmanager
 def raises_message(
@@ -35,7 +37,7 @@ def assert_rejected_with_hint(
     with pytest.raises(error or esolangs.ProgramError, match=r".+") as caught:
         # Rejection is at load or within a few steps (ms); the bound only
         # stops a hang, and 0.2s tripped on a contended release runner.
-        esolangs.run(language, source, stdin=stdin, timeout=2, **options)
+        compat.run(language, source, stdin=stdin, timeout=2, **options)
     assert message in str(caught.value)
     assert any(hint in note for note in caught.value.__notes__)
 

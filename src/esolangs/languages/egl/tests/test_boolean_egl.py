@@ -4,6 +4,7 @@ import itertools
 
 import pytest
 
+from esolangs import compat
 from esolangs.languages import generators as tools
 from esolangs.languages.egl.interpreter import run
 from esolangs.runtime.io import ScriptedIO
@@ -73,13 +74,12 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 
 
 def _check_constants() -> None:
-    import esolangs
     from esolangs.languages.egl.interpreter import run
 
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("EGL", bit * (1 << n), **options)
+                program = compat.generate("EGL", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row + "7", expected=n)
                     assert_constant_output(run, program, io, bit, n)

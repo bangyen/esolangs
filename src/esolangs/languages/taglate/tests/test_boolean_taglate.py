@@ -2,7 +2,7 @@
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.languages import generators as boolean
 from esolangs.languages.taglate.wrapping import _taglate
 from tests.support.event_io import ReadFirstIO
@@ -11,9 +11,8 @@ from tests.support.witness_tables import row_bits, witnesses
 
 
 def run_taglate(program: str, inputs: list[str]) -> str:
-    import esolangs
 
-    return esolangs.run("Taglate", program, stdin="".join(inputs))
+    return compat.run("Taglate", program, stdin="".join(inputs))
 
 
 def test_execution_bound_is_one_form() -> None:
@@ -33,8 +32,8 @@ def test_constant_reads_every_input_before_printing(n: int, bit: str) -> None:
     if n == 1 and bit == "0":
         _check_constants()
     table = bit * (1 << n)
-    programs = [esolangs.generate("Taglate", table, width=w) for w in (None, 1, 20)]
-    programs.append(esolangs.generate("Taglate", table, balance=True))
+    programs = [compat.generate("Taglate", table, width=w) for w in (None, 1, 20)]
+    programs.append(compat.generate("Taglate", table, balance=True))
     for program in programs:
         for row in range(1 << n):
             io = ScriptedIO(f"{row:0{n}b}" + "extra")
@@ -184,9 +183,8 @@ def test_seed_bootstrap_exact_queue(count: int) -> None:
 
 
 def test_public_narrow_generator_route() -> None:
-    import esolangs
 
-    program = esolangs.generate("taglate", "0110", width=1)
+    program = compat.generate("taglate", "0110", width=1)
     assert max(map(len, program.splitlines())) == 1
     assert run_taglate(program, ["0", "1"]) == "1"
 
@@ -196,13 +194,12 @@ def test_taglate_needs_a_seed_and_commands_below_it() -> None:
 
 
 def _check_constants() -> None:
-    import esolangs
     from esolangs.languages.taglate.interpreter import run
 
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Taglate", bit * (1 << n), **options)
+                program = compat.generate("Taglate", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row + "7", expected=n)
                     assert_constant_output(run, program.splitlines(), io, bit, n)
@@ -260,7 +257,7 @@ def _check_resource_layouts() -> None:
     for n in (1, 2, 3, 4, 5):
         table = resource_witness(n)
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = str(esolangs.generate("Taglate", table, **options))
+            program = str(compat.generate("Taglate", table, **options))
             row = (1 << n) - 4 if n >= 2 else 0
             io = ScriptedIO(f"{row:0{n}b}!")
             machine = _Machine(program.splitlines(), io)

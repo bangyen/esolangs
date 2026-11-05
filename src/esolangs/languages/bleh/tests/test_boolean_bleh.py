@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row, measure_run
 
@@ -14,7 +15,7 @@ def test_every_row_prints_its_answer() -> None:
     for table in [*TABLES, "00010111", "01101001", "11101000"]:
         from esolangs.languages.bleh.tests.ablations import ablate
 
-        program = esolangs.generate("Bleh", table)
+        program = compat.generate("Bleh", table)
         assert program == ablate(table, "default")
         assert_every_row("Bleh", table, program=program)
 
@@ -27,7 +28,7 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
     for n in (*range(1, 13), 19, 20, 21):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Bleh", bit * (1 << n), **options)
+                program = compat.generate("Bleh", bit * (1 << n), **options)
                 if not options:
                     if n == 8:
                         assert len(program) == 97
@@ -49,8 +50,7 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
                     assert not io.past_end
                     assert io.input_char() == ord("Q")
     assert (
-        sum(len(esolangs.generate("Bleh", format(v, "08b"))) for v in range(256))
-        == 49108
+        sum(len(compat.generate("Bleh", format(v, "08b"))) for v in range(256)) == 49108
     )
 
 
@@ -59,7 +59,7 @@ def test_skipped_reads_reject_eof() -> None:
 
     for table, stdin in (("00", ""), ("0011", "0"), ("0101", ""), ("01", "")):
         with pytest.raises(HaltError, match="no branch"):
-            esolangs.run("Bleh", esolangs.generate("Bleh", table), stdin=stdin)
+            compat.run("Bleh", compat.generate("Bleh", table), stdin=stdin)
 
 
 def test_entrypoint_name_is_escaped_without_widening(monkeypatch) -> None:
@@ -80,4 +80,4 @@ def test_entrypoint_name_is_escaped_without_widening(monkeypatch) -> None:
         program = generator.bleh(table)
         n = len(table).bit_length() - 1
         for row in range(len(table)):
-            assert esolangs.run("Bleh", program, stdin=f"{row:0{n}b}") == table[row]
+            assert compat.run("Bleh", program, stdin=f"{row:0{n}b}") == table[row]

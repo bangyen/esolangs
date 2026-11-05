@@ -4,6 +4,7 @@ import itertools
 
 import pytest
 
+from esolangs import compat
 from tests.proofs.conventions import _embedding, _tables
 from tests.support.witness_tables import witnesses
 
@@ -74,28 +75,26 @@ class TestParameterizedBitdeque:
 
 @pytest.mark.parametrize("width", [1, 7, 9, 10, 11, 40, 80])
 def test_bitdeque_short_load_witness_tables(width: int) -> None:
-    import esolangs
 
     for n in range(1, 4):
         for table in witnesses(n):
-            template = esolangs.generate("Bitdeque", table, width=width)
+            template = compat.generate("Bitdeque", table, width=width)
             for row, expected in enumerate(table):
                 bits = list(map(int, format(row, f"0{n}b")))
-                program = esolangs.instantiate("Bitdeque", template, bits)
-                assert esolangs.run("Bitdeque", program) == expected
+                program = compat.instantiate("Bitdeque", template, bits)
+                assert compat.run("Bitdeque", program) == expected
 
 
 def test_bitdeque_short_load_floor_and_rendered_total() -> None:
-    import esolangs
 
-    template = esolangs.generate("Bitdeque", "0110", width=1)
+    template = compat.generate("Bitdeque", "0110", width=1)
     assert max(map(len, template.splitlines())) == 7
     for row in range(4):
-        program = esolangs.instantiate("Bitdeque", template, [row // 2, row % 2])
+        program = compat.instantiate("Bitdeque", template, [row // 2, row % 2])
         assert max(map(len, program.splitlines())) == 7
     assert (
         sum(
-            len(esolangs.generate("Bitdeque", format(value, "08b"), width=1))
+            len(compat.generate("Bitdeque", format(value, "08b"), width=1))
             for value in range(256)
         )
         == 115963
@@ -104,27 +103,23 @@ def test_bitdeque_short_load_floor_and_rendered_total() -> None:
 
 def test_bitdeque_width_eleven_is_the_normal_load() -> None:
     """Width 10 still takes the short load; from 11 the eleven-cell one is smaller."""
-    import esolangs
 
     sizes = [
-        len(esolangs.generate("Bitdeque", "0110", width=width)) for width in (10, 11)
+        len(compat.generate("Bitdeque", "0110", width=width)) for width in (10, 11)
     ]
     assert sizes == [308, 140]
 
 
 @pytest.mark.parametrize("width", [1, 9, 40, 80])
 def test_bitdeque_short_load_saved_source_and_large_tables(width: int) -> None:
-    import esolangs
 
     for n in range(4, 7):
         table = "".join(str(row.bit_count() % 2) for row in range(2**n))
-        template = str(esolangs.generate("Bitdeque", table, width=width))
+        template = str(compat.generate("Bitdeque", table, width=width))
         for row in [0, 1, 2**n // 3, 2**n - 1]:
             bits = list(map(int, format(row, f"0{n}b")))
-            program = esolangs.instantiate(
-                "Bitdeque", template, bits, truth_table=table
-            )
-            assert esolangs.run("Bitdeque", program) == table[row]
+            program = compat.instantiate("Bitdeque", template, bits, truth_table=table)
+            assert compat.run("Bitdeque", program) == table[row]
 
 
 def test_bitdeque_short_load_rejects_changed_prefix() -> None:
@@ -140,9 +135,9 @@ def test_bitdeque_short_load_rejects_changed_prefix() -> None:
 def test_bitdeque_short_load_rejects_wrong_table_provenance() -> None:
     import esolangs
 
-    template = str(esolangs.generate("Bitdeque", "0110", width=9))
+    template = str(compat.generate("Bitdeque", "0110", width=9))
     with pytest.raises(esolangs.TemplateError, match="not the template"):
-        esolangs.instantiate("Bitdeque", template, [0, 1], truth_table="0001")
+        compat.instantiate("Bitdeque", template, [0, 1], truth_table="0001")
 
 
 def test_bitdeque_filled_template_is_one_width() -> None:
@@ -160,7 +155,6 @@ def test_bitdeque_filled_template_is_one_width() -> None:
 
 @pytest.mark.medium
 def test_constant_native_and_short_loads_keep_all_slots() -> None:
-    import esolangs
     from esolangs.generation.helpers import TEMPLATE_CHAR
     from esolangs.languages.bitdeque.generator import bitdeque_setters
     from esolangs.languages.bitdeque.interpreter import _Machine
@@ -172,7 +166,7 @@ def test_constant_native_and_short_loads_keep_all_slots() -> None:
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 table = bit * (1 << n)
-                template = esolangs.generate("Bitdeque", table, **options)
+                template = compat.generate("Bitdeque", table, **options)
                 short = options == {"width": 1} and n <= 4
                 assert template.count(TEMPLATE_CHAR) == n * (5 if short else 11)
                 assert len(bitdeque_setters(str(template), n)) == n
@@ -181,7 +175,7 @@ def test_constant_native_and_short_loads_keep_all_slots() -> None:
                 rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
                 for row in rows:
                     inputs = list(map(int, format(row, f"0{n}b")))
-                    program = esolangs.instantiate("Bitdeque", str(template), inputs)
+                    program = compat.instantiate("Bitdeque", str(template), inputs)
                     assert len(program) == len(template)
                     io = ScriptedIO()
                     machine = _Machine(program, io)
@@ -200,6 +194,6 @@ def test_constant_native_and_short_loads_keep_all_slots() -> None:
                         assert steps + 1 == 3 * n + 3 + int(bit)
                         assert written.bits == workspace(n, template)
     assert (
-        sum(len(esolangs.generate("Bitdeque", format(v, "08b"))) for v in range(256))
+        sum(len(compat.generate("Bitdeque", format(v, "08b"))) for v in range(256))
         == 51358
     )

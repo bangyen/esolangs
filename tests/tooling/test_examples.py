@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.compressed import CompressedText
 from esolangs.generation.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.raster import Raster
@@ -98,8 +99,8 @@ def test_regeneration_yields_public_balanced_programs(monkeypatch) -> None:
     def compatibility_roundtrip(*_args, **_kwargs):
         pytest.fail("internal example generation must retain its artifact")
 
-    monkeypatch.setattr(esolangs, "generate", compatibility_roundtrip)
-    monkeypatch.setattr(esolangs, "instantiate", compatibility_roundtrip)
+    monkeypatch.setattr(compat, "generate", compatibility_roundtrip)
+    monkeypatch.setattr(compat, "instantiate", compatibility_roundtrip)
     programs = dict(boolean_programs())
     assert programs.keys() == BOOLEAN_GENERATED.keys()
     for stem, example in BOOLEAN_GENERATED.items():
@@ -107,7 +108,9 @@ def test_regeneration_yields_public_balanced_programs(monkeypatch) -> None:
         expected = generate(language, example.table, balance=True, scale=example.scale)
         if example.fill is not None:
             expected = instantiate(language, expected, example.bits)
-        assert programs[stem] == expected, stem
+        assert esolangs.dump_program(language, programs[stem]) == esolangs.dump_program(
+            language, expected
+        ), stem
         assert getattr(programs[stem], "language", None) == getattr(
             expected, "language", None
         )
@@ -216,7 +219,7 @@ def test_boolean_example(name: str) -> None:
     stdin = BOOLEAN_GENERATED[name].stdin
     program = esolangs._read_source(name, path)
     if isinstance(program, Raster):
-        got = esolangs.run(name, program, stdin=stdin)
+        got = compat.run(name, program, stdin=stdin)
     else:
         vm = make_vm(VM_LANGUAGE[_module], program, stdin=stdin)
     if name == "a-painter-ant":

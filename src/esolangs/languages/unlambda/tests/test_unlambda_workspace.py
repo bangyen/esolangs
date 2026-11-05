@@ -5,6 +5,7 @@ import random
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.debugger import make_vm
 from scripts.benchmark import WrittenState
 from tests.proofs.deep.execution import run_to_answer
@@ -32,7 +33,7 @@ def test_unlambda_workspace_is_not_linear() -> None:
     per_char = []
     for n in (5, 7):
         table = _unlambda_chain(n)
-        program = esolangs.generate("Unlambda", table)
+        program = compat.generate("Unlambda", table)
         row = 1 << (n - 2)  # inputs 0, 1, 0, ..., 0: down X's zero path
         bits = row_bits(row, n)
         stdin = esolangs.encode_inputs("Unlambda", bits, truth_table=table)

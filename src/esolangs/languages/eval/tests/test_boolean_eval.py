@@ -1,5 +1,6 @@
 """Covers :mod:`esolangs.languages.eval.generator`."""
 
+from esolangs import compat
 from esolangs.generation.helpers import TEMPLATE_CHAR, permute_truth_table
 from esolangs.languages import generators as boolean
 from esolangs.languages.eval.generator import PAIR
@@ -201,7 +202,6 @@ class TestEvalBoolean:
 
 
 def _check_constants() -> None:
-    import esolangs
     from esolangs.languages.eval.generator import eval_setters
     from esolangs.languages.eval.interpreter import run
     from esolangs.runtime.io import ScriptedIO
@@ -209,11 +209,11 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = esolangs.generate("Eval", bit * (1 << n), **options)
+                template = compat.generate("Eval", bit * (1 << n), **options)
                 assert template.count("$") == n
                 assert eval_setters(template, n) == (("0", "`"),) * n
                 for bits in ([0] * n, [1] * n):
-                    program = esolangs.instantiate("Eval", template, bits)
+                    program = compat.instantiate("Eval", template, bits)
                     io = ScriptedIO("7")
                     run(program, io)
                     assert io.getvalue() == bit

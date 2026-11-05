@@ -6,6 +6,7 @@ import json
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._isolated import _decode, termination_result_isolated
 from esolangs.runtime._lifecycle import BoundaryCycle
@@ -18,9 +19,9 @@ from tests.support.reference import REFERENCE
 
 def _request(name, bit):
     lang = LANGUAGES[name]
-    template = esolangs.generate(name, "01")
+    template = compat.generate(name, "01")
     source = (
-        esolangs.instantiate(name, template, [bit]) if lang.parameterized else template
+        compat.instantiate(name, template, [bit]) if lang.parameterized else template
     )
     stdin = "" if lang.parameterized else esolangs.encode_inputs(name, [bit])
     return source, stdin

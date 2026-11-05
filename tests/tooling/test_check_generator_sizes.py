@@ -16,6 +16,7 @@ from checks.check_generator_sizes import (
     differences,
     recorded_baseline,
 )
+from esolangs import compat
 from esolangs.registry._certification import load as load_certification
 from scripts import benchmark as b
 from tests.support.reference import REFERENCE
@@ -198,7 +199,7 @@ def test_sweep_checks_and_pins_every_small_table_row(monkeypatch) -> None:
 
 def test_executed_artifact_and_provenance() -> None:
     r = b.measure("Brainfuck", "01", repeat=1, row=1, step_cap=10000, all_rows=True)
-    p = esolangs.generate("Brainfuck", "01")
+    p = compat.generate("Brainfuck", "01")
     assert all(row["matches"] for row in r["executions"])
     assert r["schema"] == 6
     assert r["provenance"]["generated_artifact_sha256"] == b.artifact_hash(p)

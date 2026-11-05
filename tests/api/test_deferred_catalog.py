@@ -39,7 +39,7 @@ try:
     before = [esolangs.describe(name) for name in esolangs.list_languages()]
     assert not modules.intersection(sys.modules), 'catalog imported a pilot'
     try:
-        esolangs.generate(pilots[0].name, '00110101')
+        esolangs.compat.generate(pilots[0].name, '00110101')
     except ImportError as error:
         assert 'deferred import control' in str(error)
     else:
@@ -65,7 +65,7 @@ for lang in pilots:
 sample = next(lang for lang in pilots if not lang.parameterized
               and lang.backend.max_inputs is None
               and lang.runtime.source_kind.value == 'text')
-program = esolangs.generate(sample.name, '00110101')
+program = esolangs.compat.generate(sample.name, '00110101')
 assert _evaluate(sample.name, program, inputs=3) == '00110101'
 assert [esolangs.describe(name) for name in esolangs.list_languages()] == before
 assert isinstance(registry.GENERATORS, dict)

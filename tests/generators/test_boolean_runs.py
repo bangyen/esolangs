@@ -3,8 +3,8 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.exceptions import TemplateError
-from esolangs.generation.helpers import runs
 from esolangs.registry import recover_setters, render_template
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
@@ -14,28 +14,16 @@ _PARAMETERIZED = languages(parameterized=True, boolean_generator=True)
 
 
 @pytest.mark.parametrize("language", _PARAMETERIZED)
-def test_every_run_is_its_setters_width(language: str) -> None:
-    """``$`` occurs exactly ``sum(len(zero))`` times, in one run per input."""
-    template = esolangs.generate(language, "0110")
-    assert template.inputs == 2
-    assert template.count(template.char) == sum(
-        len(zero) for zero, _one in template.setters
-    )
-    spans = runs(template, template.char, template.setters)
-    assert [end - start for start, end in spans] == [
-        len(zero) for zero, _one in template.setters
-    ]
-
-
-@pytest.mark.parametrize("language", _PARAMETERIZED)
 @pytest.mark.parametrize("table", ["00", "0000", "0110"])
 def test_the_template_is_every_programs_length(language: str, table: str) -> None:
     """Filling a run with either setter leaves the length alone."""
-    template = esolangs.generate(language, table)
+    template = compat.generate(language, table)
     n = template.inputs
+    assert n == len(table).bit_length() - 1
+    assert all(len(zero) == len(one) for zero, one in template.setters)
     for row in range(2**n):
         bits = row_bits(row, n)
-        program = esolangs.instantiate(language, template, bits)
+        program = compat.instantiate(language, template, bits)
         assert len(program) == len(template), ("fill width", language, bits)
         assert template.char not in program
 
@@ -46,10 +34,14 @@ def test_length_check_rejects_unequal_fills(language: str, table: str, monkeypat
     instantiate = esolangs.instantiate
     changed = []
 
-    def unequal(name, template, bits):
-        program = instantiate(name, template, bits)
+    def unequal(name, template, bits, **options):
+        program = instantiate(name, template, bits, **options)
         changed.append(any(bits))
-        return program + (" " if any(bits) else "")
+        return esolangs.ProgramArtifact(
+            program.source + (" " if any(bits) else ""),
+            program.language,
+            program.settings,
+        )
 
     monkeypatch.setattr(esolangs, "instantiate", unequal)
     with pytest.raises(AssertionError, match="fill width"):

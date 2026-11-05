@@ -6,6 +6,7 @@ import random
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.befunge.generator import (
@@ -26,7 +27,7 @@ from tests.support.event_io import ReadFirstIO
 def test_befunge_folded_header_reads_the_table(inputs: int, width: int | None) -> None:
     rng = random.Random(inputs)
     table = "".join(str(rng.randrange(2)) for _ in range(1 << inputs))
-    program = esolangs.generate("Befunge", table, width=width)
+    program = compat.generate("Befunge", table, width=width)
     lines = program.splitlines()
     floor = max(map(len, befunge(table, 1).splitlines()))
     assert max(map(len, lines)) <= max(80 if width is None else width, floor)
@@ -40,7 +41,7 @@ def test_befunge_folded_header_reads_the_table(inputs: int, width: int | None) -
     for row in rows:
         bits = [int(bit) for bit in format(row, f"0{inputs}b")]
         stdin = esolangs.encode_inputs("Befunge", bits)
-        assert esolangs.run("Befunge", program, stdin=stdin).strip() == table[row]
+        assert compat.run("Befunge", program, stdin=stdin).strip() == table[row]
 
 
 def test_befunge_keeps_a_header_that_already_fits() -> None:
@@ -86,14 +87,14 @@ def test_single_digit_bound_reclaims_a_column() -> None:
 def test_packed_ascii_lookup_answers_every_row(inputs: int, width: int | None) -> None:
     rng = random.Random(inputs)
     table = "".join(str(rng.randrange(2)) for _ in range(1 << inputs))
-    program = esolangs.generate("Befunge", table, width=width)
+    program = compat.generate("Befunge", table, width=width)
     assert program.isascii()
     assert set(' "?@\\') <= set(program)
     for row, expected in enumerate(table):
         bits = [int(bit) for bit in f"{row:0{inputs}b}"]
         stdin = esolangs.encode_inputs("Befunge", bits)
         assert (
-            esolangs.run("Befunge", program, stdin=stdin, max_steps=500).strip()
+            compat.run("Befunge", program, stdin=stdin, max_steps=500).strip()
             == expected
         )
 
@@ -105,7 +106,7 @@ def test_packed_ascii_lookup_controls_and_balance(inputs: int, kind: str) -> Non
         str(row.bit_count() % 2) if kind == "parity" else str(int(kind == "one"))
         for row in range(1 << inputs)
     )
-    program = esolangs.generate("Befunge", table, balance=True)
+    program = compat.generate("Befunge", table, balance=True)
     assert program.isascii()
     assert len(program.splitlines()) <= 25
     assert max(map(len, program.splitlines())) <= 80
@@ -113,7 +114,7 @@ def test_packed_ascii_lookup_controls_and_balance(inputs: int, kind: str) -> Non
         bits = [int(bit) for bit in f"{row:0{inputs}b}"]
         stdin = esolangs.encode_inputs("Befunge", bits)
         assert (
-            esolangs.run("Befunge", program, stdin=stdin, max_steps=500).strip()
+            compat.run("Befunge", program, stdin=stdin, max_steps=500).strip()
             == table[row]
         )
 
@@ -124,7 +125,7 @@ def test_befunge_balance_rejects_oversized_table() -> None:
 
 
 def test_xor_has_one_column() -> None:
-    xor = esolangs.generate("Befunge", "0110", width=1)
+    xor = compat.generate("Befunge", "0110", width=1)
     assert max(map(len, xor.splitlines())) == 1
 
 
@@ -176,7 +177,7 @@ def _shape(program: str) -> tuple[int, int, int]:
 def test_requested_width_builds_the_exact_grid(
     inputs: int, width: int, shape: tuple[int, int, int]
 ) -> None:
-    program = esolangs.generate("Befunge", _seeded(inputs), width=width)
+    program = compat.generate("Befunge", _seeded(inputs), width=width)
     assert _shape(program) == shape
 
 
@@ -193,7 +194,7 @@ def test_requested_width_builds_the_exact_grid(
 def test_balanced_grid_is_the_smallest_square(
     table: str, shape: tuple[int, int, int]
 ) -> None:
-    program = esolangs.generate("Befunge", table, balance=True)
+    program = compat.generate("Befunge", table, balance=True)
     assert _shape(program) == shape
 
 
@@ -213,13 +214,13 @@ def test_a_header_exactly_as_wide_as_the_request_stays_plain() -> None:
 @pytest.mark.parametrize("width", [81, 1000])
 def test_a_width_beyond_the_torus_still_fits_it(width: int) -> None:
     table = _seeded(11)
-    program = esolangs.generate("Befunge", table, width=width)
+    program = compat.generate("Befunge", table, width=width)
     assert max(map(len, program.splitlines())) <= 80
     for row in (0, 1, 2047):
         bits = [int(bit) for bit in f"{row:011b}"]
         stdin = esolangs.encode_inputs("Befunge", bits)
         assert (
-            esolangs.run("Befunge", program, stdin=stdin, max_steps=500).strip()
+            compat.run("Befunge", program, stdin=stdin, max_steps=500).strip()
             == table[row]
         )
 
@@ -231,7 +232,7 @@ def _check_constants() -> None:
     for n in range(1, 14):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Befunge", bit * (1 << n), **options)
+                program = compat.generate("Befunge", bit * (1 << n), **options)
                 if not options:
                     assert len(program) == 2 * n + 3
                 peak = 0
@@ -331,4 +332,6 @@ def test_packed_header_reserves_a_two_digit_offset() -> None:
         assert len(program.splitlines()) <= 25
         for row, expected in enumerate(table):
             stdin = esolangs.encode_inputs("Befunge", list(map(int, f"{row:08b}")))
-            assert esolangs.run("Befunge", program, stdin=stdin).strip() == expected
+            assert (
+                esolangs.run("Befunge", program, stdin=stdin).output.strip() == expected
+            )

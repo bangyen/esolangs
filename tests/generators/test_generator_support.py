@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.runtime.io import ScriptedIO
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
@@ -15,8 +16,8 @@ from tests.support.generator_support import (
 @pytest.mark.medium
 def test_every_row_checks_the_supplied_program_without_regenerating(monkeypatch):
     table = "00010111"
-    program = esolangs.generate("Brainfuck", table)
-    wrong = esolangs.generate("Brainfuck", "11101000")
+    program = compat.generate("Brainfuck", table)
+    wrong = compat.generate("Brainfuck", "11101000")
     assert_every_row("Brainfuck", table)
 
     def reject_generation(*_args, **_kwargs):

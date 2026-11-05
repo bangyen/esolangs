@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -39,7 +40,7 @@ def test_wrapped_public_templates_preserve_input_slots() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = esolangs.generate("Underload", bit * (1 << n), **options)
+                template = compat.generate("Underload", bit * (1 << n), **options)
                 assert len(str(template).replace("\n", "")) == 4 * n + 4
                 assert underload_setters(str(template), n) == (("(0)", "(1)"),) * n
                 for row in (0, 1, (1 << n) - 1):
@@ -52,7 +53,7 @@ def test_wrapped_public_templates_preserve_input_slots() -> None:
                         assert state.bits == 8 * (n + 1) + (4 * n + 4).bit_length()
     table = "0110100110010110"
     for width in (1, 7, 13, 40):
-        template = esolangs.generate("Underload", table, width=width)
+        template = compat.generate("Underload", table, width=width)
         for row in range(16):
             bits = [int(bit) for bit in f"{row:04b}"]
             io = ScriptedIO("")
@@ -103,7 +104,7 @@ def test_repeated_subtrees_are_carried_and_no_table_grows() -> None:
 def test_short_selectors_keep_public_provenance_and_uniform_width() -> None:
     for width in (1, 2, 3, 4, 5, 13, 40, 80):
         table = "0110"
-        template = str(esolangs.generate("Underload", table, width=width))
+        template = str(compat.generate("Underload", table, width=width))
         setters = underload_setters(template, 2)
         assert len(set(setters)) == 1
         assert all(
@@ -112,14 +113,14 @@ def test_short_selectors_keep_public_provenance_and_uniform_width() -> None:
         if width < 5:
             assert setters == (("!", "*"),) * 2
         for row, expected in enumerate(table):
-            filled = esolangs.instantiate(
+            filled = compat.instantiate(
                 "Underload", template, [row // 2, row % 2], truth_table=table
             )
-            assert esolangs.run("Underload", filled) == expected
+            assert compat.run("Underload", filled) == expected
             if width < 5:
                 assert max(map(len, filled.splitlines())) <= max(3, width)
         with pytest.raises(esolangs.TemplateError, match="not the template"):
-            esolangs.instantiate("Underload", template, [0, 1], truth_table="0001")
+            compat.instantiate("Underload", template, [0, 1], truth_table="0001")
 
         from esolangs.languages.underload.generator import _same_layout
 
@@ -140,9 +141,9 @@ def test_short_selector_floor_and_actual_narrow_corpus() -> None:
 
 
 def test_layout_provenance_does_not_ignore_output_literal_newlines() -> None:
-    template = str(esolangs.generate("Underload", "0000", width=1))
+    template = str(compat.generate("Underload", "0000", width=1))
     with pytest.raises(esolangs.TemplateError, match="not the template"):
-        esolangs.instantiate(
+        compat.instantiate(
             "Underload", template.replace("(0)", "(0\n)"), [0, 1], truth_table="0000"
         )
 

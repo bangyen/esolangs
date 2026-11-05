@@ -7,6 +7,7 @@ import random
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from esolangs.languages.circuit_diagram.generator.hlayout import _LATTICE, _h_size
@@ -358,13 +359,12 @@ class TestCircuitDiagramLayoutGuards:
 
     def test_affine_floor_uses_native_xor_in_public_programs(self) -> None:
         """The output returns beneath the native XOR gate."""
-        import esolangs
 
-        program = esolangs.generate("Circuit Diagram", "0110", width=1)
+        program = compat.generate("Circuit Diagram", "0110", width=1)
         assert max(map(len, program.splitlines())) == 4
         assert "x" in program
         # The old six-column gate already fits this request.
-        assert "x.-:" in str(esolangs.generate("Circuit Diagram", "0110", width=6))
+        assert "x.-:" in str(compat.generate("Circuit Diagram", "0110", width=6))
         for table in ("0110", "1001"):
             for width in (1, 4, 5, 6, 9, 11, 19):
                 assert self._run_at(table, width) == table
@@ -638,13 +638,12 @@ def test_circuit_gate_column_and_band_fit_transitions(inputs, affine) -> None:
         if affine
         else "".join(rng.choice("01") for _ in range(1 << inputs))
     )
-    default = esolangs.generate(language, table)
-    balanced = esolangs.generate(language, table, balance=True)
+    default = compat.generate(language, table)
+    balanced = compat.generate(language, table, balance=True)
     # Once the flat drawing fits, all larger widths repeat it.
     widest = max(map(len, _circuit_diagram_at(table, None).split("\n")))
     layouts = [default] + [
-        esolangs.generate(language, table, width=width)
-        for width in range(1, widest + 1)
+        compat.generate(language, table, width=width) for width in range(1, widest + 1)
     ]
     if inputs >= 8 and "1" in table:
         from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
@@ -654,7 +653,7 @@ def test_circuit_gate_column_and_band_fit_transitions(inputs, affine) -> None:
     assert balance_score(balanced) == min(map(balance_score, layouts))
     for row in (0, 1, len(table) // 2, len(table) - 1):
         bits = tuple(map(int, format(row, f"0{inputs}b")))
-        output = esolangs.run(
+        output = compat.run(
             language, balanced, stdin=esolangs.encode_inputs(language, bits)
         )
         assert esolangs.read_answer(language, output) == table[row]
@@ -680,7 +679,7 @@ def test_wide_constant_balance_keeps_the_old_square_candidate() -> None:
 
     table = "1" * 256
     legacy = _h_term_layout(table).render()
-    program = esolangs.generate("Circuit Diagram", table, balance=True)
+    program = compat.generate("Circuit Diagram", table, balance=True)
     assert balance_score(program) <= balance_score(legacy)
     assert len(program) <= len(legacy)
     assert _evaluate("Circuit Diagram", program, inputs=8) == table
@@ -789,7 +788,7 @@ def test_balance_matches_the_every_width_sweep() -> None:
                 key=balance_score,
                 default=flat,
             )
-            balanced = esolangs.generate("Circuit Diagram", table, balance=True)
+            balanced = compat.generate("Circuit Diagram", table, balance=True)
             assert balance_score(balanced) <= min(
                 balance_score(best), balance_score(flat)
             ), table
@@ -805,7 +804,7 @@ def test_a_single_input_table_past_the_competing_floor_builds(
     table = "".join(
         str((row >> (inputs - 1 - column) & 1) ^ negated) for row in range(1 << inputs)
     )
-    program = esolangs.generate("Circuit Diagram", table)
+    program = compat.generate("Circuit Diagram", table)
     assert _evaluate("Circuit Diagram", program, inputs=inputs) == table
 
 
@@ -816,7 +815,7 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
     rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
     for bit in "01":
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = esolangs.generate("Circuit Diagram", bit * (1 << n), **options)
+            program = compat.generate("Circuit Diagram", bit * (1 << n), **options)
             if not options:
                 assert len(program) == 2 * n + 3
             for row in rows:
@@ -830,7 +829,7 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
 def test_three_input_corpus_size() -> None:
     assert (
         sum(
-            len(esolangs.generate("Circuit Diagram", format(value, "08b")))
+            len(compat.generate("Circuit Diagram", format(value, "08b")))
             for value in range(256)
         )
         == 144382

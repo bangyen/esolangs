@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 import esolangs.languages.generators as boolean
+from esolangs import compat
 from esolangs.generation.helpers import essential_inputs
 from esolangs.registry import BY_BOOLEAN, LANGUAGES
 from esolangs.registry._backend import Shape
@@ -328,7 +329,7 @@ def test_generators_scale_linearly(name: str) -> None:
 def test_the_expensive_generators_grow_as_documented(name: str) -> None:
     """``docs/limitations.md`` tells a reader whether n=11 is affordable."""
     at_eight, at_nine, ratio = _DOCUMENTED_SIZES[name]
-    sizes = (len(esolangs.generate(name, dense(n))) for n in (8, 9))
+    sizes = (len(compat.generate(name, dense(n))) for n in (8, 9))
     assert tuple(sizes) == (at_eight, at_nine), (
         f"{name}'s dense n=8 and n=9 sizes moved; update its "
         "documented_sizes= in its CertificationSpec"
@@ -343,7 +344,7 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
         if load_certification(lang).benchmark_tables:
             assert_proved_resource_cap(lang.name)
     biggest = max(
-        (len(esolangs.generate(name, dense(9))), name)
+        (len(compat.generate(name, dense(9))), name)
         for name in esolangs.list_languages()
         if name not in _DOCUMENTED_SIZES
         and LANGUAGES[name].backend is not None

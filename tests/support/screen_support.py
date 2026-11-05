@@ -12,6 +12,7 @@ from collections.abc import Callable
 from typing import Any
 
 import esolangs
+from esolangs import compat
 from esolangs.runtime._termination import _termination_result
 from scripts import benchmark
 
@@ -89,7 +90,7 @@ def execute(
     for row in rows:
         bits = [int(bit) for bit in format(row, f"0{n}b")]
         if facts["parameterized"]:
-            source = esolangs.instantiate(name, program, bits, settings=settings)
+            source = compat.instantiate(name, program, bits, settings=settings)
             stdin = ""
         else:
             source = program
@@ -104,7 +105,7 @@ def execute(
         else:
             actual = esolangs.read_answer(
                 name,
-                esolangs.run(name, source, stdin=stdin, timeout=2, settings=settings),
+                compat.run(name, source, stdin=stdin, timeout=2, settings=settings),
             )
         if actual != table[row]:
             raise ValueError(f"{name} row {row}: {actual!r} != {table[row]!r}")

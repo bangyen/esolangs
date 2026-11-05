@@ -8,6 +8,7 @@ import pytest
 
 import esolangs
 import tests.support.evaluation as evaluator
+from esolangs import compat
 from tests.support.evaluation import _evaluate, _iter_evaluate
 from tests.support.generator_support import probe_table
 from tests.support.pick import first, languages
@@ -28,7 +29,7 @@ def _kinds() -> list[str]:
 @pytest.mark.parametrize("name", _kinds())
 def test_evaluate_files(name: str, tmp_path: Path) -> None:
     table = probe_table(name)
-    program = esolangs.generate(name, table)
+    program = compat.generate(name, table)
     path = tmp_path / "source"
     if isinstance(program, esolangs.Raster):
         path.write_bytes(program.to_png())
@@ -55,7 +56,7 @@ def test_api_refuses_bad_source() -> None:
     [first(source_kind="text", answer_mode=m) for m in ("output", "termination")],
 )
 def test_api_refuses_raster_for_text_answer(name: str) -> None:
-    raster = esolangs.generate(first(source_kind="raster"), "0110")
+    raster = compat.generate(first(source_kind="raster"), "0110")
     with pytest.raises(esolangs.ProgramError, match="string of source"):
         _evaluate(name, raster, inputs=2)
 
@@ -91,7 +92,7 @@ def test_termination_output_limit_is_not_a_divergence_verdict() -> None:
     """A program that prints hits the limit; a silent one still answers."""
     outcomes = set()
     for name in languages(answer_mode="termination"):
-        source = esolangs.generate(name, "01")
+        source = compat.generate(name, "01")
         try:
             answer = _evaluate(name, source, inputs=1, isolated=True, max_output=0)
         except esolangs.InterpreterLimitError as error:
@@ -124,7 +125,7 @@ def test_evaluation_output_limit_requires_isolation() -> None:
 @pytest.mark.parametrize("name", _kinds())
 def test_streaming_executes_the_expected_table(name) -> None:
     table = probe_table(name)
-    program = esolangs.generate(name, table)
+    program = compat.generate(name, table)
     assert (
         "".join(_iter_evaluate(name, program, inputs=len(table).bit_length() - 1))
         == table
@@ -201,7 +202,7 @@ def test_deadline_clamps_each_row_and_expires_after_work(monkeypatch) -> None:
     def run(_name, _source, stdin, timeout, **_options):
         bounds.append(timeout)
         clock[0] += 3
-        return stdin
+        return esolangs.ExecutionResult(stdin, None, None, None)
 
     monkeypatch.setattr(esolangs, "run", run)
     with pytest.raises(esolangs.ExecutionTimeoutError):
@@ -249,7 +250,7 @@ def test_execution_failure_never_becomes_an_answer(
     monkeypatch, mode, error_type
 ) -> None:
     name = first(boolean_generator=True, answer_mode=mode)
-    program = esolangs.generate(name, "01")
+    program = compat.generate(name, "01")
     error = error_type("contract failure control")
 
     def fail(*_args, **_kwargs):

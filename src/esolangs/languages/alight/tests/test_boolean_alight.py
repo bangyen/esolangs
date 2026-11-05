@@ -5,6 +5,7 @@ import random
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from esolangs.languages.alight.interpreter import run as alight_run
@@ -26,10 +27,10 @@ def test_alight_balance_drops_ignored_inputs(syntax) -> None:
 
     settings = DialectSettings(expression_syntax=syntax)
     table = "0110" * 16  # 4 inputs ignored of 6
-    program = str(esolangs.generate("Alight", table, balance=True, settings=settings))
+    program = str(compat.generate("Alight", table, balance=True, settings=settings))
     assert _evaluate("Alight", program, inputs=6, settings=settings) == table
     full = "0" * 31 + "1" + "0" * 32  # every input matters
-    kept = esolangs.generate("Alight", full, balance=True, settings=settings)
+    kept = compat.generate("Alight", full, balance=True, settings=settings)
     assert len(program) < len(str(kept))
 
 
@@ -45,7 +46,7 @@ def test_alight_layouts_stay_near_the_exhaustive_column_selector(inputs) -> None
 
     rng = random.Random(1025 + inputs)
     table = "".join(rng.choice("01") for _ in range(1 << inputs))
-    flat = esolangs.generate("Alight", table)
+    flat = compat.generate("Alight", table)
     # The retired selector: every column's fold, rendered once.
     forms = [(1, 0, "\n".join(flat)), (len(flat), 1, flat)]
     for columns in range(1, len(flat) + 1):
@@ -55,7 +56,7 @@ def test_alight_layouts_stay_near_the_exhaustive_column_selector(inputs) -> None
         width, _ = _dimensions(program)
         forms.append((max(width, columns), columns + 1, program))
         assert (
-            esolangs.run(
+            compat.run(
                 "Alight", program, stdin=esolangs.encode_inputs("Alight", [0] * inputs)
             )
             == table[0]
@@ -72,9 +73,9 @@ def test_alight_layouts_stay_near_the_exhaustive_column_selector(inputs) -> None
         )
     ceiling = max(ready for ready, _, _ in ranked)
     for width in range(1, ceiling + 1):
-        built = esolangs.generate("Alight", table, width=width)
+        built = compat.generate("Alight", table, width=width)
         assert max(map(len, built.splitlines())) <= width
-    balanced = esolangs.generate("Alight", table, balance=True)
+    balanced = compat.generate("Alight", table, balance=True)
     winners = [flat] + [
         min((item for item in ranked if item[0] <= width), key=lambda item: item[1])[2]
         for width in range(1, ceiling + 1)
@@ -82,7 +83,7 @@ def test_alight_layouts_stay_near_the_exhaustive_column_selector(inputs) -> None
     assert balance_score(balanced)[0] <= 1.05 * min(map(balance_score, winners))[0]
     for row in (0, 1, len(table) // 2, len(table) - 1):
         bits = tuple(map(int, format(row, f"0{inputs}b")))
-        output = esolangs.run(
+        output = compat.run(
             "Alight", balanced, stdin=esolangs.encode_inputs("Alight", bits)
         )
         assert esolangs.read_answer("Alight", output) == table[row]
@@ -93,10 +94,9 @@ class TestAlightWidth:
 
     @staticmethod
     def _run(program: str, bits: list[str]) -> str:
-        import esolangs
 
         stdin = "".join(f"{bit}" for bit in bits)
-        return esolangs.run("Alight", program, stdin=stdin, timeout=5.0).strip()
+        return compat.run("Alight", program, stdin=stdin, timeout=5.0).strip()
 
     def test_a_width_turns_the_straight_walk_vertical(self) -> None:
         """A narrow program is one column and has no padding."""
@@ -213,7 +213,7 @@ def test_constant_lookup_drops_every_index_input(syntax, update, bit) -> None:
     _check_native_constants(syntax, update, bit)
     table = bit * 256
     settings = esolangs.DialectSettings(expression_syntax=syntax, list_update=update)
-    program = esolangs.generate("Alight", table, settings=settings)
+    program = compat.generate("Alight", table, settings=settings)
     assert _evaluate("Alight", program, inputs=8, settings=settings) == table
 
 
@@ -230,7 +230,7 @@ def test_constant_lookup_executes_every_layout(syntax, bit, width, n) -> None:
 
     table = bit * (1 << n)
     settings = esolangs.DialectSettings(expression_syntax=syntax)
-    program = esolangs.generate(
+    program = compat.generate(
         "Alight",
         table,
         settings=settings,
@@ -265,7 +265,7 @@ def _check_native_constants(syntax: str, update: str, bit: str) -> None:
     settings = esolangs.DialectSettings(expression_syntax=syntax, list_update=update)
     for n in range(1, 13):
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = esolangs.generate(
+            program = compat.generate(
                 "Alight", bit * (1 << n), settings=settings, **options
             )
             if not options:
@@ -294,6 +294,4 @@ def _check_native_constants(syntax: str, update: str, bit: str) -> None:
                 assert written.bits <= workspace(n, program)
                 if not options:
                     assert steps == n + 5
-    assert (
-        sum(len(esolangs.generate("Alight", f"{v:08b}")) for v in range(256)) == 24154
-    )
+    assert sum(len(compat.generate("Alight", f"{v:08b}")) for v in range(256)) == 24154

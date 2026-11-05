@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs import compat
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -27,7 +28,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Whitespace", bit * (1 << n), **options)
+                program = compat.generate("Whitespace", bit * (1 << n), **options)
                 assert len(program) == 7 * n + 11 + int(bit)
                 assert program.endswith(_END)
                 peak = 0
@@ -55,8 +56,7 @@ def _check_constants() -> None:
                     assert io.input_num() == 7
                 assert peak == 5 + (2 * n + 3).bit_length() + (2 * n).bit_length()
     assert (
-        sum(len(esolangs.generate("Whitespace", f"{v:08b}")) for v in range(256))
-        == 22640
+        sum(len(compat.generate("Whitespace", f"{v:08b}")) for v in range(256)) == 22640
     )
 
 
@@ -78,7 +78,7 @@ def _check_power_steps() -> None:
         peak = 0
         for table in tables:
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Whitespace", table, **options)
+                program = compat.generate("Whitespace", table, **options)
                 assert program == whitespace(table)
                 # Exact saved bytes execute; stripping command terminators is invalid.
                 assert program.endswith("\n")
@@ -104,7 +104,7 @@ def _check_power_steps() -> None:
 
     saved = Path(__file__).parents[1] / "whitespace.txt"
     for source in (saved, saved.read_text()):
-        assert esolangs.run("Whitespace", source, stdin="0\n1\n") == "0"
+        assert compat.run("Whitespace", source, stdin="0\n1\n") == "0"
 
 
 @pytest.mark.parametrize("table", ["01", "0101", "0011", "0000", "0110"])
@@ -129,4 +129,4 @@ def test_cli_exports_exact_command_bytes(
     assert output == whitespace("0110")
     path = tmp_path / "generated.ws"
     path.write_bytes(output.encode())
-    assert esolangs.run("Whitespace", path, stdin="0\n1\n") == "1"
+    assert compat.run("Whitespace", path, stdin="0\n1\n") == "1"

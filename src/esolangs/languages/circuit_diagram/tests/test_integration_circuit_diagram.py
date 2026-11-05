@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs import compat
 from tests.support.generator_support import evaluate_generated
 from tests.support.reference import REFERENCE
 from tests.support.samples import CIRCUIT_PRIME_TESTER, bits_of
@@ -17,7 +18,7 @@ class TestBreakAtWhereThereIsNoShape:
 
     def test_a_language_with_no_ip_accepts_either_kind(self) -> None:
         """Circuit Diagram's ip is None, so there is nothing to compare."""
-        program = esolangs.generate("Circuit Diagram", "0110")
+        program = compat.generate("Circuit Diagram", "0110")
         stdin = esolangs.encode_inputs("Circuit Diagram", [0, 1], truth_table="0110")
         debugger = debugger_api.make_debugger("Circuit Diagram", program, stdin=stdin)
         assert debugger.ip is None

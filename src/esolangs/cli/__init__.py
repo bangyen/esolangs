@@ -50,6 +50,7 @@ from esolangs import (
     list_languages,
     read_answer,
 )
+from esolangs.artifacts import Artifact, ProgramArtifact
 from esolangs.cli.args import (
     _check_count,
     _errors,
@@ -256,8 +257,9 @@ def _layout_ignored(language: str, *, balance: bool) -> bool:
     )
 
 
-def _emit(program: Program, *, plain: bool) -> None:
-    """Write ``program`` to stdout in its native form."""
+def _emit(artifact: Artifact, *, plain: bool) -> None:
+    """Write native source using the artifact's declared file convention."""
+    program = artifact.source
     if isinstance(program, CompressedText):
         if plain:
             for chunk in program.plain_chunks():
@@ -265,12 +267,14 @@ def _emit(program: Program, *, plain: bool) -> None:
         else:
             sys.stdout.buffer.write(program.to_gzip())
     elif isinstance(program, Raster):
-        sys.stdout.buffer.write(program.to_png())
-    else:
-        origin = getattr(program, "language", None)
-        ending = (
-            "\n" if origin is None or LANGUAGES[origin].runtime.file_newline else ""
+        assert isinstance(artifact, ProgramArtifact)
+        sys.stdout.buffer.write(
+            program.tagged(
+                artifact.language, settings=artifact.settings, scale=artifact.scale
+            ).to_png()
         )
+    else:
+        ending = "\n" if LANGUAGES[artifact.language].runtime.file_newline else ""
         sys.stdout.write(program + ending)
 
 
@@ -300,7 +304,7 @@ def _generate(rest: list[str]) -> None:
         # wraps the template (or hands the width to a *layout* language,
         # which lays it out), and ``instantiate`` wraps a program
         # filled from an unwrapped template; a wrapped one fills in place.
-        program = generate(
+        artifact = generate(
             rest[0],
             rest[1],
             width=width,
@@ -312,12 +316,16 @@ def _generate(rest: list[str]) -> None:
             bits = options["--bits"]
             if set(bits) - {"0", "1"} or not bits:
                 _fail(f"--bits must be a string of 0s and 1s, got {bits!r}")
-            if isinstance(program, Raster):
+            if isinstance(artifact.source, Raster):
                 _fail("raster programs read bits from stdin and cannot be instantiated")
-            program = cast(str, program)
-            program = instantiate(
-                rest[0], program, [int(b) for b in bits], width=width, settings=settings
+            artifact = instantiate(
+                rest[0],
+                artifact,
+                [int(b) for b in bits],
+                width=width,
+                settings=settings,
             )
+        program = artifact.source
         if isinstance(program, CompressedText) and "--plain" in flags:
             program.plain_chunks()  # Check the export budget before writing anything.
     except EsolangError as exc:
@@ -342,7 +350,7 @@ def _generate(rest: list[str]) -> None:
             + ("" if isinstance(program, Raster) else " or pass --plain")
         )
     with _errors():  # A raster renders here, and may exceed the pixel limit.
-        _emit(program, plain="--plain" in flags)
+        _emit(artifact, plain="--plain" in flags)
 
 
 def _printable(value: object) -> str:

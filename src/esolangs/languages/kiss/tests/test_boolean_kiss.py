@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -22,7 +23,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Kiss", bit * (1 << n), **options)
+                program = compat.generate("Kiss", bit * (1 << n), **options)
                 if not options:
                     assert len(program) == 9 * n
                 peak_steps = 0

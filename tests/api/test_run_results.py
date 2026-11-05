@@ -5,6 +5,7 @@ import pickle
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.registry import LANGUAGES
 from esolangs.results import Completion, CompletionReport, ExecutionResult
 from esolangs.runtime.io import ScriptedIO
@@ -31,7 +32,7 @@ def test_result_counts_unicode_characters_and_preserves_unread_input(route):
         CompletionReport(Completion.HALTED),
         2 if "max_steps" in route else None,
     )
-    assert esolangs.run(REFERENCE, ",.", stdin="éNEXT", **route) == result.output
+    assert compat.run(REFERENCE, ",.", stdin="éNEXT", **route) == result.output
 
 
 @pytest.mark.parametrize("route", _ROUTES)
@@ -43,7 +44,7 @@ def test_result_retains_a_caught_eof(route, monkeypatch):
         source_kind="text",
         input_shape="char_stream",
     )
-    source = esolangs.generate(name, "01")
+    source = compat.generate(name, "01")
     attempts = []
 
     class ObservedIO(ScriptedIO):
@@ -72,9 +73,9 @@ def test_result_retains_a_caught_eof(route, monkeypatch):
     ),
 )
 def test_post_halt_result_includes_the_final_dump(name):
-    template = esolangs.generate(name, "01")
+    template = compat.generate(name, "01")
     source = (
-        esolangs.instantiate(name, template, [1])
+        compat.instantiate(name, template, [1])
         if LANGUAGES[name].parameterized
         else template
     )
@@ -92,9 +93,9 @@ def test_post_halt_result_includes_the_final_dump(name):
 
 def test_periodic_result_retains_cycle_evidence_in_a_worker():
     name = first(boolean_generator=True, steppable_to_answer=False)
-    template = esolangs.generate(name, "01")
+    template = compat.generate(name, "01")
     source = (
-        esolangs.instantiate(name, template, [1])
+        compat.instantiate(name, template, [1])
         if LANGUAGES[name].parameterized
         else template
     )

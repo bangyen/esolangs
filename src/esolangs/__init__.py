@@ -2,11 +2,10 @@
 
 Public operations split by who supplies the program:
 
-* Generator-made: ``generate_artifact`` builds an explicit program or template;
-  ``generate`` returns compatible source from a truth table and
-  ``instantiate`` fills a generator-made template.
-* Caller-supplied: ``run`` returns output; ``run_result`` also reports input
-  consumption and completion evidence for caller-supplied source.
+* Generator-made: ``generate`` returns a program artifact or template;
+  ``instantiate`` fills a template into a runnable artifact.
+* Caller-supplied: ``run`` returns output, input consumption and completion
+  evidence in an immutable execution result.
   Stepping and debugging live in :mod:`esolangs.debugger`.
 * Contract adapters: ``encode_inputs`` spells input bits as stdin,
   ``read_answer`` extracts an answer bit from output,
@@ -14,6 +13,8 @@ Public operations split by who supplies the program:
   ``dump_program``/``load_program`` preserve source in portable JSON;
   ``load_artifact`` restores an explicit record.
 * Catalog: ``describe`` and ``list_languages`` provide registry facts.
+* Aliases: ``generate_artifact`` and ``run_result`` retain explicit spellings.
+* Compatibility: ``compat`` projects records to the 1.x source/output values.
 
 Boolean evaluation over every row is private certification machinery,
 not public API.  ``Language(name)`` binds these functions to one language.
@@ -28,6 +29,7 @@ from functools import cache, partial
 from math import isqrt
 from typing import TYPE_CHECKING, Any, cast
 
+from esolangs import compat as compat
 from esolangs._language import Language
 from esolangs.artifacts import (
     Artifact,
@@ -69,7 +71,8 @@ from esolangs.generation.wrap import (
     wrap_program,
 )
 from esolangs.generation.wrap import takes_width as _takes_width
-from esolangs.portable import dump_program, load_artifact, load_program, save_program
+from esolangs.portable import dump_program, load_artifact, save_program
+from esolangs.portable import load_artifact as load_program
 from esolangs.raster import Raster
 from esolangs.registry import (
     LANGUAGES,
@@ -117,7 +120,6 @@ from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 from esolangs.tagged import _Tagged, _Template
-from esolangs.tagged import source_adapter as _source_adapter
 from esolangs.vm import _capture_observation, _capture_result
 
 #: From the installed distribution (a hand-kept copy said 0.1.0 at 0.2.0);
@@ -200,6 +202,7 @@ __all__ = [
     "TextLimits",
     "TruthTableError",
     "UnknownLanguageError",
+    "compat",
     "describe",
     "dump_program",
     "encode_inputs",
@@ -229,14 +232,14 @@ def generate(
     balance: bool = False,
     scale: int = 1,
     settings: DialectSettings | None = None,
-) -> Program:
-    """Return a program in ``language`` computing ``truth_table``.
+) -> Artifact:
+    """Return an immutable program or template computing ``truth_table``.
 
     Languages that embed inputs in the program text return a *template*: one
     run of one character per input (``$`` unless the language declares
     another), as long as the code :func:`instantiate` fills it with.
-    ``describe(language)["parameterized"]`` says which you have; :func:`run`
-    refuses a template.  Tagged results retain ``settings`` for execution.
+    A TemplateArtifact exposes fill(bits); run refuses an unfilled template.
+    Records retain source, language, settings and raster scale explicitly.
 
     Args:
         truth_table: Binary string of length ``2**n``, MSB first.
@@ -264,38 +267,6 @@ def generate(
             (``describe(language)["generator_max_inputs"]`` and
             ``["generator_restrictions"]``).
     """
-    return _source_adapter(
-        generate_artifact(
-            language,
-            truth_table,
-            width=width,
-            balance=balance,
-            scale=scale,
-            settings=settings,
-        )
-    )
-
-
-def generate_artifact(
-    language: str,
-    truth_table: str,
-    *,
-    width: int | None = None,
-    balance: bool = False,
-    scale: int = 1,
-    settings: DialectSettings | None = None,
-) -> Artifact:
-    """Return an immutable program or template with explicit source and provenance.
-
-    Options follow :func:`generate`. Templates expose ``fill(bits)``; runnable
-    records and templates both expose ``source`` for explicit extraction.
-
-    Raises:
-        UnknownLanguageError: ``language`` is not registered.
-        TruthTableError: The table is not binary with power-of-two length.
-        ArgumentError: A generation option is invalid or unsupported.
-        GeneratorCapError: The table exceeds the generator's supported domain.
-    """
     options = dialect_options(language, settings)
     check_scale(scale)
     check_flag(balance, "balance")
@@ -307,7 +278,7 @@ def generate_artifact(
             )
         artifact = cast(
             ProgramArtifact[Raster],
-            generate_artifact(
+            generate(
                 language, truth_table, width=width, balance=balance, settings=settings
             ),
         )
@@ -368,6 +339,10 @@ def generate_artifact(
     return TemplateArtifact(text, resolved, TemplateBindings(char, pairs), settings)
 
 
+# Explicit-name aliases share the artifact-first implementation.
+generate_artifact = generate
+
+
 def _generate_balanced(
     language: str,
     truth_table: str,
@@ -421,7 +396,7 @@ def _is_template_for(
 
     Compare wrapping using the language's whitespace rules.
     """
-    plain = generate(name, truth_table, settings=settings)
+    plain = generate(name, truth_table, settings=settings).source
     if not isinstance(plain, str):
         return False
     if template == plain:
@@ -432,7 +407,7 @@ def _is_template_for(
 
     @cache
     def layout(width: int) -> Program:
-        return generate(name, truth_table, width=width, settings=settings)
+        return generate(name, truth_table, width=width, settings=settings).source
 
     # Layouts may switch representations; their floor is a named candidate,
     # unlike whitespace wrapping, so compare that template exactly too.
@@ -529,7 +504,7 @@ def instantiate(
     width: int | None = None,
     truth_table: str | None = None,
     settings: DialectSettings | None = None,
-) -> str:
+) -> ProgramArtifact[str]:
     """Fill a parameterized generator's template with ``bits``.
 
     Hand substitution fails: each language spells a set-input its own way.  A
@@ -553,20 +528,30 @@ def instantiate(
             invalid.
     """
     if isinstance(template, ProgramArtifact):
+        _check_template_source(resolve(language), template.source, None, settings)
         raise TemplateError("a runnable program has no template bindings")
-    if isinstance(template, TemplateArtifact):
-        template = _source_adapter(template)
     settings = effective_settings(language, template, settings)
     dialect_options(language, settings)
     check_width(width)
     name = resolve(language)
-    char = _check_template_source(name, template, truth_table, settings)
-    assert isinstance(template, str)  # the check refuses a Raster
+    source: Program
+    if isinstance(template, TemplateArtifact):
+        explicit = template
+        source = template.source
+    else:
+        explicit = None
+        source = template
+    if explicit is not None and explicit.language != name:
+        raise TemplateError(f"template belongs to {explicit.language}, not {name}")
+    char = _check_template_source(name, source, truth_table, settings)
+    assert isinstance(source, str)  # the check refuses a Raster
     bits = check_bits(bits, "bits")
     artifact = (
-        template._artifact  # noqa: SLF001 - public source compatibility boundary
-        if isinstance(template, _Template)
-        else _recover_template(name, template, char, settings)
+        explicit
+        if explicit is not None
+        else source._artifact  # noqa: SLF001 - source compatibility boundary
+        if isinstance(source, _Template)
+        else _recover_template(name, source, char, settings)
     )
     inputs = artifact.bindings.inputs
     if len(bits) != inputs:
@@ -586,7 +571,7 @@ def instantiate(
     program = wrap_program(filled.source, LANGUAGES[name].id, width)
     if program is not filled.source or settings is not filled.settings:
         filled = ProgramArtifact(program, name, settings)
-    return cast(str, _source_adapter(filled))
+    return filled
 
 
 def _recover_template(
@@ -818,8 +803,8 @@ def run(
     max_output: int | None = None,
     max_memory: int | None = None,
     settings: DialectSettings | None = None,
-) -> str:
-    """Execute ``program`` and return its output.
+) -> ExecutionResult:
+    """Execute ``program`` and return output, input usage and completion evidence.
 
     Args:
         program: Source or a :class:`~pathlib.Path`; a string shaped like a
@@ -885,55 +870,10 @@ def run(
         max_output=max_output,
         max_memory=max_memory,
         settings=settings,
-    ).output
-
-
-def run_result(
-    language: str,
-    program: ProgramSource,
-    *,
-    stdin: InputSource = "",
-    timeout: float | None = None,
-    seed: int | None = None,
-    isolated: bool = False,
-    max_steps: int | None = None,
-    scale: int | None = None,
-    max_output: int | None = None,
-    max_memory: int | None = None,
-    settings: DialectSettings | None = None,
-) -> ExecutionResult:
-    """Execute source and return immutable output, input usage and completion.
-
-    Source handling, options and bounds follow :func:`run`. Input position
-    counts captured stdin characters; reads count successful IO calls and
-    past-end counts EOF attempts. Completion retains halt or periodic evidence.
-    Failures raise with the same partial output as ``run``.
-
-    Raises:
-        UnknownLanguageError: ``language`` is not registered.
-        ArgumentError: An option is invalid or inapplicable.
-        ProgramNotFoundError: A program Path does not exist.
-        ProgramError: Source does not load.
-        TemplateError: Source is an unfilled template.
-        InputExhaustedError: Input ended where the language requires a value.
-        ExecutionTimeoutError: A time or step bound was exhausted.
-        InterpreterLimitError: An output, memory or implementation limit was hit.
-        HaltError: Execution encountered an invalid operation.
-        MissingDependencyError: A required optional dependency is unavailable.
-    """
-    return _run_result(
-        language,
-        program,
-        stdin=stdin,
-        timeout=timeout,
-        seed=seed,
-        isolated=isolated,
-        max_steps=max_steps,
-        scale=scale,
-        max_output=max_output,
-        max_memory=max_memory,
-        settings=settings,
     )
+
+
+run_result = run
 
 
 def _run_result(

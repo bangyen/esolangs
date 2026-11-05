@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 import esolangs
+from esolangs import compat
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
 from tests.support.samples import SAMPLES
@@ -22,15 +23,15 @@ pytestmark = pytest.mark.medium
 )
 def test_bounded_run_matches_whole_program_execution(language: str) -> None:
     program, stdin = SAMPLES[language]
-    assert esolangs.run(
-        language, program, stdin=stdin, max_steps=100_000
-    ) == esolangs.run(language, program, stdin=stdin)
+    assert compat.run(language, program, stdin=stdin, max_steps=100_000) == compat.run(
+        language, program, stdin=stdin
+    )
 
 
 def test_step_exhaustion_keeps_partial_output() -> None:
     for isolated in (False, True):
         with pytest.raises(esolangs.ExecutionTimeoutError, match="max_steps") as caught:
-            esolangs.run(REFERENCE, "+.[]", max_steps=10, isolated=isolated)
+            compat.run(REFERENCE, "+.[]", max_steps=10, isolated=isolated)
         assert caught.value.partial_output == "\x01"
         assert caught.value.bound == "max_steps"
 
@@ -48,15 +49,14 @@ def test_time_and_step_bounds_allow_a_halt() -> None:
     for isolated in (False, True):
         options = {"max_output": 1} if isolated else {}
         assert (
-            esolangs.run(
+            compat.run(
                 REFERENCE, "+.", timeout=1, max_steps=2, isolated=isolated, **options
             )
             == "\x01"
         )
-        assert esolangs.run(REFERENCE, "", max_steps=0, isolated=isolated) == ""
+        assert compat.run(REFERENCE, "", max_steps=0, isolated=isolated) == ""
         assert (
-            esolangs.run(REFERENCE, "+.", max_steps=10**5000, isolated=isolated)
-            == "\x01"
+            compat.run(REFERENCE, "+.", max_steps=10**5000, isolated=isolated) == "\x01"
         )
 
 
@@ -65,24 +65,24 @@ def test_time_and_step_bounds_allow_a_halt() -> None:
 )
 def test_invalid_bounds_are_refused(options: dict[str, object]) -> None:
     with pytest.raises(esolangs.ArgumentError):
-        esolangs.run(REFERENCE, "", **options)
+        compat.run(REFERENCE, "", **options)
 
 
 @pytest.mark.parametrize(
     "language", languages(source_kind="raster", boolean_generator=True)
 )
 def test_raster_execution_obeys_the_step_bound(language: str) -> None:
-    source = esolangs.generate(language, "01")
+    source = compat.generate(language, "01")
     stdin = esolangs.encode_inputs(language, [1])
-    out = esolangs.run(language, source, stdin=stdin, max_steps=1000)
+    out = compat.run(language, source, stdin=stdin, max_steps=1000)
     assert esolangs.read_answer(language, out) == "1"
     with pytest.raises(esolangs.ExecutionTimeoutError):
-        esolangs.run(language, source, stdin=stdin, max_steps=0)
+        compat.run(language, source, stdin=stdin, max_steps=0)
 
 
 def test_interpreter_errors_are_preserved() -> None:
     with pytest.raises(esolangs.InputExhaustedError):
-        esolangs.run(REFERENCE, ",", max_steps=1)
+        compat.run(REFERENCE, ",", max_steps=1)
 
 
 def test_a_program_error_echoing_the_digit_cap_text_stays_a_program_error() -> None:
@@ -101,14 +101,14 @@ def test_worker_budgets_validate_before_acquisition_and_keep_output_limits():
 
     for max_steps in (-1, True, 1.5):
         with pytest.raises(esolangs.ArgumentError, match="max_steps"):
-            esolangs.run(
+            compat.run(
                 REFERENCE, "+.", stdin=Unread(), isolated=True, max_steps=max_steps
             )
     with pytest.raises(esolangs.InterpreterLimitError, match="output limit") as caught:
-        esolangs.run(
+        compat.run(
             REFERENCE, "+..", isolated=True, timeout=5, max_steps=3, max_output=1
         )
     assert caught.value.partial_output == "\x01"
     with pytest.raises(esolangs.InputExhaustedError) as exhausted:
-        esolangs.run(REFERENCE, "+.,", isolated=True, max_steps=3)
+        compat.run(REFERENCE, "+.,", isolated=True, max_steps=3)
     assert exhausted.value.partial_output == "\x01"

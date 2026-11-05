@@ -6,6 +6,7 @@ import random
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.generation.branch_decoder import hoisted_tree
 from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.languages import generators as boolean
@@ -44,7 +45,7 @@ def test_constant_reads_once_and_falls_off_after_output(n: int, bit: str) -> Non
 @pytest.mark.parametrize("n", [3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_balanced_constants_read_every_input(n: int, bit: str) -> None:
-    program = esolangs.generate("S*bleq", bit * (1 << n), balance=True)
+    program = compat.generate("S*bleq", bit * (1 << n), balance=True)
     for row in range(1 << n):
         io = ScriptedIO(f"{row:0{n}b}" + "extra")
         machine = _Machine(str(program), io)
@@ -127,7 +128,7 @@ def test_size_below_eleven_inputs_is_at_most_the_shorter_route(n: int) -> None:
     """The ledger's ``worst P`` starts at n = 11; below, min(tree, P) bounds it."""
     bound = below_eleven(n) if n >= 5 else tree_chars(n)
     for table in _tables("S*bleq", n):
-        assert len(esolangs.generate("S*bleq", table)) <= bound, table
+        assert len(compat.generate("S*bleq", table)) <= bound, table
 
 
 def test_flipped_tree_ends_the_and_relay_jumps() -> None:
@@ -146,7 +147,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("S*bleq", bit * (1 << n), **options)
+                program = compat.generate("S*bleq", bit * (1 << n), **options)
                 if not options:
                     assert len(program) == 7 * n + 7
                 peak = 0

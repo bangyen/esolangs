@@ -7,7 +7,7 @@ on some table here, ``bound`` ones only never exceeded.
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from tests.proofs._formula import exact_at
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs._witnesses import band_marks
@@ -74,7 +74,7 @@ def test_execution_and_workspace_formulas_hold(name: str, n: int) -> None:
     ]
     reached = [False] * len(formulas)
     for table in _tables(name, n):
-        program = esolangs.generate(name, table)
+        program = compat.generate(name, table)
         measurements = _measure(
             name,
             table,

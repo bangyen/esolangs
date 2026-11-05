@@ -4,6 +4,7 @@ import random
 
 import pytest
 
+from esolangs import compat
 from esolangs.generation.helpers import essential_inputs, permute_truth_table
 from esolangs.languages import generators as boolean
 from tests.generators.sample_tables import five_input_sample
@@ -159,7 +160,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Forþ", bit * (1 << n), **options)
+                program = compat.generate("Forþ", bit * (1 << n), **options)
                 if not options:
                     assert len(program) == 2 * n + 4
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):

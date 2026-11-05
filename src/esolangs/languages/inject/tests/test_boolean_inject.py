@@ -6,6 +6,7 @@ from itertools import pairwise
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
@@ -25,7 +26,7 @@ class TestInject:
     def test_balanced_parity_chunks_the_table_square(self) -> None:
         """Parity n=10: ~sqrt(T)-wide chunks, ~sqrt(T) lines (default: 1024 wide)."""
         table = "".join(str((i).bit_count() % 2) for i in range(1 << 10))
-        program = esolangs.generate("inject", table, balance=True)
+        program = compat.generate("inject", table, balance=True)
         assert balance_score(str(program)) == (298, 1968, 142)
 
     def test_constant_subtrees_are_folded(self) -> None:
@@ -89,7 +90,7 @@ class TestInject:
         for n in (5, 6, 7):
             table = "".join(str((row * 73 + row // 3) & 1) for row in range(1 << n))
             plain = boolean.inject(table)
-            program = esolangs.generate("Inject", table, width=width)
+            program = compat.generate("Inject", table, width=width)
             assert max(map(len, program.splitlines())) <= max(width, 22)
             assert program.count("readto ") == n
             if max(map(len, plain.splitlines())) <= width:
@@ -101,10 +102,10 @@ class TestInject:
         """Input 2 of 7 is read and never tested; the table is indexed without it."""
         small = "".join(str((row * 73 + row // 3) & 1) for row in range(64))
         table = "".join(small[r >> 1 & 32 | r & 31] for r in range(128))
-        program = esolangs.generate("Inject", table, width=1)
+        program = compat.generate("Inject", table, width=1)
         assert program.count("readto ") == 7
         assert len(program) < 0.7 * len(
-            esolangs.generate("Inject", small + small[::-1], width=1)
+            compat.generate("Inject", small + small[::-1], width=1)
         )
         for row in range(128):
             assert run_inject(program, list(f"{row:07b}")) == table[row] + "\n"
@@ -154,11 +155,11 @@ def test_parity_source_at_most_doubles_per_input() -> None:
 def test_a_width_the_program_exactly_fills_keeps_the_program() -> None:
     rng = random.Random(6)
     table = "".join(rng.choice("01") for _ in range(64))
-    program = esolangs.generate("Inject", table)
+    program = compat.generate("Inject", table)
     widest = max(map(len, program.splitlines()))
     assert widest == 64
-    assert esolangs.generate("Inject", table, width=widest) == program
-    assert len(esolangs.generate("Inject", table, width=widest - 1)) == 686
+    assert compat.generate("Inject", table, width=widest) == program
+    assert len(compat.generate("Inject", table, width=widest - 1)) == 686
 
 
 def test_counted_halving_keeps_the_exact_offset() -> None:
@@ -200,7 +201,7 @@ def test_constant_scratch_reuse_reads_first_and_preserves_the_next_line() -> Non
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Inject", bit * (1 << n), **options)
+                program = compat.generate("Inject", bit * (1 << n), **options)
                 assert len(program) == 9 * n + 20
                 assert program.splitlines().count("readto a") == n
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
@@ -216,6 +217,6 @@ def test_constant_scratch_reuse_reads_first_and_preserves_the_next_line() -> Non
                     assert stream.getvalue() == bit + "\n"
                     assert stream.input_str() == "Q"
     assert (
-        sum(len(esolangs.generate("Inject", format(v, "08b"))) for v in range(256))
+        sum(len(compat.generate("Inject", format(v, "08b"))) for v in range(256))
         == 47658
     )

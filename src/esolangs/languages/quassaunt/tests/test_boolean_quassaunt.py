@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from esolangs.languages.quassaunt.generator import quassaunt
 from esolangs.languages.quassaunt.interpreter import run
 from esolangs.runtime.io import ScriptedIO
@@ -59,7 +59,7 @@ def _check_store_loop() -> None:
     table = "00110110"
     baseline_steps = {}
     for options in ({}, {"width": 1}, {"balance": True}):
-        program = esolangs.generate("Quassaunt", table, **options)
+        program = compat.generate("Quassaunt", table, **options)
         for row in (0, 1, 7):
             io = ReadFirstIO(f"{row:03b}Q", expected=3)
             machine = _Machine(program, io)

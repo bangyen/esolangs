@@ -6,6 +6,7 @@ from functools import partial
 
 import pytest
 
+from esolangs import compat
 from esolangs.languages.bit_tilde.interpreter import run
 from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import (
@@ -170,6 +171,5 @@ class TestStateViewValues:
 
 def test_a_wide_character_reads_as_a_byte() -> None:
     """``)`` on U+0100 leaked "zip() argument 2 is longer than argument 1"."""
-    import esolangs
 
-    assert esolangs.run("bit~", ")(", stdin="Ā") == "\x00"
+    assert compat.run("bit~", ")(", stdin="Ā") == "\x00"

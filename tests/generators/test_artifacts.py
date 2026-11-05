@@ -7,13 +7,14 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.artifacts import (
     ProgramArtifact,
     TemplateArtifact,
     TemplateBindings,
 )
 from esolangs.registry import LANGUAGES
-from esolangs.tagged import _Tagged, _Template
+from esolangs.tagged import _Tagged, _Template, source_adapter
 from tests.support.evaluation import _evaluate
 from tests.support.pick import languages, one, one_where
 from tests.support.reference import REFERENCE
@@ -38,24 +39,49 @@ _PILOTS = [
 @pytest.mark.medium
 @pytest.mark.parametrize(("language", "table"), _PILOTS)
 def test_artifact_persistence_executes_the_same_table(
-    language: str, table: str, tmp_path: Path
+    language: str, table: str, tmp_path: Path, monkeypatch
 ) -> None:
+    import esolangs.portable as portable
+
     inputs = len(table).bit_length() - 1
     choices = esolangs.DialectSettings()
-    source = esolangs.generate_artifact(language, table, settings=choices)
-    document = esolangs.dump_program(language, source)
-    restored = esolangs.load_artifact(language, document)
-    assert esolangs.dump_program(language, restored) == document
-    assert type(source) is type(restored)
-    assert source.settings == restored.settings == choices
-    assert source.language == restored.language == language
-    assert isinstance(source, (esolangs.ProgramArtifact, esolangs.TemplateArtifact))
-    assert esolangs.Language(language).load_artifact(document) == restored
-    for program in (source, restored, pickle.loads(pickle.dumps(source))):
-        if isinstance(program, TemplateArtifact):
-            with pytest.raises(esolangs.TemplateError):
-                esolangs.run(language, program)
-        assert _evaluate(language, program, inputs=inputs) == table
+    scale = 2 if LANGUAGES[language].runtime.source_kind == "raster" else 1
+    source = esolangs.generate_artifact(language, table, scale=scale, settings=choices)
+
+    def refuse_adapter(*_args):
+        raise AssertionError("explicit artifact converted to compatibility source")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(compat, "source_adapter", refuse_adapter)
+        patch.setattr(portable, "source_adapter", refuse_adapter)
+        document = esolangs.dump_program(language, source)
+        restored = esolangs.load_artifact(language, document)
+        assert esolangs.dump_program(language, restored) == document
+        assert type(source) is type(restored)
+        assert source.settings == restored.settings == choices
+        assert source.language == restored.language == language
+        assert esolangs.Language(language).load_artifact(document) == restored
+        if isinstance(restored, TemplateArtifact):
+            assert restored.bindings == source.bindings
+            for isolated, max_steps in ((False, None), (False, 10_000), (True, 10_000)):
+                with pytest.raises(esolangs.TemplateError):
+                    esolangs.run(
+                        language, restored, isolated=isolated, max_steps=max_steps
+                    )
+                result = esolangs.run(
+                    language,
+                    restored.fill([0, 1]),
+                    isolated=isolated,
+                    max_steps=max_steps,
+                )
+                assert result.output == "1"
+        if isinstance(restored.source, esolangs.Raster):
+            assert restored.scale == source.scale == 2
+        if isinstance(restored, ProgramArtifact) and language != REFERENCE:
+            with pytest.raises(esolangs.ProgramError):
+                esolangs.run(REFERENCE, restored)
+        for program in (source, restored, pickle.loads(pickle.dumps(source))):
+            assert _evaluate(language, program, inputs=inputs) == table
     path = tmp_path / ("program" + LANGUAGES[language].source_suffix)
     esolangs.save_program(source, path)
     assert _evaluate(language, path, inputs=inputs) == table
@@ -64,7 +90,7 @@ def test_artifact_persistence_executes_the_same_table(
 @pytest.mark.medium
 @pytest.mark.parametrize("language", [REFERENCE, *_EMBEDDING])
 def test_text_adapter_converts_to_an_immutable_record(language: str) -> None:
-    source = esolangs.generate(language, "0110")
+    source = compat.generate(language, "0110")
     assert isinstance(source, _Tagged)
     artifact = source._artifact
     assert artifact.source == str(source)
@@ -76,7 +102,7 @@ def test_text_adapter_converts_to_an_immutable_record(language: str) -> None:
         assert isinstance(artifact, TemplateArtifact)
         filled = artifact.bindings.fill(artifact.source, [0, 1])
         assert filled == source.fill([0, 1])
-        assert esolangs.run(language, filled) == "1"
+        assert compat.run(language, filled) == "1"
     else:
         assert isinstance(artifact, ProgramArtifact)
 
@@ -103,8 +129,8 @@ def test_template_record_refuses_invalid_shape(source, setters) -> None:
 def test_generated_and_restored_bindings_need_no_recovery(
     language, monkeypatch
 ) -> None:
-    source = esolangs.generate(language, "0110")
-    restored = esolangs.load_program(language, esolangs.dump_program(language, source))
+    source = compat.generate(language, "0110")
+    restored = compat.load_program(language, esolangs.dump_program(language, source))
 
     def refuse_recovery(*_args):
         raise AssertionError("lost explicit input bindings")
@@ -112,12 +138,12 @@ def test_generated_and_restored_bindings_need_no_recovery(
     monkeypatch.setattr(esolangs, "recover_setters", refuse_recovery)
     for template in (source, restored):
         with pytest.raises(esolangs.TemplateError):
-            esolangs.run(language, template)
+            compat.run(language, template)
         with pytest.raises(esolangs.TemplateError):
-            esolangs.instantiate(REFERENCE, template, [0, 1])
-        filled = esolangs.instantiate(language, template, [0, 1])
+            compat.instantiate(REFERENCE, template, [0, 1])
+        filled = compat.instantiate(language, template, [0, 1])
         with pytest.raises(esolangs.ProgramError):
-            esolangs.run(REFERENCE, filled)
+            compat.run(REFERENCE, filled)
 
     with pytest.raises(esolangs.TemplateError, match="fill the template"):
         esolangs.Language(language).from_source(source)
@@ -150,14 +176,14 @@ def test_template_record_copies_bindings_and_retains_settings() -> None:
 )
 def test_generation_adapts_only_the_final_record(language, table, options, monkeypatch):
     exported = []
-    adapt = esolangs._source_adapter
+    adapt = compat.source_adapter
 
     def capture(artifact):
         exported.append(artifact)
         return adapt(artifact)
 
-    monkeypatch.setattr(esolangs, "_source_adapter", capture)
-    source = esolangs.generate(language, table, **options)
+    monkeypatch.setattr(compat, "source_adapter", capture)
+    source = compat.generate(language, table, **options)
     assert len(exported) == 1
     artifact = exported[0]
     assert isinstance(artifact, (ProgramArtifact, TemplateArtifact))
@@ -178,7 +204,7 @@ def test_template_record_reuses_validated_runs_and_retains_provenance(
     choices = esolangs.DialectSettings()
     artifact = esolangs.generate_artifact(language, "0110", settings=choices)
     assert isinstance(artifact, TemplateArtifact)
-    source = esolangs._source_adapter(artifact)
+    source = source_adapter(artifact)
 
     def refuse_rescan(*_args):
         raise AssertionError("rescanned a validated template")
@@ -191,45 +217,8 @@ def test_template_record_reuses_validated_runs_and_retains_provenance(
         assert isinstance(filled, ProgramArtifact)
         assert filled.language == language
         assert filled.settings is choices
-        assert esolangs.run(language, filled.source) == answer
+        assert compat.run(language, filled.source) == answer
         assert restored.fill(bits).source == filled.source == source.fill(bits)
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("language", _EMBEDDING)
-def test_public_template_fill_executes_all_routes(language):
-    artifact = esolangs.Language(language).generate_artifact("0110")
-    assert isinstance(artifact, TemplateArtifact)
-    document = esolangs.dump_program(language, artifact)
-    restored = esolangs.load_artifact(language, document)
-    assert isinstance(restored, TemplateArtifact)
-    assert restored.bindings == artifact.bindings
-    for isolated, max_steps in [(False, None), (False, 10_000), (True, 10_000)]:
-        with pytest.raises(esolangs.TemplateError):
-            esolangs.run(language, restored, isolated=isolated, max_steps=max_steps)
-        assert (
-            esolangs.run(
-                language, restored.fill([0, 1]), isolated=isolated, max_steps=max_steps
-            )
-            == "1"
-        )
-
-
-@pytest.mark.medium
-def test_record_provenance_and_scaled_raster_round_trip():
-    settings = esolangs.DialectSettings()
-    language = one(source_kind="raster", boolean_generator=True, answer_mode="output")[
-        0
-    ]
-    artifact = esolangs.generate_artifact(language, "01", scale=2, settings=settings)
-    restored = esolangs.load_artifact(
-        language, esolangs.dump_program(language, artifact)
-    )
-    assert restored.scale == artifact.scale == 2
-    assert restored.settings == settings
-    with pytest.raises(esolangs.ProgramError):
-        esolangs.run(REFERENCE, restored)
-    assert _evaluate(language, restored, inputs=1) == "01"
 
 
 @pytest.mark.medium
@@ -262,39 +251,10 @@ def test_explicit_source_survives_all_execution_routes_and_persistence(tmp_path)
         language.from_file(tmp_path / "absent.txt")
 
 
-@pytest.mark.medium
-@pytest.mark.parametrize(("language", "table"), _PILOTS)
-def test_explicit_artifacts_execute_without_tagged_string_adapters(
-    language, table, monkeypatch
-):
-    import esolangs.portable as portable
-
-    artifact = esolangs.generate_artifact(language, table)
-
-    def refuse_adapter(*_args):
-        raise AssertionError("explicit artifact converted to compatibility source")
-
-    monkeypatch.setattr(esolangs, "_source_adapter", refuse_adapter)
-    monkeypatch.setattr(portable, "source_adapter", refuse_adapter)
-    restored = esolangs.load_artifact(
-        language, esolangs.dump_program(language, artifact)
-    )
-    if isinstance(restored, TemplateArtifact):
-        inputs = restored.bindings.inputs
-        for row, answer in enumerate(table):
-            bits = [int(bit) for bit in f"{row:0{inputs}b}"]
-            output = esolangs.run(language, restored.fill(bits), timeout=5)
-            assert esolangs.read_answer(language, output) == answer
-    else:
-        assert (
-            _evaluate(language, restored, inputs=len(table).bit_length() - 1) == table
-        )
-
-
 def test_public_records_canonicalize_and_validate_metadata():
     artifact = ProgramArtifact("+.", REFERENCE.upper())
     assert artifact.language == REFERENCE
-    assert esolangs.run(REFERENCE, artifact) == "\x01"
+    assert compat.run(REFERENCE, artifact) == "\x01"
     with pytest.raises(esolangs.ArgumentError):
         ProgramArtifact("+.", REFERENCE, scale=1)
     with pytest.raises(esolangs.ArgumentError):

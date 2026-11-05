@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs import compat
 from esolangs.languages.sendstuff.generator import sendstuff
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row, measure_run
@@ -37,7 +38,7 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
             identity = table[:2] == "01"
             negation = table[:2] == "10"
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("SendStuff", table, **options)
+                program = compat.generate("SendStuff", table, **options)
                 if not options and n == 8:
                     assert len(program) == (73 if identity else 94 if negation else 87)
                 rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
@@ -54,6 +55,6 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
                     assert written.bits <= workspace(n, program)
                     assert io.input_char() == ord("Q")
     assert (
-        sum(len(esolangs.generate("SendStuff", format(v, "08b"))) for v in range(256))
+        sum(len(compat.generate("SendStuff", format(v, "08b"))) for v in range(256))
         == 48361
     )

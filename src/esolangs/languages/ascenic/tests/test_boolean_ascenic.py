@@ -2,7 +2,7 @@
 
 import pytest
 
-import esolangs
+from esolangs import compat
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_native_rows
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -14,7 +14,7 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 )
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    program = esolangs.generate("Ascenic", table)
+    program = compat.generate("Ascenic", table)
     from esolangs.languages.ascenic.interpreter import run
 
     assert_native_rows("Ascenic", table, program, run, sentinel="\nQ\n", token=True)
@@ -23,7 +23,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
 def test_ignored_inputs_are_popped_not_scanned() -> None:
     """Two ignored inputs of six leave a four-row scan, not a 64-row one."""
     table = "0110" * 16
-    assert len(esolangs.generate("Ascenic", table)) < 1000
+    assert len(compat.generate("Ascenic", table)) < 1000
 
 
 @pytest.mark.parametrize("n", [1, 3, 4, 6, 7, 8, 12])
@@ -33,7 +33,7 @@ def test_named_tables_read_first_and_leave_the_next_record(n) -> None:
     rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
     for bit in "01":
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = esolangs.generate("Ascenic", bit * (1 << n), **options)
+            program = compat.generate("Ascenic", bit * (1 << n), **options)
             if not options:
                 assert len(program) == 2 * n * n + 17 * n - 1 + 6 * int(bit)
             for row in rows:
@@ -45,7 +45,7 @@ def test_named_tables_read_first_and_leave_the_next_record(n) -> None:
 
     for invert in (False, True):
         table = "".join(str((row.bit_count() % 2) ^ invert) for row in range(1 << n))
-        program = esolangs.generate("Ascenic", table)
+        program = compat.generate("Ascenic", table)
         for row in rows:
             io = ReadFirstIO("\n".join(format(row, f"0{n}b")) + "\nQ\n", expected=n)
             run(program, io)
@@ -58,7 +58,7 @@ def test_named_tables_read_first_and_leave_the_next_record(n) -> None:
 def test_three_input_corpus_size() -> None:
     assert (
         sum(
-            len(esolangs.generate("Ascenic", format(value, "08b")))
+            len(compat.generate("Ascenic", format(value, "08b")))
             for value in range(256)
         )
         == 264468

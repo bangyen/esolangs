@@ -6,6 +6,7 @@ from functools import partial
 
 import pytest
 
+from esolangs import compat
 from esolangs.generation.helpers import in_input_order
 from esolangs.languages import generators as boolean
 from esolangs.languages.cvnc.generator import (
@@ -280,7 +281,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("CV(N)(C)", bit * (1 << n), **options)
+                program = compat.generate("CV(N)(C)", bit * (1 << n), **options)
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(
                         esolangs.encode_inputs("CV(N)(C)", [int(b) for b in row])

@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 import esolangs
+from esolangs import compat
 from tests.proofs._ledger import load
 from tests.support.cli_support import _failure
 from tests.support.input_convention import assert_reads_tokens_on_one_line
@@ -19,7 +20,7 @@ def test_generator_cap_hint_reaches_cli(capsys) -> None:
 
 def test_generator_cap_hint() -> None:
     with pytest.raises(esolangs.GeneratorCapError) as caught:
-        esolangs.generate("Befunge", "0010" * (1 << 12))
+        compat.generate("Befunge", "0010" * (1 << 12))
     assert "fixed 80x25 grid" in caught.value.__notes__[0]
 
 
@@ -33,17 +34,17 @@ def test_invalid_numeric_input_is_not_mislabeled_as_a_program_error(mode: str) -
         bounds["max_steps"] = 100
     elif mode == "isolated":
         bounds["isolated"] = True
-    assert esolangs.run("Befunge", "&.@", stdin=b"-12345", **bounds) == "-12345 "
+    assert compat.run("Befunge", "&.@", stdin=b"-12345", **bounds) == "-12345 "
     with pytest.raises(
         esolangs.ArgumentError, match="input must be an integer"
     ) as error:
-        esolangs.run("Befunge", '"A",&.@', stdin=io.StringIO("invalid"), **bounds)
+        compat.run("Befunge", '"A",&.@', stdin=io.StringIO("invalid"), **bounds)
     assert error.value.partial_output == "A"
 
 
 def test_befunge_grid_refusal_is_catchable() -> None:
     with pytest.raises(esolangs.GeneratorCapError, match="80x25"):
-        esolangs.generate("Befunge", "0010" * (1 << 12))
+        compat.generate("Befunge", "0010" * (1 << 12))
 
 
 @pytest.mark.parametrize("wrapped", ["vm", "machine", "debugger"])
@@ -62,7 +63,7 @@ def test_random_snapshot_cannot_prove_a_cycle(wrapped) -> None:
         run_until_halt_or_cycle(machine, limit=1000)
     run_until_halt(vm, limit=1000)
     assert vm.halted
-    assert esolangs.run("Befunge", source, seed=0, timeout=1) == ""
+    assert compat.run("Befunge", source, seed=0, timeout=1) == ""
     assert run_until_halt_or_cycle(vm, limit=1000) is True
 
 
@@ -73,7 +74,7 @@ def test_it_reads_numeric_tokens_on_the_same_line() -> None:
 def test_befunge_refusal_is_an_explicit_totality_exception() -> None:
     """The fixed-torus refusal must not disappear from the totality audit."""
     with pytest.raises(esolangs.GeneratorCapError, match="at most thirteen inputs"):
-        esolangs.generate("Befunge", "01" * 8192)
+        compat.generate("Befunge", "01" * 8192)
     assert "exception" in load().by_name()["Befunge"].labels
 
 
@@ -86,14 +87,14 @@ def test_seeded_steps_debuggers_and_combined_worker_budgets_agree(tmp_path):
     source = "?.@\n. @\n@ @"
     observed = {}
     for seed in range(8):
-        native = esolangs.run("Befunge", source, seed=seed)
+        native = compat.run("Befunge", source, seed=seed)
         machine = make_vm("Befunge", source, seed=seed)
         debugger = make_debugger("Befunge", source, seed=seed)
         complete_vm(machine)
         assert debugger.run(max_steps=100) == "halted"
         assert machine.output == debugger.output == native
         assert machine.snapshot() == debugger.snapshot()
-        assert esolangs.run("Befunge", source, seed=seed, max_steps=100) == native
+        assert compat.run("Befunge", source, seed=seed, max_steps=100) == native
         observed.setdefault(native, seed)
     assert len(observed) > 1  # Positive control: the program actually drew.
 
@@ -101,7 +102,7 @@ def test_seeded_steps_debuggers_and_combined_worker_budgets_agree(tmp_path):
     path.write_text(source)
     for output, seed in observed.items():
         assert (
-            esolangs.run(
+            compat.run(
                 "Befunge",
                 source,
                 seed=seed,

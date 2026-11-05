@@ -5,6 +5,7 @@ from functools import cache
 
 import pytest
 
+from esolangs import compat
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
 from tests.interpreters.runner import run_program
@@ -261,7 +262,7 @@ def test_every_constant_row_within_written_state_bound(bit: str) -> None:
     _check_native_constants(bit)
     table = bit * 256
     # Four phase-neutral body commands repeat six times, adding eighty executions.
-    commands = len(generate("ROTfuck", table)) + 80
+    commands = len(generate("ROTfuck", table).source) + 80
     assert_shared_program("ROTfuck", table, None, commands, lambda p: workspace(8, p))
 
 
@@ -349,7 +350,7 @@ def _check_native_constants(bit: str) -> None:
         for rotation in ("backward", "forward"):
             settings = esolangs.DialectSettings(rotation=rotation)
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
+                program = compat.generate(
                     "ROTfuck", bit * (1 << n), settings=settings, **options
                 )
                 assert len("".join(program.split())) == n + 26 + int(bit)
@@ -370,9 +371,7 @@ def _check_native_constants(bit: str) -> None:
                     assert io.getvalue() == bit
                     assert io.past_end == 0
                     assert io.input_char() == ord("Q")
-    assert (
-        sum(len(esolangs.generate("ROTfuck", f"{v:08b}")) for v in range(256)) == 71890
-    )
+    assert sum(len(compat.generate("ROTfuck", f"{v:08b}")) for v in range(256)) == 71890
 
 
 def _check_symmetric_multipliers() -> None:

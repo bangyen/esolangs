@@ -5,6 +5,7 @@ from itertools import product
 from random import Random
 
 import esolangs
+from esolangs import compat
 from esolangs.languages.refractran.generator import _swap
 from esolangs.languages.refractran.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
@@ -55,16 +56,16 @@ def test_tables_and_reference() -> None:
     for n in (4, 5, 6):
         rng = Random(1847 + n)
         table = "".join(rng.choice("01") for _ in range(2**n))
-        template = esolangs.generate("REFRACTRAN", table)
+        template = compat.generate("REFRACTRAN", table)
         for row, bits in enumerate(product((0, 1), repeat=n)):
-            program = esolangs.instantiate("REFRACTRAN", template, bits)
+            program = compat.instantiate("REFRACTRAN", template, bits)
             initial, *fractions = program.split()
             value = 1
             for term in initial.split("*"):
                 base, _, exponent = term.partition("^")
                 value *= int(base) ** int(exponent or "1")
             answer = _rational_run(value, fractions)
-            output = esolangs.run("REFRACTRAN", program)
+            output = compat.run("REFRACTRAN", program)
             assert int(output, 2) == answer
             assert esolangs.read_answer("REFRACTRAN", output) == table[row]
 
@@ -73,10 +74,10 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = esolangs.generate("REFRACTRAN", bit * (1 << n), **options)
+                template = compat.generate("REFRACTRAN", bit * (1 << n), **options)
                 assert template.count("$") == n
                 for bits in ([0] * n, [1] * n):
-                    source = esolangs.instantiate("REFRACTRAN", template, bits)
+                    source = compat.instantiate("REFRACTRAN", template, bits)
                     io = ScriptedIO("7")
                     machine = _Machine(source, io)
                     assert machine.state.value == (1 if bit == "1" else 2) * 3 ** sum(
@@ -97,10 +98,10 @@ def _check_pruned_children_and_polarity() -> None:
     for table in ("10", "1101", "0110"):
         n = len(table).bit_length() - 1
         for options in ({}, {"width": 1}, {"balance": True}):
-            template = esolangs.generate("REFRACTRAN", table, **options)
+            template = compat.generate("REFRACTRAN", table, **options)
             assert template.count("$") == n
             for row, bits in enumerate(product((0, 1), repeat=n)):
-                source = esolangs.instantiate("REFRACTRAN", template, bits)
+                source = compat.instantiate("REFRACTRAN", template, bits)
                 io = ScriptedIO("Q")
                 machine = _Machine(source, io)
                 initial = machine.state.value
@@ -114,9 +115,7 @@ def _check_pruned_children_and_polarity() -> None:
                 assert steps <= 2 * len(source) + 1
                 assert measured.bits <= 8 * len(source) + len(source).bit_length() + 16
     # A complemented root still needs the output rail: odd 1 is not true rail 3.
-    source = esolangs.instantiate(
-        "REFRACTRAN", esolangs.generate("REFRACTRAN", "10"), [1]
-    )
+    source = compat.instantiate("REFRACTRAN", compat.generate("REFRACTRAN", "10"), [1])
     invalid = source.replace("2*", "1*", 1)
     io = ScriptedIO()
     machine = _Machine(invalid, io)

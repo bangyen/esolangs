@@ -5,6 +5,7 @@ from itertools import pairwise
 
 import pytest
 
+from esolangs import compat
 from esolangs.languages import generators as boolean
 from esolangs.languages.flowchart.generator import (
     _flowchart_cells,
@@ -286,12 +287,11 @@ def test_constant_lookup_reads_without_deque_or_selector(bit) -> None:
         ),
     )
 
-    import esolangs
     from esolangs.languages.flowchart.interpreter import _Machine
 
     for n in (1, 3, 8, 12):
         for options in ({}, {"width": 1}, {"balance": True}):
-            program = esolangs.generate("Flowchart", bit * (1 << n), **options)
+            program = compat.generate("Flowchart", bit * (1 << n), **options)
             if not options:
                 assert len(program) == 32 * n + 29
             for row in (0, 1, (1 << n) - 1):
@@ -310,18 +310,16 @@ def test_constant_lookup_reads_without_deque_or_selector(bit) -> None:
 def test_balance_of_parity_n8_is_banded() -> None:
     """Parity n=8 balances as a top tree over 2 inputs and four bands:
     (side, length, width); the flat tree's side was 1,534."""
-    import esolangs
     from esolangs.generation.wrap import balance_score
 
     table = "".join(str((row).bit_count() & 1) for row in range(256))
-    program = esolangs.generate("Flowchart", table, balance=True)
+    program = compat.generate("Flowchart", table, balance=True)
     assert balance_score(program) == (878, 200404, 878)
 
 
 @pytest.mark.parametrize("table", ["0001", "0110", "01101001", "00010111", "11101000"])
 def test_balanced_tree_folds_and_still_computes(table: str, monkeypatch) -> None:
     """Snaking chains beats the tall tree's side by a third and keeps the table."""
-    import esolangs
     from esolangs.generation.wrap import balance_score
     from esolangs.languages.flowchart.generator import _ANSWER, _snake
     from tests.support.evaluation import _evaluate
@@ -339,7 +337,7 @@ def test_balanced_tree_folds_and_still_computes(table: str, monkeypatch) -> None
         return _snake(cells, run, nodes)
 
     monkeypatch.setattr("esolangs.languages.flowchart.generator._snake", checked_snake)
-    program = esolangs.generate("Flowchart", table, balance=True)
+    program = compat.generate("Flowchart", table, balance=True)
     assert shapes == {(2, 6), (3, 4), (4, 3), (6, 2)}
     assert padded_reads
     tall = _flowchart_render(_flowchart_cells(table))
