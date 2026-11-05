@@ -735,14 +735,11 @@ def _smallfuck_tree(
         flag_levels = ()
         paired_roots = ()
     blocks = shared_blocks
-    _check_definitions(n, blocks, flag_levels)
     pending_levels = flag_levels or tuple(depth for depth, _ in blocks)
     selected = {
         (depth, ids[depth][row >> (n - depth)]): i
         for i, (depth, row) in enumerate(blocks)
     }
-    if len(selected) != len(blocks):
-        raise ValueError("deferred definitions must name distinct residuals")
     pairs = dict(paired_roots)
     if pairs and (n < 4 or blocks):
         raise ValueError(
