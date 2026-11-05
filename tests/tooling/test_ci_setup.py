@@ -71,6 +71,7 @@ def test_local_setup_has_a_checkout_and_preserves_wheel_isolation():
                     trigger in commands
                     for trigger in (
                         "scripts/ci/shard.py shard",
+                        "checks/check_shard_manifests.py",
                         "scripts/verify/gate.py",
                         "python -m pytest",
                     )
