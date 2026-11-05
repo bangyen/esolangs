@@ -6,11 +6,11 @@ one, and ``&.`` prints the entry that deep.  a AND NOT b is ``"0010";2*;+&.``.  
 about 32 rows a packed literal is shorter: six entries a printable character,
 and the row splits into the character ``&`` copies and the bit printed
 ([ablations.packed_literal]).  A symmetric table sums its reads instead and
-picks one of n + 1 entries ([ablations.symmetric_count]).  ``balance=True``
-cuts the literal into strings of about ``sqrt(2 * len)`` entries, pushed last
-first; each pushes a 0 between chunks, so the index ``i`` becomes ``i + i / c``
-(``$c/+``).  Uncut, the literal set the floor width and balanced area grew as
-T^2.
+picks one of m + 1 entries for m essential inputs
+([ablations.symmetric_count]). ``balance=True`` cuts the literal into strings
+of about ``sqrt(2 * len)`` entries, pushed last first; each pushes a 0 between
+chunks, so the index ``i`` becomes ``i + i / c`` (``$c/+``). Uncut, the literal
+set the floor width and balanced area grew as T^2.
 
 Size:
     T/6 + 4n + 20 chars past the crossover; n=4 parity: 16 chars, n=10
@@ -59,7 +59,8 @@ def freestajlo(truth_table: str) -> str:
     packed = f'"{_pack(reduced)}"' + "".join(reads) + _DECODE
     forms = [plain, packed]
     if (symmetric := symmetric_weights(truth_table, n)) is not None:
-        # The count picks one of n + 1 entries ([ablations.symmetric_count]).
+        # The count picks one of len(used) + 1 entries
+        # ([ablations.symmetric_count]).
         counts = [";#" for _ in range(n)]
         for k, i in enumerate(used):
             counts[i] = ";+" if k else ";"

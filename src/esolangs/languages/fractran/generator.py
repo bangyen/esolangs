@@ -8,7 +8,7 @@ in all, each written in ``O(log T)`` digits.  Every base is a prime below the
 text's length, which the interpreter's index factors and buckets by state.
 
 Size:
-    Theta(T) text, at most ``n`` fractions fire a run; n=10 parity: 342
+    Worst-case Theta(T) text, at most ``n`` fractions fire a run; n=10 parity: 342
     chars, n=10 random 1847: 4,397 chars. Constants omit the state prime:
     at most n+1 commands including the halt; n=8: 71/75 chars.
 """

@@ -486,7 +486,7 @@ Symbols the formula cells use:
 - **Forbin:** G = max(bl(h+1) + 4, max_{j<h} bl(j+1) + max(1, bl(h-1-j)) + 10), h = max(n-3, 0), the loop cursor.
 - **Forþ:** S = _chars in the language-owned tests/formulas.py: scope counts, distance literals and input reads.
 - **Freestajlo:** P = 6t + 7 + bl(t+2) + bl(2n+2m) + bl(2n), m = min(n, 4), t = 2^m; W = 7⌊T/6⌋ + 7 + bl(⌈T/6⌉+4) + max(16, 2n+3) + bl(4n+18) + bl(2n), 0 below n = 5.
-- **Grapheme:** λ = the largest lift of d + 1 digits, d those of 2^T.
+- **Grapheme:** λ = the largest minimal leading-one lift modulo 2^T; d = digits(2^T).
 - **Inject:** R = Σ_{i<n}(13q_i+min(r_i,3+digits10(r_i))), (q_i,r_i)=divmod(2^i,2^31); A = bl(12n+10) + bl(2n) + bl(n) + Σ_{j<4n} bl(n+2j+1) + Σ_{k∈{1,3,4,6,7,9}} bl(9n+k) + Σ_{i<n}(bl(9n+3i+10) + bl(9n+3i+12)).
 - **INTERCAL:** S = emitted DO/PLEASE statement count, including GIVE UP, independent of wrapping; separate global ceilings are not claimed attained; W = Boolean scalar keys/values, two-bit named masks, actual array dimensions/written elements, and bl(S); F = U+3 without spilling, otherwise 5(U+3)+DIM; U is the full unshared-select template.
 - **Interprogck8:** R = the program's lines.
