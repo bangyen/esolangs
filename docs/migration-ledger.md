@@ -1,6 +1,6 @@
 # Migration completion ledger
 
-Declaration audit: `ec5529965`. [Language rows](migration-status.csv) cover all
+Declaration audit: `b9dc5b162`. [Language rows](migration-status.csv) cover all
 117 languages and 114 Boolean backends. Declarations and inherited adapters
 are recorded separately; neither proves acceptance. Every completion row stays
 open until its trace, resource, installed-package and retirement evidence is
