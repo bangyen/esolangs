@@ -68,10 +68,15 @@ def drive(machine: Machine, *, policy: Completion | None = None) -> CompletionRe
     return POST_HALT_REPORT if policy is Completion.POST_HALT else HALTED_REPORT
 
 
-def drive_periodic(machine: PeriodicMachine, commands_per_pass: int) -> BoundaryCycle:
+def drive_periodic(
+    machine: PeriodicMachine,
+    commands_per_pass: int,
+    *,
+    policy: Completion | None = None,
+) -> BoundaryCycle:
     """Detect a boundary cycle with Brent's rule; the stride is one whole pass."""
     check_whole(commands_per_pass, "commands_per_pass")
-    if completion(machine) is not Completion.PERIODIC:
+    if (completion(machine) if policy is None else policy) is not Completion.PERIODIC:
         raise ValueError("periodic driving requires periodic completion")
     anchor = machine.snapshot()
     first_pass = 0
@@ -92,5 +97,5 @@ def drive_periodic(machine: PeriodicMachine, commands_per_pass: int) -> Boundary
             power *= 2
             passes = 0
     cycle = BoundaryCycle(state, first_pass, repeat_pass, commands_per_pass)
-    finalize(machine, cycle=cycle)
+    finalize(machine, cycle=cycle, policy=policy)
     return cycle

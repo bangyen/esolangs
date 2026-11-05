@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for A Painter Ant."""
 
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.a_painter_ant.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -13,7 +14,11 @@ PAIR = ("n", "N")
 LANGUAGE = Language(
     "A Painter Ant",
     RuntimeSpec(
-        "a_painter_ant", completion_entrypoint="_execute", category="grid_based"
+        "a_painter_ant",
+        completion_entrypoint="_execute",
+        category="grid_based",
+        machine_preparation="prepare_machine",
+        capabilities=CAPABILITIES,
     ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(

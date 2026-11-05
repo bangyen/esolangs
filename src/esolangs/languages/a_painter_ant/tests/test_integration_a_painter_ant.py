@@ -95,7 +95,7 @@ def test_periodic_completion_renders_at_the_repeated_pass_boundary(source, expec
     assert io.getvalue() == expected
 
 
-def test_native_completion_preserves_the_periodic_evidence():
+def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
     from esolangs.languages.a_painter_ant.interpreter import _execute, run
     from esolangs.runtime._lifecycle import Completion
     from esolangs.runtime.io import ScriptedIO
@@ -108,6 +108,35 @@ def test_native_completion_preserves_the_periodic_evidence():
     assert report.cycle.repeat_pass > report.cycle.first_pass
     assert io.getvalue() == "@"
     assert run("P", ScriptedIO()) is None
+
+    from types import SimpleNamespace
+
+    from esolangs import vm
+    from esolangs.languages.a_painter_ant import interpreter
+    from esolangs.runtime._lifecycle import HALTED_REPORT
+
+    native = esolangs.run("A Painter Ant", "P")
+    assert esolangs.run("A Painter Ant", "P", isolated=True) == native
+    assert native.completion == report
+    monkeypatch.setattr(interpreter._Machine, "completion", Completion.HALTED)
+    assert esolangs.run("A Painter Ant", "P") == native
+    monkeypatch.setattr(
+        vm,
+        "interpreter_module",
+        lambda _name: SimpleNamespace(prepare_machine=interpreter.prepare_machine),
+    )
+    debug = esolangs.debugger.make_debugger("A Painter Ant", "P")
+    assert not debug.self_halts
+    assert not debug.steppable_to_answer
+    assert debug.run(max_steps=3) == "max_steps"
+    assert debug.output == ""
+    assert debug.result.completion is None
+    assert debug.result.steps == 3
+    with pytest.raises(esolangs.ArgumentError, match="self-halts"):
+        vm.complete_vm(debug.vm, max_steps=0)
+    monkeypatch.setattr(interpreter, "_execute", lambda *_args: HALTED_REPORT)
+    with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):
+        esolangs.run("A Painter Ant", "P")
 
 
 def test_a_step_bound_does_not_claim_periodic_completion():

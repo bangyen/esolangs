@@ -117,7 +117,7 @@ def test_the_readme_suffolk_flow_completes(tmp_path: Path) -> None:
     assert got == "0110"
 
 
-def test_native_completion_distinguishes_eof_from_an_actual_repeat():
+def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     from esolangs.languages.suffolk.interpreter import _Machine
     from esolangs.runtime._lifecycle import Completion
     from esolangs.runtime.io import ScriptedIO
@@ -141,3 +141,29 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat():
     assert ended.completion.kind is Completion.HALTED
     assert ended.completion.cycle is None
     assert (ended.input_position, ended.input_reads, ended.input_past_end) == (0, 0, 1)
+
+    from types import SimpleNamespace
+
+    from esolangs import vm
+    from esolangs.languages.suffolk import interpreter
+    from esolangs.runtime._lifecycle import POST_HALT_REPORT
+
+    assert esolangs.run("Suffolk", "<", isolated=True) == result
+    assert esolangs.run("Suffolk", ",", isolated=True) == ended
+    monkeypatch.setattr(
+        vm,
+        "interpreter_module",
+        lambda _name: SimpleNamespace(prepare_machine=interpreter.prepare_machine),
+    )
+    debug = debugger_api.make_debugger("Suffolk", "<")
+    assert not debug.self_halts
+    assert debug.steppable_to_answer
+    assert debug.run(max_steps=3) == "max_steps"
+    assert debug.result.completion is None
+    assert debug.result.steps == 3
+    eof = debugger_api.make_debugger("Suffolk", ",")
+    assert eof.run(max_steps=1) == "halted"
+    assert eof.result == ended._replace(steps=1)
+    monkeypatch.setattr(interpreter, "_execute", lambda *_args: POST_HALT_REPORT)
+    with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):
+        esolangs.run("Suffolk", "<")

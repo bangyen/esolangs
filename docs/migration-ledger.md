@@ -61,5 +61,9 @@ queries and validation no longer inspect signatures or constructors. The other
 All ten post-halt interpreters now declare preparation and completion/debug
 capabilities, alongside Brainfuck, NQ and Whitespace. The post-halt batch checks
 pending dumps, repeated finalization, source-step counts, native/isolated results,
-fault detection and lazy trait queries. Periodic completion, retirement and
-installed-package acceptance remain open.
+fault detection and lazy trait queries. Retirement and installed-package
+acceptance remain open.
+
+A Painter Ant declares periodic rendering after a repeated pass boundary. Suffolk
+keeps stepped EOF completion and declares both EOF and evidenced native repeats.
+Both declare factories and debug surfaces; retirement and package acceptance stay open.

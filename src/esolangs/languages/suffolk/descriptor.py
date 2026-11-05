@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Suffolk."""
 
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.suffolk.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -11,6 +12,9 @@ LANGUAGE = Language(
     "Suffolk",
     RuntimeSpec(
         "suffolk",
+        completion_entrypoint="_execute",
+        machine_preparation="prepare_machine",
+        capabilities=CAPABILITIES,
         category="tape_based",
         # Reads until the input runs out and treats that as its stop, which is
         # how its generated programs terminate at all.

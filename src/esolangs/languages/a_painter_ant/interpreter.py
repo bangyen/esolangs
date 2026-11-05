@@ -19,12 +19,16 @@ Errors:
 """
 
 from collections.abc import Mapping
+from functools import partial
 from types import MappingProxyType
-from typing import Literal
+from typing import Any, Literal
 
+from esolangs.languages.a_painter_ant.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive_periodic
 from esolangs.runtime._entry import script_main
-from esolangs.runtime._lifecycle import Completion, CompletionReport, completion
+from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -98,7 +102,7 @@ class _Machine:
 
     #: The answer is the render after the walk is proven periodic; use
     #: :func:`esolangs.run` (some languages carry ``self_halts = False`` too).
-    completion = Completion.PERIODIC
+    completion = CAPABILITIES.completion
 
     def __init__(
         self,
@@ -218,6 +222,17 @@ class _Machine:
         return "#" if white else "."
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh machines; a_painter_ant has no runtime options."""
+    if not isinstance(source, str):
+        raise TypeError("a_painter_ant machines require text source")
+    if options:
+        raise TypeError("a_painter_ant machines accept no runtime options")
+    return partial(_Machine, source)
+
+
 def _execute(code: str, io: IO) -> CompletionReport:
     """Return completion after rendering a repeated pass boundary.
 
@@ -229,8 +244,8 @@ def _execute(code: str, io: IO) -> CompletionReport:
     picture by then.
     """
     machine = _Machine(code, io)
-    cycle = drive_periodic(machine, len(machine.prog))
-    return CompletionReport(completion(machine), cycle)
+    cycle = drive_periodic(machine, len(machine.prog), policy=CAPABILITIES.completion)
+    return CompletionReport(CAPABILITIES.completion, cycle)
 
 
 def run(code: str, io: IO) -> None:

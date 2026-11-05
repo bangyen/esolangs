@@ -24,6 +24,11 @@ Decisions:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from functools import partial
+from typing import Any
+
+from esolangs.languages.suffolk.lifecycle import CAPABILITIES
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import (
     HALTED_REPORT,
@@ -31,6 +36,8 @@ from esolangs.runtime._lifecycle import (
     Completion,
     CompletionReport,
 )
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -71,6 +78,7 @@ class _Machine:
 
     #: Non-reading execution needs a repeat certificate; EOF ends scripted input.
     self_halts = False
+    completion = CAPABILITIES.completion
 
     def __init__(self, code: str, io: IO) -> None:
         """Store ``code`` and start the tape and accumulator at zero.
@@ -187,6 +195,17 @@ class _Machine:
         elif sym == "." and acc:
             self.io.print_char(chr(acc - 1))
         self.state = _advance(self.state, self.code, byte)
+
+
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh machines; suffolk has no runtime options."""
+    if not isinstance(source, str):
+        raise TypeError("suffolk machines require text source")
+    if options:
+        raise TypeError("suffolk machines accept no runtime options")
+    return partial(_Machine, source)
 
 
 def _execute(code: str, io: IO) -> CompletionReport:

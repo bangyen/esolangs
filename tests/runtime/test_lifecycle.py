@@ -228,3 +228,21 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
             )
             with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):
                 esolangs.run(name, source, stdin=stdin, seed=seed)
+
+
+def test_native_completion_sets_preserve_the_stepped_policy():
+    from esolangs.runtime._capabilities import MachineCapabilities
+    from esolangs.runtime._traits import traits
+
+    for policy in Completion:
+        fixed = MachineCapabilities(completion=policy)
+        for kind in Completion:
+            assert fixed.accepts_native(kind) == (kind is policy)
+    dynamic = MachineCapabilities(
+        native_completions=frozenset((Completion.HALTED, Completion.PERIODIC))
+    )
+    assert dynamic.accepts_native(Completion.HALTED)
+    assert dynamic.accepts_native(Completion.PERIODIC)
+    assert not dynamic.accepts_native(Completion.POST_HALT)
+    assert dynamic.completion is Completion.HALTED
+    assert traits(None, dynamic)["steppable_to_answer"]
