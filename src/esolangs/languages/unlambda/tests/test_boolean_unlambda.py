@@ -7,7 +7,7 @@ from esolangs.languages import generators as boolean
 from esolangs.languages.unlambda.generator import unlambda
 from tests.generators.plain_oracles import separated_tree_text
 from tests.generators.reader_support import (
-    _read_answer,
+    _read_answers,
     assert_emissions_grow_by_a_line,
 )
 from tests.generators.sample_tables import five_input_sample
@@ -35,8 +35,10 @@ def test_unlambda_binds_repeated_subtrees_and_skips_equal_halves() -> None:
         assert (sum(plain), sum(shared)) == (before, after)
         assert all(s <= p for s, p in zip(shared, plain, strict=True))
     for table in five_input_sample()[::10]:
-        for row in range(32):
-            assert _read_answer("unlambda", table, row) == (table[row], 5)
+        for expected, answer in zip(
+            table, _read_answers("unlambda", table), strict=True
+        ):
+            assert answer == (expected, 5)
     for n in (4, 6):
         for value in (0x6996, 0x1234ABCD5678EF01):
             table = format(value % 2**2**n, f"0{2**n}b")

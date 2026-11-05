@@ -1,7 +1,7 @@
 """Shared reader-generator samples and execution probes."""
 
 import importlib
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from typing import Any
 
 import esolangs
@@ -58,10 +58,12 @@ _TABLES = [
 ]
 
 
-def _read_answer(name: str, table: str, row: int) -> tuple[str, int]:
-    """Return what the generated program printed, and how many inputs it read."""
+def _read_answers(name: str, table: str) -> Iterator[tuple[str, int]]:
+    """Run every row of one generated program with fresh input and machine state."""
     generate, run = _reader(name)
+    program = generate(table)
     n = len(table).bit_length() - 1
-    io = ScriptedIO(esolangs.encode_inputs(name, row_bits(row, n)))
-    run(generate(table), io)
-    return io.getvalue(), io.reads
+    for row in range(1 << n):
+        io = ScriptedIO(esolangs.encode_inputs(name, row_bits(row, n)))
+        run(program, io)
+        yield io.getvalue(), io.reads
