@@ -11,6 +11,17 @@ from tests.support.evaluation import _DEFAULT, _Default, _evaluate
 from tests.support.witness_tables import parity, row_bits
 
 
+def assert_every_row(language: str, table: str) -> None:
+    """Generate once and check every row through the public I/O contract."""
+    n = len(table).bit_length() - 1
+    program = esolangs.generate(language, table)
+    for row in range(len(table)):
+        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+        stdin = esolangs.encode_inputs(language, bits)
+        got = esolangs.run(language, program, stdin=stdin, timeout=5)
+        assert esolangs.read_answer(language, got) == table[row], (table, row)
+
+
 def assert_proved_resource_cap(name: str) -> None:
     """Require a declared cap backed by a language-wide scaling obstruction."""
     from esolangs.registry import LANGUAGES
