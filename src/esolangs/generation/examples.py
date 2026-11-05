@@ -34,6 +34,7 @@ from esolangs.registry._contracts import (
     BooleanContract,
     InputShape,
 )
+from esolangs.runtime._artifacts import TemplateArtifact
 from esolangs.runtime._program import Program
 
 # Examples use AND2 on 0,1 unless the source budget requires a smaller
@@ -132,19 +133,19 @@ class BooleanExample:
         Wrapped to ``width`` by the token-aware wrapper ``stem`` selects
         (``None`` returns raw output; a language with no wrapper is unwrapped).
         A generator that takes a width lays itself out, as :func:`esolangs.generate`.
-        ``balance`` uses the public balanced generator instead of ``width``.
+        ``balance`` uses the balanced artifact pipeline instead of ``width``.
         """
         if balance:
-            import esolangs
+            from esolangs import _generate_artifact
+            from esolangs.tagged import source_adapter
 
-            program = esolangs.generate(
+            artifact = _generate_artifact(
                 self.language, self.table, balance=True, scale=self.scale
             )
             if self.fill is not None:
-                program = esolangs.instantiate(
-                    self.language, cast(str, program), self.bits
-                )
-            return program
+                assert isinstance(artifact, TemplateArtifact)
+                artifact = artifact.fill(self.bits)
+            return source_adapter(artifact)
         if width is not None and takes_width(self.generator):
             program = self.generator(self.table, width)
         else:

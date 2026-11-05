@@ -88,20 +88,31 @@ def test_boolean_example_matches_generator(name: str) -> None:
 
 
 @pytest.mark.medium
-def test_regeneration_yields_public_balanced_programs() -> None:
+def test_regeneration_yields_public_balanced_programs(monkeypatch) -> None:
     import esolangs
     from scripts.docs.examples import boolean_programs
 
+    generate, instantiate = esolangs.generate, esolangs.instantiate
+
+    def compatibility_roundtrip(*_args, **_kwargs):
+        pytest.fail("internal example generation must retain its artifact")
+
+    monkeypatch.setattr(esolangs, "generate", compatibility_roundtrip)
+    monkeypatch.setattr(esolangs, "instantiate", compatibility_roundtrip)
     programs = dict(boolean_programs())
     assert programs.keys() == BOOLEAN_GENERATED.keys()
     for stem, example in BOOLEAN_GENERATED.items():
         language = canonical_id(stem.replace("-", " "))
-        expected = esolangs.generate(
-            language, example.table, balance=True, scale=example.scale
-        )
+        expected = generate(language, example.table, balance=True, scale=example.scale)
         if example.fill is not None:
-            expected = esolangs.instantiate(language, expected, example.bits)
+            expected = instantiate(language, expected, example.bits)
         assert programs[stem] == expected, stem
+        assert getattr(programs[stem], "language", None) == getattr(
+            expected, "language", None
+        )
+        assert getattr(programs[stem], "settings", None) == getattr(
+            expected, "settings", None
+        )
 
 
 def test_the_manifest_matches_what_the_script_would_write() -> None:
