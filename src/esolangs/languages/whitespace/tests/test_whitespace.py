@@ -119,3 +119,31 @@ def test_the_wiki_cat_program_echoes_until_eof() -> None:
     with pytest.raises(InputExhaustedError):
         run(cat, io)
     assert io.getvalue() == "ab\n"
+
+
+def test_signed_division_and_remainder_match_reference() -> None:
+    for left, right in ((-7, 3), (7, -3), (-7, -3), (-(2**80) - 1, 7)):
+        for command, value in zip((DIV, MOD), divmod(left, right), strict=True):
+            assert wrun(push(left) + push(right) + command + OUT_NUM + END) == str(
+                value
+            )
+
+
+def test_first_duplicate_label_wins() -> None:
+    mark = L + S + S + T + L
+    for transfer, stop, expected in (
+        (jump(T), END, "1"),
+        (L + S + T + T + L, RETURN, "19"),
+    ):
+        first = mark + push(1) + OUT_NUM + stop
+        second = mark + push(2) + OUT_NUM + stop
+        assert wrun(transfer + push(9) + OUT_NUM + END + first + second) == expected
+
+
+def test_untaken_branches_skip_missing_label_lookup() -> None:
+    for branch, value in ((L + T + S, 1), (L + T + T, 0)):
+        assert wrun(push(value) + branch + T + L + push(7) + OUT_NUM + END) == "7"
+        with pytest.raises(HaltError, match="undefined label"):
+            wrun(push(-1 if value == 0 else 0) + branch + T + L + END)
+        with pytest.raises(HaltError, match="empty"):
+            wrun(branch + T + L + END)

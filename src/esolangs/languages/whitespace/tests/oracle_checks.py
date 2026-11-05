@@ -1,8 +1,8 @@
 """List/heap model of https://esolangs.org/wiki/Whitespace command tables.
 
 Arithmetic, stack/heap, branches/calls and mixed numeric/character I/O,
-48 steps. Canonical VM.hs backs slide clamping; arithmetic, duplicate-label
-and I/O/storage compatibility remain explicitly open in Decisions.
+48 steps. Canonical VM.hs backs signed floor arithmetic, first-label wins
+and taken-only label resolution; I/O/storage choices remain in Decisions.
 Raw-source offsets are derived from this assembler, not production parsing.
 """
 
@@ -90,21 +90,22 @@ def _math(kind, left, right):
         return left - right
     if kind == "mul":
         return left * right
-    quotient = abs(left) // abs(right) * (-1 if (left < 0) != (right < 0) else 1)
+    quotient, remainder = divmod(abs(left), abs(right))
+    if (left < 0) != (right < 0):
+        quotient = -quotient - bool(remainder)
     return quotient if kind == "div" else left - quotient * right
 
 
 def _flow(kind, args, stack, calls, labels, pc):
     if kind == "return":
         return calls.pop()
-    target = labels[args[0]]
     if kind == "call":
         calls.append(pc + 1)
-        return target
+        return labels[args[0]]
     if kind == "jump":
-        return target
+        return labels[args[0]]
     value = stack.pop()
-    return target if (value == 0 if kind == "jz" else value < 0) else pc + 1
+    return labels[args[0]] if (value == 0 if kind == "jz" else value < 0) else pc + 1
 
 
 def _read(kind, stdin, cursor):
@@ -129,7 +130,11 @@ def _model(program, offsets, stdin):
     pc = cursor = 0
     stack, heap, calls, output, trace = [], {}, [], "", []
     done = False
-    labels = {args[0]: i for i, (kind, *args) in enumerate(program) if kind == "mark"}
+    labels = {
+        args[0]: i
+        for i, (kind, *args) in reversed(tuple(enumerate(program)))
+        if kind == "mark"
+    }
 
     def row():
         halted = done or pc >= len(program)
@@ -201,7 +206,7 @@ def _check(factory, program, stdin="unused"):
 def check_raw_whitespace():
     for address, left, right, operation in product(
         (-17, 0, 2**32 + 1),
-        (-7, 0, 3, 256),
+        (-(2**80) - 1, -7, 0, 3, 256),
         (-2, 0, 5),
         ("add", "sub", "mul", "div", "mod"),
     ):
@@ -241,6 +246,8 @@ def check_raw_whitespace():
             ("retrieve",),
             ("return",),
             ("jump", "1"),
+            ("jz", "1"),
+            ("jn", "1"),
         ),
     ):
         _check(_Machine, (*prefix, operation, ("end",)))

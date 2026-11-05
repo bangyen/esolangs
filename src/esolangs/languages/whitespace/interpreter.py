@@ -36,18 +36,15 @@ Errors:
     with no call; a jump to a label that is never marked.
 
 Decisions:
-    * Division truncates toward zero and the remainder takes the dividend's
-      sign. Canonical Haskell VM.hs uses floor division and divisor-sign
-      remainder; arithmetic compatibility remains open.
+    * Division rounds down and the remainder takes the divisor's sign,
+      matching canonical VM.hs (Integer div/mod).
     * ``slide`` keeps the top and drops at most the available items below
       it; negative counts drop none, matching canonical VM.hs (Slide/drop).
       The former error claim for sliding past the stack was false.
     * ``copy`` counts from 0 at the top, as the reference implementation does.
-    * Duplicate marks of one label: the last wins; canonical VM.hs picks
-      the first. Duplicate-label compatibility remains open.
-    * An undefined label raises even on an untaken conditional branch;
-      canonical VM.hs resolves it only when taken. Conditional-label
-      compatibility remains open. Falling off code halts in this adapter.
+    * Duplicate marks use the first occurrence, matching VM.hs findLabel.
+    * Conditional branches resolve labels only when taken, as VM.hs does.
+      Falling off code halts in this adapter.
     * The wiki's Cat, Hello and Truth-machine pages show a line break after
       each rendered line that is not a line feed: breaks are dropped and each
       glyph read as its character.
@@ -60,6 +57,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from operator import floordiv, mod
 from typing import Any
 
 from esolangs.exceptions import HaltError, ProgramError
@@ -67,7 +65,6 @@ from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime.io import IO
-from esolangs.runtime.memory import trunc_div, trunc_mod
 
 _SPACE, _TAB, _LINE = " ", "\t", "\n"
 type _Instruction = tuple[str, int | str]
@@ -97,8 +94,8 @@ _OPERATIONS: dict[str, Callable[[int, int], int]] = {
     "add": lambda left, right: left + right,
     "sub": lambda left, right: left - right,
     "mul": lambda left, right: left * right,
-    "div": trunc_div,
-    "mod": trunc_mod,
+    "div": floordiv,
+    "mod": mod,
 }
 
 
@@ -228,16 +225,16 @@ def _flow(
 ) -> tuple[tuple[int, ...], tuple[int, ...], int]:
     """Return the stack, call stack and next pc after a labelled jump."""
     pc, stack, calls = frame
+    if kind in {"jz", "jn"}:
+        value, stack = _pop(stack)
+        if not ((value == 0) if kind == "jz" else (value < 0)):
+            return stack, calls, pc + 1
     target = labels.get(label)
     if target is None:
         raise HaltError(f"'{kind}' names the undefined label {label!r}")
     if kind == "call":
         return stack, (*calls, pc + 1), target
-    if kind == "jump":
-        return stack, calls, target
-    value, stack = _pop(stack)
-    taken = (value == 0) if kind == "jz" else (value < 0)
-    return stack, calls, target if taken else pc + 1
+    return stack, calls, target
 
 
 def _advance(
@@ -306,11 +303,10 @@ class _Machine:
         if not self.instructions:
             raise ProgramError("Whitespace program is empty")
         self.io = io
-        self.labels = {
-            str(argument): index
-            for index, (kind, argument) in enumerate(self.instructions)
-            if kind == "mark"
-        }
+        self.labels: dict[str, int] = {}
+        for index, (kind, argument) in enumerate(self.instructions):
+            if kind == "mark":
+                self.labels.setdefault(str(argument), index)
         self.state: _State = (0, (), (), (), False)
 
     @property
