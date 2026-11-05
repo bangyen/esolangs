@@ -78,3 +78,8 @@ Both declare factories and debug surfaces; retirement and package acceptance sta
 The first ordinary text batch declares Deadfish, HQ9+, Nope., Home Row, BFStack
 and ABCDirection. Their debug projections, EOF behavior and ordinary completion
 remain unchanged. Cached, inherited, compressed and raster factories remain open.
+
+Trace comparison takes declared completion policy explicitly, including mutant
+controls and speed workloads; final dumps retain their views, state and output.
+Historical class flags no longer select trace completion. Factory/RNG discovery
+and remaining direct-machine completion consumers stay open.

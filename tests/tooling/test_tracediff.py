@@ -1,8 +1,12 @@
 """The refactor trace diff: silent on an identical copy, loud on a mutant."""
 
+import os
 from pathlib import Path
 
+import pytest
+
 from esolangs.registry import INTERPRETERS, LANGUAGES
+from esolangs.runtime._lifecycle import Completion
 from tests.support.reference import REFERENCE
 from tests.tooling.script_support import REPO_ROOT, load
 
@@ -20,13 +24,13 @@ def test_a_copy_matches_and_a_mutant_is_caught(tmp_path: Path) -> None:
     programs = tracediff.corpus(REFERENCE, 200, max_n=1)
     same = tracediff._load(_INTERPRETER, "tracediff_same")
     new = tracediff._load(_INTERPRETER, "tracediff_new")
-    assert tracediff.differences(same, new, programs) == []
+    assert tracediff.differences(same, new, programs, policy=Completion.HALTED) == []
     source = _INTERPRETER.read_text(encoding="utf-8")
     assert "(tape[ptr] + 1) % 256" in source
     broken = tmp_path / "mutant.py"
     broken.write_text(source.replace("(tape[ptr] + 1) % 256", "(tape[ptr] + 2) % 256"))
     mutant = tracediff._load(broken, "tracediff_mutant")
-    assert tracediff.differences(same, mutant, programs)
+    assert tracediff.differences(same, mutant, programs, policy=Completion.HALTED)
 
     # Independent NaNs compare by bits; altered values remain detectable.
     nan_source = _DRAWING.replace("return self.drawn", "return self.drawn, NAN")
@@ -35,10 +39,12 @@ def test_a_copy_matches_and_a_mutant_is_caught(tmp_path: Path) -> None:
     nan_path.write_text(nan_source)
     before = tracediff._load(nan_path, "nan_before")
     after = tracediff._load(nan_path, "nan_after")
-    assert tracediff.differences(before, after, [("", "")]) == []
+    assert (
+        tracediff.differences(before, after, [("", "")], policy=Completion.HALTED) == []
+    )
     nan_path.write_text(nan_source.replace('NAN = float("nan")', "NAN = 0"))
     changed = tracediff._load(nan_path, "nan_changed")
-    assert tracediff.differences(before, changed, [("", "")])
+    assert tracediff.differences(before, changed, [("", "")], policy=Completion.HALTED)
     assert tracediff._plain(float("nan"), {}) != tracediff._plain(-float("nan"), {})
 
 
@@ -53,7 +59,9 @@ def test_speed_sees_a_slowed_copy(tmp_path: Path) -> None:
         + "    sum(range(2000))\n    _step(self)\n\n\n_Machine.step = _slow\n"
     )
     slow = tracediff._load(slowed, "tracediff_slow")
-    before, after = tracediff.speeds(same, slow, programs, rounds=2)
+    before, after = tracediff.speeds(
+        same, slow, programs, rounds=2, policy=Completion.HALTED
+    )
     assert after < before / 2
 
 
@@ -79,14 +87,19 @@ def test_a_machine_that_draws_traces_the_same_every_time(tmp_path: Path) -> None
     path = tmp_path / "drawing.py"
     path.write_text(_DRAWING)
     module = tracediff._load(path, "tracediff_drawing")
-    traces = {repr(tracediff.trace(module, ("", ""), frozenset())) for _ in range(5)}
+    traces = {
+        repr(tracediff.trace(module, ("", ""), frozenset(), policy=Completion.HALTED))
+        for _ in range(5)
+    }
     assert len(traces) == 1
 
 
 def test_an_error_records_the_state_it_leaves() -> None:
     """A draft moving its pointer before a failing read passed an error-only diff."""
     module = tracediff._load(_INTERPRETER, "tracediff_error")
-    *_, last = tracediff.trace(module, ("+,", ""), frozenset())
+    *_, last = tracediff.trace(
+        module, ("+,", ""), frozenset(), policy=Completion.HALTED
+    )
     assert last[:2] == ("error", "InputExhaustedError")
     assert last[-1][:2] == (1, 0)  # still on the ``,``, pointer unmoved
 
@@ -115,40 +128,91 @@ def test_views_include_inherited_properties_and_respect_overrides():
 
 
 _POST_HALT = """
-from esolangs.runtime._lifecycle import Completion
-
 class _Machine:
-    completion = Completion.POST_HALT
-
     def __init__(self, code, io):
         self.io = io
         self.halted = False
         self.printed = False
+        self.finalized = 0
 
     def step(self):
         if self.halted and not self.printed:
             self.io.print_str("done")
             self.printed = True
+            self.finalized += 1
         else:
             self.halted = True
 
     def snapshot(self):
-        return self.halted, self.printed
+        return self.halted, self.printed, self.finalized
 """
 
 
-def test_explicit_completion_matches_legacy_post_halt_traces(tmp_path):
-    path = tmp_path / "explicit.py"
+def test_declared_completion_finalizes_and_keeps_the_final_state(tmp_path):
+    path = tmp_path / "post_halt.py"
     path.write_text(_POST_HALT)
-    explicit = tracediff._load(path, "explicit_completion")
-    path.write_text(
-        _POST_HALT.replace(
-            "completion = Completion.POST_HALT", "dumps_on_the_post_halt_step = True"
-        )
+    timestamp = path.stat().st_mtime_ns
+    explicit = tracediff._load(path, "declared_completion")
+    program = ("", "")
+    events = tracediff.trace(
+        explicit, program, frozenset(), policy=Completion.POST_HALT
     )
-    legacy = tracediff._load(path, "legacy_completion")
-    assert tracediff.differences(legacy, explicit, [("", "")]) == []
-    assert tracediff.trace(explicit, ("", ""), frozenset())[-1] == ("dumped", "done")
-    path.write_text(_POST_HALT.replace("completion = Completion.POST_HALT", ""))
-    missing = tracediff._load(path, "missing_completion")
-    assert tracediff.differences(explicit, missing, [("", "")])
+    assert events[-1] == ("dumped", (), (True, True, 1), "done")
+    assert tracediff._halts(events)
+    with pytest.raises(TypeError, match="Completion policy"):
+        tracediff.trace(explicit, program, frozenset(), policy="post_halt")
+    path.write_text(_POST_HALT.replace("self.finalized += 1", "self.finalized += 2"))
+    os.utime(path, ns=(timestamp, timestamp))
+    mutant = tracediff._load(path, "bad_final_state")
+    assert tracediff.differences(
+        explicit, mutant, [program], policy=Completion.POST_HALT
+    )
+    for flag in ('completion = "invalid"', "dumps_on_the_post_halt_step = True"):
+        path.write_text(
+            _POST_HALT.replace("class _Machine:", "class _Machine:\n    " + flag)
+        )
+        flagged = tracediff._load(path, "ignored_legacy_flag")
+        assert (
+            tracediff.differences(
+                explicit, flagged, [program], policy=Completion.HALTED
+            )
+            == []
+        )
+        assert (
+            tracediff.trace(flagged, program, frozenset(), policy=Completion.HALTED)[
+                -1
+            ][-1]
+            == ""
+        )
+
+
+def test_cli_uses_declared_post_halt_policy_for_mutant_controls(
+    tmp_path, monkeypatch, capsys
+):
+    import importlib
+
+    name = next(
+        name
+        for name, lang in LANGUAGES.items()
+        if lang.backend is not None
+        and lang.runtime.capabilities is not None
+        and lang.runtime.capabilities.completion is Completion.POST_HALT
+        and lang.contract.answer_mode != "termination"
+    )
+    module = importlib.import_module(INTERPRETERS[name])
+    monkeypatch.delattr(module._Machine, "completion", raising=False)
+    source = Path(module.__file__).read_text()
+    path = tmp_path / "missing_dump.py"
+    path.write_text(
+        source + "\n_original_step = _Machine.step\n"
+        "def _missing_dump(self):\n"
+        "    if not self.halted: _original_step(self)\n"
+        "_Machine.step = _missing_dump\n"
+    )
+    corpus = tracediff.corpus(name, 0, max_n=1)
+    monkeypatch.setattr(tracediff, "corpus", lambda *_: corpus)
+    assert tracediff.main([name, "--random", "0", "--mutant", str(path)]) == 0
+    output = capsys.readouterr().out
+    assert "0 differ from main" in output
+    control = next(line for line in output.splitlines() if line.startswith("control:"))
+    assert int(control.rsplit(" ", 1)[-1]) > 0

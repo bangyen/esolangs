@@ -45,7 +45,7 @@ import esolangs  # noqa: E402
 from esolangs.exceptions import GeneratorCapError  # noqa: E402
 from esolangs.registry import INTERPRETERS, LANGUAGES, resolve  # noqa: E402
 from esolangs.registry._certification import load as load_certification  # noqa: E402
-from esolangs.runtime._lifecycle import Completion, completion  # noqa: E402
+from esolangs.runtime._lifecycle import Completion  # noqa: E402
 from esolangs.runtime.io import ScriptedIO  # noqa: E402
 from esolangs.runtime.randomness import Seeded  # noqa: E402
 
@@ -83,7 +83,8 @@ def _load(path: Path, name: str) -> ModuleType:
     module = importlib.util.module_from_spec(spec)
     # Dataclasses look their module up while it is still executing.
     sys.modules[name] = module
-    spec.loader.exec_module(module)
+    # Same-size edits within one timestamp tick can reuse stale .pyc mutations.
+    exec(compile(path.read_bytes(), str(path), "exec"), module.__dict__)
     return module
 
 
@@ -216,13 +217,17 @@ def trace(
     program: Program,
     ignored: frozenset[str],
     *,
+    policy: Completion,
     split: bool = False,
 ) -> list[Event]:
     """Return one event per step: views, snapshot and output so far.
 
+    ``policy`` is the language declaration, never a machine-class flag.
     ``split`` passes the source as lines, as the registry does for grids:
     a string there built a one-column grid and every program failed alike.
     """
+    if not isinstance(policy, Completion):
+        raise TypeError("policy must be a Completion policy")
     code, stdin = program
     io = ScriptedIO(stdin)
     try:
@@ -235,13 +240,17 @@ def trace(
         for _ in range(LIMIT):
             events.append((_views(machine, ignored), machine.snapshot(), io.getvalue()))
             if machine.halted:
-                # Historical revisions still declare the old class flag.
-                if completion(machine) is Completion.POST_HALT or getattr(
-                    machine, "dumps_on_the_post_halt_step", False
-                ):
+                if policy is Completion.POST_HALT:
                     machine.step()
                     machine.step()  # idempotent by the VM contract
-                    events.append(("dumped", io.getvalue()))
+                    events.append(
+                        (
+                            "dumped",
+                            _views(machine, ignored),
+                            machine.snapshot(),
+                            io.getvalue(),
+                        )
+                    )
                 break
             machine.step()
     except Exception as error:
@@ -355,13 +364,14 @@ def differences(
     programs: list[Program],
     ignored: frozenset[str] = frozenset(),
     *,
+    policy: Completion,
     split: bool = False,
 ) -> list[tuple[Program, int, Event | None, Event | None]]:
     """Return each differing program with its first differing step."""
     found = []
     for program in programs:
-        before = trace(old, program, ignored, split=split)
-        after = trace(new, program, ignored, split=split)
+        before = trace(old, program, ignored, split=split, policy=policy)
+        after = trace(new, program, ignored, split=split, policy=policy)
         if before == after:
             continue
         # A snapshot holding instances (Unlambda's terms and continuations,
@@ -397,6 +407,7 @@ def speeds(
     new: ModuleType,
     programs: list[Program],
     *,
+    policy: Completion,
     split: bool = False,
     rounds: int = 5,
 ) -> tuple[float, float]:
@@ -405,7 +416,10 @@ def speeds(
     Both run the same steps, the trace's length, repeated until a lap takes
     0.2 s; laps alternate and the fastest of ``rounds`` counts.
     """
-    lengths = [(len(trace(new, p, frozenset(), split=split)), p) for p in programs]
+    lengths = [
+        (len(trace(new, p, frozenset(), split=split, policy=policy)), p)
+        for p in programs
+    ]
     lengths.sort(key=lambda pair: pair[0], reverse=True)
     work = [(program, steps) for steps, program in lengths[:40]]
     work *= max(1, math.ceil(0.2 / max(_lap(new, work, split=split), 1e-6)))
@@ -437,31 +451,37 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(str(exc))
     ignored = frozenset(filter(None, args.ignore_views.split(",")))
     split = LANGUAGES[name].runtime.split
+    capabilities = LANGUAGES[name].runtime.capabilities
+    policy = Completion.HALTED if capabilities is None else capabilities.completion
     new = importlib.import_module(INTERPRETERS[name])
     programs = corpus(name, args.random)
     path, prefix = _source_path(INTERPRETERS[name], args.old)
     with tempfile.TemporaryDirectory() as scratch:
         old = _load(_revision(path, args.old, Path(scratch)), f"{prefix}_old")
-    found = differences(old, new, programs, ignored, split=split)
+    found = differences(old, new, programs, ignored, split=split, policy=policy)
     for (code, stdin), step, before, after in found[:3]:
         print(f"DIFF {code!r:.60} stdin={stdin[:20]!r} at step {step}")
         print(f"  {args.old}: {before!r:.300}")
         print(f"  new: {after!r:.300}")
     # A diff over programs that all fail at once proves nothing: say so.
-    halting = sum(_halts(trace(new, p, ignored, split=split)) for p in programs)
+    halting = sum(
+        _halts(trace(new, p, ignored, split=split, policy=policy)) for p in programs
+    )
     print(
         f"{name}: {len(programs)} programs ({halting} halt cleanly), "
         f"{len(found)} differ from {args.old}"
     )
     failed = bool(found)
     if args.speed:
-        was, now = speeds(old, new, programs, split=split)
+        was, now = speeds(old, new, programs, split=split, policy=policy)
         change = now / was - 1
         print(f"speed: {was:,.0f} -> {now:,.0f} steps/s ({change:+.0%})")
         failed |= change < -SLOWDOWN
     if args.mutant is not None:
         mutant = _load(args.mutant, f"{prefix}_mutant")
-        caught = len(differences(old, mutant, programs, ignored, split=split))
+        caught = len(
+            differences(old, mutant, programs, ignored, split=split, policy=policy)
+        )
         print(f"control: mutant differs on {caught}")
         failed |= not caught
     return int(failed)
