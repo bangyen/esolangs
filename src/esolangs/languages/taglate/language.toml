@@ -33,49 +33,25 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.essential_projection]
-kind = "archive"
-saving = 64.6
-arity = 12
-seed = "random.Random(184700 + 100n + k)"
-tables = "6 random tables per cell at n=8..11, 2 at n=12, k essential inputs at random positions, against the full layout at the same n"
-verdict = "kept: canonical, exempt. A table is built over its essential inputs only and the rest are read and discarded. One ignored input saves 39.0% / 40.8% / 40.6% / 39.7% / 44.6% at n=8..12 and two ignored 65.0% / 64.7% / 67.2% / 64.3% / 64.6%; three essential inputs save 91.7% / 95.5% / 97.8% / 98.7% / 99.3% and five essential 77.5% / 87.0% / 93.3% / 96.2% / 98.0%"
+kind = "archive_ref"
 
 [ablations.constant_shortcut]
-kind = "archive"
-saving = 100.0
-arity = 12
-verdict = "kept: canonical, exempt. A constant table is one seed char, one read per input, and the print: 99.94% at n=10 and 99.98% at n=12 against the full layout it would otherwise pay. The docstring's 451 -> 7 is the n=4 full layout against the shortcut; 11110000 goes 278 -> 16 chars at n=3"
+kind = "archive_ref"
 
 [ablations.crossing_bracket]
-kind = "archive"
-saving = 0.98
-arity = 6
-verdict = "removed 2026-10-28: balance_taglate's second width (crossing + 1) saved 0.42% of balanced area at n=2, 0.98% / 0.70% at n=6/7, 0.71% / 0.50% at n=9/10 and nothing elsewhere (seed 4242, 24 tables an n, random plus parity/and/or/majority; changed programs executed at n<=7). The literal/bootstrapped race stays: retiring it costs 66% at n=6 to 2550% at n=10"
-retirement = { verb = "removed", date = 2026-10-28, balanced = [81, 89] }
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 0.0
-seed = 0
-tables = "both constants, n=1..12"
-verdict = "retained: already canonical read-then-literal paths. A one-character seed is the answer, h reads every input behind it and i prints the seed. Chars n+3 and commands n+1: n=7 10 chars, n=8 11 chars/9 commands/62 written bits, n=12 15 chars. Removing the seed prints the first input instead: opposite-valued witnesses fail for both answers. Native read-first controls pass. n=3 corpus chars 53146 unchanged. These controls reject the stripped candidates, not every possible construction. 1120 native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores and eight benchmark size/command pins unchanged. Global resource caps unchanged. Extend existing raw IO/template cases to verify exact reads, following records and no EOF probe without adding cases."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_packed_leaves]
-kind = "archive"
-arity = 16
-saving = 78.23696377108129
-verdict = "kept: four low-first truth bits per printable 32+v cell; select reversed leaf slots with the first n-2 inputs, then divide by 1+3A and 1+B and take parity in at most15 native iterations. Six-cell input groups keep every power-of-two stride off other input cells; two-cell repair fails n3 table00000001 row6. No search, frozen programs, old-source race or cutoff. Full source3T+12n²+17n+12 vsold14T+4n²+17n+24; generation/source O(T). Commands <=5T/2+12n²+11n+63 and written workspace <=3T+42n+24+bl(n)+bl(L); both remain linear in T.20 seeded Random(1000*n+k).choice tables plus parity/and/or/threshold run all rows through8 and boundary rows9/10:28768 old/new native runs including bootstraps;4840 more verify full snapshots, exact reads, following7 and print-after-input. Native peaks7/8:376/619 written bits.396 independent default/disabled byte comparisons pass. N3 source53146->46242; commands278864->302304 (+8.406%). Generic source7:2131->1103 (48.2403%),8:4000->1684 (57.9%). Measure rising savings through16:78.2370%; fresh native boundary rows9..16. The exact saving fraction increases for n>=3 to11/14=78.5714%, so there is no later finite peak or declining tail. Three-run median native all-row20-table batches n7/8/9:2.13884/11.9428/81.4734s ->0.314570/0.890285/2.43186s. Eleven-build generation medians20tables0.392/0.653/1.308ms ->0.571/1.079/2.002ms (1.5-1.7x slower).42 width1/balanced native controls pass; parity balanced areas7:40755->1210,8:79600->1800 text cells. Swapped leaf bit order fires wrong-answer controls. Raw eight-bit literal seeds can contain structural LF; printable nibble packing is the working repair."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_inputs_ahead_layout]
-kind = "archive"
-arity = 8
-saving = 0.0
-verdict = "rejected raw layout: native n3 table00000001 row1 prints1 instead of0 after the first level loses the input-first arrangement. Direct cyclic-conjugation repair restores that arrangement after each level and executes508 rows across2..8 correctly, but adds exactly2n+6 source characters; return rotations cancel the proposed saving. These tests reject the supplied proposal and this repair, not every possible input-first construction."
+kind = "archive_ref"
 
 [ablations.resource_exactness_20261103]
-kind = "archive"
-verdict = "restored: literal-seed E=C+56 and W=Q+bl(C)+bl(n) attain all original n3/4/5 scopes; gy/gz count as single commands. Full-support 0001, then zeros, then1111 selects nibble15 at row T-4. Empty-seed narrow/balanced rebuilding has conservative E<=B+C+56 and W<=max(Q,7B,28)+bl(A)+bl(n): the final URL has M<=B ASCII cells, and the affine negative coefficient's final rebuild needs28 bits. No emitter change or source/pin change. Native exhaustive n<=3 and attainers4/5, with width1/balanced controls, pass2424 rows in6.60 CPU-s. Small boundaries n1 E10/W39 and n2 E137/W70 also attain; registered scopes stay3/4/5. Runtime sampling ends at halt, matching WrittenState and the repository benchmark."
+kind = "archive_ref"
 
 [interpreter_ablations]
 version = 1
@@ -83,18 +59,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
 
 [interpreter_ablations.program_cache]
-kind = "archive"
-price = 15.3
-workload = "run"
-verdict = "kept"
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 0.4268
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: word wrap bit mask. 247 programs, 203 halt cleanly; no structural trace differences, control differs on 231. Step throughput at longest 10/20/40 workload breadths: +0.54%/+1.01%/+0.43%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02

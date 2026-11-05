@@ -36,48 +36,25 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.change_point_scan]
-kind = "archive"
-saving = 0.0
-arity = 12
-verdict = "recorded: an LT/ADDS pair is emitted only where the answer changes. The dense removal (a pair at every row boundary) computes the wrong function — 120 mismatches in 256 gated runs at n=6 — because a pair at a non-change boundary flips the parity the extraction reads; there is no correct denser scan in this architecture. The placement is the encoding. Correctness machinery"
+kind = "archive_ref"
 
 [ablations.argument_floor]
-kind = "archive"
-saving = 0.62
-arity = 12
-verdict = "recorded: every emitted argument is the smallest its constraint allows (LT thresholds exact, the rest the running minimum, parity-adjusted where required). Taking the free choices (each -2 build's start, base) 2 higher instead costs +2.00% at n=10 and +0.62% at n=12 on random tables, declining — the bumps are O(n) against Theta(T^2) chars. Nothing to remove: the minimum is the default, not a device"
+kind = "archive_ref"
 
 [ablations.mirror_scan]
-kind = "archive"
-saving = 90.4
-arity = 11
-verdict = "kept: the scan is also built on the reversed table with the Horner signs flipped and a first-line SUB 2 (weight 2T after the last MULS) standing in for the 2T shift, rows read T-1-r; the shorter is emitted. and/nand 53.4% / 64.7% / 76.2% / 84.3% / 90.4% at n=7 / 8 / 9 / 10 / 11 (8,399 -> 2,965 chars at n=8), majority 16.6% / 17.6% at n=8 / 10, random 0.95% / 1.76% at n=7 / 8 (20 seeded); or, nor, parity, thresholds unchanged. Measured 2026-10-28 chars, every program executed (n<=3 exhaustive, 300 samples at n=4, named + 20 random at n=5..8)"
+kind = "archive_ref"
 
 [ablations.ignored_input_drop]
-kind = "archive"
-saving = 76.8
-arity = 6
-verdict = "kept: canonical, exempt from the bar. An input the table ignores is read and popped (INPUT, POP) outside the Horner code, so it no longer doubles the row count (and the mirror is forward-only when input 0 is ignored). 13,160 -> 2,715 chars with 2 of 6 inputs ignored (4-row core); 1,500 seeded tables with random ignored subsets at n=3..7 never grew (8.52M -> 1.98M chars); random, parity, and/or, majority and thresholds unchanged at n=7 / 8. Every program executed (n<=3 exhaustive, 80 ignored-subset tables at n=4,5, one at n=6)"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 58.8
-seed = "both constant values"
-tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
-verdict = "kept: canonical whole-constant tail. Read/pop all but the last input, then DIV by 2n forces zero or LT against 2n pushes one; PRINT has odd argument 2n+1. Arguments are exactly 1..2n+1, with no jumps. Zero/one take 2n^2+17n-1 / 2n^2+17n+5 chars and 2n+1 commands. The stack stays at one/two bits, so workspace is 1+bit+bl(2n+1)+bl(2n-1), measured 10/11 bits at n=8. At n=7 chars 567/577 -> 216/222; n=8 640/650 -> 263/269; n=12 972/982 -> 491/497. Declining savings clear 20% at both n=7/8 without an arity cap. All 270 nonconstant programs through n=3 are byte-identical; n=3 corpus chars 271686 -> 271188. Default, width=1 and balanced constants n=1..12 execute; all balanced scores improve or match their old counterparts, and sentinels remain unread."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_parity_sum]
-kind = "archive"
-arity = 8
-saving = 99.6131
-verdict = "kept only for reduced parity and its complement: recognize the named Thue-Morse table, sum retained inputs with ADDS, pop ignored inputs, then extract modulo two using the existing rising-argument scale tail. No mask/permutation selection. Actual n=7 parity38541->397 chars (98.97%), complement38361->426 (98.89%); n=8 120433->466 (99.61%), complement120783->497 (99.59%). Every named row through8 executes. Boundary diagnostics through12 execute four rows per old/new program; both-family totals n=12 46081644->1603 chars. Pure all-essential text is2n^2+39n+26 for n>=2; complement adds2n+15. Commands2n+4, plusone for complement. Saving tends100% with no finite peak: along either arity parity, baseline source grows at least4 per two inputs from n=8 while these positive quadratics grow less than4. Exact baseline line/argument counts match emitted totals through12; the prefix bound and change-point sum establish the tail inequality. Constants and all other reduced tables retain byte-identical scans: exactly14 three-input tables change, corpus271188->264468 chars. Existing exact worst source, command and workspace bounds stay attained on nonparity witnesses, including the two-input max586 chars at1101. Owned IO checks cover named inputs through12, discarded inputs, read-first output and a preserved next token."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_mask_and_permutation_search]
-kind = "archive"
-arity = 8
-saving = 0.0
-verdict = "rejected by construction: enumeration of2^m input-flip masks and exhaustive/greedy/annealed variable permutations violate the no-search/four named-order policy. Neither search was launched; no measured size or impossibility claim. Named parity needs neither search."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -90,12 +67,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = -1.8597
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "all n<=3 generated tables/rows where supported, examples and 300 seeded mutations; 400-step cap"
-verdict = "prototype only: evaluate only selected arithmetic. 2493 programs, 2261 halt cleanly; no structural trace differences, control differs on 2236. Step throughput at longest 10/20/40 workload breadths: +0.42%/-1.86%/+0.25%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [evidence]
 version = 1

@@ -26,56 +26,28 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
 
 [ablations.fall_through]
-kind = "archive"
-saving = 0.65
-arity = 8
-verdict = "kept as spelling: a jump to the block that comes next is a no-op, so writing it minimally ships without the bar (CONTRIBUTING). Measured 2026-10-29 against two label jumps at every node (Random(1)): random 6.2% at n=2 falling to 0.65% at n=8; n=8 parity 9.7%, and 7.3%, majority/or/thr2 0.8-0.9%; without it each run takes 2-3 more commands"
+kind = "archive_ref"
 
 [ablations.label_rank]
-kind = "archive"
-saving = 6.12
-arity = 8
-verdict = "retired. Plain-rewrite audit 2026-10-29 (Random(1); baseline = labels in layout order): the shortest odd labels went to the most-referenced blocks. Random 0% / 0.5% / 1.4% / 2.1% / 2.6% / 2.4% / 6.1% at n=2..8, 6.2% n=9, 6.25% n=10 (6 and 3 tables), 5.8% n=11 (2 tables): peaks near 6%, under 10%; n=8 parity 1.2%, majority 0.5%, and 0%, or 0%, thr2 0.5%; jump targets now take odd labels in layout order"
+kind = "archive_ref"
 
 [ablations.read_ladder]
-kind = "archive"
-saving = 6.86
-arity = 8
-verdict = "kept 2026-10-30 (named-function bar, as IEBEL fall_through): each answer's constant blocks at depth > 0 share one ladder, an entry label per block with 8 reads to the next entry, all falling into one printer, so a block no longer spends 7+8(n-d) reads of its own; the answer with fewer blocks goes first, which leaves no table larger. 200 seeded random tables (Random(n)): chars fall 10.92% at n=7 (175,417 -> 156,261) and 6.86% at n=8 (306,488 -> 285,454), 15.4% / 22.4% / 21.4% / 18.1% / 15.0% at n=2..6; named and 60.8 / 63.8%, or 61.9 / 64.7%, thr2 42.9 / 45.8%, majority 34.0 / 34.8%, parity 0% at n=7 / 8; 0 of the 16 + 256 tables at n=2, 3 and 0 of 200 per n=4..8 grew. Executed through esolangs.run: every row of every table at n<=3, of the five named functions and of 50 random tables at n=7 and n=8; the wrong-table control (or program against the and table) fails"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 7.3
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: canonical fixed-output spelling. Read all 8n bits first with a still zero, make b a NAND toggle partner at its current cell, then emit the chosen literal byte. No pointer move, startup branch state or final label is needed. Exactly L=8n+11+2b chars and commands; workspace 15+bl(L-1)+bl(n), one bit below the prior envelope. n=8 zero/one 82/82 -> 75/77 chars; n=12 114/114 -> 107/109. n=3 corpus 26446 -> 26434 chars. A positive-control unary read-loop candidate executes the correct n=8 zero answer at 46 chars, but uses 45 workspace bits against its unchanged bound of 26: rejected rather than weakening the invariant. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts; CARP owned checks reach its n=14 cap. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources, every read before output and an unread following record. Existing tests expanded without new cases."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_chain_cover_layout]
-kind = "archive"
-arity = 8
-saving = 23.6406
-seed = "random.Random(n); successive choice(01) per truth-table bit"
-tables = "200 per fixed n=7,8; extended range n=9..14 recorded below"
-verdict = "kept as one unconditional topological chain order. A child waits for every distinct parent; follow ready c1 then c0, otherwise earliest breadth rank. Constants keep their existing final ladders. O(N log N) heap work over N=O(T/log T) shared nodes is O(T); no search or old-layout race. At fixed n=7/8, 200 Random(n) tables give156261->131145 (16.07%) /285454->217971 (23.64%). Admitted at the fixed7/8 window by sustained10%, not by shifting judgment to13/14. Uniform-random source counting proves expected aggregate liminf saving>=1/6: with M=T/2^ceil(log2 n), M-o(M) unique-child falls each delete two labels, among N<=4M+o(M) nodes costing3N log10(M)+o(M log M) before. This is neither an exact limit nor a universal/per-seed or monotonicity claim. Because savings grow at8, the preselected20-table extension through14 records26.78% at12, then22.88%/22.41% at13/14 as context only. The200-table9 sample gives:508626->402003 (20.96%). Every row of all200 tables at7/8/9 executes before/live, plus all small tables/rows and19 random/named tables per4..6:370628 runs including parser-cache equivalence controls. All jumps move forward, both outputs and a wrong-table control fire, all reads precede output and preserve a sentinel. Workspace cap holds on all small rows and boundary samples at each larger table. n=3 chars26434->25214; eight tables grow1-2 chars,110 rows slow, so this is size admission, not the execution gate. The raw no-growth claim fails on those eight cases; keep no scattered fallback, which would not independently qualify. There is no growth among the200-table7/8/9 or20-table10..14 corpora. Independent remeasure2026-11-03 reproduces both fixed200-table totals in0.60CPU-s including4,240 native old/new rows through n=3; exact output, all input bits consumed before halt, no EOF probe, sentinel preserved and wrong-table control fails. Generation20 tables7/8/9:2.37/4.11/6.96ms ->3.75/6.61/11.61ms; slower generation keeps the linear class."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_even_backward_edges]
-kind = "archive"
-arity = 8
-saving = 9.7932
-verdict = "rejected tested bank layout: place the whole bottom internal bank (depth>=max(1,n-3)) before the upper nodes, keep constant ladders last and skip to the root with v plus an odd label. Backward targets get even labels; choose branch order/phase from direction, with first/last occurrence roles checked by the layout. All small rows, all named rows at7/8 and four rows per200 seeded tables execute. Generic200-table chars n7 156261->153867 (1.53%), n8 285454->257499 (9.79%); the mandatory near-bar200 sample cannot repair the failed n7 endpoint. Named parity, AND and OR grow; majority gains less than3%. n3 chars26434->28642 and2016 slower rows also rule out execution admission. No bundling with chain cover or claim about every possible mixed-label layout."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_direct_print_bottom]
-kind = "archive"
-arity = 8
-saving = -5.2338
-verdict = "rejected tested direct printers: at opposite-constant children save the current input in a via /v^ (identity) or /^ (negation), read the remaining bits, print the value bit, restore a/b and emit fixed ASCII suffix0001100. Apply at any depth and prune unused constant entries. Actual byte-exact executions cover all small rows and all named rows at7/8, plus four rows per20 generic tables. n7 generic15637->17146 (9.65% growth), n8 28717->30220 (5.23% growth); all20 grow at both arities. n3 chars26434->28313,168 tables grow and494 rows slow. Named parity217->209 /246->238 saves3.69%/3.25%, below declining20%; AND/OR below2%, majority/threshold2 grow. Both answers, complete byte output and sentinel controls fire. These reject the explicit duplicated-tail construction, not all possible shared printer tails."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_execution_bound]
-kind = "archive"
-arity = 3
-saving = 0.0
-verdict = "corrected a pre-existing false cap: baseline table00011110,row111 runs54 commands, exceeding12n+17=53; four baseline three-input rows violate it. The exhaustive chain maximum is52. A forward root-to-constant path visits h<=n internal blocks, reads8n bits, executes at most3h-1 tests because a root child follows it, and at most n internal/ladder head labels. Prelude5, printer12 and two END occurrences give9n+3h+18<=12n+18. Constant roots are shorter. All370628 sweep runs satisfy the derived bound; do not silently retain the old false figure or call this a measured chain regression. Workspace expression and tape/input/output conventions unchanged."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -88,20 +60,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 16.6635
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: direct immutable state construction. 446 programs, 431 halt cleanly; no structural trace differences, control differs on 441. Step throughput at longest 10/20/40 workload breadths: +16.66%/+16.89%/+17.03%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 13.5832
-workload = "complete run; source parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: direct immutable state construction. 5194 paired native traces, 5109 clean halts, no differences; changed-site mutant differs on 5156. Complete-run savings 13.58–16.71%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+kind = "archive_ref"
 
 [evidence]
 version = 1

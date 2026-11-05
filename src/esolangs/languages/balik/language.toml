@@ -18,46 +18,22 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
 
 [ablations.essential_inputs]
-kind = "archive"
-saving = 29.0
-arity = 10
-seed = 2026
-tables = "20 random and 20 with a random proper subset of inputs essential, n=8 and n=10"
-verdict = "kept: a table ignoring inputs tests only the essential cells; 26.1% at n=8 and 29.0% at n=10 on those tables beyond the constant-leaf fold, 0.0% on random ones"
+kind = "archive_ref"
 
 [ablations.layout_rule]
-kind = "archive"
-saving = 6.6
-arity = 11
-seed = 2037
-tables = "20 random per arity n=4..11 and parity, majority, and, or, thr2 with complements; the area recurrence over every layout sequence through n = 14"
-verdict = "kept: side by side only at odd levels from 3 below the root is the least area over all 2^n sequences except n = 4 (840 vs 832). Against the natural alternation (side by side at every odd level) it saves 21.2% chars and 21.6% area on random at n=10, 21.0% and 21.6% at n=11. Against the other phase (even levels) it saves 5.5% chars and 7.8% area at n=10, 6.6% and 4.7% at n=11 on random, and 10.4% and 13.0% chars on majority at n=10 and 11; parity 4.9% and 4.3%. Under the bar against that phase, but switching deletes no code (each phase is one predicate), so the smaller one stays"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 8.7
-seed = 0
-tables = "both constants, n=1..12"
-verdict = "kept: canonical root folding/minimal spelling, exempt. Read every input at cell zero, then move right once to the fresh output cell; omit the former leading right and closing left moves. Chars/cells and commands n+2+b: n=7 10/11->9/10 (9.5% combined), n=8 11/12->10/11 (8.7%), n=12 15/16->14/15. n=8 workspace unchanged at 12 written bits. n=3 corpus area 74501->74499, chars 68083->68081. Executed 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Owned raw IO/template checks preserve exact input use, following records and no EOF probe."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_leaf_pair_compaction]
-kind = "archive"
-arity = 8
-saving = 14.704
-verdict = "kept: when both children are one-row leaves, place the bottom child on the splitter row. That branch is known nonzero, so its eastward crossing of @ does not turn; both leaves restore the tested cell. Existing clockwise routing then fits three rows instead of four, with no new candidate race or search. All small tables/rows execute; n=3 chars68081->56163. On200 Random(184700+n) tables per fixed judge arity, n=7 chars1724227->1477128 (14.33%), n=8 3687354->3145164 (14.70%). Four rows per old/new table execute. Larger diagnostics20 tables n=9..12, five13/14, two15..17: the latest observed local peak is15.91% n=16 then15.79% n=17, without an arity cap; neither implies a vanishing saving. A bottom box has height3 and path excess10 instead of12. Exact worst E is19 at n=1; otherwise34*2^(n/2)+7n-40 for even n, 44*2^((n-1)/2)+7n-38 for odd. Full parity attains the geometry; native formulas3..5 pass. Whole constants stay byte-identical. Owned IO checks consume all digits before output and preserve the next token."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_projection_leaf]
-kind = "archive"
-arity = 8
-saving = 13.668
-verdict = "kept after completeness recheck 2026-11-03 by independent execution admission AFTER leaf-pair compaction: all256 n3 tables/every row give95576->86520 commands (-9.475%),56163->44929 chars, no larger table/area or slower row. The previous source-only rejection missed this gate; its historical fixed200 source14.26/13.67% precompaction remains below20 declining. A final01 cofactor prints its current input directly, removing one test/merge box and answer-cell excursion; no runtime state, construction candidate, search or fallback is added. The10 cofactor keeps its box. Every enclosing merge sees the unchanged tested cell. Ordered input preloading is unchanged, including ignored inputs; constants unchanged. Binary rows, EOF, malformed input, width/balance and preserved following trit controls pass; raw input trit2 prints2 rather than old1 and is explicitly outside the0/1 Boolean contract. Exact E stays19 at1, tightens42/71->40/69 at2/3, and is unchanged from4 onward. The named00+10*(T/2-1) witness keeps all inputs essential and attains the original exact4/5 formula; the inner horizontal level absorbs its shortened first branch from4. All original exact3/4/5 scopes and W cap remain; pins/byrow/lastrow, parity4anchor685 and example updated together. Area remains O(T). Mandatory build repair stores one translated child reference per existing box instead of copying descendant dictionaries at every ancestor; flatten glyphs once into rows without sorting. This replaces the old renderer, adds no candidate/runtime state, and preserves all736 small/fixed-corpus program bytes. Widths, placement predicates and ties are unchanged; rendered area and total local glyphs bound construction by O(T). Paired seven-repeat native n3 medians .103916->.095150 seconds (-8.44%); 6480 small/sample runs and144 EOF/error controls pass, plus projected/layout/sentinel and wrong-leaf controls."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_projection_aware_order]
-kind = "archive"
-arity = 8
-saving = 0.0
-verdict = "rejected by construction: choosing every essential variable as the last-tested one is a table-dependent search and exceeds four named order candidates at judge arities. Not launched. The actual projection/compaction probes keep input order."
+kind = "archive_ref"
 
 [generator_sizes]
 "00000001" = { commands = 44, commands_by_row = { "0" = 26, "1" = 26, "2" = 26, "3" = 26, "4" = 38, "5" = 38, "6" = 44, "7" = 44 }, source_units = 109 }
@@ -81,12 +57,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = -5.0326
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: four-way wrap bit mask. 445 programs, 372 halt cleanly; no structural trace differences, control differs on 444. Step throughput at longest 10/20/40 workload breadths: +0.64%/+0.14%/-5.03%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [evidence]
 version = 1

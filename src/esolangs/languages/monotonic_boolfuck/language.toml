@@ -29,44 +29,22 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
 
 [ablations.pair_leaf]
-kind = "archive"
-saving = 13.2
-arity = 8
-verdict = "kept: a node whose halves are the two different leaves prints bit 0 (x, or its negation by [>>;]>[;>>]) and the common 0 0 0 1 1 0 0 once, 25 / 35 characters instead of 45. Total emitted size falls 13.1% / 13.2% at n=7/8 on 200 seeded random tables (seeds 1234+n; 13.0% / 13.4% on 50), parity 22.2% / 22.1%, majority 14.5% / 13.9%, threshold-3 13.1% / 11.8%, and 4.7% / 3.9% on AND, 4.6% / 3.8% on OR; every row of every changed program run at n<=8 (all 2^2^n tables at n<=3), a wrong table fails"
+kind = "archive_ref"
 
 [ablations.shipped_cost_audit_20261101]
-kind = "archive"
-arity = 8
-seed = "random.Random(6100+n)"
-tables = "2 random plus parity/majority/and/or per n=3,5,7,8"
-baseline = "4b83d3985^"
-verdict = "measured with the interpreter/helpers at 567f2cb18. At n=8: characters 26963 -> 22733, sampled commands 2735 -> 2699, largest sampled written-state peak 83 -> 83 bits. Sum of seven-repeat cold generation medians: 603207 -> 515208 ns. All rows at n=3; rows 0,floor(T/3),T-1 otherwise. 204 correct executions, 24 wrong-table controls. Peaks and timings describe this corpus. The leaf shortcut reduces commands without increasing the sampled workspace peak. Current resource bounds pass where their stated domains apply"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 44.3
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: canonical whole constants. Plant n ones; the read loop consumes a byte on the current one, steps right and retests until the fresh zero sentinel. No bit is cleared. From n=2: L=3n+19+2b chars, 14n+9+2b commands; one input is a direct 20-char/command path. Written bits 12+bl(L-1)+2bl(n)+sum(bl(i),i=1..n-1) on the unary route; the direct route uses 19. n=8 zero/one 78/80 -> 43/45 chars, commands 78/80 -> 121/123, workspace 24 -> 43 bits within unchanged ledgers. n=12 110/112 -> 55/57. n=3 corpus 37990 -> 37970 chars. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources, all reads before output and a preserved following record; bit readers also finish the whole last byte without EOF probes. No new collected cases."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261101_halt_elision]
-kind = "archive"
-arity = 8
-saving = 4.0181
-verdict = "rejected: removing unread suffix consumption from table 0001 prints after one read instead of two, caught by a read-first positive control; shipped output consumes both. Omitting only the final two zero output bits is semantically correct with documented halt padding, but on 200 Random(1234+n) tables per n=7,8 saves only 4.03%/4.02% (535666->514060, 1077536->1034240). All small rows and four rows per priced table execute; n=3 command sum 131664->127568 (3.11%), below the execution gate too. No input-consumption weakening."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261101_opposite_pointer_moves]
-kind = "archive"
-arity = 8
-saving = 3.3421
-verdict = "kept: minimal spelling, exempt. Cancel adjacent >< moves; the infinite zero tape is not allocated by moving, and no read/write lies between. Sizes 535666->517514 (3.39%) at n=7 and 1077536->1041524 (3.34%) at n=8 on 200 Random(1234+n) tables each; every small table/row and four rows per priced table pass, no table grows. n=3 total 37970->36526 and command sum 131664->127936. Root constants, parity Size anchors, worst size/step formulas and workspace cap stay valid; actual resource probes n=1..6 pass. Owned nonconstant tests require all reads before output and preserve a following byte."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261101_consume_fusion]
-kind = "archive"
-arity = 8
-saving = 0.0
-verdict = "rejected: after canonical opposite-move cancellation, consuming pending bytes on the newly set right cell before READ saves zero chars. Sizes remain 517514/1041524 on the same n=7,8 corpora. Positive firing controls: emitted code changes on 199/200 and 200/200 tables; all small rows and four rows per priced table execute correctly. The preceding entry move already cancels the left consume move, exhausting the proposed two-character gain. No zero-result wall is inferred from a non-firing probe."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-01
@@ -79,20 +57,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 16.5436
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: direct immutable state construction. 448 programs, 284 halt cleanly; no structural trace differences, control differs on 129. Step throughput at longest 10/20/40 workload breadths: +18.06%/+17.23%/+16.54%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 8.7283
-workload = "complete run; source parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: direct immutable state construction. 5196 paired native traces, 3583 clean halts, no differences; changed-site mutant differs on 3599. Complete-run savings 8.73–14.93%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+kind = "archive_ref"
 
 [evidence]
 version = 1

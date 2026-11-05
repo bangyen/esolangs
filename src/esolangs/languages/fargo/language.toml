@@ -31,120 +31,52 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.default_race]
-kind = "archive"
-saving = 0.0
-arity = 10
-seed = 20261028
-tables = 66128
-verdict = "retired: the default race between the inline form, the one-node-per-line form and the packing never picks either of the first two over the packing -- all 65,804 non-constant tables at n=1..4 and 324 seeded tables over every non-constant class at n=5..10 (10 per class, one for each named function) return the packing's exact bytes, so the race is dead code and fargo(table) is the packing alone; the one-node-per-line form stays as the fallback when a width fits nothing, and the inline form as a width candidate. Size-neutral, byte-identical; priced 2026-10-28"
+kind = "archive_ref"
 
 [ablations.balance_race]
-kind = "archive"
-saving = 0.0
-arity = 10
-seed = 20261028
-tables = 4270
-verdict = "retired: the one-node-per-line form as a balanced-layout candidate never wins by rendered area -- 0.0% on 20 seeded tables per class and arity over n=4..10 for random, dense, two-block, mid-ignored, half-constant and constant tables and the or, and, parity and majority tables, and on 4,270 exhaustive or sampled tables at n=1..4; it still seeds the width walk. The walk's fourth step and its final side try each save under 1% of area on any class at n=5..10 (20 tables each) and are kept as the side-balance contract the docstring states, not a size trick (borderline); a single packing at the seed width costs 6.5% to 28.9% of area on random tables at n=4..10, so the walk itself clears the bar; priced 2026-10-28"
+kind = "archive_ref"
 
 [ablations.operand_one_fold]
-kind = "archive"
-saving = 1.7
-arity = 12
-seed = 20261028
-tables = 5
-verdict = "kept: canonical constant fold (a conjunction with the constant one is its literal), exempt; priced by emitting the explicit & x 1, it saves 5.72% at n=8, 5.09% at n=9, 3.48% at n=10 and 1.69% at n=12 on random tables, 50% on or and parity at n=10, the share falling as tables grow; priced 2026-10-28"
+kind = "archive_ref"
 
 [ablations.davio_factoring]
-kind = "archive"
-saving = 68.0
-arity = 10
-verdict = "kept: clears the bar on random tables and rises with arity (57.5% at n=8, 64.6% at n=9, 68.0% at n=10 against a plain ANF monomial build run through the same naming race); 99.2% on or at n=10, 87.9% on majority. Plain-rewrite audit 2026-10-28 (seed 20261028, 20 tables per arity, 5 at n=12): the plain ANF monomial build through the same packing race is 160.5% larger at n=8, 214.4% at n=9, 265.7% at n=10 and 331.4% at n=12 on random tables, 77.6% to 394.4% on dense (n=4..10), 40.7% to 227.96% on half-constant, 400% to 14,415% on or and 54% to 974% on majority (n=4..10); kept"
+kind = "archive_ref"
 
 [ablations.profitability_packing]
-kind = "archive"
-saving = 51.5
-arity = 10
-verdict = "kept: clears the bar -- naming only the nodes whose sharing pays earns 51.3% at n=9 and 51.5% at n=10 over the name-everything form, and the naming race jointly earns 61.0% over the inline form at n=10; the docstring's figure reproduces on its table (name-all 3,728 chars halved to 1,810 at n=10 random 1847). Plain-rewrite audit 2026-10-28 (seed 20261028, 20 tables per arity): naming every node costs 91.5% more at n=8, 104.4% at n=9, 105.7% at n=10 and 110.4% at n=12 on random tables, 97.8% on dense, 82.4% on two-block, 93.5% on mid-ignored and 61.7% on majority at n=10; kept"
+kind = "archive_ref"
 
 [ablations.subtree_interning]
-kind = "archive"
-saving = 19.5
-arity = 10
-verdict = "kept: canonical sharing substrate, exempt; interning plus naming every distinct node is a wash against the inline form at n=8 (-0.5%) growing to 19.5% at n=10 -- the profitability test in the packing is what realizes the value on the default path. Plain-rewrite audit 2026-10-28 (seed 20261028, 20 tables per arity): dropping all sharing (the inline form) costs 94.2% at n=8, 128.2% at n=9, 156.9% at n=10 and 200.9% at n=12 on random tables and 831% on majority at n=10; exempt and kept"
+kind = "archive_ref"
 
 [ablations.arm_forms]
-kind = "archive"
-saving = 0.0
-arity = 8
-seed = 20261028
-tables = 20
-verdict = "monotone-OR arm kept; complemented-literal arm (choice 1, 1-arm kept) retired 2026-10-28 (random + named bar): it saved -0.57% at n=7 and -0.38% at n=8 on 20 seeded random tables (retiring it shrinks them 7,040 -> 7,000 and 11,756 -> 11,712 chars) and 0 chars on parity, majority, and, or and a threshold at n=7..12 (the n=9 majority program changed, same size); it kept only dense and sparse tables (3-10% on those, ad hoc classes). The monotone OR earns 203-210% on or at n=8..12, so it stays for the or family. Cost of the retirement: the n=3 corpus grows 8,400 -> 8,580 chars; the n=2 worst inline expression grows 17 -> 23 chars (scaling M_1 re-derived by exhaustion, M_t = 2 M_{t-1} + 8 + bl(t) unchanged, same linear class); n=10 random 1847 stays 1,810. Execution bound 9T - 5 re-checked, no violation"
+kind = "archive_ref"
 
 [ablations.essential_descent]
-kind = "archive"
-saving = 16.9
-arity = 10
-verdict = "kept: canonical, exempt; the recursion's zero-skip earns 21.6% on mid-ignored tables at n=8 and 16.9% at n=10, 4.4-5.5% on random tables -- positive on every corpus at both judged arities, though the share declines as tables grow. Plain-rewrite audit 2026-10-28 (seed 20261028, 20 tables per arity, 5 at n=12): against an explicit zero operand the descent saves 5.28% at n=8, 6.16% at n=9, 4.74% at n=10 and 2.93% at n=12 on random tables and 38.3%, 25.1%, 22.5%, 14.5% on mid-ignored tables at n=8, 9, 10, 12; canonical and kept"
+kind = "archive_ref"
 
 [ablations.exact_fit_stop]
-kind = "archive"
-saving = 0.0
-arity = 10
-verdict = "rejected: the naming loop's exact-fit stop (round-3 mutant 339: break on < budget instead of <=) is a no-op on the default path -- 0.00% at every arity n=6..12, 0 of 1,400 seeded random tables change, because at the default width no node's inlined text ever lands exactly on the budget; only w=40 moves, declining monotonically from 11.42% at n=6 through -0.02% at n=8 to -0.78% at n=11, where all 200 sampled tables grow (worst +60 chars) -- a local effect that inverts as tables grow, not a genuine percentage. Execution gate clean (932 changed programs, 0 mismatches), so the rejection is a pure size verdict; priced 2026-10-25. Plain-rewrite audit 2026-10-28: unchanged"
+kind = "archive_ref"
 
 [ablations.complement_expression]
-kind = "archive"
-saving = 46.3
-arity = 12
-verdict = "kept: the complement's expression under `^ 1` is built too and the shorter packed program emitted. Nor (the complement of or, whose literal-heavy product of negated inputs costs 7n more) 45.3% / 45.9% / 46.0% / 46.2% / 46.3% at n=7 / 8 / 9 / 10 / 12 (122 -> 66 chars at n=8, 190 -> 102 at n=12, the share flat); random 0.06% / 0.00% at n=7 / 8 (20 seeded), balanced area equal on random, thr2 -28% at n=8; and, or, nand, parity, majority and the other thresholds unchanged. Measured 2026-10-28 chars, every program executed (n<=3 exhaustive, 20-40 random + named at n=4..8)"
+kind = "archive_ref"
 
 [ablations.balance_unshared]
-kind = "archive"
-saving = 26.7
-arity = 12
-seed = 4254
-tables = 2
-verdict = "kept: the balance walk also runs with profitability naming off (names only on width overflow), so shared one-line definitions no longer set the line count. Balanced area on the weekly test's tables: n=6..12 930 / 1,980 / 3,604 / 8,281 / 14,186 / 29,250 / 85,568 -> 841 / 1,681 / 3,482 / 6,400 / 14,186 / 25,930 / 62,762 (exponent n=10 to 12 T**1.30 -> T**1.07); random n=12 seed 12 298 -> 256 side (-26.2% area), program 6,217 -> 20,187 chars; measured 2026-10-29"
+kind = "archive_ref"
 
 [ablations.zero_arm_and_prototype]
-kind = "archive"
-saving = -1.9641
-arity = 8
-seed = "random.Random(1847+n)"
-tables = "all tables n=1..3; 20 random plus and/or/parity/majority/threshold-third per n=4..12"
-verdict = "near miss, not shipped: when a node's one-arm is zero, emit f0 AND (1 XOR x) instead of f0 XOR (x AND f0), before profitability packing. Random n=7/8 grows 6,916 -> 7,140 / 11,812 -> 12,044 chars (3.24% / 1.96%); n=12 grows 0.965%. No and/or/parity/majority/threshold-third saving through n=12. Positive control: 369 corpus programs change; exhaustive n=3 source 8,434 -> 8,872 chars, commands 43,248 -> 44,128, with 115 tables slower. 5,110 baseline/candidate output checks correct, exhaustive n<=3 and boundary rows of random/named tables through n=8 plus named through n=12; 2,555 complemented controls rejected. Neither shipping bar passes. Prototype stays in ignored notes; generator, bounds and pins unchanged"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 50.0
-seed = 0
-tables = "both constants, n=1..12"
-verdict = "kept: canonical zero initialization and minimal spelling, exempt. Zero prints the initial output number with $ alone; one retains % 0 1 and $ without the trailing newline. Loading still reads the packed input token before either program executes. At n=7/8/12 chars 8/8->1/7 (50.0% combined; zero 87.5%, one 12.5%); commands 8/8->3/8 and workspace 52/53->18/53 written bits. Every fitting/narrow/balanced path preserves the input token read and following record. n=3 corpus chars 8434->8426. 1120 native/candidate row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute or prove their termination answer in default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command records and global resource caps unchanged. No added collected cases."
+kind = "archive_ref"
 
 [ablations.davio_node_macro_20261102]
-kind = "archive"
-arity = 8
-saving = 18.3337
-seed = "Random(1000*n+i), i=0..199; fixed physical n=7/8 before judging"
-tables = "all tables/rows n<=3; 20 random at4..6; 200 each7/8; same20 trend7..16; seven named functions7..12"
-verdict = "rejected on the declining 20% bar at fixed7/8: chars69940/117112->62123/95641 saves11.1767/18.3337%. Exact per-variable break-even charges definition, value arguments and call punctuation; no old-program min. Twenty-table trend saves10.057,17.918,25.240,30.369,33.047,32.571,32.921,33.791,32.492,31.130% at7..16: observed peak14 then two lower points, not an asymptotic-zero or global-peak claim. n3 unchanged8426chars/43208commands; exhaustive-small plus sampled4..6 totals9200 native variant runs. Fixed200 endpoint commands205078/428262->221968/461440 grow8.24/7.75%; no execution admission. Nine of20 n5 tables and two n6 tables grow. Named fixed7/8 strict majority178->178/226->230, half-threshold178->178/238->240, threshold3 218->220/278->273, and/or/nand/nor/parity unchanged: no named keeper. Balanced20 grid_area16378/32721->14605/25306, no growing tables. Added only prototype per-variable uppercase definitions and two eager value bindings, needed to share node syntax; production adds no path/state and retains its existing packing. Supplied whole-old fallback rejected; no searched table. Adding the optional one-argument monotone macro gives62162/95861chars, worse by39/220;2320 native refinement rows pass, and seed7053 supplies a firing one-parameter control. Named fixed7/8 results match the one-level version. Existing source/E/W bounds, scopes, pins, anchors and example remain unchanged."
+kind = "archive_ref"
 
 [ablations.two_level_macro_20261102]
-kind = "archive"
-arity = 8
-saving = 15.2
-seed = "same fixed200 at7/8"
-tables = "all small/rows; sampled4..6; fixed200 source,20 native endpoints per arity; named7..12"
-verdict = "rejected: coherent two-level/one-level local rules yield68454/99311chars vs69940/117112, saving2.1247/15.2000%; versus the one-level prototype they grow10.1911/3.8373%. Four eager arguments preserve the original Davio algebra. Consumed-child definitions are removed when no transformed call remains: retaining these dead headers had falsely grown12.98/2.53% versus baseline. No whole-old min or searched construction. n3 remains8426chars/43208steps; native controls exercise four-parameter calls and a wrong-index mutant. Named strict majority178->182/226->230, half-threshold178->182/238->252, threshold3 218->231/278->268; other five unchanged at7/8. Balanced20 area16378/32721->18283/24881,18 growing tables at7. No production path/state added."
+kind = "archive_ref"
 
 [ablations.wide_name_alphabet_20261102]
-kind = "archive"
-arity = 8
-saving = 0.0
-seed = "same fixed200 at7/8"
-tables = "all small/rows; sampled4..6; fixed200 source/native endpoints; all79 alphabet characters"
-verdict = "rejected:79 safe ASCII name characters replace26; default source is byte-identical on all400 fixed7/8 tables (69940/117112chars), so neither size nor execution gate qualifies. Alphabet starts lowercase, then uppercase,2..9 and safe punctuation; exclude comment/raw/builtin characters and bracket/plus spellings that can synthesize array builtins. Every character defines and calls a native function, with a wrong-body control. Wider prefixes cannot help these defaults before name27 is needed. Named fixed7/8 all unchanged; half-threshold12 saves628->586 but cannot move the judge window. Balanced20 area16378/32721->16378/32722, one table grows1cell. No production alphabet, path or state change."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -157,20 +89,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 1.4003
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: slotted immutable dataclasses. 247 programs, 151 halt cleanly; no structural trace differences, control differs on 159. Step throughput at longest 10/20/40 workload breadths: +2.00%/+1.40%/+1.49%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 1.6473
-workload = "complete run; parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
-verdict = "kept: slotted immutable dataclasses; 5195 paired native traces, 2308 clean halts, zero differences; changed-site control detected on 2574. Complete-run wall savings 1.65–2.41%, including parsing and final I/O. Snapshot fields and grouping preserved."
+kind = "archive_ref"
 
 [evidence]
 version = 1

@@ -25,70 +25,31 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.subtree_sharing]
-kind = "archive"
-saving = 72.9
-arity = 12
-verdict = "kept: canonical, exempt. A repeated subtree is emitted once and jumped to; an already-emitted one-subtree costs nothing, a zero-subtree one goto. Removing the sharing costs 56.7% at n=8 rising to 72.9% at n=12 on random tables, 99.0% on parity at n=12"
+kind = "archive_ref"
 
 [ablations.jump_entry]
-kind = "archive"
-saving = 10.7
-arity = 10
-seed = "random.Random(1000n + k)"
-tables = 20
-verdict = "kept: a taken `C` leaves z = 1, so a node's leading reset-and-count is one token short when entered by a jump, and the zero-subtree fall-through already has z = 0; the leaf one is `A 2` and the zero leaf `Z 2`, and cell 0 drops its second `Z`. A rule on the entry point, not a search. 11.2/10.4/10.7/10.7% at n=7/8/9/10 on 20 random tables (11.1/10.4% on 200 at n=7/8), balanced area 10.9/9.8/10.4/10.6%; named functions parity 7.7/7.2/6.7/6.4%, majority 8.4/7.5/7.3/7.1%, and 6.3 to 5.1%, or 6.6 to 5.5%, threshold 8.3 to 6.9%, every program run"
+kind = "archive_ref"
 
 [ablations.halves_agree_skip]
-kind = "archive"
-saving = 1.8
-arity = 12
-verdict = "kept: canonical, exempt. A test whose halves agree is passed over for its surviving half. 3.6% at n=8 declining to 1.8% at n=12 on random tables, 3.0% / 1.7% with one ignored input, and 0.0% on parity, AND, OR and constant tables, where the agreeing tests sit at the leaves"
+kind = "archive_ref"
 
 [ablations.nand_circuit]
-kind = "archive"
-saving = 0.0
-arity = 3
-seed = "exhaustive"
-tables = 276
-verdict = "kept: feasibility -- the width-1 unary-address NAND circuits (n<=3) are the only RAM0 layout whose tokens are one character, so a one-column template exists; the shared tree wrapped at width 1 has multi-digit gotos (2 columns, test_one_column_layout fails). Plain-rewrite audit 2026-10-28: the circuit is 5-12x longer than the shared tree (mean 137.0 vs 27.5 chars at n=1, 469.2 vs 54.1 at n=2, 1209.4 vs 95.9 at n=3, 0 of 276 tables shorter), explicit width=1 only; default and balanced routes never use it, so 0.0% balanced area"
+kind = "archive_ref"
 
 [ablations.test_address_order]
-kind = "archive"
-saving = 30.4
-arity = 12
-verdict = "kept: the deepest, most repeated test sits in cell 0 and the root test in cell n-1, so the unary addresses make the frequent tests the cheap ones. Reversing the assignment costs 16.3% at n=8 rising to 30.4% at n=12 on random tables, 20.5% with one ignored input at n=12, 2.7% on parity, 0.0% on AND/OR. A numbering choice; the shipped order wins on the random corpus at the largest arities; plain-rewrite audit 2026-10-28, seed random.Random(1000n + k), 20 tables, every program run: 12.2/16.4% at n=7/8 default and 11.7/15.6% balanced; named functions within -1.1..+3.0% default, so it keeps on the random class"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 76.4
-seed = 0
-tables = "both constant tables n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: canonical whole-constant folding. Execute all fixed-width Z/setter pairs, then reset z and optionally increment it. No RAM cells are touched. Exactly 4n+1+2b chars and 2n+2+b commands including the post-halt dump, b the answer; written bits at most 1+bl(2n+1+b), reached by a row with a one. n=8 zero/one 144/144 -> 33/35 chars; n=12 261/261 -> 49/51. n=3 default corpus 22318 -> 22258 chars; width-one 309606 -> 309490. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced constant scores improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check exact resources and every input slot; stream readers preserve an unread sentinel and read before output."
+kind = "archive_ref"
 
 [ablations.complement_cell_swap_trick_20261102]
-kind = "archive"
-seed = "random.Random(1000*n+k).choices"
-arity = 8
-saving = 0.0
-tables = "20 random each n=7/8; all tables/rows n<=3; ten samples and projections n=4..8; five named families and complements n=7/8"
-verdict = "rejected: the executable complement store lives above the input cells. Every eligible swapped head adds at least three unary A tokens (six characters), while removing one goto saves at most five characters at n=7/8, even before the constant pair/complement prologue. A full unshared-tree token ceiling keeps every original goto below10000 in this fixed window; swapping preserves emission order and increases subsequent addresses, so digit shortening cannot repay the extra heads. Fixed20 chars14593/25052 ->18682/30064, with20/19 tables growing; a gain guard therefore admits no swap. Native small/sample controls cover78 firing n3 tables and actual high-cell complement loads, with input setter order unchanged. This rejects the supplied high-cell construction at the fixed gate, not every possible complemented representation. No production path, cells or bound change."
+kind = "archive_ref"
 
 [ablations.low_address_deep_block_trick_20261102]
-kind = "archive"
-seed = "random.Random(1000*n+k).choices"
-arity = 8
-saving = 2.6864
-tables = "same fixed20, small/sample and named corpus; every row of all40 fixed judging tables"
-verdict = "rejected: prelay bottom levels behind a root goto, taking the deepest block that ends below address100. Diagnostic level trials are scratch only. Actual fixed7/8 source14593/25052 ->14352/24379 (1.65/2.69%), below either bar. n3 source22258->25258 and commands63712->69264;2032 rows slow. Full judging-row commands245289/598409 ->248007/603729, and every judging row slows, so neither execution route qualifies. Majority and threshold3 source savings remain below1.8%; parity/AND/OR grow. No new candidate, layout state or old-program fallback ships."
+kind = "archive_ref"
 
 [ablations.known_zero_entry_reset_trick_20261102]
-kind = "archive"
-seed = "random.Random(1000*n+k).choices"
-arity = 8
-saving = 0.0
-tables = "all small tables/rows; sampled/ignored n=4..8; all7680 rows of fixed20 n=7/8; eight wrong-entry controls"
-verdict = "rejected: shared zero leaves and cell0 heads still need their physical Z for one-entry C references. A correct zero-entry copy can jump one token past it; retain the original target when crossing a decimal boundary would grow its spelling. This changes no emitted character count. Exhaustive n3 commands63712->63442 (0.424%, below5%), with142 firing tables and no slower rows; fixed7/8 commands245289/598409 ->244195/596225 (0.446/0.365%). Treating C entries as zero is wrong: eight native wrong-entry controls fail. Complete small/sample native sweep9760 executions plus23040 full judging executions passes all real variants, including exact fixed-length input setters in physical order and final state dumps. No source-size, command-bound or execution admission; generator/proof scopes/pins/examples remain unchanged."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -102,20 +63,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 30.3044
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: direct immutable state construction. 445 programs, 380 halt cleanly; no structural trace differences, control differs on 375. Step throughput at longest 10/20/40 workload breadths: +31.36%/+30.30%/+30.91%. Adopted after full-corpus and three-size run validation; see direct_state_construction."
+kind = "archive_ref"
 
 [interpreter_ablations.direct_state_construction]
-kind = "archive"
-price = 21.6923
-workload = "complete run, including constructor and final dump"
-seed = 0
-tables = "5193 full tracediff programs: all tables/rows through n=3, examples, 3000 seeded mutations; arithmetic and store/load sources at 32/128/512 units"
-verdict = "kept: construct the same five-field immutable state directly instead of reflective _replace. Full native traces: 4673 clean halts, zero differences, 4765 mutant detections; step throughput +29%. Complete-run savings across three source sizes: arithmetic 26.71%/28.26%/28.42%; store/load 21.69%/21.79%/22.60% Equal final output at every size; state fields, snapshot grouping, post-halt dump and growth rates preserved. No generator change."
+kind = "archive_ref"
 
 [evidence]
 version = 1

@@ -31,42 +31,22 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
 
 [ablations.change_point_runs]
-kind = "archive"
-saving = 85.5
-arity = 12
-verdict = "kept: the chain emits one test per change point, a literal row number, no dash a row. Re-audited 2026-10-29 against a test at every row, 20 random tables per arity: chars -31.2% n=2, -49.5% n=8 (balanced area -51.3% n=2, -74.4% n=8); named at n=8: parity -32.4%, majority -70.5%, thr2 -92.7%, AND -96.9%, OR -97.0% (complements equal; area -54.3%, -91.3%, -99.5%, -99.9%, -99.9%). A test at every row instead costs +84.62% at n=10 and +85.53% at n=12 on random tables (second seed set +84.79 / +85.10%) and at n=10/12: parity, the least run-rich class, +44.05 / +44.33%; OR +13985.26 / +48827.52%; constants +16218.29 / +55453.12%; three ignored inputs +612.51 / +625.39%; sparse +299.55 / +322.46%. The generator has no separate projection or constant fold: a constant table is one block start and no change points"
+kind = "archive_ref"
 
 [ablations.block_reload]
-kind = "archive"
-saving = 0.0
-arity = 12
-verdict = "recorded: past 15 inputs, blocks of 2^15 rows reload the index behind a sentinel 65535 and a guard on the high bits. It never fires at the audited arities (n <= 12), and without it the countdown wraps at 2^15, so there is no correct removal to price. Correctness machinery"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 61.8
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: canonical fixed-output spelling. Read every numeric input into one cell, overwrite with the answer and print decimal. Spaces separate adjacent ?? tokens; wrapping must preserve the !! decimal-output token. L=3n+2 chars, E=n+2 commands, written workspace at most 256+bl(n+2)+bl(2n-1) bits, attained on an input containing one. n=7 61 -> 23 chars; n=8 68 -> 26 chars, 59 -> 10 commands, 341 -> 264 written bits; n=12 96 -> 38 chars. n=3 corpus 15616 -> 15572 chars. Both constants also execute through n=16, beyond the generic low-index cap. All 24 balanced scores improve or match. Each language passed 5656 paired old/new row executions; all 270 nonconstant default programs through n=3 remain byte-identical (Piet pixel-identical). Both constants n=1..12 execute in default, width=1 and balanced layouts; a separate 1120-run candidate probe per language includes every row through n=8. All eight benchmark size/command pins per language remain unchanged. Owned regressions check resources, all reads before output, no EOF probe and a preserved following record; Piet also executes at scale 3. No new collected cases."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_kill_write_threshold]
-kind = "archive"
-arity = 8
-saving = 29.9187
-verdict = "rejected by the verification gate: parity rungs n=8,10,12 emit1184,4799,21197 chars, giving difference ratio4.53610 above4.4. Baseline passes. Runtime and size gates alone do not establish admissibility; retain the prototype in scratch, do not weaken the growth check. Prototype mechanism: add two to the Horner index; descending [b+1<bit] tests latch the first answer into that slot, disabling later tests. Default [1<bit] handles lower rows, then add48 and print. 200 Random(184700+n) tables per fixed judge arity: n=7 chars128126->89510 (30.14%), n=8 257809->180676 (29.92%), no growth. Declining20% bar clears both. Genuine16-bit low-index boundary remains15 inputs: two seeded tables per n=14/15 save26.46%/25.71%; n=16 is byte-identical to the guarded block construction. Parity14/15 and named single-change boundaries execute too. Decimal b+1 can gain a digit at9,99,etc; costs use its actual digits. Worst low size is4(T-1)+digits(2..T)+7n+8; commands T+6n+4, tokens3T+6n+2. Tape uses256+n(n-1)+max(n,5) bits: prior Horner slots remain, while offset and ASCII-output peaks occur separately. Add token, pointer2n and input2n-1 cursors. Native exact source/command/workspace formulas pass. All tables/rows n<=3 plus16 named/random tables per n=4..6 pass7824 paired executions and324 wrong-table controls, including native caps; n=3 chars15572->11868. Owned tests enforce read-first output and a preserved next numeric token, every three-input table, decimal thresholds and wrapped/balanced layouts. Constants unchanged."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_drop_index_copy]
-kind = "archive"
-arity = 3
-saving = 27.7623
-verdict = "kept by the execution gate: removing the index copy saves eleven commands and chars per nonconstant run. Every row of every three-input table sums80512->58160 commands (27.76%), with no slower row or larger table. The 16-bit boundary remains15 inputs; high-block code is unchanged. Exact low source is7(T-1)+digits(1..T-1)+7n+1, execution/tokens5T+6n-5. Written tape256+n(n-1)+5 plus program and two cursor widths; no copied index remains. Native proofs and read-first/sentinel checks cover it. Every small row and16 named/random tables per n=4..6 pass7824 paired executions plus324 wrong-table controls; source total15572->12778 at n=3. High boundary controls through16 execute; n=16 byte-identical. Same200-table n=7/8 corpus: 128126->125926 (1.72%) and257809->255609 (0.85%), below declining20% size bar. All rows of256 three-input tables and four rows of each judged table execute with baseline controls; n=3 chars15572->12778. No latch fallback: its failed growth check is recorded separately."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_string_prefix_index]
-kind = "archive"
-arity = 8
-saving = 0.0
-verdict = "rejected: ??? reads one line, while the contract supplies one input bit per line. The actual prefix-string prototype computes0011 for XOR table0110 on its four encoded inputs; baseline and latch return0110. It also leaves later inputs unread. No input-format or read-first convention change."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -79,12 +59,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = -0.129
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: word wrap bit mask. 245 programs, 169 halt cleanly; no structural trace differences, control differs on 58. Step throughput at longest 10/20/40 workload breadths: -0.13%/-0.05%/+0.55%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [evidence]
 version = 1

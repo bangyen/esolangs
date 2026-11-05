@@ -31,26 +31,13 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
 
 [interpreter_ablations.tokenized_cache]
-kind = "archive"
-price = 161.6
-workload = "run"
-verdict = "kept"
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 3.5273
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: hoist literal regex compilation. 249 programs, 169 halt cleanly; no structural trace differences, control differs on 156. Step throughput at longest 10/20/40 workload breadths: +3.53%/+4.20%/+4.71%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 3.5069
-workload = "complete run; source parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: hoist literal regex compilation. 5197 paired native traces, 2912 clean halts, no differences; changed-site mutant differs on 2396. Complete-run savings 3.51–4.38%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+kind = "archive_ref"
 
 [ablations]
 version = 1
@@ -58,64 +45,28 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-11-02" }
 
 [ablations.input_projection]
-kind = "archive"
-saving = 42.6
-arity = 12
-verdict = "kept: canonical, exempt. Ignored inputs are dropped by input_weights and the table is packed over the essential inputs only; an ignored read drains into a variable the packed literal overwrites. 0.00% on random tables at n=8/10/12 (projection almost never fires there); with one ignored input 19.6% at n=8 rising to 32.1% at n=10 and 42.6% at n=12, with two ignored 31.3% / 49.1% / 64.3%, and on constant tables 41.5% / 44.9% / 47.4% (a constant packs as a two-row table)"
+kind = "archive_ref"
 
 [ablations.plain_build]
-kind = "archive"
-saving = 42.6
-arity = 12
-verdict = "recorded: the plain build is the projection removed (every input at its positional weight, the full table packed) and nothing else: the Horner squaring that accumulates 2**index is essential with only + - * / available, the ignored-read drain target and the bit-plus-one store are workspace correctness, and the Horner literal chunking is a width path, not the default sized path. Plain and shipped are byte-identical on every table whose inputs are all essential"
+kind = "archive_ref"
 
 [ablations.polarity_flip]
-kind = "archive"
-saving = 30.7
-arity = 8
-seed = "random.Random(184700 + n) and named tables"
-tables = 200
-verdict = "kept under the named-function rule: when the complemented table packs to fewer bits (a trailing run of ones, which the literal pays for while trailing zeros are free), the literal is the complement and the print is '1' minus the bit, same statement count. Or 11.8% at n=6, 19.5% at n=7, 30.7% at n=8, 60.0% at n=10, rising; at-least-3 1.5-14.6% at n=6..10; majority and and 0.0% (the negated build already packs them short); random tables 0.06-0.22%. Exhaustive n<=3: 113 tables change, none grows, every changed program executed; random samples and named tables executed through n=8"
+kind = "archive_ref"
 
 [ablations.negated_reads]
-kind = "archive"
-saving = 60.0
-arity = 10
-seed = "named tables"
-tables = 14
-verdict = "kept under the named-function rule: the table reversed with the digit cells swapped (2**(1 - bit), inputs complemented) is built beside the plain build and the shorter kept, at no extra cost per read, so the one-hot-at-the-top and/nand pay the one-hot-at-the-bottom literal. and/nand 19.5% at n=7, 30.7% at n=8, 44.9% at n=9, 60.0% at n=10, rising with the literal; or/nor unchanged; random tables 0.03% at n=7 and 0.13% at n=8 (20 each). Measured 2026-10-30 after the digit-cell rewrite"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 63.0
-seed = "both constant values; witnesses(n) for n=4..6"
-tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
-verdict = "kept: canonical whole constants. Assign each input directly to variable 0, then print the ASCII literal; no digit variables, power, packed table or decoder. Both bits take 14n+12 chars, n+1 commands and 7+bl(n+1)+bl(n) written bits. At n=8 335 -> 124 chars; n=12 415 -> 180. The n=3 corpus shrinks 77016 -> 76654 chars; width=1 407184 -> 405458. All 270 nonconstant programs through n=3 remain byte-identical; generic envelopes and all eight benchmark pins remain unchanged. Each language passed 5656 paired before/after row executions. Both constants n=1..12 execute in default, width=1 and balanced layouts; sentinel regressions require all input before output. Default token compaction on 2026-11-02 changes only spelling to 9n+10 chars; wrapped and balanced bytes retain these historical spaced figures."
+kind = "archive_ref"
 
 [ablations.token_space_elision]
-kind = "archive"
-saving = 23.866
-arity = 8
-seed = "random.Random(184700+n), sequential choice('01')"
-tables = "200 random per n=7,8; exhaustive all tables/rows n<=3; 20 random per n=4..6"
-verdict = "kept 2026-11-02: a closed spelling rule removes all whitespace from the unwrapped source, without parser-guided gap search. Generated literals are separated by fixed we/qe/tt/ry markers, no yr/rr is emitted, and et ends before qe/we, so the first valid tokenization is unchanged. Structural token equality passed all 736 tables. Fixed n=7/8 source 128631→93031 (27.676%) / 165085→125685 (23.866%), clearing the declining20% bar; the 19n+45-character saving on all-essential nonconstants tends to zero as a fraction of T, with no arity cutoff. n=3 source 76654→51216; commands 18352 unchanged, no table grows or row slows. All 3960 paired native/resource/IO controls passed, plus all 76800 new native n=7/8 rows (332800/716800 statements), with every ordered input before output and an unread sentinel; wrong-answer control fired. Exact generic source bound tightens to T+35n+94; constant source is 9n+10, unchanged n+1 statements and workspace. A shared spaced builder preserves every explicit-width path and every balanced output in the corpus byte-for-byte; balanced areas n=7/8 stay 197934/302400, and the committed example is unchanged. An additional 96 named/anchor native rows at n=7/8/10/16 passed token equivalence and outputs, including the 66190-character n=16 anchor. Tokenization pilot of compact sources took about 1ms, no parsing explosion. Binary packing now parses the reversed bit string directly, replacing the sum of successively wider shifted integers so the complete construction stays O(T); source bytes match the independent prechange builder throughout the corpus. The raw per-gap greedy parser search was not retained."
+kind = "archive_ref"
 
 [ablations.fused_parity_print]
-kind = "archive"
-saving = -34.458
-arity = 8
-seed = "random.Random(184700+n), sequential choice('01')"
-tables = "200 random per n=7,8; exhaustive all tables/rows n<=3; 20 random per n=4..6"
-verdict = "rejected 2026-11-02: moving half*2 into a row+zero-half*2 print removes a statement only by relying on right association. Native right association is correct on 0110, but a native left-associating control prints f instead of 0 at row0; the shipped pure-product/plus-first chains pass that control. The association-safe doubled-denominator repair stores 2*power, divides the packed literal twice, materializes twice the quotient, then prints. It needs one MORE statement and duplicates the packed literal: n=7/8 source 128631→159862 (+24.280%) / 165085→221970 (+34.458%). n=3 statements 18352→20384, 254 tables grow and 2032 rows slow. All 3960 repaired native output/IO controls passed, but 1160 n=3 rows exceed the old workspace envelope (00110110,row0 uses 43 bits versus 37), so no unchanged-bound claim is possible. No production change."
+kind = "archive_ref"
 
 [ablations.inline_digit_cells]
-kind = "archive"
-saving = -26.168
-arity = 8
-seed = "random.Random(184700+n), sequential choice('01')"
-tables = "200 random per n=7,8; exhaustive all tables/rows n<=3; 20 random per n=4..6"
-verdict = "rejected 2026-11-02: removing digit48 while later qe et qe reads remain produces native division by zero (6/0) on 0110,row0. A valid one-cell repair stores 1 at digit49 (digit48 for complemented reads), defaults the other digit to 0, adds 1 to each lookup, and materializes later factors in scratch2 before the pure Horner product. It preserves normal/complemented read selection and the workspace bound, but n=7/8 source grows 128631→165431 (+28.609%) / 165085→208285 (+26.168%); all 200 tables per arity grow. n=3 statements 18352→20048, 254 tables grow and 1744 rows slow. All 3960 repaired native output/IO/workspace controls pass; raw missing-cell and wrong-answer controls fail as intended. No production change."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02

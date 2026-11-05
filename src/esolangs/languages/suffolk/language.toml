@@ -26,72 +26,34 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.dag_race]
-kind = "archive"
-saving = 83.2
-arity = 12
-verdict = "kept: suffolk returns the shorter of the countdown sweep and a shared-cofactor NOR DAG. Deleting the DAG route costs 61.1% on AND at n=10 rising to 83.2% at n=12 (61.0% / 83.1% on OR), and 0.0% on random tables: the DAG wins 0 of 200 random tables at each arity, ledger or not, so the race's entire value is its AND/OR class; plain-rewrite audit 2026-10-28, seed random.Random(1000n + k), 20 tables, every program run to n=9: 0.00% on random tables at n=7/8 (default and balanced area); and, or, nand, nor 29.9/37.1/48.1/61.1/73.4/83.1% at n=7..12 (balanced area 30.6/36.9/48.7/61.6/73.4/83.0%), growing; at-least-2 0% to n=11 and 71.4% at n=12; parity, majority, at-least-3 0% -- kept for the named family"
+kind = "archive_ref"
 
 [ablations.workspace_ledger]
-kind = "archive"
-saving = 0.0
-arity = 12
-verdict = "kept: proof machinery. The DAG is admitted only when its tape and pointer bits fit the cap max(19, 4n-1) + 3, the workspace bound the proof formulas certify. The gate binds where the DAG would pay outside AND/OR: parity is rejected (by 2 bits at n=12), shipping the sweep at 29,451 chars where the unledgered DAG is 4,565 (8,655 vs 3,429 at n=10); majority is rejected at both arities (19,592 vs 8,688 at n=12). 0.0% on random tables. Removing the ledger is a proof change, not a size optimization"
+kind = "archive_ref"
 
 [ablations.essential_projection]
-kind = "archive"
-saving = 54.4
-arity = 12
-verdict = "kept: canonical, exempt. Both routes build over the essential inputs only. 27.0% at n=10 rising to 31.0% at n=12 with one ignored input, 46.6% / 54.4% with two ignored inputs, and 0.0% on random tables and every all-essential class, where the projection is the identity"
+kind = "archive_ref"
 
 [ablations.constant_fold]
-kind = "archive"
-saving = 0.0
-arity = 12
-verdict = "kept: canonical, exempt, and load-bearing. A constant table takes a short drain-and-print branch (121-127 chars at n=10/12). Without the branch the general sweep faces a one-row reduced table with empty halves and indexes table[0] of an empty half: the ablated build fails on every constant table and is byte-identical everywhere else, so there is no alternative build to price against"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 42.8
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: canonical whole-constant folding. Read/clamp every input into cell zero, then reuse it to raise the ASCII answer and print. On the next pass the first EOF probe halts before another output. Exactly L=2n+51+b chars and L+1 commands; written bits 13+bl(L-1)+bl(n), b the answer. n=8 zero/one 117/119 -> 67/68 chars; n=12 125/127 -> 75/76. n=3 corpus 136808 -> 136707 chars. Sentinel remains unread after the first output; an input ending there halts on one EOF probe. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions verify exact resources and input/output framing."
+kind = "archive_ref"
 
 [ablations.inputs_first_20261102]
-kind = "archive"
-seed = 2026
-arity = 8
-saving = 20.6
-tables = "200 seed2026 generic tables each n=7,8; all tables/rows n<=3; sampled n=4..6; 20 tables each n=9..16"
-verdict = "kept declining source rule: compact input storage, RAW6 top bit, lower bits cells1..5 then8 onward. Generic public chars417582/597046 ->298382/474046 (28.55/20.60%); physical n<=10 uses this reader; n>=11 restores the original construction with mandatory repeated-record resets (+38 lookup chars, +40 commands), by user-requested genuine-loss cutoff above the fixed7/8 judge window. No per-table old-lookup min. Binary stores cancel prior values and counters reset before sweep, preserving repeated records. Public n1/2 totals507/4437 remain unchanged and no n<=3 table grows. Removing already-redundant rearming costs11 fewer chars. n3 public136707 ->121196 chars. Combined balanced7/8 area1021434 ->777871. Twenty-table extension peaks37.59% atn5, then declines34.64/28.44/20.55% atn6/7/8. Unbounded prototype gains decline12.21/4.86% atn9/10 and become losses0.64/4.27/6.46/7.71/8.43/8.81% atn11..16; no random DAG wins, so public curve matches lookup. Expected limiting growth17/184=9.24%: prefix delta17T/32+O(n^2), old random23T/4+O(n). Sample WrittenState maxima48/52 ->49/55 bits atn7/8; command totals over all fixed-corpus rows57316096/160574976 ->39498496/123966976. The unbounded prototype runtime becomes worse fromn12; production uses old construction plus correctness resets fromn11, with old workspace envelope. First-read prefix151 ->51 commands on all-essential sweeps; execution remains exactly L+R. For n<=10 the new at-most workspace pays six scratch bits, max(0,n-6) stored binary cells and pointer growth; n>=11 uses the old bound, preserving polynomial class and old n>=3 scope. Exact source-max proof retains all n4..14 arities: old worst formula plus closed-form prefix delta throughn10, plus38 reset chars fromn11; same DAG exclusions/witnesses."
+kind = "archive_ref"
 
 [ablations.reflected_cell1_20261102]
-kind = "archive"
-seed = 2026
-arity = 8
-saving = 15.08
-tables = "same fixed200 generic tables each n=7,8; exhaustive small and sampled4..6"
-verdict = "rejected: public chars417582/597046 ->338974/507041 (18.82/15.08%), below20 declining. Correct reflection reverses each half only; top steering stays unchanged. Whole-table reflection is a wrong-program control. Literal separate-storage raw1 also fails17.29/4.42% on first records and breaks repeated records until old storage is canceled; borrowing counters is essential to the admitted repaired rule."
+kind = "archive_ref"
 
 [ablations.variable_order_20261102]
-kind = "archive"
-seed = 2026
-arity = 8
-saving = 1.62
-tables = "same fixed200 generic tables each n=7,8; original, reverse, rotate-left-one, rotate-right-one essential orders"
-verdict = "rejected: four fixed named candidates417582/597046 ->411211/587384 (1.53/1.62%); bytes change on148/141 tables, so probe fires. All-n split search is inadmissible; no production search ships. Ordered input reads are preserved independently of table indexing. Native exhaustive/sampled corpus and wrong-reflection/missing-cancel controls distinguish correctness from byte savings."
+kind = "archive_ref"
 
 [ablations.cutoff_correctness_20261102]
-kind = "archive"
-seed = 2026
-arity = 11
-saving = 0.0
-tables = "n10/11/12, five generic and six projected tables each, balanced bytes and repeated records; original n11 seed2026 first table"
-verdict = "mandatory correctness repair in restored old construction: prior print accumulator prevents initial ! from setting countdown1, and three step counters retain previous answers. Add one0 after initial! and cancel/reset counters3/4/5 before sweep: +38 lookup chars and +40 executed commands. Old n11 records0/2047/682 print010 instead of011; repaired source prints011. Cutoff chooses by physical n, including projected tables; no source race. Constants and existing DAG programs unchanged; E remains exact L+R (R153 for full old-reader frames), W old bound fromn11."
+kind = "archive_ref"
 
 [ablations.proof_ceiling_review_20261103]
-kind = "archive"
-verdict = "reviewed: the workspace ceiling combines the old tape envelope with derived storage, scratch and pointer allowances; the NOR route retains its admission cap. These phase ceilings safely bound WrittenState but need not be jointly attained. Workspace stays polynomial in n; all resource arities and the at-most flag remain. No exact optimized maximum is claimed at n=3/5."
+kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30
@@ -105,12 +67,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = -1.2572
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: inline nonnegative clamp. 246 programs, 117 halt cleanly; no structural trace differences, control differs on 164. Step throughput at longest 10/20/40 workload breadths: -1.26%/-1.06%/-1.18%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [evidence]
 version = 1

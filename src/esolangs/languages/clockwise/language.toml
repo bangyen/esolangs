@@ -32,76 +32,34 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-27" }
 
 [ablations.essential_drop]
-kind = "archive"
-saving = 50.9
-arity = 10
-verdict = "kept: canonical, exempt from the bar; the projection onto essential inputs earns 47.6% of area on one-ignored tables at n=8 rising to 50.9% at n=10 (trailing 39.9% to 43.8%, two trailing 60.5% to 66.4%); 0.0% on random tables at n>=5, where the layout is a fixed stencil and every input is essential"
+kind = "archive_ref"
 
 [ablations.constant_ring]
-kind = "archive"
-saving = 99.9
-arity = 10
-verdict = "kept: canonical constant fold, exempt; a constant table's ring is 84 cells of area at n=10 against the lookup stencil's 74,900 (70 against 18,166 at n=8)"
+kind = "archive_ref"
 
 [ablations.coordinate_ring]
-kind = "archive"
-saving = 95.2
-arity = 10
-verdict = "kept: clears the bar on its class -- a one-essential table's ring is 85 cells of area at n=10 against an average 1,774 for the projected lookup build over the same input (94.6% at n=8), the share rising with arity. Re-priced 2026-10-28 (random + named bar): fires on none of 200 random tables per arity at n=7..12 and on none of parity, majority, and, or, threshold (all n essential), so 0.00% there. Canonical, exempt: the ignored-input drop at its extreme, the ring being the one-literal counterpart of the constant ring (essential_inputs leaves one input; its seven reads are the only coordinate, and the rest are read past it); the projected lookup over the same input is 1,774 cells at n=10 against the ring's 85"
+kind = "archive_ref"
 
 [ablations.trailing_rail]
-kind = "archive"
-saving = 0.0
-arity = 10
-verdict = "kept: not priced -- layout machinery. Trailing ignored inputs are read on the return rail after printing, the grid shifted down to separate the rail from the entry descent; both plain placements fail -- reads appended to the last head compute wrong functions (240 of 896 gated runs mismatch on trailing-ignored tables), and the unshifted left column is blocked by the corridor turn. The separation costs about 13% of area with one trailing input and 26% with two, against the (illegal) head-append box"
+kind = "archive_ref"
 
 [ablations.flat_band]
-kind = "archive"
-saving = 55.5
-arity = 8
-seed = "random.Random(184700 + n)"
-tables = 200
-verdict = "kept: the one-band lookup races the stacked one by area and wins every random table, 54.9% at n=7, 55.5% at n=8, 58.3% at n=10 -- the same on parity, and, or and majority, since a table's bits move no cell; it wins every two-or-more-essential table through n=3. The race is live: stacked wins on few essential inputs with many trailing ones, whose reads the band takes down a tall rail (62 of the probed projections; essential (0, 1) at n=9 is 1,848 cells against 2,120)"
+kind = "archive_ref"
 
 [ablations.table_rows]
-kind = "archive"
-saving = 16.7
-arity = 9
-seed = "random.Random(184700 + n)"
-tables = 20
-verdict = "kept: a four-row table (the one's `?` turns where the zero's `!` does, the return row's gaps `S` before a `?` and `+` before a `!`) drops the `S` row and the flat band from six rows to five; area 5(5T + 8n + 4) against 6(5T + 8n + 4), 16.67% on random tables at n=7, 8 and 9 (84,000 to 70,000, 161,760 to 134,800, 316,320 to 263,600 over 20 tables) and on parity, and, or, majority, threshold at every n=3..9 -- a fixed share, not falling with n. balance=True is 0.00% there: its banded strips keep the five-row table and win"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 0.0
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "retained: the existing read-first constant ring is already folded. Its straight command sequence has 7n reads, seven output bits, two parity changes and one accumulator clear (one extra parity change for answer one). Three turns and even two-column area give 2*ceil((7n+13+b)/2) cells; this is a bound for this straight rectangular-ring construction, not all Clockwise programs. n=7 zero/one 62/64 cells; n=8 70/70 cells and commands, 507 written bits; n=12 98/98 cells. Positive control: coordinate rings and all nonconstant rows in the paired corpus execute; the current constant path itself executes all rows through n=8. n=3 corpus unchanged at 81106 cells. Each language passed 5656 paired old/new row executions; 270 nonconstant programs through n=3 remain byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts; a separate 1120-run probe includes every row through n=8. All 24 balanced scores improve or match; all eight benchmark size/command pins remain unchanged."
+kind = "archive_ref"
 
 [ablations.gadgets_under_table_trick_20261102]
-kind = "archive"
-seed = 184700
-arity = 8
-saving = 0.0
-tables = "20 Random(184700+n+i).choices per n=7/8; all tables/rows n=2/3; ten samples and projections n=4..8"
-verdict = "rejected: an executable mirrored table below the gadget band needs a ninth home-return row. Emitted area totals70000/134800 ->80280/150840 at fixed7/8 (14.69/11.90% larger), with area9(3T+8n+6) against25T+40n+20, tending8% larger. Both lookup repairs execute7296 combined native rows with exact7n logical reads. The proposed stronger split-last-gadget shortcut is invalid as a simple midpoint R-pair: native G=8,v=5 returns9 instead of10. All254 baseline gadget inputs throughG=128 double exactly;120 midpoint variants fail. A complete offset-preserving split-gadget layout was not implemented; no claim that every folded layout fails. Existing generator, proof scopes, pins and examples remain unchanged."
+kind = "archive_ref"
 
 [ablations.last_input_branch_trick_20261102]
-kind = "archive"
-seed = 184700
-arity = 8
-saving = 0.0
-tables = "same fixed20 and small/sample corpus;36 cyclic-realignment native rows n=2/3/4/7/8"
-verdict = "rejected: two executable flat half-bands with a physical-first selector occupy14 rows and area35T+112n, not the proposed20T. Fixed7/8 emitted areas70000/134800 ->105280/197120 (50.40/46.23% larger); limit40% larger. Last-input-first additionally requires rotating7(n-1) queue bits: native corrected programs produce correct answers but execute7(2n-1) reads, violating the required7n rotation. Omitting realignment gives14 wrong rows among36 controls. The first-input flat-strip repair and below-band repair pass7296 native runs; all256 three-input tables give baseline area81106/E325248, folded124416/E380928, strips157696/E374784; each repair slows2048 rows. No execution admission or whole-old-program fallback."
+kind = "archive_ref"
 
 [ablations.two_groups_per_gadget_cell_trick_20261102]
-kind = "archive"
-seed = 0
-arity = 8
-saving = 0.0
-tables = "all254 accumulator inputs for groups2/4/8/16/32/64/128, native isolated gadget transitions"
-verdict = "rejected as specified: removing the second return-row plus to fit pitch2 changes doubling2v into v. The native pitch3 positive control doubles all254 values; pitch2 fails247 nonzero values. The suggested second traversal has no specified value-dependent return endpoint; a complete recovery-strip layout was not implemented, so neither its claimed fit inside five rows nor20% area saving is verified. The midpoint-turn control also fails120 values, demonstrating that uniform group spelling does not make an unconditional turn value-preserving. Eight complemented-table controls catch wrong output in complete folded programs. No broad impossibility claim and no unverified construction ships."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -114,20 +72,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 0.3443
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: four-way wrap bit mask. 449 programs, 149 halt cleanly; no structural trace differences, control differs on 449. Step throughput at longest 10/20/40 workload breadths: +0.34%/+0.82%/+0.56%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 0.6304
-workload = "complete run; parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
-verdict = "kept: four-way wrap bit mask; 5197 paired native traces, 2208 clean halts, zero differences; changed-site control detected on 5197. Complete-run wall savings 0.63–1.07%, including parsing and final I/O. Snapshot fields and grouping preserved."
+kind = "archive_ref"
 
 [evidence]
 version = 1

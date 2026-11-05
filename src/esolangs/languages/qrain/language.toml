@@ -25,20 +25,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
 
 [ablations.reverse_tree_round_two]
-kind = "archive"
-saving = 0.0
-arity = 8
-seed = "random.Random(2847+n)"
-tables = "all n<=3; 20 random plus named per n=4..8"
-verdict = "not shipped: reverse decision order after the unchanged input-order reader and permute the table accordingly, admitting candidates only within the existing command budget. Random n=7/8 saving 0/0%; OR 340 -> 320 and 403 -> 379 characters, below the size bar. n=3 totals 34277 -> 33079 characters and 163436 -> 157006 commands, a 3.93 percent command reduction with no slower tables, below the 5 percent execution gate. 7530 correct baseline/raced/raw output checks, exhaustive tables n<=3 and sampled n=4..8; 406 independently generated wrong-table controls rejected, 85 raced programs change"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 85.2
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: canonical whole constants. Keep the first input byte on queue zero and drain later bytes into queue one. Emit a literal bit from queue two, pop the first byte low bit, and print its fixed seven-bit tail. Exactly L=n+10-2b characters and commands. Written bits max(bl(L-4)+2,bl(L)+1)+8n+7-b-[n=1]+bl(n), b the answer: state, queue/index pairs, one pending output bit and input cursor. n=8 zero/one 114/116 -> 18/16 chars; n=12 158/160 -> 22/20. n=3 corpus 34277 -> 34181 chars. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources, every read before output and an unread following record. Existing tests expanded without adding cases."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-01
@@ -51,20 +41,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 7.8218
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: construct immutable named tuples through tuple.__new__. 245 programs, 167 halt cleanly; no structural trace differences, control differs on 180. Step throughput at longest 10/20/40 workload breadths: +8.61%/+8.40%/+7.82%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 6.121
-workload = "complete run; source parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: construct immutable named tuples through tuple.__new__. 5193 paired native traces, 2883 clean halts, no differences; changed-site mutant differs on 3197. Complete-run savings 6.12–8.24%, including source parsing and output. Only full positional records bypass the wrapper; keyword-defined defaults remain centralized. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+kind = "archive_ref"
 
 [evidence]
 version = 1

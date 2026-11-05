@@ -15,62 +15,28 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-11-01", n3_source_units = 12626, n3_commands = 22864, executed_rows = 9024 }
 
 [ablations.constant_fold]
-kind = "archive"
-saving = 24.4964361123
-arity = 12
-seed = "random.Random(1000*n+k), choice('01'), k=0..19"
-tables = 20
-n3_ablated_source_units = 17296
-n3_ablated_commands = 24208
-verdict = "kept: canonical. tests.ablations.ablate(table, 'constant_fold') disables only this fold, retaining ordered reads. Random savings at n=7/8/10/12: 23.83/24.61/24.57/24.50%; n=12 summed chars 567142 vs 751146. Both constants at n=12: 28 vs 40954 chars each."
+kind = "archive_ref"
 
 [ablations.ignored_input]
-kind = "archive"
-saving = 10.0904894165
-arity = 12
-seed = "random.Random(1000*n+k), choice('01'), k=0..19"
-tables = 20
-n3_ablated_source_units = 14184
-n3_ablated_commands = 23280
-verdict = "kept: canonical. tests.ablations.ablate(table, 'ignored_input') disables only this fold, retaining ordered reads. Random savings at n=7/8/10/12: 10.32/10.70/10.14/10.09%; n=12 summed chars 567142 vs 630792. Lifting 20 n-1 input tables at positions 0, n//2, n-1 gives savings 9.92-54.91/11.40-55.60/10.47-55.12/10.31-55.03% at n=7/8/10/12."
+kind = "archive_ref"
 
 [ablations.execution_corpus]
-kind = "archive"
-seed = "small exhaustive; random.Random(1000*n+k), choice('01')"
-tables = 291
-verdict = "All three builds execute every row of all 276 tables at n=1..3 and five random tables per n=4..6. Large random, lifted and constant builds execute one row each at n=7/8/10/12; 9024 total executed rows. Default helper emission equals production. The inverted >0 guard fails the identity table positive control. Eleven-build medians for random 1847 at n=7/8/10/12: 0.069/0.137/0.555/2.180 ms."
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 40.0
-seed = 0
-tables = "both constants, n=1..12"
-verdict = "kept: canonical constant folding, exempt. Enqueue the answer before reading; every r appends behind it and WH prints the untouched front only after all inputs. Nested leaves keep their drain skeleton. Chars n+4, commands n+3: n=7 18->11 (38.9%), n=8 20->12 (40.0%), n=12 28->16. n=8 commands 19->11; written workspace 13/14->19/20 bits because the binary input trits remain queued, within the unchanged 2n+bl(L)+32 cap. Both guard readings execute both answers and all layouts; raw queue inspection verifies answer then inputs, exact reads and following record. n=3 corpus chars 12632->12626 and executed aggregate commands 22912->22864. 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Extend existing collected cases only."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_parity_leaf_pair]
-kind = "archive"
-arity = 8
-saving = 10.0234925607
-verdict = "kept only full-input parity and its complement. A final pair uses r->1+c>0+dWH: both guards own one complete + operand, so opcode and recursive bindings agree. Each of T/2 pairs saves2 chars; actual source10T-6 ->9T-6. Thus saving T/(10T-6) is strictly above10% for EVERY positive arity, with no cap: sustained by an exact all-arity floor, not an asymptotic-limit exemption. n7 1274->1146 (10.0471%), n8 2554->2298 (10.0235%); the tiny decrease is fixed overhead, never a loss of the10% saving. Both members of the entire named class execute every verdict row, so this is not a random near-bar estimate needing invented duplicate tables. Emitted identities and boundary rows agree through12. 20128 paired old/live native runs cover all tables/rows through3,16 seeded plus both parities per4..8 (all rows through6, all parity rows through8);350 non-parity controls byte-identical,16 changed tables. Every print follows n reads and preserves a sentinel;16 whitespace-framed runs also pass. The unchanged frozen model SHA6ee4fcebb061e7d40a8caf4470eef3a9e7c86daf0406dc6b9709235766ec71d3 agrees in output, queue, flag and steps;1092 recursive guard chains pass, and the known opcode/recursive divergence fires as a positive control. Runtime adds one command per parity row: exact3n+4, update the global cap; workspace expression unchanged. n3 chars12626->12610,commands22864->22880. Constants, ignored-input folds and all other functions remain unchanged; no generic fallback race or interpreter change."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_ungrouped_pair_generic]
-kind = "archive"
-arity = 8
-saving = 8.5128480207
-verdict = "rejected generic extension. Complete opposite-constant pairs above the final level must still read their remaining inputs: enqueue the chosen answer, append those inputs behind it, then WH. The undrained sketch on table0011,input00 reads only1 of2 inputs. Corrected programs execute all small rows and sampled/named larger rows under both bindings, agree with the frozen model and preserve the sentinel, but200 seeded tables Random(1000*n+k),choice01 give n7 chars175838->160994 (8.44%),n8 350482->320646 (8.51%), below10. Every threshold at7/8 executes all rows; majority778->738 /1422->1352,AND/OR116->114 /140->138, all below the bar. Do not extend the named parity admission to scattered local pairs. Reject on measured saving, not a blanket claim that ungrouped guards are unsafe."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_bulk_read_prefix]
-kind = "archive"
-arity = 8
-saving = 13.229771253
-verdict = "rejected for stream correctness even though source saves13.01%/13.23% on20 seeded tables. Front-load R and replace each r- by-; adapt root constants to+answerRWH. Canonical EOF-only Boolean runs compute their bits, but R consumes following records. Under BOTH bindings, identity table01 on input02 prints# instead of space and consumes2 trits for a one-input row; unchanged baseline prints space and leaves2 unread. A root constant still prints its answer but also consumes the following2. Folded table0011,input002 likewise prints# instead of space. No EOF/bulk-read exception to the all-inputs-and-only-this-record convention."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_drop_fold_drain]
-kind = "archive"
-arity = 8
-saving = 7.1355411403
-verdict = "rejected: deleting remaining r- pairs can keep the Boolean result while violating consumption. Under both bindings, table0011,input002 prints space after consuming only the first0; baseline consumes both row inputs and leaves2. Positive baseline controls check the read count and following record, not only output. Default root constants are intentionally left on their existing read-first fast path. Twenty-table source17788->16594 /35148->32640 (6.71%/7.14%) also misses the size bar. No weakening of ordered/all-input reads."
+kind = "archive_ref"
 
 [generator_sizes]
 "00000001" = { commands = 12, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 11, "5" = 11, "6" = 12, "7" = 12 }, source_units = 40 }
@@ -92,42 +58,16 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.blind_reimplementation]
-kind = "archive"
-wiki_revision = 156166
-reference_sha256 = "6ee4fcebb061e7d40a8caf4470eef3a9e7c86daf0406dc6b9709235766ec71d3"
-seed = "all tables n=1..3; witnesses(n) and five random tables at n=4..10, random.Random(1000*n+1847)"
-tables = 353
-executed_rows = 11296
-widths = "default/1/8/80 at n<=3; default/8 at n=4..10"
-positive_control_rows_rejected = 2
-verdict = "Fresh spec-only subagent; no production or test exposure. Models frozen before comparison; all generated rows halt and match. All rows n<=6, rows 0/1/T//3/T-1 above that. Generated programs agree without patching the frozen model. It consumes exactly n trits per row. Seven native-command probes agree. Off-corpus assumptions differ: whitespace input, empty source, nested ungrouped guard extent and guard-target wrapping. These are unresolved spec gaps; the generator uses grouped guards and raw 0/1 inputs."
+kind = "archive_ref"
 
 [interpreter_ablations.guard_binding]
-kind = "archive"
-audited = "2026-11-01"
-wiki_revision = 156166
-seed = "all tables n=1..3; witnesses(n) plus five random.Random(1000*n+1847) tables per n=4..10"
-tables = 353
-executed_rows = 22592
-recursive_chain_programs = 1092
-reference_sha256 = "6ee4fcebb061e7d40a8caf4470eef3a9e7c86daf0406dc6b9709235766ec71d3"
-verdict = "All generated rows halt under opcode and recursive bindings with identical source, output, snapshots and command counts; 11296 rows each, every row through n=6 and rows 0/1/T//3/T-1 above. Widths default/1/8/80 through n=3, default/8 above. All 1092 chains (0..5 guards, trits 0/1/2, all flag values) match the frozen recursive model. The setting fences interpretation, not author intent: 13 revisions, missing Talk:NQ and an unlinked author profile supply no resolution. Fix wrapped opcode skip entering an initial group: >0(+2)W>1 now retains one queued trit across wraps. The default 5193-program trace corpus (2763 clean halts) is unchanged; an inverted guard differs on 2200. Generator diff: 632 byte-identical programs, wrong-answer control differs on all 632. Bounds, eight size/command pins and the Size anchor remain exact for both settings. CLI run and generate/run workflows pass."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 13.0964
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: construct immutable named tuples through tuple.__new__. 245 programs, 162 halt cleanly; no structural trace differences, control differs on 218. Step throughput at longest 10/20/40 workload breadths: +15.66%/+14.07%/+13.10%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 9.769
-workload = "complete run; source parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: construct immutable named tuples through tuple.__new__. 5193 paired native traces, 2763 clean halts, no differences; changed-site mutant differs on 4254. Complete-run savings 9.77–13.44%, including source parsing and output. 1 non-default semantic profiles also match native traces with detected controls. Only full positional records bypass the wrapper; keyword-defined defaults remain centralized. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+kind = "archive_ref"
 
 [evidence]
 version = 1

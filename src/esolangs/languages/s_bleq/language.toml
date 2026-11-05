@@ -26,106 +26,49 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-20" }
 
 [ablations.packed_decoder]
-kind = "archive"
-saving = 137.42
-arity = 12
-verdict = "kept: the packed contestant in the generator's race. Deleting it (tree for every table) costs +19.65% at n=10 and +137.42% at n=12 on random tables (second seed set +19.76 / +137.36%), +75.32% on one-ignored and +55.95% on half-constant tables at n=12. It wins every random race at n=10/12 and none at n<=8, where the tree wins all 200. Plain-rewrite re-measure 2026-10-27 (seeded random, tables run): deleting it costs +19.66% at n=10 (10 tables), +72.83% at n=11 and +137.68% at n=12 (6 tables); 0.00% at n=3..9"
+kind = "archive_ref"
 
 [ablations.shared_tree]
-kind = "archive"
-saving = 738.21
-arity = 12
-verdict = "kept: the tree contestant, and the only build at or below 16 rows. Deleting it (packed for every table) costs +281.02% at n=6 and +90.68% at n=8 on random tables, and at n=12 +738.21% on parity, +1,385.06% on OR, +367.59% on majority; on random tables at n=10/12 the packed build ships instead, so the deletion cost there is 0.00%. Plain-rewrite re-measure: deleting it costs +724.36 / +561.34 / +417.89% at n=3/4/5 and +28.50% at n=9 (10 tables); +738.2% on parity, +1,385.1% on OR, +367.6% on majority at n=12; 0.00% on random tables at n>=10"
+kind = "archive_ref"
 
 [ablations.constant_path]
-kind = "archive"
-saving = 132.61
-arity = 12
-verdict = "kept: canonical, exempt. A constant table takes _sbleq_constant (3n + 3 cells: read every input, print the literal) instead of the tree; routing constants through the tree costs +183.33% at n=4 down to +132.61% at n=12 on constant tables"
+kind = "archive_ref"
 
 [ablations.subtree_sharing]
-kind = "archive"
-saving = 16.41
-arity = 12
-verdict = "kept: canonical, exempt. Inside the tree build (subtree_ids / subtree_slot in the shared branch decoder): a repeated subtree is jumped to, not repeated. Removing sharing from the tree costs +16.41% on AND and +60.37% on OR at n=12 (the unshared tree still wins those races), +57.38% on random tables at n=4 where no race intervenes, and +486.42% on parity at n=6; on most other classes the unshared tree grows past the packed build and the race caps the routed price at the packed alternative"
+kind = "archive_ref"
 
 [ablations.equal_halves_skip]
-kind = "archive"
-saving = 4.49
-arity = 8
-verdict = "kept: canonical, exempt. Inside the tree build: subtree_slot passes over a test whose halves agree. Removing the skip costs +4.62% at n=6 and +4.49% at n=8 on random tables (the arities where the tree ships on random tables), +28.39 / +18.46% on three-ignored tables at n=6/8 and +5.00% at n=12, where the tree still ships on that class"
+kind = "archive_ref"
 
 [ablations.input_projection]
-kind = "archive"
-saving = 29.61
-arity = 12
-verdict = "kept: canonical, exempt. Inside the packed build: an ignored input is read into a scratch cell and never joins the index, and the table is packed over the essential inputs only. Removing projection costs +29.61% on one-ignored and +18.12% on two-ignored tables at n=12 (the classes where the packed build ships); it is 0.00% wherever every input is essential"
+kind = "archive_ref"
 
 [ablations.target_cell_sharing]
-kind = "archive"
-saving = 20.2
-arity = 8
-verdict = "kept: bespoke, passes the bar. Inside the tree build, branches and jumps to one copy share one target cell; the plain build gives each its own. Removing the sharing costs +25.29% at n=8 and +27.77% at n=9 on 200 random tables each (a 20.2 / 21.7% saving of the plain build; +19.82% at n=7, +15.37% at n=6, +10.17% at n=5, +6.51% at n=4, +3.10% at n=3 exhaustive), still growing at n=9, the last arity where the tree ships on random tables; parity +7.4 / +8.0% (n=8/9), AND +6.0 / +6.3%, OR +8.8 / +12.6%, majority +14.6 / +15.5%. No table at n<=5 grows; every changed program ran on all rows to n=8, sampled above"
+kind = "archive_ref"
 
 [ablations.tree_rows_threshold]
-kind = "archive"
-saving = 0.0
-arity = 4
-verdict = "recorded: the 16-row cutoff below which the packed build is not tried costs nothing measurable. At 16 rows the packed build loses to the tree by at least 1,099 chars on every one of 400 seeded random tables (deleting the tree there costs +569.31%), and the tree still wins all 200 random races at 32 rows. Plain-rewrite re-measure: trying the packed build at every size changes no program at n=2 (16 tables), n=3 (all 256), n=4 and n=5 (200 random each), nor at n=6..12 on the sampled tables; 0.00%"
+kind = "archive_ref"
 
 [ablations.tree_bound_skip]
-kind = "archive"
-saving = 0.0
-arity = 26
-verdict = "recorded: where the proved bound _tree_min_chars exceeds the packed text's length, the generator returns the packed build directly, skipping the tree build. Size-neutral — the bound charges the tree's emission cell by cell, so past it the tree cannot win the race, and a corpus differential of 66,197 dumped programs against the unskipped build is byte-identical. The skip only saves build cost: on the worst-case witness, generation at n=25 falls from 29.9 s at a 2.95 GB peak to 16.3 s at 1.69 GB, and at n=26 from 86.7 s at 5.81 GB to 55.1 s at 3.35 GB. Plain-rewrite re-measure: with the skip off, 0 of the 10 to 200 tables per arity at n=3..12 change (byte-identical)"
+kind = "archive_ref"
 
 [ablations.reverse_shared_tree_prototype]
-kind = "archive"
-saving = 1.827
-arity = 8
-seed = "random.Random(1847+n)"
-tables = "all tables n=1..3; 20 random plus and/or/parity/majority/threshold-third per n=4..12"
-verdict = "near miss, not shipped: offer the shared tree in reversed test order with both existing branch polarities; permute the truth table, preserve stream read order, and race against the shipped build. Random n=7/8: 14,625 -> 14,458 / 23,809 -> 23,374 chars (1.14% / 1.83%); n=9 1.27%, n=10..12 unchanged. and/or/parity/majority/threshold-third unchanged through n=12. Positive control: 102 corpus programs change. Exhaustive n=3 source 38,332 -> 37,712 chars; commands 17,186 -> 17,056 (0.756%), with eight tables slower. 5,110 baseline/candidate output checks correct, exhaustive n<=3 and boundary rows of random/named tables through n=8 plus named through n=12; 2,555 complemented controls rejected. Neither shipping bar passes. Prototype stays in ignored notes; generator, bounds and pins unchanged"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 1.6
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: minimal fixed-output spelling, exempt from the percentage gate. At n>=3 put the ASCII answer in the first read instruction third cell and print from address 2, shortening the output address by one digit at n=3..12. Every read subtracts cell 0 (-2) from the ASCII bit at the discarded input destination, so its positive result never uses the third-cell branch address. n=1..2 keep their equal-length spelling and balanced layouts. The direct Subleq helper stays byte-identical at n=1..100. L=7n+7 chars, E=n+1, W=bl(3n+3)+bl(n) written bits. n=7 57 -> 56 chars; n=8 64 -> 63, commands/workspace stay 9/9; n=12 92 -> 91. n=3 corpus 38332 -> 38330 chars. A separate 1120-run native probe covers every row through n=8. Each language passed 5656 paired old/new row executions; 270 nonconstant default programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language match or improve; all 26 benchmark size/command pins across the batch remain unchanged. Owned regressions check reads before output, no EOF probes and a preserved following record, without adding collected cases."
+kind = "archive_ref"
 
 [ablations.compact_tree_data]
-kind = "archive"
-arity = 8
-saving = 2.207
-seed = "Random(1000*n+i)"
-tables = "200 random per n=7/8; exhaustive all tables/rows n<=3; random/named sampled n=4..8"
-verdict = "kept: canonical minimal spelling. Replace the nine-cell bootstrap with one entry instruction and its target; halt through the immutable -49 literal, remove unreferenced data, and relocate addresses while preserving data order and contiguous code. No ranking state or extra contestant. Fixed200 source n7/8 147737→142316 /237637→232392 chars (3.669/2.207%). Existing global polarities may choose differently: n3 exhaustive public source38330→32524, commands17186→17174; this is not an execution qualification. All9040 prototype/control native checks pass, followed by2306 whole-generator checks plus width1/balanced controls; reads precede output, sentinel remains unread, complemented answers are rejected. E=3n+2 scopes/exactness and original source/workspace upper envelopes remain; the tree-skip lower bound now charges one-digit operands and13 chars per leaf pair. All8 source pins shrink; last-row and per-row commands unchanged. O(P) compaction state is necessary to remove inert cells and relocate indirect targets; shared decoder and packed path unchanged."
+kind = "archive_ref"
 
 [ablations.hot_cells_low_addresses_prototype]
-kind = "archive"
-arity = 8
-saving = 6.752
-seed = "Random(1000*n+i)"
-tables = "200 random per n=7/8; and/or/parity/majority separately; native corpus above"
-verdict = "rejected: ranking data by operand frequency after canonical compaction saves142316→132905 /232392→216701 chars (6.613/6.752%). Raw premise was partly false: baseline already places data before code, with shared target cells. Named n7/8 savings at most4.15%; no qualifying independent path."
+kind = "archive_ref"
 
 [ablations.per_node_polarity_prototype]
-kind = "archive"
-arity = 8
-saving = 0.438
-seed = "Random(1000*n+i)"
-tables = "200 random per n=7/8; and/or/parity/majority separately; native corpus above"
-verdict = "rejected: one fixed DFS rule falls through to an unplaced child of highest DAG reuse, paying flipped constants only at used levels. Marginal after canonical compaction142316→142052 /232392→231375 chars (0.186/0.438%). Majority7.34/7.77%, other named families<=0.87% or grow. No new polarity constructor retained."
+kind = "archive_ref"
 
 [ablations.sifted_variable_order_prototype]
-kind = "archive"
-arity = 8
-saving = 2.765
-seed = "Random(1000*n+i)"
-tables = "200 random per n=7/8; named families separately; native corpus above"
-verdict = "rejected: supplied multi-position sifting is search, not a loop-less construction. One fixed reverse-order control preserves physical reads and computes all native rows checked, but marginal source142316→137985 /232392→225966 chars (3.043/2.765%) misses the fixed window; named gains<=0.31%. No whole-program fallback race or favorable arity cap. Earlier reverse record remains historical baseline evidence."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -139,20 +82,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 5.8779
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: select write destinations without a dictionary. 245 programs, 161 halt cleanly; no structural trace differences, control differs on 183. Step throughput at longest 10/20/40 workload breadths: +5.88%/+6.14%/+6.39%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 2.5858
-workload = "complete run; source parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: select write destinations without a dictionary. 5193 paired native traces, 2783 clean halts, no differences; changed-site mutant differs on 3053. Complete-run savings 2.59–3.66%, including source parsing and output. 5 non-default semantic profiles also match native traces with detected controls. All three destinations and indirect reads remain covered; unknown store strings still raise KeyError. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+kind = "archive_ref"
 
 [evidence]
 version = 1

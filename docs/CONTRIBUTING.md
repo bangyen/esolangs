@@ -111,8 +111,9 @@ section and skip absent files or sections.
 
 Generator audits use `kind = "measurement"` for a first witness or `"replay"`
 for a pinned baseline comparison. Declare rows, seed, units, scale and budget;
-retirements also measure balanced output. Historical `"archive"` payloads retain
-their original context and revision.
+retirements also measure balanced output. Historical `"archive_ref"` records
+load unchanged payloads from their group's pinned `archive_revision`; context
+and source citations remain checked.
 
 `Language` records names, interpreter, source shape, optional generator and
 typed I/O contract. `resolve` normalizes names; `RUNNERS` selects whole-source

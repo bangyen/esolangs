@@ -10,12 +10,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 0.4229
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: constant transition tuples. 103 programs, 103 halt cleanly; no structural trace differences, control differs on 103. Step throughput at longest 10/20/40 workload breadths: +0.42%/+0.58%/+0.46%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [semantic_evidence]
 version = 1

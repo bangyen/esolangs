@@ -28,52 +28,25 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-30" }
 
 [ablations.leave_garbage]
-kind = "archive"
-saving = 53.2
-arity = 8
-verdict = "kept: nothing is dropped and each piece pushes what it uses (loops test only the top), so a read is 9 commands not 25 (byte mod 2 off a 2 under the selector), a read-and-ignore 4, -1 8 not 15, a zero leaf 8 not 17; 53.2% on 100 seeded random tables at n=7 and n=8 (seed 7), 48.3% parity, 68.8% and, 67.1% or, 55.4% majority, 56.6% threshold-3 at n=8; the cost is a stack that grows linearly (workspace 2n + 31 -> 32n + bl(L) + bl(n) + 13 bits); every row of every table at n<=3, a stride of n=4 and the named functions and random tables to n=8 run and print their table"
+kind = "archive_ref"
 
 [ablations.shipped_cost_audit_20261101]
-kind = "archive"
-arity = 8
-seed = "random.Random(6100+n)"
-tables = "2 random plus parity/majority/and/or per n=3,5,7,8"
-baseline = "874f000d7^"
-verdict = "measured with the interpreter/helpers at 567f2cb18. At n=8: characters 60711 -> 28627, sampled commands 6305 -> 2810, largest sampled written-state peak 44 -> 286 bits. Sum of seven-repeat cold generation medians: 806250 -> 724375 ns. All rows at n=3; rows 0,floor(T/3),T-1 otherwise. 204 correct executions, 24 wrong-table controls. Peaks and timings describe this corpus. Retained stack garbage buys the smaller, faster program. Current resource bounds pass where their stated domains apply"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 7.4
-seed = 0
-tables = "both constants, n=1..12"
-verdict = "kept: canonical constant folding and minimal spelling, exempt. Root constants reuse 2,0,1,1 beneath the final input byte instead of building another selector. Zero uses !!!~,; one uses !!~!~,. Nested leaves unchanged. Chars and commands 4n+5/6: n=7 36/37->33/34 (8.2%), n=8 40/41->37/38 (7.4%), n=12 56/57->53/54. n=8 written workspace 104/108->98/98 bits; native bound 11n+bl(4n+5+b)+bl(n). n=3 corpus chars 44743->44737. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute in default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged, global resource caps unchanged. Owned read-first checks preserve exact input count and following byte."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261101_final_bit_leaf]
-kind = "archive"
-arity = 8
-saving = 22.358354
-verdict = "kept: only opposite bottom leaves print the final input bit (17 chars) or its complement (23); the attachment's wider constant-half shortcut prints before ignored inputs and is rejected by a read-first positive control. On 100 random tables per n=7,8, one Random(7) stream, characters 323900->250592 (22.63%) and 647087->502409 (22.36%); no table grows. All rows, 76800 paired old/new executions. All tables/rows n<=3 pass; n=3 total 44737->33019 chars. Named functions, complements, ignored suffixes and random controls n=4..8 execute with wrong-table controls. n=4 parity 586->370 chars. Source <=39T and workspace <=32n+bl(L)+bl(n)+13 stay valid. Execution worst tightens 26n+9->26n-3: the inverted bottom pair takes 23 commands, each enclosing one arm adds at most 26; all-ones except the final zero reaches it. Root constants unchanged. Owned regressions enforce reads before output and preserve the following byte."
+kind = "archive_ref"
 
 [ablations.garbage_guard_20261103]
-kind = "archive"
-arity = 8
-saving = 17.039
-seed = "Random(1000*n+i), i=0..19"
-tables = "20 generic per n7/8, every row; all276 tables/2120 rows n<=3; 20 samples/all rows n4..6"
-verdict = "kept, completing raw2: ASCII48/49 leaves quotient24 under the bit; one arm appends a fresh zero pair, then pop exposes0 or24 for the zero guard. Fixedchars50517->41989 /101133->83901 (16.881/17.039% sustained), balanced grid_area50855->42330 /101595->84352. Expected random limit17.0584878883%: exact scalar source/general-node recurrences, not a fitted wall; equality probabilities from h11 at most2^-1024, induced limit error below2^-1000. n3 chars33019->28123, commands117008->94544 (19.2%), no larger table or slower row. Native allsmall plus23040 old/raw2/joint rows at7/8 and samples4..6 pass, with read-before-print/sentinel and EOF controls. Wrong pop/guard loses2 control rows. Adds one quotient-guard spelling, removes superseded minus-one/add-one helpers. E worst18n+5, attained by last-row-zero table on all-one input at every n; old scopes1/2/3/6 retained;5 also checked. W at most34n+bl(L)+bl(n)+13: READ retains25bits, old one-tail retains7, new tail9 including the negative sign. New tail transient10bits is below old15; +2 per completed level proves the bound from the old envelope. Native n16 uses553bits above oldcap540, newcap572. Same polynomial class; source39T remains an upper bound. No old-program race/search/frozen table."
+kind = "archive_ref"
 
 [ablations.exit_elision_20261103]
-kind = "archive"
-arity = 8
-saving = 4.827
-seed = "same fixed20 corpus as garbage_guard_20261103"
-tables = "allsmall; generic20 at7/8; five native full-row tables atn2/3/4/6/8 with exact-zero probes"
-verdict = "kept only as canonical known-zero reset removal, completing raw3; not admitted by joint percentage. After raw2 chars41989->40000 /83901->79851 (4.737/4.827%); balanced area42330->40304 /84352->80267. n3 marginal commands94544->91628 (3.084%), below5%; standalone source3.937/4.005% and n3commands117008->114092 also fail ordinary admission. A zero literal ends EXACT0; a general node ends0; ignored-prefix folding inherits its child exit. Final-bit pairs and one literals remain unknown and keep reset. Every fragment appends above its entry stack; parent11*~* creates fresh operands and never observes the removed reset's six garbage bits. Thus replacing an alreadyzero guard reset by nothing is canonical redundant spelling.4518 native omitted-reset visits all expose exact0. One compile-time zero-exit bool is necessary; no new runtime path/state or old-min fallback. Optional entry-one leaf reuse has no unprefixed literal sites after the existing final-bit leaf; fragment controls print1 from top1 but24 from the new zero guard, so it is not applied blindly. WorstE18n+5 and W34n envelope remain."
+kind = "archive_ref"
 
 [ablations.linear_emission_20261103]
-kind = "archive"
-verdict = "required construction repair: replace cached full emitted strings (Theta(Tn) copies) by subtree IDs for constant/equal-half tests, cached zero-exit booleans and one append/join emission pass. IDs and the boolean cache are the necessary compile-time state; superseded string cache and duplicate constant-prefix table disappear. Each node emits once, constant-span skip lengths sum O(T), hence source and build O(T). Byte-identical to the raw2+canonical-elision prototype on376 tables: exhaustive n<=3 and20 each n4..8; native controls retain all old rows. No production search, ranking race or frozen expression library."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-03
@@ -87,12 +60,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = -0.0403
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: index operands without slice. 245 programs, 147 halt cleanly; no structural trace differences, control differs on 121. Step throughput at longest 10/20/40 workload breadths: -0.04%/+1.80%/+0.41%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [evidence]
 version = 1

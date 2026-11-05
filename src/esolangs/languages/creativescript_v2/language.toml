@@ -18,20 +18,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
 
 [ablations.complement_literal_round_two]
-kind = "archive"
-saving = 0.0
-arity = 8
-seed = "random.Random(2847+n)"
-tables = "all n<=3; 200 random plus named per n=4..8"
-verdict = "Store the complemented table integer, then subtract the selected bit from one before output; race against the original. Random n=7/8 saving 0.00%/0.00%; OR 4.50%/9.68%. The n=7 result fails the size bar; no arity cap is justified. A literal polarity change does not remove the per-input arithmetic. Not shipped. 15540 correct baseline/raced/raw output checks, exhaustive tables n<=3 and sampled rows of 200 random plus parity/majority/and/or per n=4..8; 1296 independently generated complemented-program controls rejected. 3 raced programs change."
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 14.3
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: canonical fixed-output spelling, exempt from the percentage gate. Read every input into the scratch variable, then say! the literal bit rather than allocating a separate answer variable and printing it. L=6n+6 chars, E=n+1 commands, W=1+bl(n+1)+bl(2n-1) written bits. n=7 57 -> 48 chars; n=8 63 -> 54 chars, 10 -> 9 commands, 10 -> 9 written bits; n=12 87 -> 78 chars. n=3 corpus 61105 -> 61087 chars. Each language passed 5656 paired old/new row executions; all 270 nonconstant default programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. A separate 1120-run native probe per language covers every row through n=8. All 24 balanced scores per language match or improve; all 24 benchmark size/command pins across the batch remain unchanged. Owned regressions check exact resources, every read before output, no EOF probes and a preserved following record. No new collected cases."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-01
@@ -54,12 +44,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = -0.3647
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: hoist literal regex compilation. 248 programs, 147 halt cleanly; no structural trace differences, control differs on 248. Step throughput at longest 10/20/40 workload breadths: -0.36%/+0.42%/+0.02%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [evidence]
 version = 1

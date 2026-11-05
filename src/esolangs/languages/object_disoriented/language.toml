@@ -26,49 +26,25 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.subtree_sharing]
-kind = "archive"
-saving = 302.6
-arity = 12
-verdict = "kept: canonical, exempt. A branch written as an object at least twice becomes a class written once, named by an estimated cost model. Deleting it (the plain build) costs +138.4% at n=8, +217.4% at n=10 and +302.6% at n=12 on random tables; at n=12, parity +16,251.7%, half-constant +7,689.3%, majority +3,725.1%, sparse +314.5%, dense +302.2%; 0.00% on AND, OR and constant tables, where the shipped build names nothing"
+kind = "archive_ref"
 
 [ablations.halves_agree_skip]
-kind = "archive"
-saving = -0.4
-arity = 12
-verdict = "removed 2026-10-20 (retirement candidate #28): a node whose halves agreed dropped its bit untested and inlined the one child. Forcing the branch makes programs smaller on random tables: -0.66% at n=10 and -0.42% at n=12 (second seed set -0.59 / -0.41), -0.62 / -0.83 / -0.97% on the ignored classes at n=12; exactly 0.00% on parity, AND, OR, majority, half-constant and constant tables. The skip pasted the child into the parent's text, so that use did not count toward the class-naming threshold in _shared_names; both halves are now emitted as objects, so a repeated child is written once and fetched twice"
-retirement = { verb = "removed", date = 2026-10-20 }
+kind = "archive_ref"
 
 [ablations.constant_fold]
-kind = "archive"
-saving = 0.0
-arity = 12
-verdict = "recorded: not a separable mechanism. A constant subtable's leaf spelling (read the remaining bytes, print the bit) is exactly the per-level descent summed (measured 2026-10-19, against the then-shipped skip), so removing the leaf case alone changed no length on any corpus (0.00% everywhere). It bites only jointly: the plain build (sharing, skip and fold removed) costs +480.5% at n=12 on random tables"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 24.6
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: canonical whole-constant folding. Save the third MSB-first bit of the first ASCII digit in t: it is one for both legal input bytes. Drain all remaining bits, then print 0011000b using z and t. No helper class or conditional call remains. Exactly 8n+28 chars and 16n+28 commands; written bits 48+2bl(n), including pending input/output bits and caller frames. n=8 zero/one 121/123 -> 92/92 chars; n=12 153/155 -> 124/124. n=3 corpus 57872 -> 57812 chars. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources and every embedded slot or stream read; stream output follows all reads and leaves a sentinel unread."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261101_read_branch_class]
-kind = "archive"
-arity = 8
-saving = 29.223
-verdict = "kept: class B reads the bit, writes its negation through the caller a place, and returns the bit. A seven-character call replaces the 18-character read/negation prefix; B is excluded from shared names and absent from whole constants. 200 Random(184700+n) tables per n=7,8: reader-only chars 339509->246358 (27.44%) and 560419->396648 (29.22%); no judged table grows. Combined compact spelling gives 215734/345556 (36.46%/38.34%). Larger reader-only probes reach 31.39% n=10, 31.99% n=17, then 31.87% n=18; combined 40.86%/40.75% at n=17/18. Twenty tables per n=9..12, five per n=13..16, two per n=17/18; every emitted program runs four rows through n=16, both endpoint rows thereafter. The conservative 20% bar holds at both fixed judge arities and both final diagnostic arities. First-input projections grow eight chars (16n+80->16n+88); no scattered old-code fallback. Every small table/row and 16 named/random tables per n=4..6 pass 7824 paired runs plus 324 wrong-table controls, including native resource caps. n=3 total 57812->48562 combined. Worst execution 67n+34->76n+34: B adds nine ops per tested level. There is at most one additional live B frame (2n+4 total) and one B object per active branch; include its code/zero members in M and one long frame in H. Six cells per zero-arm level and transient calls still fit 6n+9 cells. Reprice sharing, native exact D and source cap min(24T+56,S). Verification reconstructs the extremal profile so the exact bound is attained; no searched table enters the generator."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261101_strip_separator_spaces]
-kind = "archive"
-arity = 8
-saving = 9.0811
-verdict = "kept: minimal spelling, exempt. Remove ignored separators and reprice the canonical sharing model (plain-node cost 32, definition overhead six). Alone saves 8.96%/9.08% on the same n=7/8 corpus, no growth; combined with B uses plain-node cost 21. Retain one final space: fully compact multi-dot class source can otherwise be mistaken for a file path by the API. n=8 parity 640->439, n=10 majority 1417->999, AND 789->671. Whole constants unchanged. Owned nonconstant IO checks preserve read-first output and a following token."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261101_undrained_leaves]
-kind = "archive"
-arity = 8
-saving = 0.0
-verdict = "rejected: suppressing constant-leaf input drains prints table 0011 after one read instead of two. A read-first positive control rejects the mutant while the shipped program reads both and preserves its following byte. No input-consumption weakening or cross-depth merge based on unread inputs."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-01
@@ -81,20 +57,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 6.4316
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: construct immutable named tuples through tuple.__new__. 245 programs, 145 halt cleanly; no structural trace differences, control differs on 145. Step throughput at longest 10/20/40 workload breadths: +7.02%/+7.30%/+6.43%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 3.3289
-workload = "complete run; source parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: construct immutable named tuples through tuple.__new__. 5193 paired native traces, 2193 clean halts, no differences; changed-site mutant differs on 2193. Complete-run savings 3.33–6.56%, including source parsing and output. Only full positional records bypass the wrapper; keyword-defined defaults remain centralized. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+kind = "archive_ref"
 
 [evidence]
 version = 1

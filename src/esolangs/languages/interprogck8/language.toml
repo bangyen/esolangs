@@ -36,50 +36,25 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-22" }
 
 [ablations.equal_halves_convergence]
-kind = "archive"
-saving = 32.6
-arity = 12
-verdict = "kept: canonical, exempt. A read whose halves agree is one read line over its single child, not a read over two copies: 32.6% off random tables at n=12 and 32.5% at n=8 (20 tables each, seed 1847 + n), 97.6% on AND and 99.7% on zeros at n=10, exactly 0.0% on parity, whose halves are complements. The fold is also how this generator absorbs ignored inputs and constants: there is no essential-input projection. Sizes only; the unfolded layout was not run"
+kind = "archive_ref"
 
 [ablations.column_search]
-kind = "archive"
-saving = 3.6
-arity = 8
-seed = "random.Random(5150 + n)"
-tables = 20
-verdict = "kept for steps (plain-rewrite audit 2026-10-29): flights fly at the highest column whose body is no longer than the floor _FREE + n - 3 - depth's. Size alone fails the bar: 2.9% / 3.6% off random tables at n = 7 / 8, at most 5.9% on a named function (nor, n = 8); balanced area is the same (no_wrap). But the floor walks every flight down to 40 and nearly doubles the run: retired with the overshoot spelling, the proved n = 11 step bound rose 38,022 -> 68,977 and benchmark rows ran 140 -> 220 and 277 -> 472 commands"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 95.5
-seed = "both constant values"
-tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
-verdict = "kept: canonical constants, percentage gate exempt. n u reads followed by nNnN, two @dd, 3+bit @nd, div: 2n+28+4bit chars and exactly n+7+bit commands. At n=7, chars 958/960 -> 42/46; n=8 1022/1024 -> 44/48; n=12 1278/1280 -> 52/56. No slot or frame: workspace bound is 7+bl(R)+bl(2n), measured 16/17 written bits at n=8; generic bounds remain unchanged. Default, width=1 and balanced constants n=1..12 execute; sentinel regressions cover n=1,3,7,8,12. All 270 nonconstant programs through n=3 are byte-identical; n=3 corpus chars 341506 -> 340172."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_wider_parity]
-kind = "archive"
-arity = 8
-saving = 24.5835
-verdict = "kept only full-input parity and its complement. A three-level cluster is52 lines, so use the smallest band holding it (period138) from n=3. At n=1/2 it only adds24chars: retain40 there. At n=32 the floor52+n-3 is81; its zero-length body cannot fit under ceiling80 (the unguarded prototype picks negative column-175). Thus the named construction stops at31, retaining the generic layout beyond; this cap follows geometry, not diminishing savings. Actual column/reach controls cover3..31. n=7/8 emitted parity chars23850->17732 (25.65%) /47304->35675 (24.58%), both complements identical. Both verdict parities execute every row; 22096 paired old/live executions include all tables/rows through3 and16 seeded tables plus both parities per n=4..8. Twelve changed templates,354 byte-identical controls; n=3 total340172->339776. Every print follows n reads and leaves a sentinel line unread; a one-bit-wrong table fails. Exact max-plus parity recurrence agrees with all row counts through8; n=3 commands140->188 (global maximum166->188), n=7 2393->1460,n=8 4704->2927. Add a single-flipped-parity generic witness to retain old maxima at n=9/10; native exact checks pass. Workspace expression unchanged and still attained. Generation timings for20 parity tables n=7/8/9 are15.24/29.84/59.59ms ->11.57/21.92/43.44ms; generic12.77/24.65/48.55 ->12.97/24.53/49.17ms. No production search, global mutation or per-table race."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_wider_generic]
-kind = "archive"
-arity = 8
-saving = -2.0686
-verdict = "rejected generic variants: fixed52 on20 seeded tables5150+n gives409123->402908 chars at n=7 (1.52%),798471->814988 at n=8 (2.07% growth);8/20 and16/20 tables grow. All thresholds and complements at n=8 grow with52. The proposed variable band min(76,80-n) gives409123->355388 (13.13%) /798471->708822 (11.23%), declining below20%; its AND also grows at8. Actual small fixtures and four rows per seeded/named table execute. The named parity rule qualifies separately; no failed generic layout is retained."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_acc_compare_read]
-kind = "archive"
-arity = 2
-saving = 0.0
-verdict = "not retained: an isolated short comparator{values/=u/=/=} with accumulator0 printsT on both0/1, while a49 load givesT/Q as intended. Positive control proves the comparator works at its claimed state. Replacing the existing zeroing slot by nNnN,@dd,@nt*6 loads49 but makes the zero-arm rung jump49 instead of falling into the near child. The complete slot-stage mutant on table0100,row00 printsU+0010 instead of0; baseline prints0. A bit0 comparison would instead need48. No complete placement/known-state construction repairs these hops in the proposal; reject the tested stage, not all accumulator comparisons."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_tail_in_open_window]
-kind = "archive"
-arity = 1
-saving = 0.0
-verdict = "rejected tested placement: move the tail from last-window+1 to the open window at column82. The last code band is below82 and no stop occupies82..90, yet table01 printsB on row0 andQ on row1 instead of0/1. Leaf rungs land partway through the arithmetic tail; the old closing rung is needed to align Q/T entries. All baseline fixture rows execute correctly. This rejects the proposed eligibility condition and placement, not every possible tail redesign; no speculative saving or bundled fallback ships."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -93,20 +68,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 1.5947
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: slotted immutable dataclasses. 245 programs, 146 halt cleanly; no structural trace differences, control differs on 245. Step throughput at longest 10/20/40 workload breadths: +1.67%/+1.87%/+1.59%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 0.9394
-workload = "complete run; parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
-verdict = "kept: slotted immutable dataclasses; 5193 paired native traces, 2208 clean halts, zero differences; changed-site control detected on 5193. Complete-run wall savings 0.94–2.24%, including parsing and final I/O. Snapshot fields and grouping preserved."
+kind = "archive_ref"
 
 [evidence]
 version = 1

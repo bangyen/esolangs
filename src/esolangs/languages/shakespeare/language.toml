@@ -35,46 +35,22 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
 
 [ablations.polarity]
-kind = "archive"
-saving = 76.46
-arity = 8
-seed = "random.Random(184700 + n)"
-tables = 20
-verdict = "kept as a rule, the race retired (measured on the binary build, before signed_digits): complement when ones outnumber zeros, no second build. Random 2.4% off the plain build at n=8 (5974.65 -> 5830.5 chars, 20 tables; 2.6% n=7, 40 tables, 0.8% n=2 .. 1.2% n=6) and the rule matches the min-race within 0.02% (5829.35); named: OR 8343 -> 1964 (76.5%) and ~AND 8337 -> 3548 (57.4%) and threshold-2 8191 -> 2902 (64.6%) at n=8, ~majority 18.6%, majority, AND, parity 0%. Layout is a plain re-wrap, so balanced area tracks chars. Exhaustive n<=3 (276) and 310 priced tables executed, control fails"
+kind = "archive_ref"
 
 [ablations.signed_digits]
-kind = "archive"
-saving = 11.72
-arity = 8
-seed = "random.Random(184700 + n)"
-tables = 200
-verdict = "kept as a rule: Horner over the non-adjacent form, a minus one as `and pig`, a third of the digits nonzero against a half. Random 11.7% off the binary build at n=8 (5824.5 -> 5142.0 chars, 200 tables; 9.1% at n=7, 14.4% at n=9, 16.7% at n=10: the share grows with the packed share). Named at n=8: majority 17.2% (5265 -> 4359), threshold-2 0.7%, ~AND 0.4%, AND and OR 0% (polarity already took them), parity +0.1% (5924 -> 5930). Dropping polarity would give 12.0% on random but OR 1964 -> 3542, so both stay. Exhaustive n<=3 and 3000/400/150/40/30 random tables at n=4..8, every row executed, 0 wrong; control fails"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 0.0
-seed = "both constant values; witnesses(n) for n=4..6"
-tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
-verdict = "retained: the existing whole-constant path already reads all n inputs into Juliet before assigning and printing joy/nothing. At n=8 zero/one remain 387/383 chars and n+3 commands; n=12 503/499. No new construction accepted. All 276 programs through n=3 remain byte-identical; corpus 219320 chars. All eight benchmark pins remain unchanged. Each language passed 5656 paired before/after row executions. Both constants n=1..12 execute in default, width=1 and balanced layouts; sentinel regressions require all input before output."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261101_parity_sum]
-kind = "archive"
-arity = 8
-saving = 86.2395
-verdict = "kept only for parity and its complement, after canonical ignored-input folding. Match the reduced table to the named Thue-Morse rule, sum retained inputs in Romeo, then take modulo two; no residual or permutation search. Each original input is still read, and output follows the last read. Pure parity n=7 chars3658->743 (79.69%), n=8 5930->816 (86.24%); complements774/847 chars (78.84%/85.72%). All rows through n=4 and endpoint/interior witnesses through n=10 execute. Parity text is 73n+232, plus31 for complement; execution n+m+4 for m retained inputs, 2n+4 when all matter. n=4 parity1232->524. Ordinary random-table construction is unchanged. All tables/rows n<=3 and 16 named/random tables per n=4..6 pass 7824 paired runs plus324 wrong-table controls; n=3 total219320->215909. Owned read-first/sentinel checks include nonconstants. Auditing bigger packed programs exposed old bounds: ten-input nonparity control needs42 steps and2063 written bits, exceeding2n+7 and2T+13. Correct global worst execution is6 at n=1 (all nonconstants are parity), otherwise2n+ceil(T/64)+6. A packing sentence covers64 NAF digits. Values need at most2T+1 bits, stage three, plus program/input cursors: workspace <=2T+bl(2n+ceil(T/64)+6)+bl(2n-1)+4. Native formulas and an exact large-packing regression cover these counters."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261101_merged_chunks]
-kind = "archive"
-arity = 8
-saving = 0.7006
-verdict = "rejected: increasing packing chunks64->128 executes four rows of50 Random(184700+n) tables per n=7,8, saving only0.55%/0.70% (164118->163218,256908->255108). All50 programs per arity change, so the probe fires. A dense signed-form eight-input control also parses and executes. Through n=3 the chunk boundary never fires, so the three-input execution gate gains nothing. No chunk-size or interpreter-limit change ships."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261101_input_order_and_residual_search]
-kind = "archive"
-arity = 8
-saving = 0.0
-verdict = "rejected by construction: exact/greedy permutation search and residual selection over2^(m+1) affine masks violate the no-search/four named order rules. Neither search was launched. The separate parity rule has a closed-form detector and only that named function family; it introduces no searched residual or frozen table. No claim that all other Shakespeare constructions are impossible."
+kind = "archive_ref"
 
 [interpreter_ablations]
 version = 1
@@ -82,20 +58,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 8.1198
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: direct frozen record reconstruction. 247 programs, 145 halt cleanly; no structural trace differences, control differs on 147. Step throughput at longest 10/20/40 workload breadths: +8.73%/+8.12%/+8.36%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 4.001
-workload = "complete run; source parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: direct frozen record reconstruction. 5195 paired native traces, 2193 clean halts, no differences; changed-site mutant differs on 2195. Complete-run savings 4.00–11.84%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+kind = "archive_ref"
 
 [evidence]
 version = 1

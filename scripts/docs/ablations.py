@@ -128,6 +128,31 @@ def _retirement(value: Any, verdict: str) -> Retirement | None:
     )
 
 
+def _archive_source(language: str, group: str, archive_revision: str) -> dict[str, Any]:
+    """Read the pinned audit payload, refusing absent or unstructured history."""
+    path = Path("src/esolangs/languages") / LANGUAGES[language].id / "language.toml"
+    reference = f"{archive_revision}:{path.as_posix()}"
+    try:
+        result = subprocess.run(
+            ["git", "show", reference],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+        )
+        old = tomllib.loads(result.stdout)[group]
+    except (subprocess.SubprocessError, KeyError, tomllib.TOMLDecodeError) as error:
+        raise AuditError(f"cannot read archived audit source {reference}") from error
+    if (
+        not isinstance(old, dict)
+        or type(old.get("version")) is not int
+        or old["version"] != 1
+    ):
+        raise AuditError(f"archive source must be structured: {reference}")
+    return old
+
+
 def parse_audits(language: str, group: str, data: dict[str, Any]) -> AuditFile:
     """Validate archival/replay kinds and retain pinned historical fields."""
     if (
@@ -143,11 +168,25 @@ def parse_audits(language: str, group: str, data: dict[str, Any]) -> AuditFile:
         revision(data["archive_revision"]) if "archive_revision" in data else None
     )
     records: dict[str, ArchiveRecord | ReplayRecord] = {}
-    for key, raw in data.items():
+    archived: dict[str, Any] | None = None
+    for key, entry in data.items():
+        raw = entry
         if key in {"version", "archive_revision", "archive_context"}:
             continue
         if not isinstance(raw, dict) or not isinstance(raw.get("kind"), str):
             raise ValueError("audit records need an explicit kind")
+        if raw["kind"] == "archive_ref":
+            if set(raw) != {"kind"} or archive_revision is None:
+                raise ValueError(
+                    "archive references need only kind and a pinned revision"
+                )
+            if archived is None:
+                archived = _archive_source(language, group, archive_revision)
+            raw = archived.get(key)
+            if not isinstance(raw, dict) or raw.get("kind") != "archive":
+                raise AuditError(
+                    f"missing archived audit record: {language}/{group}/{key}"
+                )
         if raw["kind"] in {"replay", "measurement"}:
             if group != "ablations":
                 raise ValueError("generator replay belongs under ablations")
@@ -191,21 +230,8 @@ def verify_archive(audit: AuditFile) -> None:
     }
     if audit.archive_revision is None:
         return
+    old = _archive_source(audit.language, audit.group, audit.archive_revision)
     reference = f"{audit.archive_revision}:{audit.path.as_posix()}"
-    try:
-        result = subprocess.run(
-            ["git", "show", reference],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=10,
-        )
-        old = tomllib.loads(result.stdout)[audit.group]
-    except (subprocess.SubprocessError, KeyError, tomllib.TOMLDecodeError) as error:
-        raise AuditError(f"cannot read archived audit source {reference}") from error
-    if type(old.get("version")) is not int or old["version"] != 1:
-        raise AuditError(f"archive source must be structured: {reference}")
     context = old["archive_context"]
     if _canonical(audit.context) != _canonical(context):
         raise AuditError(f"archived audit context differs: {reference}")

@@ -27,50 +27,25 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.subtree_sharing]
-kind = "archive"
-saving = 90.1
-arity = 10
-verdict = "kept: canonical, exempt. A subtree repeated at its level is emitted once and reached by GOTO to its first copy (an INVERT GOTO stub where a zero-child falls in). 73.5% at n=6 rising to 90.1% at n=10 on random tables; on parity, 682 chars shipped vs 80,352 unshared at n=10. Exhaustive at n=4 the total saving is 50.36% and the per-table mean share 49.29% -- the Decisions' -49.3% under that convention -- with shipped longer on no table"
+kind = "archive_ref"
 
 [ablations.constant_fold]
-kind = "archive"
-saving = 2.3
-arity = 10
-verdict = "kept: canonical, exempt. A constant subtable is a leaf (subtree_ids gives it the bit's id at every level) and a node whose halves agree drops its GOTO, the zero subtree being the only one. 8.5% at n=6 declining to 2.3% at n=10 on random tables, where subtrees are rarely constant; exhaustive 12.33% at n=4, 20.7% on AND at n=10, and exactly 0.0% on parity, which has no constant subtree and no agreeing halves"
+kind = "archive_ref"
 
 [ablations.last_level_forms]
-kind = "archive"
-saving = 15.5
-arity = 12
-seed = "random.Random(184700 + n)"
-tables = 200
-verdict = "kept under the named-function rule: while at most one constant kind sits above the leaves, a last level whose leaves differ pushes the popped bit, or its inverse, and halts (POP [INVERT] PUSH GOTO 1 INVERT GOTO 1) instead of placing the leaves it would otherwise share. Parity 15.5% at n=6, 14.9% at n=8, 15.0% at n=10, 15.5% at n=12, flat; and 7.6% at n=8; majority and random tables 0.0% from n=6 (1.1% at n=4, 0.1% at n=5), since both constant leaves are placed there. Exhaustive n<=4: 13,022 tables change, none grows, every changed program executed. An unconditional form grew 00001101 at n=3"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 25.0
-seed = "both constant values; witnesses(n) at n=4..6"
-tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
-verdict = "kept: canonical whole constants. Keep the uniform eleven-character input setters, drain n+1 POPs to clear the register, optionally INVERT, PUSH the answer and fall off; no halt trampoline. Default chars 16n+8+7bit, commands including dump 3n+3+bit, workspace n+1+bl(3n+2+bit). At n=8 zero/one 186/186 -> 136/143 chars; n=12 250/250 -> 200/207. The existing five-character short setters remain unchanged for n<=4 with widths below 11; owned tests cross n=4/5. n=3 corpus 51451 -> 51358 chars; the narrow corpus and all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions. All 270 nonconstant programs per language through n=3 remain byte-identical; Bitdeque and Forbin also retain all 540 nonconstant narrow/balanced programs each. All 24 old balanced constant scores per changed language improve or match. Both constants n=1..12 execute in default, width=1 and balanced layouts; owned regressions cover complete input consumption and resource bounds, with sentinel preservation for stream readers."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_inverted_fallthrough]
-kind = "archive"
-arity = 8
-saving = 2.4581721217191266
-verdict = "rejected: when zero is placed and one fresh, emit rotation INVERT GOTO zero and inline one. The one-child starts after rotation+2; its consuming pop ignores the inverted entry register.200 Random(1000*n+k).choice tables per7/8:235959->229261 chars (2.8386%),382520->373117 (2.4582%), declining below20% and below10% even if sustained.767/1060 firing sites across the two corpora, so the probe is not vacuous. No sampled source grows. Named parity, every Hamming threshold and projection and their output complements have best6.9264%/6.6852%, below10%. Later generic n9..12 stays1.8074-2.9419%; do not move the verdict window. N3 source51358->50814; commands45472->45472. Native row deltas include+1 and-1: this changes conditional flow, not just a trailing no-op spelling, and does not clear the5% execution gate.5544 native rows for each of seven prototypes cover all small tables/rows,20 random/n4..6 boundary rows,200 random/n7/8 boundary rows and every named parity/and/or/majority verdict row; all dump exactly one correct bit only after halt, render once and leave following7 unread. Separate controls include1536 signed named-family rows and4096 old/fall row comparisons. A polarity mutant replaces INVERT with a one-command GOTO-next no-op, preserving every address, and fires a wrong-answer/hang control. Generator bytes, pins, proof bounds and Size anchors remain unchanged."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_low_address_shared_pool]
-kind = "archive"
-arity = 8
-saving = -8.169246052493984
-verdict = "rejected: a bottom-up pool emits graph-shared nodes before the root; canonical incoming counts omit bottom leaves replaced by last_forms, and a predictable post-load register chooses the entry INVERT/GOTO. Root entry skips the pool; empty pools and canonical whole constants retain their existing construction. Representatives and graph counts use O(T) passes, not repeated substring searches.200 generic7/8 tables grow235959->257728 (9.2258%) and382520->413769 (8.1692%); every verdict table grows. Best signed named saving0%, unchanged projections; other measured named functions grow. Later generic9..12 still grows5.6863-7.1049%. N3 source51358->56026 and commands45472->47944.5544 native default-template rows pass, with uniform eleven-character setters; a wrong root-entry target produces an incorrect multi-bit dump. This prices the tested bottom-up graph pool, not every possible allocation order. No program-min fallback or pool implementation ships."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_child_order_choice]
-kind = "archive"
-arity = 8
-saving = 0.17227857366934884
-verdict = "rejected tested named child-order constructions: no speculative full-subtree builds or strict min-of-old-program fallback. Always-one-first grows10.9714%/12.5073% on200 generic7/8 tables; graph-reference-first grows1.3333%/1.1220%. A fixed depth-two rule scores immediate shared-grandchild stubs in constant work per node and emits one first only if that score pays the extra INVERT:235959->235406 (0.2344%),382520->381861 (0.1723%), declining far below20%. It changes185 pilot programs and has a same-command-count polarity mutant, so a zero-effect probe is not mistaken for a wall. Signed named parity/threshold/projection families give no positive local-rule saving. Combining reference-first with inverted fallthrough saves1.5812%/1.4025% against old, but grows1.2942%/1.0822% against fallthrough alone; do not bundle those gains. Each of the four order/composite variants has5544 correct native rows. N3 source/commands: old51358/45472; one-first54802/48400, reference-first52262/45936, composite51638/45936, local51190/45596. None qualifies as an execution optimization. The local score is an admissible fixed-depth repair of the proposed lookahead, not an exhaustive polarity search. These measurements reject these constructions, not all possible child-order rules."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -83,20 +58,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 20.3009
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: direct immutable state constructor. 445 programs, 147 halt cleanly; no structural trace differences, control differs on 147. Step throughput at longest 10/20/40 workload breadths: +20.68%/+20.83%/+20.30%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 14.1438
-workload = "complete run; source parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: direct immutable state constructor. 5193 paired native traces, 2218 clean halts, no differences; changed-site mutant differs on 2193. Complete-run savings 14.14–19.80%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+kind = "archive_ref"
 
 [evidence]
 version = 1

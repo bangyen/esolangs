@@ -25,48 +25,25 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
 
 [ablations.halves_agree_skip]
-kind = "archive"
-saving = 1.5
-arity = 12
-verdict = "kept: canonical family, exempt. Equal halves read the character and call the one child without the branch test. 2.9% at n=6 declining to 1.5% at n=12 on random tables, 2.4-3.6% on the ignored-input classes; 0.00% on parity, AND, OR, majority and constant tables, whose agreeing nodes sit over constant subtables. Re-measured 2026-10-29, 20 random tables per n: 2.6% n=3, 3.2% n=7, 2.1% n=10; 0.00% on every named function and complement n=3..10"
+kind = "archive_ref"
 
 [ablations.inline_race]
-kind = "archive"
-saving = 35.4
-arity = 12
-verdict = "kept: each function is pasted into its callers unless declaring it wins the cost model (uses times size against declaration plus call costs). 18.5% at n=6 rising to 36.0% at n=10 and 35.4% at n=12 on random tables; the docstring's 26% share at n=10 and its 8,558-char declaring-everything anchor both reproduce. Re-measured 2026-10-29 against declaring every function, 20 random tables per n: 10.3% n=3, 18.5% n=7, 27.0% n=10; named functions (AND/OR/majority/threshold-2 and complements) 9.5-15.3% n=3..10 (majority 9.7% at n=10), parity 6.0% at n=3 falling to 2.8% at n=10 (its tables share every level, so little is pasted); a rule on usage count, not a race, so no build is duplicated"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 63.5
-seed = "both constant values; witnesses(n) for n=4..6"
-tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
-verdict = "kept: canonical whole constants. Read n characters into cell 0, = clears the last digit through untouched cell 48/49, ! seeds one, >+ fills cells 1..49, then 47+bit increments and output. Exactly n+148+bit chars/commands; workspace 408+bl(L)+bl(n) bits. At n=8 zero/one 430/428 -> 156/157 chars; n=12 490/488 -> 160/161. The n=3 corpus shrinks 121956 -> 121551 chars. All 270 nonconstant programs through n=3 remain byte-identical; generic envelopes and all eight benchmark pins remain unchanged. Each language passed 5656 paired before/after row executions. Both constants n=1..12 execute in default, width=1 and balanced layouts; sentinel regressions require all input before output."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_no_return_after_print]
-kind = "archive"
-arity = 8
-saving = 11.3087910812
-verdict = "rejected as proposed: the extra3n parking moves are unnecessary, grow158 pilot tables and slow2406 row pairs. Over200 seeded Random(1000*n+k).choice tables, n7 source315186->286024 (9.2523%),n8 473605->420046 (11.3088%): n7 misses10%. Both baseline and candidate execute all small tables/rows and sampled random4..8 correctly (5040 native runs); unchanged workspace bounds hold."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_no_return_lean]
-kind = "archive"
-arity = 18
-saving = 16.2287073898
-verdict = "rejected after extending the growing size curve. Removing all return moves needs no extra parking: the existing leaf return reaches X_n=52+2n, beyond the initialized tape, and post-print guards only move right over zeros; tape[0]=0 makes their indirect tests false. Source never grows and no pilot row slows. 200 seeded tables n7/8 save11.9174%/13.3358%;200 per7..12, then20 per13..18. Highest measured saving16.4803% at16, then16.4548%/16.2287% at17/18: both declining endpoints miss20%; no artificial n8 cap where saving merely diminishes. n3 chars121551->116635. 5040 native pilot runs check all tables/rows<=3 and sampled random4..8; named controls additionally trace zero-valued guard positions and monotone post-print motion. Actual larger-program rows at15..18 also pass. This changes the return convention and final pointer, rather than deleting state-identical no-ops, so it uses the ordinary gate."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_short_names]
-kind = "archive"
-arity = 8
-saving = 5.7913239936
-verdict = "rejected: bounded variants rename declared functions after inlining, or rename the DAG once before the inlining decision. Assign the empty name first, then shortest visible-ASCII names in descending static use count; quotes protect every name. On200 seeded tables, post-inlining n7/8 saves5.9511%/5.7660%; pre-inlining5.9762%/5.7913%, all below10%. Through14 neither reaches7%. Each variant passes2520 native runs over all small tables/rows and sampled random4..8; empty names actually fire on276/326 tables, and a missing-name positive control fails parsing. No length growth or small workspace violations. The raw unbounded fixed-point retry is not admitted as a loop-less construction; the two bounded, executable variants do not meet the size gate."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_adjacent_digit_cells]
-kind = "archive"
-arity = 8
-saving = 5.1067873017
-verdict = "rejected generic move: digits at top+1/top+2, with Boolean mapping cells48/49 unchanged, save7.2675%/5.1068% over200 seeded n7/8 tables, below10% and declining. 5040 native pilot runs compute every tested answer with full read-first/sentinel consumption and small workspace bounds. AND/OR and their complements save11.23..12.43% at7 and11.98..13.09% at8, but extending this growing named curve through20 gives13.32..14.06% at19 and12.78..13.50% at20, declining below20%; no favorable arity cap. All four named tables execute every row at7/8 under baseline and all five prototype variants (9216 native runs total), including explicit tail-guard traces. A wrong table and a removed print both fire output controls. No generic or named admission and no bundle of subthreshold rules."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -79,12 +56,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = -1.2647
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: byte wrap bit mask. 245 programs, 175 halt cleanly; no structural trace differences, control differs on 162. Step throughput at longest 10/20/40 workload breadths: +0.32%/+0.69%/-1.26%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [evidence]
 version = 1

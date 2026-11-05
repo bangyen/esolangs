@@ -36,75 +36,37 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18" }
 
 [ablations.full_store_render]
-kind = "archive"
-saving = 0.0
-arity = 16
-verdict = "kept: n = 16 is the whole memory image (its tables reach 59,039); n <= 15 ends at its highest live cell, 13,340 characters to n = 13, 19,683 at 14, 52,480 at 15 (59,049 before the short layout, 2026-10-30). The 2026-10-29 tail and prefix figures describe the 59,049-character build and no longer apply below n = 16"
+kind = "archive_ref"
 
 [ablations.tier_constructions]
-kind = "archive"
-saving = 0.0
-verdict = "kept: one positional build serves every arity; size is 13,340 to n = 13, 19,683 at 14, 52,480 at 15 and 59,049 above"
+kind = "archive_ref"
 
 [ablations.shortest_path_planner]
-kind = "archive"
-saving = 0.0
-verdict = "kept: not separately priceable -- typed into the build's emission, and no walker variant of it exists"
+kind = "archive_ref"
 
 [ablations.searched_constants]
-kind = "archive"
-saving = 0.0
-verdict = "kept: no frozen table remains -- the labels, gadget outputs, gadget values, seeds, hubs, stubs and operands are closed forms above n = 15; the n <= 15 seeds and stubs are a construction (canonical actions, limitations); navigation is a deterministic bounded heuristic whose chains were fitted on the breadth-first search it replaced, no closed form known (limitations)"
+kind = "archive_ref"
 
 [ablations.constant_folding]
-kind = "archive"
-saving = 0.0
-arity = 16
-verdict = "kept: canonical, exempt; does not apply -- a constant table is no smaller (59,049)"
+kind = "archive_ref"
 
 [ablations.ignored_input_drop]
-kind = "archive"
-saving = 0.0
-arity = 16
-verdict = "kept: canonical, exempt; does not apply -- an extra input port adds no cells (59,049)"
+kind = "archive_ref"
 
 [ablations.source_storage_prototype]
-kind = "archive"
-saving = 0.0
-arity = 8
-seed = "random.Random(1847+n)"
-tables = "20 random plus parity/majority/and/or per n=7,8; representative n=3 executions"
-verdict = "Not shipped: removing trailing address-correct no-op source finds no suffix to remove in the screened programs; the live store already reaches the source end. Omitting all but the first table cell for each repeated answer pair changes programs but fails execution (no readable answer at n=3): equal values at different addressed cells are not shared storage. Unmodified suffix candidate passes 70 checks; this is not a general storage lower bound."
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 17
-tables = "both constants at every n=1..17; zero, one and alternating input rows"
-verdict = "kept: canonical constant output, percentage gate exempt. Read every input, then build ASCII 48/49 directly, without indexing or stubs. At n=8 zero/one source and command counts are 632/625; at n=17, 639/632. Generic programs through n=13 use 13340 characters under the read-before-output contract. Sampled n=8 written peaks are 646886/646910 bits; fixed store remains 59049 cells and program-dependent workspace bounds cover its fill. The seventeen-input last-ignored projection now saves the preceding essential read, drains the ignored byte, restores the saved value and enters non-reading stubs; all output follows all input. This replaces the incompatible print-first prototype and post-output drain. Existing generic size pins remain unchanged."
+kind = "archive_ref"
 
 [ablations.low_arity_hub_relocation_20261102]
-kind = "archive"
-arity = 8
-saving = 1.5517
-seed = "Random(1000*n+i),i=0..19;fixed7/8 before judging"
-tables = "all tables/everyrow n<=3;10sampled4..6;20each7/8;nativecollision/algebra controls"
-verdict = "rejected: using the existing canonical placement on each actual arity, with the actual table ceiling and all collision guards, yields13133 vs13340chars at both7/8 (266800->262660 over20), only1.5517%. n3source3389603->3337025 but commands13474720->13647440:85extra commands per nonconstant row. Fixedfloor6561 and seedable0/2trits force the first four hubs13122/13124/13128/13130, hence at least13133sourcecells. The premise that main ends at420 is false: closing i is6323/6294 at7/8, tables9478..9549/9478..9711. A separate loopless low-hub recipe g=80-18b0-27b1, chainK0 K2 rot², does reach6552+2b0+6b1; its rot⁵ stub recipe also reaches low addresses. But its main cursors7266/7237 overlap stub6683 and datum6554, so assembly correctly aborts. This is a concrete failed refinement, not an impossibility claim. No new search, arity path, seed table or state ships; existing generation-time exception remains."
+kind = "archive_ref"
 
 [ablations.digit_order_compaction_20261102]
-kind = "archive"
-arity = 8
-saving = -112.4738
-seed = "same fixed20 each7/8;four named cyclic digit rotations"
-tables = "all small tables/rows for legal rotation4;10sampled4..6;fixed20source/native7/8;collision controls"
-verdict = "rejected: retaining current hubs/stubs leaves a13340-character floor regardless of table compaction. Rotations1/2/3 collide with main: minimum table addresses1054/118/14. Rotation4 is native-correct but grows13340->26886/28344chars at7/8 (101.54/112.47%); fixed20totals266800->537720/566880. It rotates the accumulator too, not merely the painted table, and every input remains ordered. n3source3389603->6718273 and commands13474720->13539744, so no execution gate. The existing semantic nonoverlap checks remain; the counterfactual uses its actual table ceiling. A combination with the failed low-hub recipe has no valid program or admitted increment. No permutation, alternate layout, fallback race or added state ships; no global permutation impossibility is claimed."
+kind = "archive_ref"
 
 [ablations.single_hub_labels_low_n_20261102]
-kind = "archive"
-arity = 8
-saving = 0.0
-seed = "same fixed20 each7/8;four answer-label controls"
-tables = "2120baseline native small rows;fixed20native endpoints;legal single/double-hub controls,EOF and wrong-label mutant"
-verdict = "already implemented, no new saving: n<=15 uses a nonempty short layout, single=True pointers/label seeding and one hub/stub per label. Reapplying this is the current13340-character source, zero marginal saving at7/8. ENTRY420 ends bootstrap storage, not main code. All four answer labels execute in forced single-hub programs; a legal full-store double-hub construction, with its original zero-held reads, also runs correctly at59049chars. That coupled control is not an isolated marginal attribution. A legal wrong-label mutation prints the opposite bit, and EOF identity prints168 from59048 with one past-end read, so probes are not vacuous. No new single-hub path or state ships; the existing construction remains. All source/E/W functions, exact arities, eight pins/by-row/last-row counts, anchors, example and supported domain are unchanged. Only stale prose is corrected: callback bounds6748 at1 and5953 at16, exact2/3/6; closing i5753 at16; inputs are characters, not newline-framed lines."
+kind = "archive_ref"
 
 [interpreter_ablations]
 version = 1
@@ -112,32 +74,16 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
 
 [interpreter_ablations.dirty_chunks]
-kind = "archive"
-price = 3412.6
-workload = "traced"
-verdict = "kept: a per-step snapshot costs the writes, not 59,049 words"
+kind = "archive_ref"
 
 [interpreter_ablations.initial_memory_cache]
-kind = "archive"
-price = 2.1
-workload = "run"
-verdict = "candidate: unmeasurable; the fill is ~55 ms per source against multi-second executions"
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = -0.0065
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=1 plus 20 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: unroll five fixed crazy digits. 38 programs, 1 halt cleanly; no structural trace differences, control differs on 18. Step throughput at longest 10/20/38 workload breadths: +0.04%/+0.29%/-0.01%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 1.1407
-workload = "complete run; parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=1; 20 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
-verdict = "kept: unroll five fixed crazy digits; 38 paired native traces, 1 clean halts, zero differences; changed-site control detected on 18. Complete-run wall savings 1.14–1.43%, including parsing and final I/O. Snapshot fields and grouping preserved."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02

@@ -30,52 +30,25 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-20" }
 
 [ablations.equal_halves_skip]
-kind = "archive"
-saving = 45.56
-arity = 12
-verdict = "kept: canonical, exempt. A level whose halves agree drops its character with ! c and emits the one child (14 chars) instead of the 37-char node template with both children copied. Removing the skip costs +45.59% at n=10 and +45.56% at n=12 on random tables (second seed set +45.66 / +45.50%), and at n=10/12: one ignored input +153.65 / +149.31%, three +678.79 / +678.51%, half-constant +188.17 / +188.61%, majority +95.41 / +109.08%. The skip chain is also the constant fold: a constant costs O(n) shipped against the plain build's +49,711.84 / +168,256.67%. Parity measures 0.00% (it has no equal halves; shipped parity is the plain build, exactly 37T - 31). The plain build is this removal itself; the memo in _contents is build-time only and changes no emitted char"
+kind = "archive_ref"
 
 [ablations.last_level_forms]
-kind = "archive"
-saving = 25.4
-arity = 12
-seed = "random.Random(184700 + n)"
-tables = 200
-verdict = "kept: a last level with leaves 01 prints the character it reads, )[[H])], and with 10 prints 2352 / c, )[2352/[H])], against the 37-char node and two 3-char leaves: 28.2% on random tables at n=4, 25.7% at n=5..6, 25.4% at n=7, 8, 10 and 12 (20 tables at 12), flat; parity 41.4%, majority 22.1%, and 6.6% at n=8. Exhaustive n<=3: 254 tables change, none grows, every changed program executed; random samples executed at n=4..10. Re-audited 2026-10-29 (20 random tables per n, balanced area side^2 at n<=8): random chars 27.0 / 26.3 / 26.0 / 25.7 / 25.4 / 25.6 / 25.5% at n=4..10, area 27.8 / 25.6 / 25.1 / 25.4 / 25.3% at n=4..8; parity 41.2%, majority 21.5%, and/or 4.8%, thr3 15.6% at n=10 (complements 4.1-18.2%); 552 builds n<=3 execute, control fails. The only bespoke trick; the equal-halves skip is canonical and the memo changes no emitted char"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 0.0
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "retained: the existing constant path already shares one child per ignored input. Its outer release shell is required by pass timing. Positive control: complete programs read n bits and output the fixed bit. Removing the shell at n=1 changes 13 -> 10 chars but halts without output or reads; at n=2, zero constant on input 11 followed by 7 prints 11 and consumes three characters. Reject this source shortening rather than relaxing input/output invariants; no general lower bound claimed. Current L=7n+6 chars and E=8n+4 steps; n=8 62 chars, 68 steps, 427 written bits; n=12 90 chars. n=3 corpus unchanged at 29795 chars. Each language passed 5656 paired old/new row executions; 270 nonconstant default programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. Separate 1120-run native probes per language include every row through n=8. All 24 balanced scores per language match or improve; all 24 benchmark size/command pins across the batch remain unchanged. Owned regressions check reads before output, no EOF probe and a preserved following record, without adding collected cases."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261101_constant_leaf_short_circuit]
-kind = "archive"
-arity = 8
-saving = 0.0
-verdict = "rejected: bare H48/H49 leaves print the right constant but read zero characters. Four executed one-input rows contrast with shipped controls that read one before output. This violates required consumption and read-first timing regardless of size. Owned nonconstant tests now preserve a following byte as well."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261101_release_wrapper_trim]
-kind = "archive"
-arity = 8
-saving = 0.0
-verdict = "rejected: removing the inner [) ... ] release layer around dispatch saves three template characters but changes answers. On table 0001, input 01 prints 1 instead of 0; on XOR, inputs 00/01 print 1/0 instead of 0/1. Twenty full-row template probes include shipped controls with correct output, exact reads and no EOF probe. No general minimality claim."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261101_two_level_arithmetic_forms]
-kind = "archive"
-arity = 8
-saving = 0.0
-verdict = "no admitted form: the proposal supplies arithmetic identities but no executable two-read schedule. A concrete first-character retention probe replaces the skip drop with a block constructor before the shipped final read; all four two-input executions read twice and print the second bit, so it fails AND on 01. Holding the first value alone does not combine it. A shorter scheduled arithmetic replacement remains unestablished; no searched or frozen bottom table is introduced. Shipped source, bounds, examples and pins unchanged."
+kind = "archive_ref"
 
 [ablations.trick_recheck_20261103_raw3_bit_extraction]
-kind = "archive"
-arity = 2
-saving = 0.0
-seed = 0
-tables = "all 16 two-input tables, all four rows; shipped control plus three fixed trims, 256 native runs"
-verdict = "rejected bounded raw3 refinements beyond release-wrapper removal: in each node delete the final49 and replace its first /~ with ~ (raw ASCII swap count), empty text (no reorder), or %~ (ASCII zero test). No search; native _Machine cap10,000steps with trailingQ. Shipped controls pass64/64 rows, read exactly2 characters, preserveQ and halt within50steps. The three trims fail48/64,48/64,16/64 rows. Table0001,input00 falsifies the first two: output00Q,3reads and1EOF probe,66/63steps against the unchanged50-step cap. Table0001,input11 falsifies %~: output0 instead of1, despite2reads,no EOF probe and50steps. Independent re-execution reproduces all256 runs in0.013CPU-s. These reject only the three explicit extraction trims; they establish neither wrapper nor bit-extraction minimality. Generator source, bounds and pins unchanged."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-01
@@ -89,20 +62,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = -7.151
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: hoist special command arities. 245 programs, 193 halt cleanly; no structural trace differences, control differs on 151. Step throughput at longest 10/20/40 workload breadths: -7.15%/-2.18%/+1.76%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.special_arities]
-kind = "archive"
-price = 0.7857
-workload = "complete public run; parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3 plus 3000 seeded mutations capped to three total digits; complete random/parity runs at n=3/5/7, seed 1847+n, four asymmetric rows"
-verdict = "kept: hoist the four fixed special-command arities instead of allocating a dict per lookup. Complete-run savings 0.79–2.85%; 5193 native traces match, 3569 clean halts and 2404 changed-site controls, in 10.6s. Only random mutations have a digit budget: an unrestricted case requests 95,283,322 repeated values inside one VM command. Generated programs and production language limits are unchanged."
+kind = "archive_ref"
 
 [evidence]
 version = 1

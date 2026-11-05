@@ -26,96 +26,43 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.subtree_sharing]
-kind = "archive"
-saving = 927.3
-arity = 12
-verdict = "kept: canonical, exempt. Every distinct subtable is one named node, defined once and sent to by name. Expanding every occurrence into its own node instead costs +678.73% at n=10 and +927.27% at n=12 on random tables (second seed set +680.30 / +929.26%) and at n=10/12: parity +11956.22 / +42260.07% (each level reuses the same two subtrees), majority +3688.04 / +11008.14%, three ignored inputs +750.88 / +1234.29%, half-constant +577.47 / +785.07%"
+kind = "archive_ref"
 
 [ablations.equal_halves_chain]
-kind = "archive"
-saving = 0.6
-arity = 12
-verdict = "kept: canonical, exempt. A node whose halves agree reads its bit and sends on to the one child. Branching to both children instead costs +1.00% at n=10 and +0.60% at n=12 on random tables, and no class above +1.66% at those arities: inside a shared diagram the branch body names the same child twice, so the chain is worth only the difference of the bodies. Parity, AND and OR measure 0.00% (their agreeing halves are constant subtrees, taken by the fold)"
+kind = "archive_ref"
 
 [ablations.constant_chain]
-kind = "archive"
-saving = 36.1
-arity = 12
-verdict = "kept: canonical, exempt. A constant subtable is a chain reading the remaining inputs into Constant 48 or 49. Branching on constants instead costs +33.65% at n=10 and +36.10% at n=12 on constant tables, +15.61 / +16.60% on AND and OR (whose agreeing halves are constants), and +0.68 / +0.28% on random tables. The plain build (no sharing, no chain, no fold) costs +986.83% at n=10 and +1317.35% at n=12 on random tables, +26526.54 / +95869.29% on constant tables"
+kind = "archive_ref"
 
 [ablations.branch_macros]
-kind = "archive"
-saving = 158.0
-arity = 10
-verdict = "kept: bespoke, clears the bar. `!o`/`!z` replace the two inlined branch bodies `>(Subtract 49>X)>(Divide 48>(Subtract 1>Y))`. Inlining costs, on 20 random tables per arity (chars / balanced area), +37.6 / +36.8% at n=3, +104.3 / +98.9% at n=5, +152.9 / +151.0% at n=8, +158.0 / +156.7% at n=10 (min +156.3% chars); named at n=10 (chars / area): parity +131.8 / +125.0, majority +124.4 / +125.0, threshold 3 +115.2 / +117.2, AND and OR +72.9 / +69.0 (complements equal)"
+kind = "archive_ref"
 
 [ablations.input_macro]
-kind = "archive"
-saving = 27.3
-arity = 10
-verdict = "kept: bespoke, clears the bar. `@y(Input!o %)` writes `Input!o` once for every branching node. Inlining it costs, on 20 random tables per arity (seed 700 + n; chars / balanced area), +23.6 / +23.9% at n=7, +26.2 / +26.7% at n=8, +27.4 / +27.3% at n=9, +27.3 / +27.6% at n=10 (the macro saves 19.1 / 20.8 / 21.5 / 21.5%, not falling); named at n=10 (chars / area): parity +20.3 / +21.9, majority +19.7 / +19.3, threshold 3 +17.8 / +17.6, AND and OR +9.7 / +10.8 and +14.8. Not shipped with it: base-64 node names ranked by reference count save 7.7 / 7.8 / 8.0 / 9.5% at n=7..10, under the bar. Every program executed: n=6..8 sampled tables, all rows, wrong-table control fails"
+kind = "archive_ref"
 
 [ablations.equal_halves_chain_audit]
-kind = "archive"
-saving = 1.0
-arity = 10
-verdict = "kept: canonical (an ignored input at one node), exempt. Plain-rewrite audit 2026-10-29, 20 random tables per arity, branching to both children instead: +0.99% chars / +1.08% area at n=10 (+1.75 / +1.22 at n=8, max +6.67% chars at n=3); named functions 0.00% at n=3..10. All plain-rewrite programs executed: n <= 3 exhaustive (276 tables, three builds), n=4..6 sampled, wrong-table control fails every row"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 55.6
-seed = "both constant values; witnesses(n) at n=4..6"
-tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
-verdict = "kept: canonical whole constants. An anonymous chain of n single-send Input nodes reaches Constant 48/49 and Output; branch macros and node names are unnecessary. Exactly 8n+23 chars and n+2 sends, workspace 10+bl(n+1)+bl(n) bits for one active frame and input cursor. At n=8 both bits 196 -> 87 chars; n=12 254 -> 119. n=3 corpus 49504 -> 49336 chars; all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 are byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts; all 24 old balanced constant scores improve or match. Owned regressions enforce all reads before output, preserve a sentinel and check resource bounds."
+kind = "archive_ref"
 
 [ablations.anonymous_root]
-kind = "archive"
-arity = 8
-saving = 0.373
-seed = "Random(1000*n+i)"
-tables = "20 random per n=7/8; every table/row n<=3; samples4..6"
-verdict = "kept: canonical minimal spelling. The root is defined last and referenced once; replace |id(body)>id with >(body), saving2len(id)+1 chars. Parsed commands, parameters and targets are identical on every non-unary checked table, so generic E/W indices and exact scopes remain unchanged. Fixed20 n7/8 source16707→16607 /26845→26745. No new construction state, fallback or retained named-root path."
+kind = "archive_ref"
 
 [ablations.last_input_identity]
-kind = "archive"
-arity = 8
-saving = 64.39
-seed = "named last-physical-input identity, independently judged"
-tables = "both unary families all rows n1..8; representative native rows9/10/12/16/20; default,width1,balanced"
-verdict = "kept only this named family: 01 repeated, consumed in physical order by the existing constant reader with Output as its tail. Marginal after anonymous-root n7/8 source194→65 /205→73 chars (66.49/64.39%). Exactly8n+9 chars,E=n+1,W=10+2bl(n), all rows. New path is only a tail selector in the existing Input-chain constructor; no lookup/DP/unused nodes. Curve initially declines (n20 canonical baseline363,new169), not monotonic globally: baseline9n+2Σ_{k=2..n}digits(k)+4digits(n)+115, hence saving eventually tends1. No arity cap."
+kind = "archive_ref"
 
 [ablations.last_input_negation]
-kind = "archive"
-arity = 8
-saving = 54.146
-seed = "named last-physical-input negation, independently judged"
-tables = "same native corpus as identity; other input positions stay on the diagram"
-verdict = "kept only this named family: 10 repeated, same reader with Divide48,Add48,Output tail. Independent marginal n7/8 source194→86 /205→94 chars (55.67/54.15%). Exactly8n+30 chars,E=n+3,W=10+bl(n+2)+bl(n), all rows. At n1 the true global worst becomes4 rather than6; original proof arities/True flags retained with the honest unary formulas. Same eventual source-saving limit1, no claim of global monotonicity."
+kind = "archive_ref"
 
 [ablations.inline_single_parent_prototype]
-kind = "archive"
-arity = 8
-saving = 0.206
-seed = "Random(1000*n+i)"
-tables = "20 random per n7/8; and/or/parity/majority separately; exhaustive<=3,samples4..6"
-verdict = "rejected. Raw colon parameters terminate at first semicolon; nested branch macros additionally trigger recursive-active-macro rejection. !y also forwards its argument through !o, losing the colon boundary. Repaired fixed two-state DP requires macro-free anonymous arguments and Input!o for anonymous one-edges. Marginal to all keepers16607→16553 /26745→26690 chars (0.325/0.206%); named gains<=1.04%. No DP/refcounts/expanded-branch constructor retained."
+kind = "archive_ref"
 
 [ablations.dense_ranked_decimal_names_prototype]
-kind = "archive"
-arity = 8
-saving = 1.118
-seed = "Random(1000*n+i)"
-tables = "same corpus as inline prototype; native wrapped controls included"
-verdict = "rejected: decimal names ranked by reference count save16607→16435 /26745→26446 chars (1.036/1.118%). Combining with repaired inline rule saves1.385/1.324%; independent ranking after inline1.063/1.120%. Named gains<=2.13%. No ranking map or second constructor retained. 7152 native checks pass,738 programs differ from keeper, complemented answers fail; wrappers preserve names."
+kind = "archive_ref"
 
 [ablations.terminal_collapse_prototype]
-kind = "archive"
-arity = 8
-saving = -0.224
-seed = "Random(1000*n+i)"
-tables = "20 random per n7/8; native leaf controls and a constant-drain counterexample"
-verdict = "rejected as a general rule. Raw constant terminals violate required consumption: table00000001,input000 prints0 after only1 read. Named terminal01 alone grows fixed20 n7/8 source16707→16767 /26845→26905; rewriting both01/10 grows540chars per arity because branch macros and still-referenced constant terminals already share. Only independently qualifying whole last-input unary families ship; shared terminal definitions in generic diagrams remain. Production exhaustive n3 source49336→48361,commands23680→23632;4456 paired native checks plus layouts/EOF, no table larger/slower. All8 source pins shrink; last-row/per-row command pins stay unchanged."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -128,12 +75,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 0.0268
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: construct immutable named tuples through tuple.__new__. 245 programs, 145 halt cleanly; no structural trace differences, control differs on 145. Step throughput at longest 10/20/40 workload breadths: +0.70%/+0.03%/+0.58%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [evidence]
 version = 1

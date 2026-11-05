@@ -29,78 +29,34 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.constant_fold]
-kind = "archive"
-saving = 193.9
-arity = 12
-verdict = "kept: canonical, exempt. A constant table discards all setters and prints a literal after the setup. Routing constants through the one-input lookup instead costs +175.8% at n=10 and +193.9% at n=12 (45 to 125 and 49 to 145 chars)"
+kind = "archive_ref"
 
 [ablations.projection]
-kind = "archive"
-saving = 98.0
-arity = 12
-verdict = "kept: canonical, exempt. The leaf chain covers the table read at the essential inputs only; an ignored input keeps a zero-weight gate line and adds no leaves. Building the chain over the full table instead costs +85.5% at n=10 and +98.0% at n=12 on one-ignored tables, +220.4 / +244.5% on two-ignored tables (10 seeded each), and 0.00% on random tables. Re-measured 2026-10-30 after pair_flags (it was +97.25 / +99.18% one-ignored, +283.83 / +295.12% two-ignored)"
+kind = "archive_ref"
 
 [ablations.pair_flags]
-kind = "archive"
-saving = 66.9
-arity = 10
-seed = "random.Random(n) + named tables"
-tables = 30
-verdict = "kept: the last essential input moves four flag cells (48 + x, 49 - x, 48, 49) instead of weighting the index, so one leaf covers a pair of rows and prints its pair's flag (00, 11, x, not x); the leaf chain halves. Dropping it costs +52.3% / +58.7% / +64.9% / +66.9% on random at n=7 / 8 / 9 / 10 (200 / 200 / 30 / 30), +51.8 / +57.2 / +62.6% balance=True area (20, n=7..9); parity +93.4 / +105 / +113 / +117%, majority +39.7 / +48.3 / +54.8 / +59.0%, thr4 +39.7 / +48.4 / +55.5 / +62.3%, and +10.8 / +29.6 / +49.5 / +67.1%, or +10.1 / +29.6 / +49.9 / +67.6%. Its 65-char setup grows small tables: +38.5% at n=2, +15.4% at n=3 (100 random each), then saves 5.3% / 19.8% / 27.5% at n=4 / 5 / 6. Measured 2026-10-30 chars, every program executed (n<=3 exhaustive, 300 random at n=4, 10-60 random + named at n=5..8, one-ignored tables n=3..6, named rows sampled at n=9..10); a wrong-table control fails"
+kind = "archive_ref"
 
 [ablations.run_sharing]
-kind = "archive"
-saving = 23.2
-arity = 10
-seed = "random.Random(n) + named tables"
-tables = 20
-verdict = "kept: a maximal run of equal pairs is one leaf behind js clamped decrements instead of one leaf a pair. Giving every pair its own leaf costs +18.19% / +20.48% / +23.24% on random at n=7 / 8 / 10 (100 / 100 / 20 seeded), +26.6 / +29.1 / +32.1% on parity, +305 / +465 / +797% on AND, +45.7 / +60.8 / +75.2% on majority. Re-measured 2026-10-30 after pair_flags (it was +62.75% at n=10 with a leaf a row)"
+kind = "archive_ref"
 
 [ablations.negated_twin]
-kind = "archive"
-saving = 144.0
-arity = 10
-seed = "random.Random + named tables"
-tables = 20
-verdict = "kept under the named-function rule (plain-rewrite audit 2026-10-29): the table reversed and negated is built beside the plain build and the shorter kept. Dropping it costs +53.6% on and, +51.3% on nand at n=7, +82.8% / +80.9% at n=8 (297 -> 543), +144% / +143% at n=10; majority 0.0-1.0%, thr4, or, nor, parity and random tables 0.0% at n=7..10, so it never grows a program. Re-measured 2026-10-30 after pair_flags (it was +100% at n=7, +173% at n=10)"
+kind = "archive_ref"
 
 [ablations.last_leaf_decrement]
-kind = "archive"
-saving = 0.0
-arity = 10
-verdict = "kept: spelling, not a trick (plain-rewrite audit 2026-10-29). The last guarded leaf omits its s decrement, which nothing after it reads; always emitting it costs 1 character a table (+3.5% at most, n=2..3; +0.8% at n=4, 0.13% at n=7, 0.02% at n=10)"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 2.4
-seed = 0
-tables = "both constants, n=1..12"
-verdict = "kept: canonical constant folding and minimal spelling, exempt. Keep the six-by-eight constant loop one cell nearer its scratch: cell 1 holds 48/49, cell 0 remains the input scratch. One final setup move disappears; fixed s/j setters and every slot remain. Chars 2n+24/25 and worst commands 2n+99/100: n=7 39/40->38/39 (2.5%), n=8 41/42->40/41 (2.4%), n=12 49/50->48/49. n=8 max commands 116/117->115/116, written workspace unchanged at 40 bits. n=3 corpus chars 32778->32776. Owned execution coverage checks all n slots are visited on zero scratch before output; no port reads, following byte untouched. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute in default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged, global resource caps unchanged. Owned read-first checks preserve exact input count and following byte."
+kind = "archive_ref"
 
 [ablations.quad_flags_20261102]
-kind = "archive"
-arity = 8
-saving = 0.0
-seed = 0
-tables = "all16 quad patterns, all4 input rows; isolated weights16/64"
-verdict = "rejected raw additive quad bank:48+c+ax+by requires f00+f11=f01+f10 (also modulo256). Only0000,0011,0101,1010,1100,1111 satisfy it; the other10 patterns include AND and XOR. Actual Home Row gates execute all64 flag cases; AND wrongly prints0 and XOR2 on11. This rejects the specified linear flag construction, not every possible quad design; no torus-placement search or unimplemented fallback is claimed. No production path/state added."
+kind = "archive_ref"
 
 [ablations.looped_weights_20261102]
-kind = "archive"
-arity = 8
-saving = 0.0
-seed = "random.Random(1000*n+i)"
-tables = "20 random per n7/8; native isolated and nested weights16/64"
-verdict = "rejected: l pairs alternate, so an inserted weight loop's opening l pairs with the gate's opening l rather than its own close. Native nested16/64 counterexamples fail while isolated counted-weight primitives and original unary guarded weights pass. Even deleting every weight character for free bounds random savings by8.223/9.145% at n7/8; a legal implementation would cost more. No nested-loop syntax extension, counter state or production path added."
+kind = "archive_ref"
 
 [ablations.flag_input_choice_20261102]
-kind = "archive"
-arity = 8
-saving = 1.1
-seed = "random.Random(1000*n+i).getrandbits(1<<n)"
-tables = "20 random per n7/8; and/or/parity/majority/threshold-third separately; all tables/rows n<=3 plus three random per n4..6"
-verdict = "near miss: every-input choice is a search; audit one fixed first-essential flag refinement instead. Its setters stay in physical order, with table projection and weight slots changed consistently. Actual chars15322/27776 ->15268/28310 (0.352/-1.923%); a nonproduction free old-source toggle upper bound is2.199/1.051%, still below both bars. Every named function is byte-length neutral at both arities. Exhaustive/sampled4312 paired native executions pass with2156 wrong-output controls;267 tables change. n3 chars32776 unchanged, commands658168 unchanged, but77 tables grow and912 rows slow, so execution admission fails too. Uniform s/j fill, all n physical-order slots, sentinel/noEOF and wrapped widths1/3/11 pass. No reorder candidate, state or old-whole-program minimum added; generator/proofs/pins/anchors/example unchanged."
+kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30
@@ -113,12 +69,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = -0.2308
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: conditional five-cell wrap. 246 programs, 211 halt cleanly; no structural trace differences, control differs on 142. Step throughput at longest 10/20/40 workload breadths: +0.16%/-0.14%/-0.23%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [evidence]
 version = 1

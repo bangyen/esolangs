@@ -35,107 +35,49 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18" }
 
 [ablations.route_switch]
-kind = "archive"
-saving = 32.8
-arity = 8
-verdict = "kept, retuned 2026-10-18: threshold moved to 64 entries per the area crossover (tree serves n=5, 6); execution clause case-split with a derived tree bound"
+kind = "archive_ref"
 
 [ablations.equal_halves_skip]
-kind = "archive"
-saving = 11.3
-arity = 4
-verdict = "kept: canonical, exempt from the bar; priced with the fold restored -- in current code the step chain is both, 35.7 combined"
+kind = "archive_ref"
 
 [ablations.ignored_input_arm_drop]
-kind = "archive"
-saving = 45.8
-arity = 8
-verdict = "kept: canonical, exempt; saving on its own class"
+kind = "archive_ref"
 
 [ablations.sized_leaf_retirement]
-kind = "archive"
-saving = 19.0
-arity = 11
-verdict = "kept 2026-10-28: the balanced route uses the tree at every n -- 17-21% area on random tables at n=10..12, 18-19% on parity (seeds 1, 7), 0 at n=7..8; the default route alone fails (3.5% at n=4, peak 4.6% at its n=6 cap)"
+kind = "archive_ref"
 
 [ablations.balance_turned_tree]
-kind = "archive"
-saving = 74.7
-arity = 8
-seed = "random.Random(s), s = 0..19, n = 7, 8"
-tables = "20 random per n=7,8 plus and/or/nand/nor/parity/majority/threshold-3/threshold-n/2 at n=7..10"
-verdict = "kept, balanced: the balance hook only raced upright fits, whose staircase has one row per one edge (161 x 79 at n=8, side 322). Racing the flat reader with the tree stood on end (52 x 162, side 162) takes balanced area (score squared) off 70.8% / 74.7% on random tables at n=7 / 8; named: parity 74.6 / 76.8 / 77.8 / 76.6%, majority 59.2 / 74.6 / 74.8 / 78.3% at n=7..10, threshold-3 34.3 / 63.4 / 74.6 / 74.7%; and/or/nand/nor 0.0 (they are a line). Flat across n=8..10 at ~75%, not declining. The default is byte-identical on all 72 tables; every balanced program ran on every row (72 tables, n=7..10, 0 bad) and a wrong table failed. Past n=8 the turned block is wider than 2:1 (n=9 58 x 338), a fold would gain more"
+kind = "archive_ref"
 
 [ablations.reader_orientation_search]
-kind = "archive"
-saving = 0.0
-arity = 4
-verdict = "kept: feasibility, not size -- vacuous on the default path, carries width compliance; since the 2026-10-18 retune the width path races its fits by least area (-13.8% at n=3), and the bands property was re-stated coarse to match"
+kind = "archive_ref"
 
 [ablations.constant_folding]
-kind = "archive"
-saving = 0.0
-arity = 4
-verdict = "kept: canonical, exempt; no separate check in current code (dropped as byte-identical) -- the skip chain renders it"
+kind = "archive_ref"
 
 [ablations.width_machinery]
-kind = "archive"
-saving = 0.0
-verdict = "kept: feasibility -- flip, vertical tree, raise funnel, four-column builder; no default-path effect"
+kind = "archive_ref"
 
 [ablations.tiled_tree]
-kind = "archive"
-saving = 71.6
-arity = 10
-verdict = "kept: balanced area on seed 4242 (25 tables an n, 9 at n=11/12) falls 24.6% at n=9, 71.6% at n=10, 82.8% at n=11, 92.6% at n=12 (area a row 109/109/95 at n=10..12, was 385/637/1275); no table grows at n=1..12, n<=8 unchanged. The upright tree is one row per leaf, so its square is T/2 on a side; cut at depth (n-5)//2 and the subtrees side by side, wires blank. Ink is O(Tn), so area is O(T log n) a row. Default byte-identical (corpus hash n=1..12)"
+kind = "archive_ref"
 
 [ablations.six_by_eight_reader_prototype]
-kind = "archive"
-saving = 0.0
-arity = 6
-seed = "random.Random(1847+n)"
-tables = "all tables n=1..3; 20 random plus and/or/parity/majority/threshold-third per n=4..12"
-verdict = "near miss, not shipped: bootstrap the normalization counter as six groups of eight instead of eight groups of six, keeping 48 and all input reads unchanged. The loop bodies change but total reader length does not. Random n=6 area unchanged at 85,176 cells over 20 tables; exhaustive n=3 area unchanged at 88,849 cells. Above six inputs the default is the weighted lookup, unaffected by reader factors; named functions have no area saving through n=12. Forced candidate command count over every n=3 row: 3,209,432 -> 3,143,896 (2.04%), no larger or slower table, below the 5% execution bar. 5,110 raced baseline/candidate output checks correct with 2,555 complemented controls; forced six-by-eight programs additionally pass all 2,048 n=3 rows and all 120 parity rows at n=3..6, with changed emitted readers as the positive control. Prototype stays in ignored notes; generator, bounds and pins unchanged"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 95.8
-seed = "both constant values"
-tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
-verdict = "kept: canonical constants, percentage gate exempt. Default constants overwrite one cell with n reads, then zero the final ASCII digit in one ring and add the answer bit. 2n+20+bit characters, 3(n+9+bit) cells, at most n+491+bit commands across all initial headings. At n=7, area 1098/1101 -> 48/51 cells; n=8 1245/1248 -> 51/54; n=12 1833/1836 -> 63/66. Explicit widths retain the existing reader layout. Constants at n=1..12 ran with default, width=1 and balance=True; owned regressions check sentinel preservation and every initial heading across n=1,3,6,7,8,12. The 270 nonconstant programs through n=3 are byte-identical; n=3 totals fall 87727 -> 87555 chars and 88849 -> 88555 cells."
+kind = "archive_ref"
 
 [ablations.negative_preset_left_sweep]
-kind = "archive"
-arity = 8
-saving = 20.943564993630627
-seed = "random.Random(184700+n), sequential choice('01')"
-tables = "200 fixed tables each n=7,8; 20 each n=9..14; every table/row/head through n=3, forced weighted plus public; samples n=4..8"
-verdict = "kept, sustained: preset bit-2 and expose the selected answer with ++; the left sweep skips the chosen cell. Independent area 1566429 -> 1257171 (19.7429%) /  2941419 -> 2325381 (20.9436%) at n=7/8, growing to 22.7961% at 14. Marginal after shifted positive bands 18.4603/19.8725%, growing to 22.1453%; unbiased limits 22.8571% standalone and 22.2222% marginal, proved from emitted widths. Public n=3 chars 87555, cells 88555 and commands 3192280 unchanged. No new state or branch: negative presets replace positive presets; the joint shifted layout replaces this prototype's leftward cleanup. A changed preset fails the output checker. Motion appends untouched zeros, excluded by dump; all nonselected touched cells end negative."
+kind = "archive_ref"
 
 [ablations.answers_first_no_rewind]
-kind = "archive"
-arity = 8
-saving = 19.816107553987926
-seed = "random.Random(184700+n), sequential choice('01')"
-tables = "same fixed 200 n=7,8 and 20 n=9..14; all small/public/forced, bounded samples and four initial headings"
-verdict = "kept, repaired and sustained: answers at 0..T-1, reads from T; return T cells before exposing the answer. Raw shifted positive presets need a T-cell cleanup rewind followed by 3T cells, not 2T: retaining 2T leaves a nonnegative read cell, caught n=7, row  0. Repaired standalone area 1566429 -> 1259229 (19.6115%) / 2941419 -> 2327019 (20.8879%). Marginal after negative presets 1257171 -> 1026771 (18.3269%) / 2325381 -> 1864581 (19.8161%), growing to 22.1484% at 14 and limit 22.2222%. Joint saving 34.4515/36.6095%, growing to 39.8956% at 14, limit 40%. One layout, no race/state/old fallback: remove offset/rewind and sweep 2T-1 cells right from selected+1. All ordered reads, uniform character inputs and sentinel preserved."
+kind = "archive_ref"
 
 [ablations.looped_bias_per_input]
-kind = "archive"
-arity = 8
-saving = 4.079663590940285
-seed = "random.Random(184700+n), sequential choice('01')"
-tables = "same 200 fixed n=7,8; forced ring every nonconstant table/row/head n<=3, existing public constant route; random ring controls n=7/8"
-verdict = "rejected: executable adjacent-cell 8x6 ring saves 25 columns/input, not estimated 28. Standalone area 1566429 -> 1461429 (6.7031%) / 2941419 -> 2821419 (4.0797%); after admitted joint layout 1026771 -> 921771 (10.2262%) / 1864581 -> 1744581 (6.4358%), declining below 20%. Even deleting all 49 normalization columns/input has at most 13.16% upside at n=8 after the keeper; savings tend to 0. The ring's eight passes each exceed six decrement plus movement/steering steps, so it cannot meet 25% commands; public n=3 execution is unchanged. Forced ring constants can corrupt answer storage (11, row  0 prints 0), so the existing constant route must bypass it. Native 8480 small rows/headings plus 48 generic ring controls passed; scratch only. Added counter cell and return-row ring are unnecessary below the gate; no production path/state retained."
+kind = "archive_ref"
 
 [ablations.weighted_resource_accounting_20261102]
-kind = "archive"
-arity = 11
-saving = 0.0
-seed = "all four explicit initial headings; deterministic onehot witnesses"
-tables = "old/new exact W and E witnesses n=7..11; four headings at 7/8; constant/tree/width entry controls n=1,3,5,6,7,8"
-verdict = "preserved exact benchmark scopes and all old rungs: seed 2 draws heading 0. New E worst 11T+56n+2, attained by any onehot table at all-one row; headings 1/2 add 2, headings 0/3 agree. Old 18T+56n+4 likewise omitted these 2 universal-heading steps; metadata now states the scope and separate all_heading_execution ceiling. W exact 12T+n+6+2bl(n), attained by last-onehot/all-one row, every heading: tape 12T-n-4, pointer n+2, beam n+7, skip 1, two input counters 2bl(n). Swept negative answers can reach -4 and cost 5 bits with touch flag, included in the phase proof. W n=7 1567 -> 1555, n=8 3107 -> 3094. Tree E/W through 6 and all proof arities/exact flags retained; last-onehot is the shared exactness witness. Scaling exact 3(11T+52n+3) cells beyond 6. No generator state added; proof-only all-heading helper distinguishes the existing benchmark convention. Actual balanced grid_area including trailing lines is unchanged: 20 fixed random tables n=7/n=8 total 77510/170248 cells; and/or 1365/1562, parity 6026/13468, majority 3358/6708. The old tree/width/balance paths retain their named linear-n cases; no old weighted fallback is kept. Size pins and packaged balanced AND 2 example are byte-identical (16 native row/heading runs)."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -149,12 +91,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = -0.5779
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: four-way wrap bit mask. 448 programs, 299 halt cleanly; no structural trace differences, control differs on 448. Step throughput at longest 10/20/40 workload breadths: -0.06%/-0.04%/-0.58%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [evidence]
 version = 1

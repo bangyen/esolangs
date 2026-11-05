@@ -26,82 +26,37 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.input_projection]
-kind = "archive"
-saving = 8.4
-arity = 12
-verdict = "kept: canonical, exempt. Only essential inputs pay the 47-step normalization chain and a tree level; all n inputs are read either way. 0.00% on random tables at n=6..12; with one ignored input 6.1% at n=10 and 2.7% at n=12, with two ignored inputs 16.5% at n=10 and 8.4% at n=12"
+kind = "archive_ref"
 
 [ablations.subtree_sharing]
-kind = "archive"
-saving = 353.7
-arity = 12
-verdict = "kept: canonical, exempt. A repeated subtree is emitted once and later copies jump to it. Its solo price was 0.00% on random tables at every arity in the shipped build, where the lookup leaf absorbed the bottom k levels; with the leaf removed (candidate 25) sharing carries those levels, collapsing them to the few distinct low subtrees. On structured tables it is the build: parity 97.6% at n=10 rising to 353.7% at n=12, majority 73.7% / 280.0%. Jointly with projection, the fold and the leaf removed (plain build), random tables cost 673.0% at n=10 and 1,030.9% at n=12"
+kind = "archive_ref"
 
 [ablations.constant_fold]
-kind = "archive"
-saving = 4.2
-arity = 12
-verdict = "kept: canonical, exempt. A constant subtree jumps to one of the two shared print gadgets instead of an emitted subtree. Solo price 0.00% on random tables; 4.4% / 4.2% on AND and OR at n=10/12, 2.7% / 1.4% on half-constant tables, 2.7% / 4.7% on majority"
+kind = "archive_ref"
 
 [ablations.pass_loop]
-kind = "archive"
-saving = 43.6
-arity = 12
-verdict = "kept: normalization is 47 passes of one shared loop (a counter cell of 47 exits it) instead of 47 unrolled decrements per essential input. 50 seeded random tables, 2026-10-30, trick_prototype: -75.4% / -69.4% / -61.5% characters at n=7/8/9 (173,893 -> 42,848; 218,784 -> 66,973; 283,387 -> 109,160), balance=True area -72.1% / -66.2% / -58.2%; 3 tables -60.6% / -51.5% / -43.6% at n=10/11/12 (share falls with n: the saving is a fixed 138 cells per essential input). Named functions n=7/8/9: parity 2,968 -> 389 / 3,390 -> 435 / 3,806 -> 482, and 2,881 -> 318 / 3,289 -> 352 / 3,691 -> 385, majority 3,061 -> 477 / 3,529 -> 566 / 4,011 -> 673. Executed through esolangs.run: every row of all 278 tables at n<=3, random n=4..10 and named functions, ignored-input tilings at n=7..9 (33,608 rows, 0 wrong; a complemented-table control fails 64 of 64). Cost: steps 50n + 2 -> 50n + 95"
+kind = "archive_ref"
 
 [ablations.routing_race_figures]
-kind = "archive"
-saving = 0.0
-arity = 4
-verdict = "recorded before pass_loop: the comment's routing-race example (0100010011111111 at 1345 vs 1371) half reproduces — 1371 was the then-shipped essential routing exactly, but 1345 arises under no flag combination of the then-current emitter; full routing measured 1,763 on this table, so the example's direction has reversed. The race itself is a rejected variant, not shipped, and was not priced. See the stale-figures entry F22"
+kind = "archive_ref"
 
 [ablations.shared_halt_prototype]
-kind = "archive"
-saving = 0.0762
-arity = 8
-seed = "random.Random(1847+n)"
-tables = "all tables n=1..3; 20 random plus constants and parity per n=4..10"
-verdict = "near miss, not shipped: redirect the zero gadget's halt to the one gadget's halt (operand END -> 12). Output falls through, so deleting the first halt requires this jump and removes no cells. Only the decimal operand shrinks: 17,558 -> 17,537 / 27,565 -> 27,544 chars at n=7/8 (0.120% / 0.076%), below the size bar and diluting; zero outputs take an extra command. The n=3 total including constants/parity controls is unchanged at 46,643 chars. Both builds ran every row through n=6 and eight boundary/random rows per table at n=7..10: 10,948 executions correct; 5,474 complemented-expectation controls rejected. Prototype stays in ignored notes; generator, bounds and pins unchanged"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 34.5
-seed = 0
-tables = "both constant tables n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: canonical whole-constant folding. Reuse one scratch cell for all n reads, print one literal, then decrement a dedicated zero and jump past memory. Every instruction has three operands; I/O c names the next instruction, preserving both fall-through and jump-to-c readings. Exactly n+2 commands and 3n+9 cells. Written bits M+6+bl(3n+9)+bl(n), M the initial cell bits: scratch grows by five and halt zero gains a sign bit. n=8 142 -> 93 chars; n=12 184 -> 129. n=3 corpus 46278 -> 46204 chars. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced constant scores improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check exact resources and every input slot; stream readers preserve an unread sentinel and read before output."
+kind = "archive_ref"
 
 [ablations.constant_zero_side_target_20261102]
-kind = "archive"
-arity = 8
-saving = 6.899
-seed = "random.Random(1847+n), successive getrandbits(1<<n), first200 tables"
-tables = "400 fixed generic tables; all276 tables/rows n1..3;20 each n4..6; ignored and named controls"
-verdict = "kept: canonical fixed-target jump threading, percentage-exempt. A zero branch targets print gadget3/9 directly; the removed0,0,gadget only decremented negative cell0. Every caller has all n reads done, fixed ASCII cells15/16=48/49, negative cell0 and END=C. Gadgets inspect no tree cells, then0,0,END necessarily halts. Full-memory equality is not claimed. Source171237/267063 ->156304/248639 at7/8 (8.721%/6.899%), balanced area241983/367643 ->220291/340259. Direct-only n3 source46204->42242, commands478768->477752; no table grows or row slows. All constants byte-identical. Native controls6895 runs check2212 gadget entries and exact reads/sentinel; wrong target and unpermuted-route mutants fail;24 fixed-byte-swap wrong programs print the complement and fail every expected bit. The preamble is unchanged, so M+5n+5 memory peak still occurs before counter decrement16; source/E/global bounds preserved, exact workspace arities1/2 added without dropping3/4. I/O c operands still name the following instruction, preserving both supported readings."
+kind = "archive_ref"
 
 [ablations.fallthrough_owner_generic_20261102]
-kind = "archive"
-arity = 8
-saving = 4.067
-seed = "random.Random(1847+n), successive getrandbits(1<<n), first200 tables"
-tables = "400 generic tables plus exhaustive small and samples4..6"
-verdict = "rejected generically: two-pass one-edge ownership changes all200 programs at each fixed arity but saves only3.439%/4.067% against mandatory canonical threading,156304/248639 ->150929/238527. Raw old/owner source171237/267063 ->165537/256951. n3 raw owner46204/478768 chars/commands ->46036/478720, far below5% execution admission. No old-order source-min fallback ships. Named parity372/419 ->333/371 initially clears10%, but its1/11 limit is below the sustained floor; observed high17.123% at96 falls to16.511% at128, and fixed7/8 fail20% declining. Variable near-unanimity likewise359/404 ->319/356,11.142%/11.881%, limit1/11, rejected as a family. Fixed threshold2 fails n7 at9.819% despite10.682% at8; threshold7 fails n7(AND). Only separately admitted fixed thresholds3..6 and majority below ship. Native raw/small variants11800 runs pass; wrong-program controls fire."
+kind = "archive_ref"
 
 [ablations.fallthrough_owner_families_20261102]
-kind = "archive"
-arity = 8
-saving = 18.061
-seed = "full-input strict majority and fixed popcount thresholds3,4,5,6, with negations"
-tables = "each family at fixed7/8 and through16; semantic DAG extension through256; all small tables/rows"
-verdict = "kept only for strict majority and separately qualifying fixed thresholds3..6. Their source savings7/8 are: majority16.180%/18.061% (445/526->373/431); k3 14.319%/15.675% (433/504->371/425); k4 16.180%/17.978% (445/534->373/438); k5 15.036%/18.061% (419/526->356/431); k6 11.142%/16.529% (359/484->319/404). Negations have identical source lengths. No cap, source race, searched table or input reordering. Symmetry is tested on the full physical inputs; a single profile transition identifies k. Ignored-input parity/thresholds stay generic. A threshold decrements its required count on one, an injective map, so every nonconstant one-child has one parent; emit those disjoint chains, backpatch zero edges, and retain constant gadget targets. Generic owner choices are unnecessary in production. Leading source coefficients give fixed-k saving limit(k-1)/(4k+3), respectively2/15,3/19,4/23,5/27, all above10%; strict majority tends1/3. DFS has k(n-k+1) nodes and(k-1)(n-k) copy jumps; chains remove all copies. Fixed-k DFS/chains coefficients4k+3 and3k+4 multiply n log10(n); majority coefficients6 and4 multiply N log10(n). Observed fixed-k highs22.533/27.173/30.176/32.244% at64 decline by96; majority43.662% at128 declines to41.675% at256. Extension emits real programs through the same builders with semantic residual IDs, not a character proxy;134 byte controls match materialized tables through16, and old/new extended sources execute (120 fixed/majority rows,128 broader rows). This audit-only representation is not production. Named ordinary-table native1936 rows, final layouts/ignored192 rows and40 exact workspace runs pass. Balanced areas7/8: majority630/741->527/595; k3 630/741->527/595; k4 630/780->527/630; k5 595/741->527/595; k6 527/702->465/560. Full program bounds remain; each named path has no copy jump, <=49n+97 commands. Existing nonfamily worst witness still attains50n+95 at2..6, so no shared witness change. Final n3 source42228, commands477748; production3563 rows and600 exact workspace rows pass."
+kind = "archive_ref"
 
 [ablations.routing_order_race_20261102]
-kind = "archive"
-arity = 8
-saving = 2.344
-seed = "random.Random(1847+n), successive getrandbits(1<<n), first200 tables"
-tables = "400 generic tables; exhaustive small ordering controls; named symmetric functions"
-verdict = "rejected: identity/reverse/greedy race gives canonical156304/248639 ->150940/242810 (3.432%/2.344%), below10%; raw old/race171237/267063 ->165012/260893. Reverse alone156097/248056, .132%/.234%; greedy alone152192/244190,2.631%/1.789%. Greedy tries remaining variables by distinct residual count and is structural search, audit-only regardless of its saving. Probe fires: reversed order differs200/200, greedy159/163 of200 at7/8. Greedy nonconstant node profiles summed over tables: n7[200,400,800,1600,2962,2263,400] vs identity[200,400,800,1600,3092,2445,400]; n8[200,400,800,1600,3199,5719,2679,400] vs[200,400,800,1600,3199,5980,2760,400]. Every trial uses an actually permuted table and matching routes; native ordered-read/sentinel controls pass. Reversing routes without the table computes wrong0010 row1, caught. Named parity/threshold tables are symmetric and gain no characters from these orders at7/8. No production search, routing race or cache added."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -114,12 +69,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 9.0583
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: reuse unchanged memory writes. 245 programs, 222 halt cleanly; no structural trace differences, control differs on 243. Step throughput at longest 10/20/40 workload breadths: +22.37%/+17.47%/+9.06%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [evidence]
 version = 1

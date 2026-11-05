@@ -36,66 +36,31 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.sqrt_width_layout]
-kind = "archive"
-saving = 22.4
-arity = 2
-verdict = "kept, capped at projected count <= 2 (restored 2026-10-20 after retirement candidate #20's removal was re-priced at small arities): the natural sqrt-width layout returns on the default path for tables whose projection onto their essential inputs has at most two entries, saving 37.5% at count 1 and 22.4% at count 2 per affected table by area (totals +31.8% at n=1, +9.6% at n=2 and +0.7% at n=3 over the exhaustive small tables), no table growing; at counts 4 and 8 it loses 19.6% and 36.1%, and the audit priced it at area 1,224 per random table at n=8 against the wide layout's 400 (603 vs 240 at n=7, 522 vs 128 at n=6) — 2.5-4.1x the area — so every larger table keeps the grid's width 80. Explicit widths and the balance walk are untouched. See RETIREMENT-CANDIDATES entry 20"
+kind = "archive_ref"
 
 [ablations.header_folding]
-kind = "archive"
-saving = -7.1
-arity = 10
-verdict = "removed 2026-10-20 (fix phase), scoped as written: the folded construction emits the header on one row whenever it fits the chosen columns and folds only when it does not. The audit priced the fold at area 1,200 against the unfolded 1,120 at n=10 and 720 against 640 at n=9 (-12.5% / -7.1% by area, -1.2% / -0.2% by chars) on the default path, where the header fits one row (78 cells at n=10 against 80 columns); candidate 20's fix has since taken the default path off the folded construction, so the unfold now serves explicit-width calls. Folding remains the only route for widths narrower than the header. The natural build restored the same day for projected count <= 2 (see sqrt_width_layout) carries its own folded header for over-wide cases, which never occurs inside that class at n <= 13, where its plain layout always fits; this entry's scoped form is unaffected. See RETIREMENT-CANDIDATES entry 21"
-retirement = { verb = "removed", date = 2026-10-20 }
+kind = "archive_ref"
 
 [ablations.essential_projection]
-kind = "archive"
-saving = 36.4
-arity = 12
-verdict = "kept: canonical, exempt. Ignored inputs weigh 0 in the Horner fold and the table is read at its essential inputs: 94.0% by area on constant tables at n=10, 40.0% / 36.4% by area with one ignored input at n=10/12. The measured price flips sign at layout-regime boundaries (two ignored inputs at n=12: -36.4% by area, -40.4% by chars) because projection moves the table out of the six-bit packed regime into the folded text regime; the flips belong to the regimes, not the projection"
+kind = "archive_ref"
 
 [ablations.six_bit_packing]
-kind = "archive"
-saving = 40.0
-arity = 8
-seed = "random.Random(100 + n) for 200 tables; random.Random(200 + n) for 20 balanced tables; random.Random(9000 + n) for 20 tables at n = 7..9"
-tables = "200 random plus parity/and/or/majority/threshold-3 at n=7,8; 20 balanced random at n=7..10; 100 random plus the named five at n=1..6 at widths None/1/5/20"
-verdict = "kept for the general decoder and narrow widths; default eight-essential-input tables use one-row nibbles from 2026-11-02. Historical measurements follow. Kept 2026-10-30 (trick_prototype), then priced and used below 2^10 cells: the six-bit printable-ASCII grid races the plain grid on area (rows x widest row, no wider) and wins when strictly smaller. Default area 240 -> 240 (0%, tie: plain kept) at n=7, 400 -> 240 (-40.0%, -37.5% chars) at n=8, 640 -> 320 (-50.0%) at n=9; named functions identical to random at n=7/8. balance=True: 220 -> 152 (-30.9%), 351 -> 175 (-50.1%), 630 -> 238 (-62.2%), 1173 -> 357 (-69.6%) at n=7..10. No table grew at n=1..6 (0 of 420 per n over four widths). Every row of every table at n<=3 (276 tables), the named functions and 50 random tables at n=7 and 8 ran through esolangs.run with 0 wrong; a table with one flipped entry failed. Above 2^10 cells the plain grid cannot fit the torus, so the pack is forced"
+kind = "archive_ref"
 
 [ablations.balance_narrow]
-kind = "archive"
-saving = 0.0
-arity = 8
-seed = "random.Random(4242 + n); 777 + n for the n<=10 diff"
-tables = "20 random per n=3..8, every table at n=1,2, plus parity/xnor/majority/and/or; 15 random plus parity/majority/and/constant per n=3..10"
-verdict = "retired 2026-10-28 (plain-rewrite audit): balance's single-digit-column candidates (widths 4-9) won only at n=1 (32.5% balanced area) and n=2 (4.0%) and on constant tables to n=6 (side 12 -> 15), none of them a judged class; 0% on random and named tables at n=3..10. Every balanced program ran (0 bad), a complemented table failed. The narrow bound stays for explicit widths. The one-column parity candidate was priced with it and kept: 0% at n<=8 but side 48 against 51 at n=10 (12.9% area on parity)"
-retirement = { verb = "retired", date = 2026-10-28, balanced = [119, 127] }
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 70.3
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: canonical fixed-output spelling. Read/pop each numeric input, push the fixed bit, print decimal and halt. Default A=E=2n+3 cells/commands; W=2+bl(2n+2)+bl(2n-1) written bits. Width requests keep a fitting row, use one vertical column only when its initial turn and commands fit 25 rows, otherwise use the existing serpentine fold at a four-column floor. The balanced width follows W(W-2)=2L; its neighboring widths match the full supported-width oracle at every n=1..13. The thirteen-input cap remains. n=7 60 -> 17 cells; n=8 64 -> 19 cells, 32 -> 19 commands, 24 -> 11 written bits; n=12 80 -> 27 cells. n=3 corpus 21584 -> 21514 cells (12926 -> 12896 chars). A separate 1120-run native probe covers every row through n=8; owned regressions cover through the n=13 cap. Each language passed 5656 paired old/new row executions; 270 nonconstant default programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language match or improve; all 26 benchmark size/command pins across the batch remain unchanged. Owned regressions check reads before output, no EOF probes and a preserved following record, without adding collected cases."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_one_row_nibbles]
-kind = "archive"
-arity = 8
-saving = 46.666666666666664
-verdict = "kept: two earliest essential inputs build f=(1+b0)(1+3b1); later inputs index one data row with g at literal y=1. Store32+v with exponent b0+2b1, permuting the high table bits while retaining input-order reads and &$ discards. Direct low-bit Horner reads need no initial index zero except at two essential inputs. Projected4..320 entries fit a single80-cell data row; power-of-two tables therefore stop at256 entries/eight essential inputs. Header is at most52 cells at total n<=13; data at most64. Ninth-essential-input parity physically emits128 nonspace data cells and the native VM rejects its row. This cap belongs to the fixed-y one-row constructor, not to four-bit packing in general: a tested 2D extension saves25% at9, ties at10 and loses14.2857%/27.2727% at11/12, so no favorable declining window is claimed. Existing general layouts remain only outside row/requested-width feasibility, with no new-vs-old size race. The global13-input cap and O(T) generation/source stay unchanged; default execution O(n), workspace poly n.200 Random(100+n).choice tables plus parity/and/or/majority/threshold3 at7/8 all run every row.243420 fresh-machine executions across old/Horner/nibble prototypes; separate wrong-plane-order, flipped-entry and physical-cap controls fire. Default area7:240->76 cells (68.3333%),8:240->128 (46.6667%); chars193->71,205->107. Declining savings clear20% at both largest construction arities. Even the new lookup with longer old-style index reads qualifies independently:94/128 cells, native every7/8 parity row. Commands63->38 and107->42; n3 corpus area21514->11398,chars12896->6440,commands86128->45664.827 independent default/disabled comparisons,3308 live rows with full snapshots and bounds,1164 width1/5/20/40/80 and balanced rows pass, including gapped projections through13. Exact low-arity worsts are now projections through6; update shared witness and pins. W7/8 measured34/43->28/28bits. Stack peaks17bits at[f,cell,4,8], f<=8 andcell32..47; only column, done and input cursor write on this straight header. Bounds and source anchors updated together; n4parity65->31chars, n10/n13random335/1545 unchanged. Three-run medians for20table/all-row native batches7:0.34217->0.22974s,8:1.06408->0.54165s; generation11-build medians0.491/0.742ms->0.482/0.891ms (~20% slower at8). Parity balanced areas unchanged2..8; narrow/general layouts remain available. Native output follows all reads, no EOF probes, following7 preserved."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_header_row_inline_data]
-kind = "archive"
-arity = 7
-saving = 67.5
-verdict = "rejected raw eight-bit inlining: byte200 survives UTF8 roundtrip and native all-row execution and still counts one grid cell, but a CR leaf changes grid structure and computes the wrong bit. High bytes are not the failure; structural line separators are. A seven-bit alphabet cannot represent all256 eight-bit leaves under the same three-selector decoder. A conforming printable-nibble inline repair runs every parity row through7 and fits78 cells at7, but the separate-row keeper takes76. Its improvement over the keeper declines:23.3333%/14.7059% at5/6, then loses2.6316% at7. Judging the two largest arities before that loss misses the declining20% bar, so do not stack it. At8 its114-cell single row exceeds80; the raw byte row is82 cells. Against the old baseline the nibble repair can qualify, but it is superseded by the selected construction at the verdict arities, not bundled as a second gain."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_horner_shift_first_reads]
-kind = "archive"
-arity = 8
-saving = 0.0
-verdict = "unselected as an additional rule. Standalone 2*&+ in place of &\\2*+ computes the same Horner recurrence and is correct in81140 native rows for this variant (243420 combined old/Horner/nibble rows). By itself default area remains240 at7/8 (positive area change occurs at smaller arities, so this is not a vacuous probe). Standalone n3 area21514->20074,chars12896->12176,commands86128->80368 (6.6877%), with no growing/slower default cases in explicit small-table controls and273 arity/projected-count row controls. That clears the separate5% execution gate before nibble packing. Once the chosen lookup is installed, an additional global rewrite changes only natural projections in the n3 corpus:4096 paired native rows measure45664->45616commands (0.1051%), below5%. Keep existing natural/general/requested-width readers; no global Horner rule is stacked. The new lookup uses its own direct index arithmetic and still clears its source gate without that shortening, as separately executed94/128-cell controls show."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -107,20 +72,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 9.126
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: construct immutable named tuples through tuple.__new__. 271 programs, 158 halt cleanly; no structural trace differences, control differs on 271. Step throughput at longest 10/20/40 workload breadths: +9.13%/+9.96%/+10.19%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 3.8703
-workload = "complete run; source parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: construct immutable named tuples through tuple.__new__. 5219 paired native traces, 2415 clean halts, no differences; changed-site mutant differs on 5197. Complete-run savings 3.87–4.69%, including source parsing and output. Only full positional records bypass the wrapper; keyword-defined defaults remain centralized. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+kind = "archive_ref"
 
 [evidence]
 version = 1

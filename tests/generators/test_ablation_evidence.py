@@ -64,6 +64,34 @@ def _controls(tmp_path, monkeypatch):
     assert archive is not None
     data = tomllib.loads((ablations.ROOT / archive.path).read_text())["ablations"]
     key = next(iter(archive.records))
+    compact = copy.deepcopy(data)
+    pinned = ablations._archive_source(REFERENCE, "ablations", archive.archive_revision)
+    data = {
+        k: pinned[k] if isinstance(v, dict) and v.get("kind") == "archive_ref" else v
+        for k, v in data.items()
+    }
+    assert ablations.parse_audits(REFERENCE, "ablations", data) == archive
+    missing = copy.deepcopy(compact)
+    missing["missing_control"] = {"kind": "archive_ref"}
+    with pytest.raises(ablation_replay.AuditError, match="missing archived"):
+        ablations.parse_audits(REFERENCE, "ablations", missing)
+    override = copy.deepcopy(compact)
+    override[key] = {"kind": "archive_ref", "verdict": "forged"}
+    with pytest.raises(ValueError, match="references"):
+        ablations.parse_audits(REFERENCE, "ablations", override)
+    del missing["archive_revision"]
+    with pytest.raises(ValueError, match="references"):
+        ablations.parse_audits(REFERENCE, "ablations", missing)
+    with pytest.raises(ablation_replay.AuditError, match="cannot read archived"):
+        ablations.parse_audits(
+            REFERENCE, "ablations", compact | {"archive_revision": "f" * 40}
+        )
+    removed = copy.deepcopy(compact)
+    del removed[key]
+    with pytest.raises(ablation_replay.AuditError, match="records are missing"):
+        ablations.verify_archive(
+            ablations.parse_audits(REFERENCE, "ablations", removed)
+        )
     broken = copy.deepcopy(data)
     broken[key]["verdict"] += " changed"
     with pytest.raises(ablation_replay.AuditError, match="values differ"):

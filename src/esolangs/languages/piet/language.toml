@@ -29,94 +29,40 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-20" }
 
 [ablations.literal_product]
-kind = "archive"
-saving = 25753.12
-arity = 12
-verdict = "kept: a one-hot or one-cold table is a product of literals, returned as the sole candidate instead of a lookup. Deleting it costs +25,753.12% on one-hot and +19,990.32% on one-cold tables at n=12, +31,715.38% on AND (a one-hot table) and +15,871.79% on OR, and +50.00 / +51.72% on constant tables, which reach it after projection to one entry"
+kind = "archive_ref"
 
 [ablations.halved_lookup]
-kind = "archive"
-saving = 0.0
-arity = 12
-verdict = "retired 2026-10-28 (random + named bar): 0.00% by area and by balanced side^2 on 20 seeded random tables and on parity, majority, and, or and a threshold at n=7..10 (and/or take the literal product, so the half never races); it won only on a class drawn to show it (+56.55% on half-constant, +56.31% on second-half-constant, +28.05% on first-half-one tables at n=12; 36% at n=8 on a zero-upper-half random table). Priced by deleting it, joint with the strip, fold and packed races; the n=3 exhaustive total moves 34,062 -> 34,224 codels"
-retirement = { verb = "retired", date = 2026-10-28, balanced = [62, 70] }
+kind = "archive_ref"
 
 [ablations.input_projection]
-kind = "archive"
-saving = 664.76
-arity = 12
-verdict = "kept: canonical, exempt. Only the essential inputs index the table; an ignored input is read and popped, and the stored table is projected onto the rest. Removing projection costs +98.61% on one-ignored, +292.04% on two-ignored and +664.76% on three-ignored tables at n=12, and +27,480.00 / +21,375.86% on constant tables, whose projected form is a single entry"
+kind = "archive_ref"
 
 [ablations.area_default]
-kind = "archive"
-saving = 71.5
-arity = 10
-seed = "random.Random(184700 + n)"
-tables = 200
-verdict = "kept: the default is the strip or the least-area of three short-bridge packed layouts (2026-10-28 plain-rewrite audit: the fold as packing ceiling and the plain and duplicated lane kinds never won, area and balanced side identical on every table at n=1..10, seed 4242), with no black ceiling (the strip on a tie); that dropped the ceiling and cut total area on 54-260 seeded random tables a size by 0.2-3.5% (n=4 exhaustive 1.0%, never larger on any of 65,536), at up to 40 more steps on n=4 parity. Total area over 200 random tables falls 38.3% at n=6, 51.8% at n=7, 61.7% at n=8 and 71.5% at n=10 (22.0% at n=5, 1.2% at n=4, none at n=3, where no fold is smaller); every program is executed, exhaustively through n=3 and sampled through n=7. Execution bound, derived: steps = blocks entered, one per operation of the bounded list (at most 2T+6n+14 blocks, push(T) rebuilt by doubling) plus 2 for the halt, plus a turn gadget per extra lane, 6 blocks emitted and 5 packed (four gadget blocks and the landing; white is crossed in the step that leaves the landing). Lanes: a folded image is strictly smaller than the strip (width at most 3T+5n+16, 3 rows), every extra lane costs one row packed and two emitted, and a multi-lane image is 16 (packed) or 11 (emitted) wide, because the first lane stops within 2 cells of its room. So lanes less one are at most H-5 packed and (H-3)/2 emitted for height H < 3(3T+5n+16)/W, and the extra steps are below 15(3T+5n+16)/16, giving 5T+11n+31. Measured worst steps 7, 30, 42, 107, 158, 290, 404 against 2T+4n+14 of the old strip bound (n=1..7), all within the new bound. Workspace: the same stack plus at most 4 bits of gadget operands, the position bl(x)+bl(y) with x < the strip width and y < 3/11 of it, dp 2 and cc 2 bits"
+kind = "archive_ref"
 
 [ablations.balance_strip_seed]
-kind = "archive"
-saving = 24.4
-arity = 7
-seed = "random.Random(4242 + n)"
-tables = "20 random per n=3..8, 5 at n=9..12, every table at n=1,2, plus parity/majority/and/or/threshold-2/threshold-(n-1)"
-verdict = "kept 2026-10-28 for parity and majority: balance seeded with the strip instead of the packed default (the packed default stays a candidate). Balanced area (side^2) on random tables -8.3 / -20.5 / -26.6 / -24.4 / 0.0 / -3.2 / -2.5 / -1.8 / -3.9% at n=4..12, so random tables alone miss the bar at n=8; parity -27 / -39 / 0 / -26 / 0 / -14% at n=4..9, majority -39 / -15 / -26 / -23 / -14 / 0 / -9% at n=5..11; and/or unchanged; no table larger. The packed-seeded call was redundant beside the default (identical on 128 tables). Every changed program ran (0 bad)"
+kind = "archive_ref"
 
 [ablations.sum_form_and_flipped_table]
-kind = "archive"
-saving = 46.2
-arity = 12
-seed = "random.Random(5) and named tables"
-tables = 20
-verdict = "kept under the named-function rule: a literal product also races its sum form (add the literals that fail, then not: a literal is 2 codels where the product spends 3, so nor/or and a conjunction of zeros stop paying a not per input), and a lookup also races the complement stored with a not on the selected entry (a 0 entry is 2 codels, a 1 entry 1). The smaller by codels is kept. Area: and/or/nor/nand 26-29% off the dearer polarity at n=7..12 (nor 78 -> 57 at n=8, 114 -> 81 at n=12), at-least-2 complement 23.5% / 32.3% / 38.0% / 41.6% / 44.6% / 46.2% at n=7..12, majority 9.6% at n=8, 11.3% at n=10, 13.5% at n=12; random tables 0.8% at n=7, 1.6% at n=8 (the n=3 exhaustive total 34,224 -> 33,882). Balancing the strip and packed seeds and each candidate list too was priced and dropped (balanced side^2, 20 random tables: -25.7% at n=7, -15.6% at n=8, -3.7% at n=10, parity/majority 25.7%/22.8% at n=7/8 and 0 at n=10; a decline past n=8, and 4x the balance time, 3.1 s -> 13.2 s at n=10). Executed: balanced and default rasters on 20 random tables per arity at n=7,8 and named functions with complements and reversals through n=9"
+kind = "archive_ref"
 
 [ablations.majority_count]
-kind = "archive"
-seed = 0
-arity = 8
-saving = 88.54
-tables = "strict majority and complement independently at fixed n=7,8; exhaustive tables/rows n<=3; native projected/layout/scale controls"
-verdict = "kept: sum essential bits, seed from the first read, drain ignored reads, subtract floor(m/2) using push1/subtract pairs, push zero and compare greater; invert only for the complement. Actual scale-1 codel areas majority 522 -> 75 and 759 -> 87 (85.632%/88.538%), complement 522 -> 78 and 759 -> 90 (85.057%/88.142%). Independently against the already qualifying DUP reader the savings are 83.660%/87.054% and 83.007%/86.607%. A strip has A=3(2n+2floor(m/2)+5+b), commands 2n+2floor(m/2)+4+b; from n=7, saving >=1-(9n+18)/2^n increases toward 1 against either lookup. Added construction is one O(T) projected-family recognition/count helper and the existing greater opcode; transient seeded/invert flags and an O(log n)-bit runtime accumulator replace the T-entry stack. No new integer builder, cache, layout, source race or per-render family flag. The old majority lookup and new DUP implementation are superseded. Other functions keep their existing path. Generic exact proof witnesses and all scopes/coefficients, eight pins, AND example and parity/AND anchors stay unchanged. New n=8 majority anchor 87 codels. n=3 default corpus 33870 -> 33633, balanced 40244 -> 39965. Native checks cover both biases, physical input order and drain, PNG/default/narrow/balance/scale3, resources and following record; no large count run is needed for the elementary increasing lower bound."
+kind = "archive_ref"
 
 [ablations.chunked_entry_push]
-kind = "archive"
-arity = 8
-saving = -150.85
-seed = "random.Random(184700 + n)"
-tables = "historical200 source; revised20 fixed per7/8,4 per4..6,exhaustive<=3;2 tables/allrows/3 timing passes per7/8"
-verdict = "kept 2026-11-03 by the 25% command alternative. Historical area-selected triples grew34.061/34.912%; their extra binary integer builder is rejected. Instead one three-row strip pushes each0..7 chunk directly, preserves the row below the stack, selects floor(row/3), divides by q(q+1)/2+1 then mod2. Choose source-min polarity, commands only on a source tie. No pair route, bounded builder, whole-old source comparison or runtime decision state. Constants/products/majority keep O(n) layouts. From m4 essential inputs the worst-command bound crosses: old n3 maximum40 versus triple upper58 (native00011111 loses39->56), old n4 maximum96 versus triple68 (-29.167%). Old n5/6/7 maxima131/200/317 become82/108/154 (-37.405/46.000/51.420%); n8 bound244. Small projections and named readers remain below these global bounds. All old source/E/W exact scopes and flags are retained, with constructive new n4..7 maxima source333/468/723/1218 and W43/62/95/157. Some n4 tables slow (0111100111100011:54->64 on all16 rows); this is not the 5% no-table-regression route. Nevertheless native whole-table batch wall medians4..6 improve .02241->.02046 / .06592->.05000 / .19771->.13182s. Fixed20 actual scale1 codel area7/8 grows10393->21825 /15638->39228 (109.997/150.850%); four asymmetric rows per table commands24980->9476 /42772->13664 (-62.066/68.054%), zero slower rows there. Whole-table wall medians7/8 .3161->.1980s /1.0970->.6814s. Every table/row1..3 and four fixed all-row tables4..6 pass ordered reads, sole output, following record and halt; n3 source33633/E68104 unchanged. Command schedules are input-independent. From n8 old parity takes at least3T/2+4n+16, while new global bound2ceil(T/3)+4n+40 improves it by at least25%, approaching at least55.556%. Six pins and AND example unchanged; both four-input pins refreshed (parity96->63 commands,asymmetric54->62) with last-row/by-row counts; native anchors n10 parity6477 (was2226), AND66 and n8 majority87. Added state is one retained row and extraction operands replacing the T-entry stack, O(T) source/build, fixed byte-valued RGB palette. Existing narrow/balance feasibility remains; no source admission claim."
+kind = "archive_ref"
 
 [ablations.packing_offsets_prototype]
-kind = "archive"
-saving = 0.7404
-arity = 8
-seed = "random.Random(1847+n)"
-tables = "20 random plus parity/majority/and/or per n=7,8; representative n=3 executions"
-verdict = "Not shipped: add short-bridge widths root+1 and root+17 to the existing root+5/9/13 race. Random n=7/8 area savings are 0/0% and 1.30/0.74%; root+17 saves 2.50% on n=8 majority, other named cases unchanged. Both pass 70 output checks and change raw programs. Neither size bar passes."
+kind = "archive_ref"
 
 [ablations.wider_balance_recheck_20261101]
-kind = "archive"
-saving = 0.0
-arity = 8
-tables = "parity, majority, and, or, threshold-2, threshold-(n-1), and complements at n=7..10"
-verdict = "Named functions only here; seeded random tables are in [ablations.wider_balance_random_20261101]. Not reinstated: balance both strip and packed seeds for each literal-product/sum or direct/complement lookup candidate, retaining the current balanced output. Actual area savings are 0% on all 48 tables, including both gate arities n=7,8. Ran both outputs on six rows per table: 576 correct executions. Positive control: existing strip seeding improves n=7 parity's balance score from (29,522,29) to (25,550,25), with 12 correct executions; its area grows 522 -> 550 codels, so the control shows the probe detects balance, not an area saving. The earlier 25.7%/22.8% figures measured enclosing side squared, not actual area or a current marginal gain."
+kind = "archive_ref"
 
 [ablations.wider_balance_random_20261101]
-kind = "archive"
-saving = 0.0
-arity = 8
-seed = "random.Random(4242 + n)"
-tables = 200
-verdict = "Not shipped: the same candidate (balance strip and packed seed of each direct/complement or product/sum lookup, keeping the current balanced output) on 200 random tables at n=7 and n=8. Actual area changes -0.83% / -4.51% (it grows: 15 of 200 tables larger at n=7, 165 larger and 8 smaller at n=8); enclosing side^2 saves 2.22% / 16.83% (15 / 165 tables better, none worse), so it trades area for squareness. The n=8 side^2 figure is a one-arity spike, not a trend: 60 tables at n=9 / 10 give 2.45% / 1.96% side^2 and -1.33% / -0.67% area (16 / 11 changed, 864 correct baseline rows, wrong-table control 144 of 144), so side^2 misses the 10% bar at every arity but n=8 and area never saves. The 24 named tables at n=7,8 are unchanged, matching the recheck. Ran every baseline program on up to six rows per table (424 tables, 2528 correct) and every differing candidate (188 tables, 1124 correct); 0 wrong. Wrong-table control: the complemented table fails on all 424 programs (2528 of 2528 rows). Area-probe control: strip -> least-area default saves 52.98% / 62.34% at n=7 / 8 on the same tables (cf. [ablations.area_default])"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 9.3
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: canonical constant folding, exempt from the percentage gate. Start with an input read so the entry block supplies it; pop earlier inputs. For zero duplicate/subtract the final bit; for one push a literal over it, leaving one unused bit at halt. Stack peak remains two bits. Default strips use 6n+12-3b codels, 2n+3-b steps and 4+bl(2n+3-b)+bl(2n-1)+bl(n) written bits, scale 1. n=7 zero/one 60/57 -> 54/51 codels; n=8 66/63 -> 60/57 codels, 21/20 -> 19/18 steps, written bits stay 17; n=12 90/87 -> 84/81 codels. n=3 corpus 33882 -> 33870 codels; balanced corpus 40256 -> 40244. One of 24 balanced shape scores worsens: n=6 one is 15x3 (45 codels) rather than 13x8 (104); the unchanged area ceiling selects the smaller strip. The other 23 match or improve. Each language passed 5656 paired old/new row executions; all 270 nonconstant default programs through n=3 remain byte-identical (Piet pixel-identical). Both constants n=1..12 execute in default, width=1 and balanced layouts; a separate 1120-run candidate probe per language includes every row through n=8. All eight benchmark size/command pins per language remain unchanged. Owned regressions check resources, all reads before output, no EOF probe and a preserved following record; Piet also executes at scale 3. No new collected cases."
+kind = "archive_ref"
 
 [audits]
 plain_rewrite = 2026-10-28
@@ -128,12 +74,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 0.135
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: four-way direction bit mask. 244 programs, 144 halt cleanly; no structural trace differences, control differs on 52. Step throughput at longest 10/20/40 workload breadths: +0.14%/+0.37%/+0.28%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [evidence]
 version = 1

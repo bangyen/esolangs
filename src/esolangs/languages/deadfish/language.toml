@@ -10,20 +10,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 1.2181
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "all n<=3 generated tables/rows where supported, examples and 300 seeded mutations; 400-step cap"
-verdict = "prototype only: direct arithmetic dispatch. 309 programs, 309 halt cleanly; no structural trace differences, control differs on 209. Preliminary step throughput +1.22%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 5.56
-workload = "complete run; source parsing and final output included"
-seed = 0
-tables = "3009 native corpus programs; two finite instruction profiles at 32/128/512 units"
-verdict = "kept: direct arithmetic dispatch. 3009 paired native traces, 3009 clean halts, no differences; changed-site mutant differs on 1990. Complete-run savings 5.56–7.38%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+kind = "archive_ref"
 
 [semantic_evidence]
 version = 1

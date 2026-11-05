@@ -26,80 +26,37 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.halves_agree_rule]
-kind = "archive"
-saving = 55.7
-arity = 10
-verdict = "kept: canonical, exempt from the bar; a node whose halves agree is that half -- 12.2% on random tables at n=10, 55.7% on ignored-input classes at n=10, 77.5% on single-block tilings; it is also the essential drop, since the reads prefix binds every input and a dropped test drops no read"
+kind = "archive_ref"
 
 [ablations.complement_twin_rule]
-kind = "archive"
-saving = 39.3
-arity = 10
-verdict = "kept: canonical sharing; re-measured 2026-10-30 by disabling only the twin lookup (the _Ref negation kept): parity grows 68.5 / 73.7 / 77.7 / 64.8 / 66.9 / 68.6% at n=7..12 (n=10: 270 -> 445 chars; balanced area +78-96%), majority, and, nor unchanged; random tables (20 an n, seed random.Random(5150 + 100n + s)) +1.8 / +3.0 / +1.7 / +0.0% at n=4 / 7 / 8 / 10, balanced -1.0 to -2.7% from n=7. The former verdict (disabling it shrinks parity 2.5%, random 1.7% at n=10) did not reproduce"
+kind = "archive_ref"
 
 [ablations.subtree_interning]
-kind = "archive"
-saving = 0.0
-arity = 10
-verdict = "kept: canonical substrate, text-neutral alone -- with both reduction rules off, the reduced build reproduces the plain tree's totals digit for digit on every corpus measured; the reduction's whole price is the agree rule's minus the twin rule's drag (jointly 10.6% on random tables at n=10)"
+kind = "archive_ref"
 
 [ablations.constant_fold]
-kind = "archive"
-saving = 65.7
-arity = 10
-verdict = "kept: canonical, exempt; priced jointly with the constant-arm forms inside the tree build -- 65.7% on random tables at n=10, 82.7% on half-constant and 88.6% on sparse corpora, 99.4% on and; the reduced build emits the same shapes"
+kind = "archive_ref"
 
 [ablations.repeated_expressions]
-kind = "archive"
-saving = 48.5
-arity = 10
-verdict = "kept: clears the bar on random tables and rises with arity (35.7% at n=7, 43.6% at n=9, 48.5% at n=10); 97.5% on parity and 85.8% on majority at n=10; the in-code figure of 32-33% at n=7..9 (40 random tables) prices higher on the audit's 200-table corpus -- a stale-low sample figure, flagged in the batch 6 report"
+kind = "archive_ref"
 
 [ablations.minimal_parentheses]
-kind = "archive"
-saving = 20.3
-arity = 10
-verdict = "kept: `&` binds tighter than `|`, so the default drops the spaces and every parenthesis the precedence makes redundant (`!a&X|a&Y`, `a|b|X`; parentheses stay on an `|` form under `&` or `!`), the reads prefix loses its pair and a shared definition its outer pair; random tables (20 an n, seed random.Random(5150 + 100n + s)) -28.2 / -23.8 / -22.0% at n=7 / 8 / 9, -20.3% at n=10 (10 tables), -26.0 / -28.8% at n=11 / 12 (4 tables); parity -21.4 / -21.6 / -21.8 / -28.9%, majority -31.1 / -32.3 / -32.7 / -33.1%, threshold 3 -30.1 / -30.3 / -29.9 / -29.0%, and and or -51.1 / -52.0 / -52.7 / -53.3% at n=7..10; balanced area unchanged (the default is not the width route's minimum); all rows of 20 / 20 / 5 random tables at n=7 / 8 / 9 and the five named at n=7..9 run through esolangs.run and compute their tables, every n<=3 table and 90 random n=4..6 as well, a last-bit-flipped table fails"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 47.1
-seed = 0
-tables = "both constants, n=1..12"
-verdict = "kept: canonical constant folding and minimal spelling, exempt. Native constants omit the unused NOT definition; zero ends at the zero-valued ordered reads prefix, one adds |1. Default chars 2n+1/3, commands 4n+3/7: n=7 32/32->15/17 (50.0%), n=8 34/34->17/19 (47.1%), n=12 42/42->25/27. n=8 commands 40/40->35/39, workspace 791/791->786/790 bits. A requested width that cannot fit the native line retains the established definition/operator layout; fitting widths retain the native line. n=3 corpus chars 9215->9183. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged and global resource caps unchanged. Owned raw read-first checks verify exact read count and preserve the following input record."
+kind = "archive_ref"
 
 [ablations.arithmetic_xor_twin_20261102]
-kind = "archive"
-arity = 3
-saving = 5.3
-seed = "all 256 three-input tables; Random(5150 + 100*n + i), i=0..199 for fixed 7/8"
-tables = "all tables/rows through 3; fixed 200 each 7/8; samples 4..6; extension 20 each 9..12"
-verdict = "kept by 5% execution gate after canonical unused-NOT baseline: n 3 source 8988->8592, commands 82488->78116 (-5.3002%), zero growing tables or slower rows in 4096 paired native runs. Raw arithmetic alone versus original gives source 9183->8907/E 82592->78284 (-5.216%). Replace complementary full Shannon arms by (selector+child)%2, adding 1 for a complemented result; one child is emitted once into the flat list. No helper/frame/runtime field, searched table or old-whole-program fallback is added. Superseded twin guard/duplicate-child emission is removed, and unused NOT state is separately removed below. Primary syntax/operators: https://esolangs.org/wiki/Algebraic_Programming_Language. Fixed 200 at 7/8 source 75470/143220->74307/143214 (+1.54/+0.004% saving), 40/95 larger tables; size admission is not claimed. Exact analytic fixed-corpus E 3238624/7697284->3154815/7526530 saves 2.59/2.22%, declining from the n 3 gate; the model is checked against all 2120 current small native rows and 36 large controls. Extension 20 at 9..12 source 27476/50964/93737/166066->27562/51139/94025/167263, with 1/3/1/2 slower sampled rows; disclosed beyond the n 3 execution gate. Balanced 20 grid_area 17740/33257 unchanged, as are parity/and/or/majority/threshold 3 balanced areas. Old O(T) build/source and numerical E/W caps/arities remain: flat emission, no extra frame, at most 3 pending binary nodes a level, integer temporaries 0..3. 2260 native WrittenState rows cover every old proof arity; final 3410 public rows and read/sentinel/EOF/modulus controls pass."
+kind = "archive_ref"
 
 [ablations.unused_not_20261102]
-kind = "archive"
-arity = 3
-saving = 2.12
-seed = "every three-input table; named functions 7/8"
-tables = "13 old and 21 arithmetic n 3 programs have no NOT use; constants already omit it"
-verdict = "kept canonical dead-definition removal, exempt: remove the 15-character header and its one initialization command iff the final default body contains no NOT use. Old baseline alone source 9183->8988/E 82592->82488; arithmetic cleanup source 8907->8592/E 78284->78116. Fixed generic 7/8 never fires, so it cannot pad their source gate. Named AND/OR source 44/48->29/33 at 7/8. Balanced 20 grid_area 17740/33257 and all named areas unchanged. No new construction path/state; unused definition state is removed. K counts actual uppercase definitions whether NOT is present; constant E uses the existing exact 4n+3/7 formula, and no old global cap or proof arity is weakened. Width-request constructions retain their established reader."
+kind = "archive_ref"
 
 [ablations.parameter_let_sharing_20261102]
-kind = "archive"
-arity = 8
-saving = 3.01
-seed = "same fixed 200 each 7/8"
-tables = "profitable local parameter regions; native small/sample controls and 8552 native transition-count validations"
-verdict = "rejected: bind repeated nullary calls once as eager parameters only when exact local header/call overhead is repaid; no whole-source min. Source 75470/143220->74949/138912 saves 0.69/3.01%, n 3 unchanged. Fixed-corpus exact analytic E 3238624/7697284->3561015/10039772 grows 9.95/30.43%; the evaluator-count model matches 8480 exhaustive-small native rows plus 72 fixed-corpus controls. A hand-built 10-use region fires and a wrong eager argument flips the answer. After arithmetic, marginal source saves only 0.24/1.74% and E grows 2.46/17.10%; it is unchanged on named parity/majority/and/or/threshold 3. No parameter wrapper path, locals or superseded source path enters production; no universal impossibility claim."
+kind = "archive_ref"
 
 [ablations.mux_function_20261102]
-kind = "archive"
-arity = 8
-saving = 9.81
-seed = "same fixed 200 each 7/8"
-tables = "tight/negated sites with derived 18-character helper break-even; actual native positive and swapped-argument control"
-verdict = "rejected: literal M insertion is incompatible with the old parenthesis sharer, which can name comma argument lists as invalid nullary bodies and split the helper definition as input prefix. Scratch repair interns whole M calls and isolates the header. Repaired source 75470/143220->75470/129172 saves 0/9.81%; fixed analytic E 3238624/7697284->3238624/21132668 grows 0/174.55%. Joint parameter+M source 74949/128545 saves 0.69/10.25%, failing fixed 7, and E 3561015/21733088 grows 9.95/182.35%. All candidates execute exhaustive small and sampled 4..8 correctly after repair; controls demonstrate real M/parameter firing and catch wrong programs. Named M/joint parity grows 132/152->176/206, majority is unchanged at 7 and grows 226->239 at 8; and/or/threshold 3 unchanged. No named family qualifies. No M helper, parameter state, patched argument sharer or old-program race ships."
+kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30
@@ -112,20 +69,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 0.9273
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: slotted immutable call records. 259 programs, 160 halt cleanly; no structural trace differences, control differs on 251. Step throughput at longest 10/20/40 workload breadths: +1.29%/+0.93%/+1.14%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 0.3052
-workload = "complete run; parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
-verdict = "kept: slotted immutable call records; 5207 paired native traces, 2366 clean halts, zero differences; changed-site control detected on 5000. Complete-run wall savings 0.31–1.30%, including parsing and final I/O. Snapshot fields and grouping preserved."
+kind = "archive_ref"
 
 [evidence]
 version = 1

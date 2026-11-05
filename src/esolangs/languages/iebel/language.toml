@@ -25,42 +25,22 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
 
 [ablations.path_cover]
-kind = "archive"
-saving = 16.9
-arity = 8
-verdict = "kept as a per-level greedy rule, not a race, replacing the one-child fall-through (4.6% at n=8): every block falls into one still-unclaimed child, either polarity (`2 1 Z` jumps on 0, `2 3 O` on 1), one-child blocks first, so each block is the fall target of at most one. Measured against the previous generator over Random(n), 200 tables: random 14.3% / 18.7% / 16.9% at n=4 / 7 / 8 (40 tables at n=4), 15.7% / 16.5% / 17.6% at n=9 / 10 / 11 (12 / 6 / 3 tables); n=8 parity 27.8%, majority 22.3%, and 19.5%, or 19.9%, thr2 13.1% (n=7: 27.1 / 20.4 / 18.8 / 19.3 / 12.9). Every row of every table run: all tables n<=3, the 400 random tables at n=7..8 and the named ones; a wrong-table program fails the check. A maximum matching per level (augmenting paths, 40 tables) saves 0.9 points more at n=7 and loses 0.2 at n=8, so the greedy stays. No ignored-input, constant or sharing code beyond subtree_ids (every input is read in order); no race, no alternate build"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 16.9
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: canonical whole constants. Through n=7, a read into register 48+b also initializes r0 to that literal; later equal loads restore the same value. A fresh-zero comparison register protects the final print. This uses 8n+6 chars and n+1 commands. From n=8 the shorter spelling reads into scratch, initializes one answer register, prints and falls off: 7n+13 chars, n+2 commands. At n=7 the two spellings tie at 62 chars but the merged read saves one command; at n=8 it loses 70 vs 69 chars. Written bits 266+bl(commands)+bl(n), from two six-bit registers, 254 zero registers and both cursors. n=8 83 -> 69 chars; n=12 111 -> 97. n=3 corpus 28252 -> 28216 chars. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts; CARP owned checks reach its n=14 cap. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources, every read before output and an unread following record. Existing tests expanded without new cases."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261101_hot_targets_low_lines]
-kind = "archive"
-arity = 8
-saving = 3.456
-verdict = "rejected: order chain heads by incoming jump references, keeping the root first (variant A) or adding a root goto and sorting all heads (B). On 200 Random(6100+n) tables per n=7,8: baseline chars 157706/276360; A 156626/268230 (0.68%/2.94%); B 156130/266809 (1.00%/3.46%). B grows 22 n=7 tables by at most five chars; A grows none. All small tables/rows and four rows per priced variant execute correctly. Neither variant clears the fixed two-arity bar; no min race shipped."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261101_trailing_halt]
-kind = "archive"
-arity = 8
-saving = 0.0177
-verdict = "kept: minimal spelling, exempt. Drop 0 0 -1 only when it is the final emitted instruction: fall-off already halts and every leaf jump targets its print, not the removed halt. Constants unchanged. On the same 200-table n=7,8 corpus, 30/seven programs shrink by seven chars: 157706->157496 and 276360->276311; none grows. All rows of all tables n<=3 plus four rows per priced table pass. n=3 total 28216->26774; n=4 parity 137->130. Execution cap unchanged. Tight workspace is n+274+min(1,n-1): deleting the eighth line saves one instruction-pointer bit at n=1, while n>=2 retains n+275. Actual written-state/formula controls n=1..6 pass."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261101_echo_last_input]
-kind = "archive"
-arity = 8
-saving = 0.0
-verdict = "no qualifying general-diagram construction established: the two-line 2 2 -3 / 2 0 -2 root echo executes correctly for both one-input bits. The associated constant shortcut is invalid: an executed literal-print mutant reaches output with zero reads and triggers the read-first positive control. Final-halt spelling is retained separately. No claim that a different diagram rewrite is impossible."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261101_complement_pair_sharing]
-kind = "archive"
-arity = 8
-saving = 0.0
-verdict = "no admitted polarity carrier: a concrete merge normalizes complementary nonconstant subtable IDs above the bottom two levels but loses edge polarity. On four-input parity, shipped controls print 0/1 at rows 0/8; the merged diagram prints 0/0. Duplicated bottom blocks alone do not remember which complement entered a shared ancestor. No searched table or unproved polarity mechanism ships; no general impossibility claim."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-01
@@ -73,20 +53,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 2.3169
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: construct immutable named tuples through tuple.__new__. 245 programs, 151 halt cleanly; no structural trace differences, control differs on 151. Step throughput at longest 10/20/40 workload breadths: +2.87%/+2.38%/+2.32%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 4.3715
-workload = "complete run; source parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: construct immutable named tuples through tuple.__new__. 5193 paired native traces, 2393 clean halts, no differences; changed-site mutant differs on 2393. Complete-run savings 4.37–8.04%, including source parsing and output. Only full positional records bypass the wrapper; keyword-defined defaults remain centralized. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+kind = "archive_ref"
 
 [evidence]
 version = 1

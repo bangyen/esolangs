@@ -31,48 +31,25 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.essential_projection]
-kind = "archive"
-saving = 47.5
-arity = 12
-verdict = "kept: canonical, exempt from the bar; the identity on random tables (0.0% at every arity, every input essential), 42.5% at n=10 rising to 47.5% at n=12 with one ignored input (position-independent: lead, mid and trail totals are identical), 71.4% with two ignored at n=12, and 97.6% on constant tables, where the constant form replaces the literal with one set"
+kind = "archive_ref"
 
 [ablations.flat_compact_form]
-kind = "archive"
-saving = 1.5
-arity = 12
-verdict = "kept: the default layout folds the Horner index inside the at{...} expression instead of the units form's per-input set i fold -- 13.2% on random tables at n=7 and 9.9% at n=8, declining to 1.5% at n=12, since the saving is a per-input overhead against a 2^n literal; a construction choice, not a removable mechanism (the units machinery stays for the width and postfix paths); the docstring's 13.8%/10.3% figures price at 13.2%/9.9% when rebuilt, on totals and on the random-1847 table alike"
+kind = "archive_ref"
 
 [ablations.packed_pairs]
-kind = "archive"
-saving = 24.8
-arity = 8
-verdict = "kept: two rows to a literal character ('0' + 2a + b) and a nested at{\"00011011\", ...} on the last input unpacks the bit; a rule, from six essential inputs -- 200 seeded random tables (seed 777n+s) vs main: 4.5% at n=6, 14.5% at n=7, 24.8% at n=8, 33.3% at n=9, 39.9% at n=10 (toward 50%); parity, and, or, majority and threshold-3 are 321 vs 427 chars at n=8 (size is table-independent); n=5 loses 3.9% so it starts at six; balance=True area unchanged (0.0% at n=7/8, the fold race builds unpacked units); every row of 3 random and 5 named tables at n=6..8 ran through the interpreter, a flipped-row control fails"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 0.0
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "retained: the constant path already has begin, one variable, n reads, one literal set, output and end. out takes an existing variable; an executed out 48 candidate raises HaltError: no such variable 48. No shorter legal path was derived. Default source 6n+31 chars and n+5 commands, n=8 both constants 79 chars, n=12 103. n=3 corpus stays 24154 chars. Existing tests now verify both constants n=1..12 over all four expression-syntax/list-update dialects and default, width-one and balanced layouts, with every read before output, a preserved sentinel and unchanged workspace envelope. Generator and proof ledger unchanged. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources and uniform embedded slots or input before output. No new collected cases."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_debruijn_quad_unpack]
-kind = "archive"
-arity = 8
-saving = 17.134
-verdict = "rejected: fixed n=7 falls below10%. Named FKM concatenation of binary Lyndon words constructs the order-four de Bruijn cycle, not a searched/frozen table. Pack four table bits per ASCII A..P char, decode with the19-bit linear window string. Actual200 seeded tables per fixed judge arity: n=7 chars48200->43600 (9.54%), n=8 64200->53200 (17.13%). Four rows per old/new program execute; all three-input tables/rows stay byte-identical (24154 chars). Diagnostics n=6 4.15%, n=9 25.75%, n=10 33.47% do not move the fixed judge range. The limit versus pairs is50%, not the proposed75%. A constructed six-input table exercises all16 quads at all four positions; all64 outputs pass. Corrupting one encoded char changes row3, so the check detects a wrong literal. Character scanner accepts the actual A..P literals. No arity cap or independent small trick is bundled to clear n=7."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_debruijn_octet_superstring]
-kind = "archive"
-arity = 8
-saving = 0.0
-verdict = "rejected by construction: greedy shortest-superstring selection is a search over table-dependent windows, contrary to the named-rule/no-search policy. Not launched; no measured size or impossibility claim. The separate closed quad construction is evaluated above."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_reuse_input_as_result]
-kind = "archive"
-arity = 8
-saving = 0.0
-verdict = "rejected as supplied: removing result r and reading discarded suffix inputs into a overwrites a live essential input. Actual prototype saves six chars and computes XOR0110 correctly, but table0011 prints0101 over the four two-input rows instead of0011; unchanged baseline returns0011. A separate scratch register is required for that discarded suffix under this schedule. No ignored-input convention weakening or bundling with the sub-threshold quad rule."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -85,12 +62,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = -0.1105
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: slotted machine storage. 245 programs, 145 halt cleanly; no structural trace differences, control differs on 245. Step throughput at longest 10/20/40 workload breadths: +0.13%/-0.11%/+0.22%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [evidence]
 version = 1

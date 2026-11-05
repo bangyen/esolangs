@@ -25,93 +25,43 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19", unrelated = ["10.4%"] }
 
 [ablations.deferred_level_residuals]
-kind = "archive"
-saving = 72.3
-arity = 10
-verdict = "historical pre-Davio measurements; mechanism retained, previously kept: canonical sharing, exempt from the bar; saving on the parity table (34.6% at n=8); 0.0% on random tables"
+kind = "archive_ref"
 
 [ablations.same_level_bank]
-kind = "archive"
-saving = 58.9
-arity = 10
-verdict = "historical pre-Davio measurements; mechanism retained, previously kept: canonical sharing, exempt; saving on the mosaic-4 class (18.8% at n=8); 14.2% on majority at n=10, 0.0% on random tables; jointly with the level residuals 81.4% on parity and 64.0% on mosaic-4 at n=10"
+kind = "archive_ref"
 
 [ablations.paired_roots]
-kind = "archive"
-saving = 23.8
-arity = 11
-verdict = "historical pre-Davio measurements; mechanism retained, previously kept: clears on random tables (15.8% at n=9, 20.5% at n=10, share rising); plain-rewrite audit 2026-10-27, 5 seeds each, every program run: 0.0% at n=4..7, 4.4% at n=8, 15.7/21.0/23.8/25.2% at n=9/10/11/12 -- growing past the verdict arity to its peak; its complement-shared three-bit code and free-cell high bit are the construction, not separable"
+kind = "archive_ref"
 
 [ablations.band_race]
-kind = "archive"
-saving = 10.3
-arity = 11
-verdict = "historical, superseded by davio_two_inputs; former verdict: clears on random tables; the band-(3,5) race's saving over band 3 alone is flat at 9.8-10.4% from n=9 to n=11; plain-rewrite audit 2026-10-27, every program run: 0.0% at n=7, 5.5% at n=8 (200 tables), growing, so measured to its peak on 200 tables: 10.38/9.86/10.31/10.63% at n=9/10/11/12, the race winning all 200 at each -- at its largest arity it clears the bar and still rises, so kept"
+kind = "archive_ref"
 
 [ablations.constant_folding]
-kind = "archive"
-saving = 14.7
-arity = 8
-verdict = "historical pre-Davio measurements; mechanism retained, previously kept: canonical, exempt; the constant-half split's saving on the half-constant class (the span>=2 fold's is 10.6%); both marginals fade to 0.2-1.0% at n=10 because the paired form wins on that class and prices the constant half itself"
+kind = "archive_ref"
 
 [ablations.agreed_halves]
-kind = "archive"
-saving = 46.0
-arity = 10
-verdict = "historical pre-Davio measurements; mechanism retained, previously kept: canonical, exempt; saving on the leading-ignored class (40.0% mid-ignored, 7.1% trailing-ignored, where the sharing plans pick up the repeats)"
+kind = "archive_ref"
 
 [ablations.width_machinery]
-kind = "archive"
-saving = 0.0
-verdict = "kept: feasibility -- the width layouts and the balance hook serve explicit widths only; no default-path effect"
+kind = "archive_ref"
 
 [ablations.xor_chain]
-kind = "archive"
-saving = 91.0
-arity = 8
-seed = "named and random affine tables"
-tables = 8
-verdict = "historical pre-Davio measurements; mechanism retained, previously kept under the named-function rule: an affine table (an XOR of inputs plus a bias) folds each counted input cell into the next one down with [*...*...], ending in cell 2, and flips it for the bias, raced by length against the banded tree. Parity 74.8% at n=4, 85.9% at n=6, 89.4% at n=7, 91.0% at n=8, 93.0% at n=10, 94.3% at n=12; random affine tables 70-86% where the chain wins. Random tables: 0 of 200 change at n=5..8; majority, and, or and thresholds unchanged. Exhaustive n<=3: 13 tables change, none grows, every changed program executed; named and affine tables executed through n=10; plain-rewrite audit 2026-10-27: parity 74.8/85.9/89.4/91.0/92.1/93.0/93.7/94.3% at n=4/6/7/8/9/10/11/12, 0 of 5 random tables change at every n"
+kind = "archive_ref"
 
 [ablations.four_level_band_prototype]
-kind = "archive"
-saving = 0.0
-arity = 8
-seed = "random.Random(1847+n)"
-tables = "all tables n=1..3; 20 random plus and/or/parity/majority/threshold-third per n=4..12"
-verdict = "near miss, not shipped: add the four-level result-band build beside existing three/five-level builds, retaining all polarity and sharing choices. Random n=7: 34,970 -> 34,875 chars (0.272%); n=8 unchanged at 66,426, and random n=9..12 unchanged. Majority n=7 853 -> 837 (1.88%), n=11 4,950 -> 4,119 (16.8%), but n=12 unchanged at 5,555; an isolated arity win does not sustain the size share and does not authorize a cap. Other named functions unchanged through n=12. Positive control: 25 corpus programs change. n=3 total unchanged at 20,237 chars. 5,110 baseline/candidate output checks correct, exhaustive n<=3 and boundary rows of random/named tables through n=8 plus named through n=12; 2,555 complemented controls rejected. Prototype stays in ignored notes; generator, bounds and pins unchanged"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 20.7
-seed = 0
-tables = "both constants, n=1..12"
-verdict = "kept: canonical constant folding and minimal spelling, exempt. Zero constants already contain only input setters. For one at n>=3 set answer cell 2 before the input walk, instead of returning to it afterwards; keep the old shorter path at n=1/2. Default chars zero 4n, one min(7n-1,4n+5), commands chars+1 including final dump. n=7 28/48->28/33 (19.7% combined), n=8 32/55->32/37 (20.7%; one alone 32.7%), n=12 48/83->48/53. n=8 one commands 56->38 and workspace 66->48 bits; zero unchanged at 33 commands and 43 bits. Narrow layouts preserve the new prefix before shrinking the setter slots. n=3 corpus chars 20237->20234. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged; global resource caps unchanged. Owned raw IO checks preserve all input reads and following record; Smallfuck retains fixed-width slots, executes straight-line setters and dumps only after the program."
+kind = "archive_ref"
 
 [ablations.davio_last_input]
-kind = "archive"
-arity = 8
-saving = 8.3
-seed = "Random(1000*n+i), i=0..19"
-tables = "20 generic per n=7/8; exhaustive n<=3; 10 samples per n=4..6"
-verdict = "rejected: corrected one-weight construction saves 13.421/8.300% chars (36235->31372 / 66686->61151), below the declining 20% bar. Exhaustive n3 chars 20234->24670, commands 86192->115172; 224 tables grow, 1809 rows slow. Spare top band cell repairs the raw deepest-flag alias; the raw alias fails 8 sampled tables through n8, so source alone was not a correctness control. Native exhaustive/sampled outputs pass for the repair; no searched table or old-program minimum. Superseded by the two-coefficient-input construction, not retained as another path."
+kind = "archive_ref"
 
 [ablations.davio_two_inputs]
-kind = "archive"
-arity = 8
-saving = 29.838
-seed = "Random(1000*n+i), i=0..19; trend i=0..4"
-tables = "20 generic per n=7/8, every row; all 276 tables/2120 rows n<=3; 20 samples each n=4..6; trend 5 per n9..12 and one n16"
-verdict = "kept by declining-size admission: chars 36235->24594 / 66686->46788 (32.126/29.838%); balanced grid_area including trailing lines 36556->24830 / 67123->47072. Declines through 21.149/16.163/13.282/10.935% at n9..12; public n16 seed0 643324->583828 (9.248%), native endpoints pass, no observed loss or cap and no asymptotic claim. Native allsmall and 9920 sampled rows n4..8 pass. n3 chars 20234->30627 (+51.4%), commands 86192->145732 (+69.1%); 244 tables grow and 1925 rows slow. Fixed n7/8 commands 427831->539439 / 1577055->1285135; interpreter wall 0.828->0.671s / 3.773->2.377s (build excluded). Source admission, not execution admission. Adds one coefficient-leaf path and one shared tail; K goes to the current result, A/B/C to three spare band-five cells. The old band-three race is superseded because its live result cell collides with the third weight; no old-program fallback. At n2/3 unused flags supply missing weights and the <=one-level prefix needs no deferred stage; constants and affine chain remain canonical. No new definition-tracking set ships: existing plans only name spans>=4, so retiring two levels bypasses no deeper planned body (0 public changes when restoring unconditional emission across allsmall and20seeds each4..9). All weights stay below 3n, preserving exact L+bl(L)+bl(3n) workspace; default/narrow native exact checks n2/3/4/6/8. The old numeric execution cap is preserved by the all-form charge bound6n^2+104n+128 from7 and direct finite envelopes2..6 (including one dump); source verification arities2..9 remain. Named source/area costs: and n7 147/153->254/264, n8 169/180->291/300; or 157/162->266/276 and180/180->304/312; parity unchanged119/128 and136/144; majority853/861->706/722 and1084/1104->1039/1058; threshold3 680/684->653/666 and929/946->874/882. Wrong mixed-coefficient mutant fails256 exhaustive n3 rows. No extra naming, search or frozen table."
+kind = "archive_ref"
 
 [ablations.local_two_input_anf]
-kind = "archive"
-arity = 8
-saving = 1.862
-seed = "Random(1000*n+i), i=0..19"
-tables = "20 generic per n=7/8; exhaustive n<=3; 10 samples per n=4..6"
-verdict = "rejected: literal local ANF saves1.079/1.128% chars at n7/8; affine refinement saves5.056/1.862% (36235->34403 /66686->65444). Local pointer-normalized break-even only; no whole-program race. n3 literal chars19926 and commands88320 vs old20234/86192, 224 rows slow; refined chars18750, commands84624 (1.819% execution saving), no slower n3 row but below5% gate; n2 has6 slower rows. Native allsmall/larger controls pass and shrinking programs prove the rule fires. Its suffix path is fully superseded by the admitted global two-input coefficient leaf, so no local ANF state ships."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -123,12 +73,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = -0.356
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: xor binary tape flip. 245 programs, 170 halt cleanly; no structural trace differences, control differs on 144. Step throughput at longest 10/20/40 workload breadths: -0.36%/+0.02%/-0.12%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [evidence]
 version = 1

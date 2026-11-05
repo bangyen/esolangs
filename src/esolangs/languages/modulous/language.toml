@@ -33,73 +33,34 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.input_projection]
-kind = "archive"
-saving = 342.3
-arity = 12
-verdict = "kept: canonical, exempt. The only mechanism on the default path: the table is pushed on its essential inputs and an ignored input is read and popped at weight 0. The emitted size depends only on the arity and the essential count (every all-essential table totals 1,601 chars at n=10 and 4,777 at n=12), so the price is 0.00% on random tables; on its class at n=10/12, one ignored input +52.2 / +77.5%, two +110.9 / +193.3%, three +169.5 / +342.3%, constant tables +631.1 / +1,834.0%"
+kind = "archive_ref"
 
 [ablations.symmetric_count]
-kind = "archive"
-saving = 34.5
-arity = 8
-seed = "named symmetric tables"
-tables = 7
-verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 adds 1 an input and pushes n + 1 entries, raced by length against the weighted build. Parity, majority, and, or, at-least-2 and exactly-1 all 3.8% at n=4, 13.5% at n=6, 22.3% at n=7, 34.5% at n=8, 63.8% at n=10, 85.8% at n=12; a symmetric table with an ignored input 21.7% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
+kind = "archive_ref"
 
 [ablations.balance_dead_widths]
-kind = "archive"
-saving = 0.0
-arity = 12
-seed = "random.Random(6060 + n)"
-tables = 488
-verdict = "retired 2026-10-29 (plain-rewrite audit): the balance hook also raced a numeric-token width (1-3), the narrow widths 4-8 and the whole table as one literal chunk. None ever won: dropping all three leaves balanced output byte-identical on 488 tables (40 random a arity at n=1..10, 8 at n=11..12, plus parity, and, or, majority, at-least-2, nand), so the code went. The width= path is untouched"
-retirement = { verb = "retired", date = 2026-10-29, balanced = [204, 212] }
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 29.2
-seed = "both constant values; witnesses(n) at n=4..6"
-tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
-verdict = "kept: canonical whole constants. Each input is read and popped, then push ASCII 48/49, print and halt; no packed table, index or discard walk. Exactly 14n+26 chars, 2n+3 commands and 7+bl(2n+3)+bl(2n-1)+bl(n) written bits. At n=8 both bits 195 -> 138 chars; n=12 251 -> 194. Existing bracket/token wrapping serves narrow layouts; constants need no table-chunk balance candidates. n=3 corpus 58748 -> 58634 chars, width=1 100836 -> 100682. Generic envelopes past n=1 and all eight benchmark pins unchanged. The unchanged one-input lookup exposed a pre-existing workspace overrun, 22 > 21 bits; direct identity/complement base cases use at most 13 bits and seven commands, preserving the old envelope. Each language passed 5656 paired before/after row executions; 268 nonconstant programs through n=3 are byte-identical; only the two one-input projections also change. Both constants n=1..12 execute in default, width=1 and balanced layouts; all 24 old balanced constant scores improve or match. Owned regressions enforce all reads before output, preserve a sentinel and check resource bounds."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_tail_reads]
-kind = "archive"
-arity = 3
-saving = 54.6562
-verdict = "kept independently by execution gate. Tail a cheap final input-order suffix: a zero only pops its bit; a one pops its bit and weight entries. Ignored reads stay in that suffix, never move past output. Weight1/2/4 blocks save16/11/1 chars; weight8 grows19, so4 is the local crossover (the raw proposal incorrectly stopped at2). With four essential inputs unrolling8 additionally removes the counter/walk: the generic program266->229 chars and67->30 commands; at five, unrolling16 grows332->354, giving the actual whole-counter cutoff. With no prefix the counter is zero: omit it and its dead walk; symmetric weight1 builds become entirely direct reads. Across every three-input table/row commands67008->30384 (54.66%), no slower row or larger table; chars58634->37030,width1 100682->71908. Even retaining the zero counter/walk gives36480 commands (45.56%), no slower row or larger table: no bundling with other failed rules. Generic20 seeded tables6060+n n=7 chars11120->10560 (5.04%), n=8 14700->14140 (3.81%); these declining size gains do not admit the rule. Named parity/AND/OR/majority chars433->265 and483->299. All-small,16 seeded plus named/ignored tables per n=4..8 and exact resource controls give10972 generated-program runs, preserving a sentinel and checking reads before output. Exact E at2..4 is T+3n+2; thereafter5T+5n-33. W separates no-prefix n=2..4 from indexed prefixes, using the actual cursor length6n+8. Native boundary witnesses attain E/W at2..6; n4 newW109. The old program actually used114 bits against its old113 cap because6n+5 omitted the cursor crossing; the new accounting fixes that boundary. Wrong-table control fires. Constants and scalar fast paths unchanged."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_swap_fold]
-kind = "archive"
-arity = 8
-saving = 4.3537
-verdict = "rejected independently: replace the read branch by SWP,ADD,SWP,POP. Actual default generic chars11120->10560 at7 (5.04%),14700->14060 at8 (4.35%), declining below20. Named weight1 builds433->405 /483->451, below10. Every small row and four rows per20 judge/named tables execute correctly, but1730 three-input rows become slower; aggregate commands67008->69888. No combination with failed raw reads or tails is used for admission."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_raw_input]
-kind = "archive"
-arity = 8
-saving = 3.2653
-verdict = "rejected: corrected all-bare lookup reads and IF48 execute canonical one-bit-per-line inputs, but generic chars11120->10700 /14700->14220 save3.78%/3.27%, below the declining bar; named433->412 /483->459 also below10. Leaving ignored reads as INP INT, as the sketch suggests, is wrong: on table0101,row00 the following bare line read consumes the pending newline and SWP raises for a one-element stack. Baseline and corrected all-bare controls execute the row. No input-framing contract change or bundled saving ships."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_pair_packed_literal]
-kind = "archive"
-arity = 8
-saving = 3.8095
-verdict = "historical size-only rejection, superseded by pair_execution_20261103 below: pack00/11/01/10 as digits0/1/2/3, halve higher weights, read the selector last, then branch to SUB2 for the zero arm or SUB1/SUB3 for the one arm. Keep trailing ignored reads before printing. All small rows and four rows per20 judge/named tables execute actual generated programs. Generic chars11120->11860 at7 (6.65% growth),14700->14140 at8 (3.81% saving), failing the fixed gate; racing old at7 would give zero gain there. Named symmetric builds also grow. Three-input chars58634->83678, so it fails the no-larger-table execution admission too. This rejects this explicit branch decoder, not every pair encoding."
+kind = "archive_ref"
 
 [ablations.trick_prototype_20261102_variable_counter_via_prt]
-kind = "archive"
-arity = 2
-saving = 0.0
-verdict = "rejected tested counter replacement: weighted one bits update VAR1 while the stack counter remains0. On table0001,row11 the actual mutant prints0 instead of1; baseline prints1. A direct PSH INT7,PSH VAR1,POP,PSH INT0 control leaves VAR1=7 and stack(0), proving PSH VAR1 stores rather than loads. PRT VAR1 prints without pushing a stack counter. No complete variable-to-stack walk was supplied; hypothetical size savings are not measurements and no interpreter change is admitted."
+kind = "archive_ref"
 
 [ablations.pair_execution_20261103]
-kind = "archive"
-arity = 8
-saving = 49.5726
-seed = "Random(1000*n+i), i=0..19"
-tables = "fixed20 at n7/8, all rows for native wall; exhaustive n<=3 and samples4..6"
-verdict = "kept by the independent 25% command-bound route, correcting the historical source-only rejection. Retain the counter-free direct-pop construction through four essential inputs: replacing it by the decoder grows a four-input program 229->304 chars and measured native all-row time .736->.788ms. From five essential inputs the old reader needs an indexed prefix; pairing its rows halves that walk, retaining the existing cheap direct suffix. Full asymmetric E at n5 is152->37; at fixed n7/8 it is642->324 and1287->649 (49.53/49.57% less). For n>=6 the exact caps are5T+5n-33 versus5T/2+5n-31; saving has its later minimum at7, increases from there and tends50%, so no favorable cap or source race. Encode00/11/01/10 as ASCII0/1/2/3; consume the last essential bit after the high-index walk, decode with a fixed forward branch, then drain trailing ignored reads. Preserve the O(n)-source symmetric count reader by semantic dispatch, not an old-source minimum. One decoder path and one shared literal-fold helper; the full weighted generic route is replaced, while its direct suffix helper serves small, symmetric and half-index readers. No new persistent state, search or wide literal. Default generic source fixed20 Random(1000*n+i).choices tables grows10560->11300 at7 and shrinks14140->13580 at8; no size admission claimed. All276 small default programs, n3 source37030/commands30384, all eight pins/by-row commands and the balanced AND example remain byte-identical. Native5216 old/new/layout controls pass exhaustive n<=3 plus samples4..8, exact default S/E/W attainers2..10, every two-input width-one table, ignored-input order, print-after-read, following Q and required-EOF controls; wrong-answer mutant fires. Owned tests additionally run gapped five-essential inputs over seven physical inputs in default/narrow/balanced layouts. Scalar base cases and every old proof arity/True flag retained; explicit split-literal push/cursor terms fix layout caps without relaxing default maxima. Default W at n5/6/7/8 is111/212/405/792 versus212/405/790/1560. Cached-program three-pass medians over all rows of20 fixed tables: n5 .07755->.02692s, n7 1.32468->.64365s, n8 5.68029->2.71755s; n3 bytes/commands identical (.04676/.04605s timing context). Parsing n7/8 grows19.55/21.04us ->22.63/24.23us per program; a few early rows can execute more decoder commands, so no universal per-row speed claim. Source anchors10/12 are1165/2804 chars and execute both endpoints. Generation remains O(T); per-build medians n5/7/8 rise14.30/29.09/45.93us ->16.57/37.32/61.28us. No new collected tests."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-03
@@ -112,12 +73,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = -1.7857
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap; plus four signed-variable arithmetic probes"
-verdict = "prototype only: partition variable arithmetic token. 253 programs, 149 halt cleanly; no structural trace differences, control differs on 4. Step throughput at longest 10/20/40 workload breadths: +0.36%/-1.79%/+0.11%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [evidence]
 version = 1

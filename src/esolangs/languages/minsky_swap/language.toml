@@ -39,72 +39,31 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.input_projection]
-kind = "archive"
-saving = 286.3
-arity = 12
-verdict = "kept: canonical, exempt. The only mechanism on the default path: an ignored input pays a two-tilde stage instead of its unary weight block, and the tilde cascade spans the projected table. The program's length depends only on the essential inputs, so the price is 0.00% on random tables and every all-essential named table; on its class, one ignored input 93.1% at n=10 and 97.5% at n=12, two ignored 261.3% / 286.3%, three ignored 544.3% / 643.0%, constant tables 3,925.6% / 13,297.4%"
+kind = "archive_ref"
 
 [ablations.symmetric_count]
-kind = "archive"
-saving = 85.8
-arity = 8
-seed = "named symmetric tables"
-tables = 7
-verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 is indexed by their count, one + per input and n + 1 cascade rows, a rule (symmetric whenever it applies, never longer than the weighted build: 0 of 38 changed tables grow, none at n<=3), no race; byte-identical to the former min over both builds on 426 programs. Parity, majority, and, or, at-least-2 and exactly-1 all 32.4% at n=4, 64.2% at n=6, 76.9% at n=7, 85.8% at n=8, 95.3% at n=10, 98.6% at n=12; a symmetric table with an ignored input 75.9% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
+kind = "archive_ref"
 
 [ablations.balance_route]
-kind = "archive"
-saving = 0.0
-arity = 8
-verdict = "kept: invariant, not a size trick. Native-width generators must carry a balance rule (tests/generators/test_balance_remaining.py; retiring it failed 4 tests). Measured: picks the one-command-per-line RMSN build 0.00% area on 200 random tables at n=4..8 and 20 at n=9..12, 0.0% on every named function at n=3..12; it changes only n<=2 (exhaustive: 4/4 at n=1, 16/16 at n=2, 80-83% of a trivial area), 0 of 256 at n=3. Cost: one min over two renders"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 70.6
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: canonical whole constants. A zero-register decrement jumps past all slots; constant one first sets register one and restores the pointer. Every embedded PAIR slot remains, separated by an unreachable swap so runs stay distinct. Compact length 3n+1+3b+digits(3n+1+3b), command count 2+3b including the post-halt dump, written bits bl(3n+3b)+3b. RMSN expansion preserves all targets; its swap-leading one path selects the existing uniform short setter pair. n=8 zero/one 97/97 -> 27/30 chars; n=12 137/137 -> 39/42. n=3 corpus 19664 -> 19597 chars, area 20016 -> 19950. Saved plain-string templates and all equal-width fills execute. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources, uniform embedded setters or all reads before output, and stream sentinels. No new collected cases."
+kind = "archive_ref"
 
 [ablations.low_bit_leaf_split]
-kind = "archive"
-saving = 39.809
-arity = 8
-seed = "random.Random(1000*n), sequential choice('01')"
-tables = "200 random per n=7,8; 20 per n=4..6,9..12,14; exhaustive n<=3; symmetric reader unchanged"
-verdict = "kept 2026-11-02 under source gate: hold the last essential input at 0/2, halve higher essential weights and route pairs to four fixed leaves. Targets 2/4/9/13 include a two-digit target, contrary to the raw estimate. Each trailing ignored input uses a fixed 16-command macro that preserves held 0/2 and the index, without an old-build race or cutoff. Random n=7/8 chars 124600→80567 (35.339%) / 230200→138559 (39.809%); extended n=9/10/11/12/14 savings 42.837/44.634/45.526/46.094/46.664%, approaching the 46.875% random limit from below (no finite expected peak). n=3 chars 19597→21396 (+9.180%, 222 tables grow); n=1/2 +44.304%/+26.361%, explicitly falsifying raw no-growth expectation. Governing source gate permits these regressions. Native controls: every table/row n<=3, four asymmetric rows per other table, plus all 25600/51200 random rows at n=7/8; all correct, zero stdin reads, wrong-answer mutant rejected. Execution is not the admission route: 117 of 2048 n=3 rows slow by at most 23 commands; sampled n=7/8 likewise have 60/61 slower rows out of 800 each, maximum +2 (row zero on a 10 pair). n=3 native commands before dump 49680→42260; n=7/8 all-row commands 4185560→2527190 / 15155070→8563270. Source remains O(T), all leaf addresses independent of T, uniform setters and symmetric path unchanged. Raw dump may now be 2 0 instead of 0 0 on a 00 pair with held input one; the second register is still zero. The committed minsky-swap.txt RMSN example and its 1 0 dump stay unchanged. Exact worst native commands max(T+6n+5,16n-3); post-halt dump is additional. Workspace at most n+3+bl(max(T+6n+12,16n+4)). The global source ceiling includes O(n) variable-address jumps and constant-address cascade leaves. Native tail controls exhaust all small tables in compact and RMSN and lifted ignored tails through n=8; both canonical folding catalogue probes pass. Macro controls preserve arbitrary index values in 16 cases; a wrong target mutant fails."
+kind = "archive_ref"
 
 [ablations.two_low_bits_leaf_split]
-kind = "archive"
-saving = 30.745
-arity = 8
-seed = "random.Random(1000*n), sequential choice('01')"
-tables = "200 random per n=7,8; 20 per n=4..6; exhaustive n<=3"
-verdict = "historical source-only rejection 2026-11-02; independent command admission was rechecked below in two_low_bits_execution_recheck_20261103. Raw concatenated setters collide on 01 and 10 (native final state pointer 0, registers 2/0). Raw 00011011 returns wrong answers at rows 3 and 6. Repair the first held run with two decrements and four increments, giving distinct 0/2/4/6 with the same uniform setter pair; each observed four-bit pattern gets an eight-command decoder with seven target entries. Repaired n=7/8 chars 124600→115319 (7.449%) / 230200→159425 (30.745%): n=7 misses 10%, so cannot qualify by shortening the corpus window. Repaired n=2/3 source grows 10.315%/17.768%. Native repaired controls passed all 2112 rows n=2/3 and four asymmetric rows per larger table; no production change."
+kind = "archive_ref"
 
 [ablations.generic_k_split_forced_threshold]
-kind = "archive"
-saving = 39.809
-arity = 8
-seed = "random.Random(1000*n), sequential choice('01')"
-tables = "same k=1/k=2 corpora as the two sibling records"
-verdict = "rejected 2026-11-02 as proposed: retaining k=0 only to hide small source losses is a whole-old fallback without a class break. The repaired k=2 candidate missed its n=7 source bar and is larger than k=1 at both n=7/8; a generic argmin adds no admitted large-arity construction. Limiting k to 2 is asserted rather than forced by semantics: the constant number of leaf patterns does not change the O(T) class for any fixed k. Keep only the qualifying k=1 rule, uniformly over its nonsymmetric path, with disclosed low-arity growth. Native repaired sibling controls and raw collision mutants are recorded above."
+kind = "archive_ref"
 
 [ablations.exactness_repair_20261103]
-kind = "archive"
-arity = 6
-saving = 0.0
-seed = 0
-tables = "first-input negation n=1..5, lone zero at row62 at n=6; every retained source/workspace formula rung"
-verdict = "proof-only repair: restore exact source1..5 and workspace3/6, retaining current lower-rung coverage. Source is exactly40n+11 through5, attained by first-input NOT and ignored tails. With m essential inputs, q trailing ignored, K=2**(m-1), delta pairs other than10, the two-digit-target spelling is34+10n+2m+5K+30q-delta. q<=n-m and delta>=1 for m>=2 prove m1 maximal through5; symmetric source<=17+16n and constants are smaller. Keep the previous global source ceiling beyond5. Pair index is at most2**(m-1)-1; held scratch uses2 bits, a tail macro uses3 but removes an essential index bit. Including pointer, this costs at most n+2 bits from3 (n+3 below), one less than the former conservative bound. Cursor is still bounded by commands(n). Native witnesses126 output rows plus126 resource rows attain source51/91/131/171/211 and W9/11/11 at1/2/3, W15 at6; source witnesses at4/5 also execute. Exact W is asserted only at1/2/3/6, not at unproved later arities. No generator path/state or emitted bytes change; the source-only broad ceiling and one-bit workspace slack no longer suppress old exact scopes."
+kind = "archive_ref"
 
 [ablations.two_low_bits_execution_recheck_20261103]
-kind = "archive"
-arity = 8
-saving = 35.769
-seed = "Random(1000*n+i), i=0..19"
-tables = "all tables/rows n<=3;20/all rows n4..8; all16 quad interfaces; selected ignored-input profiles"
-verdict = "rejected on concrete runtime/complexity tradeoffs, NOT a failed command bar. A compositional repair rescales the first held input, then uses the same uniform setters to hold0/2/4/6. Shared outputs plus at most14 mixed decoders stay before the body, keeping cascade targets bounded and O(T) source/build. Canonical constant-suffix pruning reduces decoder inventory112->102 commands,98->82 targets. From seven essential inputs a structural ignored-cost guard proves aggregate command improvement; below seven, native wall loses12.8%/11.5% at5/6 and rawW6 grows15->16. Fixed20 full-support7/8 native commands252700->181669 (-28.109%) /856346->550041 (-35.769%), satisfying25%; source8075->10192 (+26.2%) /13855->14295 (+3.18%).151/159 rows slow by at most7 commands,20/19 tables grow. Paired native wall medians7 .143568->.140417 seconds (-2.19%),8 .472688->.388542 (-17.8%). No200 escalation: both command results exceed27%. These numerical qualifications do not force admission. The necessary trailing-ignored macro costs40 commands versus16 in k1, and selected supported profiles regress in actual wall: m7,q1 .016584->.018075 (+9.0%),m7,q2 .035839->.042680 (+19.1%),m7,r2 .031953->.035181 (+10.1%), despite lower command counts. An excluded q3 profile also loses commands132928->142528. Added decoder, preservation and dispatch paths are a poor tradeoff for the small7-input wall gain. No percentage threshold or new fallback is introduced to hide diminishing benefits. All added paths/state were discarded from production; tested patch and exact prospective proofs are archived and stashed.15360 judged native runs plus exhaustive-small, sample, macro/decoder/RMSN/ordered-uniform-fill, zero-stdin/sentinel and wrong-macro controls pass. n3 remains42260 commands/21396 chars. Prospective bounds could preserve all original source/execution/workspace scopes and numeric W, but that does not offset the measured costs. Production generator/proofs/pins/by-row/last-row/Size anchors/example remain byte-identical. Generic k argmin remains rejected; no searched leaf table, production search or old-source race ships."
+kind = "archive_ref"
 
 [balance_growth]
 wall = "code is one command per line (RMSN) or line 1 only (compact; interpreter.py _parse), O(log m) bits per command; T table bits need m >= c*T/log T commands on one line or m lines, so area >= c*T**2/log**2 T (measured T**1.96 from n=10 to 12, 2026-10-29)"
@@ -115,20 +74,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 0.7178
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: hoist literal regex compilation. 245 programs, 226 halt cleanly; no structural trace differences, control differs on 145. Step throughput at longest 10/20/40 workload breadths: +0.82%/+0.72%/+1.22%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 0.7379
-workload = "complete run; source parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: hoist literal regex compilation. 5193 paired native traces, 4612 clean halts, no differences; changed-site mutant differs on 2175. Complete-run savings 0.74–2.74%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+kind = "archive_ref"
 
 [evidence]
 version = 1

@@ -30,115 +30,49 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.essential_projection]
-kind = "archive"
-saving = 43.8
-arity = 12
-verdict = "kept: canonical, exempt. The branch tree is built over the essential inputs only; an ignored input is still read, but its kept bit drops into the scratch name. One ignored input saves 32.3% at n=10 and 43.8% at n=12, two ignored inputs 48.6% / 65.8%, rising. Plain-rewrite 2026-10-28, deleting it (all inputs read as essential; 20 tables per class and arity, seed 1; savings as shares of the plain build's total): 0.0% on random, parity, majority, and/or and constant tables at every n=4..12; dense tables 2.7% / 1.6% / 2.0% at n=4 / 5 / 6 and 0.0% from n=7; half-constant 7.4% at n=4, 1.6% at n=5, 0.0% from n=6; two-block 22.3% / 19.3% / 4.6% at n=5 / 6 / 7 and 0.0% from n=8; mid-ignored tables (inputs 1 and n//2) 44.9% / 49.9% / 59.0% / 67.8% / 54.7% at n=4..8 and 20.3% / 26.9% / 40.0% at n=9 / 10 / 12"
+kind = "archive_ref"
 
 [ablations.constant_fold]
-kind = "archive"
-saving = 6.9
-arity = 12
-verdict = "kept: canonical, exempt. A constant span collapses to a call to one of the two constant printers: 12.4% on constant-half tables at n=10 and 6.9% at n=12 (the share declines as the random half outgrows the folded half, but the absolute saving grows and it never goes negative; 0.0% on random tables). The fold is also the tree builder's base case past the projection, where a constant table has no subtree ids to index, so at that boundary it is correctness machinery, not an optimization. Plain-rewrite 2026-10-28, deleting it everywhere but the whole-table span (20 tables per class and arity, seed 1): 0.0% on random, parity, majority, dense (0.5% / 0.9% at n=9 / 12), two-block, mid-ignored and constant tables at n=4..7; on and/or 13.0% at n=8, 12.1% / 19.8% at n=12 (or / and), half-constant tables 13.0% at n=8, 13.6% / 12.1% / 6.7% at n=9 / 10 / 12 (falling share against the growing random half, absolute saving growing). Kept: canonical"
+kind = "archive_ref"
 
 [ablations.subtree_sharing]
-kind = "archive"
-saving = 43.1
-arity = 10
-verdict = "kept: canonical, exempt. A subtree repeated at its level becomes one shared function. 0.0% on random tables at every arity, as the Decisions say; on tables tiled from two distinct 128-entry blocks with every input essential, 20.1% at n=9 and 43.1% at n=10 — the Decisions' -20.5% / -42.8% reproduces. On periodic tilings it prices 0.0% in the shipped context: after the projection only two blocks remain and nothing repeats. Plain-rewrite 2026-10-28, deleting it (unique ids, 20 tables per random-like class, seed 1): 0.0% on random, dense, mid-ignored, half-constant and constant tables at n=4..12; 20.1% / 43.1% / 78.5% on parity and 10.0% / 28.3% / 66.7% on majority at n=9 / 10 / 12 (one table each, rising); 0.3% / 4.3% on two-block tables at n=10 / 12; and/or 0.0%"
+kind = "archive_ref"
 
 [ablations.painted_block_bits]
-kind = "archive"
-saving = 2.1
-arity = 12
-verdict = "replaced by [ablations.block_width_race]: the fixed _BLOCK_BITS = 7 was a crossover constant, not a win at every arity. Against 5 / 6 bits seven lost on random tables at -59.5% / -39.8% at n=8 and -7.0% / -11.5% at n=10, won only from n=12 (+12.7% / +2.1%), and on parity, majority and two-block tables fewer bits stayed ahead even at n=12. The width is now raced per table over 3..7, seven kept as the widest (at eight the block outgrows the whole table at n = 7, a rung tests/proofs/deep/linearity.py fits a line through)"
+kind = "archive_ref"
 
 [ablations.block_width_race]
-kind = "archive"
-saving = 37.1
-arity = 8
-seed = 1000
-tables = 20
-verdict = "kept: the shortest of the shift-register widths b = 3..7 per table, seven among them so no table grows (no table grew in size, n=4..14; tables are seed 1000 + n, 20 per class to n=10 and 4 above, one parity and one majority table, shares of main's total). Size, random tables: -12.3% / -21.4% / -36.6% / -50.2% / -37.1% / -21.8% / -10.2% / -2.9% at n=4..11 and 0.0% from n=12 (seven wins there: a share falling to zero on random tables, which meets the bar at n=7..8 and is the old crossover); named functions and structured classes keep their saving at every n: parity -47.6% at n=14, majority -43.0%, or/and -62.4%, dense with 3 zeros -55.2%, two-block -75.0% (rising), mid-ignored -35.1% at n=8 and 0.0% at n=14, half-constant -48.2% at n=8 and 0.0% from n=13, constant 0.0%. Area (balance_score(p)[0] ** 2, the balanced output): random -49.3% / -35.6% / -10.1% at n=7 / 8 / 10 and 0.0% from n=12; parity -54.6% and majority -51.9% at n=14; or/and -62.8%; dense -56.0%; two-block -78.6%; mid-ignored -36.0% at n=8; half-constant -48.2% at n=8. Candidate sets (seed 777 sweep): dropping b = 3 costs up to 11.2 points (mid-ignored, n=6), 3.2 on or/and and 1.9 on dense at n=8, 0.3 on parity; dropping 3 and 4 costs or/and 10.7 / 9.1 points; a fixed 5 grows random tables +14.7% at n=12 and a fixed 6 +2.1%, so no constant wins everywhere and a closed rule would have to predict a crossover that moves with the class (random favors 5 at n=7..9 and 7 from n=12, structured tables 3). Adding b = 2 / 1 saves 0.0% on every class but or/and (4.0% / 4.2% at n=8, 3.3% / 3.5% at n=10), under the bar. The balanced hook needs no race of its own: it builds the token spelling through forbin(table, 1), which races the widths by the wrapped length, and that matches racing five balanced spellings by area (majority 2-3 points better than balancing the unwrapped winner at n=9, 12 and 13; equal on every other class). Execution cost: the narrow winner descends more tree levels, 2 max(n - 3, 0) + 2 commands a row instead of 2 max(n - 7, 0) + 2 (n=4 parity 2 -> 4 commands)"
+kind = "archive_ref"
 
 [ablations.name_ordering]
-kind = "archive"
-saving = 1.1
-arity = 12
-verdict = "retired 2026-10-28 (see the end). Earlier kept: the input bits, the register and the two printers take the one-character names first because they repeat most; the block cells take what is left. Against the inverted allocation (cells first) the ordering saves 2.0% / 1.7% / 1.1% on random tables at n=9/10/12 — positive at every arity but declining in share, while the absolute saving grows (48 / 61 / 119 chars per table). It prices below the generator bar at the largest arity; it is recorded rather than proposed for removal because dropping it deletes no code, only the allocation order inside _Names. Plain-rewrite 2026-10-28: retired. Priced by deleting it (the cells-first allocation, 20 tables per class and arity, seed 1) the frequency order saves 4.5% / 2.2% / 2.2% / 2.0% / 1.7% / 1.1% on random tables at n=6 / 7 / 8 / 9 / 10 / 12 and at most 3.8% on and/or, 3.0% on parity and 2.2% on majority at n=12 (mid-ignored 6.1% at n=8, 2.2% at n=12): under the bar everywhere, declining on random tables. The plain form built instead is the order of first use (scratch name, bits, the register and its cells, then the printers), which is no larger on seed 1 at n=4..12 (0.0% at n<=5 and on and/or at n=12, up to 0.5% smaller at n=6, 0.1% on random tables at n=12); on seed 777 dense tables (three zeros) grow 0.07% / 0.16% at n=11 / 12 and every other class shrinks or holds. Replaced by order of first use; balanced area (max(rows, cols) squared) within 5% across the retiring commit on parity, majority, and, or, thr2, their complements and 10 random tables at n=7, 8, 10"
-retirement = { verb = "retired", date = 2026-10-28, balanced = [1412, 1420] }
+kind = "archive_ref"
 
 [ablations.early_returns]
-kind = "archive"
-saving = 2.8
-arity = 16
-seed = 1
-tables = 20
-verdict = "kept for execution and workspace, below the size bar. The unwrapped tree uses early returns (a leaf is `return(call)`, the lower half unguarded); the wrapped build uses disjoint `for _:1..!b` guards. Priced by deleting it, i.e. building the disjoint-guard tree for the unwrapped program too (20 tables per class, seed 1, 8 at n=16; shares of the plain total): the returns lose at n<=7 (random tables -2.6% at n=4, -0.5% at n=7), break even at n=8 (0.1%) and save 0.7% / 1.4% / 2.3% / 2.6% / 2.7% on random tables at n=9 / 10 / 12 / 14 / 16, a plateau near 2.8% (peak, measured past n=8); named functions at n=12 / 16: and/or 1.9% / 3.3%, majority 1.2% / 1.9%, parity 0.4% / 0.6%; two-block tables 3.9% at n=16; mid-ignored tables 1.4% at n=12; constant tables lose 3.0% at n=12. A constant share far under 10% at every arity and class, so it fails the size bar. Retirement trial 2026-10-28 (seed 1, 20 tables per class): sizes reproduce (-2.5% at n=4, +0.1% at n=8, +2.4% at n=12), area unchanged; but `return(call)` is a tail call, so the disjoint-guard tree runs 9 / 17 / 33 / 38 commands a row at n=1 / 3 / 7 / 8 against 2 / 2 / 2 / 4 at b = 7 (before the width race), and the callee's frame stays live: worst written state 200 / 459 / 5,790 / 5,847 bits against 110 / 176 / 306 / 347. Kept for that, not for the clause's constant"
+kind = "archive_ref"
 
 [ablations.balance_race]
-kind = "archive"
-saving = 0.0
-arity = 12
-seed = 1
-tables = 20
-verdict = "retired: size-neutral, a dead candidate. The balanced hook raced the unwrapped default against the token-joined spelling on balance_score and the default never won: 0 of 4 + 16 + 256 + 65,536 tables exhaustively at n=1..4 (the joined spelling strictly smaller on all of them), 0 of 300 random tables each at n=5..8, and 0 of 20 on every class at n=4..12 (area, measured against the early-return default) (random, parity, majority, and/or, dense, two-block, mid-ignored, constant, half-constant). Measured on rendered area, balance_score(program)[0] ** 2, the joined spelling is 89-99.5% smaller than the default. Deleting the race changes no output byte, so the patch is size-neutral; the hook now returns the joined spelling"
+kind = "archive_ref"
 
 [ablations.balance_word_spaces]
-kind = "archive"
-saving = 43.8
-arity = 10
-seed = "random.Random(131s + n), s = 0..19"
-tables = "20 random per n=7,8 plus and/or/nand/nor/parity/majority/threshold-3/threshold-(n-1) at n=7..10"
-verdict = "kept: the balanced spelling put a space between every token (n=8: 1,100 -> 2,096 chars, ratio 3.8 on a 23 x 47 fold). A space now stays only between two adjacent word tokens (identifier, keyword, number or underscore on both sides); a row break separates the rest and a row's trailing space is trimmed. Balanced area (score squared) -43.8% / -45.5% on random tables at n=7 / 8, named functions -37.1% to -47.1% at n=7..10 (parity -42.0 / -42.1 / -39.9 / -40.8%, majority -41.3 / -40.2 / -37.1 / -39.0%, and/or 43.8-45.7%, still ~40% at n=10 so not declining). No table got worse; the default is byte-identical on all 72 tables. Every balanced program ran on every row (72 tables, n=7..10, 0 bad) and a wrong table failed on each"
+kind = "archive_ref"
 
 [ablations.parameterized_printer]
-kind = "archive"
-saving = 1.223
-arity = 12
-seed = 1847
-tables = "all tables n=1..3; four random plus one mixed-constant n=4..6; 20 random and parity/majority/and/or/threshold-3 n=7,8,10,12"
-verdict = "rejected: merge the two constant printers into one bit-parameterized printer, changing calls of the one-printer to pass 1. Upside is one fixed definition: 22 emitted characters where both printers occur. Random totals at n=7 / 8 / 10 / 12: 14,420 / 22,000 / 62,220 / 204,480 characters, unchanged. Named functions: parity, and/or and threshold-3 unchanged; majority 0.0% / 0.0% / 1.728% / 1.223% (1,273 -> 1,251 at n=10, 1,799 -> 1,777 at n=12), below 10% and declining. Executed old/new on all 2,680 rows of 291 tables through n=6 (all tables through n=3), plus four rows per measured larger table; no differences, all input bytes consumed with no EOF reads and exactly the expected output. n=3 total 46,748 -> 46,748. Positive control: mixed-constant n=6, 458 -> 436 chars, both printer branches execute correctly; negating the printer parameter produces a wrong answer. No generator change"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 6.1
-seed = "both constant values; witnesses(n) at n=4..6"
-tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
-verdict = "kept: canonical whole-constant output, inlining a single-use printer. One multi-assignment drains all 8n bits into scratch a, then a literal out. A return expression retains the two-command default bound; narrow/balanced statements fall off in three commands instead of the old five, a 40% command reduction. Default chars 16n+40, workspace 76+2bl(n). At n=8 both bits 179 -> 168 chars; n=12 243 -> 232. The smaller default size gain is canonical; the narrow path independently clears the 25% command gate. n=3 corpus 46748 -> 46726 chars; all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions. All 270 nonconstant programs per language through n=3 remain byte-identical; Bitdeque and Forbin also retain all 540 nonconstant narrow/balanced programs each. All 24 old balanced constant scores per changed language improve or match. Both constants n=1..12 execute in default, width=1 and balanced layouts; owned regressions cover complete input consumption and resource bounds, with sentinel preservation for stream readers."
+kind = "archive_ref"
 
 [ablations.reader_function_20261102]
-kind = "archive"
-arity = 8
-saving = 7.0909
-seed = "Random(1000*n+i),i=0..19; fixed7/8 before judging"
-tables = "all tables/rows n<=3;20sampled4..6;20fixed7/8;zero/one/and/or/nor/nand/parity/strict-majority/half-threshold/threshold3"
-verdict = "generic rule rejected:14420/22000->13140/20440chars saves8.8766/7.0909%, below the declining20% bar. Saving is O(n), while every all-essential family's input names alone require Omega(nlogn), so the share tends to zero. AND/OR/NAND/NOR16.75/18.40% and parity11.59/11.93% also fail20%; majority/thresholds fail. n3chars46726->44676 but commands4096 unchanged, so neither execution gate qualifies. No whole-old min. The constant family is admitted independently below with a smaller draining helper whose result is unused; no generic reader path/state ships."
+kind = "archive_ref"
 
 [ablations.register_reads_low_inputs_20261102]
-kind = "archive"
-arity = 8
-saving = 6.1818
-seed = "same fixed20 each7/8; exhaustive n3 everyrow"
-tables = "11500native variant rows through6;2340ignored-subset/width/balance rows;3390exact-bound proof rows;moderate named controls"
-verdict = "rejected by explicit user decision2026-11-02: the repaired coherent prototype cuts n3 VMcommands4096->2064 (49.609%), with source46726->44566 and no growing table or costlier VM row, but actual nativewall0.6715->1.0130s is50.9% slower. Work moved into synchronous expression calls, not a speed improvement; user chose reject the slower optimization. Fixed7/8 source13300/20640 saves7.767/6.182%, below20%. Low range bounds consume bytes once; ignored gaps/trailing inputs and constant-leaf drains were repaired and verified before rejection. n1/2 batch by genuine source loss; widths<6 batch because value-returning helper needs the six-character return token. Balanced fixed20 area14820/22560 unchanged. Candidate proof/pin/source patch remains ignored evidence; none of its low-register paths, reader names or input-plan state ships. Existing generic source/E/W formulas and all old exact scopes remain."
+kind = "archive_ref"
 
 [ablations.trailing_zero_elision_20261102]
-kind = "archive"
-arity = 8
-saving = 1.3545
-seed = "same fixed20 each7/8"
-tables = "all small native rows;sampled4..6;fixed7/8 endpoints;forced both-polarity register control"
-verdict = "language-valid but inadmissible: authorwiki Arguments explicitly defaults unpassed parameters to0 (https://esolangs.org/wiki/Forbin#Arguments), while CONTRIBUTING forbids missing operands buying generator savings. No interpreter change. Explicit/omitted zero calls agree natively; dropping a trailing1 instead changes its answer. Elision alone14420/22000->14094/21702 saves2.261/1.355%, n3source46726->46264 with unchanged4096commands. Per-block polarity with a second inverted-output register yields16608/25342chars (15.17/15.19% larger); both register polarities execute correctly, but its savings also rely on forbidden omitted arguments. Removed unused clone definitions in the prototype; no omission, clone, race or added state ships."
+kind = "archive_ref"
 
 [ablations.constant_reader_20261102]
-kind = "archive"
-arity = 8
-saving = 52.381
-seed = "both whole constants;physical arities1..16"
-tables = "480constant default/narrow/balanced native rows;1110nonconstant bytepairs/6880native rows;76pin rows plus saved example"
-verdict = "kept only for whole constants by source admission: one byte-draining definition and one n-target assignment replace the 8n-target read. No returned input bit is needed: the function falls off with default0, and its result goes only to junk. Removing the dead return also preserves the four-column width floor without a separate narrow fallback. Exact default chars16n+40->2n+64 from n=2; n1 would grow10chars and retains its shorter inline read. No old-program race. At7/8 each constant152/168->78/80 saves48.684/52.381%, monotonically approaching87.5%; balanced grid_area153/162->72/78. All8n bitreads precede output and preserve the next record; EOF and seven-bit mutants fire. Default2VMsteps and exact constant76+2bl(n)written bits stay unchanged; completed helper scopes are absent at observable snapshots. Nativewall does grow for zero:200runs n3 .0430->.0685s (1.59x), n8 .1596->.3350s (2.10x), n12 .2901->.7039s (2.43x); this is source admission, no speed claim. Adds only the necessary constant-function/read-spelling branch, no extra live main local; supersedes its repeated inline read from n2 and removes the unused return-bit state. Every nonconstant source is byte-identical, including width/balance. n3chars46726->46690, commands4096 unchanged. All global formulas/exact arities, eight pins/by-row/last-row counts and the example remain valid; constant Size anchor80 replaces168."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -151,12 +85,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = -0.3237
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: slotted machine storage. 249 programs, 146 halt cleanly; no structural trace differences, control differs on 149. Step throughput at longest 10/20/40 workload breadths: -0.16%/+0.37%/-0.32%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [evidence]
 version = 1

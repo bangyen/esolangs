@@ -34,80 +34,37 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.input_projection]
-kind = "archive"
-saving = 268.1
-arity = 12
-verdict = "kept: canonical, exempt. An ignored input weighs 0 in the doubled-bit index (read bare, overwritten) and the painted table is the projected one. 0.00% on random tables at n=6..12; with one ignored input 83.1% at n=10 and 94.2% at n=12, with two ignored inputs 216.8% at n=10 and 268.1% at n=12"
+kind = "archive_ref"
 
 [ablations.constant_path]
-kind = "archive"
-saving = 9.4
-arity = 12
-verdict = "kept: canonical, exempt. A constant table is spelled as a literal program and never painted. Solo price 11.5% / 9.7% on constant tables at n=10 and 11.1% / 9.4% at n=12; most of a constant table's saving is the projection's (it has no essential inputs) — jointly with projection removed a constant table costs +3,680% at n=10"
+kind = "archive_ref"
 
 [ablations.zero_run_loops]
-kind = "archive"
-saving = 1614.7
-arity = 12
-verdict = "kept: a zero run of nine or more is spelled as a counter loop at a balanced stride instead of bare steps. 0.02-0.07% on random tables; on the long-run classes it is the build: AND 514.4% at n=10 and 1,614.7% at n=12, half-constant 66.8% / 85.4%, sparse 26.3% / 30.6%, majority 15.6% / 20.6%. The in-code shares (83.7% on AND at n=10, 73% on a threshold, 13.5% on majority, share of the plainer build) all reproduce. Plain-rewrite audit 2026-10-28 (20 random tables per n, Random(1000n+s)): random 0.07% / 0.06% at n=7 / 8, balanced 0.00%; and/nor 42.5% / 60.4% / 83.7% at n=7 / 8 / 10, or/nand 40.1% / 58.9% / 83.2%, popcount>=2 26.4% / 42.9% / 72.7%, majority 2.0% / 8.2% / 13.5%; balanced area follows (and 40.1% / 60.9% / 83.0%)"
+kind = "archive_ref"
 
 [ablations.count_doubling]
-kind = "archive"
-saving = 12.9
-arity = 12
-verdict = "historical measurements, retired 2026-11-02: inside a counted loop the count was spelled by whichever of unary and doubling through the spare dimension is shorter, so it never makes a program larger. 0.00% on random tables and most named tables; on AND, the longest-count class, 4.3% at n=10 rising to 12.9% at n=12 and 25.9% at n=14. The in-code shares (11.4% at n=12 and 20.6% at n=14 on AND, 13.4% on a threshold at n=14, share of the plainer build) all reproduce. Plain-rewrite audit 2026-10-28: 0.0% on 20 random tables and every named function at n=7 / 8 (and/nor 4.1% / 6.7% / 11.4% / 20.5% at n=10 / 11 / 12 / 14, balanced 6.8% / 6.0% / 11.4% / 18.1%; popcount>=2 0.9% / 2.8% / 5.4% / 13.3%). The historical O(n)-versus-sqrt(T) class rationale was false: the spelled stride is sqrt(T) either way. Fixed n7/8 fails admission; the current build uses unary counts"
+kind = "archive_ref"
 
 [ablations.complement_paint]
-kind = "archive"
-saving = 93.7
-arity = 12
-verdict = "kept: the table or its complement is painted, whichever paints shorter, and a complement is read out through a fresh dimension-4 cell as 49 - c (`[->4-<4]>4` and one more `+`, 11 chars). Zero runs loop and ones cost two characters each, so or/nand paid per one. 0.00% on random tables (20 seeded) at n=7 and n=8, parity, majority, and, nor 0.0%; or/nand 40.1% / 58.9% / 83.2% / 93.7% at n=7 / 8 / 10 / 12 (730 -> 300 chars at n=8, 2,306 -> 388 at n=10), popcount>=2 26.4% / 42.9% / 72.7% / 88.4%, popcount>=3 8.8% / 23.4% / 54.6% / 77.3%, popcount>=4 0.0% / 5.5% / 31.7% / 58.5% (share rising with n). Balanced area follows (or at n=10 4,624 -> 841). Measured 2026-10-28 chars, every program executed (n<=3 exhaustive, 60-300 samples at n=4..6, named tables to n=10). Plain-rewrite audit 2026-10-28 (20 random tables per n, Random(1000n+s).getrandbits(1<<n), plus named tables): balanced area or/nand 40.1% / 55.6% / 81.8% at n=7 / 8 / 10, popcount>=2 29.7% / 40.8% / 72.0%, popcount>=3 6.3% / 24.0% / 54.2%; random 0.00% size and balanced; kept for the or/nand and threshold family"
+kind = "archive_ref"
 
 [ablations.pair_packing]
-kind = "archive"
-saving = 17.7
-arity = 12
-verdict = "kept: from n=7 two entries share one painted cell when that is shorter (values 0-3 for (low, high); the last input is not read into the index but decoded by `[->4+<4[->5+<5[->4-<4]]]` onto dimension 4 or 5 and stepped onto by `d++++>`). Random tables (Random(1000n+s), 200 at n=8, 20 at n=7 / 9 / 10 / 11, 10 at n=12) 7.5% / 11.6% / 13.6% / 15.7% / 17.2% / 17.7% at n=7..12, rising toward the cap; 0 of 300 random tables lose from n=7 and 8 of 300 at n=6, which is why it starts at 7 (n=7 misses the bar, n=8 clears it). Balanced area 7.6% / 11.3% / 13.2% / 15.1% at n=7 / 8 / 9 / 10. Named: parity 4.8% / 7.4% / 9.4% / 10.7% / 11.9% and majority 1.1% / 4.8% / 3.9% / 6.7% / 7.3% at n=7 / 8 / 9 / 10 / 12, and/or/threshold 0-5% (they loop their runs; the plain build stays shorter on their looped runs). Every changed program executed through the interpreter: all rows of 200 random tables at n=8 and 20 at n=7 plus parity and majority, 0 wrong; a complemented-table program fails all rows"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 81.5
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: fixed character literal after every input. Read into the origin, overwrite it with :0 or :1, print; no fresh plane or 48/49 increments are needed. L=n+3 chars, E=n+2 steps, W=6+bl(n+3)+bl(2n-1) written bits in the default. A literal cannot fit one column, so width=1 at n<=2 retains the one-column contract with clear/increment at the origin; all nonconstant layouts remain unchanged. n=7 zero/one 58/59 -> 10/10 chars (82.9% combined); n=8 59/60 -> 11/11 (81.5%), 58/59 -> 10/10 steps, 23 -> 14 written bits; n=12 63/64 -> 15/15 chars. Both evaluation arities exceed the declining-savings gate. n=3 corpus 33035 -> 32938 chars. Owned checks retain exact width floors and written-state bounds even with layout newlines. Each language passed 5656 paired old/new row executions; 270 nonconstant default programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. Separate 1120-run native probes per language include every row through n=8. All 24 balanced scores per language match or improve; all 24 benchmark size/command pins across the batch remain unchanged. Owned regressions check reads before output, no EOF probe and a preserved following record, without adding collected cases."
+kind = "archive_ref"
 
 [ablations.initial_zero_double_20261102]
-kind = "archive"
-arity = 8
-saving = 2.5
-seed = "random.Random(1000*n+i)"
-tables = "all tables/rows n<=3; three random per n4..6; scattered projections n7 and proof witnesses"
-verdict = "kept canonical no-op removal: the first essential read sees index/spare coordinates zero, so both doubling loops are inert. Omit them in one shared reader used by plain and packed builds, replacing duplicate reader comprehensions; ignored prefix reads do not move either coordinate. No new construction path or persistent state. Each nonconstant indexed program loses16 chars and two commands; constants and width-one bare leaves remain unchanged. n3 source32938 ->28874 and commands193928 ->189864;2156 paired native rows plus2156 wrong-output controls. All eight pins are repinned including every row and the last; source worst2T+20n+42, execution worst11T+floor((2T+1)/5)-4n+43, workspace IP termbl(2T+20n+40). Original proof arities/exactness retained; nine focused proof cases pass."
+kind = "archive_ref"
 
 [ablations.tricks_20261102]
-kind = "archive"
-arity = 8
-saving = 10.2
-seed = "random.Random(1000*n+i).getrandbits(1<<n)"
-tables = "fixed200 random per n7/8 after canonical spelling; and/or/parity/majority/threshold-third separately; private packing exhaustive n<=3 and samples4..6"
-verdict = "near misses, not shipped. Consistent negative codes painted255/0/1/2 for00/10/11/01 then incremented before the existing decoder: fixed200 canonical80116/125750 ->73849/112976 chars (7.822/10.158%), fails fixed n7. Group runs count values, not their decimal spelling; pair00 wrap255 ->0 leaves both decoded bits zero. Before canonical, two-table n10/12 savings13.26/15.15% approach about15.4% expected paint saving; this does not move the judged arities. Unguarded alternating-axis indexing is correct: a one lands at2prefix+1, greater than every previously visited read-plane prefix, so a clear guard is unnecessary. Native landing checks fire15 times. After canonical first read, fixed200 axis75095/117950 (6.267/6.203%); O(n) source savings against O(T) painting tend to zero, failing20%. Before canonical, n3 axis commands201928 exceed193928 and six tables grow, so execution admission fails too. No named family clears both fixed arities. Guarded-axis variant is larger, superseded only in scratch."
+kind = "archive_ref"
 
 [ablations.decoded_input_20261102]
-kind = "archive"
-arity = 8
-saving = 0.0
-seed = "random.Random(1000*n+i)"
-tables = "fixed200 random per n7/8; named functions; asymmetric row001 of00110110"
-verdict = "rejected: trying every decoded input is a search, and merely permuting its table while feeding physical-order inputs computes the wrong function (swapping the final inputs fails row001; the original positive control passes). No buffered-order construction is claimed. Legal fixed complement-only packing preserves order but grows2.664/1.482% after canonical spelling, totals82250/127613; named threshold-third318/401 ->291/350 saves8.491/12.718%, failing n7. Plain/packed, negative, guarded and unguarded-axis controls total10780 public and9855 forced-private executions through n3 plus samples4..6;2156 wrong-output controls fire. No candidate, alphabet race, reorder state or old-whole-program minimum is added."
+kind = "archive_ref"
 
 [ablations.count_doubling_retirement_20261102]
-kind = "archive"
-arity = 8
-saving = 0.0
-seed = "random.Random(1000*n+i)"
-tables = "20 random per n7/8; and/or/parity/majority/threshold-third/threshold-two n7/8/10/12/14"
-verdict = "retired: recursive doubling is an alternative arithmetic construction, not omission of redundant syntax or a no-op. Its marginal is0.00% on random and every named family at both fixed n7/8. Positive controls before/after removal: AND n10 356 ->362 chars, n12 481 ->526; OR372 ->388 and492 ->556. The old class reason was false: both builds have a sqrt(T) spelled stride, while unary count also costs sqrt(T) and binary count O(n); binary's limiting saving can approach50%, not zero, but future gains do not change the fixed corpus. Remove _count and _COUNT_DOUBLE; the existing stride loop now receives a direct unary count, no replacement path/state. Maximal zero-run-nine witnesses and all old proof scopes/exactness remain; the global source cap still follows from the unchanged min with bare painting. Source IP remains within that cap, coordinate workspace cannot grow, and unary initialization executes no more steps. Small pins and example unchanged; n10 AND anchor362."
+kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30
@@ -120,20 +77,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 1.2665
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: slotted immutable dataclasses. 245 programs, 175 halt cleanly; no structural trace differences, control differs on 180. Step throughput at longest 10/20/40 workload breadths: +1.54%/+1.53%/+1.27%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 2.1177
-workload = "complete run; parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
-verdict = "kept: slotted immutable dataclasses; 5193 paired native traces, 3423 clean halts, zero differences; changed-site control detected on 3489. Complete-run wall savings 2.12–2.96%, including parsing and final I/O. Snapshot fields and grouping preserved."
+kind = "archive_ref"
 
 [evidence]
 version = 1

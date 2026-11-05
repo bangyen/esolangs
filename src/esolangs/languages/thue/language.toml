@@ -25,54 +25,25 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.queued_projection]
-kind = "archive"
-saving = 48.4
-arity = 10
-verdict = "kept: canonical projection, exempt; when an input is ignored the table is laid out at its essential inputs and a queue of K/S rounds (K halves, S reads and deletes) runs one round per input, raced against the plain layout by length. 0.0% on random tables (the layout is never offered and the plain layout is exactly T + 187 chars whatever the table). Re-measured 2026-10-30 against the packed lookup (seed 5 tiled tables): 10.8% / 21.1% with one / two inputs of 8 ignored, 31.0% / 48.4% of 10; the S round reads through M (no J rule), a no-input table keeps only its print and read rules (49 chars at n=1), 46.1% / 80.0% earlier on 16-row tiled tables at n=8/10 before packing; priced by race marginal"
+kind = "archive_ref"
 
 [ablations.constant_half_fold]
-kind = "archive"
-saving = 20.4
-arity = 10
-verdict = "kept: a constant half of the table is stored once, with nine extra rules of about 110 chars restoring it, raced against the unfolded layouts by length; priced by race marginal. Re-measured 2026-10-30 against the packed lookup, which composes with it: 4.8% on constant-half tables at n=9, 20.4% at n=10 and 40.3% at n=12 (and/or 456 vs 479, 585 vs 735, 1,355 vs 2,271 chars); before packing 19.3% / 32.2% at n=9 / 10. The module docstring's balanced figures (-24% / -35%) do not reproduce: the unfolded chunked layout wins every balanced constant-half table (0.0%)"
+kind = "archive_ref"
 
 [ablations.pair_packing]
-kind = "archive"
-saving = 20.8
-arity = 8
-verdict = "kept 2026-10-30 (random + named bar): each entry pair is one symbol of c/d/e/f and R, starting at the right end, expands it on its way left, so four rules (36 chars) replace half the table, in every layout (plain, queued, folded, shared). On 100 seeded random tables (random.Random(1847 + n)) chars fall 8.9% at n=7 (31,500 -> 28,700) and 20.8% at n=8 (44,300 -> 35,100), 15.8% over both; named parity / majority / threshold-3 8.9% / 20.8%, and / or 8.9% / 19.3% at n=7 / 8; n=7 is under the 10% bar alone, the 36-char rule block being fixed. Balanced area 0.0% on 30 random tables and the five named functions at n=7 and n=8 (the chunked layout's 27 rules push its side to 60 against 58). Executed: every row of the five named functions and 15 random tables at n=7 and n=8, balanced and not, plus width-limited builds, compute their tables; the wrong-table control fails on all 128 rows"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 23.2
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: constant queue with four deterministic rules. SR reads a line directly; 0/1 restore R, and LR prints only after every S has gone. Default L=n+35 chars, E=2n+1 rewrites and W=8(n+2)+bl(2n) written bits. Width-limited queues expand one unique named chunk at a time before R appears; this avoids the old narrow path selecting a full-table lookup. The slow verifier was stopped and diagnosed, then completed below one second after this fix. Widths below eight retain the existing seven-column small-tree option through n=3. Owned checks assert one match at every state and every read before output, including two-character expansion names at n=50. n=7 55 -> 42 chars (23.6%); n=8 56 -> 43 (23.2%), 25 -> 17 rewrites, 101 -> 85 written bits; n=12 60 -> 47 chars. Both evaluation arities exceed the declining gate. n=3 corpus 49632 -> 49606 chars. Each language passed 5656 paired old/new row executions; 270 nonconstant defaults through n=3 stay byte-identical. Both constants n=1..12 execute default, width=1 and balanced. Separate 1120-run native probes per language include every row through n=8. All 24 balanced scores per language match or improve, with 72 old balanced row executions per language as controls; all 24 benchmark size/command pins across the batch stay unchanged. No new collected cases."
+kind = "archive_ref"
 
 [ablations.round_queue_direct_read]
-kind = "archive"
-arity = 8
-saving = 11.681
-seed = 1854
-tables = "200 random.Random(1847+n) tables per n=7/8; exhaustive tables/rows n=1..3; ten random tables/all rows n=4..6"
-verdict = "rejected: plain KR direct reads save 14.634% / 11.681% at n=7/8 (57,400 -> 49,000 / 70,200 -> 62,000 chars), below the 20% declining bar. The fixed saving tends to zero; retaining the old same-class candidate cannot repair admission. Native paired execution covers 3,240 rows through n=6; three random tables/all rows at each judged arity also execute with one rewrite match per state, exactly n reads and a wrong-table control. The n=3 source total falls 49,606 -> 38,144, but rewrites rise 46,848 -> 59,392; no execution admission. No production change."
+kind = "archive_ref"
 
 [ablations.queue_direct_read_all_layouts]
-kind = "archive"
-arity = 8
-saving = 0.0
-seed = 1854
-tables = "raw folded singleton state LKRaE; plain direct-reader corpus recorded above"
-verdict = "rejected: raw KR::=::: overlaps the retained KRaE::=MRaE fold rule in LKRaE; native matching finds two choices. This violates deterministic generated rewrites. Unfolded queued-only savings cannot justify adding the invalid folded construction; the plain reader itself fails the declining bar. No production change or claimed measured corpus saving."
+kind = "archive_ref"
 
 [ablations.selective_quad_packing]
-kind = "archive"
-arity = 8
-saving = 0.002849
-seed = 1854
-tables = "200 random.Random(1847+n) tables per n=7/8; repeated 1,024-row positive control"
-verdict = "rejected: aligned quads replace pairs only when frequency exceeds their 11-character rule cost. n=7 saves 0% (57,400 unchanged), n=8 0.002849% (70,200 -> 70,198), far below either bar; zero / two rules fire. Native representative random rows and every generic firing execute with one match per state and exact input consumption. Repeated-table positive control fires two rules and shrinks the packed layout 735 -> 501 chars; all four boundary rows execute. Packing therefore works, but the judged corpus does not benefit. No production change."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -84,20 +55,10 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = 0.8558
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: construct immutable named tuples through tuple.__new__. 252 programs, 148 halt cleanly; no structural trace differences, control differs on 152. Step throughput at longest 10/20/40 workload breadths: +0.91%/+0.86%/+1.08%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [interpreter_ablations.speedup_adoption_20261103]
-kind = "archive"
-price = 0.0885
-workload = "complete run; parsing and final output included"
-seed = 0
-tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
-verdict = "kept: construct immutable named tuples through tuple.__new__; 5200 paired native traces, 2196 clean halts, zero differences; changed-site control detected on 2200. Complete-run wall savings 0.09–0.50%, including parsing and final I/O. Snapshot fields and grouping preserved."
+kind = "archive_ref"
 
 [evidence]
 version = 1

@@ -31,83 +31,40 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.packed_decoder]
-kind = "archive"
-saving = 86.0
-arity = 10
-verdict = "kept: clears the bar on random tables and rises steeply (17.7% at n=6, 65.8% at n=8, 86.0% at n=10 against the tree candidate). On named functions the unrated tree candidate is smaller (and/or 889 against 1,547-1,609 at n=8) -- the route cutoff at 32 essential rows left that on the table until 2026-10-20, when the tree began racing at every n: and 1,547 -> 889 and parity 1,609 -> 1,267 at n=8, and 1,847 -> 1,107 at n=10; random tables unchanged (0/20 tree wins at n=6..10). Plain-rewrite 2026-10-27: the race is unchanged by the audit (shared tree against packed); random tables ship the tree at n<=5 and the packed build at n>=6 in the 20-table samples at n=6..8"
+kind = "archive_ref"
 
 [ablations.residual_tree_route]
-kind = "archive"
-saving = 62.2
-arity = 12
-verdict = "kept 2026-10-28 (random + named bar): the shared tree racing the packed build is inert on random tables (0.0% of chars and of balanced area on 20 seeded tables at n=7 and n=8, the packed build wins every one) but earns 40-62% of chars on and/or at n=7..12 (or n=12 3,507 -> 1,325; and n=8 1,547 -> 889), 20-45% on parity at n=7..12 (n=12 3,506 -> 1,919), 11% / 25% on a one-third threshold at n=8 / n=12, 29-53% of balanced area on and/or; majority only 0-5% (n=9..11 0.0%). Kept on the named functions; the earlier five-essential-table figures (19.9% at n=6 to 21.5% at n=8) are an ad-hoc class and no longer count. Plain-rewrite 2026-10-27: the plain tree contestant and the explicit n=5 branch are retired -- see tree_contestant; the shared tree races the packed build at every n"
+kind = "archive_ref"
 
 [ablations.shared_residuals]
-kind = "archive"
-saving = 20.7
-arity = 8
-verdict = "kept: canonical sharing, exempt; its marginal within the candidate is 19.5% on five-essential tables at n=6 rising to 20.7% at n=8, 20.9% on random tables at n=4, and 18.7% against the packed build alone at n=5 (in-code figure 18.9%). Plain-rewrite 2026-10-27, deleting it (plain tree only, programs run on all rows): +10.41% / +40.13% on 10 random tables at n=3 / 4, parity +24.2 / +70.4%, majority +13.9 / +28.9% (n=3/4), parity +32.3 / +27.0% at n=7 / 8; on five-essential tables at n=7 / 8 +21.52 / +24.36% (four-essential +29.69 / +19.05%, 20 tables per arity, 4 of them in class)"
+kind = "archive_ref"
 
 [ablations.constant_fold]
-kind = "archive"
-saving = 43.9
-arity = 7
-verdict = "kept: canonical, exempt. Its top-level deletion marginal is 0.0% on every corpus -- in the shared build a constant span's residuals agree, so the descent prints the same instruction (deleting the fold changes the five-essential total by exactly 0) -- but in the plain-tree build, its home, it earns 24-25% on random five-essential tables, 43.9% on half-constant tables and 70.4% on and/or at n=7"
+kind = "archive_ref"
 
 [ablations.essential_descent]
-kind = "archive"
-saving = 21.5
-arity = 8
-verdict = "kept: canonical, exempt; skipping levels no node tests earns 20.0-21.5% on scattered five-essential tables at n=7/8 (trailing 11.4-14.4%), 4.8-4.9% on random tables at n=4/5 where the tree routes run, and 69.5-72.0% on constants, where it is the whole construction"
+kind = "archive_ref"
 
 [ablations.data_blocks]
-kind = "archive"
-saving = 21.9
-arity = 5
-verdict = "kept: bespoke, passes the bar. The two instruction-width data blocks at fixed low addresses (U=6 the zero cell, 48/49 the output digits, -48 the bit normaliser) give every tree operand a one-digit address; the plain build names them and places them after the instructions. Removing the blocks (d = -7) costs +21.86% on 40 random tables at n=5, the last arity where the tree ships on random tables (+25.49% / +32.55% at n=3 / 4 with d = a named zero cell, 10 tables each), and parity +25.6 / +26.1 / +26.6%, AND/OR +19.1 / +19.5 / +20.0%, majority +24.6 / +25.8 / +15.3% at n=5 / 6 / 7 -- per instruction, so a share not a fixed saving. Every changed program ran on all rows (n<=8)"
+kind = "archive_ref"
 
 [ablations.conditional_cell]
-kind = "archive"
-saving = 0.0
-arity = 8
-verdict = "recorded: the d operand is cell 7 (the block's last word, never written, so the instruction adds). It saves 8.77% on 40 random tables at n=5 over the special zero -7, but the plain choice inside the blocks is d = U (cell 6, also a zero, same digit count): 0.00% on every class at n=3..8 (26-45 programs per arity differ in bytes, all ran on every row to n=8). A one-digit address pick, not a trick to price against -7"
+kind = "archive_ref"
 
 [ablations.tree_contestant]
-kind = "archive"
-saving = 0.0
-arity = 8
-verdict = "removed 2026-10-27 (plain-rewrite audit): the unshared tree beside the shared build never ships smaller. Deleting it grows no table and shrinks none on random, one- to five-essential, half-constant, constant, threshold, parity, AND/OR and majority tables at n=3..8 (20 tables per class at n=3..8; 0 LARGER of 4,054 tables compared against the old build, 289 programs differ in bytes at equal length -- ties the old min kept as the tree -- the changed programs ran on every row to n=6 and a fifth of them above). The one visible cost is a step tie-break: table 00110110 rows 6 and 7 now run 24 commands against 23 (size pin unchanged, baseline re-recorded). The n=5 branch (shared against packed, no tree) and the one-essential-input branch of the packed builder went with it: both byte-identical in length on 200 random tables at n=5 and the named classes, 0.00%"
-retirement = { verb = "removed", date = 2026-10-27 }
+kind = "archive_ref"
 
 [ablations.essential_projection]
-kind = "archive"
-saving = 10.7
-arity = 8
-verdict = "kept: canonical, exempt; the packed build's projection onto essential inputs earns 6.1% at build level with one ignored input at n=8 and 10.7% with two (4.4% / 8.7% at n=6); the full-table build it replaces never won its race (0 of 322 tables, in-code record) and survives only as a balance candidate"
+kind = "archive_ref"
 
 [ablations.reverse_tree_prototype]
-kind = "archive"
-saving = 0.0
-arity = 8
-seed = "random.Random(1847+n)"
-tables = "all tables n=1..3; 20 random plus and/or/parity/majority/threshold-third per n=4..12"
-verdict = "near miss, not shipped: race the existing build against a shared tree in reversed input order, with the table permuted into that frame and reads still in stream order. Random n=7/8 totals unchanged at 29,218/31,885 chars; and/or/parity/majority/threshold-third unchanged through n=12. Positive control: the candidate changes 85 corpus programs and cuts the exhaustive n=3 total 96,084 -> 93,874 chars (2.30%). All-row n=3 commands 41,544 -> 41,512 (0.077%); 28 tables get slower, so the execution bar fails too. 5,110 baseline/candidate output checks correct, exhaustive n<=3 and boundary rows of random/named tables through n=8 plus named through n=12; 2,555 complemented controls rejected. Prototype stays in ignored notes; generator, bounds and pins unchanged"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 21.1
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: canonical whole-constant folding. Read all bytes into one accumulating scratch cell, then print a literal and halt. Cell zero holds the positive scratch address, so reads subtract into scratch; no tree header or auxiliary data blocks remain. Exactly n+1 commands and 4n+6 cells. Workspace is initial sparse address/value bits plus bl(4n+4)+bl(49n)+1+max(5,bl(4n))+bl(n), attained by all-one input. n=8 128 -> 101 chars; n=12 172 -> 145. n=3 corpus 96084 -> 96030 chars. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources and every embedded slot or stream read; stream output follows all reads and leaves a sentinel unread."
+kind = "archive_ref"
 
 [ablations.packed_reader_20261102]
-kind = "archive"
-arity = 8
-saving = 23.3
-seed = "random.Random(1847+n)"
-tables = "20 random tables per n=7/8; two per n=7..10,12,14; all tables/rows n<=3"
-verdict = "kept, two independent declining marginals: fixed six hot slots in two skipped data words save 23.963/23.313% at n7/8 (29212/31914 -> 22212/24474 chars); raw-byte Horner plus one bias subtraction saves a further 22.511/23.290% (->17212/18774). Hot savings fall through n14 to 6.15%; reader peaks near n8 and falls to 6.45%, both limit zero: removed O(n log n) spelling against Theta(T) chunk digits. Minimal one-word constants fail: fixed200 292094/319017 ->235694/260217, 19.309/18.432%. Direct branch selection executes four commands just as the old six-word trampoline does; 9.52/8.71% standalone source saving, rejected. Canonical dead ignored-read clearing is subsumed. Two aligned skipped words are needed for six one-digit hot cells; spare cells10/11 stay zero. INDEX/OUT move into hot slots, TABLE receives ignored bytes until its existing clear; TMP and separate normalizer disappear. No added candidate, cache, layout state or whole-program fallback. Exact source scopes6..9, exact E6, all eight size/row-command pins and old W envelope retained. 2156 paired public rows plus5416 private controls; n3 chars96030 and commands41528 unchanged. Native source-formula controls through n14; projected reads preserve physical order, sentinel and output-after-read."
+kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30
@@ -121,12 +78,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = -0.0584
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "all n<=3 generated tables/rows where supported, examples and 300 seeded mutations; 400-step cap"
-verdict = "prototype only: precompiled token regex. 2500 programs, 2317 halt cleanly; no structural trace differences, control differs on 2355. Step throughput at longest 10/20/40 workload breadths: -0.06%/+0.13%/+0.87%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [evidence]
 version = 1

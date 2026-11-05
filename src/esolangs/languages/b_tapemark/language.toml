@@ -37,78 +37,34 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.essential_projection]
-kind = "archive"
-saving = 49.9
-arity = 11
-verdict = "kept: canonical, exempt; the table is copied at its essential inputs and an ignored input's stage crosses no |, so position does not matter. 0.0% by area on random tables at n=9/10/11, 49.6% / 49.8% / 49.9% on tables ignoring one input (either end) at n=9/10/11, 74.4% / 74.7% / 74.8% ignoring two; seed set 2 identical at n=10/11"
+kind = "archive_ref"
 
 [ablations.constant_fold]
-kind = "archive"
-saving = 100.0
-arity = 11
-verdict = "kept: canonical, exempt; a constant table is one literal row of 2n+3 chars instead of the copied-table walk. 99.996% by area on constant tables at n=11 (25 cells against 628,218 per program), 99.99% at n=9/10; 0.0% elsewhere, where the branch is never taken"
+kind = "archive_ref"
 
 [ablations.copy_17_20]
-kind = "archive"
-saving = 16.9
-arity = 8
-verdict = "kept: the fold height is raced at the formula's best copy and 17/20 of it. Without the second, default area is +17.9% / +16.9% at n=7/8 on 20 seeded random tables (seed 1000n + i) and on every named table (the layout depends on n alone), +15.3% / +12.1% at n=9/10, +8.1% / +9.5% at n=11/12 (declining below the bar past n=10); balanced area 0.0% at n=7..12, so it earns its place on the default route only. Clears 10% at n=7..8"
+kind = "archive_ref"
 
 [ablations.area_default]
-kind = "archive"
-saving = 91.0
-arity = 10
-seed = "random.Random(184700 + n)"
-tables = 200
-verdict = "kept (re-priced 2026-10-28: the narrow staircase and the T-run folds left the list, see their verdicts): the default is the least by area of the wide strip and the two folded strips balance builds (copy best or 17 best // 20, run 3 copy - 12; one candidate list shared with balance), the strip on a tie; constants keep their direct build. Without the folds on 20 seeded random tables: default area +159.6% / +384.7% at n=7/8, balanced area +652% / +2,005%; named tables +160% to +2,001% default and +652% to +99,432% balanced at n=7..12. No width sweep: n=10/12/14 build in 18/63/266 ms, linear. Total area over 200 random tables falls 48.1% at n=6, 67.7% at n=7, 79.4% at n=8 and 91.0% at n=10 (52.2% / 56.7% / 53.5% at n=3/4/5, where the staircase wins every table); every chosen program is executed, exhaustively through n=3 and sampled through n=7. Execution bound, derived by tracing the beam (a step is a cell visited; the render only deletes wholly blank rows and columns, so an uncompacted count bounds the run, and equals it when none is deleted). Te = 2^e entries at e essential inputs, w a stage's weight, the all-zero row worst (a 0 costs 2w + 31 or more, a 1 about 30 or 32). Narrow, N = Te entries (n + 1 when Te <= n): copy 9N + 1, climb and descent 4N + 6, stages 30 on a 1 and 2w + 31 on a 0 (35 below w = 2), tail 2n + 4; at most 13N + 2Te + 37n + 9 <= 15T + 37n + 9. Fold, S = ceil(Te/c) strips, k = ceil(w/run) rows: copy (S-1)(5c + 4) + 3c + 3 - r for the r entries of the last strip, climb and descent 4S + 4n - 1, stages 32 + max(0, 2k - 4) on a 1 and 2w + 37 + 4(k - 1) on a 0 (39 at k = 1), tail n + 2; so (S-1)(6c + 4) + 3c + 4S + Te + 42n + 2 + the stages' turn terms. With (S-1)c < Te, c >= 2, 3c <= 18n - 9 + 4T/3 (isqrt <= its radicand's root bound), and run >= 9 whenever a stage folds (c >= 7 from n = 2; at n = 1 w = 1 = run), that is below 13T + 62n. The strip keeps its 4T + 42n + 5. So 15T + 62n + 9 covers all three; measured worst steps 74, 137, 230, 383, 656, 785, 1206 at n=1..7 against the old strip bound 55, 105, 163, 237, 343, 513, 811."
+kind = "archive_ref"
 
 [ablations.area_strip_width_prototype]
-kind = "archive"
-saving = 46.7606
-arity = 8
-seed = "random.Random(1847+n)"
-tables = "all tables n=1..3; 20 random plus and/or/parity/majority/threshold-third per n=4..8; named through n=10; parity n=12/14"
-verdict = "kept by explicit user-approved sustained-share exception, 2026-10-31: copy=max(5,floor(sqrt(104T/(63n)))), run=3*copy-12. n=8 area 12,070 -> 6,426 cells (-46.8%); serialized text 3,303 -> 5,185 chars (+57.0%); all-row commands 458,496 -> 568,064 (+23.9%); exact written workspace 30,563 -> 35,281 bits (+15.4%). n=10 area 25,908 -> 16,578 (-36.0%), sampled commands +6.85%; n=12 area 64,999 -> 50,654 (-22.1%), sampled commands +5.82%; n=14 area 194,691 -> 170,348 (-12.5%), sampled commands +3.06%. The saving tends to zero (both layouts are 8T+o(T)); the exception prioritizes the large measured grid-footprint reduction across n=8..14 over the stated command, workspace and text costs. One additional closed-form candidate requires no search, frozen table or arity cap; correctness, exact resource bounds and linear construction remain required. Only this strip-width rule is exempt from sustained share. Larger command samples use rows 0, T/3 rounded down, T-1; n=7/8 ran every row. n=3 area total 222,558 -> 180,266 cells; commands 298,152 -> 357,448. Prior prototype executed 5,058 baseline/candidate outputs correctly with 2,525 complemented controls; final verification passes 13,112 baseline/candidate/balanced output checks with 3,278 complemented controls; width calls remain byte-identical. Exact resource formulas match VM peaks over every row through n=8, and B dominates all ignored-input sets there. The n=16 probe was stopped to avoid quadratic interpreter copying after n=12/14 established dilution"
+kind = "archive_ref"
 
 [ablations.shipped_cost_audit_20261101]
-kind = "archive"
-arity = 8
-seed = "random.Random(6100+n)"
-tables = "2 random plus parity/majority/and/or per n=3,5,7,8"
-baseline = "6ec40751e^"
-verdict = "measured with the interpreter/helpers at 567f2cb18. At n=8: cells 72420 -> 38556, sampled commands 32754 -> 40506, largest sampled written-state peak 30563 -> 35281 bits. Sum of seven-repeat cold generation medians: 10056958 -> 14029333 ns. All rows at n=3; rows 0,floor(T/3),T-1 otherwise. 204 correct executions, 24 wrong-table controls. Peaks and timings describe this corpus. The accepted area-strip exception spends commands, workspace and generation time. Current resource bounds pass where their stated domains apply"
+kind = "archive_ref"
 
 [ablations.constant_table_audit_20261101]
-kind = "archive"
-arity = 8
-saving = 5.3
-seed = 0
-tables = "both constants, n=1..12"
-verdict = "kept: minimal spelling, exempt. The final input needs no following data-pointer move: a horizontal literal prints independently of the data mark. Default area and commands 2n+2: n=7 17->16 cells (5.9%), n=8 19->18 (5.3%), n=12 27->26. Vertical layout also omits that move, 2n+3 commands and 3*(2n+1) cells, retaining its three-column floor. n=8 default workspace 334->319 bits. n=3 corpus area 180266->180264. Executed 1120 candidate/native runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command records and global resource caps unchanged. Owned tests preserve exact input use; embedded Ant slots execute before the periodic-state dump with no port reads."
+kind = "archive_ref"
 
 [ablations.beside_stages_trick_20261102]
-kind = "archive"
-saving = 8.4967
-arity = 8
-seed = "random.Random(1000*n+s).choices"
-tables = "all tables/rows n=1..3; five random plus ignored-middle per n=4..6; 20 fixed random per n=7/8"
-verdict = "rejected 2026-11-02: executable west-stage column preserves the 2n pointer climb and adds beam-only links. Closed-form copy=ceil(T/(7n)), run=2copy changes default area totals 99360->76000 at n=7 (23.51%) and 128520->117600 at n=8 (8.50%); declining below20%. Native baseline/candidate outputs, ordered reads and following sentinel pass every small row and sampled4..6. Exhaustive arithmetic geometry certificate, scratch only, over every positive copy/run<=T gives best possible area within this explicit layout 3483/5490 against4968/6426 (29.89%/14.57%); emitted witnesses match, three native rows each pass. This rejects this repair, not every conceivable beside layout. No200-table escalation: n=8 is over2 points below its applicable20% bar, including the entire parameter-box optimum. n3 area180264->176800, commands357432->449176;2032 slower rows also exclude execution admission. No production search or extra candidate shipped."
+kind = "archive_ref"
 
 [ablations.boustrophedon_copy_trick_20261102]
-kind = "archive"
-saving = 0.0
-arity = 8
-seed = "random.Random(n).choices"
-tables = "27 copy-only power-of-two layouts n=1..6;21 multirow compressed negative controls; fixed copy=8 bands n=7/8"
-verdict = "rejected as specified 2026-11-02: a vertical pointer-moving | requires a source cell between the two turn mirrors, so successive alternating copy rows are at least two rows apart. One-row strips omit that southbound move and write into existing data rows: all21 multirow compressed controls fail exact mark-grid comparison. The repaired spacing2 copy, reflected odd chunks and endpoint pointer nudges pass all27 exact native snapshots, but the copy band remains2ceil(T/c)-1 high. At copy=8 its emitted copy-only area is868/1764 cells at n=7/8 against the existing band's806/1638, with two extra columns. A complete rotated-stage2D construction was not implemented; no claim that all such constructions fail admission. The proposed factor-two band saving and its25-35% prediction are unsupported, and no unverified whole program ships."
+kind = "archive_ref"
 
 [ablations.stage_row_share_trick_20261102]
-kind = "archive"
-saving = 7.4074
-arity = 8
-seed = "random.Random(1000*n+s).choices"
-tables = "all tables/rows n=1..3; five random plus ignored-middle per n=4..6;20 fixed random per n=7/8"
-verdict = "rejected 2026-11-02: stride6 needs climb n+1 instead of2n and a tail one row after the last endpoint; horizontal finish displacement stays unchanged. Even this repair is invalid: table00000001,row010 prints0 after only2 of3 reads (175commands), because the preceding rejoin encounters the next stage's first-row mirrors.1348 invalid output/read-count cases occur in6576 three-variant native row executions; endpoint-only parity controls had missed them. Invalid prototype area totals are92880/119000 versus99360/128520 at n=7/8 (6.52%/7.41%), below10% even before correctness. Invalid n3 prototype area160208 and commands336286 are diagnostic only, not an optimization claim.24 emitted complemented-program controls are caught. Generator, bounds, proof arities, pins, examples and approved prior candidates remain unchanged."
+kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -122,12 +78,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
-kind = "archive"
-price = -0.4228
-workload = "constructor plus step; no snapshots timed"
-seed = 0
-tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-step cap"
-verdict = "prototype only: direction parity bit test. 447 programs, 157 halt cleanly; no structural trace differences, control differs on 254. Step throughput at longest 10/20/40 workload breadths: +0.01%/-0.42%/-0.24%. No production change or global performance conclusion; adoption needs broader validation."
+kind = "archive_ref"
 
 [evidence]
 version = 1
