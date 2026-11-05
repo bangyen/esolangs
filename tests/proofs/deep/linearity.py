@@ -9,20 +9,21 @@ from dataclasses import dataclass
 from math import sqrt
 from pathlib import Path
 
-# Run as a script (not under pytest), the repo root is not on the path.
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-
 import esolangs.languages.generators as boolean
 from esolangs.registry import BY_BOOLEAN
+from scripts.source_units import source_units
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs._roadmap import load as load_audit
 from tests.proofs.deep import deep_arities
+from tests.support.witness_tables import nested_dense as _nested_dense
+from tests.support.witness_tables import parity as _parity
+
+# Run as a script (not under pytest), the repo root is not on the path.
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+
 
 #: Cost band; see ``__main__.py``. It builds every generator at rising
 #: arity, and 30s is too slow for CI to spend on every push.
-from tests.support.source_support import source_units
-from tests.support.witness_tables import nested_dense as _nested_dense
-from tests.support.witness_tables import parity as _parity
 
 BAND = "by-hand"
 COST = 30.0

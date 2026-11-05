@@ -2,9 +2,8 @@
 
 import esolangs
 import esolangs.debugger as debugger_api
-from tests.runtime.test_vm import _run_all
-from tests.runtime.test_vm_protocol import assert_starts_downward
 from tests.support.samples import FLOWCHART_CAT, FLOWCHART_TRUTH_MACHINE
+from tests.support.vm_support import _run_all, assert_starts_downward
 
 
 class TestDebuggerInputAndHalting:

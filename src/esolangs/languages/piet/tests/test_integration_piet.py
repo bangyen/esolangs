@@ -9,10 +9,10 @@ import esolangs
 from esolangs import Raster
 from esolangs.exceptions import TemplateError
 from esolangs.registry import LANGUAGES, SourceKind
-from tests.api.test_api_contracts import XOR
-from tests.interpreters.test_input_convention import assert_reads_tokens_on_one_line
 from tests.support.evaluation import _evaluate
+from tests.support.input_convention import assert_reads_tokens_on_one_line
 from tests.support.pick import languages
+from tests.support.witness_tables import XOR
 
 
 def first_other_raster() -> str:

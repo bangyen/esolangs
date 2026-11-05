@@ -10,8 +10,8 @@ from esolangs.languages.dig.interpreter import run
 from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import CycleContract, InputCursorContract
 from tests.interpreters.runner import run_lines
-from tests.runtime.test_vm_protocol import assert_starts_downward
 from tests.support.raises import raises_message
+from tests.support.vm_support import assert_starts_downward
 
 run_and_capture = run_lines(run)
 

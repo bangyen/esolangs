@@ -15,12 +15,12 @@ from esolangs.registry._language import Shape
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _BranchingStepMachine, run_until_halt, run_until_halt_or_cycle
 from scripts.docs.proof_status import load as _load_proof_status
+from scripts.source_units import source_units
 from tests.support.generator_support import (
     assert_proved_resource_cap,
     evaluate_generated,
 )
-from tests.support.source_support import source_units
-from tests.support.witness_tables import dense, parity, row_bits
+from tests.support.witness_tables import _one_minterm, dense, parity, row_bits
 
 # Every sweep here runs an interpreter over a generated program -- the whole
 # file is the execution gate -- so the module is `medium` and the inner loop
@@ -307,11 +307,6 @@ def test_every_generator_builds_up_to_five_inputs(name: str) -> None:
 # kind, so Grapheme was the only one.  22 language/arity pairs were too
 # expensive to reach and are *unchecked*, not passing.
 _ONE_MINTERM_ARITY = 6
-
-
-def _one_minterm(n: int) -> str:
-    """A single 1, which makes every input essential at minimum size."""
-    return "1" + "0" * (2**n - 1)
 
 
 def _one_hot(n: int) -> str:

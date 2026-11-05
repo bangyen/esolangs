@@ -8,9 +8,9 @@ import esolangs
 from esolangs import vm
 from esolangs.exceptions import HaltError
 from esolangs.vm import make_vm
-from tests.runtime.test_vm import assert_random_steps_reproduce
 from tests.support.cli_support import _failure, call_both, call_main
 from tests.support.reference import REFERENCE
+from tests.support.vm_support import assert_random_steps_reproduce
 
 
 class TestModulousSaysWhatWentWrong:

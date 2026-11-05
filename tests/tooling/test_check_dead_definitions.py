@@ -1,7 +1,7 @@
 """The dead-definition gate reports what nothing reads and nothing else."""
 
+from functools import partial
 from pathlib import Path
-from typing import Any
 
 from tests.tooling.script_support import load
 
@@ -9,8 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "checks" / "check_dead_definitions.py"
 
 
-def load_script() -> Any:
-    return load(SCRIPT)
+load_script = partial(load, SCRIPT)
 
 
 def _tree(tmp_path: Path, files: dict[str, str]) -> Path:

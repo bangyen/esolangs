@@ -12,9 +12,8 @@ from esolangs.exceptions import ProgramError, TemplateError
 from tests.support.evaluation import _evaluate
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
-from tests.support.witness_tables import row_bits
+from tests.support.witness_tables import XOR, row_bits
 
-XOR = "0110"
 PARITY3 = "10010110"
 SIMPLE = ("char_stream", "line_per_bit")
 

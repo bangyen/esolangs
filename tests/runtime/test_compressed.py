@@ -8,8 +8,8 @@ import pytest
 import esolangs
 from esolangs.compressed import CompressedText
 from esolangs.runtime._source import text_source
+from scripts.source_units import source_units
 from tests.support.reference import REFERENCE
-from tests.support.source_support import source_units
 
 
 def test_streaming_text_round_trip_and_size(tmp_path: Path) -> None:

@@ -1,8 +1,8 @@
 """The scoping rule narrows a check without ever narrowing what it proves."""
 
 import subprocess
+from functools import partial
 from pathlib import Path
-from typing import Any
 from unittest import mock
 
 import pytest
@@ -13,8 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "verify" / "scope.py"
 
 
-def load_script() -> Any:
-    return load(SCRIPT)
+load_script = partial(load, SCRIPT)
 
 
 # 2.9s over 6 tests: shells out to git.

@@ -10,9 +10,7 @@ from esolangs.runtime import _isolated
 from esolangs.runtime._isolated import _decode, _worker
 from tests.support.cli_support import call_both
 from tests.support.reference import REFERENCE
-
-_LINUX = sys.platform == "linux"
-_BUDGET = 96 * 1024 * 1024
+from tests.support.vm_support import _BUDGET, _LINUX
 
 
 @pytest.mark.medium

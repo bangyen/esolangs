@@ -2,8 +2,8 @@
 
 import re
 from dataclasses import replace
+from functools import partial
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -32,8 +32,7 @@ _SHAPES_START, _SHAPES_END = _markers("INPUT-SHAPES")
 _API_START, _API_END = _markers("PUBLIC-API")
 
 
-def load_script() -> Any:
-    return load(SCRIPT)
+load_script = partial(load, SCRIPT)
 
 
 def test_readme_counts_match_the_registry() -> None:

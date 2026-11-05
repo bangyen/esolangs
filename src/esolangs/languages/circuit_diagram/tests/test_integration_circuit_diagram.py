@@ -6,10 +6,10 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from tests.runtime.test_vm import _run_all
 from tests.support.generator_support import evaluate_generated
 from tests.support.reference import REFERENCE
 from tests.support.samples import CIRCUIT_PRIME_TESTER, bits_of
+from tests.support.vm_support import _run_all
 
 
 class TestBreakAtWhereThereIsNoShape:

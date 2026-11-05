@@ -6,9 +6,8 @@ import pytest
 
 from esolangs.generation.helpers import TEMPLATE_CHAR, permute_truth_table, runs
 from esolangs.languages.back.generator import _back_ordered
-from tests.generators.test_boolean_parameterized_contract import _drawing
 from tests.support.evaluation import _evaluate
-from tests.support.witness_tables import row_bits, witnesses
+from tests.support.witness_tables import _drawing, row_bits, witnesses
 
 
 class TestParameterizedBack:

@@ -13,9 +13,9 @@ from esolangs.vm import (
     run_until_halt_or_cycle,
     run_until_halt_or_value_growth,
 )
-from tests.runtime.test_stepping_parity import _STEP_BUDGET, _row
 from tests.support.cli_support import run_cli
 from tests.support.generator_support import evaluate_generated
+from tests.support.vm_support import _STEP_BUDGET, _row
 
 
 class TestSelfHaltsIsAWarningNotAGuarantee:

@@ -6,11 +6,10 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import DialectSettings
 from esolangs.debugger import make_debugger
-from tests.api.test_api_contracts import XOR
 from tests.support.cli_support import call_both, call_main
 from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
-from tests.support.witness_tables import witnesses
+from tests.support.witness_tables import XOR, witnesses
 
 
 class TestGraphemeReadsWhatTheDocsNowSay:

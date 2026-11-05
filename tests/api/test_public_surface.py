@@ -9,11 +9,8 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from tests.api.test_api_contracts import (
-    PUBLIC_MEMBERS,
-    ROOT,
-    SIGNATURES,
-)
+from tests.support.api_support import PUBLIC_MEMBERS, SIGNATURES
+from tests.support.paths import ROOT
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
 

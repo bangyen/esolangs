@@ -1,7 +1,5 @@
 """Stepping every language, and what the wrapper exposes between commands."""
 
-import contextlib
-
 import pytest
 
 import esolangs
@@ -9,48 +7,7 @@ import esolangs.debugger as debugger_api
 from esolangs.vm import VM
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
-
-
-def assert_random_steps_reproduce(language: str, program: str) -> None:
-    """A random instruction in ``program`` runs, and steps the same way twice.
-
-    Each random language calls this from its own test file with a program
-    that reaches its random instruction.
-    """
-    from esolangs.runtime import randomness
-
-    def trace() -> list[object]:
-        vm = debugger_api.make_vm(language, program)
-        seen: list[object] = []
-        for _ in range(40):
-            if vm.halted:
-                break
-            with contextlib.suppress(Exception):
-                vm.step()
-            ip = vm.ip
-            seen.append((tuple(ip) if isinstance(ip, tuple) else ip, tuple(vm.memory)))
-        return seen
-
-    original = randomness.Seeded.randbelow
-    drawn: list[int] = []
-
-    def counted(self: randomness.Seeded, upper: int) -> int:
-        drawn.append(upper)
-        return original(self, upper)
-
-    randomness.Seeded.randbelow = counted
-    try:
-        first = trace()
-    finally:
-        randomness.Seeded.randbelow = original
-    assert drawn, f"{language}: the random instruction never ran"
-    assert trace() == first, f"{language} is not reproducible"
-
-
-def _run_all(vm: VM) -> str:
-    while not vm.halted:
-        vm.step()
-    return vm.output
+from tests.support.vm_support import _run_all
 
 
 class TestProtocol:

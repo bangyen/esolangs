@@ -3,7 +3,6 @@
 import inspect
 import pickle
 from dataclasses import FrozenInstanceError
-from io import StringIO
 
 import pytest
 
@@ -13,29 +12,13 @@ from esolangs.registry import LANGUAGES
 from esolangs.tagged import _Tagged
 from esolangs.vm import make_vm
 from tests.support.cli_support import call_both
-from tests.support.dialect_support import foreign_settings, integer_setting
+from tests.support.dialect_support import (
+    Unreadable,
+    foreign_settings,
+    integer_setting,
+)
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
-
-
-def _chosen(name: str) -> DialectSettings:
-    """Every setting off its default, where the generator targets that."""
-    schema = esolangs.describe(name)["dialect_settings"]
-    off = {
-        k: next(c for c in i["choices"] if c != i["default"]) for k, i in schema.items()
-    }
-    try:
-        esolangs.generate(name, "01", settings=DialectSettings(**off))
-    except esolangs.ArgumentError:
-        return DialectSettings(**{k: i["default"] for k, i in schema.items()})
-    return DialectSettings(**off)
-
-
-CASES = [
-    (name, _chosen(name))
-    for name in languages()
-    if esolangs.describe(name)["dialect_settings"]
-]
 
 
 def _out_of_range() -> list[tuple[str, str, int | str]]:
@@ -80,13 +63,6 @@ def test_every_dialect_declares_its_values() -> None:
             else set()
         )
         assert set(language.dialect_values or {}) == settings, name
-
-
-class Unreadable(StringIO):
-    """Fail if argument validation consumes the source or input."""
-
-    def read(self, *_args, **_kwargs):
-        raise AssertionError("read before dialect validation")
 
 
 @pytest.mark.parametrize(

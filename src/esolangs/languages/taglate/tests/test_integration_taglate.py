@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from tests.runtime.test_input_encoding import XOR
+from tests.support.witness_tables import XOR
 
 
 class TestAnswerMode:

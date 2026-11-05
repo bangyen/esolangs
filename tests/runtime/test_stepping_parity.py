@@ -12,19 +12,10 @@ import esolangs.debugger as debugger_api
 from esolangs.vm import machine_traits, run_until_halt
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
+from tests.support.vm_support import _STEP_BUDGET, _row
 
 #: Enough for every generated boolean program in the suite to finish; the
 #: slowest needs a few hundred thousand.
-_STEP_BUDGET = 2_000_000
-
-
-def _row(name: str, table: str, bits: list[int]) -> tuple[str, str]:
-    """Return the ``(program, stdin)`` for one row, without naming a language."""
-    if esolangs.describe(name)["parameterized"]:
-        return esolangs.instantiate(name, esolangs.generate(name, table), bits), ""
-    return esolangs.generate(name, table), esolangs.encode_inputs(
-        name, bits, truth_table=table
-    )
 
 
 def _drive(vm: debugger_api.VM) -> str:

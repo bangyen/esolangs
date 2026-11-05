@@ -12,8 +12,8 @@ from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.runtime.randomness import FirstDraw
 from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
-from tests.runtime.test_vm_protocol import assert_one_row_moves_along_it
 from tests.support.raises import assert_halts_with_hint
+from tests.support.vm_support import assert_one_row_moves_along_it
 
 
 def run_super(program: str, stdin: str = "") -> str:

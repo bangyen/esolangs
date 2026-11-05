@@ -1,6 +1,5 @@
 """Contracts the public API owes a caller who has only read the docs."""
 
-import json
 import pathlib
 import re
 import subprocess
@@ -28,9 +27,7 @@ from esolangs.registry import LANGUAGES
 from tests.support.generator_support import CHECK, evaluate_generated
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
-
-XOR = "0110"
-ROOT = pathlib.Path(__file__).parents[2]
+from tests.support.witness_tables import XOR
 
 
 class TestNameResolution:
@@ -165,60 +162,8 @@ class TestDescribe:
 #: Required arguments positional, optional ones keyword-only (docs/usage.md).
 #: The table itself is data, not code -- signatures.json beside this file,
 #: so its lines are not subject to the line-length rule.
-SIGNATURES: dict[str, str] = json.loads(
-    (pathlib.Path(__file__).parent / "signatures.json").read_text()
-)
 
 #: Public (non-underscore) attributes of the public classes, methods included.
-PUBLIC_MEMBERS = {
-    esolangs.Language: {
-        "describe",
-        "dump_program",
-        "encode_inputs",
-        "generate",
-        "instantiate",
-        "load_program",
-        "name",
-        "read_answer",
-        "run",
-    },
-    esolangs.Raster: {
-        "from_png",
-        "language",
-        "rows",
-        "scale",
-        "settings",
-        "tagged",
-        "to_png",
-        "upscaled",
-    },
-    esolangs.DialectSettings: {"options"},
-    debugger_api.Debugger: {
-        "break_at",
-        "break_on_cell",
-        "break_on_output",
-        "break_on_stack",
-        "break_when",
-        "clear_breakpoints",
-        "dumps_on_the_post_halt_step",
-        "eof_is_a_value",
-        "halted",
-        "ip",
-        "ip_shape",
-        "memory",
-        "output",
-        "ptr",
-        "run",
-        "self_halts",
-        "snapshot",
-        "stack",
-        "step",
-        "steppable_to_answer",
-        "views",
-        "watch_cell",
-        "watch_stack",
-    },
-}
 
 
 class TestConventionsAreDiscoverable:

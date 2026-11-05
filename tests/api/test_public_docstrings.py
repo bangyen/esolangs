@@ -19,8 +19,8 @@ import esolangs.raster.png as png
 from esolangs import exceptions as x
 from esolangs.registry._describe import interpreter_module
 from tests.interpreters.spec_sections import section
-from tests.interpreters.test_spec_triggers import all_triggers, run_trigger
 from tests.support.reference import REFERENCE
+from tests.support.spec_triggers import all_triggers, run_trigger
 
 #: Exported functions with no ``Raises:``, each with the reason.
 RAISE_FREE = {"list_languages": "returns the registry's names"}

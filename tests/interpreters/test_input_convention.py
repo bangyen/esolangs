@@ -7,13 +7,11 @@ import pytest
 
 import esolangs
 from esolangs.runtime.io import IO, ScriptedIO
+from tests.support.input_convention import (
+    assert_echoes_a_newline,
+)
 from tests.support.input_convention import reading_languages as _reading_languages
 from tests.support.reference import REFERENCE
-
-
-def assert_echoes_a_newline(language: str, program: str) -> None:
-    """``program`` echoes one character; a newline must come back as one."""
-    assert esolangs.run(language, program, stdin="\n") == "\n"
 
 
 def test_character_input_preserves_newline() -> None:
@@ -34,18 +32,6 @@ def test_stream_echo_preserves_characters_on_the_same_line() -> None:
 def test_interactive_empty_line_is_a_newline_character() -> None:
     with patch("builtins.input", return_value=""):
         assert IO().input_char() == 10
-
-
-def assert_reads_tokens_on_one_line(language: str) -> None:
-    """A numeric reader takes ``0 1`` on one line as two inputs.
-
-    Each numeric reader calls this from its own test file.
-    """
-    program = esolangs.generate(language, "0110")
-    assert (
-        esolangs.read_answer(language, esolangs.run(language, program, stdin="0 1"))
-        == "1"
-    )
 
 
 # What a language does when a *reading* program is handed no input at all.

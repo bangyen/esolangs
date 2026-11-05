@@ -100,11 +100,6 @@ def test_slots_run_in_name_order() -> None:
     assert checked >= len(_parameterized_generators()), checked
 
 
-def _drawing(template: str) -> str:
-    """The template as the drawing the reorder bar compares."""
-    return template
-
-
 @pytest.mark.slow  # 2.6s: every fill of every parameterized generator
 def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
     """No fill may spell a 0 shorter than a 1, or the length leaks the input."""

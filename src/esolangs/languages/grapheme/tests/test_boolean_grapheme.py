@@ -13,9 +13,9 @@ from esolangs.languages.grapheme.generator import (
 )
 from esolangs.languages.grapheme.interpreter import GraphemeDialect, run
 from esolangs.runtime.io import ScriptedIO
-from tests.generators.test_boolean_contract import _one_minterm
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_constant_output, evaluate_generated
+from tests.support.witness_tables import _one_minterm
 
 
 class TestGrapheme:

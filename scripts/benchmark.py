@@ -32,6 +32,7 @@ from typing import Any, BinaryIO, cast
 # but required when imported as `scripts.benchmark`, e.g. by tests.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from source_units import source_units
 from verify.process import (
     EXCERPT_BYTES,
     MAX_LOG_BYTES,
@@ -135,12 +136,6 @@ def evidence_session() -> Iterator[None]:
 
 def _bits(row: int, inputs: int) -> list[int]:
     return [(row >> shift) & 1 for shift in range(inputs - 1, -1, -1)]
-
-
-def _source_size(program: esolangs.Program) -> int:
-    if isinstance(program, (str, esolangs.CompressedText)):
-        return len(program)
-    return sum(len(row) for row in program.rows)
 
 
 def _utf8_bits(program: esolangs.Program) -> int | None:
@@ -501,7 +496,7 @@ def _measure(
     for _ in range(repeat):
         started = time.perf_counter_ns()
         program = esolangs.generate(language, table)
-        _source_size(program)
+        source_units(program)
         timings.append(time.perf_counter_ns() - started)
     assert program is not None
     facts = esolangs.describe(language)
@@ -542,7 +537,7 @@ def _measure(
         "truth_table": table,
         "inputs": len(table).bit_length() - 1,
         "source_kind": facts["source_kind"],
-        "source_units": _source_size(program),
+        "source_units": source_units(program),
         "source_utf8_bits": _utf8_bits(program),
         "generation_ns_best": min(timings),
         "generation_ns_median": int(statistics.median(timings)),

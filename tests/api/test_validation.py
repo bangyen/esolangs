@@ -9,10 +9,7 @@ import esolangs.debugger as debugger_api
 from esolangs.debugger import STOP_REASONS
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
-
-
-def _debugger() -> debugger_api.Debugger:
-    return debugger_api.make_debugger(REFERENCE, "+[]", stdin="")
+from tests.support.vm_support import _debugger
 
 
 class TestABoundMustBind:

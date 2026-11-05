@@ -9,6 +9,7 @@ import sys
 import threading
 import time
 import tomllib
+from functools import partial
 from pathlib import Path
 from typing import Any
 from unittest import mock
@@ -22,8 +23,7 @@ SCRIPT = REPO_ROOT / "scripts" / "verify" / "gate.py"
 SCOPE_SCRIPT = REPO_ROOT / "scripts" / "verify" / "scope.py"
 
 
-def load_script() -> Any:
-    return load(SCRIPT)
+load_script = partial(load, SCRIPT)
 
 
 def load_scope() -> Any:

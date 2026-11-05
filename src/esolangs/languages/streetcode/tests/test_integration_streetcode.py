@@ -6,13 +6,11 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from tests.api.test_validation import _debugger
-from tests.runtime.test_vm import _run_all
-from tests.runtime.test_vm_protocol import assert_starts_downward
 from tests.support.cli_support import call_both
 from tests.support.generator_support import evaluate_generated, overruns
 from tests.support.reference import REFERENCE
 from tests.support.samples import STREETCODE, STREETCODE_GAP
+from tests.support.vm_support import _debugger, _run_all, assert_starts_downward
 
 
 class TestABreakpointMustBeAbleToFire:

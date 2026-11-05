@@ -47,3 +47,16 @@ def dense(n: int, key: bytes | None = None) -> str:
 def nested_dense(n: int) -> str:
     """A dense table whose every arity extends the one below it."""
     return dense(n, b"nested-dense")
+
+
+def _drawing(template: str) -> str:
+    """The template as the drawing the reorder bar compares."""
+    return template
+
+
+def _one_minterm(n: int) -> str:
+    """A single 1, which makes every input essential at minimum size."""
+    return "1" + "0" * (2**n - 1)
+
+
+XOR = "0110"

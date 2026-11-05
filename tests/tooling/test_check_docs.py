@@ -1,7 +1,7 @@
 """The docs gate flags dead anchors and passes real cross-references."""
 
+from functools import partial
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -11,8 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "checks" / "check_docs.py"
 
 
-def load_script() -> Any:
-    return load(SCRIPT)
+load_script = partial(load, SCRIPT)
 
 
 def _tree(tmp_path: Path, files: dict[str, str]) -> list[str]:

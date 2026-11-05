@@ -83,14 +83,6 @@ class TestABreakpointAtTheHaltIsReported:
         assert len(history) == after_one
 
 
-def _step_to_halt(dbg: debugger_api.Debugger, budget: int = 200_000) -> None:
-    """Drive ``dbg`` with ``step()`` alone until it halts."""
-    for _ in range(budget):
-        if dbg.halted:
-            return
-        dbg.step()
-
-
 class TestPointerFallback:
     """A tape machine that names no state still shows where it points."""
 

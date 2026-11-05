@@ -13,64 +13,22 @@ import pathlib
 
 import pytest
 
-import esolangs
-from esolangs import DialectSettings, exceptions
-from esolangs.registry import LANGUAGES
+from esolangs import exceptions
 from esolangs.registry._describe import interpreter_module
 from tests.interpreters.spec_sections import error_entries
-from tests.support.cases import cases
+from tests.support.spec_triggers import (
+    _interpreted,
+    all_triggers,
+    run_trigger,
+    triggers_of,
+)
 
 pytestmark = pytest.mark.medium
-
-
-def _interpreted() -> list[str]:
-    """Return every language with an interpreter, sorted."""
-    return sorted(name for name, lang in LANGUAGES.items() if lang.interpreter)
-
-
-def triggers_of(name: str) -> dict[str, object]:
-    """Return ``name``'s triggers and untriggerable entries."""
-    data = cases(LANGUAGES[name].id)
-    return {
-        "triggers": data.get("spec_triggers", []),
-        "untriggerable": data.get("spec_untriggerable", {}),
-    }
-
-
-def all_triggers() -> list[tuple[str, dict[str, object]]]:
-    """Return ``(language, trigger)`` for every language's triggers."""
-    return [
-        (name, trigger)
-        for name in _interpreted()
-        for trigger in triggers_of(name)["triggers"]  # type: ignore[attr-defined]
-    ]
 
 
 def _entries(name: str) -> set[str]:
     source = pathlib.Path(inspect.getfile(interpreter_module(name))).read_text()
     return error_entries(ast.get_docstring(ast.parse(source)) or "")
-
-
-def _program(name: str, trigger: dict[str, object]) -> esolangs.ProgramSource:
-    """Return the trigger's program in the form ``run`` takes."""
-    if "generate" in trigger:
-        return esolangs.generate(name, str(trigger["generate"]))
-    if "program_hex" in trigger:
-        return bytes.fromhex(str(trigger["program_hex"]))
-    return str(trigger["program"])
-
-
-def run_trigger(name: str, trigger: dict[str, object]) -> str:
-    """Run one trigger; settings are built here, since they validate."""
-    settings = trigger.get("settings")
-    chosen = DialectSettings(**settings) if isinstance(settings, dict) else None
-    return esolangs.run(
-        name,
-        _program(name, trigger),
-        stdin=str(trigger.get("stdin", "")),
-        timeout=5,
-        settings=chosen,
-    )
 
 
 _ALL = all_triggers()

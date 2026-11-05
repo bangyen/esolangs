@@ -10,11 +10,14 @@ import esolangs.debugger as debugger_api
 from esolangs.cli import HELP
 from esolangs.runtime._execution import interpreter_module
 from esolangs.vm import make_vm, run_until_halt_or_all_branches_cycle
-from tests.runtime.test_vm import _run_all, assert_random_steps_reproduce
-from tests.runtime.test_vm_protocol import assert_starts_downward
 from tests.support.cli_support import call_both, call_main
 from tests.support.generator_support import evaluate_generated, overruns
 from tests.support.reference import REFERENCE
+from tests.support.vm_support import (
+    _run_all,
+    assert_random_steps_reproduce,
+    assert_starts_downward,
+)
 
 
 def test_bound_execution_passes_the_seed() -> None:

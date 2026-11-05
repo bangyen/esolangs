@@ -1,8 +1,8 @@
 """One shard of a marker band runs its slice and no one else's."""
 
 import re
+from functools import partial
 from pathlib import Path
-from typing import Any
 
 import pytest
 import yaml
@@ -13,8 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "ci" / "shard.py"
 
 
-def load_script() -> Any:
-    return load(SCRIPT)
+load_script = partial(load, SCRIPT)
 
 
 class TestShardIds:

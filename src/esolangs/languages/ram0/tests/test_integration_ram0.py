@@ -8,10 +8,10 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from tests.runtime.test_stepping_parity import _STEP_BUDGET, _row
 from tests.support.cli_support import call_main
 from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
+from tests.support.vm_support import _STEP_BUDGET, _row
 
 
 def test_bound_template_language_runs_each_input_row() -> None:

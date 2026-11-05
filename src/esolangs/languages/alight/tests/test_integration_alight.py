@@ -7,12 +7,11 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import DialectSettings
-from tests.api.test_dialects import Unreadable
-from tests.runtime.test_debug import _step_to_halt
-from tests.runtime.test_vm_protocol import assert_one_row_moves_along_it
 from tests.support.cli_support import call_both
+from tests.support.dialect_support import Unreadable
 from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
+from tests.support.vm_support import _step_to_halt, assert_one_row_moves_along_it
 
 
 def test_set_pairs_match_settings_json(capsys) -> None:

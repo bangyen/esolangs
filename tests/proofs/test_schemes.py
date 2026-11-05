@@ -7,9 +7,9 @@ import pytest
 import esolangs.languages.generators as boolean
 from esolangs.generation.helpers import runs
 from esolangs.registry import BY_BOOLEAN
+from scripts.source_units import source_units
 from tests.proofs._ledger import Ledger, Row, load
 from tests.proofs._schemes import folds_without_tree
-from tests.support.source_support import source_units
 
 #: Every table at ``n == 3`` that depends on exactly one input, both
 #: polarities, all at ones-count 4 -- the same ones-count as parity, so the

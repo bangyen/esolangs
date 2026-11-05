@@ -4,7 +4,7 @@ import itertools
 
 import pytest
 
-from tests.proofs.test_conventions import _embedding, _tables
+from tests.proofs.conventions import _embedding, _tables
 from tests.support.witness_tables import witnesses
 
 

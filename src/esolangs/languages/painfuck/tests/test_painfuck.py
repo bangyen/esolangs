@@ -19,8 +19,8 @@ from tests.interpreters.contract import (
     EmptyProgramContract,
     SnapshotContract,
 )
-from tests.runtime.test_vm import assert_random_steps_reproduce
 from tests.support.raises import assert_halts_with_hint
+from tests.support.vm_support import assert_random_steps_reproduce
 
 run = importlib.import_module("esolangs.languages.painfuck.interpreter").run
 

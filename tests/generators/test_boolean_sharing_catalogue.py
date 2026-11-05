@@ -20,9 +20,9 @@ from esolangs.generation.helpers import essential_inputs
 from esolangs.registry import LANGUAGES
 from esolangs.registry._language import Shape
 from scripts.docs.catalogue import load as _catalogue_load
+from scripts.source_units import source_units
 from tests.generators.source_support import generator_symbols as _source
 from tests.support.generator_support import assert_proved_resource_cap
-from tests.support.source_support import source_units
 from tests.support.witness_tables import dense, parity
 
 #: Arities probed, smallest first; routes switch with size (Inject shares
