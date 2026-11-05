@@ -9,9 +9,9 @@ The kink shapes (``_OPS``) were measured from ``Lineanim4-11.png`` and
 fall into two families: ``+``/``-`` are one diagonal jog whose repeats
 stretch it (``+++`` is exactly three times in ``Lineanim6.png``); ``>``/``<``/
 ``i``/``o`` have a purely sideways connector and never merge.  ``?``
-(``Lineanim9.png``) is a T-branch with two children.  Generation keeps
-unrelated strokes apart, sidestepping the crossing-vs-merge ambiguity
-that makes extraction hard.
+(``Lineanim9.png``) is a T-branch with two children. Tree layouts keep
+unrelated strokes apart; residual folds also use perpendicular crossings,
+which extraction follows straight through.
 """
 
 from __future__ import annotations

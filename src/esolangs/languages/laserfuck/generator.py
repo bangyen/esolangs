@@ -452,9 +452,9 @@ class _LaserGrid:
 class _TreeEmitter:
     r"""Lays the decision tree as ``(column, text)`` runs, one row per *one* edge.
 
-    The tree is built as its own block, mirrored, and hung under the reader:
-    the beam turns down at the reader's end and a ``/`` faces it left, so no
-    return row is needed to reach a rightward tree.  A node is ``>#v)``: ``#``
+    The tree is built as its own block, then placed straight, rotated, or
+    mirrored beneath the reader by :func:`_laserfuck_attach_tree`.
+    A node is ``>#v)``: ``#``
     skips the ``v`` going in, ``)`` tests the cell; a zero continues on the
     row, a one turns back onto ``v`` and drops to a ``\`` on a fresh row.
     Rows are blank-free runs (``><-+``, ``x``, ``>#v)``, ``\``) filled left to
