@@ -9,7 +9,9 @@ from esolangs.runtime._definition import RuntimeSpec
 
 LANGUAGE = Language(
     "brainfuck",
-    RuntimeSpec("brainfuck", category="tape_based"),
+    RuntimeSpec(
+        "brainfuck", category="tape_based", machine_preparation="prepare_machine"
+    ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.brainfuck.generator", "brainfuck", ("truth_table",)

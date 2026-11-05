@@ -18,11 +18,14 @@ Decisions:
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from functools import lru_cache
+from collections.abc import Mapping, Sequence
+from functools import lru_cache, partial
+from typing import Any
 
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import HALTED_REPORT, CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import match_brackets as matches
 from esolangs.runtime.io import IO
@@ -283,6 +286,17 @@ def _advance_compiled(
         neighbor = 0 if suffix else tape[ptr + 1]
         writes = ((ptr + 1, (neighbor + tape[ptr] * arg) % 256), (ptr, 0))
     return (ind + 1, ptr), (prefix, suffix, writes), output, False
+
+
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Validate Brainfuck source shape and bind fresh source-step machines."""
+    if not isinstance(source, str):
+        raise TypeError("Brainfuck machines require text source")
+    if options:
+        raise TypeError("Brainfuck machines accept no runtime options")
+    return partial(_Machine, source)
 
 
 def _execute(code: str, io: IO) -> CompletionReport:

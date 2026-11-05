@@ -89,7 +89,7 @@ from esolangs._cycles import (
     run_until_halt_or_value_growth as run_until_halt_or_value_growth,
 )
 from esolangs.exceptions import ArgumentError, InterpreterLimitError
-from esolangs.registry import resolve
+from esolangs.registry import LANGUAGES, resolve
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._drive import finalize
 from esolangs.runtime._execution import (
@@ -100,6 +100,7 @@ from esolangs.runtime._execution import (
 )
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._lifecycle import Completion, CompletionReport
+from esolangs.runtime._machine import MachinePreparation
 from esolangs.runtime._program import Program
 from esolangs.runtime._result import ExecutionResult
 from esolangs.runtime._source import ProgramSource, check_scale_for
@@ -268,7 +269,7 @@ class _DelegatingVM:
     ) -> None:
         self.language = language
         self._io = ScriptedIO(stdin)
-        state = interpreter_module(language)._Machine  # noqa: SLF001 - interpreter adapter
+        module = interpreter_module(language)
         code, options = prepare_call(
             language,
             program,
@@ -276,6 +277,12 @@ class _DelegatingVM:
                 scale=scale, seed=seed, reproducible=True, settings=settings
             ),
         )
+        preparation = LANGUAGES[language].runtime.machine_preparation
+        if preparation is not None:
+            prepare = cast(MachinePreparation, getattr(module, preparation))
+            self._machine = prepare(code, options)(self._io)
+            return
+        state = module._Machine  # noqa: SLF001 - legacy interpreter adapter
         # A machine with a cached ``_for_run`` (static topology compiled once
         # per source) skips re-validating the program on every VM.
         build = getattr(state, "_for_run", None)

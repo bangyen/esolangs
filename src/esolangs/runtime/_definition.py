@@ -39,3 +39,5 @@ class RuntimeSpec:
     category: str = "other"
     #: Native entry point returning a CompletionReport.
     completion_entrypoint: str = "_execute"
+    #: Typed preparation hook in the interpreter module; legacy discovery if absent.
+    machine_preparation: str | None = None
