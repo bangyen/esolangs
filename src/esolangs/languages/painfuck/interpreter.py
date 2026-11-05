@@ -35,13 +35,19 @@ Commands:
 
 Input/output:
     ``u`` prints ``chr(cell & 0xFF)``.  Reads at exhausted input raise.
-    ``i`` on a non-integer line halts.
+    ``i`` on a non-integer token halts.
 
 Errors:
     InputExhaustedError: ``i`` or ``j`` reads at EOF.
-    HaltError: ``i`` on a non-integer line; ``b`` with no open loop.
+    HaltError: ``i`` on a non-integer token; ``b`` with no open loop.
 
 Decisions:
+    * ``i`` reads one whitespace-delimited decimal token, leaving its
+      delimiter; the spec leaves input framing open.
+    * ``b`` always returns to ``a``, including on zero; the page tests at
+      ``b``. Whether zero should exit directly remains open.
+    * A trailing ``y`` did not complete a step within 0.5 s with scripted
+      zero coins; the one-coin control halted. Its step boundary remains open.
     * The tape is unbounded both ways: ``l`` at the leftmost cell grows it a
       zero cell on the left.  The wiki says nothing about the left edge, and
       cells left of the start are allowed.

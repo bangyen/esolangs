@@ -19,6 +19,10 @@ Errors:
     ArgumentError: An ``@`` token that is not an integer.
     HaltError: Invalid stack/arithmetic operations (an empty stack read,
         zero divisor, negative shift, bad root, ``.`` on a non-code-point).
+
+Decisions:
+    * The page calls ``.`` byte output; this adapter emits Unicode scalars
+      and rejects other values. Compatibility with byte output remains open.
 """
 
 from __future__ import annotations

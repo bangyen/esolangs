@@ -32,7 +32,7 @@ claim = "b with no open loop."
 program = "i"
 stdin = "x"
 expect = "HaltError"
-claim = "i on a non-integer line."
+claim = "i on a non-integer token."
 
 [[spec_triggers]]
 program = "i"
