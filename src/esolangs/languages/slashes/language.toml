@@ -26,45 +26,31 @@ folding_constant_local = "_constant_pattern"  # parse inputs before the literal 
 folds_without_tree = true
 
 [ablations]
+archive_refs = [
+    "constant_fold",
+    "projection",
+    "balance_newline_rule",
+    "sweep_count",
+    "constant_table_audit_20261101",
+    "sweep_macro_20261102",
+    "sweep_macro_runs_20261102",
+    "digit_entries_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.projection]
-kind = "archive_ref"
-
-[ablations.balance_newline_rule]
-kind = "archive_ref"
-
-[ablations.sweep_count]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.sweep_macro_20261102]
-kind = "archive_ref"
-
-[ablations.sweep_macro_runs_20261102]
-kind = "archive_ref"
-
-[ablations.digit_entries_20261102]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
 plain_rewrite = 2026-10-28
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

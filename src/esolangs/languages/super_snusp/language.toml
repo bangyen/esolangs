@@ -25,39 +25,21 @@ folding_constant_local = "_emit_lookup"  # projected literal table
 
 
 [ablations]
+archive_refs = [
+    "input_projection",
+    "two_input_short_forms",
+    "plain_build",
+    "decimal_literal",
+    "polarity_rule",
+    "constant_table_audit_20261101",
+    "stacked_two_horner",
+    "deferred_ascii_offset",
+    "stacked_ascii_zero",
+    "two_input_short_stack_reprice",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.input_projection]
-kind = "archive_ref"
-
-[ablations.two_input_short_forms]
-kind = "archive_ref"
-
-[ablations.plain_build]
-kind = "archive_ref"
-
-[ablations.decimal_literal]
-kind = "archive_ref"
-
-[ablations.polarity_rule]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.stacked_two_horner]
-kind = "archive_ref"
-
-[ablations.deferred_ascii_offset]
-kind = "archive_ref"
-
-[ablations.stacked_ascii_zero]
-kind = "archive_ref"
-
-[ablations.two_input_short_stack_reprice]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -65,15 +47,13 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

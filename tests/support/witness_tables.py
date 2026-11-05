@@ -60,3 +60,7 @@ def _one_minterm(n: int) -> str:
 
 
 XOR = "0110"
+
+
+#: Every one- and two-input table, in numeric order within each arity.
+SMALL_TABLES = tuple(format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n))

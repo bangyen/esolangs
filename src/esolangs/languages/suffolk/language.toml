@@ -21,39 +21,21 @@ definitions = ["W = bl(L-1)+max(6,n-1)+max(19,4n-1)+bl(n)+4, plus 3+max(0,n-6)+b
 "11111110" = { commands = 550, commands_by_row = { "0" = 550, "1" = 550, "2" = 550, "3" = 550, "4" = 550, "5" = 550, "6" = 550, "7" = 550 }, source_units = 491 }
 
 [ablations]
+archive_refs = [
+    "dag_race",
+    "workspace_ledger",
+    "essential_projection",
+    "constant_fold",
+    "constant_table_audit_20261101",
+    "inputs_first_20261102",
+    "reflected_cell1_20261102",
+    "variable_order_20261102",
+    "cutoff_correctness_20261102",
+    "proof_ceiling_review_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.dag_race]
-kind = "archive_ref"
-
-[ablations.workspace_ledger]
-kind = "archive_ref"
-
-[ablations.essential_projection]
-kind = "archive_ref"
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.inputs_first_20261102]
-kind = "archive_ref"
-
-[ablations.reflected_cell1_20261102]
-kind = "archive_ref"
-
-[ablations.variable_order_20261102]
-kind = "archive_ref"
-
-[ablations.cutoff_correctness_20261102]
-kind = "archive_ref"
-
-[ablations.proof_ceiling_review_20261103]
-kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30
@@ -62,12 +44,12 @@ plain_rewrite = 2026-10-28
 trick_prototype = 2026-11-02
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

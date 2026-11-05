@@ -26,45 +26,31 @@ evidence = "docs/limitations.md#unary"
 "11" = { commands_by_row = {}, commands_by_row_nulls = [0, 1], source_units = 6903 }
 
 [ablations]
+archive_refs = [
+    "constant_fold",
+    "single_input_form",
+    "and_form",
+    "constant_one_decrement",
+    "low_digit_mirror",
+    "trailing_read_elision",
+    "single_cell_guard_tree",
+    "unrolled_read_bound_audit",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-11-02" }
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.single_input_form]
-kind = "archive_ref"
-
-[ablations.and_form]
-kind = "archive_ref"
-
-[ablations.constant_one_decrement]
-kind = "archive_ref"
-
-[ablations.low_digit_mirror]
-kind = "archive_ref"
-
-[ablations.trailing_read_elision]
-kind = "archive_ref"
-
-[ablations.single_cell_guard_tree]
-kind = "archive_ref"
-
-[ablations.unrolled_read_bound_audit]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

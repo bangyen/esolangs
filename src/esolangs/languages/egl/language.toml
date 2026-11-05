@@ -22,39 +22,21 @@ definitions = ["F = 3T+25n+digits(T)+8 through n=3; 2T+c+5r+25n+digits(c)+digits
 "11111110" = { commands = 272, commands_by_row = { "0" = 263, "1" = 266, "2" = 266, "3" = 269, "4" = 266, "5" = 269, "6" = 269, "7" = 272 }, source_units = 96 }
 
 [ablations]
+archive_refs = [
+    "symmetric_count",
+    "counter_offset",
+    "constant_fold",
+    "input_projection",
+    "balance_width_search",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_folded_rows",
+    "trick_prototype_20261102_paired_cells",
+    "trick_prototype_20261102_complement_paint",
+    "exact_contract_restoration_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.symmetric_count]
-kind = "archive_ref"
-
-[ablations.counter_offset]
-kind = "archive_ref"
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.input_projection]
-kind = "archive_ref"
-
-[ablations.balance_width_search]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_folded_rows]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_paired_cells]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_complement_paint]
-kind = "archive_ref"
-
-[ablations.exact_contract_restoration_20261103]
-kind = "archive_ref"
 
 [catalogue]
 folding_constant_local = "_program"  # scratch reads beside a literal answer cell
@@ -68,12 +50,12 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

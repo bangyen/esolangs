@@ -20,42 +20,22 @@ qualification = "inputs go to either end of one bistack row, an ignored one to t
 "11111110" = { commands = 31, commands_by_row = { "0" = 35, "1" = 35, "2" = 35, "3" = 35, "4" = 29, "5" = 29, "6" = 31, "7" = 31 }, source_units = 213 }
 
 [ablations]
+archive_refs = [
+    "essential_drop",
+    "constant_span_fold",
+    "shared_dag",
+    "dag_column_banks",
+    "width_machinery",
+    "balance_flat_tree",
+    "transit_strip_coalescing",
+    "constant_table_audit_20261101",
+    "literal_leaf_pair",
+    "hybrid_cut",
+    "default_flat",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-27" }
-
-[ablations.essential_drop]
-kind = "archive_ref"
-
-[ablations.constant_span_fold]
-kind = "archive_ref"
-
-[ablations.shared_dag]
-kind = "archive_ref"
-
-[ablations.dag_column_banks]
-kind = "archive_ref"
-
-[ablations.width_machinery]
-kind = "archive_ref"
-
-[ablations.balance_flat_tree]
-kind = "archive_ref"
-
-[ablations.transit_strip_coalescing]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.literal_leaf_pair]
-kind = "archive_ref"
-
-[ablations.hybrid_cut]
-kind = "archive_ref"
-
-[ablations.default_flat]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-03
@@ -64,12 +44,12 @@ docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

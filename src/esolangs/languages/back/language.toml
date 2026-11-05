@@ -22,48 +22,24 @@ definitions = ["A = 3T/4+1", "F = 30/143 at n=1/2; then (3n+5)max(6n+1,T/2) thro
 
 
 [ablations]
+archive_refs = [
+    "fall_through_sharing",
+    "wrap_race",
+    "constant_fold",
+    "essential_projection",
+    "htree_fold",
+    "parity_accumulator",
+    "balance_htree",
+    "balance_comb_base",
+    "symmetric_reverse_loader",
+    "constant_table_audit_20261101",
+    "redundant_test_skip_20261102",
+    "answer_cell_preload_20261102",
+    "primed_majority_answer_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-27" }
-
-[ablations.fall_through_sharing]
-kind = "archive_ref"
-
-[ablations.wrap_race]
-kind = "archive_ref"
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.essential_projection]
-kind = "archive_ref"
-
-[ablations.htree_fold]
-kind = "archive_ref"
-
-[ablations.parity_accumulator]
-kind = "archive_ref"
-
-[ablations.balance_htree]
-kind = "archive_ref"
-
-[ablations.balance_comb_base]
-kind = "archive_ref"
-
-[ablations.symmetric_reverse_loader]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.redundant_test_skip_20261102]
-kind = "archive_ref"
-
-[ablations.answer_cell_preload_20261102]
-kind = "archive_ref"
-
-[ablations.primed_majority_answer_20261102]
-kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30
@@ -72,15 +48,13 @@ plain_rewrite = 2026-10-27
 trick_prototype = 2026-11-02
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

@@ -47,68 +47,36 @@ folding_constant = "both constants are one self-fed gate"
 # joint removals were measured separately before landing.  Rows for
 # removed tricks stay as the record of why they left.
 [ablations]
+archive_refs = [
+    "column_recycling",
+    "constant_folding",
+    "subtree_sharing",
+    "projection_wire",
+    "competing_model_race",
+    "transpose_folds",
+    "output_polarity",
+    "ignored_input_drop",
+    "width_machinery",
+    "balance_machinery",
+    "fenwick_allocation",
+    "competing_model_floor",
+    "reverse_mux_order_prototype",
+    "constant_table_audit_20261101",
+    "mux_function_block",
+    "davio_xor_fold_prototype",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18" }
 
-[ablations.column_recycling]
-kind = "archive_ref"
-
-[ablations.constant_folding]
-kind = "archive_ref"
-
-[ablations.subtree_sharing]
-kind = "archive_ref"
-
-[ablations.projection_wire]
-kind = "archive_ref"
-
-[ablations.competing_model_race]
-kind = "archive_ref"
-
-[ablations.transpose_folds]
-kind = "archive_ref"
-
-[ablations.output_polarity]
-kind = "archive_ref"
-
-[ablations.ignored_input_drop]
-kind = "archive_ref"
-
-[ablations.width_machinery]
-kind = "archive_ref"
-
-[ablations.balance_machinery]
-kind = "archive_ref"
-
-[ablations.fenwick_allocation]
-kind = "archive_ref"
-
-[ablations.competing_model_floor]
-kind = "archive_ref"
-
-[ablations.reverse_mux_order_prototype]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.mux_function_block]
-kind = "archive_ref"
-
-[ablations.davio_xor_fold_prototype]
-kind = "archive_ref"
-
 [interpreter_ablations]
+archive_refs = [
+    "compile_cache",
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
-
-[interpreter_ablations.compile_cache]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02

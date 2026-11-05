@@ -20,27 +20,17 @@ qualification = "each node tests its variable with if and if!, equal halves skip
 "11111110" = { commands = 12, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 10, "5" = 10, "6" = 11, "7" = 12 }, source_units = 131 }
 
 [ablations]
+archive_refs = [
+    "subtree_sharing",
+    "complement_race",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261101_arithmetic_arms",
+    "two_char_flag_names_20261103",
+    "leaf_only_arithmetic_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.subtree_sharing]
-kind = "archive_ref"
-
-[ablations.complement_race]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_arithmetic_arms]
-kind = "archive_ref"
-
-[ablations.two_char_flag_names_20261103]
-kind = "archive_ref"
-
-[ablations.leaf_only_arithmetic_20261103]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-03
@@ -48,12 +38,12 @@ blind_reimplementation = 2026-10-29
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

@@ -21,39 +21,21 @@ definitions = ["N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables", "G =
 "11111110" = { commands = 293, commands_by_row = { "0" = 279, "1" = 279, "2" = 279, "3" = 279, "4" = 286, "5" = 286, "6" = 293, "7" = 293 }, source_units = 970 }
 
 [ablations]
+archive_refs = [
+    "subtree_sharing",
+    "halves_agree_fold",
+    "disjoint_branch",
+    "balance_cut",
+    "constant_table_audit_20261101",
+    "stack_reservoir_fillers",
+    "dense_global_names",
+    "batched_store_loop",
+    "word_economy",
+    "proof_ceiling_review_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-11-02" }
-
-[ablations.subtree_sharing]
-kind = "archive_ref"
-
-[ablations.halves_agree_fold]
-kind = "archive_ref"
-
-[ablations.disjoint_branch]
-kind = "archive_ref"
-
-[ablations.balance_cut]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.stack_reservoir_fillers]
-kind = "archive_ref"
-
-[ablations.dense_global_names]
-kind = "archive_ref"
-
-[ablations.batched_store_loop]
-kind = "archive_ref"
-
-[ablations.word_economy]
-kind = "archive_ref"
-
-[ablations.proof_ceiling_review_20261103]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -61,12 +43,12 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

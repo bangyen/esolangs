@@ -28,48 +28,24 @@ folding_constant_local = "_cm_constant_program"  # reads followed by literal out
 folds_without_tree = true
 
 [ablations]
+archive_refs = [
+    "essential_projection",
+    "constant_program",
+    "coded_cells",
+    "trailing_pad_drop",
+    "referenced_constants",
+    "complement_build",
+    "balance_candidates",
+    "eight_row_cells",
+    "constant_table_audit_20261101",
+    "tricks_constants_20261102",
+    "pad_constants",
+    "tricks_affine_20261102",
+    "tricks_cost_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.essential_projection]
-kind = "archive_ref"
-
-[ablations.constant_program]
-kind = "archive_ref"
-
-[ablations.coded_cells]
-kind = "archive_ref"
-
-[ablations.trailing_pad_drop]
-kind = "archive_ref"
-
-[ablations.referenced_constants]
-kind = "archive_ref"
-
-[ablations.complement_build]
-kind = "archive_ref"
-
-[ablations.balance_candidates]
-kind = "archive_ref"
-
-[ablations.eight_row_cells]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.tricks_constants_20261102]
-kind = "archive_ref"
-
-[ablations.pad_constants]
-kind = "archive_ref"
-
-[ablations.tricks_affine_20261102]
-kind = "archive_ref"
-
-[ablations.tricks_cost_20261102]
-kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30
@@ -81,15 +57,13 @@ trick_prototype = 2026-11-02
 wall = "a line is one assignment of identifiers only (interpreter.py _LINE fullmatch), so it carries O(log L) bits; T table bits need L >= c*T/log T lines, so the side 2*L gives area >= c*T**2/log**2 T (measured T**1.50 from n=10 to 12, 2026-10-29)"
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

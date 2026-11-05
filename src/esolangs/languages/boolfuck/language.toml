@@ -26,69 +26,39 @@ evidence = "docs/proofs/boolfuck-gates.md"
 "11111110" = { commands = 125, commands_by_row = { "0" = 55, "1" = 69, "2" = 69, "3" = 89, "4" = 69, "5" = 89, "6" = 89, "7" = 125 }, source_units = 106 }
 
 [ablations]
+archive_refs = [
+    "affine_stream",
+    "normal_gates",
+    "shared_blocks",
+    "essential_projection",
+    "command_bound",
+    "constant_fold",
+    "identical_halves_collapse",
+    "popcount_stream",
+    "count_walk_cancellation",
+    "constant_table_audit_20261101",
+    "zero_subtree_inline_20261102",
+    "triple_gate_leaves_trick_20261102",
+    "projection_gate_kind_trick_20261102",
+    "gate_input_choice_trick_20261102",
+    "formatted_constant_workspace_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.affine_stream]
-kind = "archive_ref"
-
-[ablations.normal_gates]
-kind = "archive_ref"
-
-[ablations.shared_blocks]
-kind = "archive_ref"
-
-[ablations.essential_projection]
-kind = "archive_ref"
-
-[ablations.command_bound]
-kind = "archive_ref"
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.identical_halves_collapse]
-kind = "archive_ref"
-
-[ablations.popcount_stream]
-kind = "archive_ref"
-
-[ablations.count_walk_cancellation]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.zero_subtree_inline_20261102]
-kind = "archive_ref"
-
-[ablations.triple_gate_leaves_trick_20261102]
-kind = "archive_ref"
-
-[ablations.projection_gate_kind_trick_20261102]
-kind = "archive_ref"
-
-[ablations.gate_input_choice_trick_20261102]
-kind = "archive_ref"
-
-[ablations.formatted_constant_workspace_20261102]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
 plain_rewrite = 2026-10-30
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

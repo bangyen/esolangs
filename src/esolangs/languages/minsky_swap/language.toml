@@ -34,50 +34,32 @@ docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [ablations]
+archive_refs = [
+    "input_projection",
+    "symmetric_count",
+    "balance_route",
+    "constant_table_audit_20261101",
+    "low_bit_leaf_split",
+    "two_low_bits_leaf_split",
+    "generic_k_split_forced_threshold",
+    "exactness_repair_20261103",
+    "two_low_bits_execution_recheck_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.input_projection]
-kind = "archive_ref"
-
-[ablations.symmetric_count]
-kind = "archive_ref"
-
-[ablations.balance_route]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.low_bit_leaf_split]
-kind = "archive_ref"
-
-[ablations.two_low_bits_leaf_split]
-kind = "archive_ref"
-
-[ablations.generic_k_split_forced_threshold]
-kind = "archive_ref"
-
-[ablations.exactness_repair_20261103]
-kind = "archive_ref"
-
-[ablations.two_low_bits_execution_recheck_20261103]
-kind = "archive_ref"
 
 [balance_growth]
 wall = "code is one command per line (RMSN) or line 1 only (compact; interpreter.py _parse), O(log m) bits per command; T table bits need m >= c*T/log T commands on one line or m lines, so area >= c*T**2/log**2 T (measured T**1.96 from n=10 to 12, 2026-10-29)"
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

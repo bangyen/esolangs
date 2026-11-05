@@ -29,42 +29,22 @@ definitions = ["F = Σ over exit-memory cells of 4 + bl(column), plus deque keys
 folds_without_tree = true
 
 [ablations]
+archive_refs = [
+    "run_compression",
+    "essential_drop",
+    "constant_skip_chain",
+    "constant_fold_tree",
+    "stacked_subtree_sharing",
+    "deque_pairs",
+    "banded_balance",
+    "constant_table_audit_20261101",
+    "free_merge_preload_prototype",
+    "shared_answer_tail_prototype",
+    "command_metric_depth_prototype",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.run_compression]
-kind = "archive_ref"
-
-[ablations.essential_drop]
-kind = "archive_ref"
-
-[ablations.constant_skip_chain]
-kind = "archive_ref"
-
-[ablations.constant_fold_tree]
-kind = "archive_ref"
-
-[ablations.stacked_subtree_sharing]
-kind = "archive_ref"
-
-[ablations.deque_pairs]
-kind = "archive_ref"
-
-[ablations.banded_balance]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.free_merge_preload_prototype]
-kind = "archive_ref"
-
-[ablations.shared_answer_tail_prototype]
-kind = "archive_ref"
-
-[ablations.command_metric_depth_prototype]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -72,12 +52,12 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

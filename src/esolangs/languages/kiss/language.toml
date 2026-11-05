@@ -10,18 +10,14 @@ labels = ["tree"]
 qualification = "a node is S over its two halves, which S reads a bit to choose; a node whose halves agree reads it through SS(SKK)"
 
 [ablations]
+archive_refs = [
+    "halves_agree_skip",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261101_bottom_terms_and_skip",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.halves_agree_skip]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_bottom_terms_and_skip]
-kind = "archive_ref"
 
 [catalogue]
 sharing_exempt = "no names: an SK term can bind a repeated subtree only by abstraction, whose S and K wrap every node above it"
@@ -44,15 +40,13 @@ blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

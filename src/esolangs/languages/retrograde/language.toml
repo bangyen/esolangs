@@ -10,30 +10,18 @@ qualification = "a single turn chooses one emitted child in either direction whe
 sharing_exempt = "the inline tree nests each body under paired lexical turns; there are no named calls or arbitrary target jumps for a local subtree-sharing rule"
 
 [ablations]
+archive_refs = [
+    "constant_fold",
+    "ignored_input",
+    "inverse_moves",
+    "execution_corpus",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_bidirectional_sibling",
+    "trick_prototype_20261102_answer_side_literal_order",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-11-01", n3_source_units = 16081, n3_commands = 58768, executed_rows = 11456 }
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.ignored_input]
-kind = "archive_ref"
-
-[ablations.inverse_moves]
-kind = "archive_ref"
-
-[ablations.execution_corpus]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_bidirectional_sibling]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_answer_side_literal_order]
-kind = "archive_ref"
 
 [generator_sizes]
 "00000001" = { commands = 34, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 25, "5" = 25, "6" = 34, "7" = 34 }, source_units = 39 }
@@ -50,18 +38,14 @@ trick_prototype = 2026-11-02
 blind_reimplementation = 2026-11-01
 
 [interpreter_ablations]
+archive_refs = [
+    "blind_reimplementation",
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.blind_reimplementation]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

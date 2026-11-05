@@ -25,42 +25,30 @@ folding_constant_local = "_program"  # delete inputs and a literal bit
 folds_without_tree = true
 
 [ablations]
+archive_refs = [
+    "constant_fold",
+    "input_projection",
+    "paired_rows",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_four_row_cells",
+    "trick_prototype_20261102_two_zero_cells",
+    "trick_prototype_20261102_amplified_reads",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.input_projection]
-kind = "archive_ref"
-
-[ablations.paired_rows]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_four_row_cells]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_two_zero_cells]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_amplified_reads]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

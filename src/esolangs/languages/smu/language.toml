@@ -21,42 +21,22 @@ definitions = ["E = 93T - 80, the macro-expanded program with no constant subtre
 "11111110" = { commands = 164, commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 164, "7" = 164 }, source_units = 119 }
 
 [ablations]
+archive_refs = [
+    "constant_fold",
+    "delimiter_macros",
+    "halves_agree_pad",
+    "macro_sharing",
+    "profitability_test",
+    "macro_naming_by_use",
+    "delimiter_digrams",
+    "bare_constant_leaf",
+    "fused_node_delimiters",
+    "terminal_leaf_target",
+    "constant_table_audit_20261101",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.delimiter_macros]
-kind = "archive_ref"
-
-[ablations.halves_agree_pad]
-kind = "archive_ref"
-
-[ablations.macro_sharing]
-kind = "archive_ref"
-
-[ablations.profitability_test]
-kind = "archive_ref"
-
-[ablations.macro_naming_by_use]
-kind = "archive_ref"
-
-[ablations.delimiter_digrams]
-kind = "archive_ref"
-
-[ablations.bare_constant_leaf]
-kind = "archive_ref"
-
-[ablations.fused_node_delimiters]
-kind = "archive_ref"
-
-[ablations.terminal_leaf_target]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30
@@ -65,12 +45,12 @@ plain_rewrite = 2026-10-29
 trick_prototype = 2026-11-02
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

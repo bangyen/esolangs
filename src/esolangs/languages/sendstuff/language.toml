@@ -21,48 +21,24 @@ definitions = ["N_d = 1 + Σ_{j>d} V_j + V_d - 4, the node index of the last dep
 "11111110" = { commands = 14, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 11, "5" = 11, "6" = 14, "7" = 14 }, source_units = 182 }
 
 [ablations]
+archive_refs = [
+    "subtree_sharing",
+    "equal_halves_chain",
+    "constant_chain",
+    "branch_macros",
+    "input_macro",
+    "equal_halves_chain_audit",
+    "constant_table_audit_20261101",
+    "anonymous_root",
+    "last_input_identity",
+    "last_input_negation",
+    "inline_single_parent_prototype",
+    "dense_ranked_decimal_names_prototype",
+    "terminal_collapse_prototype",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.subtree_sharing]
-kind = "archive_ref"
-
-[ablations.equal_halves_chain]
-kind = "archive_ref"
-
-[ablations.constant_chain]
-kind = "archive_ref"
-
-[ablations.branch_macros]
-kind = "archive_ref"
-
-[ablations.input_macro]
-kind = "archive_ref"
-
-[ablations.equal_halves_chain_audit]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.anonymous_root]
-kind = "archive_ref"
-
-[ablations.last_input_identity]
-kind = "archive_ref"
-
-[ablations.last_input_negation]
-kind = "archive_ref"
-
-[ablations.inline_single_parent_prototype]
-kind = "archive_ref"
-
-[ablations.dense_ranked_decimal_names_prototype]
-kind = "archive_ref"
-
-[ablations.terminal_collapse_prototype]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -70,12 +46,12 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

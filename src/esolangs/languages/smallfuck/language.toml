@@ -20,60 +20,36 @@ qualification = "a five-level banded prefix writes four Davio coefficients; thre
 "11111110" = { commands = 95, commands_by_row = { "0" = 39, "1" = 46, "2" = 51, "3" = 58, "4" = 58, "5" = 65, "6" = 75, "7" = 95 }, source_units = 110 }
 
 [ablations]
+archive_refs = [
+    "deferred_level_residuals",
+    "same_level_bank",
+    "paired_roots",
+    "band_race",
+    "constant_folding",
+    "agreed_halves",
+    "width_machinery",
+    "xor_chain",
+    "four_level_band_prototype",
+    "constant_table_audit_20261101",
+    "davio_last_input",
+    "davio_two_inputs",
+    "local_two_input_anf",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19", unrelated = ["10.4%"] }
-
-[ablations.deferred_level_residuals]
-kind = "archive_ref"
-
-[ablations.same_level_bank]
-kind = "archive_ref"
-
-[ablations.paired_roots]
-kind = "archive_ref"
-
-[ablations.band_race]
-kind = "archive_ref"
-
-[ablations.constant_folding]
-kind = "archive_ref"
-
-[ablations.agreed_halves]
-kind = "archive_ref"
-
-[ablations.width_machinery]
-kind = "archive_ref"
-
-[ablations.xor_chain]
-kind = "archive_ref"
-
-[ablations.four_level_band_prototype]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.davio_last_input]
-kind = "archive_ref"
-
-[ablations.davio_two_inputs]
-kind = "archive_ref"
-
-[ablations.local_two_input_anf]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
 plain_rewrite = 2026-10-27
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

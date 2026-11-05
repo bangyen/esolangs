@@ -24,39 +24,21 @@ qualification = "—"
 folding_constant_local = "_program"  # direct constant input-discard sequence
 
 [ablations]
+archive_refs = [
+    "constant_fold",
+    "projection",
+    "pair_flags",
+    "run_sharing",
+    "negated_twin",
+    "last_leaf_decrement",
+    "constant_table_audit_20261101",
+    "quad_flags_20261102",
+    "looped_weights_20261102",
+    "flag_input_choice_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.projection]
-kind = "archive_ref"
-
-[ablations.pair_flags]
-kind = "archive_ref"
-
-[ablations.run_sharing]
-kind = "archive_ref"
-
-[ablations.negated_twin]
-kind = "archive_ref"
-
-[ablations.last_leaf_decrement]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.quad_flags_20261102]
-kind = "archive_ref"
-
-[ablations.looped_weights_20261102]
-kind = "archive_ref"
-
-[ablations.flag_input_choice_20261102]
-kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30
@@ -64,12 +46,12 @@ plain_rewrite = 2026-10-29
 trick_prototype = 2026-11-02
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

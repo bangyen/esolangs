@@ -20,36 +20,20 @@ qualification = "n input frames consume once each; heads are named atoms or boun
 "11111110" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 69 }
 
 [ablations]
+archive_refs = [
+    "subtree_sharing",
+    "halves_agree_skip",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_bounded_literals",
+    "trick_prototype_20261102_unbounded_literals",
+    "trick_prototype_20261102_dense_short_node_names",
+    "trick_prototype_20261102_identity_leaf_equation",
+    "workspace_exact_restoration_20261103",
+    "proof_ceiling_review_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.subtree_sharing]
-kind = "archive_ref"
-
-[ablations.halves_agree_skip]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_bounded_literals]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_unbounded_literals]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_dense_short_node_names]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_identity_leaf_equation]
-kind = "archive_ref"
-
-[ablations.workspace_exact_restoration_20261103]
-kind = "archive_ref"
-
-[ablations.proof_ceiling_review_20261103]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -58,12 +42,12 @@ blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

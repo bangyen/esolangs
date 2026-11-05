@@ -24,48 +24,32 @@ definitions = ["P = the program's leaves, each k and s counted twice", "S = the 
 
 
 [ablations]
+archive_refs = [
+    "subtree_binding",
+    "halves_agree_fold",
+    "binding_race",
+    "leaf_pair",
+    "constant_table_audit_20261101",
+    "tail_pair_table_20261102",
+    "single_test_split_20261102",
+    "print_first_leaf_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.subtree_binding]
-kind = "archive_ref"
-
-[ablations.halves_agree_fold]
-kind = "archive_ref"
-
-[ablations.binding_race]
-kind = "archive_ref"
-
-[ablations.leaf_pair]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.tail_pair_table_20261102]
-kind = "archive_ref"
-
-[ablations.single_test_split_20261102]
-kind = "archive_ref"
-
-[ablations.print_first_leaf_20261102]
-kind = "archive_ref"
 
 [audits]
 plain_rewrite = 2026-10-29
 trick_prototype = 2026-11-02
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

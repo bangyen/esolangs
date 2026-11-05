@@ -6,10 +6,7 @@ import esolangs
 from esolangs.languages.parenthesys.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 from tests.support.generator_support import assert_native_rows
-
-#: Every one- and two-input table; a tree's folding bugs show here first.
-TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
-
+from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 #: n=5 and 6 take the packed route, whose bit test reads every position.
 PACKED = ["0110100110010110" * 2, "00010111" * 8, "1" + "0" * 63, "0" * 63 + "1"]

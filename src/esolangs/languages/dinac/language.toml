@@ -23,24 +23,16 @@ folding_constant_local = "essential_inputs"  # no kept input: read, then print t
 "11111110" = { commands = 21, commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 21, "5" = 21, "6" = 21, "7" = 21 }, source_units = 261 }
 
 [ablations]
+archive_refs = [
+    "minority_polarity",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261101_sparse_subtree_flags",
+    "trick_prototype_20261101_compact_emission_tokens",
+    "trick_prototype_20261101_inline_singleton_chain",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.minority_polarity]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_sparse_subtree_flags]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_compact_emission_tokens]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_inline_singleton_chain]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-01
@@ -48,12 +40,12 @@ blind_reimplementation = 2026-10-29
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

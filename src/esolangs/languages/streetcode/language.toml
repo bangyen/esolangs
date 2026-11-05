@@ -34,74 +34,38 @@ sharing_exempt = "a tree through four inputs, then where it beats the indexed st
 # joint removals were measured separately before landing.  Rows for
 # removed tricks stay as the record of why they left.
 [ablations]
+archive_refs = [
+    "mouth_overlap",
+    "shared_lap_populate",
+    "flat_race_candidate",
+    "flat_tree_race",
+    "balance_room_stack",
+    "shared_kerb",
+    "sibling_sharing",
+    "constant_folding",
+    "ignored_input_drop",
+    "tree_memoization",
+    "snake_fold",
+    "shared_kerb_default",
+    "shipped_cost_audit_20261101",
+    "constant_table_audit_20261101",
+    "fill_hairpin_room_prototype",
+    "read_run_room_prototype",
+    "tail_lift_room_prototype",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18" }
 
-[ablations.mouth_overlap]
-kind = "archive_ref"
-
-[ablations.shared_lap_populate]
-kind = "archive_ref"
-
-[ablations.flat_race_candidate]
-kind = "archive_ref"
-
-[ablations.flat_tree_race]
-kind = "archive_ref"
-
-[ablations.balance_room_stack]
-kind = "archive_ref"
-
-[ablations.shared_kerb]
-kind = "archive_ref"
-
-[ablations.sibling_sharing]
-kind = "archive_ref"
-
-[ablations.constant_folding]
-kind = "archive_ref"
-
-[ablations.ignored_input_drop]
-kind = "archive_ref"
-
-[ablations.tree_memoization]
-kind = "archive_ref"
-
-[ablations.snake_fold]
-kind = "archive_ref"
-
-[ablations.shared_kerb_default]
-kind = "archive_ref"
-
-[ablations.shipped_cost_audit_20261101]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.fill_hairpin_room_prototype]
-kind = "archive_ref"
-
-[ablations.read_run_room_prototype]
-kind = "archive_ref"
-
-[ablations.tail_lift_room_prototype]
-kind = "archive_ref"
-
 [interpreter_ablations]
+archive_refs = [
+    "compile_cache",
+    "speedup_prototype_20261103",
+    "immutable_shell_tape",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
-
-[interpreter_ablations.compile_cache]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.immutable_shell_tape]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-03

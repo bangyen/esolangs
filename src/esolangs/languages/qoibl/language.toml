@@ -26,47 +26,29 @@ folding_constant = "n input assignments followed by a literal output"
 folds_without_tree = true
 
 [interpreter_ablations]
+archive_refs = [
+    "tokenized_cache",
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
 
-[interpreter_ablations.tokenized_cache]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
-
 [ablations]
+archive_refs = [
+    "input_projection",
+    "plain_build",
+    "polarity_flip",
+    "negated_reads",
+    "constant_table_audit_20261101",
+    "token_space_elision",
+    "fused_parity_print",
+    "inline_digit_cells",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-11-02" }
-
-[ablations.input_projection]
-kind = "archive_ref"
-
-[ablations.plain_build]
-kind = "archive_ref"
-
-[ablations.polarity_flip]
-kind = "archive_ref"
-
-[ablations.negated_reads]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.token_space_elision]
-kind = "archive_ref"
-
-[ablations.fused_parity_print]
-kind = "archive_ref"
-
-[ablations.inline_digit_cells]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02

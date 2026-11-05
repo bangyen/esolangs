@@ -24,36 +24,20 @@ folding_constant_local = "freestajlo"  # one projected table entry, no index
 "11111110" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 13 }
 
 [ablations]
+archive_refs = [
+    "essential_projection",
+    "constant_read",
+    "packed_literal",
+    "split_literal",
+    "symmetric_count",
+    "horner_function",
+    "horner_loop",
+    "unicode_word",
+    "constant_table_audit_20261101",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-21" }
-
-[ablations.essential_projection]
-kind = "archive_ref"
-
-[ablations.constant_read]
-kind = "archive_ref"
-
-[ablations.packed_literal]
-kind = "archive_ref"
-
-[ablations.split_literal]
-kind = "archive_ref"
-
-[ablations.symmetric_count]
-kind = "archive_ref"
-
-[ablations.horner_function]
-kind = "archive_ref"
-
-[ablations.horner_loop]
-kind = "archive_ref"
-
-[ablations.unicode_word]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
 
 [audits]
 docstring_reimplementation = 2026-10-30
@@ -62,15 +46,13 @@ blind_reimplementation = 2026-10-27
 trick_prototype = 2026-11-02
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

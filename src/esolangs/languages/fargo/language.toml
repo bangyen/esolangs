@@ -26,57 +26,27 @@ folding_constant_local = "_arm_expression"  # literal zero or one ANF coefficien
 
 
 [ablations]
+archive_refs = [
+    "default_race",
+    "balance_race",
+    "operand_one_fold",
+    "davio_factoring",
+    "profitability_packing",
+    "subtree_interning",
+    "arm_forms",
+    "essential_descent",
+    "exact_fit_stop",
+    "complement_expression",
+    "balance_unshared",
+    "zero_arm_and_prototype",
+    "constant_table_audit_20261101",
+    "davio_node_macro_20261102",
+    "two_level_macro_20261102",
+    "wide_name_alphabet_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.default_race]
-kind = "archive_ref"
-
-[ablations.balance_race]
-kind = "archive_ref"
-
-[ablations.operand_one_fold]
-kind = "archive_ref"
-
-[ablations.davio_factoring]
-kind = "archive_ref"
-
-[ablations.profitability_packing]
-kind = "archive_ref"
-
-[ablations.subtree_interning]
-kind = "archive_ref"
-
-[ablations.arm_forms]
-kind = "archive_ref"
-
-[ablations.essential_descent]
-kind = "archive_ref"
-
-[ablations.exact_fit_stop]
-kind = "archive_ref"
-
-[ablations.complement_expression]
-kind = "archive_ref"
-
-[ablations.balance_unshared]
-kind = "archive_ref"
-
-[ablations.zero_arm_and_prototype]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.davio_node_macro_20261102]
-kind = "archive_ref"
-
-[ablations.two_level_macro_20261102]
-kind = "archive_ref"
-
-[ablations.wide_name_alphabet_20261102]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -84,15 +54,13 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

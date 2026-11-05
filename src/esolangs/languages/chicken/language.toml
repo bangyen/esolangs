@@ -22,36 +22,28 @@ folding_constant_local = "essential_inputs"  # no essential input: one push line
 "11111110" = { commands = 28, commands_by_row = { "0" = 28, "1" = 28, "2" = 28, "3" = 28, "4" = 28, "5" = 28, "6" = 28, "7" = 28 }, source_units = 1285 }
 
 [ablations]
+archive_refs = [
+    "polarity",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261101_input_coercion",
+    "padding_offset_fold_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.polarity]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_input_coercion]
-kind = "archive_ref"
-
-[ablations.padding_offset_fold_20261103]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-03
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

@@ -31,30 +31,18 @@ sharing_exempt = "a stop sits on one column, so two parents cannot land on one c
 folding_ignored_read = "a read is itself a branch: a read whose halves agree is one line over its single child, so an ignored input costs a read line per path"
 
 [ablations]
+archive_refs = [
+    "equal_halves_convergence",
+    "column_search",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_wider_parity",
+    "trick_prototype_20261102_wider_generic",
+    "trick_prototype_20261102_acc_compare_read",
+    "trick_prototype_20261102_tail_in_open_window",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-22" }
-
-[ablations.equal_halves_convergence]
-kind = "archive_ref"
-
-[ablations.column_search]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_wider_parity]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_wider_generic]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_acc_compare_read]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_tail_in_open_window]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -63,15 +51,13 @@ docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

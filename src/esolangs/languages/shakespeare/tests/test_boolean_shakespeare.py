@@ -6,9 +6,7 @@ import pytest
 
 import esolangs
 from tests.support.event_io import ReadFirstIO
-
-#: Every one- and two-input table; a tree's folding bugs show here first.
-TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
+from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
 def _wrong_rows(table: str, program: str) -> int:

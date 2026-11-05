@@ -31,30 +31,18 @@ sharing_exempt = "threshold scan over the Horner row code; no subtable is drawn"
 folding_constant = "a constant table has no change point: the 6n + 13 line Horner prefix"
 
 [ablations]
+archive_refs = [
+    "change_point_scan",
+    "argument_floor",
+    "mirror_scan",
+    "ignored_input_drop",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_parity_sum",
+    "trick_prototype_20261102_mask_and_permutation_search",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.change_point_scan]
-kind = "archive_ref"
-
-[ablations.argument_floor]
-kind = "archive_ref"
-
-[ablations.mirror_scan]
-kind = "archive_ref"
-
-[ablations.ignored_input_drop]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_parity_sum]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_mask_and_permutation_search]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -62,12 +50,12 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-21
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

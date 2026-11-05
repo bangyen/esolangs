@@ -24,83 +24,41 @@ qualification = "ordered primitive lookups or a direct complementary-residual pa
 sharing_local = "_dig_indexed_shared"  # indexed six-input leaf classes
 
 [ablations]
+archive_refs = [
+    "essential_drop_tree",
+    "essential_drop_alternating",
+    "leaf_input_selection",
+    "leading_ignored_wrapper",
+    "constant_folding_tree",
+    "constant_span_alternating",
+    "constant_column_race",
+    "indexed_leaf_decoder",
+    "lane_and_parallel_sharing",
+    "tree_max_race",
+    "length_keyed_races",
+    "banded_default",
+    "compaction",
+    "width_machinery",
+    "smaller_leaf_prototype",
+    "constant_table_audit_20261101",
+    "whole_table_leaf_prototype",
+    "leaf_orientation_race_prototype",
+    "complement_leaf_print",
+    "workspace_accounting_repair",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
-[ablations.essential_drop_tree]
-kind = "archive_ref"
-
-[ablations.essential_drop_alternating]
-kind = "archive_ref"
-
-[ablations.leaf_input_selection]
-kind = "archive_ref"
-
-[ablations.leading_ignored_wrapper]
-kind = "archive_ref"
-
-[ablations.constant_folding_tree]
-kind = "archive_ref"
-
-[ablations.constant_span_alternating]
-kind = "archive_ref"
-
-[ablations.constant_column_race]
-kind = "archive_ref"
-
-[ablations.indexed_leaf_decoder]
-kind = "archive_ref"
-
-[ablations.lane_and_parallel_sharing]
-kind = "archive_ref"
-
-[ablations.tree_max_race]
-kind = "archive_ref"
-
-[ablations.length_keyed_races]
-kind = "archive_ref"
-
-[ablations.banded_default]
-kind = "archive_ref"
-
-[ablations.compaction]
-kind = "archive_ref"
-
-[ablations.width_machinery]
-kind = "archive_ref"
-
-[ablations.smaller_leaf_prototype]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.whole_table_leaf_prototype]
-kind = "archive_ref"
-
-[ablations.leaf_orientation_race_prototype]
-kind = "archive_ref"
-
-[ablations.complement_leaf_print]
-kind = "archive_ref"
-
-[ablations.workspace_accounting_repair]
-kind = "archive_ref"
-
 [interpreter_ablations]
+archive_refs = [
+    "padded_grid_cache",
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
-
-[interpreter_ablations.padded_grid_cache]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02

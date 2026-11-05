@@ -26,6 +26,5 @@ CI-only: `ci/release.py` (normalize and smoke a release, print its notes),
 Not run directly:
 
 - `verify/`, `docs/` -- the packages behind the commands above.
-- `_benchmark_worker.py` -- the subprocess `benchmark.py` supervises.
 - `baselines/` -- triaged results `deadcode` and `mutants` compare against:
   `deadcode --update` rewrites its baseline.

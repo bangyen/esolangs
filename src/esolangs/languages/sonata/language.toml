@@ -10,36 +10,20 @@ labels = ["finite lookup"]
 qualification = "the essential input bits double a unary row index in one rewrite each, and each index unit strips one entry of the table read at them"
 
 [ablations]
+archive_refs = [
+    "essential_projection",
+    "symmetric_count",
+    "pair_table",
+    "constant_table_audit_20261101",
+    "setup_mvar_prefix",
+    "drop_input_marker",
+    "quad_table",
+    "source_exactness_repair_20261103",
+    "trick_recheck_20261103_quad_execution",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-11-02" }
-
-[ablations.essential_projection]
-kind = "archive_ref"
-
-[ablations.symmetric_count]
-kind = "archive_ref"
-
-[ablations.pair_table]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.setup_mvar_prefix]
-kind = "archive_ref"
-
-[ablations.drop_input_marker]
-kind = "archive_ref"
-
-[ablations.quad_table]
-kind = "archive_ref"
-
-[ablations.source_exactness_repair_20261103]
-kind = "archive_ref"
-
-[ablations.trick_recheck_20261103_quad_execution]
-kind = "archive_ref"
 
 [catalogue]
 folding_constant_local = "_RULES"  # no essential input: the setup rule leaves @#c
@@ -64,15 +48,13 @@ plain_rewrite = 2026-10-29
 blind_reimplementation = 2026-10-27
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

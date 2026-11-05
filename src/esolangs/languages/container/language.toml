@@ -26,45 +26,23 @@ qualification = "the table is the prefix sum of its own steps, summed against a 
 sharing_exempt = "the shared tree races a threshold sum, one line per table step with no subtable drawn, which wins most tables from n=3 (repeated B C C B tables included)"
 
 [ablations]
+archive_refs = [
+    "prune",
+    "sharing",
+    "zero_leaf_inversion",
+    "mirror_race",
+    "opposite_side_relay",
+    "essential_projection",
+    "tree_threshold_race",
+    "balance_candidates",
+    "balance_blocks",
+    "reverse_counter_prototype",
+    "constant_table_audit_20261101",
+    "tricks_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.prune]
-kind = "archive_ref"
-
-[ablations.sharing]
-kind = "archive_ref"
-
-[ablations.zero_leaf_inversion]
-kind = "archive_ref"
-
-[ablations.mirror_race]
-kind = "archive_ref"
-
-[ablations.opposite_side_relay]
-kind = "archive_ref"
-
-[ablations.essential_projection]
-kind = "archive_ref"
-
-[ablations.tree_threshold_race]
-kind = "archive_ref"
-
-[ablations.balance_candidates]
-kind = "archive_ref"
-
-[ablations.balance_blocks]
-kind = "archive_ref"
-
-[ablations.reverse_counter_prototype]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.tricks_20261102]
-kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30
@@ -72,12 +50,12 @@ plain_rewrite = 2026-10-27
 trick_prototype = 2026-11-02
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

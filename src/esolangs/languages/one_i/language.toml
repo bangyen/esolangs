@@ -24,45 +24,23 @@ definitions = ["E = 7 at n=1, 4n+4 from n=2", "W = 24/64/112 at n=2/3/4; 2n^2+34
 sharing_exempt = "a deeper function literal needs a whole-stack roll to reuse"
 
 [ablations]
+archive_refs = [
+    "constant_fold",
+    "equal_halves_sharing",
+    "last_level_forms",
+    "bare_b_drain",
+    "literal_leak",
+    "compare_negate",
+    "constant_pair",
+    "constant_table_audit_20261101",
+    "direct_two_input_20261102",
+    "parity_reader_20261102",
+    "compare_constants_20261102",
+    "canonical_projection_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-20" }
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.equal_halves_sharing]
-kind = "archive_ref"
-
-[ablations.last_level_forms]
-kind = "archive_ref"
-
-[ablations.bare_b_drain]
-kind = "archive_ref"
-
-[ablations.literal_leak]
-kind = "archive_ref"
-
-[ablations.compare_negate]
-kind = "archive_ref"
-
-[ablations.constant_pair]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.direct_two_input_20261102]
-kind = "archive_ref"
-
-[ablations.parity_reader_20261102]
-kind = "archive_ref"
-
-[ablations.compare_constants_20261102]
-kind = "archive_ref"
-
-[ablations.canonical_projection_20261102]
-kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30
@@ -70,12 +48,12 @@ plain_rewrite = 2026-10-28
 trick_prototype = 2026-11-02
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

@@ -24,42 +24,22 @@ qualification = "—"
 "11111110" = { commands = 229, commands_by_row = { "0" = 222, "1" = 227, "2" = 227, "3" = 232, "4" = 227, "5" = 232, "6" = 232, "7" = 229 }, source_units = 231 }
 
 [ablations]
+archive_refs = [
+    "input_projection",
+    "decoder_value_race",
+    "two_block_classifier",
+    "halves_agree_skip",
+    "constant_spans",
+    "symmetric_count",
+    "eighth_input",
+    "raw_seed_input",
+    "polarity_weight_search",
+    "merged_output_offset",
+    "constant_table_audit_20261101",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.input_projection]
-kind = "archive_ref"
-
-[ablations.decoder_value_race]
-kind = "archive_ref"
-
-[ablations.two_block_classifier]
-kind = "archive_ref"
-
-[ablations.halves_agree_skip]
-kind = "archive_ref"
-
-[ablations.constant_spans]
-kind = "archive_ref"
-
-[ablations.symmetric_count]
-kind = "archive_ref"
-
-[ablations.eighth_input]
-kind = "archive_ref"
-
-[ablations.raw_seed_input]
-kind = "archive_ref"
-
-[ablations.polarity_weight_search]
-kind = "archive_ref"
-
-[ablations.merged_output_offset]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30
@@ -67,12 +47,12 @@ plain_rewrite = 2026-10-27
 trick_prototype = 2026-11-02
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

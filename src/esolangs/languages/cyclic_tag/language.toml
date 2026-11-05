@@ -26,42 +26,30 @@ folding_constant_local = "_program"  # empty production deletes inputs and a lit
 folds_without_tree = true
 
 [ablations]
+archive_refs = [
+    "input_projection",
+    "constant_root",
+    "single_stride",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_minority_named",
+    "trick_prototype_20261102_pair_packed_rows",
+    "trick_prototype_20261102_cascade_padding",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.input_projection]
-kind = "archive_ref"
-
-[ablations.constant_root]
-kind = "archive_ref"
-
-[ablations.single_stride]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_minority_named]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_pair_packed_rows]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_cascade_padding]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

@@ -29,59 +29,33 @@ evidence = "docs/proofs/line-sharing.md"
 
 
 [ablations]
+archive_refs = [
+    "small_tree_layout",
+    "level_skip",
+    "projected_loader",
+    "streaming_fold",
+    "residual_sharing",
+    "balance",
+    "tree_orientation_prototype",
+    "constant_table_audit_20261101",
+    "terminal_level_collapse",
+    "default_path_compact_race",
+    "inline_level_reads",
+    "proof_ceiling_review_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
-[ablations.small_tree_layout]
-kind = "archive_ref"
-
-[ablations.level_skip]
-kind = "archive_ref"
-
-[ablations.projected_loader]
-kind = "archive_ref"
-
-[ablations.streaming_fold]
-kind = "archive_ref"
-
-[ablations.residual_sharing]
-kind = "archive_ref"
-
-[ablations.balance]
-kind = "archive_ref"
-
-[ablations.tree_orientation_prototype]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.terminal_level_collapse]
-kind = "archive_ref"
-
-[ablations.default_path_compact_race]
-kind = "archive_ref"
-
-[ablations.inline_level_reads]
-kind = "archive_ref"
-
-[ablations.proof_ceiling_review_20261103]
-kind = "archive_ref"
-
 [interpreter_ablations]
+archive_refs = [
+    "grey_rows_cache",
+    "compiled_cache",
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
-
-[interpreter_ablations.grey_rows_cache]
-kind = "archive_ref"
-
-[interpreter_ablations.compiled_cache]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30

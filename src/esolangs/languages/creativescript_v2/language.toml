@@ -13,15 +13,13 @@ qualification = "the table read at its essential inputs is one integer literal, 
 folding_constant = "a constant table is the literal 0 or 1 with no essential input: no divisor is built"
 
 [ablations]
+archive_refs = [
+    "complement_literal_round_two",
+    "constant_table_audit_20261101",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.complement_literal_round_two]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-01
@@ -39,12 +37,12 @@ plain_rewrite = 2026-10-29
 "11111110" = { commands = 23, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 23, "5" = 23, "6" = 23, "7" = 23 }, source_units = 251 }
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

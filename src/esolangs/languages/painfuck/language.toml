@@ -23,48 +23,24 @@ definitions = ["P = 4n^2+9n+5-6⌊n/2⌋: affine loops", "B = ⌊(3n^2+3)/4⌋+2
 "11111110" = { commands = 40, commands_by_row = { "0" = 19, "1" = 19, "2" = 19, "3" = 19, "4" = 26, "5" = 26, "6" = 33, "7" = 40 }, source_units = 37 }
 
 [ablations]
+archive_refs = [
+    "shared_residuals",
+    "complement_tree",
+    "bank_plans",
+    "command_bound",
+    "parity_sum",
+    "fourfold_move_runs",
+    "constant_table_audit_20261101",
+    "constant_zero_guard_20261102",
+    "bottom_level_copy_leaves_trick",
+    "zero_guarded_single_branch_trick",
+    "xor_tail_two_levels_trick",
+    "execution_bound_20261102",
+    "trick_recheck_20261103_generic_guard_execution",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.shared_residuals]
-kind = "archive_ref"
-
-[ablations.complement_tree]
-kind = "archive_ref"
-
-[ablations.bank_plans]
-kind = "archive_ref"
-
-[ablations.command_bound]
-kind = "archive_ref"
-
-[ablations.parity_sum]
-kind = "archive_ref"
-
-[ablations.fourfold_move_runs]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.constant_zero_guard_20261102]
-kind = "archive_ref"
-
-[ablations.bottom_level_copy_leaves_trick]
-kind = "archive_ref"
-
-[ablations.zero_guarded_single_branch_trick]
-kind = "archive_ref"
-
-[ablations.xor_tail_two_levels_trick]
-kind = "archive_ref"
-
-[ablations.execution_bound_20261102]
-kind = "archive_ref"
-
-[ablations.trick_recheck_20261103_generic_guard_execution]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -72,12 +48,12 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

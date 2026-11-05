@@ -19,51 +19,33 @@ qualification = "equal-width input programs leave one selector apiece; each node
 "11111110" = { commands = 31, commands_by_row = { "0" = 15, "1" = 23, "2" = 15, "3" = 31, "4" = 15, "5" = 23, "6" = 15, "7" = 31 }, source_units = 52 }
 
 [ablations]
+archive_refs = [
+    "halves_agree_skip",
+    "carried_subtrees",
+    "race_figures",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_named_terminal_drops",
+    "trick_prototype_20261102_generic_terminal_drops",
+    "trick_prototype_20261102_last_level_bare_bits",
+    "trick_prototype_20261102_space_padded_selectors",
+    "trick_recheck_20261103_duplicate_selectors",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.halves_agree_skip]
-kind = "archive_ref"
-
-[ablations.carried_subtrees]
-kind = "archive_ref"
-
-[ablations.race_figures]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_named_terminal_drops]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_generic_terminal_drops]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_last_level_bare_bits]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_space_padded_selectors]
-kind = "archive_ref"
-
-[ablations.trick_recheck_20261103_duplicate_selectors]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

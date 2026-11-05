@@ -21,42 +21,22 @@ definitions = ["M = bits of the program's cells", "C = cell count"]
 "11111110" = { commands = 244, commands_by_row = { "0" = 241, "1" = 241, "2" = 241, "3" = 241, "4" = 242, "5" = 242, "6" = 243, "7" = 244 }, source_units = 149 }
 
 [ablations]
+archive_refs = [
+    "input_projection",
+    "subtree_sharing",
+    "constant_fold",
+    "pass_loop",
+    "routing_race_figures",
+    "shared_halt_prototype",
+    "constant_table_audit_20261101",
+    "constant_zero_side_target_20261102",
+    "fallthrough_owner_generic_20261102",
+    "fallthrough_owner_families_20261102",
+    "routing_order_race_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.input_projection]
-kind = "archive_ref"
-
-[ablations.subtree_sharing]
-kind = "archive_ref"
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.pass_loop]
-kind = "archive_ref"
-
-[ablations.routing_race_figures]
-kind = "archive_ref"
-
-[ablations.shared_halt_prototype]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.constant_zero_side_target_20261102]
-kind = "archive_ref"
-
-[ablations.fallthrough_owner_generic_20261102]
-kind = "archive_ref"
-
-[ablations.fallthrough_owner_families_20261102]
-kind = "archive_ref"
-
-[ablations.routing_order_race_20261102]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -64,12 +44,12 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

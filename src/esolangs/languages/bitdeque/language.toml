@@ -22,30 +22,18 @@ definitions = ["U = 4n + 25 + Σ_{d<n-1} (2c_d + 2min(c_d, 2c_d - c_{d+1})), c_d
 
 
 [ablations]
+archive_refs = [
+    "subtree_sharing",
+    "constant_fold",
+    "last_level_forms",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_inverted_fallthrough",
+    "trick_prototype_20261102_low_address_shared_pool",
+    "trick_prototype_20261102_child_order_choice",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.subtree_sharing]
-kind = "archive_ref"
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.last_level_forms]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_inverted_fallthrough]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_low_address_shared_pool]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_child_order_choice]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -53,15 +41,13 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

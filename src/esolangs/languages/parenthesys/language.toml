@@ -25,24 +25,16 @@ folding_ignored = "the string holds every row; an ignored input is still read in
 "11111110" = { commands = 20, commands_by_row = { "0" = 20, "1" = 20, "2" = 20, "3" = 20, "4" = 20, "5" = 20, "6" = 20, "7" = 20 }, source_units = 49 }
 
 [ablations]
+archive_refs = [
+    "string_guard",
+    "packed_codes",
+    "constant_table_fold",
+    "trick_prototype_20261101_decimal_group_reads",
+    "trick_prototype_20261101_grouped_read_ablation",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.string_guard]
-kind = "archive_ref"
-
-[ablations.packed_codes]
-kind = "archive_ref"
-
-[ablations.constant_table_fold]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_decimal_group_reads]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_grouped_read_ablation]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-01
@@ -50,12 +42,12 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

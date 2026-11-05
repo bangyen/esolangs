@@ -30,54 +30,26 @@ sharing_exempt = "a leaf retires by its path's bits, so equal subtables differ a
 
 
 [ablations]
+archive_refs = [
+    "route_switch",
+    "equal_halves_skip",
+    "ignored_input_arm_drop",
+    "sized_leaf_retirement",
+    "balance_turned_tree",
+    "reader_orientation_search",
+    "constant_folding",
+    "width_machinery",
+    "tiled_tree",
+    "six_by_eight_reader_prototype",
+    "constant_table_audit_20261101",
+    "negative_preset_left_sweep",
+    "answers_first_no_rewind",
+    "looped_bias_per_input",
+    "weighted_resource_accounting_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18" }
-
-[ablations.route_switch]
-kind = "archive_ref"
-
-[ablations.equal_halves_skip]
-kind = "archive_ref"
-
-[ablations.ignored_input_arm_drop]
-kind = "archive_ref"
-
-[ablations.sized_leaf_retirement]
-kind = "archive_ref"
-
-[ablations.balance_turned_tree]
-kind = "archive_ref"
-
-[ablations.reader_orientation_search]
-kind = "archive_ref"
-
-[ablations.constant_folding]
-kind = "archive_ref"
-
-[ablations.width_machinery]
-kind = "archive_ref"
-
-[ablations.tiled_tree]
-kind = "archive_ref"
-
-[ablations.six_by_eight_reader_prototype]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.negative_preset_left_sweep]
-kind = "archive_ref"
-
-[ablations.answers_first_no_rewind]
-kind = "archive_ref"
-
-[ablations.looped_bias_per_input]
-kind = "archive_ref"
-
-[ablations.weighted_resource_accounting_20261102]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -86,12 +58,12 @@ docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-18
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

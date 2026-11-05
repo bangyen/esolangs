@@ -21,57 +21,35 @@ folding_constant_local = "_diagram"
 "11111110" = { commands = 31, commands_by_row = { "0" = 29, "1" = 31, "2" = 35, "3" = 33, "4" = 35, "5" = 37, "6" = 41, "7" = 31 }, source_units = 218 }
 
 [ablations]
+archive_refs = [
+    "constant_fold",
+    "ignored_input",
+    "subtree_sharing",
+    "execution_corpus",
+    "constant_table_audit_20261101",
+    "constant_child_gate_pruning",
+    "complement_rail_sharing",
+    "frequency_ranked_primes",
+    "parity_complement",
+    "trick_execution",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-11-02", n3_source_units = 74510, n3_commands = 87920, executed_rows = 9332, historical_balanced_executed_rows_20261101 = 68 }
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.ignored_input]
-kind = "archive_ref"
-
-[ablations.subtree_sharing]
-kind = "archive_ref"
-
-[ablations.execution_corpus]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.constant_child_gate_pruning]
-kind = "archive_ref"
-
-[ablations.complement_rail_sharing]
-kind = "archive_ref"
-
-[ablations.frequency_ranked_primes]
-kind = "archive_ref"
-
-[ablations.parity_complement]
-kind = "archive_ref"
-
-[ablations.trick_execution]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
 blind_reimplementation = 2026-11-01
 
 [interpreter_ablations]
+archive_refs = [
+    "blind_reimplementation",
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.blind_reimplementation]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

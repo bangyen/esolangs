@@ -25,30 +25,18 @@ folding_ignored_local = "_skip"  # equal halves drop their bit unread by a swap
 folding_constant_local = "_skip"  # n bit-dropping levels, then a literal leaf
 
 [ablations]
+archive_refs = [
+    "equal_halves_skip",
+    "last_level_forms",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261101_constant_leaf_short_circuit",
+    "trick_prototype_20261101_release_wrapper_trim",
+    "trick_prototype_20261101_two_level_arithmetic_forms",
+    "trick_recheck_20261103_raw3_bit_extraction",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-20" }
-
-[ablations.equal_halves_skip]
-kind = "archive_ref"
-
-[ablations.last_level_forms]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_constant_leaf_short_circuit]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_release_wrapper_trim]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_two_level_arithmetic_forms]
-kind = "archive_ref"
-
-[ablations.trick_recheck_20261103_raw3_bit_extraction]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-01
@@ -57,15 +45,13 @@ docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "special_arities",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.special_arities]
-kind = "archive_ref"
 
 [evidence]
 version = 1

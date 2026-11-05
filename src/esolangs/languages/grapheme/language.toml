@@ -25,30 +25,18 @@ sharing_exempt = "one integer table literal"
 folding_constant_local = "_program"  # one-entry integer lookup
 
 [ablations]
+archive_refs = [
+    "input_projection",
+    "digit_borrow",
+    "packing_race",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261101_ord_quotient_read",
+    "trick_prototype_20261101_seed_first_read",
+    "trick_prototype_20261101_quotient_low_bit_store",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.input_projection]
-kind = "archive_ref"
-
-[ablations.digit_borrow]
-kind = "archive_ref"
-
-[ablations.packing_race]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_ord_quotient_read]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_seed_first_read]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_quotient_low_bit_store]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-01
@@ -56,12 +44,12 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

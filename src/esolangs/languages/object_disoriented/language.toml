@@ -21,30 +21,18 @@ definitions = ["c = 3 + the `n` and `d` letters", "F = Σ_{j<2n+3} (bl(c) + p_j 
 "11111110" = { commands = 260, commands_by_row = { "0" = 128, "1" = 128, "2" = 128, "3" = 128, "4" = 188, "5" = 188, "6" = 248, "7" = 260 }, source_units = 178 }
 
 [ablations]
+archive_refs = [
+    "subtree_sharing",
+    "halves_agree_skip",
+    "constant_fold",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261101_read_branch_class",
+    "trick_prototype_20261101_strip_separator_spaces",
+    "trick_prototype_20261101_undrained_leaves",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.subtree_sharing]
-kind = "archive_ref"
-
-[ablations.halves_agree_skip]
-kind = "archive_ref"
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_read_branch_class]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_strip_separator_spaces]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_undrained_leaves]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-01
@@ -52,15 +40,13 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

@@ -26,30 +26,18 @@ folding_constant = "a constant table is a one-entry literal"
 folds_without_tree = true
 
 [ablations]
+archive_refs = [
+    "essential_projection",
+    "flat_compact_form",
+    "packed_pairs",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_debruijn_quad_unpack",
+    "trick_prototype_20261102_debruijn_octet_superstring",
+    "trick_prototype_20261102_reuse_input_as_result",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.essential_projection]
-kind = "archive_ref"
-
-[ablations.flat_compact_form]
-kind = "archive_ref"
-
-[ablations.packed_pairs]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_debruijn_quad_unpack]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_debruijn_octet_superstring]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_reuse_input_as_result]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -57,12 +45,12 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

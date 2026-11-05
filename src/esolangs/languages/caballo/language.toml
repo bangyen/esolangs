@@ -29,47 +29,29 @@ docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [ablations]
+archive_refs = [
+    "equal_halves_skip",
+    "constant_fold",
+    "signed_sum",
+    "last_level_forms",
+    "complement_rule",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261101_drop_restore_selectors",
+    "trick_prototype_20261101_swap_hoist_common_selector",
+    "trick_prototype_20261101_root_variable_reorder",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-30" }
 
-[ablations.equal_halves_skip]
-kind = "archive_ref"
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.signed_sum]
-kind = "archive_ref"
-
-[ablations.last_level_forms]
-kind = "archive_ref"
-
-[ablations.complement_rule]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_drop_restore_selectors]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_swap_hoist_common_selector]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_root_variable_reorder]
-kind = "archive_ref"
-
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

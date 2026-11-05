@@ -18,30 +18,18 @@ sharing_exempt = "a stack lookup, one pushed entry per row, with no subtable bra
 folds_without_tree = true
 
 [ablations]
+archive_refs = [
+    "input_projection",
+    "run_loops",
+    "branch_reads",
+    "constant_table_audit_20261101",
+    "shared_parity_prefix",
+    "branch_tail_print",
+    "cheaper_branch_node",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.input_projection]
-kind = "archive_ref"
-
-[ablations.run_loops]
-kind = "archive_ref"
-
-[ablations.branch_reads]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.shared_parity_prefix]
-kind = "archive_ref"
-
-[ablations.branch_tail_print]
-kind = "archive_ref"
-
-[ablations.cheaper_branch_node]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -59,15 +47,13 @@ plain_rewrite = 2026-10-29
 "11111110" = { commands = 279, commands_by_row = { "0" = 263, "1" = 267, "2" = 268, "3" = 272, "4" = 270, "5" = 274, "6" = 275, "7" = 279 }, source_units = 72 }
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

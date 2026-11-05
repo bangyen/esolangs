@@ -23,27 +23,17 @@ sharing_exempt = "no names or jumps across lines: code runs once per place it is
 "11111110" = { commands = 117, commands_by_row = { "0" = 79, "1" = 79, "2" = 79, "3" = 79, "4" = 117, "5" = 117, "6" = 117, "7" = 117 }, source_units = 102 }
 
 [ablations]
+archive_refs = [
+    "constant_spans",
+    "input_literal",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_zero_plus",
+    "trick_prototype_20261102_carried_zero_byte",
+    "trick_prototype_20261102_unread_tail",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.constant_spans]
-kind = "archive_ref"
-
-[ablations.input_literal]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_zero_plus]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_carried_zero_byte]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_unread_tail]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -52,15 +42,13 @@ plain_rewrite = 2026-10-29
 blind_reimplementation = 2026-10-27
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

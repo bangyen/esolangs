@@ -25,54 +25,26 @@ definitions = ["G = max(bl(h+1) + 4, max_{j<h} bl(j+1) + max(1, bl(h-1-j)) + 10)
 folds_without_tree = true
 
 [ablations]
+archive_refs = [
+    "essential_projection",
+    "constant_fold",
+    "subtree_sharing",
+    "painted_block_bits",
+    "block_width_race",
+    "name_ordering",
+    "early_returns",
+    "balance_race",
+    "balance_word_spaces",
+    "parameterized_printer",
+    "constant_table_audit_20261101",
+    "reader_function_20261102",
+    "register_reads_low_inputs_20261102",
+    "trailing_zero_elision_20261102",
+    "constant_reader_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.essential_projection]
-kind = "archive_ref"
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.subtree_sharing]
-kind = "archive_ref"
-
-[ablations.painted_block_bits]
-kind = "archive_ref"
-
-[ablations.block_width_race]
-kind = "archive_ref"
-
-[ablations.name_ordering]
-kind = "archive_ref"
-
-[ablations.early_returns]
-kind = "archive_ref"
-
-[ablations.balance_race]
-kind = "archive_ref"
-
-[ablations.balance_word_spaces]
-kind = "archive_ref"
-
-[ablations.parameterized_printer]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.reader_function_20261102]
-kind = "archive_ref"
-
-[ablations.register_reads_low_inputs_20261102]
-kind = "archive_ref"
-
-[ablations.trailing_zero_elision_20261102]
-kind = "archive_ref"
-
-[ablations.constant_reader_20261102]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -80,12 +52,12 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

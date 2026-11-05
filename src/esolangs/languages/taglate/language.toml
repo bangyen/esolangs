@@ -28,41 +28,27 @@ sharing_exempt = "indexed table reduction, with no subtable branch"
 folding_constant_local = "_taglate_raw"  # smallest valid constant table
 
 [ablations]
+archive_refs = [
+    "essential_projection",
+    "constant_shortcut",
+    "crossing_bracket",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_packed_leaves",
+    "trick_prototype_20261102_inputs_ahead_layout",
+    "resource_exactness_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
-[ablations.essential_projection]
-kind = "archive_ref"
-
-[ablations.constant_shortcut]
-kind = "archive_ref"
-
-[ablations.crossing_bracket]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_packed_leaves]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_inputs_ahead_layout]
-kind = "archive_ref"
-
-[ablations.resource_exactness_20261103]
-kind = "archive_ref"
-
 [interpreter_ablations]
+archive_refs = [
+    "program_cache",
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
-
-[interpreter_ablations.program_cache]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02

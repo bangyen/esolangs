@@ -16,33 +16,19 @@ labels = ["linear lookup"]
 qualification = "Horner builds the projected table above packed inputs in one accumulator; four NORs select each cofactor, whole right shifts consume its input, and large levels rebuild -2 only from the sole live accumulator"
 
 [ablations]
+archive_refs = [
+    "essential_inputs",
+    "complement_runs",
+    "shared_rotations",
+    "late_constants",
+    "constant_table_audit_20261101",
+    "single_accumulator_20261102",
+    "raw_low_rebuild_20261102",
+    "nor_mux_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.essential_inputs]
-kind = "archive_ref"
-
-[ablations.complement_runs]
-kind = "archive_ref"
-
-[ablations.shared_rotations]
-kind = "archive_ref"
-
-[ablations.late_constants]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.single_accumulator_20261102]
-kind = "archive_ref"
-
-[ablations.raw_low_rebuild_20261102]
-kind = "archive_ref"
-
-[ablations.nor_mux_20261102]
-kind = "archive_ref"
 
 [generator_sizes]
 "00000001" = { commands = 332, commands_by_row = { "0" = 332, "1" = 332, "2" = 332, "3" = 332, "4" = 332, "5" = 332, "6" = 332, "7" = 332 }, source_units = 332 }
@@ -60,12 +46,12 @@ plain_rewrite = 2026-10-29
 trick_prototype = 2026-11-02
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

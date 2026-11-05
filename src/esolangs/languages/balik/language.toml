@@ -13,27 +13,17 @@ labels = ["tree"]
 qualification = "nested boxes test one input cell each with a splitter that also merges, since the tested cell is unchanged; a constant subtable is one leaf; two leaf children share the splitter row; a final identity cofactor prints its unchanged input cell"
 
 [ablations]
+archive_refs = [
+    "essential_inputs",
+    "layout_rule",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_leaf_pair_compaction",
+    "trick_prototype_20261102_projection_leaf",
+    "trick_prototype_20261102_projection_aware_order",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.essential_inputs]
-kind = "archive_ref"
-
-[ablations.layout_rule]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_leaf_pair_compaction]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_projection_leaf]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_projection_aware_order]
-kind = "archive_ref"
 
 [generator_sizes]
 "00000001" = { commands = 44, commands_by_row = { "0" = 26, "1" = 26, "2" = 26, "3" = 26, "4" = 38, "5" = 38, "6" = 44, "7" = 44 }, source_units = 109 }
@@ -52,12 +42,12 @@ blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

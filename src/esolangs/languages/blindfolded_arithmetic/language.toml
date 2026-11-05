@@ -23,39 +23,21 @@ qualification = "the table read at its essential inputs is one integer built by 
 folding_constant_local = "read_at"  # one projected table bit, no lookup round
 
 [ablations]
+archive_refs = [
+    "projection",
+    "register_reuse",
+    "complement_table",
+    "mirror_lookup",
+    "signed_digits",
+    "constant_table_audit_20261101",
+    "digit_register_search_trick",
+    "msb_shift_first_trick",
+    "alternating_counter_rounds_trick",
+    "parity_radix16_trick",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.projection]
-kind = "archive_ref"
-
-[ablations.register_reuse]
-kind = "archive_ref"
-
-[ablations.complement_table]
-kind = "archive_ref"
-
-[ablations.mirror_lookup]
-kind = "archive_ref"
-
-[ablations.signed_digits]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.digit_register_search_trick]
-kind = "archive_ref"
-
-[ablations.msb_shift_first_trick]
-kind = "archive_ref"
-
-[ablations.alternating_counter_rounds_trick]
-kind = "archive_ref"
-
-[ablations.parity_radix16_trick]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -63,12 +45,12 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

@@ -30,38 +30,26 @@ trick_prototype = 2026-11-01
 plain_rewrite = 2026-10-29
 
 [ablations]
+archive_refs = [
+    "polarity",
+    "signed_digits",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261101_parity_sum",
+    "trick_prototype_20261101_merged_chunks",
+    "trick_prototype_20261101_input_order_and_residual_search",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
 
-[ablations.polarity]
-kind = "archive_ref"
-
-[ablations.signed_digits]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_parity_sum]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_merged_chunks]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261101_input_order_and_residual_search]
-kind = "archive_ref"
-
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

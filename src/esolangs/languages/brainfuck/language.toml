@@ -19,62 +19,34 @@ qualification = "zero-pruned decision tree; residuals defer through level flags;
 "11111110" = { commands = 271, commands_by_row = { "0" = 245, "1" = 245, "2" = 245, "3" = 245, "4" = 252, "5" = 252, "6" = 259, "7" = 271 }, source_units = 189 }
 
 [ablations]
+archive_refs = [
+    "shared_flag_tree",
+    "binary_bank",
+    "complement_print",
+    "affine_stream",
+    "plain_tree_merge",
+    "plain_tree_fold",
+    "shared_ascii_counter",
+    "shipped_cost_audit_20261101",
+    "constant_table_audit_20261101",
+    "zero_arms",
+    "last_level_copy_leaves",
+    "adjacent_test_layout",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-28" }
 
-[ablations.shared_flag_tree]
-kind = "archive_ref"
-
-[ablations.binary_bank]
-kind = "archive_ref"
-
-[ablations.complement_print]
-kind = "archive_ref"
-
-[ablations.affine_stream]
-kind = "archive_ref"
-
-[ablations.plain_tree_merge]
-kind = "archive_ref"
-
-[ablations.plain_tree_fold]
-kind = "archive_ref"
-
-[ablations.shared_ascii_counter]
-kind = "archive_ref"
-
-[ablations.shipped_cost_audit_20261101]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.zero_arms]
-kind = "archive_ref"
-
-[ablations.last_level_copy_leaves]
-kind = "archive_ref"
-
-[ablations.adjacent_test_layout]
-kind = "archive_ref"
-
 [interpreter_ablations]
+archive_refs = [
+    "dirty_write_buffer",
+    "compiled_peepholes",
+    "compile_cache",
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
-
-[interpreter_ablations.dirty_write_buffer]
-kind = "archive_ref"
-
-[interpreter_ablations.compiled_peepholes]
-kind = "archive_ref"
-
-[interpreter_ablations.compile_cache]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [audits]
 plain_rewrite = 2026-10-28

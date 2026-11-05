@@ -33,47 +33,29 @@ folding_constant_local = "_constant_read"  # scratch reads and untouched factore
 folds_without_tree = true
 
 [ablations]
+archive_refs = [
+    "greedy_raise_chunks",
+    "essential_weight_projection",
+    "constant_read",
+    "small_weight_banking",
+    "projection_race_255",
+    "constant_table_audit_20261101",
+    "merge_window_start_20261102",
+    "ballast_into_leaf_gap_20261102",
+    "shared_return_route_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
-[ablations.greedy_raise_chunks]
-kind = "archive_ref"
-
-[ablations.essential_weight_projection]
-kind = "archive_ref"
-
-[ablations.constant_read]
-kind = "archive_ref"
-
-[ablations.small_weight_banking]
-kind = "archive_ref"
-
-[ablations.projection_race_255]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.merge_window_start_20261102]
-kind = "archive_ref"
-
-[ablations.ballast_into_leaf_gap_20261102]
-kind = "archive_ref"
-
-[ablations.shared_return_route_20261102]
-kind = "archive_ref"
-
 [interpreter_ablations]
+archive_refs = [
+    "tokens_cache",
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
-
-[interpreter_ablations.tokens_cache]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30

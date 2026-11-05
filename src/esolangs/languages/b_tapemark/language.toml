@@ -32,39 +32,21 @@ folding_constant_local = "b_tapemark"  # direct read-and-print constant
 folds_without_tree = true
 
 [ablations]
+archive_refs = [
+    "essential_projection",
+    "constant_fold",
+    "copy_17_20",
+    "area_default",
+    "area_strip_width_prototype",
+    "shipped_cost_audit_20261101",
+    "constant_table_audit_20261101",
+    "beside_stages_trick_20261102",
+    "boustrophedon_copy_trick_20261102",
+    "stage_row_share_trick_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.essential_projection]
-kind = "archive_ref"
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.copy_17_20]
-kind = "archive_ref"
-
-[ablations.area_default]
-kind = "archive_ref"
-
-[ablations.area_strip_width_prototype]
-kind = "archive_ref"
-
-[ablations.shipped_cost_audit_20261101]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.beside_stages_trick_20261102]
-kind = "archive_ref"
-
-[ablations.boustrophedon_copy_trick_20261102]
-kind = "archive_ref"
-
-[ablations.stage_row_share_trick_20261102]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -73,12 +55,12 @@ docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

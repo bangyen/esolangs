@@ -23,57 +23,35 @@ definitions = ["W = bl(n)+6n+2b+1 constant, bl(n)+5n+6+2b(S+2n+2) expression, bl
 "11111110" = { commands = 27, commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27, "4" = 27, "5" = 27, "6" = 27, "7" = 27 }, source_units = 27 }
 
 [ablations]
+archive_refs = [
+    "subtree_sharing",
+    "halves_agree_fold",
+    "root_drain",
+    "expression_form",
+    "expression_complement",
+    "expression_xor_collapse",
+    "low_bit_complemented_leaves",
+    "constant_table_audit_20261101",
+    "literal_lookup_build_trick_20261102",
+    "conditional_mux_trick_20261102",
+    "formula_subtree_sharing_trick_20261102",
+    "literal_wrapping_correctness_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.subtree_sharing]
-kind = "archive_ref"
-
-[ablations.halves_agree_fold]
-kind = "archive_ref"
-
-[ablations.root_drain]
-kind = "archive_ref"
-
-[ablations.expression_form]
-kind = "archive_ref"
-
-[ablations.expression_complement]
-kind = "archive_ref"
-
-[ablations.expression_xor_collapse]
-kind = "archive_ref"
-
-[ablations.low_bit_complemented_leaves]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.literal_lookup_build_trick_20261102]
-kind = "archive_ref"
-
-[ablations.conditional_mux_trick_20261102]
-kind = "archive_ref"
-
-[ablations.formula_subtree_sharing_trick_20261102]
-kind = "archive_ref"
-
-[ablations.literal_wrapping_correctness_20261102]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
 plain_rewrite = 2026-10-28
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

@@ -173,6 +173,16 @@ def parse_audits(language: str, group: str, data: dict[str, Any]) -> AuditFile:
     archive_revision = (
         revision(data["archive_revision"]) if "archive_revision" in data else None
     )
+    refs = data.get("archive_refs", [])
+    if (
+        not isinstance(refs, list)
+        or any(not isinstance(key, str) or not key or key in data for key in refs)
+        or len(set(refs)) != len(refs)
+    ):
+        raise ValueError("archive references must be distinct record names")
+    data = {key: value for key, value in data.items() if key != "archive_refs"} | {
+        key: {"kind": "archive_ref"} for key in refs
+    }
     records: dict[str, ArchiveRecord | ReplayRecord] = {}
     archived: dict[str, Any] | None = None
     for key, entry in data.items():

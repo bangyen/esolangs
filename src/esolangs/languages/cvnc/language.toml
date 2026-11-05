@@ -20,33 +20,19 @@ qualification = "the halting goto squares once more whenever the program is not 
 "11111110" = { commands = 25, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 25, "5" = 25, "6" = 25, "7" = 25 }, source_units = 52 }
 
 [ablations]
+archive_refs = [
+    "subtree_sharing",
+    "climb",
+    "spelling_dp",
+    "constant_fold",
+    "essential_projection",
+    "leaf_accumulator_reuse",
+    "constant_table_audit_20261101",
+    "tricks_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.subtree_sharing]
-kind = "archive_ref"
-
-[ablations.climb]
-kind = "archive_ref"
-
-[ablations.spelling_dp]
-kind = "archive_ref"
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.essential_projection]
-kind = "archive_ref"
-
-[ablations.leaf_accumulator_reuse]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.tricks_20261102]
-kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30
@@ -54,12 +40,12 @@ plain_rewrite = 2026-10-27
 trick_prototype = 2026-11-02
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

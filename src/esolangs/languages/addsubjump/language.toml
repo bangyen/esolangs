@@ -26,45 +26,23 @@ definitions = ["C = ⌈T/n⌉, I = 5n + 54, B = 4I, M = B + 14 + 2C", "Q = I·bl
 "11111110" = { commands = 23, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 20, "5" = 20, "6" = 23, "7" = 23 }, source_units = 344 }
 
 [ablations]
+archive_refs = [
+    "packed_decoder",
+    "residual_tree_route",
+    "shared_residuals",
+    "constant_fold",
+    "essential_descent",
+    "data_blocks",
+    "conditional_cell",
+    "tree_contestant",
+    "essential_projection",
+    "reverse_tree_prototype",
+    "constant_table_audit_20261101",
+    "packed_reader_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.packed_decoder]
-kind = "archive_ref"
-
-[ablations.residual_tree_route]
-kind = "archive_ref"
-
-[ablations.shared_residuals]
-kind = "archive_ref"
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.essential_descent]
-kind = "archive_ref"
-
-[ablations.data_blocks]
-kind = "archive_ref"
-
-[ablations.conditional_cell]
-kind = "archive_ref"
-
-[ablations.tree_contestant]
-kind = "archive_ref"
-
-[ablations.essential_projection]
-kind = "archive_ref"
-
-[ablations.reverse_tree_prototype]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.packed_reader_20261102]
-kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30
@@ -73,12 +51,12 @@ plain_rewrite = 2026-10-27
 trick_prototype = 2026-11-02
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

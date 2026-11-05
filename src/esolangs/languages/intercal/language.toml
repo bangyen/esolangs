@@ -25,60 +25,36 @@ folding_ignored_local = "_diagram"  # equal children replace their selector
 folding_constant_local = "_diagram"  # equal-child reduction to a constant id
 
 [ablations]
+archive_refs = [
+    "subtree_interning",
+    "equal_half_collapse",
+    "node_naming",
+    "negation_naming",
+    "input_order",
+    "balance_packed_rows",
+    "constant_mux_folding",
+    "constant_table_audit_20261101",
+    "select_mux_20261102",
+    "canonical_aliases_20261102",
+    "folded_frame_repricing_20261102",
+    "exact_route_resources_20261102",
+    "constructor_cost_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.subtree_interning]
-kind = "archive_ref"
-
-[ablations.equal_half_collapse]
-kind = "archive_ref"
-
-[ablations.node_naming]
-kind = "archive_ref"
-
-[ablations.negation_naming]
-kind = "archive_ref"
-
-[ablations.input_order]
-kind = "archive_ref"
-
-[ablations.balance_packed_rows]
-kind = "archive_ref"
-
-[ablations.constant_mux_folding]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.select_mux_20261102]
-kind = "archive_ref"
-
-[ablations.canonical_aliases_20261102]
-kind = "archive_ref"
-
-[ablations.folded_frame_repricing_20261102]
-kind = "archive_ref"
-
-[ablations.exact_route_resources_20261102]
-kind = "archive_ref"
-
-[ablations.constructor_cost_20261102]
-kind = "archive_ref"
 
 [audits]
 plain_rewrite = 2026-10-22
 trick_prototype = 2026-11-02
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

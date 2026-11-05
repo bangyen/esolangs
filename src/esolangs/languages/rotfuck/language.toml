@@ -28,53 +28,31 @@ definitions = ["E = 8T²+43T+15n-5, default normalized digits", "R = sum of raw 
 folding_constant_local = "_program"  # one-entry rotated lookup
 
 [ablations]
+archive_refs = [
+    "essential_projection",
+    "radix_bits",
+    "short_digit_low",
+    "raw_digits",
+    "symmetric_count",
+    "constant_table_audit_20261101",
+    "constant_runs_by_multiplication",
+    "packed_entry_pairs",
+    "raced_digit_split",
+    "raw_five_execution_20261103",
+    "packed_pairs_execution_recheck_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-28" }
 
-[ablations.essential_projection]
-kind = "archive_ref"
-
-[ablations.radix_bits]
-kind = "archive_ref"
-
-[ablations.short_digit_low]
-kind = "archive_ref"
-
-[ablations.raw_digits]
-kind = "archive_ref"
-
-[ablations.symmetric_count]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.constant_runs_by_multiplication]
-kind = "archive_ref"
-
-[ablations.packed_entry_pairs]
-kind = "archive_ref"
-
-[ablations.raced_digit_split]
-kind = "archive_ref"
-
-[ablations.raw_five_execution_20261103]
-kind = "archive_ref"
-
-[ablations.packed_pairs_execution_recheck_20261103]
-kind = "archive_ref"
-
 [interpreter_ablations]
+archive_refs = [
+    "opcode_table",
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
-
-[interpreter_ablations.opcode_table]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30

@@ -21,42 +21,22 @@ qualification = "shared trees within the label budget, positional or guarded wal
 
 
 [ablations]
+archive_refs = [
+    "subtree_sharing",
+    "order_race",
+    "fewest_token_const",
+    "constant_fold",
+    "essential_drop",
+    "walk_home_loop",
+    "complement_walk_prototype",
+    "constant_table_audit_20261101",
+    "fallthrough_one_arm",
+    "walk_packed_rows",
+    "packed_walk_with_fallthrough",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.subtree_sharing]
-kind = "archive_ref"
-
-[ablations.order_race]
-kind = "archive_ref"
-
-[ablations.fewest_token_const]
-kind = "archive_ref"
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.essential_drop]
-kind = "archive_ref"
-
-[ablations.walk_home_loop]
-kind = "archive_ref"
-
-[ablations.complement_walk_prototype]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.fallthrough_one_arm]
-kind = "archive_ref"
-
-[ablations.walk_packed_rows]
-kind = "archive_ref"
-
-[ablations.packed_walk_with_fallthrough]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -64,12 +44,12 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

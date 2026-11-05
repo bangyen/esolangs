@@ -20,45 +20,31 @@ qualification = "the table is the starting state, one character an entry, and th
 
 
 [ablations]
+archive_refs = [
+    "queued_projection",
+    "constant_half_fold",
+    "pair_packing",
+    "constant_table_audit_20261101",
+    "round_queue_direct_read",
+    "queue_direct_read_all_layouts",
+    "selective_quad_packing",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.queued_projection]
-kind = "archive_ref"
-
-[ablations.constant_half_fold]
-kind = "archive_ref"
-
-[ablations.pair_packing]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.round_queue_direct_read]
-kind = "archive_ref"
-
-[ablations.queue_direct_read_all_layouts]
-kind = "archive_ref"
-
-[ablations.selective_quad_packing]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
 plain_rewrite = 2026-10-28
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

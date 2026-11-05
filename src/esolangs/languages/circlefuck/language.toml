@@ -32,53 +32,31 @@ folding_constant_local = "_program"  # read into an executed cell and print the 
 folds_without_tree = true
 
 [interpreter_ablations]
+archive_refs = [
+    "parsed_cache",
+    "speedup_prototype_20261103",
+    "bitmask_runtime_recheck",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
 
-[interpreter_ablations.parsed_cache]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.bitmask_runtime_recheck]
-kind = "archive_ref"
-
 [ablations]
+archive_refs = [
+    "constant_fold",
+    "projection",
+    "symmetric_count",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_shared_offset_read",
+    "trick_prototype_20261102_dropped_clamp",
+    "trick_prototype_20261102_eight_bit_digit",
+    "trick_prototype_20261102_horner_on_read",
+    "trick_prototype_20261102_workspace_accounting",
+    "trick_prototype_20261102_execution_wrapping",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.projection]
-kind = "archive_ref"
-
-[ablations.symmetric_count]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_shared_offset_read]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_dropped_clamp]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_eight_bit_digit]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_horner_on_read]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_workspace_accounting]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_execution_wrapping]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02

@@ -65,7 +65,15 @@ def _controls(tmp_path, monkeypatch):
     data = tomllib.loads((ablations.ROOT / archive.path).read_text())["ablations"]
     key = next(iter(archive.records))
     compact = copy.deepcopy(data)
+    for refs in (None, "record", [key, key], [""], [False], [{}]):
+        with pytest.raises(ValueError, match="references"):
+            ablations.parse_audits(
+                REFERENCE, "ablations", compact | {"archive_refs": refs}
+            )
     pinned = ablations._archive_source(REFERENCE, "ablations", archive.archive_revision)
+    data = {k: v for k, v in data.items() if k != "archive_refs"} | {
+        k: pinned[k] for k in data.get("archive_refs", [])
+    }
     data = {
         k: pinned[k] if isinstance(v, dict) and v.get("kind") == "archive_ref" else v
         for k, v in data.items()
@@ -97,7 +105,7 @@ def _controls(tmp_path, monkeypatch):
             REFERENCE, "ablations", compact | {"archive_revision": "f" * 40}
         )
     removed = copy.deepcopy(compact)
-    del removed[key]
+    removed["archive_refs"].remove(key)
     with pytest.raises(ablation_replay.AuditError, match="records are missing"):
         ablations.verify_archive(
             ablations.parse_audits(REFERENCE, "ablations", removed)

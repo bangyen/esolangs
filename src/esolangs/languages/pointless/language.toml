@@ -20,30 +20,18 @@ qualification = "each distinct subtable is one function, pasted in where that is
 "11111110" = { commands = 385, commands_by_row = { "0" = 358, "1" = 358, "2" = 358, "3" = 358, "4" = 368, "5" = 368, "6" = 378, "7" = 385 }, source_units = 457 }
 
 [ablations]
+archive_refs = [
+    "halves_agree_skip",
+    "inline_race",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_no_return_after_print",
+    "trick_prototype_20261102_no_return_lean",
+    "trick_prototype_20261102_short_names",
+    "trick_prototype_20261102_adjacent_digit_cells",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.halves_agree_skip]
-kind = "archive_ref"
-
-[ablations.inline_race]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_no_return_after_print]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_no_return_lean]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_short_names]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_adjacent_digit_cells]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -51,12 +39,12 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

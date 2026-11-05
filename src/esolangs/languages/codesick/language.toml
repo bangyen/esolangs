@@ -24,30 +24,18 @@ definitions = ["C = Σ_{d<n} min(2^d, 2^2^(n-d) - 2), the most non-constant node
 folding_ignored_read = "a bit is exposed only by deleting the one read before it, so an ignored one costs a delete node per residual below it"
 
 [ablations]
+archive_refs = [
+    "subtree_sharing",
+    "constant_fold",
+    "inline_children",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_dense_names",
+    "trick_prototype_20261102_hashless_eight",
+    "trick_prototype_20261102_tight_tokens",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.subtree_sharing]
-kind = "archive_ref"
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.inline_children]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_dense_names]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_hashless_eight]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_tight_tokens]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -55,12 +43,12 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

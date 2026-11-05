@@ -23,33 +23,19 @@ qualification = "the table is a tree of Church pairs, equal halves folded to `K`
 sharing_exempt = "no names: binding a repeated subtree by abstraction adds S and K to every pair above it"
 
 [ablations]
+archive_refs = [
+    "equal_halves_fold",
+    "identity_leaf",
+    "minimal_grouping",
+    "constant_table_audit_20261101",
+    "bottom_pair_search",
+    "three_bit_subtree_search",
+    "reader_stage_reabstraction",
+    "majority_pair_rule",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-11-02" }
-
-[ablations.equal_halves_fold]
-kind = "archive_ref"
-
-[ablations.identity_leaf]
-kind = "archive_ref"
-
-[ablations.minimal_grouping]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.bottom_pair_search]
-kind = "archive_ref"
-
-[ablations.three_bit_subtree_search]
-kind = "archive_ref"
-
-[ablations.reader_stage_reabstraction]
-kind = "archive_ref"
-
-[ablations.majority_pair_rule]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -58,15 +44,13 @@ blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

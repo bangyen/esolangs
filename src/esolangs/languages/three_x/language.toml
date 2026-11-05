@@ -24,51 +24,25 @@ definitions = ["K(i) = bits of the ith key's value, exact", "G = the program's (
 sharing_local = "_three_x_emit"  # defer repeated blocks behind flags
 
 [ablations]
+archive_refs = [
+    "key_assignment",
+    "column_copy",
+    "block_sharing",
+    "equal_halves_skip",
+    "constant_fold",
+    "value_tracking",
+    "essential_projection",
+    "top_tracking",
+    "key_family",
+    "reverse_tree_prototype",
+    "constant_table_audit_20261101",
+    "stack_operand_reuse_20261102",
+    "zero_top_write_only_20261102",
+    "inverted_decode_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-27", unrelated = ["2.2%", "12.6%"] }
-
-[ablations.key_assignment]
-kind = "archive_ref"
-
-[ablations.column_copy]
-kind = "archive_ref"
-
-[ablations.block_sharing]
-kind = "archive_ref"
-
-[ablations.equal_halves_skip]
-kind = "archive_ref"
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.value_tracking]
-kind = "archive_ref"
-
-[ablations.essential_projection]
-kind = "archive_ref"
-
-[ablations.top_tracking]
-kind = "archive_ref"
-
-[ablations.key_family]
-kind = "archive_ref"
-
-[ablations.reverse_tree_prototype]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.stack_operand_reuse_20261102]
-kind = "archive_ref"
-
-[ablations.zero_top_write_only_20261102]
-kind = "archive_ref"
-
-[ablations.inverted_decode_20261102]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -76,12 +50,12 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

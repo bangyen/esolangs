@@ -23,48 +23,24 @@ qualification = "one 128-row array block, painted inside the `If` that selects i
 folds_without_tree = true
 
 [ablations]
+archive_refs = [
+    "essential_projection",
+    "block_aliasing",
+    "smaller_block_offers",
+    "fill_punch",
+    "run_loops",
+    "complement_paint",
+    "refold_body",
+    "block_cap",
+    "span_fill_prototype",
+    "constant_table_audit_20261101",
+    "input_polarity_relabel",
+    "split_index_offset",
+    "trailing_value_drop",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.essential_projection]
-kind = "archive_ref"
-
-[ablations.block_aliasing]
-kind = "archive_ref"
-
-[ablations.smaller_block_offers]
-kind = "archive_ref"
-
-[ablations.fill_punch]
-kind = "archive_ref"
-
-[ablations.run_loops]
-kind = "archive_ref"
-
-[ablations.complement_paint]
-kind = "archive_ref"
-
-[ablations.refold_body]
-kind = "archive_ref"
-
-[ablations.block_cap]
-kind = "archive_ref"
-
-[ablations.span_fill_prototype]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.input_polarity_relabel]
-kind = "archive_ref"
-
-[ablations.split_index_offset]
-kind = "archive_ref"
-
-[ablations.trailing_value_drop]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -72,15 +48,13 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

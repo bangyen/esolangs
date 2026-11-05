@@ -21,54 +21,26 @@ definitions = ["B = the program cells' bits, a sign one more", "C = the program'
 "11111110" = { commands = 9, commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 8, "5" = 8, "6" = 9, "7" = 9 }, source_units = 122 }
 
 [ablations]
+archive_refs = [
+    "packed_decoder",
+    "shared_tree",
+    "constant_path",
+    "subtree_sharing",
+    "equal_halves_skip",
+    "input_projection",
+    "target_cell_sharing",
+    "tree_rows_threshold",
+    "tree_bound_skip",
+    "reverse_shared_tree_prototype",
+    "constant_table_audit_20261101",
+    "compact_tree_data",
+    "hot_cells_low_addresses_prototype",
+    "per_node_polarity_prototype",
+    "sifted_variable_order_prototype",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-20" }
-
-[ablations.packed_decoder]
-kind = "archive_ref"
-
-[ablations.shared_tree]
-kind = "archive_ref"
-
-[ablations.constant_path]
-kind = "archive_ref"
-
-[ablations.subtree_sharing]
-kind = "archive_ref"
-
-[ablations.equal_halves_skip]
-kind = "archive_ref"
-
-[ablations.input_projection]
-kind = "archive_ref"
-
-[ablations.target_cell_sharing]
-kind = "archive_ref"
-
-[ablations.tree_rows_threshold]
-kind = "archive_ref"
-
-[ablations.tree_bound_skip]
-kind = "archive_ref"
-
-[ablations.reverse_shared_tree_prototype]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.compact_tree_data]
-kind = "archive_ref"
-
-[ablations.hot_cells_low_addresses_prototype]
-kind = "archive_ref"
-
-[ablations.per_node_polarity_prototype]
-kind = "archive_ref"
-
-[ablations.sifted_variable_order_prototype]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -77,15 +49,13 @@ plain_rewrite = 2026-10-27
 blind_reimplementation = 2026-10-27
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

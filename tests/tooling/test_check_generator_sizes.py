@@ -243,7 +243,6 @@ while True:
 import sys, subprocess, time
 sys.path.insert(0, {str(Path(__file__).resolve().parents[2] / "scripts")!r})
 import benchmark
-import _benchmark_worker as worker
 def hang(*args, **kwargs):
     subprocess.Popen([sys.executable, '-c', {child!r}])
     time.sleep(30)
@@ -256,7 +255,7 @@ def hang(*args, **kwargs):
     setup += (
         f"subprocess.Popen([sys.executable, '-c', {child!r}]); time.sleep(30)"
         if phase == "startup"
-        else "worker._worker_main()"
+        else "benchmark._worker_main()"
     )
     monkeypatch.setattr(b, "Worker", lambda: factory([sys.executable, "-c", setup]))
     start = time.monotonic()

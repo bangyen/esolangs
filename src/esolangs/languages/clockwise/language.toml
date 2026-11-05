@@ -27,39 +27,21 @@ folding_constant_local = "_constant_ring"  # read rotation and literal output
 folds_without_tree = true
 
 [ablations]
+archive_refs = [
+    "essential_drop",
+    "constant_ring",
+    "coordinate_ring",
+    "trailing_rail",
+    "flat_band",
+    "table_rows",
+    "constant_table_audit_20261101",
+    "gadgets_under_table_trick_20261102",
+    "last_input_branch_trick_20261102",
+    "two_groups_per_gadget_cell_trick_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-27" }
-
-[ablations.essential_drop]
-kind = "archive_ref"
-
-[ablations.constant_ring]
-kind = "archive_ref"
-
-[ablations.coordinate_ring]
-kind = "archive_ref"
-
-[ablations.trailing_rail]
-kind = "archive_ref"
-
-[ablations.flat_band]
-kind = "archive_ref"
-
-[ablations.table_rows]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.gadgets_under_table_trick_20261102]
-kind = "archive_ref"
-
-[ablations.last_input_branch_trick_20261102]
-kind = "archive_ref"
-
-[ablations.two_groups_per_gadget_cell_trick_20261102]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -67,15 +49,13 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

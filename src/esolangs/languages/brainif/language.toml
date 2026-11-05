@@ -25,39 +25,21 @@ sharing_local = "_brainif_dag"  # residual states emitted once
 folding_constant_local = "_brainif_dag"  # constant residual output tail
 
 [ablations]
+archive_refs = [
+    "residual_dag_sharing",
+    "layer_skip",
+    "fallthrough_layout",
+    "wide_tree_race",
+    "lookup_loops",
+    "constant_table_audit_20261101",
+    "out0_or_20261102",
+    "raw_out0_split_20261102",
+    "dag_short_spellings_20261102",
+    "maximum_cover_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-27" }
-
-[ablations.residual_dag_sharing]
-kind = "archive_ref"
-
-[ablations.layer_skip]
-kind = "archive_ref"
-
-[ablations.fallthrough_layout]
-kind = "archive_ref"
-
-[ablations.wide_tree_race]
-kind = "archive_ref"
-
-[ablations.lookup_loops]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.out0_or_20261102]
-kind = "archive_ref"
-
-[ablations.raw_out0_split_20261102]
-kind = "archive_ref"
-
-[ablations.dag_short_spellings_20261102]
-kind = "archive_ref"
-
-[ablations.maximum_cover_20261102]
-kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30
@@ -68,12 +50,12 @@ trick_prototype = 2026-11-02
 wall = "a line is one guarded command, if <int> <command> [operand] (interpreter.py _parse), carrying O(log L) bits; T table bits need L >= c*T/log T lines, so the side 2*L gives area >= c*T**2/log**2 T (measured T**1.57 from n=10 to 12, 2026-10-29)"
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

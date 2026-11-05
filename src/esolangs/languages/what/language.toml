@@ -26,27 +26,17 @@ folding_ignored = "the Horner index reads every input; an ignored one still spac
 folding_constant = "read every number into one slot, overwrite and print the bit: 3n+2 chars"
 
 [ablations]
+archive_refs = [
+    "change_point_runs",
+    "block_reload",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_kill_write_threshold",
+    "trick_prototype_20261102_drop_index_copy",
+    "trick_prototype_20261102_string_prefix_index",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.change_point_runs]
-kind = "archive_ref"
-
-[ablations.block_reload]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_kill_write_threshold]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_drop_index_copy]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_string_prefix_index]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -54,12 +44,12 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

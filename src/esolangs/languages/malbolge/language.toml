@@ -31,59 +31,33 @@ folding_constant = "direct constant builder after all reads: 618..639 characters
 
 
 [ablations]
+archive_refs = [
+    "full_store_render",
+    "tier_constructions",
+    "shortest_path_planner",
+    "searched_constants",
+    "constant_folding",
+    "ignored_input_drop",
+    "source_storage_prototype",
+    "constant_table_audit_20261101",
+    "low_arity_hub_relocation_20261102",
+    "digit_order_compaction_20261102",
+    "single_hub_labels_low_n_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18" }
 
-[ablations.full_store_render]
-kind = "archive_ref"
-
-[ablations.tier_constructions]
-kind = "archive_ref"
-
-[ablations.shortest_path_planner]
-kind = "archive_ref"
-
-[ablations.searched_constants]
-kind = "archive_ref"
-
-[ablations.constant_folding]
-kind = "archive_ref"
-
-[ablations.ignored_input_drop]
-kind = "archive_ref"
-
-[ablations.source_storage_prototype]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.low_arity_hub_relocation_20261102]
-kind = "archive_ref"
-
-[ablations.digit_order_compaction_20261102]
-kind = "archive_ref"
-
-[ablations.single_hub_labels_low_n_20261102]
-kind = "archive_ref"
-
 [interpreter_ablations]
+archive_refs = [
+    "dirty_chunks",
+    "initial_memory_cache",
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
-
-[interpreter_ablations.dirty_chunks]
-kind = "archive_ref"
-
-[interpreter_ablations.initial_memory_cache]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02

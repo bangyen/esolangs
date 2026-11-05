@@ -31,51 +31,33 @@ evidence = "docs/proofs/index.md#exceptions-and-walls"
 folding_constant_local = "input_weights"  # one projected table cell
 
 [ablations]
+archive_refs = [
+    "sqrt_width_layout",
+    "header_folding",
+    "essential_projection",
+    "six_bit_packing",
+    "balance_narrow",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_one_row_nibbles",
+    "trick_prototype_20261102_header_row_inline_data",
+    "trick_prototype_20261102_horner_shift_first_reads",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.sqrt_width_layout]
-kind = "archive_ref"
-
-[ablations.header_folding]
-kind = "archive_ref"
-
-[ablations.essential_projection]
-kind = "archive_ref"
-
-[ablations.six_bit_packing]
-kind = "archive_ref"
-
-[ablations.balance_narrow]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_one_row_nibbles]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_header_row_inline_data]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_horner_shift_first_reads]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
 plain_rewrite = 2026-10-28
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

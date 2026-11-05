@@ -29,42 +29,22 @@ folding_constant_local = "_program"  # reads and literal output
 folds_without_tree = true
 
 [ablations]
+archive_refs = [
+    "input_projection",
+    "constant_path",
+    "zero_run_loops",
+    "count_doubling",
+    "complement_paint",
+    "pair_packing",
+    "constant_table_audit_20261101",
+    "initial_zero_double_20261102",
+    "tricks_20261102",
+    "decoded_input_20261102",
+    "count_doubling_retirement_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.input_projection]
-kind = "archive_ref"
-
-[ablations.constant_path]
-kind = "archive_ref"
-
-[ablations.zero_run_loops]
-kind = "archive_ref"
-
-[ablations.count_doubling]
-kind = "archive_ref"
-
-[ablations.complement_paint]
-kind = "archive_ref"
-
-[ablations.pair_packing]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.initial_zero_double_20261102]
-kind = "archive_ref"
-
-[ablations.tricks_20261102]
-kind = "archive_ref"
-
-[ablations.decoded_input_20261102]
-kind = "archive_ref"
-
-[ablations.count_doubling_retirement_20261102]
-kind = "archive_ref"
 
 [audits]
 blind_reimplementation = 2026-10-30
@@ -72,15 +52,13 @@ plain_rewrite = 2026-10-28
 trick_prototype = 2026-11-02
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

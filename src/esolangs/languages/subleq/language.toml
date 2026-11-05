@@ -23,51 +23,25 @@ definitions = ["I = the program's cell bits: bl(|v|) plus one per zero or negati
 folds_without_tree = true
 
 [ablations]
+archive_refs = [
+    "packed_decoder",
+    "shared_tree",
+    "constant_shortcut",
+    "share_lookahead",
+    "subtree_sharing",
+    "equal_halves_skip",
+    "constant_fold",
+    "input_projection",
+    "reverse_shared_tree_prototype",
+    "constant_table_audit_20261101",
+    "ignored_io_targets",
+    "packed_leaf_hybrid_prototype",
+    "low_address_layout_prototype",
+    "complement_residual_sharing_prototype",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-20" }
-
-[ablations.packed_decoder]
-kind = "archive_ref"
-
-[ablations.shared_tree]
-kind = "archive_ref"
-
-[ablations.constant_shortcut]
-kind = "archive_ref"
-
-[ablations.share_lookahead]
-kind = "archive_ref"
-
-[ablations.subtree_sharing]
-kind = "archive_ref"
-
-[ablations.equal_halves_skip]
-kind = "archive_ref"
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.input_projection]
-kind = "archive_ref"
-
-[ablations.reverse_shared_tree_prototype]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.ignored_io_targets]
-kind = "archive_ref"
-
-[ablations.packed_leaf_hybrid_prototype]
-kind = "archive_ref"
-
-[ablations.low_address_layout_prototype]
-kind = "archive_ref"
-
-[ablations.complement_residual_sharing_prototype]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-03
@@ -75,12 +49,12 @@ plain_rewrite = 2026-10-27
 
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

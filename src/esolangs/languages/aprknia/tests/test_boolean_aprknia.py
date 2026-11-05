@@ -9,9 +9,7 @@ from tests.support.generator_support import (
     assert_native_rows,
     measure_run,
 )
-
-#: Every one- and two-input table; a tree's folding bugs show here first.
-TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
+from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
 @pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])

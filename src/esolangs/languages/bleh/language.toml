@@ -21,39 +21,21 @@ definitions = ["H = 64n+1+Σ_{0<a<n} bl(a)", "w = max(ceil((n+1)/5),1+digits10(n
 "11111110" = { commands = 35, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 32, "5" = 32, "6" = 34, "7" = 35 }, source_units = 150 }
 
 [ablations]
+archive_refs = [
+    "subtree_sharing",
+    "halves_agree_skip",
+    "letter_names",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_read_alias",
+    "trick_prototype_20261102_flat_constants",
+    "trick_prototype_20261102_wildcard_one",
+    "trick_prototype_20261102_identity_passthrough",
+    "workspace_exact_restoration_20261103",
+    "source_exact_restoration_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-21" }
-
-[ablations.subtree_sharing]
-kind = "archive_ref"
-
-[ablations.halves_agree_skip]
-kind = "archive_ref"
-
-[ablations.letter_names]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_read_alias]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_flat_constants]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_wildcard_one]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_identity_passthrough]
-kind = "archive_ref"
-
-[ablations.workspace_exact_restoration_20261103]
-kind = "archive_ref"
-
-[ablations.source_exact_restoration_20261103]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -62,15 +44,13 @@ blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

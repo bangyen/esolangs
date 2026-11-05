@@ -24,57 +24,35 @@ sharing_exempt = "a strip has no jump, so a repeated subtable cannot be shared"
 folding_constant = "literal products collapse a constant"
 
 [ablations]
+archive_refs = [
+    "literal_product",
+    "halved_lookup",
+    "input_projection",
+    "area_default",
+    "balance_strip_seed",
+    "sum_form_and_flipped_table",
+    "majority_count",
+    "chunked_entry_push",
+    "packing_offsets_prototype",
+    "wider_balance_recheck_20261101",
+    "wider_balance_random_20261101",
+    "constant_table_audit_20261101",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-20" }
-
-[ablations.literal_product]
-kind = "archive_ref"
-
-[ablations.halved_lookup]
-kind = "archive_ref"
-
-[ablations.input_projection]
-kind = "archive_ref"
-
-[ablations.area_default]
-kind = "archive_ref"
-
-[ablations.balance_strip_seed]
-kind = "archive_ref"
-
-[ablations.sum_form_and_flipped_table]
-kind = "archive_ref"
-
-[ablations.majority_count]
-kind = "archive_ref"
-
-[ablations.chunked_entry_push]
-kind = "archive_ref"
-
-[ablations.packing_offsets_prototype]
-kind = "archive_ref"
-
-[ablations.wider_balance_recheck_20261101]
-kind = "archive_ref"
-
-[ablations.wider_balance_random_20261101]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
 
 [audits]
 plain_rewrite = 2026-10-28
 trick_prototype = 2026-11-02
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

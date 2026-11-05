@@ -20,36 +20,20 @@ definitions = ["c = 3 to n = 45, then 2bl(s)-1: column-literal length", "S = 4n+
 "11111110" = { commands = 27, commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27, "4" = 27, "5" = 27, "6" = 27, "7" = 27 }, source_units = 32 }
 
 [ablations]
+archive_refs = [
+    "symmetric_count",
+    "input_projection",
+    "packed_row",
+    "balance_packed_fold",
+    "constant_table_audit_20261101",
+    "horner_raw_reads_trick",
+    "tight_column_literal_trick",
+    "wide_unicode_cells_trick",
+    "precision_guard_20261102",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
-
-[ablations.symmetric_count]
-kind = "archive_ref"
-
-[ablations.input_projection]
-kind = "archive_ref"
-
-[ablations.packed_row]
-kind = "archive_ref"
-
-[ablations.balance_packed_fold]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.horner_raw_reads_trick]
-kind = "archive_ref"
-
-[ablations.tight_column_literal_trick]
-kind = "archive_ref"
-
-[ablations.wide_unicode_cells_trick]
-kind = "archive_ref"
-
-[ablations.precision_guard_20261102]
-kind = "archive_ref"
 
 [catalogue]
 folding_constant_local = "input_weights"  # one projected grid cell
@@ -62,12 +46,12 @@ trick_prototype = 2026-11-02
 plain_rewrite = 2026-10-28
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

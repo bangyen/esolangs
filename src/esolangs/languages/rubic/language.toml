@@ -23,30 +23,18 @@ qualification = "the last literal prints its byte or stores it and prints 49-P b
 sharing_exempt = "no jump or call: code runs once per place it is written"
 
 [ablations]
+archive_refs = [
+    "constant_fold",
+    "equal_halves_descent",
+    "undo_in_branch",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_last_bit_literal",
+    "trick_prototype_20261102_parity_store_drop_mod",
+    "trick_prototype_20261102_searched_opening",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.equal_halves_descent]
-kind = "archive_ref"
-
-[ablations.undo_in_branch]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_last_bit_literal]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_parity_store_drop_mod]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_searched_opening]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -54,12 +42,12 @@ blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

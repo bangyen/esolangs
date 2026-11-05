@@ -10,33 +10,19 @@ qualification = "a lexical guard selects the true child; every leaf halts before
 sharing_exempt = "lexical guard bodies halt rather than return; the language has no named calls or arbitrary target jumps for local subtree sharing"
 
 [ablations]
+archive_refs = [
+    "constant_fold",
+    "ignored_input",
+    "execution_corpus",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_parity_leaf_pair",
+    "trick_prototype_20261102_ungrouped_pair_generic",
+    "trick_prototype_20261102_bulk_read_prefix",
+    "trick_prototype_20261102_drop_fold_drain",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-11-01", n3_source_units = 12626, n3_commands = 22864, executed_rows = 9024 }
-
-[ablations.constant_fold]
-kind = "archive_ref"
-
-[ablations.ignored_input]
-kind = "archive_ref"
-
-[ablations.execution_corpus]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_parity_leaf_pair]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_ungrouped_pair_generic]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_bulk_read_prefix]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_drop_fold_drain]
-kind = "archive_ref"
 
 [generator_sizes]
 "00000001" = { commands = 12, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 11, "5" = 11, "6" = 12, "7" = 12 }, source_units = 40 }
@@ -53,21 +39,15 @@ trick_prototype = 2026-11-02
 blind_reimplementation = 2026-11-01
 
 [interpreter_ablations]
+archive_refs = [
+    "blind_reimplementation",
+    "guard_binding",
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.blind_reimplementation]
-kind = "archive_ref"
-
-[interpreter_ablations.guard_binding]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

@@ -20,15 +20,13 @@ qualification = "—"
 "11111110" = { commands = 5, commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 5 }, source_units = 83 }
 
 [ablations]
+archive_refs = [
+    "print_leaf_order_round_two",
+    "constant_table_audit_20261101",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.print_leaf_order_round_two]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-01
@@ -37,12 +35,12 @@ plain_rewrite = 2026-10-29
 blind_reimplementation = 2026-10-27
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1

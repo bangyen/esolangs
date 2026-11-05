@@ -21,33 +21,19 @@ qualification = "the first bit of each input byte is read into b and branched on
 "11111110" = { commands = 46, commands_by_row = { "0" = 46, "1" = 46, "2" = 46, "3" = 46, "4" = 46, "5" = 46, "6" = 46, "7" = 46 }, source_units = 85 }
 
 [ablations]
+archive_refs = [
+    "fall_through",
+    "label_rank",
+    "read_ladder",
+    "constant_table_audit_20261101",
+    "trick_prototype_20261102_chain_cover_layout",
+    "trick_prototype_20261102_even_backward_edges",
+    "trick_prototype_20261102_direct_print_bottom",
+    "trick_prototype_20261102_execution_bound",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-29" }
-
-[ablations.fall_through]
-kind = "archive_ref"
-
-[ablations.label_rank]
-kind = "archive_ref"
-
-[ablations.read_ladder]
-kind = "archive_ref"
-
-[ablations.constant_table_audit_20261101]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_chain_cover_layout]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_even_backward_edges]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_direct_print_bottom]
-kind = "archive_ref"
-
-[ablations.trick_prototype_20261102_execution_bound]
-kind = "archive_ref"
 
 [audits]
 trick_prototype = 2026-11-02
@@ -55,15 +41,13 @@ plain_rewrite = 2026-10-29
 blind_reimplementation = 2026-10-29
 
 [interpreter_ablations]
+archive_refs = [
+    "speedup_prototype_20261103",
+    "speedup_adoption_20261103",
+]
 version = 1
 archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
-
-[interpreter_ablations.speedup_prototype_20261103]
-kind = "archive_ref"
-
-[interpreter_ablations.speedup_adoption_20261103]
-kind = "archive_ref"
 
 [evidence]
 version = 1
