@@ -16,8 +16,6 @@ Decisions:
     cannot disturb it.
 """
 
-from functools import cache
-
 from esolangs.generation.helpers import _validate_truth_table, constant_span_test
 from esolangs.languages.lol_waht_i_cant_edit_talk_pages.descriptor import (
     LANGUAGE as LANGUAGE,
@@ -31,7 +29,6 @@ def lol_waht_i_cant_edit_talk_pages(truth_table: str) -> str:
     constant = constant_span_test(truth_table)
     read = "im awesome tottaly but no x"
 
-    @cache
     def build(level: int, lo: int, hi: int) -> tuple[str, ...]:
         if constant(lo, hi):
             return (*[read] * (n - level), f"{truth_table[lo]} --tommyaweosme")
