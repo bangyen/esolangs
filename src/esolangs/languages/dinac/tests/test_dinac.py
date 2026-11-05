@@ -236,7 +236,6 @@ def test_functions_overload_recurse_and_loop() -> None:
         ("SET x:00\nSET x:01", "already declared"),
         ("x . 00", "undeclared name 'x'"),
         ("IN x", "no type to read into"),
-        ("SET x:00\nIN x\nSET s:00\ns . $\nIN s", "no type to read into"),
         ("DEF/00 add n:00\n    GIVE n+\nOUT add(10,20)", "no overload of 'add'"),
         ("DEF/00 f n:00\n    GIVE 'a\nOUT f(01)", "'f' declares wubyte but gave"),
         (
@@ -298,3 +297,28 @@ def test_debugger_views() -> None:
     assert machine.memory == [5]
     assert machine.stack == ["<top>", "f"]
     assert machine.ind == 0
+
+
+def test_null_retains_parameter_and_local_types() -> None:
+    for sample, value in (("00", "41"), (r"\0", "'A")):
+        code = (
+            f"DEF/{sample} f x:{sample}\n    x . $\n    IN x\n    SET y:x\n"
+            f"    y . $\n    y . {value}\n    GIVE y\nOUT f({sample})"
+        )
+        assert out(code, "65\n" if sample == "00" else "A") == (
+            "41" if sample == "00" else "A"
+        )
+    code = (
+        "SET choice:\\0\nIN choice\nIF choice = '0\n    SET x:00\nELSE\n"
+        "    SET x:\\0\nchoice . \\0\nx . $\nIN x\nOUT x"
+    )
+    machines = [_Machine(code, ScriptedIO(char + "65\n")) for char in "01"]
+    for machine in machines:
+        for _ in range(7):
+            machine.step()
+    assert machines[0].ind == machines[1].ind == 5
+    assert machines[0].state[0].scope == machines[1].state[0].scope
+    assert machines[0].snapshot() != machines[1].snapshot()
+    for machine in machines:
+        machine.step()
+        assert machine.state[0].null_types == ()

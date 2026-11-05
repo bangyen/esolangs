@@ -125,7 +125,9 @@ def check_raw_packlang():
     )
     for kind, first, second, third in product(kinds, actions, actions, actions):
         _check(_Machine, kind, (first, second, third))
-    for kind, stdin in product(kinds, ("", "A", "\nZ", "λ", "\0", "abc")):
+    for kind, stdin in product(
+        kinds, ("", "A", "\nZ", "λ", "ÿ", "Ā", "😀", "\0", "abc")
+    ):
         _check(
             _Machine,
             kind,

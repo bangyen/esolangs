@@ -63,9 +63,8 @@ Decisions:
       name.
     * The ban on null statements in a branch is not enforced: detecting
       them needs effect analysis and no example relies on it.
-    * Assigning ``$`` replaces the stored type too: a later typed assignment
-      or ``IN`` aborts. The spec implies a retained declared type; this
-      compatibility discrepancy remains open.
+    * Assigning ``$`` preserves the declared type (Variables, wiki rev
+      98682): later same-type assignment and ``IN`` restore a typed value.
 """
 
 from __future__ import annotations
@@ -150,6 +149,8 @@ class _Program:
 class _Frame(NamedTuple):
     """One call: its scope, its block cursors, and a suspended statement.
 
+    ``null_types`` retains declarations only while their values are null;
+    ordinary bindings keep the generator's existing workspace bound.
     ``pending`` is the statement's expression with the calls already
     returned rewritten in as literals; ``returned`` is the value a
     just-finished call is handing back.
@@ -160,6 +161,16 @@ class _Frame(NamedTuple):
     blocks: tuple[tuple[int, int], ...]
     pending: _Expr | None = None
     returned: _Value | None = None
+    null_types: tuple[tuple[int, _Kind], ...] = ()
+
+    def declared(self, slot: int) -> _Kind | None:
+        """The binding's type, preserved independently of a null value."""
+        value = self.scope[slot]
+        if value is None:
+            return None
+        if value.kind == "snuval":
+            return dict(self.null_types).get(slot, "snuval")
+        return value.kind
 
 
 #: The call stack as a linked pair, so a call and a return are O(1).
@@ -615,8 +626,8 @@ def _wanted_read(state: _State, prog: _Program) -> _Kind | None:
     body = prog.bodies[block]
     if ind >= len(body) or body[ind][0] != "in":
         return None
-    current = frame.scope[body[ind][1]]
-    return None if current is None or current.kind == "snuval" else current.kind
+    kind = frame.declared(body[ind][1])
+    return None if kind == "snuval" else kind
 
 
 def _leave(
@@ -662,10 +673,11 @@ def _simple(
         _eval(stmt[1], scope, names)
         return frame, None
     current = scope[stmt[1]]
+    declared = frame.declared(stmt[1])
     if kind == "in":
-        if current is None or current.kind == "snuval" or byte is None:
+        if declared is None or declared == "snuval" or byte is None:
             raise HaltError(f"{names[stmt[1]]!r} has no type to read into")
-        value = _Value(current.kind, byte)
+        value = _Value(declared, byte)
     else:
         value = _eval(stmt[2], scope, names)
         if kind == "set":
@@ -675,11 +687,21 @@ def _simple(
                 raise HaltError(f"SET {names[stmt[1]]!r} needs a typed initial value")
         elif current is None:
             raise HaltError(f"undeclared name {names[stmt[1]]!r}")
-        elif value.kind != "snuval" and value.kind != current.kind:
+        elif value.kind != "snuval" and value.kind != declared:
             raise HaltError(
-                f"{names[stmt[1]]!r} is {current.kind}, cannot take a {value.kind}"
+                f"{names[stmt[1]]!r} is {declared}, cannot take a {value.kind}"
             )
-    return frame._replace(scope=_store(scope, stmt[1], value)), None
+    null_types = frame.null_types
+    if current is not None and (current.kind == "snuval" or value.kind == "snuval"):
+        retained = dict(null_types)
+        if value.kind == "snuval" and declared is not None:
+            retained[stmt[1]] = declared
+        else:
+            retained.pop(stmt[1], None)
+        null_types = tuple(sorted(retained.items()))
+    return frame._replace(
+        scope=_store(scope, stmt[1], value), null_types=null_types
+    ), None
 
 
 def _advance(

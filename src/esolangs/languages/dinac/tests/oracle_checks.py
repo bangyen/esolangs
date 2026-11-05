@@ -75,7 +75,7 @@ def _read(kind, stdin, cursor):
     return (kind, value if value <= 255 else 0), stop
 
 
-def _statement(statement, bindings, stdin, cursor):
+def _statement(statement, bindings, types, stdin, cursor):
     kind, *args = statement
     if kind == "out":
         tag, value = _eval(args[0], bindings)
@@ -89,36 +89,39 @@ def _statement(statement, bindings, stdin, cursor):
         return cursor, text
     name = args[0]
     if kind == "in":
-        tag = bindings[name][0]
-        if tag == "snuval":
-            raise ArithmeticError("null input")
+        tag = types[name]
         bindings[name], cursor = _read(tag, stdin, cursor)
     else:
         value = _eval(args[1], bindings)
         if kind == "declare":
             if name in bindings or value[0] == "snuval":
                 raise ArithmeticError("declaration")
-        elif value[0] != "snuval" and value[0] != bindings[name][0]:
+            types[name] = value[0]
+        elif value[0] != "snuval" and value[0] != types[name]:
             raise ArithmeticError("assignment type")
         bindings[name] = value
     return cursor, ""
 
 
 def _model(statements, stdin):
-    bindings, pc, cursor, output, trace, done = {}, 0, 0, "", [], False
+    bindings, types, pc, cursor, output, trace, done = {}, {}, 0, 0, "", [], False
 
     def row():
-        state = None if done else (pc, tuple(sorted(bindings.items())))
+        state = (
+            None
+            if done
+            else (pc, tuple(sorted(bindings.items())), tuple(sorted(types.items())))
+        )
         return state, done, output, cursor, cursor
 
     for statement in statements:
         trace.append(row())
-        pending = dict(bindings)
+        pending, pending_types = dict(bindings), dict(types)
         try:
-            cursor, text = _statement(statement, pending, stdin, cursor)
+            cursor, text = _statement(statement, pending, pending_types, stdin, cursor)
         except (ArithmeticError, KeyError):
             return "halt", [*trace, row()]
-        bindings, pc, output = pending, pc + 1, output + text
+        bindings, types, pc, output = pending, pending_types, pc + 1, output + text
     trace.append(row())
     done = True
     return None, trace + [row()] * 4
@@ -134,7 +137,12 @@ def _view(machine):
         for name, value in zip(names, frame.scope, strict=True)
         if value is not None
     )
-    return frame.blocks[-1][1], tuple(sorted(values))
+    types = (
+        (name, frame.declared(slot))
+        for slot, name in enumerate(names)
+        if frame.scope[slot] is not None
+    )
+    return frame.blocks[-1][1], tuple(sorted(values)), tuple(sorted(types))
 
 
 def _check(factory, statements, stdin="unused"):
@@ -194,20 +202,21 @@ def check_raw_dinac():
             ),
             stdin,
         )
-    for final in (
-        ("assign", "value", ("wubyte", 1)),
-        ("in", "value"),
-        ("out", ("+", "value")),
-        ("out", "value"),
-    ):
+    for tag, value in product(("wubyte", "aschar"), literals):
         _check(
             _Machine,
             (
-                ("declare", "value", ("wubyte", 0)),
+                ("declare", "value", (tag, 0)),
                 ("assign", "value", ("snuval", 0)),
-                final,
+                ("assign", "value", value),
+                ("out", "value"),
             ),
         )
+    for tag, stdin in product(("wubyte", "aschar"), ("", "65\nZ", "λ")):
+        prefix = (("declare", "value", (tag, 0)), ("assign", "value", ("snuval", 0)))
+        _check(_Machine, (*prefix, ("in", "value"), ("out", "value")), stdin)
+        for expr in ("value", ("+", "value"), ("=", "value", ("snuval", 0))):
+            _check(_Machine, (*prefix, ("out", expr)))
     _check(_Machine, (("out", "unknown"),))
     _check(_Machine, ())
 

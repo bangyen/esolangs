@@ -20,7 +20,7 @@ one command of the innermost function is one ``step()``, every
 intermediate state reaches ``snapshot``, and a loop inside a
 called function is provable by :func:`esolangs.vm.run_until_halt_or_cycle`
 instead of hanging unobserved.  The transition performs no IO itself: it
-*requests* a read by returning a flag and the shell takes the byte, also
+*requests* a read by returning a flag and the shell takes the character code, also
 from a callee.  IO inside a called function works: callees are framed, so
 the same shell performs their ``charPut``/``charGet`` in call order.
 
@@ -59,7 +59,7 @@ Decisions:
       package calls its own functions and those of the packages it depends on,
       and nothing else.  The wiki says a dependency may itself have
       dependencies, so the relation is followed transitively.
-    * A plain ``Integer`` and a ``Char`` are bytes, 0..255 and wrapping both
+    * A plain ``Integer`` and a ``Char`` use arithmetic bounds 0..255, wrapping both
       ways, matching ``charPut``'s byte output (the wiki gives ``Integer`` no
       range, and charPut prints ``v % 256``); ``Integer(min, max, under,
       over)`` wraps to the named values instead.  ``INIT`` sets a variable to
@@ -70,7 +70,8 @@ Decisions:
       returns 0.
     * ``charGet`` stores Unicode code points whole (``λ`` is 955), even in
       a byte counter; a later increment applies its named wrap. Input
-      encoding is unspecified; this compatibility choice remains open.
+      encoding is unspecified; this follows the repository's Unicode
+      character-input convention, rather than asserting a spec-defined encoding.
 """
 
 from collections.abc import Callable
