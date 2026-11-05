@@ -257,9 +257,10 @@ description = { growth = "linear", claim = "worst", template = "{claim} {formula
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter.py"
 tests = [
+    "src/esolangs/languages/dig/tests/oracle_checks.py::check_raw_dig",
     "src/esolangs/languages/dig/tests/test_dig.py::test_prints",
     "src/esolangs/languages/dig/tests/test_dig.py::TestDigInput",
     "src/esolangs/languages/dig/tests/test_dig.py::TestDigEdgeCases",

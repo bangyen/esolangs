@@ -29,6 +29,9 @@ Decisions:
     * ``;`` copies the mole into its cell and keeps it ("the ``;`` is given
       the Moles current value"), so the truth machine prints ``2111...`` on
       1, as drawn; zeroing the mole would print ``111...``.
+    * The initial heading is right; the page requires an initial arrow.
+      Integer input accepts Python's decimal spellings (``1_0``, ``٣``
+      included); division rounds down. The page leaves both details open.
 """
 
 from collections.abc import Callable
