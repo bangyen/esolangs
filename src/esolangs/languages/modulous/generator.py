@@ -1,15 +1,15 @@
 """Modulous Boolean program generator: the table is a pushed string literal.
 
-``PSH STR`` pushes the table so entry 0 is on top.  Each input is read and
-added into a counter at half its weight (an ignored input is read and popped),
-then a ``JMP`` loop selects a two-entry code. The final essential input
-decodes that code to ASCII 0/1 before output.
-Small-weight suffix reads discard entries directly after the walk.
-A symmetric table uses only these reads over n + 1 entries
-([ablations.symmetric_count]).
+Constants and one-input tables use scalar readers. Otherwise ``PSH STR``
+pushes a lookup with entry 0 on top. Symmetric tables count over n + 1 entries;
+up to four essential inputs discard entries directly. Larger asymmetric tables
+pack row pairs, decoded by the final essential input. From six essential inputs,
+higher weights accumulate a counter for a ``JMP`` walk; suffix reads discard
+entries directly. Ignored inputs are read and popped before output.
 
 Size:
-    T/2 + a few dozen characters per input; one loop step per pair index.
+    Worst case: 6T+28n+21 chars at n=2..4, 3T+28n+144 at n=5;
+    from n=6, T/2+O(n²) chars including decimal weights.
     n=8 constant zero: 138 chars; n=10 random 1847: 1,165 chars,
     n=12 random 1847: 2,804 chars.
 

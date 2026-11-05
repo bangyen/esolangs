@@ -213,7 +213,7 @@ def _balance(table: str, default: str) -> str:
 
 
 def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
-    """Its 10- and 15-wide layouts switch representation, so match them whole."""
+    """Match whole 1-, 10- and 15-wide representation switches."""
     return template in (layout(1), layout(10), layout(15)) or same_up_to_wrapping(
         template, plain
     )
