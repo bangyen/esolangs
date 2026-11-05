@@ -5,7 +5,7 @@ import pytest
 import esolangs
 from esolangs.languages.codesick.generator import codesick
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output
+from tests.support.generator_support import assert_constant_output, assert_every_row
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -16,15 +16,9 @@ def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     from esolangs.languages.codesick.tests.ablations import ablate
 
-    n = len(table).bit_length() - 1
     program = esolangs.generate("Codesick", table)
     assert program == ablate(table, "default")
-    for row in range(len(table)):
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        stdin = esolangs.encode_inputs("Codesick", bits)
-        got = esolangs.run("Codesick", program, stdin=stdin, timeout=5)
-        # The answer as the contract reads it, not the raw output.
-        assert esolangs.read_answer("Codesick", got) == table[row], (table, row)
+    assert_every_row("Codesick", table, program=program)
 
 
 def test_equal_subtables_share_one_node() -> None:

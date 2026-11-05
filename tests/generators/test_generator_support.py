@@ -2,9 +2,31 @@
 
 import pytest
 
+import esolangs
 from esolangs.runtime.io import ScriptedIO
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output, measure_run
+from tests.support.generator_support import (
+    assert_constant_output,
+    assert_every_row,
+    measure_run,
+)
+
+
+@pytest.mark.medium
+def test_every_row_checks_the_supplied_program_without_regenerating(monkeypatch):
+    table = "00010111"
+    program = esolangs.generate("Brainfuck", table)
+    wrong = esolangs.generate("Brainfuck", "11101000")
+    assert_every_row("Brainfuck", table)
+
+    def reject_generation(*_args, **_kwargs):
+        raise AssertionError("supplied programs must not be regenerated")
+
+    monkeypatch.setattr(esolangs, "generate", reject_generation)
+    assert_every_row("Brainfuck", table, program=program)
+    with pytest.raises(AssertionError) as failure:
+        assert_every_row("Brainfuck", table, program=wrong)
+    assert failure.value.args == ((table, 0),)
 
 
 def test_read_first_io_checks_even_empty_output():

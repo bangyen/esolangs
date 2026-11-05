@@ -4,7 +4,7 @@ import pytest
 
 import esolangs
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import measure_run
+from tests.support.generator_support import assert_every_row, measure_run
 
 #: Nonconstant one- and two-input tables; a diagram's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(1, 2**2**n - 1)]
@@ -14,14 +14,9 @@ TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(1, 2**2**n - 1)]
 def test_every_row_prints_its_answer(table: str) -> None:
     from esolangs.languages.bleh.tests.ablations import ablate
 
-    n = len(table).bit_length() - 1
     program = esolangs.generate("Bleh", table)
     assert program == ablate(table, "default")
-    for row in range(len(table)):
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        stdin = esolangs.encode_inputs("Bleh", bits)
-        got = esolangs.run("Bleh", program, stdin=stdin, timeout=5)
-        assert esolangs.read_answer("Bleh", got) == table[row], (table, row)
+    assert_every_row("Bleh", table, program=program)
 
 
 @pytest.mark.medium

@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from tests.support.generator_support import assert_every_row
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -22,12 +23,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
         assert esolangs.run("Sonata", program, stdin=invalid) == invalid
     elif len(set(table)) == 2:
         assert "0_I->%0_I" in program
-    for row in range(len(table)):
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        stdin = esolangs.encode_inputs("Sonata", bits)
-        got = esolangs.run("Sonata", program, stdin=stdin, timeout=5)
-        # The answer as the contract reads it, not the raw output.
-        assert esolangs.read_answer("Sonata", got) == table[row], (table, row)
+    assert_every_row("Sonata", table, program=program)
 
 
 def test_pair_table_prints_its_answer() -> None:
@@ -35,11 +31,7 @@ def test_pair_table_prints_its_answer() -> None:
     table = "".join(f"{(r * 2654435761) >> 7 & 1}" for r in range(128))
     program = esolangs.generate("Sonata", table)
     assert "@#b_T0->=1" in program
-    for row in range(128):
-        bits = [(row >> (6 - i)) & 1 for i in range(7)]
-        stdin = esolangs.encode_inputs("Sonata", bits)
-        got = esolangs.run("Sonata", program, stdin=stdin, timeout=5)
-        assert esolangs.read_answer("Sonata", got) == table[row], row
+    assert_every_row("Sonata", table, program=program)
 
 
 def _check_constants() -> None:

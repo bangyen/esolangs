@@ -9,6 +9,7 @@ from esolangs.languages.movesum.generator import movesum
 from esolangs.languages.movesum.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import assert_every_row
 
 
 def answer(program: str, row: int, n: int) -> str:
@@ -67,13 +68,7 @@ def test_a_wrong_input_row_is_answered_wrongly() -> None:
 
 @pytest.mark.parametrize("table", ["00", "11", "0110", "00010111"])
 def test_registry_contract_round_trip(table: str) -> None:
-    n = len(table).bit_length() - 1
-    program = esolangs.generate("Movesum", table)
-    for row in range(len(table)):
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        stdin = esolangs.encode_inputs("Movesum", bits)
-        got = esolangs.run("Movesum", program, stdin=stdin, timeout=5)
-        assert esolangs.read_answer("Movesum", got) == table[row], (table, row)
+    assert_every_row("Movesum", table)
 
 
 @pytest.mark.parametrize("n", range(1, 13))

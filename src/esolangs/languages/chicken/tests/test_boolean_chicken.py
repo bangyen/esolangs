@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from tests.support.generator_support import assert_every_row
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -19,12 +20,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
     for prefix in ("", "0", "1"):
         row = int(prefix.ljust(n, "0"), 2)
         assert esolangs.run("Chicken", program, stdin=prefix, timeout=5) == table[row]
-    for row in range(len(table)):
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        stdin = esolangs.encode_inputs("Chicken", bits)
-        got = esolangs.run("Chicken", program, stdin=stdin, timeout=5)
-        # The answer as the contract reads it, not the raw output.
-        assert esolangs.read_answer("Chicken", got) == table[row], (table, row)
+    assert_every_row("Chicken", table, program=program)
 
 
 def _check_constants() -> None:

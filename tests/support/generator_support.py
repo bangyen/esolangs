@@ -11,10 +11,13 @@ from tests.support.evaluation import _DEFAULT, _Default, _evaluate
 from tests.support.witness_tables import parity, row_bits
 
 
-def assert_every_row(language: str, table: str) -> None:
-    """Generate once and check every row through the public I/O contract."""
+def assert_every_row(
+    language: str, table: str, *, program: esolangs.Program | None = None
+) -> None:
+    """Check every row through the public I/O contract, generating when omitted."""
     n = len(table).bit_length() - 1
-    program = esolangs.generate(language, table)
+    if program is None:
+        program = esolangs.generate(language, table)
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs(language, bits)
