@@ -45,6 +45,7 @@ from esolangs.generation.helpers import (
     input_weights,
     move_text,
     subtree_ids,
+    symmetric_outputs,
 )
 from esolangs.generation.shared_block import ContinuationCost as _Cost
 from esolangs.generation.shared_flag import flag_tree_body
@@ -99,18 +100,6 @@ _COUNT_BLOCK = (
 )
 
 
-def _decision_bits(table: str, n: int) -> list[int] | None:
-    """Return f[0..n], the output at each popcount, if table is symmetric."""
-    bits = [-1] * (n + 1)  # every popcount 0..n occurs, so no -1 survives
-    for row, bit in enumerate(table):
-        count = row.bit_count()
-        if bits[count] < 0:
-            bits[count] = int(bit)
-        elif bits[count] != int(bit):
-            return None
-    return bits
-
-
 def popcount_stream(table: str) -> str | None:
     """Stream a symmetric table's bytes into a unary count; decide by count.
 
@@ -131,15 +120,15 @@ def popcount_stream(table: str) -> str | None:
     the count-one flip and is 4n^2 + 30n + 8.
     """
     n = _validate_truth_table(table)
-    bits = _decision_bits(table, n)
+    bits = symmetric_outputs(table, n)
     if bits is None:
         return None
     parts = [_COUNT_BLOCK * n, ">"]
-    if bits[0]:
+    if bits[0] == "1":
         parts.append("+")
     parts.append(">")
     for j in range(1, n + 1):
-        if bits[j] ^ bits[j - 1]:
+        if bits[j] != bits[j - 1]:
             # On the track's j-1 cell; the answer sits j cells left.
             parts.append("[+" + "<" * j + "+" + ">" * j + "]")
         parts.append(">")

@@ -49,6 +49,7 @@ from esolangs.generation.helpers import (
     input_weights,
     move_text,
     subtree_ids,
+    symmetric_outputs,
 )
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
@@ -279,9 +280,7 @@ def back(truth_table: str, width: int | None = None) -> str:
         )
     levels = len(table).bit_length() - 1
     order = tuple(range(levels))
-    if width is None and all(
-        bit == table[(1 << row.bit_count()) - 1] for row, bit in enumerate(table)
-    ):
+    if width is None and symmetric_outputs(table, levels) is not None:
         # Popcount functions are invariant under reversal. The same comb then
         # needs a shorter loader walk ([ablations.symmetric_reverse_loader]).
         order = tuple(reversed(order))

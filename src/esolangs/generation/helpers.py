@@ -513,6 +513,16 @@ def input_weights(truth_table: str, n: int) -> WeightedLookup:
     return WeightedLookup(weights, read_at(truth_table, essential, n))
 
 
+def symmetric_outputs(table: str, n: int) -> str | None:
+    """Return outputs by popcount for a validated n-input symmetric table."""
+    outputs = "".join(table[(1 << count) - 1] for count in range(n + 1))
+    return (
+        outputs
+        if all(bit == outputs[row.bit_count()] for row, bit in enumerate(table))
+        else None
+    )
+
+
 def symmetric_weights(truth_table: str, n: int) -> WeightedLookup | None:
     """Weight 1 per essential input and the table by popcount, if it is symmetric.
 
@@ -523,14 +533,11 @@ def symmetric_weights(truth_table: str, n: int) -> WeightedLookup | None:
     essential = essential_inputs(truth_table, n)
     if len(essential) < 2:
         return None
-    by_count: dict[int, str] = {}
-    for row, entry in enumerate(read_at(truth_table, essential, n)):
-        if by_count.setdefault(row.bit_count(), entry) != entry:
-            return None
+    outputs = symmetric_outputs(read_at(truth_table, essential, n), len(essential))
+    if outputs is None:
+        return None
     weights = [int(i in essential) for i in range(n)]
-    return WeightedLookup(
-        weights, "".join(by_count[k] for k in range(len(essential) + 1))
-    )
+    return WeightedLookup(weights, outputs)
 
 
 def stored_inputs(truth_table: str, perm: tuple[int, ...]) -> set[int]:
