@@ -98,7 +98,9 @@ class _Model:
         if command == "b":
             if not self.loops:
                 return "halt"
-            self.pc = self.loops.pop()
+            entry = self.loops.pop()
+            if self.tape[self.pointer]:
+                self.pc = entry
         elif self.tape[self.pointer]:
             self.loops.append(self.pc - 1)
         else:
@@ -231,6 +233,8 @@ def check_raw_painfuck():
     for commands, coin in product(
         (
             "pasbu",
+            "pazbo",
+            "paipbo",
             "asabe",
             "paabbs",
             "paopb",

@@ -175,7 +175,7 @@ def _check_zero_fold_and_chain() -> None:
                 assert steps <= _execution(n, program)
                 assert io.reads == n
                 assert io.input_num() == 7
-    table = "11101001"  # The65-step maximum remains after canonical pruning.
+    table = "11101001"  # The 62-step maximum remains after canonical pruning.
     program = painfuck(table)
     machine = _Machine(program, ScriptedIO("1\n1\n1\n"))
     steps = 0
@@ -183,4 +183,4 @@ def _check_zero_fold_and_chain() -> None:
         machine.step()
         steps += 1
     assert machine.io.getvalue() == "1"
-    assert steps == _execution(3, program) == 65
+    assert steps == _execution(3, program) == 62

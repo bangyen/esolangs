@@ -44,8 +44,6 @@ Errors:
 Decisions:
     * ``i`` reads one whitespace-delimited decimal token, leaving its
       delimiter; the spec leaves input framing open.
-    * ``b`` always returns to ``a``, including on zero; the page tests at
-      ``b``. Whether zero should exit directly remains open.
     * A trailing ``y`` did not complete a step within 0.5 s with scripted
       zero coins; the one-coin control halted. Its step boundary remains open.
     * The tape is unbounded both ways: ``l`` at the leftmost cell grows it a
@@ -395,7 +393,7 @@ def _do_a(step: _Step) -> None:
 
 
 def _do_b(step: _Step) -> None:
-    """Jump back to the matching loop entry, or fault."""
+    """Pop the loop entry; jump back only while the cell is nonzero."""
     if not step.loop:
         raise _Halted(
             step.snapshot(),
@@ -405,7 +403,8 @@ def _do_b(step: _Step) -> None:
                 hint="execute a matching loop opener before b",
             ),
         )
-    step.ind = step.loop[-1]
+    if step.tape[step.ptr] != 0:
+        step.ind = step.loop[-1]
     step.loop = step.loop[:-1]
 
 

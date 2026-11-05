@@ -481,3 +481,16 @@ def test_w_copies_the_right_neighbour_from_a_middle_cell() -> None:
 def test_v_and_y_as_the_last_command_end_the_program() -> None:
     assert run_program("pv") == ""
     assert run_program("py") == ""
+
+
+@pytest.mark.parametrize("value", [0, 1, -1])
+def test_loop_end_tests_the_cell_before_jumping(value: int) -> None:
+    from esolangs.languages.painfuck.interpreter import _advance
+
+    state = ((value,), (0,), 0, 2, 1, 0)
+    (tape, loops, _pointer, cursor, _repeat, _origin), _effects = _advance(
+        state, "azb", 3, (), ()
+    )
+    assert cursor == (3 if value == 0 else 0)
+    assert loops == ()
+    assert tape == (value,)

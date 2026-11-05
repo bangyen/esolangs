@@ -10,17 +10,17 @@ bf_derivative = true
 labels = ["tree"]
 qualification = "native numeric reads feed a flag-dispatched tree; known-zero children omit their dead flag, and one result cell is printed"
 
-definitions = ["P = 4n^2+9n+5-6⌊n/2⌋: affine loops", "B = ⌊(3n^2+3)/4⌋+20n+4: shared-form admission"]
+definitions = ["P = 4n^2+8n+5-6⌊n/2⌋: affine loops", "B = ⌊(3n^2+3)/4⌋+20n+4: shared-form admission"]
 
 [generator_sizes]
-"00000001" = { commands = 36, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 21, "5" = 21, "6" = 28, "7" = 36 }, source_units = 33 }
-"00001100" = { commands = 37, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 41, "5" = 41, "6" = 37, "7" = 37 }, source_units = 45 }
-"00110110" = { commands = 60, commands_by_row = { "0" = 27, "1" = 27, "2" = 38, "3" = 38, "4" = 44, "5" = 52, "6" = 53, "7" = 60 }, source_units = 86 }
-"0110" = { commands = 30, commands_by_row = { "0" = 14, "1" = 14, "2" = 22, "3" = 30 }, source_units = 28 }
-"01101001" = { commands = 52, commands_by_row = { "0" = 20, "1" = 20, "2" = 28, "3" = 36, "4" = 36, "5" = 44, "6" = 52, "7" = 52 }, source_units = 41 }
-"0110100110010110" = { commands = 90, commands_by_row = { "0" = 26, "1" = 26, "2" = 34, "3" = 42, "4" = 42, "5" = 50, "6" = 58, "7" = 58, "8" = 50, "9" = 58, "10" = 66, "11" = 66, "12" = 74, "13" = 74, "14" = 82, "15" = 90 }, source_units = 54 }
-"1101001101101101" = { commands = 77, commands_by_row = { "0" = 50, "1" = 50, "2" = 61, "3" = 69, "4" = 70, "5" = 70, "6" = 67, "7" = 67, "8" = 71, "9" = 79, "10" = 71, "11" = 78, "12" = 58, "13" = 58, "14" = 69, "15" = 77 }, source_units = 184 }
-"11111110" = { commands = 40, commands_by_row = { "0" = 19, "1" = 19, "2" = 19, "3" = 19, "4" = 26, "5" = 26, "6" = 33, "7" = 40 }, source_units = 37 }
+"00000001" = { commands = 33, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 20, "5" = 20, "6" = 26, "7" = 33 }, source_units = 33 }
+"00001100" = { commands = 35, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 39, "5" = 39, "6" = 35, "7" = 35 }, source_units = 45 }
+"00110110" = { commands = 57, commands_by_row = { "0" = 26, "1" = 26, "2" = 36, "3" = 36, "4" = 42, "5" = 49, "6" = 51, "7" = 57 }, source_units = 86 }
+"0110" = { commands = 28, commands_by_row = { "0" = 14, "1" = 14, "2" = 21, "3" = 28 }, source_units = 28 }
+"01101001" = { commands = 49, commands_by_row = { "0" = 20, "1" = 20, "2" = 27, "3" = 34, "4" = 34, "5" = 41, "6" = 49, "7" = 49 }, source_units = 41 }
+"0110100110010110" = { commands = 86, commands_by_row = { "0" = 26, "1" = 26, "2" = 33, "3" = 40, "4" = 40, "5" = 47, "6" = 55, "7" = 55, "8" = 47, "9" = 54, "10" = 62, "11" = 62, "12" = 70, "13" = 70, "14" = 78, "15" = 86 }, source_units = 54 }
+"1101001101101101" = { commands = 73, commands_by_row = { "0" = 48, "1" = 48, "2" = 58, "3" = 65, "4" = 67, "5" = 67, "6" = 64, "7" = 64, "8" = 68, "9" = 75, "10" = 68, "11" = 74, "12" = 56, "13" = 56, "14" = 66, "15" = 73 }, source_units = 184 }
+"11111110" = { commands = 37, commands_by_row = { "0" = 19, "1" = 19, "2" = 19, "3" = 19, "4" = 25, "5" = 25, "6" = 31, "7" = 37 }, source_units = 37 }
 
 [ablations]
 archive_refs = [
@@ -86,7 +86,7 @@ first = 3
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.painfuck.generator:painfuck"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} at n=3, then max(P,B,22n): affine, admitted banks or inline", formula = "65" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} at n=3, then max(P,B,22n): affine, admitted banks or inline", formula = "62" }
 
 [resource_evidence.workspace]
 expression = "2n + 5 + 3bl(n) + (n+1)bl(L)"
