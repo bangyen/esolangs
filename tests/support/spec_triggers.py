@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import esolangs
-from esolangs import DialectSettings, compat
+from esolangs import DialectSettings
 from esolangs.registry import LANGUAGES
 from tests.support.cases import cases
 
@@ -34,7 +34,7 @@ def all_triggers() -> list[tuple[str, dict[str, object]]]:
 def _program(name: str, trigger: dict[str, object]) -> esolangs.ProgramSource:
     """Return the trigger's program in the form ``run`` takes."""
     if "generate" in trigger:
-        return compat.generate(name, str(trigger["generate"]))
+        return esolangs.generate(name, str(trigger["generate"]))
     if "program_hex" in trigger:
         return bytes.fromhex(str(trigger["program_hex"]))
     return str(trigger["program"])

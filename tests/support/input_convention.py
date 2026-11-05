@@ -1,7 +1,6 @@
 """Input-reading examples whose native EOF raises to the caller."""
 
 import esolangs
-from esolangs import compat
 
 
 def reading_languages() -> list[str]:
@@ -29,7 +28,7 @@ def assert_reads_tokens_on_one_line(language: str) -> None:
 
     Each numeric reader calls this from its own test file.
     """
-    program = compat.generate(language, "0110")
+    program = esolangs.generate(language, "0110")
     assert (
         esolangs.read_answer(
             language, esolangs.run(language, program, stdin="0 1").output

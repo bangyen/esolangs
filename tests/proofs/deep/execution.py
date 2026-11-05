@@ -13,8 +13,7 @@ from pathlib import Path
 # Run as a script (not under pytest), the repo root is not on the path.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from esolangs import describe, encode_inputs
-from esolangs.compat import generate, instantiate
+from esolangs import describe, encode_inputs, generate, instantiate
 from esolangs.debugger import make_vm
 from esolangs.registry import BY_BOOLEAN
 from esolangs.vm import VM, _capture_workspace

@@ -3,21 +3,24 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.runtime.io import ScriptedIO
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_constant_output,
     assert_every_row,
+    evaluate_generated,
     measure_run,
 )
+from tests.support.pick import languages
+from tests.support.samples import _generated
+from tests.support.vm_support import _row
 
 
 @pytest.mark.medium
 def test_every_row_checks_the_supplied_program_without_regenerating(monkeypatch):
     table = "00010111"
-    program = compat.generate("Brainfuck", table)
-    wrong = compat.generate("Brainfuck", "11101000")
+    program = esolangs.generate("Brainfuck", table)
+    wrong = esolangs.generate("Brainfuck", "11101000")
     assert_every_row("Brainfuck", table)
 
     def reject_generation(*_args, **_kwargs):
@@ -28,6 +31,24 @@ def test_every_row_checks_the_supplied_program_without_regenerating(monkeypatch)
     with pytest.raises(AssertionError) as failure:
         assert_every_row("Brainfuck", table, program=wrong)
     assert failure.value.args == ((table, 0),)
+
+
+@pytest.mark.parametrize("language", languages(boolean_generator=True))
+def test_verification_helpers_retain_artifacts(language, monkeypatch):
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("verification reached a source facade")
+
+    monkeypatch.setattr(esolangs.compat, "generate", forbidden)
+    monkeypatch.setattr(esolangs.compat, "instantiate", forbidden)
+    monkeypatch.setattr(esolangs.compat, "source_adapter", forbidden)
+    with pytest.raises(AssertionError, match="source facade"):
+        esolangs.compat.generate(language, "01")
+    program, _stdin = _row(language, "01", [1])
+    assert isinstance(program, esolangs.ProgramArtifact)
+    assert program.language == esolangs.describe(language)["name"]
+    sample, _sample_stdin = _generated(language)
+    assert isinstance(sample, (str, esolangs.Raster, esolangs.CompressedText))
+    assert evaluate_generated(language, "01") == "01"
 
 
 def test_read_first_io_checks_even_empty_output():

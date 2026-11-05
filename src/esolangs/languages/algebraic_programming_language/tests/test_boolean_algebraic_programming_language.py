@@ -386,7 +386,13 @@ def test_default_reuses_emitted_frames() -> None:
     program = boolean.algebraic_programming_language(table)
     assert (len(plain), len(program)) == (1019, 341)
     assert (
-        execute("Algebraic Programming Language", program, table, {}, all_rows=True)
+        execute(
+            "Algebraic Programming Language",
+            esolangs.ProgramArtifact(program, "Algebraic Programming Language"),
+            table,
+            {},
+            all_rows=True,
+        )
         == 256
     )
 

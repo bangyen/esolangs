@@ -5,7 +5,6 @@ from itertools import pairwise
 from math import isqrt
 
 import esolangs
-from esolangs import compat
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.registry._certification import load as load_certification
 from esolangs.runtime.io import ScriptedIO
@@ -16,12 +15,12 @@ from tests.support.witness_tables import parity, row_bits
 
 
 def assert_every_row(
-    language: str, table: str, *, program: esolangs.Program | None = None
+    language: str, table: str, *, program: esolangs.ProgramSource | None = None
 ) -> None:
     """Check every row through the public I/O contract, generating when omitted."""
     n = len(table).bit_length() - 1
     if program is None:
-        program = compat.generate(language, table)
+        program = esolangs.generate(language, table)
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs(language, bits)
@@ -107,7 +106,7 @@ def evaluate_generated(
     isolated: bool = False,
 ) -> str:
     """Generate a table's program, then evaluate its observed answers."""
-    program = compat.generate(language, table, width=width)
+    program = esolangs.generate(language, table, width=width)
     inputs = len(table).bit_length() - 1
     return _evaluate(language, program, timeout, inputs=inputs, isolated=isolated)
 
@@ -156,7 +155,10 @@ def assert_an_ignored_input_costs(name: str, n: int, cost: int) -> None:
 def overruns(name: str, table: str) -> tuple[int, int]:
     """Return how many widths a layout overran, and by the worst margin."""
     counted = [
-        max(len(line) for line in compat.generate(name, table, width=w).splitlines())
+        max(
+            len(line)
+            for line in esolangs.generate(name, table, width=w).source.splitlines()
+        )
         - w
         for w in range(1, 124, 4)
     ]
@@ -191,14 +193,14 @@ def assert_shared_program(
     from esolangs.debugger import make_vm
 
     n = len(table).bit_length() - 1
-    program = compat.generate(language, table)
-    assert plain is None or size(program) < size(plain)
+    program = esolangs.generate(language, table)
+    assert plain is None or size(program.source) < size(plain)
     parameterized = esolangs.describe(language)["parameterized"]
     for row in range(len(table)) if rows is None else rows:
         expected = table[row]
         bits = [int(bit) for bit in format(row, f"0{n}b")]
         source = (
-            compat.instantiate(language, program, bits) if parameterized else program
+            esolangs.instantiate(language, program, bits) if parameterized else program
         )
         stdin = (
             ""
@@ -214,7 +216,7 @@ def assert_shared_program(
             commands += 1
         assert esolangs.read_answer(language, machine.output) == expected
         assert commands <= command_bound
-        assert written.bits <= workspace_bound(program)
+        assert written.bits <= workspace_bound(program.source)
 
 
 def near_even_counts(size: int) -> set[int]:

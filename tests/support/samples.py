@@ -4,7 +4,6 @@
 # tests: the mutation bundle does not inline this module, so a test file
 # importing the program from here would fail collection there before any
 # mutant ran.  Defined there, imported here.
-from esolangs import compat
 from esolangs.languages.inject.tests.test_inject import INJECT_TRUTH_MACHINE
 from esolangs.languages.line.generator import line as _line_sample
 from esolangs.languages.piet.generator import piet as _piet_sample
@@ -244,10 +243,10 @@ def _generated(name: str) -> tuple[Program, str]:
     """A generator language's own one-input program, fed a 1."""
     import esolangs
 
-    program = compat.generate(name, "01")
+    program = esolangs.generate(name, "01")
     if esolangs.describe(name)["parameterized"]:
-        return compat.instantiate(name, program, [1]), ""
-    return program, esolangs.encode_inputs(name, [1])
+        return esolangs.instantiate(name, program, [1]).source, ""
+    return program.source, esolangs.encode_inputs(name, [1])
 
 
 # A generator language needs no hand sample: its generated program is one.

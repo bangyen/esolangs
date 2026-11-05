@@ -55,6 +55,11 @@ Example builders return runnable artifacts through layout, binding and scaling.
 Regeneration writes them through `save_program`; the example builder no longer
 converts artifacts into tagged source.
 
+Shared generation, VM-row and proof-measurement helpers retain artifacts through
+execution. Size callbacks and native sample fixtures read explicit source after
+binding. Shared support modules no longer call the source facade; remaining
+owned test callers still require migration.
+
 Accounting and analysis rows require owned witnesses, not just a declared hook
 or a recognized helper name. Certification needs an installed-package/lazy-import
 acceptance audit after the active separation work lands. Storage policy needs

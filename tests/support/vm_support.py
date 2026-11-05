@@ -7,7 +7,6 @@ import sys
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import compat
 from esolangs.vm import VM
 from tests.support.reference import REFERENCE
 
@@ -26,7 +25,7 @@ def assert_one_row_moves_along_it(name: str) -> None:
     Each such language calls this from its own test file.
     """
     program, stdin = _row_for(name)
-    assert program.count("\n") == 0, name  # one row
+    assert program.source.count("\n") == 0, name  # one row
     assert _first_move(name, program, stdin)[0] == 0, name
 
 
@@ -41,21 +40,23 @@ def assert_starts_downward(name: str, width: int | None = None) -> None:
     assert before[1] == after[1], name
 
 
-def _row_for(name: str, width: int | None = None) -> tuple[str, str]:
+def _row_for(
+    name: str, width: int | None = None
+) -> tuple[esolangs.ProgramArtifact[esolangs.Program], str]:
     """A runnable program and its stdin for a two-input table."""
     table = "0110"
     program = (
-        compat.generate(name, table)
+        esolangs.generate(name, table)
         if width is None
-        else compat.generate(name, table, width=width)
+        else esolangs.generate(name, table, width=width)
     )
     if esolangs.describe(name)["parameterized"]:
-        return compat.instantiate(name, program, [0, 0]), ""
+        return esolangs.instantiate(name, program, [0, 0]), ""
     return program, esolangs.encode_inputs(name, [0, 0], truth_table=table)
 
 
 def _first_move_pair(
-    name: str, program: str, stdin: str
+    name: str, program: esolangs.ProgramSource, stdin: str
 ) -> tuple[tuple[int, ...], tuple[int, ...]]:
     """The coordinate before and after the first move that changes it."""
     vm = debugger_api.make_vm(name, program, stdin=stdin)
@@ -71,7 +72,9 @@ def _first_move_pair(
     raise AssertionError(f"{name} never moved")
 
 
-def _first_move(name: str, program: str, stdin: str) -> tuple[int, int]:
+def _first_move(
+    name: str, program: esolangs.ProgramSource, stdin: str
+) -> tuple[int, int]:
     """Which components changed on the first move, as a (row, col) pair."""
     before, after = _first_move_pair(name, program, stdin)
     return (before[0] != after[0], before[1] != after[1])
@@ -122,11 +125,13 @@ def _run_all(vm: VM) -> str:
 _STEP_BUDGET = 2_000_000
 
 
-def _row(name: str, table: str, bits: list[int]) -> tuple[str, str]:
+def _row(
+    name: str, table: str, bits: list[int]
+) -> tuple[esolangs.ProgramArtifact[esolangs.Program], str]:
     """Return the ``(program, stdin)`` for one row, without naming a language."""
     if esolangs.describe(name)["parameterized"]:
-        return compat.instantiate(name, compat.generate(name, table), bits), ""
-    return compat.generate(name, table), esolangs.encode_inputs(
+        return esolangs.instantiate(name, esolangs.generate(name, table), bits), ""
+    return esolangs.generate(name, table), esolangs.encode_inputs(
         name, bits, truth_table=table
     )
 

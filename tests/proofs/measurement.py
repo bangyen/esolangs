@@ -1,7 +1,6 @@
 """Run resource witnesses and measure native commands and written state."""
 
 import esolangs
-from esolangs import compat
 from esolangs.debugger import make_vm
 from esolangs.vm import _capture_workspace
 from scripts.benchmark import WrittenState
@@ -138,7 +137,7 @@ def measure(
     table: str,
     *,
     written: bool = False,
-    program: esolangs.Program | None = None,
+    program: esolangs.ProgramSource | None = None,
 ) -> tuple[int, int]:
     """Most commands and optional written-state bits over halting rows."""
     facts = esolangs.describe(name)
@@ -147,14 +146,14 @@ def measure(
         halts = str(list(facts["answer_encoding"]).index("halts"))
     n = len(table).bit_length() - 1
     if program is None:
-        program = compat.generate(name, table)
+        program = esolangs.generate(name, table)
     worst_steps = worst_bits = 0
     for row in range(len(table)):
         if halts is not None and table[row] != halts:
             continue
         bits = row_bits(row, n)
         if facts["parameterized"]:
-            source, stdin = compat.instantiate(name, program, bits), ""
+            source, stdin = esolangs.instantiate(name, program, bits), ""
         else:
             source, stdin = (
                 program,

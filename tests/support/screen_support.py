@@ -12,7 +12,6 @@ from collections.abc import Callable
 from typing import Any
 
 import esolangs
-from esolangs import compat
 from esolangs.artifacts import Artifact
 from esolangs.runtime._termination import _termination_result
 from scripts import benchmark
@@ -74,7 +73,7 @@ def resource_corpus(n: int) -> dict[str, str]:
 
 def execute(
     name: str,
-    program: esolangs.Program,
+    program: Artifact,
     table: str,
     options: dict[str, Any],
     *,
@@ -87,17 +86,17 @@ def execute(
     rows = (
         range(len(table)) if all_rows else sorted({0, len(table) // 2, len(table) - 1})
     )
-    source: esolangs.Program
+    source: esolangs.ProgramArtifact[esolangs.Program]
     for row in rows:
         bits = [int(bit) for bit in format(row, f"0{n}b")]
         if facts["parameterized"]:
-            source = compat.instantiate(name, program, bits, settings=settings)
+            source = esolangs.instantiate(name, program, bits, settings=settings)
             stdin = ""
         else:
+            assert isinstance(program, esolangs.ProgramArtifact)
             source = program
             stdin = esolangs.encode_inputs(name, bits, truth_table=table)
         if facts["answer_mode"] == "termination":
-            assert isinstance(source, str)
             encoding = facts["answer_encoding"]
             proof = _termination_result(name, source, stdin, 2, settings=settings)
             actual = str(

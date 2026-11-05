@@ -5,7 +5,7 @@ from io import StringIO
 import pytest
 
 import esolangs
-from esolangs import DialectSettings, compat
+from esolangs import DialectSettings
 from esolangs.registry import LANGUAGES
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
@@ -37,7 +37,7 @@ def _chosen(name: str) -> DialectSettings:
         k: next(c for c in i["choices"] if c != i["default"]) for k, i in schema.items()
     }
     try:
-        compat.generate(name, "01", settings=DialectSettings(**off))
+        esolangs.generate(name, "01", settings=DialectSettings(**off))
     except esolangs.ArgumentError:
         return DialectSettings(**{k: i["default"] for k, i in schema.items()})
     return DialectSettings(**off)
