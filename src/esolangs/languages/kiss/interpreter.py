@@ -40,11 +40,11 @@ from __future__ import annotations
 from esolangs.exceptions import ArgumentError, InputExhaustedError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime.combinators import Term as _Term
+from esolangs.runtime.combinators import parse
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
-#: A combinator, or ``(function, argument)``.
-type _Term = str | tuple[_Term, _Term]
 #: The arguments, first on top: a persistent stack, so a step is O(1).
 type _Args = tuple[_Term, _Args] | None
 #: The head combinator and its arguments.
@@ -52,49 +52,6 @@ type _State = tuple[str, _Args]
 
 #: How many arguments each rewrite takes.
 ARITY = {"K": 2, "S": 3}
-_EMPTY = "a Kiss program needs at least one combinator"
-
-
-def _parse(code: str) -> _Term:
-    """Return the one expression ``code`` spells, left-associated."""
-    groups: list[list[_Term]] = [[]]
-    for char in code:
-        if char.isspace():
-            continue
-        if char == "(":
-            groups.append([])
-        elif char == ")":
-            if len(groups) == 1:
-                raise syntax_error(
-                    "a Kiss ')' has no matching '('", "balance the parentheses"
-                )
-            items = groups.pop()
-            if not items:
-                raise syntax_error(
-                    "Kiss parentheses must enclose an expression",
-                    "remove the empty () or put a combinator inside",
-                )
-            groups[-1].append(_applied(items))
-        elif char in ARITY:
-            groups[-1].append(char)
-        else:
-            raise syntax_error(
-                f"{char!r} is not a Kiss combinator",
-                "use K, S, parentheses and whitespace",
-            )
-    if len(groups) > 1:
-        raise syntax_error("a Kiss '(' has no matching ')'", "balance the parentheses")
-    if not groups[0]:
-        raise syntax_error(_EMPTY, "write at least one combinator, for example K")
-    return _applied(groups[0])
-
-
-def _applied(items: list[_Term]) -> _Term:
-    """Return ``items`` applied left to right."""
-    term = items[0]
-    for item in items[1:]:
-        term = (term, item)
-    return term
 
 
 def _unwind(term: _Term, args: _Args) -> _State:
@@ -146,7 +103,10 @@ class _Machine:
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
-        self.state: _State = _unwind(_parse(code), None)
+        self.state: _State = _unwind(
+            parse(code, "".join(ARITY), "Kiss", "use K, S, parentheses and whitespace"),
+            None,
+        )
         self.ended = False
         self.bits = 0
         self.exit_code: int | None = None
