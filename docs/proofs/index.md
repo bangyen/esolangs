@@ -480,6 +480,7 @@ Symbols the formula cells use:
 - **EGL:** F = 3T+25n+digits(T)+8 through n=3; 2T+c+5r+25n+digits(c)+digits(3r)+1 beyond; c = 2^min(n,floor((n+3)/2)), r = T/c; E = 3T+85n+5 through n=3; 2T+c+5r+85n-1 beyond, with c,r as in F; W = 3T+2n+10+bl(L-d-3)+bl(L-d-9)+2bl(n) through n=3, d = digits(T); wh+7+2b(w-1)+2b(h-1)+2b(B)+2b(n) beyond; w,h declared dimensions, B body length, b(x) = max(1,bl(x)).
 - **Eval:** S = 2T+7n at n=4,5; 7T/4+9n+1 from n=6 (unwrapped); W = 8L+T+2n+1+bl(L), minus n when T<8n+4.
 - **FALSE:** W = bl(n)+6n+2b+1 constant, bl(n)+5n+6+2b(S+2n+2) expression, bl(n)+34n+67+2b(n+2) lookup, bl(n)+n+1+2b(S+n+2) diagram.
+- **Fargo:** F = 7 + M_(n-1), M_1 = 23, M_t = 2M_(t-1) + 8 + bl(t): inline expression bound.
 - **Fish:** c = 3 to n = 45, then 2bl(s)-1: column-literal length; S = 4n+37+2c; E = max(S,6n+9) to n=55, then 9n+9; s = 15⌈(4n+43)/15⌉ to n = 45, then the two-pass column.
 - **Flowchart:** F = Σ over exit-memory cells of 4 + bl(column), plus deque keys and counters.
 - **Forbin:** G = max(bl(h+1) + 4, max_{j<h} bl(j+1) + max(1, bl(h-1-j)) + 10), h = max(n-3, 0), the loop cursor.

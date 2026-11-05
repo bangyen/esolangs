@@ -6,6 +6,7 @@ backlinks = 3
 admitted = 2026-08-30T07:59:49-04:00
 
 [proof_status]
+definitions = ["F = 7 + M_(n-1), M_1 = 23, M_t = 2M_(t-1) + 8 + bl(t): inline expression bound"]
 labels = ["tree"]
 qualification = "finite folded layout"
 
