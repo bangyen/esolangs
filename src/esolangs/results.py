@@ -17,6 +17,8 @@ class ExecutionResult(NamedTuple):
     IO calls and past-end counts failed reads, including caught EOFs.
     Counters are None for custom VMs without library-owned IO.
     Completion is absent before output finalization.
+    Steps count completed cooperative commands, excluding a faulting command
+    and post-halt output finalization; None when the runner does not count.
     Runtime failures retain an unfinished observation on EsolangError.execution.
     """
 
@@ -25,3 +27,4 @@ class ExecutionResult(NamedTuple):
     input_reads: int | None
     input_past_end: int | None
     completion: CompletionReport | None = None
+    steps: int | None = None

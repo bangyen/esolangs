@@ -80,6 +80,7 @@ class Debugger:
         self._hits: set[int] = set()
         self._timed_out = False
         self._dumped = False
+        self._steps = 0
 
     @property
     def halted(self) -> bool:
@@ -308,6 +309,7 @@ class Debugger:
         except EsolangError as exc:
             exc.partial_output = self.output
             raise
+        self._steps += 1
         self._record()
 
     def run(

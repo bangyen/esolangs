@@ -16,6 +16,7 @@ SIGNATURES: dict[str, str] = json.loads(
 PUBLIC_MEMBERS = {
     esolangs.ExecutionResult: {
         "output",
+        "steps",
         "input_position",
         "input_reads",
         "input_past_end",

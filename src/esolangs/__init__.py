@@ -773,6 +773,8 @@ def _run_bounded_result(
         reason = debugger.run(max_steps=max_steps, timeout=timeout)
     except EsolangError as exc:
         exc.partial_output = debugger.output
+        observation = exc.execution or _capture_observation(debugger.vm)
+        exc.execution = observation._replace(steps=debugger._steps)  # noqa: SLF001
         raise
     if reason != "halted":
         # One wording per bound: a timeout reads as it does unstepped.
@@ -783,9 +785,11 @@ def _run_bounded_result(
         )
         error.partial_output = debugger.output
         error.bound = "timeout" if reason == "timeout" else "max_steps"
-        error.execution = _capture_observation(debugger.vm)
+        error.execution = _capture_observation(debugger.vm)._replace(
+            steps=debugger._steps  # noqa: SLF001
+        )
         raise error
-    return _capture_result(debugger.vm)
+    return _capture_result(debugger.vm)._replace(steps=debugger._steps)  # noqa: SLF001
 
 
 def run(

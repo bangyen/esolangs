@@ -92,14 +92,22 @@ def test_worker_refuses_corrupt_counters_and_retains_output(counter, failure):
 def test_routes_retain_success_and_failed_input_observations(isolated, max_steps):
     options = {"isolated": isolated, "max_steps": max_steps}
     success = esolangs._run_result(REFERENCE, ",.", stdin="é", **options)
-    assert success == ExecutionResult("é", 1, 1, 0, CompletionReport(Completion.HALTED))
+    steps = 2 if max_steps is not None else None
+    assert success == ExecutionResult(
+        "é", 1, 1, 0, CompletionReport(Completion.HALTED), steps
+    )
     for source, stdin, expected in (
         (",", "", ExecutionResult("", 0, 0, 1)),
         (",.,", "é", ExecutionResult("é", 1, 1, 1)),
     ):
         with pytest.raises(esolangs.InputExhaustedError) as caught:
             esolangs._run_result(REFERENCE, source, stdin=stdin, **options)
-        assert caught.value.execution == expected
+        observed = (
+            expected._replace(steps=0 if source == "," else 2)
+            if max_steps is not None
+            else expected
+        )
+        assert caught.value.execution == observed
         assert caught.value.partial_output == expected.output
 
 
@@ -107,7 +115,7 @@ def test_routes_retain_success_and_failed_input_observations(isolated, max_steps
 def test_step_bound_retains_an_unfinished_observation(isolated):
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
         esolangs._run_result(REFERENCE, "+[.]", max_steps=4, isolated=isolated)
-    assert caught.value.execution == ExecutionResult("\x01", 0, 0, 0)
+    assert caught.value.execution == ExecutionResult("\x01", 0, 0, 0, steps=4)
     assert caught.value.partial_output == "\x01"
 
 

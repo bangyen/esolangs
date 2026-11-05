@@ -1,0 +1,73 @@
+"""Step observations count completed cooperative commands, never inferred work."""
+
+import pytest
+
+import esolangs
+from esolangs.results import ExecutionResult
+from esolangs.runtime._result_wire import decode_result, encode_result
+from esolangs.vm import complete_vm, make_vm
+from tests.support.pick import one_where
+from tests.support.reference import REFERENCE
+
+pytestmark = pytest.mark.medium
+
+
+@pytest.mark.parametrize("isolated", [False, True])
+@pytest.mark.parametrize("source", ["", "+[>+<-]>."])
+def test_steps_match_an_independently_driven_machine(source, isolated):
+    vm = make_vm(REFERENCE, source)
+    steps = 0
+    while not vm.halted:
+        assert steps < 10000, "independent step control did not halt"
+        vm.step()
+        steps += 1
+    native = esolangs.run_result(REFERENCE, source, isolated=isolated)
+    bounded = esolangs.run_result(REFERENCE, source, isolated=isolated, max_steps=steps)
+    assert native.output == bounded.output == vm.output
+    assert native.steps is None
+    assert bounded.steps == steps
+
+
+@pytest.mark.parametrize("isolated", [False, True])
+def test_zero_budget_performs_no_command(isolated):
+    with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
+        esolangs.run_result(REFERENCE, "+.", max_steps=0, isolated=isolated)
+    assert caught.value.execution == ExecutionResult("", 0, 0, 0, steps=0)
+
+
+@pytest.mark.parametrize("isolated", [False, True])
+def test_final_dump_is_outside_the_command_budget(isolated):
+    name = one_where(
+        lambda info: info["answer_mode"] != "termination",
+        boolean_generator=True,
+        parameterized=True,
+        dumps_on_the_post_halt_step=True,
+        steppable_to_answer=True,
+    )[0]
+    source = esolangs.instantiate(name, esolangs.generate(name, "01"), [1])
+    vm = make_vm(name, source)
+    steps = 0
+    while not vm.halted:
+        assert steps < 10000, "independent step control did not halt"
+        vm.step()
+        steps += 1
+    output = complete_vm(vm, max_steps=0)
+    result = esolangs.run_result(name, source, max_steps=steps, isolated=isolated)
+    assert result.steps == steps
+    assert result.output == output
+    assert esolangs.read_answer(name, result.output) == "1"
+
+
+@pytest.mark.parametrize("steps", [-1, True, 1.5, "2"])
+def test_worker_step_counter_requires_a_nonnegative_integer(steps):
+    metadata = encode_result(ExecutionResult("output", 0, 0, 0))
+    metadata["steps"] = steps
+    with pytest.raises(ValueError, match="invalid execution counter"):
+        decode_result("output", metadata)
+
+
+def test_legacy_worker_result_has_no_step_measurement():
+    metadata = encode_result(ExecutionResult("output", 0, 0, 0, steps=7))
+    assert decode_result("output", metadata).steps == 7
+    del metadata["steps"]
+    assert decode_result("output", metadata).steps is None

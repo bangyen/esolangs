@@ -143,6 +143,7 @@ def encode_result(result: ExecutionResult) -> dict[str, Any]:
     report = result.completion
     cycle = report.cycle if report is not None else None
     return {
+        "steps": result.steps,
         "input_position": result.input_position,
         "input_reads": result.input_reads,
         "input_past_end": result.input_past_end,
@@ -170,7 +171,15 @@ def decode_result(output: Any, metadata: Any) -> ExecutionResult:
             raise ValueError("invalid completion report")
         cycle = _cycle_from_wire(declared["cycle"])
         report = CompletionReport(Completion(declared["kind"]), cycle)
-    return ExecutionResult(output, counters[0], counters[1], counters[2], report)
+    steps = metadata.get("steps")
+    return ExecutionResult(
+        output,
+        counters[0],
+        counters[1],
+        counters[2],
+        report,
+        None if steps is None else _counter(steps),
+    )
 
 
 def encode_decision(decision: CycleDecision) -> dict[str, Any]:

@@ -23,7 +23,14 @@ _ROUTES = [
 @pytest.mark.parametrize("route", _ROUTES)
 def test_result_counts_unicode_characters_and_preserves_unread_input(route):
     result = esolangs.run_result(REFERENCE, ",.", stdin="éNEXT", **route)
-    assert result == ExecutionResult("é", 1, 1, 0, CompletionReport(Completion.HALTED))
+    assert result == ExecutionResult(
+        "é",
+        1,
+        1,
+        0,
+        CompletionReport(Completion.HALTED),
+        2 if "max_steps" in route else None,
+    )
     assert esolangs.run(REFERENCE, ",.", stdin="éNEXT", **route) == result.output
 
 
@@ -52,7 +59,7 @@ def test_result_retains_a_caught_eof(route, monkeypatch):
     assert (native.input_position, native.input_reads) == (0, 0)
     assert attempts, "the EOF control did not perform a read"
     assert native.input_past_end == len(attempts)
-    assert esolangs.run_result(name, source, **route) == native
+    assert esolangs.run_result(name, source, **route)._replace(steps=None) == native
 
 
 @pytest.mark.parametrize(
@@ -75,7 +82,9 @@ def test_post_halt_result_includes_the_final_dump(name):
     results = [
         esolangs.run_result(name, source, stdin=stdin, **route) for route in _ROUTES
     ]
-    assert all(result == results[0] for result in results)
+    assert all(result._replace(steps=None) == results[0] for result in results)
+    assert results[1].steps == results[3].steps
+    assert results[1].steps is not None
     assert results[0].completion.kind is Completion.POST_HALT
     assert results[0].completion.cycle is None
     assert esolangs.read_answer(name, results[0].output) == "1"
@@ -101,7 +110,9 @@ def test_result_failures_still_raise_with_partial_output(route):
     with pytest.raises(esolangs.InputExhaustedError) as caught:
         esolangs.run_result(REFERENCE, ",.,", stdin="é", **route)
     assert caught.value.partial_output == "é"
-    assert caught.value.execution == ExecutionResult("é", 1, 1, 1)
+    assert caught.value.execution == ExecutionResult(
+        "é", 1, 1, 1, steps=2 if "max_steps" in route else None
+    )
 
 
 def test_bound_language_returns_the_same_record():
@@ -109,7 +120,10 @@ def test_bound_language_returns_the_same_record():
     result = bound.run_result(
         ",.", stdin="éNEXT", max_steps=2, isolated=True, max_output=1, timeout=5
     )
-    assert result == esolangs.run_result(REFERENCE, ",.", stdin="éNEXT")
+    assert result.steps == 2
+    assert result._replace(steps=None) == esolangs.run_result(
+        REFERENCE, ",.", stdin="éNEXT"
+    )
 
 
 def test_public_record_is_immutable_and_keeps_the_internal_import():
