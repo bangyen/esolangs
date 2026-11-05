@@ -6,16 +6,17 @@ def workspace(n: int, _: str) -> int:
     bl = int.bit_length
     # Node ids <2^(n+1), and 52>2^5. Constant names add a level suffix.
     width = max((n + 5) // 5, 1 + len(str(n - 1)))
-    control = max(128, 8 * width + 16, 8 * width + bl(n) + 1)
-    kont = max(105, 8 * width + 17, 8 * width + 2 * bl(n) + 1)
-    heap = 64 * n + 1 + sum(map(bl, range(1, n)))
-    # A final statement-read tail uses at least one fewer heap cell;
-    # the flat constant's 16n+256+max(1,bl(n-1))+bl(n) is also below this.
-    return heap + control + kont + 2 * bl(n)
+    control = max(128, 8 * width + 16, 8 * width + bl(2 * n) + 1)
+    kont = max(105, 8 * width + 17, 8 * width + 2 * bl(2 * n) + 1)
+    # Each matched read forces two byte thunks: its argument and the
+    # validator's. Statement reads retain only the validator's thunk; that
+    # heap slack also covers the flat constant block's statement AST.
+    heap = 128 * n + 1 + sum(map(bl, range(1, 2 * n)))
+    return heap + control + kont + bl(2 * n) + bl(n)
 
 
 def execution(n: int, program: str) -> int:
-    """Alias calls add two transitions per read; a constant has one flat block."""
+    """Validation adds six transitions per read, seven for a one bit."""
     if "main:={" in program:
-        return 5 * n + 6
-    return 10 * n + 5
+        return 12 * n + 6
+    return 17 * n + 5

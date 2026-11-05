@@ -36,7 +36,7 @@ def _bound(n: int) -> int:
     """
     branching, equal, constants, top = profile(n)
     name = [1 + len(str(k)) for k in range(n)]
-    total = 32 + _width(top[0]) + 4
+    total = 52 + _width(top[0]) + 4
     for k in range(n):
         nodes = branching[k] + equal[k]
         total += _widths(top[k], nodes) + 11 * branching[k] + 9 * equal[k]

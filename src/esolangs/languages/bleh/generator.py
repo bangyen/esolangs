@@ -7,14 +7,16 @@ above the last input, reads its input as a statement and goes on
 (``{2();...}``), so every input is read once and in order; a leaf
 prints its bit.  Functions are named by id in letters (``b`` ... ``Z``,
 ``aa`` ...: the low ids, the most called, take the shortest), and ``io`` is
-imported as ``a``; the nullary ``2`` aliases ``a::next``. For AND:
+imported as ``a``; the nullary ``2`` reads through a Boolean validator, so
+skipped inputs also reject EOF. For AND:
 
-    ^:std::io=a;2:=a::next();main:=c 2();c:"0"=z1():"1"=b 2();
+    ^:std::io=a;2:=3 a::next();3:"0"="0":"1"="1";
+    main:=c 2();c:"0"=z1():"1"=b 2();
     z1:={2();a::print"0"};b:"0"=a::print"0":"1"=a::print"1";
 
 Size:
     O(T) text: one function a shared node, one a constant a level;
-    n=8 constant zero: 77 chars; n=4 parity: 215 chars, n=10 random 1847: 5,545 chars.
+    n=8 constant zero: 97 chars; n=4 parity: 235 chars, n=10 random 1847: 5,565 chars.
 """
 
 from string import ascii_letters
@@ -31,13 +33,14 @@ from esolangs.languages.bleh.descriptor import LANGUAGE as LANGUAGE
 _IO = "a"
 #: A legal non-bit word, disjoint from letter and level-qualified function names.
 _NEXT = "2"
-_HEADER = f"^:std::io={_IO};{_NEXT}:={_IO}::next();"
+# Matching before a read returns also protects statement reads at skipped nodes.
+_HEADER = f'^:std::io={_IO};{_NEXT}:=3 {_IO}::next();3:"0"="0":"1"="1";'
 
 
 def _constant(n: int, bit: str) -> str:
     """Force all inputs in one short-call block, then print the fixed bit."""
-    # The short-call AST costs 16n+256+max(1,bl(n-1))+bl(n) written bits,
-    # below the generic envelope; full io::next calls previously required chunks.
+    # The flat block avoids retaining a continuation per remaining read;
+    # its smaller heap pays for its O(n) statement AST within the generic cap.
     reads = f"{_NEXT}();" * n
     return f'{_HEADER}main:={{{reads}{_IO}::print"{bit}"}};'
 

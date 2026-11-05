@@ -30,7 +30,7 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
                 program = esolangs.generate("Bleh", bit * (1 << n), **options)
                 if not options:
                     if n == 8:
-                        assert len(program) == 77
+                        assert len(program) == 97
                     assert program.count("a::next()") == 1
                     assert program.count("2()") == n
                 rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
@@ -40,15 +40,25 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
                     )
                     io = ReadFirstIO(stdin + "Q", expected=n)
                     machine = _Machine(program, io)
-                    steps, written = measure_run(machine, limit=5 * n + 6)
+                    steps, written = measure_run(machine, limit=12 * n + 6)
                     assert machine.halted
                     assert io.getvalue() == bit
-                    assert steps == 5 * n + 6
+                    assert steps == 11 * n + row.bit_count() + 6
                     assert written.bits <= workspace(n, program)
                     assert io.reads == n
                     assert not io.past_end
                     assert io.input_char() == ord("Q")
     assert (
         sum(len(esolangs.generate("Bleh", format(v, "08b"))) for v in range(256))
-        == 43988
+        == 49108
     )
+
+
+@pytest.mark.parametrize(
+    ("table", "stdin"), [("00", ""), ("0011", "0"), ("0101", ""), ("01", "")]
+)
+def test_skipped_reads_reject_eof(table: str, stdin: str) -> None:
+    from esolangs.exceptions import HaltError
+
+    with pytest.raises(HaltError, match="no branch"):
+        esolangs.run("Bleh", esolangs.generate("Bleh", table), stdin=stdin)

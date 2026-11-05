@@ -22,7 +22,7 @@ def ablate(table: str, rule: Literal["default", "read_alias"]) -> str:
     n = _validate_truth_table(table)
     short = rule == "default"
     read = "2()" if short else "a::next()"
-    header = "^:std::io=a;" + ("2:=a::next();" if short else "")
+    header = "^:std::io=a;" + ('2:=3 a::next();3:"0"="0":"1"="1";' if short else "")
     if len(set(table)) == 1:
         if short:
             return header + "main:={" + (read + ";") * n + f'a::print"{table[0]}"}};'
