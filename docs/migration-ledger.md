@@ -25,7 +25,7 @@ Owners are workstreams, not individual contributors.
 | `registry.GENERATORS` | Registry | Generator lookup consumers | Descriptor/backend entrypoints |
 | `languages.generators` facade | Registry | Scripts and generic/owned tests | Artifact API or direct owned generator imports |
 | Unused generator-module descriptor re-exports | Registry | Legacy metadata consumers | Independent descriptors; retain constants actually used by emitters |
-| Helpers' `AffineForm`, `affine_form`, `symmetric_outputs` re-exports | Analysis | Remaining imports | `generation.algebraic` / `generation.lookup` |
+| Helpers' `AffineForm`, `affine_form`, `symmetric_outputs` re-exports | Analysis | Retired; callers migrated; negative export check in `tests/generators/test_symmetry.py` | `generation.algebraic` / `generation.lookup` |
 | `runtime._result.ExecutionResult` shim | Results | Retired; imports migrated; negative import check in `tests/api/test_run_results.py` | `esolangs.results.ExecutionResult` |
 | `_Machine` / `_for_run` discovery | Lifecycle | VM construction and machine traits | Declared preparation/factories and capabilities |
 | Implicit completion entrypoint defaults | Lifecycle | Runtime descriptors and native runners | Explicit completion declarations |

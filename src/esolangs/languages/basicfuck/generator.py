@@ -30,10 +30,10 @@ Decisions:
     plain tree on 253 tables, n=2..12.
 """
 
+from esolangs.generation.algebraic import affine_form
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
-    affine_form,
     short_name,
     subtree_ids,
 )

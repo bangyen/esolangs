@@ -5,7 +5,6 @@ from itertools import product
 
 from esolangs.generation import helpers
 from esolangs.generation.algebraic import AffineForm, affine_form
-from esolangs.generation.lookup import symmetric_outputs
 from tests.support.witness_tables import witnesses
 
 
@@ -20,9 +19,6 @@ def _oracle(table: str, n: int) -> list[int]:
 
 
 def test_dependencies_exhaustive() -> None:
-    assert helpers.AffineForm is AffineForm
-    assert helpers.affine_form is affine_form
-    assert helpers.symmetric_outputs is symmetric_outputs
     for n in range(1, 5):
         forms = {
             "".join(
@@ -31,7 +27,7 @@ def test_dependencies_exhaustive() -> None:
                     ^ (sum(c * b for c, b in zip(coefficients, row, strict=True)) % 2)
                 )
                 for row in product((0, 1), repeat=n)
-            ): helpers.AffineForm(bias, coefficients)
+            ): AffineForm(bias, coefficients)
             for bias in (0, 1)
             for coefficients in product((0, 1), repeat=n)
         }
@@ -41,7 +37,7 @@ def test_dependencies_exhaustive() -> None:
         for table in tables:
             dependencies = _oracle(table, n)
             assert helpers.essential_inputs(table, n) == dependencies
-            assert helpers.affine_form(table, n) == forms.get(table)
+            assert affine_form(table, n) == forms.get(table)
             lookup = helpers.input_weights(table, n)
             assert isinstance(lookup, helpers.WeightedLookup)
             for row, bit in zip(product((0, 1), repeat=n), table, strict=True):

@@ -9,9 +9,7 @@ from itertools import pairwise
 from typing import NamedTuple
 
 from esolangs.exceptions import TruthTableError
-from esolangs.generation.algebraic import AffineForm as AffineForm
-from esolangs.generation.algebraic import affine_form as affine_form
-from esolangs.generation.lookup import symmetric_outputs as symmetric_outputs
+from esolangs.generation.lookup import symmetric_outputs as _symmetric_outputs
 from esolangs.runtime.source_hints import with_hint
 
 # ``ord("0")``.  Input digits arrive as 48/49 from a byte-oriented read, and a
@@ -526,7 +524,7 @@ def symmetric_weights(truth_table: str, n: int) -> WeightedLookup | None:
     essential = essential_inputs(truth_table, n)
     if len(essential) < 2:
         return None
-    outputs = symmetric_outputs(read_at(truth_table, essential, n), len(essential))
+    outputs = _symmetric_outputs(read_at(truth_table, essential, n), len(essential))
     if outputs is None:
         return None
     weights = [int(i in essential) for i in range(n)]
