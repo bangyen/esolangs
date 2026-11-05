@@ -9,33 +9,25 @@ from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._slug import canonical_id
 
 
-def test_language_names_keep_their_package_namespace() -> None:
+def test_catalog_identifiers_resolve_and_keep_their_owned_namespace() -> None:
     from esolangs import languages
 
-    for lang in LANGUAGES.values():
+    for name, lang in LANGUAGES.items():
+        assert lang.id, name
+        assert lang.id.isidentifier(), name
+        if lang.runtime.interpreter:
+            assert lang.id == lang.runtime.interpreter.split(".")[-1], name
         package = importlib.import_module(f"esolangs.languages.{lang.id}")
         assert getattr(languages, lang.id) is package
+        for spelling in (name, name.casefold(), lang.id, *lang.aliases):
+            assert resolve(spelling) == name, spelling
         if lang.backend is not None:
             generator = importlib.import_module(
                 f"esolangs.languages.{lang.id}.generator"
             )
-            assert (
-                getattr(generator, lang.backend.generate.__name__)
-                is lang.backend.generate
-            )
-
-
-def test_every_language_has_a_canonical_id() -> None:
-    for name, lang in LANGUAGES.items():
-        assert lang.id, name
-        assert lang.id.isidentifier(), name
-
-
-def test_every_name_id_and_alias_resolves_to_its_language() -> None:
-    """Explicit ids and aliases must still resolve to the canonical name."""
-    for name, lang in LANGUAGES.items():
-        for spelling in (name, name.casefold(), lang.id, *lang.aliases):
-            assert resolve(spelling) == name, spelling
+            fn = lang.backend.generate
+            assert getattr(generator, fn.__name__) is fn
+            assert fn.__name__ in (lang.id, lang.id.replace("_", "")), name
 
 
 def test_a_slug_drops_only_punctuation_the_language_has() -> None:
@@ -55,20 +47,6 @@ def test_a_slug_drops_only_punctuation_the_language_has() -> None:
         # Whitespace and dashes are separators, not symbols to own.
         assert resolve(f"\t{lang.id}\n") == name, lang.id
         assert resolve(name.replace(" ", "\xa0").replace("-", "\u2013")) == name
-
-
-def test_id_matches_the_interpreter_module() -> None:
-    for name, lang in LANGUAGES.items():
-        if lang.runtime.interpreter:
-            assert lang.id == lang.runtime.interpreter.split(".")[-1], name
-
-
-def test_id_matches_the_generator_function() -> None:
-    """The canonical id is also the generator function's name."""
-    for name, lang in LANGUAGES.items():
-        if lang.backend:
-            fn = lang.backend.generate.__name__
-            assert fn in (lang.id, lang.id.replace("_", "")), name
 
 
 def test_a_language_cannot_both_wrap_and_refuse_to() -> None:

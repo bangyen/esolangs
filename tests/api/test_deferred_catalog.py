@@ -23,7 +23,8 @@ pilots = [lang for lang in registry.LANGUAGES.values()
           if lang.backend is not None
           and isinstance(lang.backend.entrypoint, FunctionRef)]
 assert pilots, 'no deferred descriptor exercised'
-assert 'GENERATORS' in dir(registry)
+assert 'GENERATORS' not in dir(registry)
+assert not hasattr(registry, 'GENERATORS')
 modules = {lang.backend.entrypoint.module for lang in pilots}
 assert not modules.intersection(sys.modules), 'pilot imported during initialization'
 
@@ -68,8 +69,6 @@ sample = next(lang for lang in pilots if not lang.parameterized
 program = esolangs.compat.generate(sample.name, '00110101')
 assert _evaluate(sample.name, program, inputs=3) == '00110101'
 assert [esolangs.describe(name) for name in esolangs.list_languages()] == before
-assert isinstance(registry.GENERATORS, dict)
-assert registry.GENERATORS[pilots[0].name] is pilots[0].backend.generate
 """
     result = subprocess.run(
         [sys.executable, "-c", code],

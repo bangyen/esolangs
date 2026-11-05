@@ -7,7 +7,6 @@ import re
 import unicodedata
 from collections import Counter
 from functools import cache
-from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 from esolangs.exceptions import TemplateError, UnknownLanguageError
@@ -19,7 +18,6 @@ from esolangs.registry._table import LANGUAGES, Generator, Language, SourceKind
 
 __all__ = [
     "BY_BOOLEAN",
-    "GENERATORS",
     "INTERPRETERS",
     "LANGUAGES",
     "RUNNERS",
@@ -55,29 +53,6 @@ RUNNERS: dict[str, tuple[str, bool]] = {
     for name, lang in LANGUAGES.items()
     if lang.runtime.interpreter
 }
-
-
-# Public workflows select by capability.
-if TYPE_CHECKING:
-    GENERATORS: dict[str, Generator]
-
-
-def __getattr__(name: str) -> dict[str, Generator]:
-    """Build the compatibility function index only when explicitly requested."""
-    if name != "GENERATORS":
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    generators = {
-        name: lang.backend.generate
-        for name, lang in LANGUAGES.items()
-        if lang.backend is not None
-    }
-    globals()[name] = generators
-    return generators
-
-
-def __dir__() -> list[str]:
-    """Keep the deferred compatibility index visible to introspection."""
-    return sorted(set(globals()) | {"GENERATORS"})
 
 
 INTERPRETERS = {

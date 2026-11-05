@@ -22,7 +22,7 @@ Owners are workstreams, not individual contributors.
 | Tagged-source `load_program` | Persistence | CLI, scripts and saved-program callers | Canonical artifact loading |
 | Temporary `esolangs.compat` API | Artifact API | Callers moved there by the in-flight defaults migration | Canonical API; delete the facade after migration |
 | `BooleanBackend(generate=...)` constructor alias | Registry | Retired; callers use `entrypoint`; negative constructor/replacement checks in `tests/api/test_boolean_backend.py` | Canonical entrypoint field |
-| `registry.GENERATORS` | Registry | Generator lookup consumers | Descriptor/backend entrypoints |
+| `registry.GENERATORS` | Registry | Retired; negative index checks in `tests/api/test_deferred_catalog.py` | Descriptor/backend entrypoints |
 | `languages.generators` facade | Registry | Scripts and generic/owned tests | Artifact API or direct owned generator imports |
 | Unused generator-module descriptor re-exports | Registry | Legacy metadata consumers | Independent descriptors; retain constants actually used by emitters |
 | Helpers' `AffineForm`, `affine_form`, `symmetric_outputs` re-exports | Analysis | Retired; callers migrated; negative export check in `tests/generators/test_symmetry.py` | `generation.algebraic` / `generation.lookup` |
