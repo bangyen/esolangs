@@ -67,8 +67,15 @@ def test_worker_step_counter_requires_a_nonnegative_integer(steps):
         decode_result("output", metadata)
 
 
-def test_legacy_worker_result_has_no_step_measurement():
-    metadata = encode_result(ExecutionResult("output", 0, 0, 0, steps=7))
-    assert decode_result("output", metadata).steps == 7
-    del metadata["steps"]
-    assert decode_result("output", metadata).steps is None
+def test_worker_requires_every_observation_field():
+    result = ExecutionResult("output", None, None, None, steps=7)
+    metadata = encode_result(result)
+    assert decode_result(result.output, metadata) == result
+    for key in (*metadata, "obsolete"):
+        broken = (
+            {**metadata, "obsolete": None}
+            if key == "obsolete"
+            else {k: value for k, value in metadata.items() if k != key}
+        )
+        with pytest.raises(ValueError, match="invalid execution result"):
+            decode_result(result.output, broken)

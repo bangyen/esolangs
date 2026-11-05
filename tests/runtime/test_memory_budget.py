@@ -1,6 +1,7 @@
 """Memory exhaustion is a worker failure, never a termination answer."""
 
 import io
+import json
 import sys
 
 import pytest
@@ -34,18 +35,29 @@ def test_cli_budget_runs(tmp_path, capsys) -> None:
     assert output == "\x01"
 
 
-def test_worker_memory_failure_retains_protocol(monkeypatch, capsys) -> None:
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [(MemoryError, "memory limit"), (OSError, "cannot enforce memory limit")],
+)
+def test_worker_memory_failure_retains_protocol(
+    monkeypatch, capsys, error, message
+) -> None:
     def reject(_limit: int) -> None:
-        raise MemoryError
+        raise error("limit unavailable")
 
     monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
     monkeypatch.setattr(_isolated, "_limit_memory", reject)
     monkeypatch.setattr(
-        sys, "stdin", io.StringIO('{"program":"", "raster":false, "max_memory":1}')
+        sys,
+        "stdin",
+        io.StringIO(
+            json.dumps(_isolated._request_wire(REFERENCE, "", "", max_memory=1))
+        ),
     )
     _worker()
-    with pytest.raises(esolangs.InterpreterLimitError, match="memory limit"):
+    with pytest.raises(esolangs.InterpreterLimitError, match=message) as caught:
         _decode(capsys.readouterr().out, expired=False)
+    assert caught.value.execution is None
 
 
 def test_cli_invalid_budget_precedes_path_reads(capsys) -> None:
@@ -80,24 +92,6 @@ def test_memory_ceiling_preserves_inherited_hard_limit(
     assert calls == [(9, (ceiling, hard))]
 
 
-def test_worker_cannot_silently_drop_an_unenforceable_limit(
-    monkeypatch, capsys
-) -> None:
-    def reject(_limit: int) -> None:
-        raise OSError("limit unavailable")
-
-    monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
-    monkeypatch.setattr(_isolated, "_limit_memory", reject)
-    monkeypatch.setattr(
-        sys, "stdin", io.StringIO('{"program":"", "raster":false, "max_memory":1}')
-    )
-    _worker()
-    with pytest.raises(
-        esolangs.InterpreterLimitError, match="cannot enforce memory limit"
-    ):
-        _decode(capsys.readouterr().out, expired=False)
-
-
 def test_worker_reports_a_translated_memory_error_as_the_cap(
     monkeypatch, capsys
 ) -> None:
@@ -112,10 +106,7 @@ def test_worker_reports_a_translated_memory_error_as_the_cap(
     monkeypatch.setattr(
         sys,
         "stdin",
-        io.StringIO(
-            '{"language":"brainfuck","program":"+","raster":false,'
-            '"stdin":"","seed":null}'
-        ),
+        io.StringIO(json.dumps(_isolated._request_wire(REFERENCE, "+", ""))),
     )
     _worker()
     with pytest.raises(esolangs.InterpreterLimitError, match="memory limit"):
@@ -123,20 +114,12 @@ def test_worker_reports_a_translated_memory_error_as_the_cap(
 
 
 def test_successful_worker_budget_retains_output_protocol(monkeypatch, capsys) -> None:
-    import json
-
     calls = []
     monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
     monkeypatch.setattr(_isolated, "_limit_memory", calls.append)
-    request = {
-        "program": "+.",
-        "raster": False,
-        "language": REFERENCE,
-        "stdin": "",
-        "seed": None,
-        "max_memory": _BUDGET,
-        "max_steps": 2,
-    }
+    request = _isolated._request_wire(
+        REFERENCE, "+.", "", max_memory=_BUDGET, max_steps=2
+    )
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(request)))
     _worker()
     assert calls == [_BUDGET]

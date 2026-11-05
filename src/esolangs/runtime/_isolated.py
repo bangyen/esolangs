@@ -39,6 +39,27 @@ type _WorkerResult = ExecutionResult | TerminationResult
 
 type _RasterRuns = tuple[tuple[int, tuple[tuple[int, Pixel], ...]], ...]
 
+_REQUEST_FIELDS = frozenset(
+    {
+        "language",
+        "program",
+        "raster",
+        "compressed",
+        "stdin",
+        "settings",
+        "integer_settings",
+        "seed",
+        "integer_seed",
+        "scale",
+        "max_memory",
+        "max_output",
+        "integer_max_output",
+        "max_steps",
+        "integer_max_steps",
+        "termination",
+    }
+)
+
 
 # Scale-3 raster JSON: 13,759,407 -> 18,621 bytes; four rows 5.71s -> 0.62s.
 def _raster_runs(rows: Rows) -> _RasterRuns:
@@ -117,7 +138,12 @@ def _decode(text: str, *, expired: bool) -> _WorkerResult:
         error = cls(*args, **options)
         error.partial_output = partial
         try:
-            if result.get("execution") is not None:
+            if type(result["output_limit"]) is not bool:
+                raise ValueError("invalid output limit flag")
+            error.__notes__ = list(result["notes"])
+            if isinstance(error, exceptions.ExecutionTimeoutError):
+                error.bound = result["bound"]
+            if result["execution"] is not None:
                 error.execution = decode_result(partial, result["execution"])
                 if error.execution.completion is not None:
                     raise ValueError("failed execution cannot declare completion")
@@ -127,10 +153,6 @@ def _decode(text: str, *, expired: bool) -> _WorkerResult:
             )
             invalid.partial_output = partial
             raise invalid from cause
-        if "notes" in result:
-            error.__notes__ = list(result["notes"])
-        if isinstance(error, exceptions.ExecutionTimeoutError) and "bound" in result:
-            error.bound = result["bound"]
         raise error
     try:
         if "termination" in result:
@@ -232,36 +254,23 @@ def run_isolated_result(
         try:
             source = esolangs._check_program(name, program, stdin)  # noqa: SLF001
             retained = effective_settings(name, source, settings)
-            choices = dialect_options(name, retained)
             box.append(
                 json.dumps(
-                    {
-                        "settings": {
-                            key: hex(value) if type(value) is int else value
-                            for key, value in choices.items()
-                        },
-                        "integer_settings": [
-                            key for key, value in choices.items() if type(value) is int
-                        ],
-                        "language": name,
-                        **_source_transport(source),
-                        "stdin": read_input(stdin),
-                        # Decimal JSON rendering rejects valid 4301-digit seeds.
-                        "seed": hex(seed) if isinstance(seed, int) else seed,
-                        "integer_seed": isinstance(seed, int),
-                        "max_memory": max_memory,
-                        "scale": scale
+                    _request_wire(
+                        name,
+                        source,
+                        read_input(stdin),
+                        settings=retained,
+                        seed=seed,
+                        scale=scale
                         if scale is not None
                         else source.scale
                         if isinstance(source, Raster)
                         else None,
-                        "max_output": hex(max_output)
-                        if max_output is not None
-                        else None,
-                        "integer_max_output": max_output is not None,
-                        "max_steps": hex(max_steps) if max_steps is not None else None,
-                        "integer_max_steps": max_steps is not None,
-                    }
+                        max_memory=max_memory,
+                        max_output=max_output,
+                        max_steps=max_steps,
+                    )
                 )
             )
         except BaseException as exc:
@@ -432,6 +441,46 @@ def _source_transport(source: Program) -> dict[str, Any]:
     return {
         "program": _raster_transport(source) if isinstance(source, Raster) else source,
         "raster": isinstance(source, Raster),
+        "compressed": False,
+    }
+
+
+def _request_wire(
+    name: str,
+    source: Program,
+    stdin: str,
+    *,
+    settings: DialectSettings | None = None,
+    seed: int | None = None,
+    scale: int | None = None,
+    max_memory: int | None = None,
+    max_output: int | None = None,
+    max_steps: int | None = None,
+    termination: bool = False,
+) -> dict[str, Any]:
+    """Encode one complete worker request, including unavailable options."""
+    choices = dialect_options(name, settings)
+    return {
+        "language": name,
+        **_source_transport(source),
+        "stdin": stdin,
+        "settings": {
+            key: hex(value) if type(value) is int else value
+            for key, value in choices.items()
+        },
+        "integer_settings": [
+            key for key, value in choices.items() if type(value) is int
+        ],
+        # Decimal JSON rendering rejects valid 4301-digit integers.
+        "seed": hex(seed) if seed is not None else None,
+        "integer_seed": seed is not None,
+        "scale": scale,
+        "max_memory": max_memory,
+        "max_output": hex(max_output) if max_output is not None else None,
+        "integer_max_output": max_output is not None,
+        "max_steps": hex(max_steps) if max_steps is not None else None,
+        "integer_max_steps": max_steps is not None,
+        "termination": termination,
     }
 
 
@@ -447,18 +496,16 @@ def termination_result_isolated(
 ) -> TerminationResult:
     """Retain worker IO and exact proof evidence; a deadline remains undecided."""
     check_memory(max_memory, isolated=True)
-    choices = dialect_options(name, settings)
     request = json.dumps(
-        {
-            "language": name,
-            **_source_transport(source),
-            "stdin": stdin,
-            "max_memory": max_memory,
-            "termination": True,
-            "settings": choices,
-            "max_output": hex(max_output) if max_output is not None else None,
-            "integer_max_output": max_output is not None,
-        }
+        _request_wire(
+            name,
+            source,
+            stdin,
+            settings=settings,
+            max_output=max_output,
+            max_memory=max_memory,
+            termination=True,
+        )
     )
     with _timeout_named(timeout):
         result = _launch(request, timeout, max_output=max_output)
@@ -511,12 +558,25 @@ def _worker() -> None:
         vm.ScriptedIO = vm_io  # type: ignore[attr-defined]
 
 
+def _read_request(stream: TextIO) -> dict[str, Any]:
+    """Decode the canonical request; omitted options are protocol errors."""
+    request = json.load(stream)
+    if not isinstance(request, dict) or set(request) != _REQUEST_FIELDS:
+        raise ValueError("invalid worker request fields")
+    if request["integer_max_output"]:
+        request["max_output"] = int(request["max_output"], 16)
+    if request["integer_max_steps"]:
+        request["max_steps"] = int(request["max_steps"], 16)
+    return cast("dict[str, Any]", request)
+
+
 def _serve_request() -> None:
     """Stream live output and validated execution or termination metadata."""
     import esolangs
     from esolangs import vm
     from esolangs.runtime.io import ScriptedIO
 
+    request = _read_request(sys.stdin)
     _exit_with_parent()
 
     def send(message: dict[str, Any]) -> None:
@@ -529,7 +589,7 @@ def _serve_request() -> None:
 
         def _write(self, value: object) -> None:
             text = str(value)
-            limit = request.get("max_output")
+            limit = request["max_output"]
             accepted = text if limit is None else text[: max(0, limit - self.written)]
             super()._write(accepted)
             self.written += len(accepted)
@@ -547,15 +607,10 @@ def _serve_request() -> None:
     # ignore marks this patch as intentional, not a typo.
     esolangs.ScriptedIO = StreamingIO  # type: ignore[attr-defined]
     vm.ScriptedIO = StreamingIO  # type: ignore[attr-defined]
-    request = json.load(sys.stdin)
-    if request.get("integer_max_output", False):
-        request["max_output"] = int(request["max_output"], 16)
-    if request.get("integer_max_steps", False):
-        request["max_steps"] = int(request["max_steps"], 16)
     # Release a small reserve before reporting allocation failure under RLIMIT_AS.
     reserve = bytearray(65_536)
     try:
-        if request.get("max_memory") is not None:
+        if request["max_memory"] is not None:
             try:
                 _limit_memory(request["max_memory"])
             except (OSError, OverflowError, ValueError) as error:
@@ -563,19 +618,17 @@ def _serve_request() -> None:
                     f"cannot enforce memory limit: {error}"
                 ) from error
         program = request["program"]
-        if request.get("compressed", False):
+        if request["compressed"]:
             program = CompressedText(base64.b64decode(program, validate=True))
         if request["raster"]:
             program = Raster(_raster_rows(program))
         settings = DialectSettings(
             **{
-                key: int(value, 16)
-                if key in request.get("integer_settings", [])
-                else value
-                for key, value in request.get("settings", {}).items()
+                key: int(value, 16) if key in request["integer_settings"] else value
+                for key, value in request["settings"].items()
             }
         )
-        if "termination" in request:
+        if request["termination"]:
             from esolangs.runtime._termination import _termination_result
 
             proved = _termination_result(
@@ -596,15 +649,15 @@ def _serve_request() -> None:
                 stdin=request["stdin"],
                 timeout=None,
                 seed=int(request["seed"], 16)
-                if request.get("integer_seed", False)
+                if request["integer_seed"]
                 else request["seed"],
-                scale=request.get("scale"),
+                scale=request["scale"],
                 settings=settings,
-                max_steps=request.get("max_steps"),
+                max_steps=request["max_steps"],
             )
         try:
             message = {"result": result.output, "execution": encode_result(result)}
-            if "termination" in request:
+            if request["termination"]:
                 message["termination"] = encode_decision(proved.decision)
             send(message)
         except (TypeError, ValueError) as encoding_error:
@@ -622,6 +675,9 @@ def _serve_request() -> None:
                 {
                     "error": "InterpreterLimitError",
                     "args": ["isolated memory limit exceeded"],
+                    "notes": [],
+                    "execution": None,
+                    "output_limit": False,
                 }
             )
             return

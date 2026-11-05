@@ -36,7 +36,9 @@ def test_worker_refuses_corrupt_counters_and_retains_output(counter, failure):
     metadata = encode_result(ExecutionResult("prefix", 0, 0, 0))
     metadata["input_reads"] = counter
     message = (
-        {"error": "HaltError", "args": ["bad"]} if failure else {"result": "prefix"}
+        {"error": "HaltError", "args": ["bad"], "notes": [], "output_limit": False}
+        if failure
+        else {"result": "prefix"}
     )
     text = (
         json.dumps({"output": "prefix"})
@@ -62,7 +64,15 @@ def test_failed_worker_cannot_claim_completion():
     metadata = encode_result(
         ExecutionResult("", 0, 0, 0, CompletionReport(Completion.HALTED))
     )
-    text = json.dumps({"error": "HaltError", "args": ["bad"], "execution": metadata})
+    text = json.dumps(
+        {
+            "error": "HaltError",
+            "args": ["bad"],
+            "notes": [],
+            "output_limit": False,
+            "execution": metadata,
+        }
+    )
     with pytest.raises(esolangs.InterpreterLimitError, match="invalid isolated"):
         _decode(text, expired=False)
 
@@ -109,3 +119,58 @@ def test_seeded_worker_result_matches_native(language):
     )
     assert worker == native
     assert esolangs.read_answer(language, worker.output) == "1"
+
+
+@pytest.mark.parametrize("failure", [False, True])
+def test_missing_worker_observations_are_rejected_with_the_prefix(failure):
+    result = (
+        {"error": "HaltError", "args": ["bad"], "notes": [], "output_limit": False}
+        if failure
+        else {"result": "prefix"}
+    )
+    text = json.dumps({"output": "prefix"}) + "\n" + json.dumps(result)
+    with pytest.raises(
+        esolangs.InterpreterLimitError, match="invalid isolated"
+    ) as caught:
+        _decode(text, expired=False)
+    assert caught.value.partial_output == "prefix"
+
+
+def test_worker_requires_the_complete_request(monkeypatch):
+    import io
+    import sys
+
+    from esolangs.runtime import _isolated
+
+    request = _isolated._request_wire(REFERENCE, "", "")
+    for key in (*request, "obsolete"):
+        broken = (
+            {**request, "obsolete": None}
+            if key == "obsolete"
+            else {k: value for k, value in request.items() if k != key}
+        )
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(broken)))
+        with pytest.raises(ValueError, match="invalid worker request fields"):
+            _isolated._worker()
+
+
+def test_worker_error_requires_explicit_unavailable_observation_and_options():
+    payload = {
+        "error": "ExecutionTimeoutError",
+        "args": ["deadline"],
+        "execution": None,
+        "notes": ["row 1"],
+        "output_limit": False,
+        "bound": "max_steps",
+    }
+    with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
+        _decode(json.dumps(payload), expired=False)
+    assert caught.value.bound == "max_steps"
+    assert caught.value.__notes__ == ["row 1"]
+    assert caught.value.execution is None
+    for key in ("execution", "notes", "output_limit", "bound"):
+        with pytest.raises(esolangs.InterpreterLimitError, match="invalid isolated"):
+            _decode(
+                json.dumps({k: v for k, v in payload.items() if k != key}),
+                expired=False,
+            )

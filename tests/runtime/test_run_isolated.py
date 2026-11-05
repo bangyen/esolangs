@@ -8,7 +8,7 @@ import pytest
 import esolangs
 from esolangs import compat
 from esolangs.results import ExecutionResult
-from esolangs.runtime._isolated import _decode, _worker
+from esolangs.runtime._isolated import _decode, _request_wire, _worker
 from esolangs.runtime._lifecycle import HALTED_REPORT
 from esolangs.runtime._result_wire import encode_result
 from tests.support.generator_support import evaluate_generated, verify_generated
@@ -57,7 +57,13 @@ def test_decode_missing_result_and_notes() -> None:
     with pytest.raises(esolangs.InterpreterLimitError) as caught:
         _decode('{"output": "abc"}\n', expired=False)
     assert caught.value.partial_output == "abc"
-    payload = {"error": "ProgramError", "args": ["bad"], "notes": ["row 1"]}
+    payload = {
+        "error": "ProgramError",
+        "args": ["bad"],
+        "notes": ["row 1"],
+        "execution": None,
+        "output_limit": False,
+    }
     with pytest.raises(esolangs.ProgramError) as caught:
         _decode(json.dumps(payload), expired=False)
     assert caught.value.__notes__ == ["row 1"]
@@ -101,7 +107,13 @@ def test_cancellation_kills_and_reaps_child(monkeypatch) -> None:
 
 
 def test_unknown_error_reconstructs_suggestions() -> None:
-    payload = {"error": "UnknownLanguageError", "args": ["brainfuk", [REFERENCE]]}
+    payload = {
+        "error": "UnknownLanguageError",
+        "args": ["brainfuk", [REFERENCE]],
+        "execution": None,
+        "notes": [],
+        "output_limit": False,
+    }
     with pytest.raises(esolangs.UnknownLanguageError) as caught:
         _decode(json.dumps(payload), expired=False)
     assert caught.value.language == "brainfuk"
@@ -156,14 +168,7 @@ def test_capped_worker_splits_and_truncates_a_single_large_write(
         output.print_str("λ" * 10_000)
         return output.getvalue()
 
-    payload = {
-        "language": REFERENCE,
-        "program": "",
-        "raster": False,
-        "stdin": "",
-        "seed": None,
-        "max_output": 8193,
-    }
+    payload = _request_wire(REFERENCE, "", "", max_output=8193)
     monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
     monkeypatch.setattr(esolangs, "_run_result", dump)
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
@@ -342,17 +347,9 @@ def test_worker_executes_compact_raster_pixels(monkeypatch, capsys) -> None:
     import io
     import sys
 
-    from esolangs.runtime._isolated import _raster_runs
-
     language = one(source_kind="raster", boolean_generator=True)[0]
     image = compat.generate(language, "0110")
-    payload = {
-        "language": language,
-        "program": _raster_runs(image.rows),
-        "raster": True,
-        "stdin": esolangs.encode_inputs(language, [0, 1]),
-        "seed": None,
-    }
+    payload = _request_wire(language, image, esolangs.encode_inputs(language, [0, 1]))
     monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
     _worker()
@@ -395,7 +392,6 @@ def test_worker_returns_a_termination_verdict(monkeypatch, capsys) -> None:
     import sys
 
     from esolangs import vm
-    from esolangs.runtime._isolated import _source_transport
     from tests.support.pick import first
 
     language = first(
@@ -404,15 +400,13 @@ def test_worker_returns_a_termination_verdict(monkeypatch, capsys) -> None:
 
     monkeypatch.setattr(vm, "ScriptedIO", vm.ScriptedIO)
     monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
-    request = {
-        "language": language,
-        **_source_transport(compat.generate(language, "00")),
-        "stdin": esolangs.encode_inputs(language, [0]),
-        "seed": None,
-        "termination": ["0", "1"],
-        "max_output": "0x64",
-        "integer_max_output": True,
-    }
+    request = _request_wire(
+        language,
+        compat.generate(language, "00"),
+        esolangs.encode_inputs(language, [0]),
+        max_output=100,
+        termination=True,
+    )
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(request)))
     original_io = esolangs.ScriptedIO, vm.ScriptedIO
     _worker()

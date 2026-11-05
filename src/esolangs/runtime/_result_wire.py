@@ -158,7 +158,12 @@ def encode_result(result: ExecutionResult) -> dict[str, Any]:
 
 def decode_result(output: Any, metadata: Any) -> ExecutionResult:
     """Validate worker metadata before publishing a successful result."""
-    if not isinstance(output, str) or not isinstance(metadata, dict):
+    if (
+        not isinstance(output, str)
+        or not isinstance(metadata, dict)
+        or set(metadata)
+        != {"steps", "input_position", "input_reads", "input_past_end", "completion"}
+    ):
         raise ValueError("invalid execution result")
     counters = tuple(
         None if metadata[key] is None else _counter(metadata[key])
@@ -167,11 +172,11 @@ def decode_result(output: Any, metadata: Any) -> ExecutionResult:
     report = None
     if metadata["completion"] is not None:
         declared = metadata["completion"]
-        if not isinstance(declared, dict):
+        if not isinstance(declared, dict) or set(declared) != {"kind", "cycle"}:
             raise ValueError("invalid completion report")
         cycle = _cycle_from_wire(declared["cycle"])
         report = CompletionReport(Completion(declared["kind"]), cycle)
-    steps = metadata.get("steps")
+    steps = metadata["steps"]
     return ExecutionResult(
         output,
         counters[0],

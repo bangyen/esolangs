@@ -31,7 +31,7 @@ Owners are workstreams, not individual contributors.
 | Implicit completion entrypoint defaults | Lifecycle | Runtime descriptors and native runners | Explicit completion declarations |
 | Dialect signature/default inspection | Lifecycle | Settings validation and metadata queries | Declared dialect schemas and defaults |
 | Snapshot-as-workspace fallback | Accounting | Benchmarking, proof drivers and custom VM callers | Versioned semantic accounting adapters |
-| Legacy worker-field defaults | Results | Worker encoders, decoders and protocol fixtures | Explicit canonical fields, including unavailable observations |
+| Legacy worker-field defaults | Results | Retired; complete requests and explicit success/error observations; omission controls in `tests/runtime/test_worker_results.py` | Explicit canonical fields, including unavailable observations |
 | Superseded serialization decoders/converters | Persistence | Persisted data and fixtures, if a format is superseded | One-time data migration, then remove the obsolete code |
 
 For each family, locate consumers before changing it; close the row only after

@@ -1,4 +1,4 @@
-"""Every registered native driver publishes an explicit completion report."""
+"""Every native driver and worker retain the declared completion report."""
 
 import pytest
 
@@ -39,12 +39,12 @@ def test_native_driver_reports_completion(language):
             if lang.parameterized
             else esolangs.encode_inputs(language, bits, truth_table=table)
         )
-    result = esolangs._run_result(
-        language,
-        source,
-        stdin=stdin,
-        seed=7 if LANGUAGES[language].runtime.random else None,
-    )
+    options = {
+        "stdin": stdin,
+        "seed": 7 if LANGUAGES[language].runtime.random else None,
+    }
+    result = esolangs.run(language, source, **options)
+    assert esolangs.run(language, source, isolated=True, **options) == result
     assert isinstance(result.completion, CompletionReport)
     if result.completion.kind is Completion.PERIODIC:
         assert result.completion.cycle is not None
