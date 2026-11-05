@@ -3,6 +3,7 @@
 from functools import partial
 
 import esolangs
+from esolangs.exceptions import InterpreterLimitError
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import DialectSettings, dialect_options
 from esolangs.vm import make_vm, run_until_halt_or_cycle
@@ -24,14 +25,17 @@ def _terminates(
     """
     dialect_options(name, settings)
 
-    # A box, because ``_run`` exists to apply the timeout and discards what
-    # it drove -- which is right for ``run``, whose result is the io buffer.
-    verdict: list[bool] = []
-
-    def _drive(*_args: object) -> None:
+    def _drive(*_args: object) -> bool:
         factory = make_vm if settings is None else partial(make_vm, settings=settings)
         machine = factory(name, source, stdin=stdin)
-        verdict.append(run_until_halt_or_cycle(machine))
+        return run_until_halt_or_cycle(machine)
 
-    esolangs._run(_drive, source, ScriptedIO(""), bound)  # noqa: SLF001
-    return halts if verdict and verdict[0] else diverges
+    verdict = esolangs._run(_drive, source, ScriptedIO(""), bound)  # noqa: SLF001
+    if verdict is True:
+        return halts
+    if verdict is False:
+        return diverges
+    raise InterpreterLimitError(
+        "termination driver returned no boolean verdict",
+        hint="check the termination driver or report this interpreter error",
+    )

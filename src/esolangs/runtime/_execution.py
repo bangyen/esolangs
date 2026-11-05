@@ -38,13 +38,13 @@ def check_signal_timeout(timeout: float | None, message: str) -> None:
         raise ArgumentError(message)
 
 
-def run_under_alarm(
-    run_fn: Callable[..., Any],
+def run_under_alarm[T](
+    run_fn: Callable[..., T],
     program: RunnerProgram,
     io_obj: ScriptedIO,
     timeout: float,
-) -> None:
-    """Run ``run_fn`` under a ``SIGALRM`` wall-clock guard (main thread only)."""
+) -> T:
+    """Return the call's result under a ``SIGALRM`` guard (main thread only)."""
     # The handler fires between any two bytecodes, including the cleanup's;
     # raising into its own teardown left the timer armed and the default
     # SIGALRM disposition killed one run in three.  Clearing this is one store.
@@ -96,7 +96,7 @@ def run_under_alarm(
         signal.setitimer(
             signal.ITIMER_REAL, min(timeout, pending) if pending else timeout
         )
-        run_fn(program, io_obj)
+        return run_fn(program, io_obj)
     finally:
         armed = False
         # Ignore first, then disarm, then restore: an alarm in flight after

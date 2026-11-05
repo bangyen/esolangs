@@ -1,0 +1,65 @@
+"""Guarded calls retain values; only boolean proofs become termination answers."""
+
+import signal
+import time
+
+import pytest
+
+import esolangs
+from esolangs.runtime import _termination
+from esolangs.runtime.io import ScriptedIO
+from tests.support.reference import REFERENCE
+
+_ALARM = pytest.mark.skipif(not hasattr(signal, "SIGALRM"), reason="requires SIGALRM")
+_BOUNDS = [None, pytest.param(1, marks=_ALARM)]
+
+
+@pytest.mark.parametrize("bound", _BOUNDS)
+@pytest.mark.parametrize("value", [None, False, 0, "", object()])
+def test_return_identity_and_io_survive_the_guard(bound, value):
+    io = ScriptedIO("xy")
+
+    def call(program, channel):
+        assert program == "source"
+        channel.print_char(chr(channel.input_char()))
+        return value
+
+    assert esolangs._run(call, "source", io, bound) is value
+    assert io.getvalue() == "x"
+    assert io.position() == 1
+    assert io.reads == 1
+
+
+@pytest.mark.parametrize("bound", _BOUNDS)
+def test_a_guard_does_not_replace_a_runner_fault(bound):
+    fault = ValueError("runner fault")
+
+    def call(*_args):
+        raise fault
+
+    with pytest.raises(ValueError, match="runner fault") as caught:
+        esolangs._run(call, "", ScriptedIO(), bound)
+    assert caught.value is fault
+
+
+@_ALARM
+def test_an_expired_call_does_not_return_a_false_verdict():
+    def call(*_args):
+        time.sleep(1)
+        return False
+
+    with pytest.raises(esolangs.ExecutionTimeoutError):
+        esolangs._run(call, "", ScriptedIO(), 0.01)
+
+
+@pytest.mark.parametrize("verdict", [None, 0, 1, "False"])
+def test_non_boolean_termination_results_abort(monkeypatch, verdict):
+    monkeypatch.setattr(_termination, "run_until_halt_or_cycle", lambda _vm: verdict)
+    with pytest.raises(esolangs.InterpreterLimitError, match="no boolean verdict"):
+        _termination._terminates(REFERENCE, "", "", None, "0", "1")
+
+
+def test_a_driver_that_never_ran_does_not_prove_divergence(monkeypatch):
+    monkeypatch.setattr(esolangs, "_run", lambda *_args: None)
+    with pytest.raises(esolangs.InterpreterLimitError, match="no boolean verdict"):
+        _termination._terminates(REFERENCE, "", "", None, "0", "1")

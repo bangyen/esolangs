@@ -897,14 +897,13 @@ def run(
     return io_obj.getvalue()
 
 
-def _run(
-    run_fn: Callable[..., Any],
+def _run[T](
+    run_fn: Callable[..., T],
     program: RunnerProgram,
     io_obj: ScriptedIO,
     timeout: float | None,
-) -> None:
-    """Run ``run_fn``, applying the wall-clock ``timeout`` guard when set."""
+) -> T:
+    """Return ``run_fn``'s result, applying the wall-clock guard when set."""
     if timeout is None:
-        run_fn(program, io_obj)
-    else:
-        run_under_alarm(run_fn, program, io_obj, timeout)
+        return run_fn(program, io_obj)
+    return run_under_alarm(run_fn, program, io_obj, timeout)
