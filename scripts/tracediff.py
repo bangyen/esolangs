@@ -234,7 +234,10 @@ def trace(
         for _ in range(LIMIT):
             events.append((_views(machine, ignored), machine.snapshot(), io.getvalue()))
             if machine.halted:
-                if completion(machine) is Completion.POST_HALT:
+                # Historical revisions still declare the old class flag.
+                if completion(machine) is Completion.POST_HALT or getattr(
+                    machine, "dumps_on_the_post_halt_step", False
+                ):
                     machine.step()
                     machine.step()  # idempotent by the VM contract
                     events.append(("dumped", io.getvalue()))

@@ -47,6 +47,7 @@ from collections.abc import Sequence
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -105,7 +106,7 @@ class _Machine:
 
     #: The tape is dumped on the step *after* the halt; a caller who stops
     #: at ``halted`` holds no output.
-    dumps_on_the_post_halt_step = True
+    completion = Completion.POST_HALT
 
     def __init__(self, code: list[str], io: IO) -> None:
         """Pad ``code`` to a rectangle and start the beam at the top-left."""

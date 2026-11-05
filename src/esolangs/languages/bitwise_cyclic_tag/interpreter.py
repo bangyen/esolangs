@@ -28,6 +28,7 @@ from __future__ import annotations
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -89,7 +90,7 @@ class _Machine:
 
     #: The answer is written on the step *after* the halt, so a caller that
     #: stops at ``halted`` has driven the program right and holds no output.
-    dumps_on_the_post_halt_step = True
+    completion = Completion.POST_HALT
 
     def __init__(self, code: str, io: IO) -> None:
         """Parse ``code`` into the program and the initial data-string."""

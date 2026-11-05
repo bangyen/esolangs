@@ -35,14 +35,8 @@ class BoundaryCycle:
 
 
 def completion(machine: object) -> Completion:
-    """Read an explicit policy, adapting unmigrated machine traits."""
-    policy = getattr(machine, "completion", None)
-    if policy is not None:
-        if not isinstance(policy, Completion):
-            raise TypeError("completion must be a Completion policy")
-        return policy
-    if getattr(machine, "dumps_on_the_post_halt_step", False):
-        return Completion.POST_HALT
-    if not getattr(machine, "steppable_to_answer", True):
-        return Completion.PERIODIC
-    return Completion.HALTED
+    """Read a declared policy; ordinary machines complete at halt."""
+    policy = getattr(machine, "completion", Completion.HALTED)
+    if not isinstance(policy, Completion):
+        raise TypeError("completion must be a Completion policy")
+    return policy

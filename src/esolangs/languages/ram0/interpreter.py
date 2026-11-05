@@ -25,6 +25,7 @@ from typing import NamedTuple
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime.io import IO
 from esolangs.runtime.persistent import (
     Chunked,
@@ -127,7 +128,7 @@ class _Machine:
     #: ends its loop with one more ``step()``, so a caller who stops at
     #: ``halted`` has driven the program correctly and still holds none of
     #: its output.
-    dumps_on_the_post_halt_step = True
+    completion = Completion.POST_HALT
 
     def __init__(self, code: str, io: IO) -> None:
         """Tokenize ``code`` and start both registers and RAM at zero."""

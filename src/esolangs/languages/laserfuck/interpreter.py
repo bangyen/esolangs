@@ -32,6 +32,7 @@ from typing import cast
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime.io import IO
 from esolangs.runtime.persistent import (
     Chunked,
@@ -204,7 +205,7 @@ class _Machine:
     #: adapter used to replicate it and drifted: its copy fired on ``not
     #: lsrs`` where ``run`` fires on ``halted``, so a program stopped by a
     #: second start marker printed under one and not the other.
-    dumps_on_the_post_halt_step = True
+    completion = Completion.POST_HALT
 
     def __init__(
         self,

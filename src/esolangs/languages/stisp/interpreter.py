@@ -48,6 +48,7 @@ from dataclasses import dataclass
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -372,7 +373,7 @@ def _advance(
 class _Machine:
     """The equations, the head, and the frames left."""
 
-    dumps_on_the_post_halt_step = True
+    completion = Completion.POST_HALT
     #: The state is an expression and a frame stack; ``ip`` is the depth.
     ip_shape = "opaque"
 

@@ -18,6 +18,7 @@ from collections.abc import Sequence
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime.io import IO
 
 # (d_row, d_col) per heading, in the clockwise order right, down, left, up.
@@ -72,7 +73,7 @@ class _Machine:
 
     #: The queue is dumped on the step *after* the halt; a caller who stops
     #: at ``halted`` holds no output.
-    dumps_on_the_post_halt_step = True
+    completion = Completion.POST_HALT
 
     def __init__(self, code: list[str], io: IO | None = None) -> None:
         """Pad ``code`` to a rectangle and reset the machine to the corner.

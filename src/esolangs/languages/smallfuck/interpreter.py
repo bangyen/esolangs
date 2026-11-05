@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime.brackets import match_brackets
 from esolangs.runtime.io import IO
 
@@ -50,7 +51,7 @@ def _advance(
 class _Machine:
     """A fixed binary tape and instruction pointer."""
 
-    dumps_on_the_post_halt_step = True
+    completion = Completion.POST_HALT
 
     def __init__(self, code: str, io: IO) -> None:
         self.code = code

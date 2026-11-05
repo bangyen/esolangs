@@ -3,7 +3,9 @@
 import pytest
 
 from esolangs.exceptions import ExecutionTimeoutError
+from esolangs.registry import LANGUAGES
 from esolangs.runtime._drive import drive, drive_periodic, finalize
+from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, completion
 
 
@@ -75,9 +77,9 @@ def test_halt_completion_never_executes_an_active_machine(policy):
         drive_periodic(machine, 2)
 
 
-def test_legacy_post_halt_output_remains_available():
-    class Legacy:
-        dumps_on_the_post_halt_step = True
+def test_declared_post_halt_output_remains_available():
+    class PostHalt:
+        completion = Completion.POST_HALT
 
         def __init__(self):
             self.halted = False
@@ -89,7 +91,7 @@ def test_legacy_post_halt_output_remains_available():
             else:
                 self.halted = True
 
-    machine = Legacy()
+    machine = PostHalt()
     drive(machine)
     assert machine.output == "done"
     assert completion(machine) is Completion.POST_HALT
@@ -113,3 +115,11 @@ def test_a_timeout_does_not_finalize_periodic_output():
         drive_periodic(machine, 2)
     assert not machine.interrupted
     assert machine.output == ""
+
+
+@pytest.mark.parametrize("name", sorted(LANGUAGES))
+def test_interpreter_completion_has_one_declaration(name):
+    machine = interpreter_module(name)._Machine
+    assert isinstance(completion(machine), Completion)
+    assert "dumps_on_the_post_halt_step" not in vars(machine)
+    assert "steppable_to_answer" not in vars(machine)
