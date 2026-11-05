@@ -97,7 +97,26 @@ def test_generator_literals_are_exact(mode: str) -> None:
             assert io.reads == n
             assert io.input_char() == ord("7")
     dialect = GraphemeDialect(integer_conversion=mode)
-    for value in (0, 1, 2, 5, 13, 16, 106, 1006, 1263460, 5666666, 9999996):
+    for value in (
+        0,
+        1,
+        2,
+        5,
+        6,
+        13,
+        16,
+        60,
+        76,
+        600,
+        706,
+        766,
+        106,
+        1006,
+        1263460,
+        5666666,
+        9999996,
+        6 * 10**1000,
+    ):
         io = ScriptedIO("")
         run(_grapheme_literal(value, dialect) + "Y", io, integer_conversion=mode)
         assert io.getvalue() == str(value)

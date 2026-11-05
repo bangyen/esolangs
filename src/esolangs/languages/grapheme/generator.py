@@ -32,10 +32,11 @@ def _grapheme_push65(dialect: GraphemeDialect = DEFAULT_GRAPHEME) -> str:
 
 
 def _grapheme_literal(value: int, dialect: GraphemeDialect = DEFAULT_GRAPHEME) -> str:
-    """Return a literal for nonnegative ``value`` without a leading decimal 6."""
-    digits = [int(c) for c in format_integer(value)]
-    if digits[0] == 6:
-        raise AssertionError("a leading 6 has nothing to borrow from")
+    """Push nonnegative ``value`` by decimal borrowing or a Horner fallback."""
+    if value == 6:
+        return _grapheme_literal(3, dialect) + _grapheme_literal(2, dialect) + "S"
+    text = format_integer(value)
+    digits = [int(c) for c in text]
     for at in range(len(digits) - 1, 0, -1):
         if digits[at] != 6:
             continue
@@ -45,6 +46,14 @@ def _grapheme_literal(value: int, dialect: GraphemeDialect = DEFAULT_GRAPHEME) -
             digits[lend] = 9
             lend -= 1
         digits[lend] -= 1
+    if digits[0] == 6:
+        # Borrowing in 76 creates a leading 6, which would close int mode.
+        # Unroll decimal Horner arithmetic; recursive calls are at most 10.
+        ten = _grapheme_literal(10, dialect)
+        parts = [_grapheme_literal(int(text[0]), dialect)]
+        for digit in text[1:]:
+            parts.extend((ten, "S", _grapheme_literal(int(digit), dialect), "A"))
+        return "".join(parts)
     source = "F" + "".join(_GRAPHEME_DIGITS[digit] for digit in digits) + "F"
     # Prose conversion yields 10*value; FAF supplies its divisor below it.
     return (

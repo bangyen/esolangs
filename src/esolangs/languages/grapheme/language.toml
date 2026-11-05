@@ -117,3 +117,6 @@ tests = [
     "src/esolangs/languages/grapheme/tests/test_grapheme.py::TestStepMachine",
     "src/esolangs/languages/grapheme/tests/test_grapheme.py::TestEdgeCases::test_the_last_command_leaves_the_machine_halted",
 ]
+
+[ablations.literal_borrow_repair_20261104]
+verdict = "correctness repair: borrowing in76/706 can leave a leading6, which closes integer mode. A decimal Horner fallback avoids it; literal6 is3*2. Only one-digit/10 recursive calls occur, so long values do not consume recursion depth. Both dialects execute all0..999 literals and a1001-digit leading6 regression. Public lifted literals retain their old spelling; 4240 small public rows, default pins and Size anchors unchanged."
