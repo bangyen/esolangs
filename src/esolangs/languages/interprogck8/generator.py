@@ -1,6 +1,6 @@
 """Interprogck8 Boolean program generator: short hops under flights that share rungs.
 
-``DownAccLines`` skips ``1 + acc`` lines.  The program is cut into windows of
+``DownAccLines`` advances ``1 + acc`` lines.  The program is cut into windows of
 126 lines: 40 for code, then a zone of blank lines ending in a rung that every
 flight in the air shares. Parity uses 52 code lines (138 total) at n=3..31.
 
