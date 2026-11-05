@@ -72,6 +72,7 @@ from esolangs.exceptions import ArgumentError, HaltError, ProgramError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -81,6 +82,11 @@ type _Instruction = tuple[str, int | str]
 type _Heap = tuple[tuple[int, int], ...]
 type _State = tuple[int, tuple[int, ...], _Heap, tuple[int, ...], bool]
 type _Effect = tuple[str, int] | None
+
+_WORKSPACE_MODEL = WorkspaceModel(
+    "whitespace-v1",
+    ("instruction", "stack", "heap", "return_stack", "ended", "input_cursor"),
+)
 
 _IO_KINDS = {
     (_SPACE, _SPACE): "out_char",
@@ -354,6 +360,18 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         return (*self.state, self.io.progress())
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Count logical fields; ended records END, not falling off the code."""
+        pc, stack, heap, calls, ended = self.state
+        return _WORKSPACE_MODEL.capture(
+            instruction=pc,
+            stack=tuple(stack),
+            heap=tuple(heap),
+            return_stack=tuple(calls),
+            ended=ended,
+            input_cursor=self.io.progress(),
+        )
 
     def step(self) -> None:
         if self.halted:

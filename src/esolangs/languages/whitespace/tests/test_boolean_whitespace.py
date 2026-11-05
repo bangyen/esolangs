@@ -35,11 +35,11 @@ def _check_constants() -> None:
                     )
                     io = ReadFirstIO(stdin + "\n7\n", expected=n)
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                         assert steps <= 2 * n + 3
                     assert steps == 2 * n + 3
@@ -84,11 +84,11 @@ def _check_power_steps() -> None:
                     stdin = "\n".join(f"{row:0{n}b}") + "\n7\n"
                     io = ScriptedIO(stdin)
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                         assert steps <= execution(n, program)
                     peak = max(peak, written.bits)
