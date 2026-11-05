@@ -360,6 +360,23 @@ TRIGGERS += [
 ]
 
 
+def _result_api(setup: _Setup | None) -> _Setup:
+    def configure(patch: pytest.MonkeyPatch) -> None:
+        if setup is not None:
+            setup(patch)
+        patch.setattr(esolangs, "run", esolangs.run_result)
+
+    return configure
+
+
+# Execute the same error corpus through both return conventions.
+TRIGGERS += [
+    ("run_result", exception, call, _result_api(setup))
+    for name, exception, call, setup in TRIGGERS
+    if name == "run"
+]
+
+
 def test_every_exported_function_lists_its_errors() -> None:
     """A ``Raises:`` section, or a recorded reason there is none."""
     missing = [

@@ -24,6 +24,7 @@
   "Language.load_program": "(self, document: str) -> Program",
   "Language.read_answer": "(self, output: str) -> str",
   "Language.run": "(self, program: ProgramSource, *, stdin: InputSource = '', timeout: float | None = None, seed: int | None = None, isolated: bool = False, max_steps: int | None = None, max_output: int | None = None, max_memory: int | None = None, settings: esolangs.settings.DialectSettings | None = None, scale: int | None = None) -> str",
+  "Language.run_result": "(self, program: ProgramSource, *, stdin: InputSource = '', timeout: float | None = None, seed: int | None = None, isolated: bool = False, max_steps: int | None = None, max_output: int | None = None, max_memory: int | None = None, settings: esolangs.settings.DialectSettings | None = None, scale: int | None = None) -> esolangs.results.ExecutionResult",
   "ProgramArtifact.__init__": "(self, source: 'Source', language: 'str', settings: 'DialectSettings | None' = None, scale: 'int | None' = None) -> None",
   "Raster.__init__": "(self, rows: 'Rows', *, language: 'str | None' = None, settings: 'DialectSettings | None' = None, scale: 'int | None' = None) -> 'None'",
   "Raster.from_png": "(cls, data: 'bytes') -> 'Raster'",
@@ -47,5 +48,6 @@
   "esolangs.load_program": "(language: 'str', document: 'str') -> 'Program'",
   "esolangs.read_answer": "(language: str, output: str) -> str",
   "esolangs.run": "(language: str, program: ProgramSource, *, stdin: InputSource = '', timeout: float | None = None, seed: int | None = None, isolated: bool = False, max_steps: int | None = None, scale: int | None = None, max_output: int | None = None, max_memory: int | None = None, settings: esolangs.settings.DialectSettings | None = None) -> str",
+  "esolangs.run_result": "(language: str, program: ProgramSource, *, stdin: InputSource = '', timeout: float | None = None, seed: int | None = None, isolated: bool = False, max_steps: int | None = None, scale: int | None = None, max_output: int | None = None, max_memory: int | None = None, settings: esolangs.settings.DialectSettings | None = None) -> esolangs.results.ExecutionResult",
   "esolangs.save_program": "(program: 'Program | Artifact', path: 'str | PathLike[str]') -> 'None'"
 }

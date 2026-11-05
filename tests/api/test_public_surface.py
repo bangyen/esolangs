@@ -28,6 +28,7 @@ class TestPackageSurface:
             "CompressedText",
             "DialectSettings",
             "EsolangError",
+            "ExecutionResult",
             "ExecutionTimeoutError",
             "GeneratorCapError",
             "HaltError",
@@ -60,6 +61,7 @@ class TestPackageSurface:
             "load_program",
             "read_answer",
             "run",
+            "run_result",
             "save_program",
         ]
 

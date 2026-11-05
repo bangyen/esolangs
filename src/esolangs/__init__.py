@@ -5,7 +5,8 @@ Public operations split by who supplies the program:
 * Generator-made: ``generate_artifact`` builds an explicit program or template;
   ``generate`` returns compatible source from a truth table and
   ``instantiate`` fills a generator-made template.
-* Caller-supplied: ``run`` executes source the caller supplies.
+* Caller-supplied: ``run`` returns output; ``run_result`` also reports input
+  consumption and completion evidence for caller-supplied source.
   Stepping and debugging live in :mod:`esolangs.debugger`.
 * Contract adapters: ``encode_inputs`` spells input bits as stdin,
   ``read_answer`` extracts an answer bit from output,
@@ -83,6 +84,7 @@ from esolangs.registry._describe import (
     describe,
     list_languages,
 )
+from esolangs.results import ExecutionResult
 from esolangs.runtime._answers import encode_inputs, read_answer
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._execution import (
@@ -96,7 +98,6 @@ from esolangs.runtime._input import InputSource, check_input
 from esolangs.runtime._isolated import check_limits
 from esolangs.runtime._isolated import run_isolated_result as _run_isolated_result
 from esolangs.runtime._program import Program, RunnerProgram
-from esolangs.runtime._result import ExecutionResult
 from esolangs.runtime._source import (
     ProgramSource,
     _FileSource,
@@ -177,6 +178,7 @@ __all__ = [
     "CompressedText",
     "DialectSettings",
     "EsolangError",
+    "ExecutionResult",
     "ExecutionTimeoutError",
     "GeneratorCapError",
     "HaltError",
@@ -209,6 +211,7 @@ __all__ = [
     "load_program",
     "read_answer",
     "run",
+    "run_result",
     "save_program",
 ]
 
@@ -866,6 +869,54 @@ def run(
         max_memory=max_memory,
         settings=settings,
     ).output
+
+
+def run_result(
+    language: str,
+    program: ProgramSource,
+    *,
+    stdin: InputSource = "",
+    timeout: float | None = None,
+    seed: int | None = None,
+    isolated: bool = False,
+    max_steps: int | None = None,
+    scale: int | None = None,
+    max_output: int | None = None,
+    max_memory: int | None = None,
+    settings: DialectSettings | None = None,
+) -> ExecutionResult:
+    """Execute source and return immutable output, input usage and completion.
+
+    Source handling, options and bounds follow :func:`run`. Input position
+    counts captured stdin characters; reads count successful IO calls and
+    past-end counts EOF attempts. Completion retains halt or periodic evidence.
+    Failures raise with the same partial output as ``run``.
+
+    Raises:
+        UnknownLanguageError: ``language`` is not registered.
+        ArgumentError: An option is invalid or inapplicable.
+        ProgramNotFoundError: A program Path does not exist.
+        ProgramError: Source does not load.
+        TemplateError: Source is an unfilled template.
+        InputExhaustedError: Input ended where the language requires a value.
+        ExecutionTimeoutError: A time or step bound was exhausted.
+        InterpreterLimitError: An output, memory or implementation limit was hit.
+        HaltError: Execution encountered an invalid operation.
+        MissingDependencyError: A required optional dependency is unavailable.
+    """
+    return _run_result(
+        language,
+        program,
+        stdin=stdin,
+        timeout=timeout,
+        seed=seed,
+        isolated=isolated,
+        max_steps=max_steps,
+        scale=scale,
+        max_output=max_output,
+        max_memory=max_memory,
+        settings=settings,
+    )
 
 
 def _run_result(

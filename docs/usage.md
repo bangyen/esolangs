@@ -162,6 +162,7 @@ Functions:
 - `esolangs.load_program` -- restore version-1 JSON as tagged source for the requested language
 - `esolangs.read_answer` -- return the answer bit, `"0"` or `"1"`, a program's `output` carries
 - `esolangs.run` -- execute `program` and return its output
+- `esolangs.run_result` -- execute source and return immutable output, input usage and completion
 - `esolangs.save_program` -- write a program as a native source file
 
 Types:
@@ -169,6 +170,7 @@ Types:
 - `esolangs.Artifact` -- `ProgramArtifact[Program] | TemplateArtifact`
 - `esolangs.CompressedText` -- validated UTF-8 gzip source; len counts expanded characters
 - `esolangs.DialectSettings` -- explicit overrides; omitted choices retain each language's defaults
+- `esolangs.ExecutionResult` -- output, stdin usage and explicit completion evidence
 - `esolangs.InputSource` -- `str | bytes | IO[str] | IO[bytes]`
 - `esolangs.Language` -- bind a canonical language name to the package's existing functions
 - `esolangs.LanguageInfo` -- what `describe` returns, as a type a caller can annotate with
