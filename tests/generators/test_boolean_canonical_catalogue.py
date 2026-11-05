@@ -28,7 +28,7 @@ from tests.generators.source_support import generator_symbols as _source
 from tests.support.generator_support import assert_proved_resource_cap
 from tests.support.witness_tables import dense
 
-RESIDUALS = ("subtree_ids", "_residual_ids", "SubtreeDiagram")
+RESIDUALS = ("subtree_ids", "decision_layers", "_residual_ids", "SubtreeDiagram")
 IGNORED = ("essential_inputs", "read_at", "constant_span_test", *RESIDUALS)
 CONSTANT = ("constant_span_test", *RESIDUALS)
 

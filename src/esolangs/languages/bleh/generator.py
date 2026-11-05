@@ -17,10 +17,10 @@ Size:
     n=8 constant zero: 77 chars; n=4 parity: 215 chars, n=10 random 1847: 5,545 chars.
 """
 
-from itertools import pairwise
 from string import ascii_letters
 
-from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.decision import decision_layers
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.languages.bleh.descriptor import _TOKEN as _TOKEN
 from esolangs.languages.bleh.descriptor import LANGUAGE as LANGUAGE
 
@@ -47,12 +47,8 @@ def bleh(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     if truth_table.count(truth_table[0]) == len(truth_table):
         return _constant(n, truth_table[0])
-    ids = subtree_ids(truth_table)
-    # Each level's nodes with their halves, in first-occurrence order.
-    kids = [
-        {node: (below[2 * k], below[2 * k + 1]) for k, node in enumerate(above)}
-        for above, below in pairwise(ids)
-    ]
+    diagram = decision_layers(truth_table)
+    kids = diagram.children
 
     def ref(node: int, level: int) -> str:
         """Return the expression that reads on from ``level`` at ``node``."""
@@ -70,7 +66,7 @@ def bleh(truth_table: str) -> str:
             else:
                 zero, one = ref(lo, level + 1), ref(hi, level + 1)
                 defs.append(f'{name}:"0"={zero}:"1"={one};')
-    return f"{_HEADER}main:={ref(ids[0][0], 0)};" + "".join(defs)
+    return f"{_HEADER}main:={ref(diagram.root, 0)};" + "".join(defs)
 
 
 def _name(node: int, level: int) -> str:

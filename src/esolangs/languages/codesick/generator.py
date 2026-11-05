@@ -27,10 +27,10 @@ Decisions:
 from collections import Counter
 from string import ascii_letters, digits, punctuation
 
+from esolangs.generation.decision import decision_layers
 from esolangs.generation.helpers import (
     _validate_truth_table,
     reflected_table,
-    subtree_ids,
 )
 from esolangs.languages.codesick.descriptor import LANGUAGE as LANGUAGE
 
@@ -68,21 +68,16 @@ def _names(kids: dict[int, tuple[int, int]], parents: Counter[int]) -> dict[int,
 def codesick(truth_table: str) -> str:
     """Build a Codesick program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
-    ids = subtree_ids(reflected_table(truth_table, n))
-    kids: dict[int, tuple[int, int]] = {}
-    frontier = {0}
-    for depth in range(n + 1):
-        below: set[int] = set()
-        for k in sorted(frontier):
-            c = ids[depth][k]
-            if c < 2 or c in kids:
-                continue
-            kids[c] = (ids[depth + 1][2 * k], ids[depth + 1][2 * k + 1])
-            below |= {2 * k, 2 * k + 1}
-        frontier = below
+    diagram = decision_layers(reflected_table(truth_table, n))
+    kids = {
+        node: pair
+        for layer in diagram.children
+        for node, pair in layer.items()
+        if node >= 2
+    }
     if not kids:
         # Loading resolves `in` before output; the dereference writes no new value.
-        return f"codesick out {ids[0][0]} in * *;"
+        return f"codesick out {diagram.root} in * *;"
     parents = Counter(c for pair in kids.values() for c in pair)
     names = _names(kids, parents)
     entry = {0: "0", 1: "1"} | names
