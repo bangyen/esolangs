@@ -18,7 +18,7 @@ subtree once when ``width`` leaves room for its rail columns and characters
 and rectangle both shrink.
 
 Size:
-    O(T) characters; n=10 random 1847: 9,754 chars, n=12 random 1847:
+    Default: O(T) characters; n=10 random 1847: 9,754 chars, n=12 random 1847:
     35,074 chars.
 """
 
@@ -835,9 +835,10 @@ def _flowchart_deque(truth_table: str) -> str:
 
     A deque holds ``2 ** k`` entries, ``k = ceil(m / 2)`` for ``m`` essential
     inputs (:func:`_deque_depth`): the even ones are pushed to the bottom, the
-    odd to the top, so pair ``p`` sits ``p`` from both ends.  A switch among
-    the last ``k - 1`` levels takes its bypass on a zero, ``2 ** (m - 2 -
-    level)`` pairs popped off both ends, and the final pick takes the end.
+    odd to the top, so pair ``p`` sits ``p`` from both ends. On zero, the
+    first ``m-k`` switches skip ``2 ** (m-k-1-level)`` deques; the next
+    ``k-1`` pop ``2 ** (m-2-level)`` pairs from both ends. The final pick
+    takes the end.
 
     Input ``p``'s value bit is stream bit ``8p``, so an ignored input costs
     only the eight ``/ /`` that skip it, and the deque holds the table over
@@ -925,7 +926,9 @@ def _banded_candidates(table: str) -> list[str]:
 
     Split ``(m - 3) // 2`` levels off the top, folded over 3 columns: the
     best split of random n=7..12 tables (area per row 1.6k-3.2k at n=7..12,
-    against the flat tree's 4.6k at n=8 and 77k at n=12).
+    against the flat tree's 4.6k at n=8 and 77k at n=12). That record's
+    corpus is unspecified; [ablations.banded_balance] records the separate
+    seed-4242 fleet and its 1.3k-1.7k range.
     """
     split = (len(_plan(table)[1]) - 3) // 2
     return [_banded(table, split, 3)] if split > 0 else []

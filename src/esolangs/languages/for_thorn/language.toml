@@ -6,6 +6,7 @@ backlinks = 4
 admitted = 2026-10-16T20:51:56-04:00
 
 [proof_status]
+definitions = ["S = _chars in the language-owned tests/formulas.py: scope counts, distance literals and input reads"]
 labels = ["tree"]
 qualification = "the tree tests the essential inputs; an ignored one is read and dropped as `,0*+`"
 
