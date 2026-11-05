@@ -11,18 +11,14 @@ alone handles I/O and random draws, then rebinds the returned state.
 Input/output:
     ``,`` reads a character; ``@`` ("Input decimal number") reads a
     whitespace-delimited token and refuses one that is not an integer.  EOF
-    propagates.
+    propagates. ``.`` emits the low byte without changing the cell.
 
 Errors:
     ProgramError: Empty program.
     InputExhaustedError: ``,`` or ``@`` at EOF.
     ArgumentError: An ``@`` token that is not an integer.
     HaltError: Invalid stack/arithmetic operations (an empty stack read,
-        zero divisor, negative shift, bad root, ``.`` on a non-code-point).
-
-Decisions:
-    * The page calls ``.`` byte output; this adapter emits Unicode scalars
-      and rejects other values. Compatibility with byte output remains open.
+        zero divisor, negative shift, bad root).
 """
 
 from __future__ import annotations
@@ -215,13 +211,7 @@ def _read_char(ctx: _Context) -> _Outcome:
 
 
 def _emit_char(ctx: _Context) -> _Outcome:
-    try:
-        chr(ctx.value)
-    except ValueError:
-        raise HaltError(
-            hint="keep character output values between 0 and 1114111"
-        ) from None
-    return _Outcome(effect=("char", ctx.value))
+    return _Outcome(effect=("char", ctx.value & 0xFF))
 
 
 def _reflect_ruld(ctx: _Context) -> _Outcome:

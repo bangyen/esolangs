@@ -106,6 +106,13 @@ def test_non_ascii_digits_and_letters_are_not_literals(character: str) -> None:
     assert run_super('"' + character + "#'") == "0"
 
 
+@pytest.mark.parametrize(
+    "value", [-257, -256, -1, 0, 255, 256, 257, 0xD800, 0x110000, 2**80]
+)
+def test_byte_output_preserves_the_cell(value: int) -> None:
+    assert run_super('"@.#', str(value)) == chr(value % 256) + str(value)
+
+
 def test_decimal_io_and_output() -> None:
     _check_accumulator_arithmetic()
     assert run_super('"@#', "-42\n") == "-42"
@@ -122,7 +129,6 @@ def test_decimal_io_and_output() -> None:
         '"1_{1].',  # SHR by a negative amount.
         '"0{4;.',  # ROOT of degree zero.
         '"2{65_;#',  # an even root of a negative value.
-        '"1_.',  # chr() of a negative cell.
     ],
 )
 def test_invalid_stack_and_arithmetic_operations_raise_halt_error(program: str) -> None:

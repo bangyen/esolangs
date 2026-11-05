@@ -150,9 +150,7 @@ def _model(source, stdin, choice):
             elif command == "#":
                 text = str(value)
             elif command == ".":
-                if not 0 <= value <= 0x10FFFF or 0xD800 <= value <= 0xDFFF:
-                    raise ValueError("halt")
-                text = chr(value)
+                text = chr(value % 256)
             elif ("A" <= command <= "Z" or "a" <= command <= "z") and command != "@":
                 value = ord(command)
             else:
@@ -186,6 +184,8 @@ def check_raw_super_snusp():
     def number(value):
         return str(abs(value)) + ("_" if value < 0 else "")
 
+    for value in (-257, -256, -1, 0, 255, 256, 257, 0xD800, 0x110000, 2**80):
+        _check(_Machine, '"' + number(value) + ".#'")
     for left, right, command in product((-7, 0, 3, 15), (-2, 0, 2, 5), "+-*%&|^:;[]"):
         _check(_Machine, '"' + number(right) + "{" + number(left) + command + "#'")
     for code in (
