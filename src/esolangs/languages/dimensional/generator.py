@@ -158,7 +158,7 @@ def _paint(truth_table: str) -> str:
 
 
 def _advance(length: int) -> str:
-    """Move along dimension 1 using unary, counted, or balanced-stride commands."""
+    """Move along dimension 1 using bare steps or a square-root-stride counted loop."""
     bare = f">{_INDEX}" * length
     # The loop is the build on long-run classes, inert on random tables
     # ([ablations.zero_run_loops]).  Nine is the first zero run that a counted

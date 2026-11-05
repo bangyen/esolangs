@@ -7,7 +7,7 @@ from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
-_TOKEN = r'"[^"]*"|::|\w+|[\s\S]'
+_TOKEN = r'"[^\"]*"|::|\w+|[\s\S]'
 
 
 LANGUAGE = Language(

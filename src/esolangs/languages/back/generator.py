@@ -111,7 +111,7 @@ def _reflect_back(grid: _Grid, height: int, width: int) -> str:
     reflection reverses cells.  Only the beam mirrors swap; ``<`` and ``>``
     move the tape head and keep their meanings.  Rendered from the sparse
     cells, each row only as long as its last one, so the cost is the
-    output's size rather than the bounding box (``2**n`` rows by ``4n``).
+    output's size rather than the full height-by-width bounding box.
     """
     rows: list[dict[int, str]] = [{} for _ in range(height)]
     for (row, column), cell in grid.items():
@@ -476,7 +476,6 @@ def _back_ordered(
 
     A node tests the current cell, *then* advances, so level ``k`` tests cell
     ``k`` and input ``perm[k]`` must load there, except the held final bit.
-    Other next-cell halls test cell ``k + 1`` instead.
     Getting it wrong computes a different function.
 
     The load runs the inputs in name order (run k *is* input k) and walks the
@@ -532,7 +531,7 @@ def _back_ordered(
     # Reverse name order: the load is drawn bottom-up in column 0, so this
     # emits input 0 first.
     units = _back_load(list(range(n - 1, -1, -1)), cells, weights, levels - 1, n)
-    # Height is max(tree 2**n, load units + 1).  Past n=3 load rows share with
+    # Height is max(tree rows, load units + 1).  Past n=3 load rows share with
     # tree rows; safe only because a run is one character for either bit.
     rows, tree_width = _extent(grid)
     height = max(rows, 1 + len(units))

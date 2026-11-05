@@ -529,7 +529,7 @@ def container(truth_table: str, width: int | None = None) -> str:
             "PRINT:\n1 T<=0\nEXIT:\n1 T<=0"
         )
         return program if width is None else _narrow_rules(program, width)
-    # The tree wins constants, projections and structured tables, the
+    # The tree wins projections and structured tables, the
     # threshold most other tables from n=3: 26 of the 256 n=3 tables keep the
     # tree, ties included (it halts two ticks sooner).
     program = min(
@@ -628,7 +628,7 @@ def _container_blocks(table: str) -> str:
 
 
 def balance_container(table: str, default: str) -> str:
-    """Return the squarer of the default and the threshold program, narrowed."""
+    """Return the squarest default, narrowed threshold, or block program."""
     if default.startswith("T="):
         return default
     # Narrowing at w costs no characters until a rule stops fitting, so the

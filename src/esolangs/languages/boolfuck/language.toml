@@ -2,7 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [deep_arities]
-# Normalized gates start at nine; both three-rung parity windows need
+# Normalized gates start at four; both three-rung parity windows need
 # fourteen.
 linearity = 14
 

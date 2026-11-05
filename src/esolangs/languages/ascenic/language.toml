@@ -28,7 +28,7 @@ evidence = "docs/proofs/index.md#ascenic-bound"
 
 [catalogue]
 sharing_exempt = "threshold scan over the Horner row code; no subtable is drawn"
-folding_constant = "a constant table has no change point: the 6n + 13 line Horner prefix"
+folding_constant = "a constant table reads every input in a 2n+1-line arithmetic tail"
 
 [ablations]
 archive_refs = [

@@ -17,7 +17,7 @@ read and pop all but the last bit, then force zero by division or one by LT.
 Size:
     Two lines per change point, whose arguments climb to about 2T; a
     straight line's arguments sum to at least half its line count squared,
-    so O(T^2) characters; at most 6n+2R+6 steps for R change points; n=10
+    so O(T^2) characters; at most 6n+2R+7 steps for R change points; n=10
     parity: 616 chars, n=10 random 1847: 1,176,242 chars.
     Constants use 2n^2+17n-1+6bit chars and 2n+1 steps; n=8 zero: 263 chars.
 

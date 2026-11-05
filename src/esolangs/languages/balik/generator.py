@@ -5,9 +5,9 @@ each ignored one into a junk cell past the answer cell.  Each box tests one
 cell with ``*`` over ``@``: on 0 the pointer reverses into the top child,
 otherwise it runs down to the bottom child.  Both children leave east into a
 second ``*`` over ``@`` that merges them, since the tested cell is
-unchanged.  A leaf prints the answer cell, incremented for a 1.  Boxes
-stack children vertically, and side by side at every other level, so the
-area is linear.
+unchanged. A constant leaf prints the answer cell, incremented for a 1;
+a final 01 cofactor prints its input cell. Boxes stack children vertically,
+or side by side at odd inner levels from 3, so the area is linear.
 
 Size:
     Theta(T) area; n=4 parity: 685 chars.

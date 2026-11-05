@@ -85,4 +85,5 @@ def _name(node: int, level: int) -> str:
     while index:
         index, digit = divmod(index - 1, len(ascii_letters))
         letters.append(ascii_letters[digit])
-    return "".join(reversed(letters))
+    name = "".join(reversed(letters))
+    return "mai0" if name == "main" else name

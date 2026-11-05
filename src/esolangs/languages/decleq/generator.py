@@ -32,8 +32,9 @@ __all__ = ["decleq"]
 
 
 # Fixed low-memory layout. Cells 0-2 hold the entry instruction ``0 0 code``;
-# every unconditional decrement targets cell 0, whose value never triggers a
-# branch. Cells 3-14 hold two print gadgets, each a ``-2 K next`` decrement pair
+# every unconditional decrement targets cell 0, whose negative value makes
+# every such branch unconditional. Cells 3-14 hold two print gadgets, each
+# a ``-2 K next`` decrement pair
 # followed by a ``0 0 END`` terminator; a constant subtree reaches a gadget by
 # jumping to its address (11110000 needs one branch).
 # Cells 15-16 hold the print constants; cells 17 onward hold the per-input

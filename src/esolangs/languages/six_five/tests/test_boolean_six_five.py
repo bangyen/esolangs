@@ -479,3 +479,12 @@ def _check_one_input_walk_returns_without_a_home_loop() -> None:
         program = _six_five_walk(table)
         for row in range(2):
             assert run(program, [str(row)]) == table[row]
+
+
+def test_plain_layout_cannot_silently_clamp_an_invalid_label() -> None:
+    from esolangs.languages.six_five.generator import _Layout
+
+    with pytest.raises(AssertionError, match="plain tree exceeds label budget"):
+        _Layout()._label(36)
+    assert _Layout(share=True, probe=True)._label(36) == "Z"
+    assert _Layout(share=True)._label(36) == "Z"

@@ -62,3 +62,23 @@ def test_skipped_reads_reject_eof(table: str, stdin: str) -> None:
 
     with pytest.raises(HaltError, match="no branch"):
         esolangs.run("Bleh", esolangs.generate("Bleh", table), stdin=stdin)
+
+
+@pytest.mark.parametrize("table", ["01", "10", "0110", "0011"])
+def test_entrypoint_name_is_escaped_without_widening(monkeypatch, table: str) -> None:
+    from esolangs.languages.bleh import generator
+
+    ids = generator.subtree_ids
+
+    def reserved_id(truth_table: str) -> list[list[int]]:
+        return [
+            [1831090 if node == 2 else node for node in level]
+            for level in ids(truth_table)
+        ]
+
+    assert generator._name(1831090, 0) == "mai0"
+    monkeypatch.setattr(generator, "subtree_ids", reserved_id)
+    program = generator.bleh(table)
+    n = len(table).bit_length() - 1
+    for row in range(len(table)):
+        assert esolangs.run("Bleh", program, stdin=f"{row:0{n}b}") == table[row]

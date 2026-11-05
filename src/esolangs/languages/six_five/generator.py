@@ -363,7 +363,9 @@ class _Layout:
         return (*key, *leaf) if key[0] < 0 else (*key, entry)
 
     def _label(self, value: int) -> str:
-        # A probe may run past the budget; its text is thrown away.
+        # Shared layouts discard text above the budget; plain trees must fit.
+        if value > _SIX_FIVE_MAX_LABEL and not self.share:
+            raise AssertionError("plain tree exceeds label budget")
         return _six_five_label(min(value, _SIX_FIVE_MAX_LABEL))
 
     def branch(

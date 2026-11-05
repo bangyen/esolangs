@@ -116,3 +116,6 @@ tests = [
 
 [ablations.checked_reads_20261104]
 verdict = "correctness repair: validate the read alias through explicit 0/1 branches before returning, so skipped reads reject EOF too. All 2120 valid small rows and 6280 underfed controls pass. Header grows20 chars; F adds20 without changing profiles or exact rungs. Reads add6 transitions on0,7 on1: E=17n+5, constants<=12n+6. A full matched path holds2n byte thunks, H=128n+1+sum_{0<a<2n}bl(a); fresh cursor bl(2n), input bl(n). Existing C/K maxima use bl(2n). Workspace witnesses attain the revised ceiling through7; exact scopes retained. Eight source/command pins, anchors and example updated together. Historical alias/restoration figures above predate validation."
+
+[ablations.entrypoint_escape_20261104]
+verdict = "Node 1831090 formerly reused main, causing a duplicate-function error. Escape it as mai0: still four characters, disjoint from all-letter nodes and z/o-level constants. Forced-id small diagrams execute correctly; ordinary output, source/workspace prices, pins and Size anchors stay unchanged."

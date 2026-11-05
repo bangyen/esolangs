@@ -1,7 +1,8 @@
 """Bitdeque Boolean template generator: a deque load, then a pop-and-GOTO tree.
 
-The load pushes every input bit as the fixed pair ``PUSH INVERT`` / ``INVERT
-PUSH`` (``2n`` commands, no absolute ``GOTO``); each node pops one bit and
+The default load pushes each bit as the fixed pair ``PUSH INVERT`` / ``INVERT
+PUSH`` (``2n`` commands); narrow short loads use 15n commands with jumps.
+Each node pops one bit and
 ``GOTO``s its one-subtree, and a leaf drains the deque, pushes the answer and
 halts through a low-address trampoline.  The split order is input order
 (a greedy reorder saved 0.9% at n=8, 60 random tables); rotations happen
@@ -149,7 +150,7 @@ class _BitdequeTreeBuilder:
 
     def width(self, level: int) -> int:
         """Return the commands a node at ``level`` spends before its subtrees."""
-        # The rotation, its consuming pop, and the node's own ``GOTO``.
+        # The consuming EJECT/POP and the node's own ``GOTO``.
         return len(self.rotations[level]) + 1
 
     def walk(self, level: int, block: int, at: int) -> list[str]:
@@ -191,7 +192,7 @@ def _bitdeque_ordered(truth_table: str, *, short: bool = False) -> str:
     """Emit the Bitdeque template; see :func:`bitdeque`.
 
     Level ``i`` consumes input ``i`` from the head (``EJECT``); the last
-    level's lone bit is popped.  Bits are pushed in reverse so ``POP``
+    level's lone bit is popped.  Bits are pushed in stream order so ``EJECT``
     yields the MSB first; the register flips after every load block, so
     odd load positions push complemented;
     the tree reads the table with those inputs complemented back
@@ -221,8 +222,8 @@ def _bitdeque_ordered(truth_table: str, *, short: bool = False) -> str:
     # Each linear run fills to two commands.
     load_len = _SHORT_BLOCK * n if short else 2 * n
 
-    # A node spends its rotation, its pop and its ``GOTO`` before either
-    # subtree.  Commands count from 1 and the load occupies ``2n`` of them
+    # A node spends its EJECT/POP and its ``GOTO`` before either
+    # subtree. Commands count from 1; the load occupies ``load_len`` commands
     # ahead of the tree, so the ``GOTO`` operands are right after substitution.
     ids = subtree_ids(seen)
     constants = {key for level in ids[:n] for key in level if key < 2}

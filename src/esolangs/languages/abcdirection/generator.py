@@ -7,7 +7,7 @@ inputs walk the tape pointer to the answer; the grid draws no tree.
   fresh cell becomes 1), then a ``D`` after a 0 entry (dequeue the empty
   queue: 0).  Entry ``r`` lands ``r`` cells right of entry 0, and a last
   ``C`` steps onto the *dead* cell right of the final entry.
-- **Read.**  Every input byte's eight bits go into the dead cell, one per
+- **Read.**  Every input byte's eight bits go into the dead cell, up to two per
   *tooth*, a short up-column of reads; an essential input's value bit is
   enqueued as it lands, and an ignored input is read and dropped.
 - **Select.**  The ``j``-th essential input is dequeued into the dead cell
@@ -164,7 +164,7 @@ def _tooth(w: _Walker, reads: int, *, enqueue: int, rise: bool = False) -> None:
 
 
 def _shift(w: _Walker, rows: int) -> None:
-    """Heading left: drop ``rows`` rows (1 to 3) via a loop up and over."""
+    """Heading left: drop ``rows`` rows via a loop up and over."""
     x = w.x
     w.put("AAA" + "B" * rows + "A")
     w.to(x - 2)
@@ -175,7 +175,7 @@ def _select(
 ) -> _Walker:
     """Heading left on ``base``: test the next input, move ``run`` on a 0.
 
-    Spans ``run + 6`` columns left of its arrival; leaves heading left on
+    Spans ``run + 8`` columns, or ``run + 5`` at the last input; leaves heading left on
     ``base``, or on ``base - 2`` for the last input.
     """
     x = w.x - run - 3  # the test column

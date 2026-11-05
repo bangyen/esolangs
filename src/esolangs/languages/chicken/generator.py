@@ -1,7 +1,7 @@
 """Chicken Boolean program generator: the table is the program's own lines.
 
 The answer is a line count read back out of the code region.  The rows sit
-after the program as one line each, ``chicken`` for the minority value and a
+after the program as one line each, ``chicken`` for the chosen stored value and a
 blank line for the other, so a row is a cell holding 1 or 0.  The program
 reads each essential input as ``input[p] == true`` (``"1"`` loosely equals
 true; ``"0"`` and a missing character do not), folds the bits into a row
@@ -12,7 +12,7 @@ is mostly 1 stores its zeros as lines and subtracts the loaded cell from a 1
 pushed first.
 
 Size:
-    ``8 * (ones or zeros, whichever is fewer) + (T - that) + O(n)`` characters
+    ``8s + (T-s) + O(n)`` characters for s stored one-lines
     for m essential inputs and ``T = 2**m`` rows, so linear in T; n=4
     parity: 1,678 chars. Constants: 1/24 chars, 1/2 commands and
     8n+4/8n+8 written bits for zero/one.

@@ -9,7 +9,7 @@ the next ``1`` when 1), so the walk arrives at cell ``index // 2``; the sentinel
 fires ``a`` or, two zeros later, ``b``, and the trailing ``00`` eats a 1 answer
 so no indexed row cascades; a 0 answer is inert and the next delete eats it.
 Constants delete the embedded inputs and a literal answer with a cyclic ``0``.
-Emission is ``program,data``; the count and why a cell needs four bits:
+Emission is ``program,data``; the count and why a cell needs seven characters:
 ``docs/proofs/index.md``.
 
 Size:

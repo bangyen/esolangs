@@ -1,8 +1,9 @@
 """Boolfuck Boolean program generator: a decision tree over flip-only bit cells.
 
-Cells ``2i`` / ``2i+1`` hold input bit ``x_i`` and its level flag; cell ``2n``
-is the result R, cell ``-1`` scratch.  Bytes stream little-endian, so the first
-bit read is the value bit; it lands on the byte's cell and the other seven go to
+Tree cells ``2i`` / ``2i+1`` hold essential bit ``x_i`` and its level flag;
+cell ``2m`` is the result R for m essential inputs, cell ``-1`` scratch.
+Bytes stream little-endian, so the first bit read is the value bit; it lands
+on the byte's cell and the other seven go to
 scratch (bytes consumed whole).  Node ``i`` sets ``flag_i``; ``[+`` on the bit
 clears it and runs the one-side (which clears the flag); ``[+`` on the flag runs
 the zero-side only if the flag survived.  Every flag is 0 again on return.

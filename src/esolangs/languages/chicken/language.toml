@@ -9,7 +9,7 @@ labels = ["finite lookup"]
 qualification = "the essential input bits fold into a row number from a pushed base, and a load reads that row's chicken count back out of the program's own lines"
 
 [catalogue]
-folding_constant_local = "essential_inputs"  # no essential input: one push line
+folding_constant_local = "essential_inputs"  # constants emit the direct zero/one stack form
 
 [generator_sizes]
 "00000001" = { commands = 28, commands_by_row = { "0" = 28, "1" = 28, "2" = 28, "3" = 28, "4" = 28, "5" = 28, "6" = 28, "7" = 28 }, source_units = 1243 }

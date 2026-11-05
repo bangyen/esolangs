@@ -119,3 +119,6 @@ contract = "interpreter.py"
 tests = [
     "src/esolangs/languages/six_five/tests/oracle_checks.py::check_raw_six_five",
 ]
+
+[ablations.plain_label_guard_20261104]
+verdict = "Plain trees now reject labels above 35 instead of clamping silently. Shared probe/final text still clamps while counting, then the existing marker gate discards an over-budget candidate. Valid builds, proof bounds, pins and Size anchors stay unchanged."
