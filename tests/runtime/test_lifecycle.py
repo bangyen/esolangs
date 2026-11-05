@@ -259,7 +259,6 @@ def test_declared_ordinary_text_factories_and_routes(monkeypatch):
         and lang.runtime.capabilities.completion is Completion.HALTED
         and lang.runtime.capabilities.self_halts
         and lang.runtime.source_kind.value == "text"
-        and not lang.runtime.compressed_source
     }
     assert selected
     subprocess.run(

@@ -96,5 +96,8 @@ counts live data and its answer, excluding the deleted-prefix storage cursor.
 Read-only source tables and shell-only dump guards are excluded.
 
 Boolfuck and Monotonic Boolfuck declare inherited bit-tape factories and debug
-fields. Buffered byte flushing and monotonic reads stay unchanged; Unary’s
-compressed source preparation remains open.
+fields. Buffered byte flushing and monotonic reads stay unchanged.
+
+Unary declares compressed-source preparation and inherited debug fields. Gzip
+continues to decode in chunks, with zero-valued EOF and ordinary completion.
+Cached and raster factories and retirement acceptance remain open.

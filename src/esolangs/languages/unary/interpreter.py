@@ -16,13 +16,20 @@ Errors:
         3-bit triple; unmatched brackets.
 """
 
+from collections.abc import Mapping
+from functools import partial
+from typing import Any
+
 from esolangs.compressed import CompressedText
 from esolangs.languages.brainfuck.interpreter import _Machine as _BFMachine
 from esolangs.languages.brainfuck.interpreter import _State as _BFState
 from esolangs.languages.brainfuck.interpreter import _written
+from esolangs.languages.unary.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import ProgramSource, _read_container, text_source
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
@@ -89,9 +96,20 @@ class _Machine(_BFMachine):
             self.state = _at_eof(self.state)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh Unary machines without expanding compressed source."""
+    if not isinstance(source, (str, CompressedText)):
+        raise TypeError("unary machines require text or compressed source")
+    if options:
+        raise TypeError("unary machines accept no runtime options")
+    return partial(_Machine, source)
+
+
 def _execute(code: str | CompressedText | ProgramSource, io: IO) -> CompletionReport:
     """Decode Unary and run its Brainfuck program."""
-    return drive(_Machine(load_source(code), io))
+    return drive(_Machine(load_source(code), io), policy=CAPABILITIES.completion)
 
 
 def run(code: str | CompressedText | ProgramSource, io: IO) -> None:

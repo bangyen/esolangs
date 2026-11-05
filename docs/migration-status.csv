@@ -110,7 +110,7 @@ SwitchCase,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,sw
 Taglate,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,taglate-v1,pending-backend-audit,pending-acceptance-audit,open
 thisthat,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Thue,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-Unary,yes,legacy-discovery,not-applicable,legacy-discovery,inherited-adapter,brainfuck-v1,pending-backend-audit,pending-acceptance-audit,open
+Unary,yes,declared,not-applicable,declared,inherited-adapter,brainfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Underload,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,underload-v1,pending-backend-audit,pending-acceptance-audit,open
 Unlambda,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Unsquare,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
