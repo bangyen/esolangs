@@ -11,7 +11,7 @@ sharing_exempt = "the inline tree nests each body under paired lexical turns; th
 
 [ablations]
 version = 1
-archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-11-01", n3_source_units = 16081, n3_commands = 58768, executed_rows = 11456 }
 
 [ablations.constant_fold]
@@ -86,7 +86,7 @@ blind_reimplementation = 2026-11-01
 
 [interpreter_ablations]
 version = 1
-archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.blind_reimplementation]

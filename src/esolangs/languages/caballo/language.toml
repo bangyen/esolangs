@@ -30,7 +30,7 @@ plain_rewrite = 2026-10-29
 
 [ablations]
 version = 1
-archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-30" }
 
 [ablations.equal_halves_skip]
@@ -95,7 +95,7 @@ verdict = "rejected by construction: the proposed greedy variable-sifting search
 
 [interpreter_ablations]
 version = 1
-archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]

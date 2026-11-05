@@ -48,7 +48,7 @@ folding_constant = "both constants are one self-fed gate"
 # removed tricks stay as the record of why they left.
 [ablations]
 version = 1
-archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18" }
 
 [ablations.column_recycling]
@@ -154,7 +154,7 @@ verdict = "generic rejected, named parity kept 2026-11-02: n=3 E 11448 ->15352 w
 
 [interpreter_ablations]
 version = 1
-archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
 
 [interpreter_ablations.compile_cache]

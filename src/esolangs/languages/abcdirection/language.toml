@@ -25,7 +25,7 @@ folding_constant_local = "_layout"  # no essential input: one table cell, no sel
 
 [ablations]
 version = 1
-archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.essential_projection]
@@ -68,7 +68,7 @@ verdict = "not retained: the proposal admits it has no full mechanism for shorte
 
 [interpreter_ablations]
 version = 1
-archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
 
 [interpreter_ablations.repeat_key]

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-import re
 import subprocess
 import tomllib
 from collections.abc import Mapping
@@ -185,19 +184,6 @@ def load(language: str, group: str = "ablations") -> AuditFile | None:
     return parse_audits(language, group, data[group]) if group in data else None
 
 
-def _legacy_retirement(verdict: str) -> Retirement | None:
-    """Import the old immutable archive's retirement annotation for comparison only."""
-    match = re.match(r"(retired|removed) (\d{4}-\d\d-\d\d)", verdict)
-    if match is None:
-        return None
-    start = verdict.find("balanced")
-    return Retirement(
-        match[1],
-        date.fromisoformat(match[2]),
-        (start, start + 8) if start >= 0 else None,
-    )
-
-
 def verify_archive(audit: AuditFile) -> None:
     """Require every archived value and annotation to match its pinned source."""
     archives = {
@@ -218,17 +204,28 @@ def verify_archive(audit: AuditFile) -> None:
         old = tomllib.loads(result.stdout)[audit.group]
     except (subprocess.SubprocessError, KeyError, tomllib.TOMLDecodeError) as error:
         raise AuditError(f"cannot read archived audit source {reference}") from error
-    context = {key: value for key, value in old.items() if not isinstance(value, dict)}
+    if type(old.get("version")) is not int or old["version"] != 1:
+        raise AuditError(f"archive source must be structured: {reference}")
+    context = old["archive_context"]
     if _canonical(audit.context) != _canonical(context):
         raise AuditError(f"archived audit context differs: {reference}")
-    old_keys = {k for k, value in old.items() if isinstance(value, dict)}
+    old_keys = set(old) - {"version", "archive_revision", "archive_context"}
     if not old_keys <= audit.records.keys():
         raise AuditError(f"archived audit records are missing: {reference}")
     for key, record in archives.items():
-        if key not in old or _canonical(record.values) != _canonical(old[key]):
+        values = dict(record.values) | {"kind": "archive"}
+        retired = record.retirement
+        if retired is not None:
+            annotation: dict[str, Any] = {"verb": retired.verb, "date": retired.date}
+            if retired.balanced is not None:
+                annotation["balanced"] = retired.balanced
+            values["retirement"] = annotation
+        if (
+            key not in old
+            or old[key].get("kind") != "archive"
+            or (_canonical(values) != _canonical(old[key]))
+        ):
             raise AuditError(f"archived audit values differ: {reference}#{key}")
-        if record.retirement != _legacy_retirement(old[key]["verdict"]):
-            raise AuditError(f"archived retirement differs: {reference}#{key}")
 
 
 def verify(audit: AuditFile, scratch: Path) -> None:

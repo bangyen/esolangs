@@ -68,6 +68,13 @@ def _controls(tmp_path, monkeypatch):
     broken[key]["verdict"] += " changed"
     with pytest.raises(ablation_replay.AuditError, match="values differ"):
         ablations.verify_archive(ablations.parse_audits(REFERENCE, "ablations", broken))
+    retired_key = next(
+        k for k, row in data.items() if isinstance(row, dict) and "retirement" in row
+    )
+    broken = copy.deepcopy(data)
+    del broken[retired_key]["retirement"]
+    with pytest.raises(ablation_replay.AuditError, match="values differ"):
+        ablations.verify_archive(ablations.parse_audits(REFERENCE, "ablations", broken))
     for update in ({"version": True}, {"archive_revision": "main"}):
         with pytest.raises(ValueError, match="audit"):
             ablations.parse_audits(REFERENCE, "ablations", data | update)

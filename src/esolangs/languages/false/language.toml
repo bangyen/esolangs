@@ -24,7 +24,7 @@ definitions = ["W = bl(n)+6n+2b+1 constant, bl(n)+5n+6+2b(S+2n+2) expression, bl
 
 [ablations]
 version = 1
-archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [ablations.subtree_sharing]
@@ -120,7 +120,7 @@ plain_rewrite = 2026-10-28
 
 [interpreter_ablations]
 version = 1
-archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
