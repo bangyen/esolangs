@@ -105,4 +105,7 @@ fields. Buffered byte flushing and monotonic reads stay unchanged.
 
 Unary declares compressed-source preparation and inherited debug fields. Gzip
 continues to decode in chunks, with zero-valued EOF and ordinary completion.
-Cached and raster factories and retirement acceptance remain open.
+Other cached and raster factories and retirement acceptance remain open.
+
+Streetcode declares cached geometry preparation with fresh per-run state and
+grid debug fields. The last `_for_run` discovery hook and VM fallback are removed.

@@ -102,7 +102,7 @@ Smu,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pend
 Sonata,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,sonata-v1,pending-backend-audit,pending-acceptance-audit,open
 SStack,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,sstack-v1,pending-backend-audit,pending-acceptance-audit,open
 Stisp,yes,declared,not-applicable,declared,owned-adapter,stisp-v1,pending-backend-audit,pending-acceptance-audit,open
-Streetcode,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+Streetcode,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Subleq,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,subleq-v1,pending-backend-audit,pending-acceptance-audit,open
 Suffolk,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Super SNUSP,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open

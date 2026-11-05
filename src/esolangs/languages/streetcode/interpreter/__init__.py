@@ -50,8 +50,9 @@ Decisions:
 
 import functools
 from collections.abc import Mapping
+from functools import partial
 from types import MappingProxyType
-from typing import Self, assert_never
+from typing import Any, assert_never
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.streetcode.interpreter.geometry import (
@@ -67,8 +68,11 @@ from esolangs.languages.streetcode.interpreter.validation import (
     _Edges,
     validate_street,
 )
+from esolangs.languages.streetcode.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -389,20 +393,24 @@ class _Machine:
         prototype = _Machine(list(code), IO())
         return prototype.grid, prototype._state, prototype._graph
 
-    @classmethod
-    def _for_run(cls, code: list[str], io: IO) -> Self:
-        """Build a machine reusing the cached, already-validated street.
 
-        Construction goes through :meth:`__init__` like any other machine;
-        the cached tuple only skips revalidating identical geometry.
-        """
-        return cls(list(code), io, _compiled=cls._compile(tuple(code)))
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh run state to cached, validated street geometry."""
+    if not isinstance(source, list):
+        raise TypeError("streetcode machines require split text source")
+    if options:
+        raise TypeError("streetcode machines accept no runtime options")
+    code = tuple(source)
+    compiled = _Machine._compile(code)  # noqa: SLF001
+    return partial(_Machine, list(code), _compiled=compiled)
 
 
 def _execute_program(code: list[str], io: IO) -> CompletionReport:
     """Drive a Streetcode car over ``code`` until it halts."""
-    machine = _Machine._for_run(code, io)  # noqa: SLF001
-    return drive(machine)
+    machine = prepare_machine(code, {})(io)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(code: list[str], io: IO) -> None:

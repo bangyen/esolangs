@@ -281,14 +281,7 @@ class _DelegatingVM:
             self._machine = prepare(code, options)(self._io)
             return
         state = module._Machine  # noqa: SLF001 - legacy interpreter adapter
-        # A machine with a cached ``_for_run`` (static topology compiled once
-        # per source) skips re-validating the program on every VM.
-        build = getattr(state, "_for_run", None)
-        self._machine = (
-            build(code, self._io)
-            if build and not options
-            else state(code, self._io, **options)
-        )
+        self._machine = state(code, self._io, **options)
 
     @property
     def output(self) -> str:

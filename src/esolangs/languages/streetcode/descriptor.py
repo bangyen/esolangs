@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Streetcode."""
 
+from esolangs.languages.streetcode.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -11,6 +12,8 @@ LANGUAGE = Language(
     RuntimeSpec(
         "streetcode",
         completion_entrypoint="_execute_program",
+        machine_preparation="prepare_machine",
+        capabilities=CAPABILITIES,
         category="grid_based",
         split=True,
         empty_program="Streetcode program cannot be empty",

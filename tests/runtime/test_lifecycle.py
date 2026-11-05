@@ -338,3 +338,23 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
             )
             with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):
                 esolangs.run(name, source, stdin=stdin, seed=seed)
+
+
+def test_legacy_vm_does_not_discover_cached_constructors(monkeypatch):
+    name = next(
+        name
+        for name, lang in LANGUAGES.items()
+        if lang.runtime.capabilities is None and name in SAMPLES
+    )
+    machine = interpreter_module(name)._Machine
+
+    def rejected(*_args, **_kwargs):
+        raise AssertionError("legacy cached constructor discovered")
+
+    monkeypatch.setattr(machine, "_for_run", rejected, raising=False)
+    monkeypatch.setattr(
+        vm, "interpreter_module", lambda _name: SimpleNamespace(_Machine=machine)
+    )
+    source, stdin = SAMPLES[name]
+    runner = vm.make_vm(name, source, stdin=stdin)
+    assert isinstance(runner._machine, machine)
