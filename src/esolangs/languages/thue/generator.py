@@ -113,7 +113,7 @@ def _is_packed(extra: tuple[str, ...]) -> bool:
 
 
 #: Chunk-name symbols: no table or control symbol.  A queued layout also
-#: leaves out ``K``, ``S`` and ``J``, which its rules match.
+#: leaves out matched ``K``/``S`` and reserves ``J`` to keep chunk names stable.
 _NAME_ALPHABET = "".join(c for c in ascii_letters if c not in "abLMRECD")
 _QUEUED_NAME_ALPHABET = "".join(c for c in _NAME_ALPHABET if c not in "KSJ")
 _FOLD_NAME_ALPHABET = "".join(c for c in _QUEUED_NAME_ALPHABET if c not in "ZYWV")
@@ -202,7 +202,7 @@ _FOLD_RULES = (
 def _fold(truth_table: str) -> tuple[str, str, tuple[str, ...]] | None:
     """Return ``(kept half, rounds, extra rules)`` storing one half of a table.
 
-    The fold's nine rules cost about 110 characters, so it wins from nine
+    The fold's eight rules cost 78 characters, so it wins from nine
     inputs ([ablations.constant_half_fold]); ``None`` when no half is
     constant.
     """
@@ -312,6 +312,8 @@ def _thue_layout(
         base = "\n".join(
             [
                 f"LR{entries}E::=~{'ab'.index(entries)}",
+                # Chunk expansion puts R after the entry, before any read.
+                f"{entries}R::=R{entries}",
                 "SR::=MR",
                 "M::=:::",
                 "0R::=R",

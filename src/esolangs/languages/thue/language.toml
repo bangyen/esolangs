@@ -122,3 +122,6 @@ tests = [
     "src/esolangs/languages/thue/tests/test_thue.py::test_a_program_with_no_rules_halts_at_once",
     "src/esolangs/languages/thue/tests/test_thue.py::test_the_pointer_names_the_rule_and_its_offset",
 ]
+
+[ablations.single_entry_chunk_sweep_20261104]
+verdict = "correctness repair: a queued single-entry layout now carries R left after chunk expansion, before S reads. All9932 small candidate rows pass with one active rewrite, including the formerly broken LSaRE state; old failure control halts without output. Public default/narrow/balanced source comparisons stay byte-identical; default bounds, pins and anchors unchanged. Fold prose corrected to eight extra rules,78 newline-inclusive chars."
