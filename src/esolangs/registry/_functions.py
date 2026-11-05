@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from importlib import import_module
-from inspect import Parameter, Signature
+from keyword import iskeyword
 from typing import Any
 
 
@@ -19,18 +19,17 @@ class FunctionRef:
 
     def __post_init__(self) -> None:
         """Retain diagnostic identity without loading the target."""
+        if (
+            not isinstance(self.parameters, tuple)
+            or any(
+                not isinstance(name, str) or not name.isidentifier() or iskeyword(name)
+                for name in self.parameters
+            )
+            or len(set(self.parameters)) != len(self.parameters)
+        ):
+            raise ValueError("callable parameters must be distinct identifiers")
         object.__setattr__(self, "__module__", self.module)
         object.__setattr__(self, "__name__", self.name)
-
-    @property
-    def __signature__(self) -> Signature:
-        """Expose supported option names without importing implementation code."""
-        return Signature(
-            [
-                Parameter(name, Parameter.POSITIONAL_OR_KEYWORD, default=None)
-                for name in self.parameters
-            ]
-        )
 
     def load(self) -> Callable[..., Any]:
         """Resolve afresh so mutation probes cannot be hidden by a cached target."""

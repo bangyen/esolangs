@@ -13,7 +13,6 @@ from esolangs.generation.examples import BooleanExample
 from esolangs.generation.wrap import (
     _cell_width,
     _span,
-    takes_width,
     wrap_chars,
     wrap_grid,
     wrap_program,
@@ -71,17 +70,17 @@ UNWRAPPABLE = {
 # loop layout is tied to the beam's track and cannot fold, so a loop program
 # wider than the width is re-emitted as the (foldable) linear form.
 #
-# Derived from :func:`takes_width`: the hand-written table drifted both ways.
+# Derived from declared options, checked against the callable parameters.
 # It omitted Streetcode, which really does take a width. And it named Dig,
 # which took only a truth table and returned the same program at every width
 # -- the 2-input table below was inside 80 columns either way, which is
 # what let it pass.  Dig has since grown a real one, so that entry would be
 # right today for a reason the table never had; a derived table cannot make
-# either mistake in the first place.
+# either mistake without failing the declaration check.
 WIDTH_HONOURING = sorted(
     lang.id
     for lang in LANGUAGES.values()
-    if lang.backend is not None and takes_width(lang.backend.generate)
+    if lang.backend is not None and lang.backend.layout_width
 )
 
 # language-owners: ["6-5"]
@@ -116,7 +115,7 @@ def _wrapper_witnesses() -> list[str]:
     for name in WRAPPED:
         example = EXAMPLE_BY_ID[LANGUAGES[name].id]
         key = (LANGUAGES[name].backend.wrap, example.fill is None)
-        if takes_width(example.generator) or key not in seen:
+        if LANGUAGES[name].backend.layout_width or key not in seen:
             seen.add(key)
             chosen.append(name)
     return chosen
@@ -129,7 +128,7 @@ def test_every_generator_has_a_width_policy() -> None:
         for language in LANGUAGES.values()
         if language.backend is not None
         and language.backend.wrap is None
-        and not takes_width(language.backend.generate)
+        and not language.backend.layout_width
         and not language.backend.no_wrap.strip()
     }
     assert not missing, f"{sorted(missing)} have no width policy; {CHECK}"
@@ -163,7 +162,7 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
     """Wrapping preserves the token sequence exactly."""
     width = NARROW_WIDTH
     example = _example(name)
-    if takes_width(example.generator):
+    if LANGUAGES[name].backend.layout_width:
         plain = example.build(width)
         wrapped = wrap_program(plain, LANGUAGES[name].id, max(1, width // 2))
         same_layout = LANGUAGES[name].backend.same_layout

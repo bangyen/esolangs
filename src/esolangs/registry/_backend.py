@@ -57,6 +57,7 @@ class TemplateSpec:
 class BooleanBackend:
     """Generator, accepted tables, input binding and source layout rules."""
 
+    #: Bare callables accept the table alone; FunctionRef declares options.
     entrypoint: Generator
     template: TemplateSpec | None = None
     max_inputs: int | None = None
@@ -76,6 +77,19 @@ class BooleanBackend:
     same_layout: Callable[[str, str, Callable[[int], Any]], bool] | None = None
     #: ``balance(table, default)``: the squarest layout a reflow cannot find.
     balance: Callable[..., Any] | None = None
+
+    @property
+    def layout_width(self) -> bool:
+        """Whether the declared generator lays its source out to a width."""
+        return (
+            isinstance(self.entrypoint, FunctionRef)
+            and "width" in self.entrypoint.parameters
+        )
+
+    @property
+    def balance_parameters(self) -> tuple[str, ...]:
+        """Declared balancer parameters; bare callables take table and source."""
+        return self.balance.parameters if isinstance(self.balance, FunctionRef) else ()
 
     @property
     def generator_name(self) -> str:

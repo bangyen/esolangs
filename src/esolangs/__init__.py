@@ -22,7 +22,6 @@ Names resolve case-insensitively; deliberate errors derive from EsolangError.
 """
 
 import importlib
-import inspect
 import re
 from collections.abc import Callable
 from functools import cache, partial
@@ -61,16 +60,10 @@ from esolangs.generation.helpers import (
     unmark,
 )
 from esolangs.generation.token_balance import CELL_ASPECT
-
-# Imported private: it takes a *generator function*, not a language name, so
-# a caller reaching for ``esolangs.takes_width(language)`` got False for
-# every language in the registry, contradicting both its own docstring and
-# ``describe(...)["width_effect"] == "layout"`` -- the question they asked.
 from esolangs.generation.wrap import (
     balance_program,
     wrap_program,
 )
-from esolangs.generation.wrap import takes_width as _takes_width
 from esolangs.portable import dump_program, load_artifact, save_program
 from esolangs.portable import load_artifact as load_program
 from esolangs.raster import Raster
@@ -306,7 +299,7 @@ def generate(
     fn = backend.generate
     check_table_text(truth_table)
     check_width(width)
-    laid_out = width is not None and _takes_width(fn)
+    laid_out = width is not None and backend.layout_width
     try:
         generated = (
             fn(truth_table, width, **options)
@@ -369,7 +362,7 @@ def _generate_balanced(
         )
     if balancer is not None:
         # A dialect setting the balancer names changes what it rebuilds.
-        accepted = inspect.signature(balancer).parameters
+        accepted = backend.balance_parameters
         balance_options = {
             key: value for key, value in options.items() if key in accepted
         }
@@ -402,7 +395,7 @@ def _is_template_for(
         return True
     backend = LANGUAGES[name].backend
     assert backend is not None  # generate above refuses absent backends
-    width_aware = _takes_width(backend.generate)
+    width_aware = backend.layout_width
 
     @cache
     def layout(width: int) -> Program:

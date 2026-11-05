@@ -326,8 +326,6 @@ def _generator_gaps(lang: Language) -> list[Gap]:
     from docs.evidence import parse_anchors
     from docs.fragments import section
 
-    from esolangs.generation.wrap import takes_width
-
     assert lang.backend is not None
     module_rel = lang.backend.generate.__module__.replace(".", "/")
     base = ROOT / f"src/{module_rel}"
@@ -362,7 +360,7 @@ def _generator_gaps(lang: Language) -> list[Gap]:
                 "language's VM sample from its one-input program",
             )
         )
-    width = takes_width(lang.backend.generate)
+    width = lang.backend.layout_width
     if not width and lang.backend.wrap is None and not lang.backend.no_wrap:
         gaps.append(
             Gap(

@@ -25,7 +25,7 @@ from esolangs.generation.helpers import (
     Setters,
     fill_runs,
 )
-from esolangs.generation.wrap import DEFAULT_WIDTH, takes_width, wrap_program
+from esolangs.generation.wrap import DEFAULT_WIDTH, wrap_program
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, Language, canonical_id, example_stems, resolve
 from esolangs.registry._contracts import (
@@ -145,7 +145,9 @@ class BooleanExample:
                 assert isinstance(artifact, TemplateArtifact)
                 artifact = artifact.fill(self.bits)
             return source_adapter(artifact)
-        if width is not None and takes_width(self.generator):
+        backend = LANGUAGES[resolve(self.language)].backend
+        assert backend is not None
+        if width is not None and backend.layout_width:
             program = self.generator(self.table, width)
         else:
             program = self.generator(self.table)

@@ -1,5 +1,6 @@
 """Contracts the public API owes a caller who has only read the docs."""
 
+import inspect
 import pathlib
 import re
 import subprocess
@@ -22,7 +23,6 @@ from esolangs.exceptions import (
     TruthTableError,
     UnknownLanguageError,
 )
-from esolangs.generation.wrap import takes_width
 from esolangs.registry import LANGUAGES
 from tests.support.generator_support import CHECK, evaluate_generated
 from tests.support.pick import languages
@@ -155,7 +155,8 @@ class TestDescribe:
         signature = {
             name
             for name, lang in LANGUAGES.items()
-            if lang.backend is not None and takes_width(lang.backend.generate)
+            if lang.backend is not None
+            and "width" in inspect.signature(lang.backend.generate).parameters
         }
         assert aware == signature
         assert aware, "no generator lays itself out; the flag guards nothing"

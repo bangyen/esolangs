@@ -4,7 +4,7 @@ Most generators emit one long line and most languages read a newline as
 whitespace. Wrapping is token-aware: slicing every ``width`` can split a
 command. It is opt-in because 2D languages read newlines as rows.
 
-Generators detected by :func:`takes_width` lay out their own programs.
+Generators declaring a width parameter lay out their own programs.
 They preserve structural lines and return a width floor when the requested
 width cannot fit whole tokens, statements or routing cells.
 
@@ -14,9 +14,7 @@ Language-owned wrappers preserve their own token and term boundaries;
 ``BooleanBackend.wrap`` names its wrapper; :func:`wrap_program` is the entry point.
 """
 
-import inspect
 import re
-from collections.abc import Callable
 from dataclasses import dataclass
 from math import isqrt
 from typing import TYPE_CHECKING
@@ -221,18 +219,6 @@ def _backend(language_id: str) -> "BooleanBackend | None":
     return next(
         (lang.backend for lang in LANGUAGES.values() if lang.id == language_id), None
     )
-
-
-def takes_width(fn: Callable[..., object]) -> bool:
-    """Whether a generator lays its own program out to a width.
-
-    Such a generator takes ``width`` directly; :func:`wrap_program` cannot
-    help a grid, since it leaves a multi-line program alone.
-    """
-    try:
-        return "width" in inspect.signature(fn).parameters
-    except (TypeError, ValueError):  # pragma: no cover - builtins have no signature
-        return False
 
 
 def wrap_program(program: str, language_id: str, width: int | None) -> str:

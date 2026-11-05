@@ -10,6 +10,7 @@ import esolangs
 from esolangs import DialectSettings, Raster, compat
 from esolangs import settings as settings_api
 from esolangs.registry import LANGUAGES
+from esolangs.registry._functions import FunctionRef
 from esolangs.runtime import _execution
 from esolangs.tagged import _Tagged
 from esolangs.vm import make_vm
@@ -51,7 +52,13 @@ def test_every_dialect_declares_its_values() -> None:
     """A language's ``dialect`` and ``dialect_values`` name the same settings."""
     for name, language in LANGUAGES.items():
         settings = (
-            set(inspect.signature(language.runtime.dialect).parameters)
+            set(
+                inspect.signature(
+                    language.runtime.dialect.load()
+                    if isinstance(language.runtime.dialect, FunctionRef)
+                    else language.runtime.dialect
+                ).parameters
+            )
             if language.runtime.dialect is not None
             else set()
         )

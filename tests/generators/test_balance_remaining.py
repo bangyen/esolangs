@@ -79,7 +79,7 @@ def test_trimmed_row_ends_keep_the_width_lattice() -> None:
 def _width_layouts(language, table, default, widths):
     """Yield every requested width, reusing width-independent emission."""
     lang = LANGUAGES[language]
-    native = _wrap.takes_width(lang.backend.generate)
+    native = lang.backend.layout_width
     inputs = len(table).bit_length() - 1
     yield default
     for width in widths:
@@ -159,6 +159,6 @@ def test_native_width_generators_have_balance_rules() -> None:
         name
         for name, language in LANGUAGES.items()
         if language.backend is not None
-        and _wrap.takes_width(language.backend.generate)
+        and language.backend.layout_width
         and language.backend.balance is None
     ]

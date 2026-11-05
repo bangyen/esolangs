@@ -30,7 +30,8 @@ Owners are workstreams, not individual contributors.
 | `_Machine` / `_for_run` discovery | Lifecycle | VM construction and machine traits | Declared preparation/factories and capabilities |
 | Implicit completion entrypoint defaults | Lifecycle | Runtime descriptors and native runners | Explicit completion declarations |
 | Dialect metadata signature/default inspection | Lifecycle | Retired; all seven schemas declared; constructor/default and no-discovery checks in `tests/api/test_dialects.py` | Declared dialect schemas and defaults |
-| Generator callable-option signature inference | Analysis | Width detection and balancer dialect-option forwarding | Declared backend option capabilities |
+| Generator callable-option signature inference | Analysis | Retired; all 114 backends use declared options; independent signature oracle and no-discovery checks in `tests/api/test_artifact_defaults.py` and `tests/api/test_api_contracts.py` | Declared backend option capabilities |
+| `FunctionRef.__signature__` proxy | Registry | Retired; recursive declaration checks reject its return in `tests/api/test_descriptor_loading.py` | Explicit callable parameter declarations |
 | Snapshot-as-workspace fallback | Accounting | Benchmarking, proof drivers and custom VM callers | Versioned semantic accounting adapters |
 | Legacy worker-field defaults | Results | Retired; complete requests and explicit success/error observations; omission controls in `tests/runtime/test_worker_results.py` | Explicit canonical fields, including unavailable observations |
 | Superseded serialization decoders/converters | Persistence | Persisted data and fixtures, if a format is superseded | One-time data migration, then remove the obsolete code |
@@ -56,7 +57,9 @@ storage-policy or catalog-wide acceptance requirements.
 
 All seven dialect schemas now declare choices and defaults. Runtime metadata
 queries and validation no longer inspect signatures or constructors. The other
-110 languages have no dialect settings; generator option inference remains open.
+110 languages have no dialect settings. All 114 Boolean backends now declare
+layout and balancer options; generation and catalog queries no longer infer
+them from callable signatures. Backend analysis audits remain open.
 
 All ten post-halt interpreters now declare preparation and completion/debug
 capabilities, alongside Brainfuck, NQ and Whitespace. The post-halt batch checks

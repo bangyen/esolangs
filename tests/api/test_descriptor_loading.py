@@ -43,6 +43,7 @@ print(json.dumps(names))
 def test_declared_callable_parameters_match_implementations():
     def check(value):
         if isinstance(value, FunctionRef):
+            assert not hasattr(value, "__signature__")
             target = value.load()
             assert callable(target)
             assert tuple(inspect.signature(target).parameters) == value.parameters, (
@@ -66,3 +67,28 @@ def test_callable_references_observe_mutation(monkeypatch):
     assert reference("01") == "fault"
     monkeypatch.setattr(module, reference.name, original)
     assert reference.load() is original
+
+
+@pytest.mark.parametrize(
+    "parameters", [[], ("width", "width"), ("bad-name",), ("class",), (None,)]
+)
+def test_callable_parameter_declarations_are_validated(parameters):
+    with pytest.raises(ValueError, match="distinct identifiers"):
+        FunctionRef("unloaded.module", "emit", parameters)
+
+
+def test_backend_options_are_declared_without_loading():
+    from esolangs.registry._backend import BooleanBackend
+
+    plain = BooleanBackend(str, balance=str)
+    assert not plain.layout_width
+    assert plain.balance_parameters == ()
+    declared = BooleanBackend(
+        FunctionRef("unloaded.module", "emit", ("table", "width")),
+        balance=FunctionRef(
+            "unloaded.module", "balance", ("table", "source", "option")
+        ),
+    )
+    assert declared.layout_width
+    assert declared.balance_parameters == ("table", "source", "option")
+    assert "unloaded.module" not in sys.modules

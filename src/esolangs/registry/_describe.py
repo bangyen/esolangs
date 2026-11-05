@@ -6,7 +6,6 @@ import re
 from typing import TypedDict, cast, get_args
 
 from esolangs.exceptions import ProgramError
-from esolangs.generation.wrap import takes_width as _takes_width
 from esolangs.registry import (
     LANGUAGES,
     Language,
@@ -206,7 +205,7 @@ def _width_effect(lang: Language) -> WidthEffect:
     backend = lang.backend
     if backend is None:
         return "none"
-    if _takes_width(backend.entrypoint):
+    if backend.layout_width:
         return "layout"
     return "wrap" if backend.wrap is not None else "none"
 
