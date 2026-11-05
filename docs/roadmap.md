@@ -65,11 +65,45 @@ check or weakening a contract.
 
 ## Architecture migrations
 
-All architecture migrations are integrated. All 117 languages execute a
+Previous architecture migrations are integrated. All 117 languages execute a
 bounded independent semantic model and detect a live output fault. Models
 cover their declared fragments; broader regressions, purity and snapshot
 checks remain. Language-specific compatibility decisions stay in the
 interpreter contracts.
+
+Next proposals, in priority order. Migrate incrementally; retain existing
+contracts and gates. Price pilots before execution; refactors require corpus
+diffs and timings, and emitted-program changes follow the optimization gate.
+
+1. **Public program and template types:** build on the internal artifacts;
+   make source extraction explicit and retain language, dialect, scale and
+   bindings through serialization. Keep compatibility adapters during migration.
+   Done when round trips preserve metadata and unfilled templates cannot run.
+2. **Independent language descriptors:** declare runtime, optional generator,
+   source format and supported options outside generator modules. Load
+   implementations on demand; keep one distribution. Done when catalog access
+   imports no generator implementations and interpreter-only entries use the
+   same declaration path. Measure import cost before and after.
+3. **Shared execution results:** expose output, input consumption, completion
+   evidence and available resource counts through one result contract. Check
+   native, stepped and isolated routes against it, including EOF and failures;
+   preserve justified fast paths. Done when route parity has executed witnesses
+   and unavailable counters are explicit.
+4. **Boolean construction representations:** organize existing analyses into
+   decision diagrams, algebraic forms and lookup structures, with bounded
+   analysis and target-owned emission. Pilot one family across two backends;
+   retain specialized constructions. Adopt only with byte-identical corpus
+   output and generation timings preserving the growth bound.
+5. **Semantic state and storage:** define the abstract state counted by each
+   workspace proof separately from Python storage. Pilot a checked adapter
+   retaining complete snapshots, input progress and pure transitions. Done
+   when traces and exact resource witnesses agree and representation changes
+   cannot silently change the accounting model.
+6. **Evidence and verification policy:** extend structured evidence to render
+   documented claims without parsing prescribed prose. Evaluate runtime budgets
+   and demonstrated fault detection as replacements for test-line/count ratios;
+   retain current budgets during evaluation. Done when claims remain executable
+   and a priced pilot preserves independent oracles and mutation detection.
 
 ## Engineering
 
