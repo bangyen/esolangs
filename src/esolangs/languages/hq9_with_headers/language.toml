@@ -130,9 +130,10 @@ qualitative = { growth = "linear", text = "at most one table literal, one read c
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter.py"
 tests = [
+    "src/esolangs/languages/hq9_with_headers/tests/oracle_checks.py::check_raw_hq9_with_headers",
     "src/esolangs/languages/hq9_with_headers/tests/test_hq9_with_headers.py::test_wiki_hq9_example_prints_its_title",
     "src/esolangs/languages/hq9_with_headers/tests/test_hq9_with_headers.py::test_wiki_truth_machine_jumps_to_command_numbers",
     "src/esolangs/languages/hq9_with_headers/tests/test_hq9_with_headers.py::test_wiki_infinite_loop_never_halts",

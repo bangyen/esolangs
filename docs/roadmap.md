@@ -71,8 +71,8 @@ API changes need a major release. Follow the refactor and optimization gates
 in [Contributing](CONTRIBUTING.md).
 
 1. **Independent semantic checks.** Admission executes bounded checks and a
-   live output fault for all 117 languages. Independent models cover 87;
-   expand the 30 records still marked `kind = "examples"`. Derive each
+   live output fault for all 117 languages. Independent models cover 90;
+   expand the 27 records still marked `kind = "examples"`. Derive each
    bounded model from the spec independently of production helpers and generator structure; record ambiguities first.
    Check raw programs, errors, input consumption, state and termination with
    positive controls and mutants. Completion per language: known faults are
