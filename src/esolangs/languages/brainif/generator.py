@@ -101,7 +101,6 @@ def brainif(truth_table: str, width: int | None = None) -> str:
         return _resolve(reads + tail, width)
     if width is not None:
         plain = _brainif_tree(truth_table, width)
-        n = _validate_truth_table(truth_table)
         if len(essential_inputs(truth_table, n)) > _TREE_LEVELS:
             # The lookup is the narrow fallback; where the tree fits it is
             # 25-59% shorter at n=3..14 ([ablations.wide_tree_race]).
