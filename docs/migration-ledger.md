@@ -53,3 +53,8 @@ Accounting now has ten explicit or inherited semantic adapters: Brainfuck,
 Unary, Whitespace, Boolfuck, Monotonic Boolfuck, Deadfish, HQ9+, Nope, Home Row
 and ROTfuck. The remaining 107 language rows still use snapshot accounting. These declarations
 do not close lifecycle, storage-policy or catalog-wide acceptance requirements.
+
+Lifecycle preparation and completion/debug declarations now cover Brainfuck,
+Cyclic tag, NQ and Whitespace. The latest three-language batch preserves raw/VM
+traces, native results and source-step counts; fault and lazy-loading controls
+pass. Retirement and installed-package acceptance remain open.

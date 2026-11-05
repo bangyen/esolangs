@@ -5,12 +5,16 @@ from types import SimpleNamespace
 import pytest
 
 from esolangs import vm
-from esolangs.languages.brainfuck.interpreter import prepare_machine
+from esolangs.languages.brainfuck.interpreter import _Machine, prepare_machine
+from esolangs.results import Completion
 from esolangs.runtime.io import ScriptedIO
 
 
 def test_declared_preparation_needs_no_private_constructor(monkeypatch):
     calls = []
+    monkeypatch.setattr(_Machine, "completion", Completion.POST_HALT, raising=False)
+    monkeypatch.setattr(_Machine, "ip_shape", "opaque", raising=False)
+    monkeypatch.setattr(_Machine, "surprise", property(lambda _self: 99), raising=False)
 
     def prepare(source, options):
         calls.append((source, dict(options)))
@@ -22,6 +26,9 @@ def test_declared_preparation_needs_no_private_constructor(monkeypatch):
     machine = vm.make_vm("brainfuck", ",+.", stdin="A")
     assert calls == [(",+.", {})]
     assert machine.ip == 0
+    assert machine.ip_shape == "offset"
+    assert not machine.dumps_on_the_post_halt_step
+    assert machine.views == (("ind", "0"), ("ptr", "0"), ("tape", "(0,)"))
     machine.step()
     assert machine.ip == 1
     machine.step()

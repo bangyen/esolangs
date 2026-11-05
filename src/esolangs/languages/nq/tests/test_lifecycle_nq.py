@@ -8,9 +8,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from esolangs import DialectSettings, HaltError, settings, vm
+from esolangs import DialectSettings, HaltError, run, settings, vm
 from esolangs.languages.nq.interpreter import _Machine, prepare_machine
 from esolangs.registry import LANGUAGES
+from esolangs.results import Completion
 
 
 def test_nq_metadata_stays_lazy():
@@ -23,6 +24,8 @@ import sys
 from esolangs.settings import dialect_choices
 module = 'esolangs.languages.nq.interpreter'
 assert module not in sys.modules
+from esolangs.vm import machine_traits
+assert not machine_traits('NQ')['dumps_on_the_post_halt_step']
 choices = dialect_choices('NQ')
 assert choices == {'guard_binding': {
     'default': 'opcode', 'choices': ('opcode', 'recursive')}}
@@ -52,6 +55,9 @@ def test_nq_declared_construction_preserves_guard_readings(monkeypatch, binding)
     def forbidden(*_args):
         raise AssertionError("signature discovery reached")
 
+    monkeypatch.setattr(_Machine, "completion", Completion.POST_HALT, raising=False)
+    monkeypatch.setattr(_Machine, "ip_shape", "opaque", raising=False)
+    monkeypatch.setattr(_Machine, "surprise", property(lambda _self: 99), raising=False)
     monkeypatch.setattr(settings, "_dialect_keys", forbidden)
     monkeypatch.setattr(
         vm,
@@ -62,6 +68,10 @@ def test_nq_declared_construction_preserves_guard_readings(monkeypatch, binding)
     machine = vm.make_vm(
         "NQ", "+0->1>0+2WH", settings=DialectSettings(guard_binding=binding)
     )
+    assert machine.ip_shape == "offset"
+    assert machine.views == ()
+    assert not machine.dumps_on_the_post_halt_step
+    assert run("NQ", "H").completion.kind is Completion.HALTED
     if binding == "recursive":
         with pytest.raises(HaltError):
             vm.run_until_halt(machine, limit=20)

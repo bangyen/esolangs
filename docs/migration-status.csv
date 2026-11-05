@@ -25,7 +25,7 @@ bit~,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pen
 Bleh,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Blindfolded Arithmetic,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Boolfuck,yes,legacy-discovery,not-applicable,legacy-discovery,inherited-adapter,boolfuck-v1,pending-backend-audit,pending-acceptance-audit,open
-brainfuck,yes,declared,not-applicable,legacy-discovery,owned-adapter,brainfuck-v1,pending-backend-audit,pending-acceptance-audit,open
+brainfuck,yes,declared,not-applicable,declared,owned-adapter,brainfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 BrainIf,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Caballo,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 CARP,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
@@ -77,7 +77,7 @@ Movesum,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,
 Nandypants,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Nope.,no,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,nope-v1,not-applicable,pending-acceptance-audit,open
 NOR machine,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-NQ,yes,declared,declared,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+NQ,yes,declared,declared,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Object disoriented,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Packlang,yes,legacy-discovery,signature-discovery,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Painfuck,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
@@ -115,4 +115,4 @@ Underload,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback
 Unlambda,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Unsquare,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 What!?,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-Whitespace,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,whitespace-v1,pending-backend-audit,pending-acceptance-audit,open
+Whitespace,yes,declared,not-applicable,declared,owned-adapter,whitespace-v1,pending-backend-audit,pending-acceptance-audit,open

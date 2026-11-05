@@ -45,6 +45,7 @@ from typing import Any, NamedTuple
 
 from esolangs.exceptions import ArgumentError, HaltError
 from esolangs.languages.nq.dialect import DEFAULT_GUARD_BINDING, GUARD_BINDINGS
+from esolangs.languages.nq.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
@@ -286,7 +287,9 @@ def _execute(
     code: str, io: IO, *, guard_binding: str = DEFAULT_GUARD_BINDING
 ) -> CompletionReport:
     """Run NQ until H; a nonempty source without H can wrap forever."""
-    return drive(_Machine(code, io, guard_binding=guard_binding))
+    return drive(
+        _Machine(code, io, guard_binding=guard_binding), policy=CAPABILITIES.completion
+    )
 
 
 def run(code: str, io: IO, *, guard_binding: str = DEFAULT_GUARD_BINDING) -> None:

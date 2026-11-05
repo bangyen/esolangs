@@ -1,10 +1,19 @@
 """Logical workspace survives backing-store and cycle-snapshot regrouping."""
 
+from types import SimpleNamespace
+
 import pytest
 
+from esolangs import run
+from esolangs import vm as vm_api
 from esolangs.exceptions import EsolangError
-from esolangs.languages.whitespace.interpreter import _WORKSPACE_MODEL, _Machine
+from esolangs.languages.whitespace.interpreter import (
+    _WORKSPACE_MODEL,
+    _Machine,
+    prepare_machine,
+)
 from esolangs.languages.whitespace.tests.oracle_checks import _assemble, _check
+from esolangs.results import Completion
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace, make_vm
 from scripts.benchmark import WrittenState
@@ -87,7 +96,7 @@ class _RepackedMachine(_Machine):
         ((("push", 0), ("read_num",)), "\n7\n"),
     ],
 )
-def test_repacked_storage_retains_semantic_workspace(program, stdin):
+def test_repacked_storage_retains_semantic_workspace(monkeypatch, program, stdin):
     _check(_RepackedMachine, program, stdin)
     source, _ = _assemble(program)
     vm = make_vm("Whitespace", source, stdin=stdin)
@@ -125,3 +134,24 @@ def test_repacked_storage_retains_semantic_workspace(program, stdin):
     if program == (("push", 7),):
         assert semantic[0].bits == 4
         assert regrouped.bits == 5
+        monkeypatch.setattr(_Machine, "completion", Completion.POST_HALT, raising=False)
+        monkeypatch.setattr(_Machine, "ip_shape", "opaque")
+        monkeypatch.setattr(_Machine, "memory", [999], raising=False)
+        monkeypatch.setattr(
+            _Machine, "surprise", property(lambda _self: 99), raising=False
+        )
+        monkeypatch.setattr(
+            vm_api,
+            "interpreter_module",
+            lambda _name: SimpleNamespace(prepare_machine=prepare_machine),
+        )
+        declared = make_vm("Whitespace", source)
+        assert declared.ip_shape == "offset"
+        assert not declared.dumps_on_the_post_halt_step
+        declared.step()
+        assert declared.halted
+        assert declared.ip is None
+        assert declared.stack == [7]
+        assert declared.memory == []
+        assert declared.views == ()
+        assert run("Whitespace", source).completion.kind is Completion.HALTED

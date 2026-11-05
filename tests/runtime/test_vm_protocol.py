@@ -506,7 +506,7 @@ class TestViews:
 
     def test_a_view_that_raises_is_skipped_rather_than_fatal(self) -> None:
         """One broken property must not take the whole screen down."""
-        from esolangs.vm import _DelegatingVM
+        from esolangs.runtime._vm_views import machine_views
 
         class _Machine:
             @property
@@ -517,6 +517,5 @@ class TestViews:
             def broken(self) -> int:
                 raise RuntimeError("no")
 
-        vm = debugger_api.make_vm(REFERENCE, "+")
-        object.__setattr__(vm, "_machine", _Machine())
-        assert _DelegatingVM.views.fget(vm) == (("fine", "7"),)
+        for names in (None, ("broken", "fine")):
+            assert machine_views(_Machine(), names) == (("fine", "7"),)

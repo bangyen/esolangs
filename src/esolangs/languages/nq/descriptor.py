@@ -2,6 +2,7 @@
 
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.nq.dialect import DEFAULT_GUARD_BINDING, GUARD_BINDINGS
+from esolangs.languages.nq.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -12,6 +13,8 @@ LANGUAGE = Language(
     "NQ",
     RuntimeSpec(
         "nq",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="queue_based",
         dialect=FunctionRef(
             "esolangs.languages.nq.interpreter", "guard_dialect", ("guard_binding",)

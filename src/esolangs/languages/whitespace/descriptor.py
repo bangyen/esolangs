@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Whitespace."""
 
+from esolangs.languages.whitespace.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
@@ -9,7 +10,10 @@ LANGUAGE = Language(
     "Whitespace",
     RuntimeSpec(
         "whitespace",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="stack_based",
+        machine_preparation="prepare_machine",
         file_newline=False,
         empty_program="Whitespace program is empty",
     ),

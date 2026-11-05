@@ -65,13 +65,17 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Mapping
+from functools import partial
 from operator import floordiv, mod
 from typing import Any
 
 from esolangs.exceptions import ArgumentError, HaltError, ProgramError
+from esolangs.languages.whitespace.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import ProgramSource, _read_container, text_source
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -399,10 +403,21 @@ def load_source(source: ProgramSource) -> str:
     return text_source(value)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh source-step machines; Whitespace has no runtime options."""
+    if not isinstance(source, str):
+        raise TypeError("Whitespace machines require text source")
+    if options:
+        raise TypeError("Whitespace machines accept no runtime options")
+    return partial(_Machine, source)
+
+
 def _execute(code: str, io: IO) -> CompletionReport:
     """Execute a Whitespace program."""
     machine = _Machine(code, io)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO) -> None:
