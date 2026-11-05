@@ -11,11 +11,15 @@ answer cell starts at 0 and each marked leaf adds 1; a closing ``+= 48`` and
 ``write`` print it.  A table with more ones than zeros builds its
 complement's tree instead (marking the zero rows, counting down, closing
 with ``+= 49``); ``o=wrap`` makes the -1 come out as 255 and the sum land
-on 48 or 49.
+on 48 or 49. Parity over essential inputs and its complement add the selected
+bytes in the two-value range 48..49: modular addition XORs their low bits.
+Ignored inputs are still read. One read cell and an accumulator need no flags.
 
 Size:
-    O(T) at most 14T + 16n + 43 chars, O(n) for parity; n=4 parity: 284
-    chars, n=10 parity: 789, n=10 and: 293. Constants: 8n+48 chars,
+    O(T) at most 14T + 16n + 43 chars; parity over m essential inputs uses
+    8n+5m+59 chars and n+m+2 commands; n=4 parity: 111 chars,
+    n=10 parity: 189 chars, n=10 and: 293 chars.
+    Constants: 8n+48 chars,
     n+2 commands, 12+bl(n+2)+bl(n) written bits.
 
 Decisions:
@@ -29,6 +33,7 @@ Decisions:
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
+    affine_form,
     short_name,
     subtree_ids,
 )
@@ -47,6 +52,18 @@ def basicfuck(truth_table: str) -> str:
             "#basicfuck t=2 r=~\n#allocate a,b\n"
             + "read->a;" * n
             + f"b+={48 + int(truth_table[0])};write<-b;"
+        )
+    if (form := affine_form(truth_table, n)) is not None:
+        bias, coefficients = form
+        # With both cells in 48..49, wrapped addition is XOR of their low bits.
+        # Initialize explicitly before accumulating; variable addition needs t=3.
+        return (
+            "#basicfuck t=3 r=48~49 o=wrap\n#allocate a,b\n"
+            + f"b+={48 + bias};"
+            + "".join(
+                "read->a;" + ("b+=a;" if selected else "") for selected in coefficients
+            )
+            + "write<-b;"
         )
     if truth_table.count("1") <= len(truth_table) // 2:
         return _program(truth_table, n, "+", _ASCII_ZERO)

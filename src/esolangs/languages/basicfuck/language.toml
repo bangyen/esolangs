@@ -13,9 +13,9 @@ qualification = "each node tests its variable with if and if!, equal halves skip
 "00000001" = { commands = 12, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 10, "5" = 10, "6" = 11, "7" = 12 }, source_units = 131 }
 "00001100" = { commands = 9, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 10, "5" = 10, "6" = 9, "7" = 9 }, source_units = 119 }
 "00110110" = { commands = 13, commands_by_row = { "0" = 11, "1" = 11, "2" = 12, "3" = 12, "4" = 13, "5" = 14, "6" = 14, "7" = 13 }, source_units = 172 }
-"0110" = { commands = 9, commands_by_row = { "0" = 9, "1" = 10, "2" = 10, "3" = 9 }, source_units = 129 }
-"01101001" = { commands = 14, commands_by_row = { "0" = 13, "1" = 14, "2" = 14, "3" = 13, "4" = 14, "5" = 13, "6" = 13, "7" = 14 }, source_units = 200 }
-"0110100110010110" = { commands = 20, commands_by_row = { "0" = 20, "1" = 21, "2" = 21, "3" = 20, "4" = 21, "5" = 20, "6" = 20, "7" = 21, "8" = 21, "9" = 20, "10" = 20, "11" = 21, "12" = 20, "13" = 21, "14" = 21, "15" = 20 }, source_units = 284 }
+"0110" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6 }, source_units = 85 }
+"01101001" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 98 }
+"0110100110010110" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 10, "9" = 10, "10" = 10, "11" = 10, "12" = 10, "13" = 10, "14" = 10, "15" = 10 }, source_units = 111 }
 "1101001101101101" = { commands = 18, commands_by_row = { "0" = 17, "1" = 17, "2" = 19, "3" = 18, "4" = 17, "5" = 17, "6" = 16, "7" = 16, "8" = 19, "9" = 18, "10" = 18, "11" = 19, "12" = 17, "13" = 17, "14" = 19, "15" = 18 }, source_units = 258 }
 "11111110" = { commands = 12, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 10, "5" = 10, "6" = 11, "7" = 12 }, source_units = 131 }
 
@@ -96,3 +96,9 @@ contract = "interpreter.py"
 tests = [
     "src/esolangs/languages/basicfuck/tests/oracle_checks.py::check_raw_basicfuck",
 ]
+
+[ablations.parity_modular_sum_20261104]
+saving = 73.7520128824
+arity = 8
+tables = "parity and complement, projected parity; all small tables, 20 random each at4..6, full parity through22"
+verdict = "kept for parity and its complement, with canonical ignored-input reduction. Add ASCII48/49 in the explicit two-value range48..49, initializing the accumulator before the reads. Modular addition XORs the low bits; one reused input cell, one accumulator and the compiler's required variable-operand scratch replace the flag tree. Ignored inputs are read but not added; source8n+5m+59 and stepsn+m+2 for m essential inputs, so projections still fold. No loop, old-program race or table of cases. n7 537->150 chars (72.067%); n8 621->163 (73.752%); full parity has size13n+59 and commands2n+2. Savings keep growing: the old53-name budget loses linear parity sharing, reaching2725 chars at22 versus1797 from its earlier linear prices; the new rule remains linear, so there is no finite global saving peak. All-small old/new native runs4240, with254 unchanged programs and22 changed parity programs; n3 source39327->38742, commands23128->22800. Sampled native rows at4..6 and every row at7/8 pass; larger controls through22 execute. A modulo-three mutant fails on11. EOF still raises before output and sentinels remain unread. Global source/execution/workspace ceilings and exact arity scopes remain unchanged; eight pins remeasured, three changed; parity Size anchors updated, AND anchor and example unchanged."
