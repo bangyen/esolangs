@@ -13,6 +13,7 @@ from typing import Any
 
 import esolangs
 from esolangs import compat
+from esolangs.artifacts import Artifact
 from esolangs.runtime._termination import _termination_result
 from scripts import benchmark
 
@@ -169,7 +170,7 @@ def audit(
 
 def _worst(
     language: str,
-    program: esolangs.Program,
+    program: Artifact,
     table: str,
     rows: list[int],
     timeout: float = 30.0,

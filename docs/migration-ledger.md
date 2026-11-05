@@ -45,6 +45,10 @@ The 2.0 defaults are artifacts and execution results. Output-only `compat.run`
 and public `run_result` aliases are retired; `tests/api/test_run_results.py`
 rejects their return. Source adapters in `esolangs.compat` remain open.
 
+Benchmarks retain artifacts through generation, binding and execution. Source
+size and hashes read `.source`; caller checks fence off the temporary facade
+for all 114 backends. Other source-returning callers remain open.
+
 Accounting and analysis rows require owned witnesses, not just a declared hook
 or a recognized helper name. Certification needs an installed-package/lazy-import
 acceptance audit after the active separation work lands. Storage policy needs

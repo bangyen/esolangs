@@ -16,9 +16,9 @@ from checks.check_generator_sizes import (
     differences,
     recorded_baseline,
 )
-from esolangs import compat
 from esolangs.registry._certification import load as load_certification
 from scripts import benchmark as b
+from tests.support.pick import languages
 from tests.support.reference import REFERENCE
 
 RECORD = {
@@ -199,7 +199,7 @@ def test_sweep_checks_and_pins_every_small_table_row(monkeypatch) -> None:
 
 def test_executed_artifact_and_provenance() -> None:
     r = b.measure("Brainfuck", "01", repeat=1, row=1, step_cap=10000, all_rows=True)
-    p = compat.generate("Brainfuck", "01")
+    p = esolangs.generate("Brainfuck", "01").source
     assert all(row["matches"] for row in r["executions"])
     assert r["schema"] == 6
     assert r["provenance"]["generated_artifact_sha256"] == b.artifact_hash(p)
@@ -210,6 +210,33 @@ def test_executed_artifact_and_provenance() -> None:
     pixel = (0, 0, 0)
     assert b.artifact_hash(esolangs.Raster(((pixel, pixel),))) != b.artifact_hash(
         esolangs.Raster(((pixel,), (pixel,)))
+    )
+
+
+@pytest.mark.parametrize("language", languages(boolean_generator=True))
+def test_benchmark_uses_artifacts_without_source_facades(language, monkeypatch):
+    generated = esolangs.generate(language, "01")
+    filled = (
+        generated.fill([1])
+        if isinstance(generated, esolangs.TemplateArtifact)
+        else generated
+    )
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("benchmark reached a source facade")
+
+    monkeypatch.setattr(esolangs.compat, "generate", forbidden)
+    monkeypatch.setattr(esolangs.compat, "instantiate", forbidden)
+    with pytest.raises(AssertionError, match="source facade"):
+        esolangs.compat.generate(language, "01")
+    with b.evidence_session():
+        record = b._measure(
+            language, "01", repeat=1, row=1, step_cap=200000, all_rows=True
+        )
+    assert all(row["matches"] for row in record["executions"])
+    assert record["artifact_sha256"] == b.artifact_hash(filled.source)
+    assert record["provenance"]["generated_artifact_sha256"] == b.artifact_hash(
+        generated.source
     )
 
 

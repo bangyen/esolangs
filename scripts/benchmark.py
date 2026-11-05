@@ -43,6 +43,7 @@ from verify.process import (
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs.artifacts import Artifact
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.registry import LANGUAGES, resolve
 from esolangs.registry._certification import load as load_certification
@@ -364,7 +365,7 @@ def _payload_profile(language: str, vm: VM) -> dict[str, int] | None:
 
 def _execute(
     language: str,
-    program: esolangs.Program,
+    program: Artifact,
     table: str,
     row: int,
     cap: int,
@@ -377,10 +378,9 @@ def _execute(
     if facts is None:
         facts = esolangs.describe(language)
     bits = _bits(row, len(table).bit_length() - 1)
-    source: esolangs.Program
-    if facts["parameterized"]:
-        assert isinstance(program, str)
-        source, stdin = esolangs.compat.instantiate(language, program, bits), ""
+    source: esolangs.ProgramArtifact[esolangs.Program]
+    if isinstance(program, esolangs.TemplateArtifact):
+        source, stdin = esolangs.instantiate(language, program, bits), ""
     else:
         source, stdin = (
             program,
@@ -392,7 +392,7 @@ def _execute(
     result: dict[str, Any] = {
         "artifact_sha256": source_digest
         if source_digest is not None
-        else artifact_hash(source),
+        else artifact_hash(source.source),
         "row": row,
         "expected_answer": table[row],
         "actual_answer": None,
@@ -467,7 +467,7 @@ def _execute(
 
     try:
         # Cover VM construction too: a step cap cannot bound factoring.
-        esolangs._run(drive, source, ScriptedIO(stdin), timeout)  # noqa: SLF001
+        esolangs._run(drive, source.source, ScriptedIO(stdin), timeout)  # noqa: SLF001
     except esolangs.ExecutionTimeoutError:
         result["execution_status"] = "timeout"
     except TimeoutError:
@@ -506,15 +506,15 @@ def _measure(
     if _progress is not None:
         _progress("generation")
     timings: list[int] = []
-    program: esolangs.Program | None = None
+    program: Artifact | None = None
     for _ in range(repeat):
         started = time.perf_counter_ns()
-        program = esolangs.compat.generate(language, table)
-        source_units(program)
+        program = esolangs.generate(language, table)
+        source_units(program.source)
         timings.append(time.perf_counter_ns() - started)
     assert program is not None
     facts = esolangs.describe(language)
-    digest = artifact_hash(program)
+    digest = artifact_hash(program.source)
     rows = range(len(table)) if all_rows else sample_rows or (row,)
     executions = []
     for at in rows:
@@ -551,8 +551,8 @@ def _measure(
         "truth_table": table,
         "inputs": len(table).bit_length() - 1,
         "source_kind": facts["source_kind"],
-        "source_units": source_units(program),
-        "source_utf8_bits": _utf8_bits(program),
+        "source_units": source_units(program.source),
+        "source_utf8_bits": _utf8_bits(program.source),
         "generation_ns_best": min(timings),
         "generation_ns_median": int(statistics.median(timings)),
         "step_cap": step_cap,

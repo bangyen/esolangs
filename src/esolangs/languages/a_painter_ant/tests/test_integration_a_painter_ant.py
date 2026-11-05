@@ -72,8 +72,15 @@ def test_run_read_answer_prints_the_bit_for_a_dump(
 
 @pytest.mark.medium
 def test_unsupported_stepping_candidate_is_bounded() -> None:
-    assert _worst("a_painter_ant", "nn$", "00", [0], 0.02) == (1, 0)
-    assert _worst("a_painter_ant", "N$", "00", [1], 0.5) == (0, 0)
+    from esolangs.languages.a_painter_ant.descriptor import PAIR
+
+    bindings = esolangs.TemplateBindings(setters=(PAIR,))
+    for source, rows, bound, expected in (
+        ("nn$", [0], 0.02, (1, 0)),
+        ("N$", [1], 0.5, (0, 0)),
+    ):
+        template = esolangs.TemplateArtifact(source, "a_painter_ant", bindings)
+        assert _worst("a_painter_ant", template, "00", rows, bound) == expected
 
 
 @pytest.mark.parametrize(
