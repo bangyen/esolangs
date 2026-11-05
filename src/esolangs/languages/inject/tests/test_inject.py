@@ -13,34 +13,27 @@ from tests.interpreters.contract import (
     SnapshotContract,
     StateViewContract,
 )
+from tests.interpreters.oracle_support import check_terminal
 from tests.interpreters.runner import run_program
 from tests.support.raises import raises_message
 
-HELLO_WORLD = "\n".join(
-    [
-        "send data",
-        "skip",
-        "data;",
-        "Hello, world!",
-        "data;",
-    ]
-)
+HELLO_WORLD = """send data
+skip
+data;
+Hello, world!
+data;"""
 
-WIKI_TRUTH_MACHINE = "\n".join(
-    [
-        "readto data",
-        "loop;",
-        "send data",
-        "skipq data 0",
-        "loop;",
-        "skip",
-        "data;",
-        "data;",
-        "0;",
-        "0",
-        "0;",
-    ]
-)
+WIKI_TRUTH_MACHINE = """readto data
+loop;
+send data
+skipq data 0
+loop;
+skip
+data;
+data;
+0;
+0
+0;"""
 
 # A corrected truth machine: the wiki's own is inverted (see the
 # interpreter's module docstring).  Halts on "0" after printing it, loops
@@ -48,35 +41,27 @@ WIKI_TRUTH_MACHINE = "\n".join(
 # because that module pulls in the registry, which the mutation bundle does
 # not inline -- a module-level import of it fails collection there before
 # any mutant runs.  ``tests.support.samples`` imports this name instead.
-INJECT_TRUTH_MACHINE = "\n".join(
-    [
-        "readto data",
-        "skipq data 0",
-        "loop;",
-        "send data",
-        "skip",
-        "loop;",
-        "send data",
-        "skip",
-        "data;",
-        "data;",
-        "0;",
-        "0",
-        "0;",
-    ]
-)
+INJECT_TRUTH_MACHINE = """readto data
+skipq data 0
+loop;
+send data
+skip
+loop;
+send data
+skip
+data;
+data;
+0;
+0
+0;"""
 
-CAT = "\n".join(
-    [
-        "loop;",
-        "readto data",
-        "send data",
-        "skipif data",
-        "loop;",
-        "data;",
-        "data;",
-    ]
-)
+CAT = """loop;
+readto data
+send data
+skipif data
+loop;
+data;
+data;"""
 
 
 _run = partial(run_program, run, suppress_eof=False)
@@ -91,15 +76,25 @@ class TestWikiExamples:
         """The block is sent, then skipped over rather than executed."""
         assert _run(HELLO_WORLD) == "Hello, world!\n"
 
-    def test_cat_copies_blank_lines_and_stops_at_eof(self) -> None:
-        """A blank line is one empty line; only EOF empties the block."""
-        assert _run(CAT, "ab\n\ncd\n") == "ab\n\ncd\n"
-
     def test_cat_preserves_line_content_and_order(self) -> None:
-        for first in ["", "a b", "loop;", "λ", "\tword"]:
-            for last in ["", "0", "skip", "  "]:
+        for first in ["", "a b", "loop;", "λ", "\tword", "ab"]:
+            for last in ["", "0", "skip", "  ", "cd"]:
                 data = f"{first}\n\n{last}\n"
                 assert _run(CAT, data) == data
+                state = (
+                    tuple(CAT.splitlines()),
+                    {"loop": (0, 4), "data": (5, 6)},
+                    7,
+                    False,
+                    4,
+                )
+                check_terminal(
+                    _Machine,
+                    CAT,
+                    data,
+                    lambda m: (*m._state, m._input_reads),
+                    (state, True, data, len(data), len(data)),
+                )
 
     def test_wiki_truth_machine_is_inverted(self) -> None:
         """The wiki's truth machine halts on 1 and loops on 0 -- backwards."""

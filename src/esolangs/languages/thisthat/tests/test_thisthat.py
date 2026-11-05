@@ -1,5 +1,6 @@
 """thisthat instruction and concurrency semantics."""
 
+from contextlib import nullcontext
 from itertools import product
 
 import pytest
@@ -16,6 +17,7 @@ from esolangs.languages.thisthat.interpreter import (
 )
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import FirstDraw, draw
+from tests.interpreters.oracle_support import check_terminal
 from tests.support.paths import ROOT
 
 
@@ -72,42 +74,23 @@ def _print_then_read() -> tuple[list[str], tuple[_Pointer, ...]]:
 
 
 def test_a_tick_prints_before_it_reads() -> None:
-    """A print already produced is written before the later read asks."""
-    io = _EventIO("0\n")
-    machine = _Machine(["▣─◇─◇"], io)
-    machine.pointers = (
-        _Pointer((2, 0), (1, 0), "data", 1),
-        _Pointer((4, 0), (3, 0)),
-    )
-    machine.step()
-    assert io.events == ["write:1", "read"]
-    assert io.getvalue() == "1"
-
-
-def test_a_tick_keeps_output_when_a_later_read_hits_eof() -> None:
-    io = _EventIO("")
-    machine = _Machine(["▣─◇─◇"], io)
-    machine.pointers = (
-        _Pointer((2, 0), (1, 0), "data", 1),
-        _Pointer((4, 0), (3, 0)),
-    )
-    machine.step()
-    assert io.events == ["write:1", "read"]
-    assert io.getvalue() == "1"
-
-
-def test_a_tick_keeps_output_when_a_later_read_is_invalid() -> None:
-    """The prefix is flushed before the read's fault is re-raised."""
-    io = _EventIO("x\n")
-    machine = _Machine(["▣─◇─◇"], io)
-    machine.pointers = (
-        _Pointer((2, 0), (1, 0), "data", 1),
-        _Pointer((4, 0), (3, 0)),
-    )
-    with pytest.raises(HaltError, match="must be a bit"):
-        machine.step()
-    assert io.events == ["write:1", "read"]
-    assert io.getvalue() == "1"
+    """Flush the first output before a successful, exhausted or invalid read."""
+    for data in ("0\n", "", "x\n"):
+        io = _EventIO(data)
+        machine = _Machine(["▣─◇─◇"], io)
+        machine.pointers = (
+            _Pointer((2, 0), (1, 0), "data", 1),
+            _Pointer((4, 0), (3, 0)),
+        )
+        expected = (
+            pytest.raises(HaltError, match="must be a bit")
+            if data == "x\n"
+            else nullcontext()
+        )
+        with expected:
+            machine.step()
+        assert io.events == ["write:1", "read"]
+        assert io.getvalue() == "1"
 
 
 def test_a_retried_tick_flushes_each_print_once_in_order() -> None:
@@ -475,6 +458,20 @@ def test_cat_and_kolakoski_wiki_examples() -> None:
             run(cat, io)
             assert io.getvalue() == expected
             assert io.position() == len(supplied)
+            check_terminal(
+                _Machine,
+                cat,
+                supplied,
+                lambda m: (m.pointers, dict(m.cells), *m.state[2:]),
+                (
+                    ((), {}, 0, True, False),
+                    True,
+                    expected,
+                    len(supplied),
+                    len(supplied),
+                ),
+                cap=256,
+            )
     kolakoski = [1, 2, 2]
     for i in range(2, 200):
         kolakoski += [3 - kolakoski[-1]] * kolakoski[i]

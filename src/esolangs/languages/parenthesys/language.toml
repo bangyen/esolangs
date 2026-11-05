@@ -112,12 +112,12 @@ description = { growth = "linear", claim = "worst", template = "{claim} {formula
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter.py"
 tests = [
+    "src/esolangs/languages/parenthesys/tests/test_parenthesys.py::test_numbers_keep_their_text_and_results_are_plain",
     "src/esolangs/languages/parenthesys/tests/test_parenthesys.py::test_wiki_hello_cat_and_a_plus_b",
     "src/esolangs/languages/parenthesys/tests/test_parenthesys.py::test_wiki_truth_machine",
-    "src/esolangs/languages/parenthesys/tests/test_parenthesys.py::test_numbers_keep_their_text_and_results_are_plain",
     "src/esolangs/languages/parenthesys/tests/test_parenthesys.py::test_functions_have_one_namespace_and_see_globals",
     "src/esolangs/languages/parenthesys/tests/test_parenthesys.py::test_loops_concatenate_and_stop_on_any_zero_text",
     "src/esolangs/languages/parenthesys/tests/test_parenthesys.py::test_malformed_sources_are_rejected",

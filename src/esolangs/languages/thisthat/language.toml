@@ -134,11 +134,11 @@ description = { growth = "linear", claim = "at most", template = "{claim} {formu
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter.py"
 tests = [
+    "src/esolangs/languages/thisthat/tests/test_thisthat.py::test_cat_and_kolakoski_wiki_examples",
     "src/esolangs/languages/thisthat/tests/test_thisthat.py::test_a_tick_prints_before_it_reads",
-    "src/esolangs/languages/thisthat/tests/test_thisthat.py::test_a_tick_keeps_output_when_a_later_read_hits_eof",
     "src/esolangs/languages/thisthat/tests/test_thisthat.py::test_output",
     "src/esolangs/languages/thisthat/tests/test_thisthat.py::test_loader_push_pop_and_horizontal_route",
     "src/esolangs/languages/thisthat/tests/test_thisthat.py::test_invalid_programs_abort",

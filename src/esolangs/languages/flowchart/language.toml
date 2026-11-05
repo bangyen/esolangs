@@ -135,9 +135,10 @@ description = { growth = "linear", claim = "worst", template = "{claim} {formula
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter.py"
 tests = [
+    "src/esolangs/languages/flowchart/tests/test_flowchart.py::TestNodes::test_input_reads_bytes_low_bit_first",
     "src/esolangs/languages/flowchart/tests/test_flowchart.py::TestTruthMachine",
     "src/esolangs/languages/flowchart/tests/test_flowchart.py::TestCat",
     "src/esolangs/languages/flowchart/tests/test_flowchart.py::TestNodes",

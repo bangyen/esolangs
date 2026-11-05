@@ -65,20 +65,11 @@ check or weakening a contract.
 
 ## Architecture migrations
 
-Remaining work; start each migration with a bounded pilot and price it within
-the standing budget. Preserve public behavior through adapters; incompatible
-API changes need a major release. Follow the refactor and optimization gates
-in [Contributing](CONTRIBUTING.md).
-
-1. **Independent semantic checks.** Admission executes bounded checks and a
-   live output fault for all 117 languages. Independent models cover 112;
-   expand the 5 records still marked `kind = "examples"`. Derive each
-   bounded model from the spec independently of production helpers and generator structure; record ambiguities first.
-   Check raw programs, errors, input consumption, state and termination with
-   positive controls and mutants. Completion per language: known faults are
-   detected and discrepancies have spec-backed resolutions or explicit open
-   decisions. Replace source-shape guards only with checks covering their
-   invariant; retain purity and snapshot guarantees.
+All architecture migrations are integrated. All 117 languages execute a
+bounded independent semantic model and detect a live output fault. Models
+cover their declared fragments; broader regressions, purity and snapshot
+checks remain. Language-specific compatibility decisions stay in the
+interpreter contracts.
 
 ## Engineering
 
@@ -86,7 +77,6 @@ Next experiments; budgets are wall time, not permission for an unpriced search.
 
 | Work | Next experiment | Success criterion | Budget |
 | --- | --- | --- | --- |
-| Independent semantics | Expand the language-owned semantic records still marked `examples` into bounded independent models | Match output, state, input cursor, halt and errors; include positive controls | 60 s per language check |
 | Mutation audits | Rank stale generators; price each baseline before sweeping | Triage every survivor before updating its swept revision | 60 s baseline; 240 s per initial batch |
 | Unreached code | Triage new gaps from the weekly scan; the current baseline records invariant-backed unreachable arms | Executed witness, invariant, or byte-identical removal; confirm scoped gaps against whole-tree coverage before updating the baseline | 60 s per scoped scan; price whole-tree coverage separately |
 | Timing regressions | Inspect weekly environment-matched timing report | Reproduce persistent increases locally before changing code | Existing weekly sweep; no extra generation runs |

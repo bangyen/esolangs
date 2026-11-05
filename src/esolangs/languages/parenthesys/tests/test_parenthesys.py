@@ -1,5 +1,6 @@
 """Tests for the Parenthesys interpreter."""
 
+from functools import partial
 from itertools import product
 
 import pytest
@@ -7,6 +8,8 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.parenthesys.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.oracle_support import check_terminal
+from tests.interpreters.runner import run_program
 
 _TRUTH = "[$|a]{[a]|(1)}(0)"
 _BOTTLES = (
@@ -30,10 +33,7 @@ _QUINE = (
 )
 
 
-def _run(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_run = partial(run_program, run, suppress_eof=False)
 
 
 def test_wiki_hello_cat_and_a_plus_b() -> None:
@@ -81,27 +81,38 @@ def test_concatenation_is_a_number_when_a_part_is() -> None:
 
 
 def test_numbers_keep_their_text_and_results_are_plain() -> None:
-    assert _run("(007)([+|007|1])([*|1.5|2])([-|1|1.0])") == "007830"
-    assert _run("([/|1|3])") == "0." + "3" * 28
-    assert _run("([^|2|-2])([^|0|0])([^|2|100])") == "0.251" + str(2**100)
-    assert _run("([%|-7|3])([%|7|-3])") == "2-2"
+    def check(source, output, value):
+        check_terminal(
+            _Machine,
+            source,
+            "unused",
+            lambda m: (m.stack, m.globals, m.state[2], m.functions, m.locals),
+            (([value], {"n": ("0", True)}, None, {}, {}), True, output, 0, 0),
+            cap=256,
+        )
+        assert _run(source, "unused") == output
 
     # A loop prints each signed affine result and also concatenates the
     # values returned by those prints. The enclosing print emits that join.
     for count, factor, offset in product(range(6), (-3, 0, 7), (-2, 0, 4)):
         source = f"[{count}|n]({{[n]|([+|[*|[n]|{factor}]|{offset}])[[-|[n]|1]|n]}})"
         values = [str(n * factor + offset) for n in range(count, 0, -1)]
-        assert _run(source) == "".join(values) + "".join(
+        joined = "".join(
             value + str(n - 1)
             for value, n in zip(values, range(count, 0, -1), strict=True)
-        ), source
+        )
+        check(source, "".join(values) + joined, str(count) + joined)
 
     for count in (1, 2, 5):
         source = f"[{-count}|n]({{[n]|([n])[[+|[n]|1]|n]}})"
         values = range(-count, 0)
-        assert _run(source) == "".join(map(str, values)) + "".join(
-            f"{n}{n + 1}" for n in values
-        )
+        joined = "".join(f"{n}{n + 1}" for n in values)
+        check(source, "".join(map(str, values)) + joined, str(-count) + joined)
+
+    assert _run("(007)([+|007|1])([*|1.5|2])([-|1|1.0])") == "007830"
+    assert _run("([/|1|3])") == "0." + "3" * 28
+    assert _run("([^|2|-2])([^|0|0])([^|2|100])") == "0.251" + str(2**100)
+    assert _run("([%|-7|3])([%|7|-3])") == "2-2"
 
 
 def test_functions_have_one_namespace_and_see_globals() -> None:

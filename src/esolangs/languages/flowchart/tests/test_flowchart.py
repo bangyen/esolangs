@@ -1,12 +1,14 @@
 """Unit tests for the Flowchart interpreter."""
 
 from functools import partial
+from itertools import product
 
 import pytest
 
 from esolangs.languages.flowchart.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
+from tests.interpreters.oracle_support import check_terminal
 from tests.interpreters.runner import run_program as _run_program
 from tests.support.fixtures import grid
 from tests.support.paths import ROOT
@@ -245,8 +247,7 @@ class TestNodes:
 
     def _register(self, body: str) -> int | None:
         """Run ``body`` between a start and an end node, returning the register."""
-        io = ScriptedIO("")
-        machine = _Machine([f"( )─{body}─(( ))"], io)
+        machine = _Machine([f"( )─{body}─(( ))"], ScriptedIO(""))
         while not machine.halted:
             machine.step()
         return machine.pointers[0].reg
@@ -254,40 +255,24 @@ class TestNodes:
     @pytest.mark.parametrize(
         ("code", "expected"),
         [
-            # ``[ }`` sets the register to one.
+            ("[ }─{ }", None),
+            ("[ }─\\[ ]/─{ }─\\[ ]/─\\{ }/", None),
+            ("[ }─/[ ]\\─{ }─/[ ]\\─/{ }\\", None),
+            ("[ }─\\[ ]/─{ }─\\[ ]/─\\{ }/─\\{ }/", 1),
+            ("[ }─\\[ ]/─[ >─\\{ }/", None),
             pytest.param("[ }", 1, id="set_to_one"),
-            # ``{ ]`` sets the register to zero.
             pytest.param("[ }─{ ]", 0, id="set_to_zero"),
-            # ``[ ]`` on an empty register yields one.
             pytest.param("[ ]", 1, id="toggle_from_empty_is_one"),
-            # ``[ ]`` twice returns the register to zero.
             pytest.param("[ ]─[ ]", 0, id="toggle_flips"),
-            # A pushed bit comes back off the top of the deque.
             pytest.param("[ }─\\[ ]/─{ }─\\{ }/", 1, id="push_then_pop_round_trips"),
-            # ``/[ ]\`` and ``/{ }\`` use the other end of the deque.
             pytest.param("[ }─/[ ]\\─{ }─/{ }\\", 1, id="push_bottom_pop_bottom"),
-            # Selecting the previous deque again restores its contents.
             pytest.param(
                 "[ }─\\[ ]/─[ >─< ]─\\{ }/", 1, id="switching_back_finds_the_bit"
             ),
         ],
     )
-    def test_final_register(self, code: str, expected: int) -> None:
+    def test_final_register(self, code: str, expected: int | None) -> None:
         assert self._register(code) == expected
-
-    def test_clear_empties(self) -> None:
-        """``{ }`` empties the register."""
-        assert self._register("[ }─{ }") is None
-
-    def test_pushing_an_empty_register_pushes_an_empty(self) -> None:
-        """The spec lets a deque hold empty, so it covers the bit beneath."""
-        assert self._register("[ }─\\[ ]/─{ }─\\[ ]/─\\{ }/") is None
-        assert self._register("[ }─/[ ]\\─{ }─/[ ]\\─/{ }\\") is None
-        assert self._register("[ }─\\[ ]/─{ }─\\[ ]/─\\{ }/─\\{ }/") == 1
-
-    def test_deques_are_separate(self) -> None:
-        """A bit pushed on one deque is not visible from the next."""
-        assert self._register("[ }─\\[ ]/─[ >─\\{ }/") is None
 
     def test_output_prints_the_bit(self) -> None:
         """``\\ \\`` writes the register as the low bit of a padded byte."""
@@ -305,32 +290,31 @@ class TestNodes:
         assert run_program([f"( )─{body}─(( ))"]) == "A"
 
     def test_input_reads_bytes_low_bit_first(self) -> None:
-        """Nine reads copy one byte, then take the next byte's low bit."""
-        body = "─".join(["/ /─\\ \\"] * 9)
-        assert run_program([f"( )─{body}─(( ))"], "AB") == "A\x00"
-        assert run_program([f"( )─{body}─(( ))"], "AC") == "A\x01"
-
-        for width in range(2, 8):
+        """Independent low-bit-first stream model: 1..17 bits, Unicode and EOF."""
+        inputs = ("", "A", "AB", "AC", "Ł", *map(chr, (0, 85, 170, 255)))
+        for width, data in product(range(1, 18), inputs):
+            bits = [(ord(char) >> shift) & 1 for char in data for shift in range(8)]
+            selected = (bits + [0] * width)[:width]
+            output = "".join(
+                chr(sum(bit << j for j, bit in enumerate(selected[i : i + 8])))
+                for i in range(0, width, 8)
+            )
+            consumed = min(width, len(bits))
+            reads = (consumed + 7) // 8
+            used = consumed - 8 * (reads - 1) if reads else 0
+            incoming = ord(data[reads - 1]) % 256 >> used if reads else 0
+            reg = bits[width - 1] if width <= len(bits) else None
+            state = (reg, (), reads, reads, incoming, 8 - used if reads else 0, 0, 0)
             body = "─".join(["/ /─\\ \\"] * width)
-            for byte in (0, 85, 170, 255):
-                expected = chr(byte % (1 << width))
-                assert run_program([f"( )─{body}─(( ))"], chr(byte)) == expected
-
-    def test_reads_past_eof_are_empty(self) -> None:
-        """EOF empties the register, rather than supplying zeros."""
-        machine = _Machine(["( )─/ /─/ /─(( ))"], ScriptedIO(""))
-        while not machine.halted:
-            machine.step()
-        assert machine.pointers[0].reg is None
-        machine = _Machine(["( )─[ }─/ /─(( ))"], ScriptedIO(""))
-        while not machine.halted:
-            machine.step()
-        assert machine.pointers[0].reg is None
-
-    def test_unicode_input_is_reduced_modulo_256(self) -> None:
-        """A code point past 255 is read as its low byte."""
-        body = "─".join(["/ /─\\ \\"] * 8)
-        assert run_program([f"( )─{body}─(( ))"], "Ł") == "A"
+            code = [f"( )─{body}─(( ))"]
+            assert run_program(code, data) == output
+            check_terminal(
+                _Machine,
+                code,
+                data,
+                lambda m: (m.pointers[0].reg, *m.snapshot()[1:]),
+                (state, True, output, reads, reads),
+            )
 
     def test_a_cursorless_read_loop_cycles_only_after_eof(self) -> None:
         """Reads count in the snapshot: no repeat is seen while bits remain."""
@@ -489,12 +473,9 @@ class TestPureTransition:
 
 
 def _two_pointer_program() -> list[str]:
-    """A fork into an output chain and an input chain.
+    """Fork eight output bits above nine input bits.
 
-    ``P_out`` walks ``[ ]`` then eight ``\\ \\`` nodes on the top row; the
-    eighth completes a byte on the same tick ``P_in``, on the second row,
-    must fetch its second input byte.  Because row 0 sorts before row 2,
-    the byte is written before the later pointer reads.
+    Output eight and byte read two share a tick: row 0 flushes before row 2.
     """
     out = "\\ \\"
     read = "/ /"

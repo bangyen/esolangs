@@ -1,5 +1,6 @@
 """Tests for the Quassaunt interpreter."""
 
+from functools import partial
 from itertools import product
 
 import pytest
@@ -8,6 +9,8 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.quassaunt.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
+from tests.interpreters.oracle_support import check_terminal
+from tests.interpreters.runner import run_program
 
 HELLO = " @@Hello_world! %%Printtoconsole"
 HELLO_SPACE = """ @@Hello       @@[Whitespace] %%Obtain      %%Head
@@ -42,10 +45,7 @@ LOOP = (
 )
 
 
-def _run(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_run = partial(run_program, run, suppress_eof=False)
 
 
 def _machine(code: str) -> _Machine:
@@ -72,6 +72,43 @@ def test_the_wikis_duplicate_idiom_copies_a_string() -> None:
 
 
 def test_set_operations_and_their_error_messages() -> None:
+    def construct(members: set[str]) -> str:
+        return "%%Empty" + "".join(
+            f" @@{member} %%Swap %%Makecontain" for member in sorted(members)
+        )
+
+    def check(source, output):
+        check_terminal(
+            _Machine,
+            source,
+            "unused",
+            lambda m: (m.state, m.globals),
+            (((None, None), {"##Errormessage": frozenset()}), True, output, 0, 0),
+        )
+        assert _run(source, "unused") == output
+
+    subsets = [
+        {letter for index, letter in enumerate("abc") if mask & (1 << index)}
+        for mask in range(8)
+    ]
+    for bottom, top in product(subsets, repeat=2):
+        prefix = (
+            f"@@@@T?%%Printtoconsole {construct(bottom)} "
+            f"@@@@F?%%Printtoconsole {construct(top)}"
+        )
+        check(prefix + " %%Ifpropersubset", "T" if top < bottom else "F")
+        check(prefix + " %%Ifdisjoint", "T" if top.isdisjoint(bottom) else "F")
+
+    for members in subsets:
+        for removed in sorted(members):
+            reduced = f"{construct(members)} @@{removed} %%Makenotcontain"
+            for probe in "abc":
+                source = (
+                    f"@@@@T?%%Printtoconsole {reduced} "
+                    f"@@@@F?%%Printtoconsole {construct({probe})} %%Ifdisjoint"
+                )
+                check(source, "F" if probe in members - {removed} else "T")
+
     two = "@@a %%Empty %%Makecontain"
     assert _run(f"@@-- @@x {two} @@b %%Swap %%Makecontain @@x %%Concatenateall"
                 " %%Printtoconsole") == "a--b"  # fmt: skip
@@ -90,51 +127,6 @@ def test_set_operations_and_their_error_messages() -> None:
     duplicate = f"@@a {two} %%Makecontain @@[E] %%Swap %%Store"
     assert _run(duplicate + check) == "set"
     assert _run(f"{duplicate} @@##Errormessage %%Delete{check}") == "empty"
-
-    def construct(members: set[str]) -> str:
-        return "%%Empty" + "".join(
-            f" @@{member} %%Swap %%Makecontain" for member in sorted(members)
-        )
-
-    subsets = [
-        {letter for index, letter in enumerate("abc") if mask & (1 << index)}
-        for mask in range(8)
-    ]
-    for bottom, top in product(subsets, repeat=2):
-        prefix = (
-            f"@@@@T?%%Printtoconsole {construct(bottom)} "
-            f"@@@@F?%%Printtoconsole {construct(top)}"
-        )
-        assert _run(prefix + " %%Ifpropersubset") == ("T" if top < bottom else "F")
-        assert _run(prefix + " %%Ifdisjoint") == (
-            "T" if top.isdisjoint(bottom) else "F"
-        )
-
-    for members in subsets:
-        for removed in sorted(members):
-            reduced = f"{construct(members)} @@{removed} %%Makenotcontain"
-            for probe in "abc":
-                source = (
-                    f"@@@@T?%%Printtoconsole {reduced} "
-                    f"@@@@F?%%Printtoconsole {construct({probe})} %%Ifdisjoint"
-                )
-                assert _run(source) == ("F" if probe in members - {removed} else "T")
-
-
-@pytest.mark.parametrize(
-    ("bottom", "top", "proper", "disjoint"),
-    [("@@a @@b", "@@a", "T", "F"), ("@@a", "@@a", "F", "F"), ("@@a", "@@b", "F", "T")],
-)
-def test_the_two_branches(bottom: str, top: str, proper: str, disjoint: str) -> None:
-    def sets(words: str) -> str:
-        return "%%Empty" + "".join(f" {w} %%Swap %%Makecontain" for w in words.split())
-
-    for command, expected in (("Ifpropersubset", proper), ("Ifdisjoint", disjoint)):
-        code = (
-            f"@@@@T?%%Printtoconsole {sets(bottom)} @@@@F?%%Printtoconsole "
-            f"{sets(top)} %%{command}"
-        )
-        assert _run(code) == expected, command
 
 
 def test_locals_belong_to_one_evaluation_and_globals_to_all() -> None:
