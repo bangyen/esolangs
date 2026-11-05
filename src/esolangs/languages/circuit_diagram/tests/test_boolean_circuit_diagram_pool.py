@@ -1,5 +1,6 @@
 """Executed block-pool routing, pulse, workspace, and size controls."""
 
+from functools import cache
 from unittest import mock
 
 import pytest
@@ -13,7 +14,11 @@ from esolangs.languages.circuit_diagram.generator.hpool import (
     _large_pool_layout,
     _pool_layout,
 )
-from esolangs.languages.circuit_diagram.interpreter import _compile, _Machine
+from esolangs.languages.circuit_diagram.interpreter import (
+    _compile,
+    _functions,
+    _Machine,
+)
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.witness_tables import dense
@@ -27,13 +32,32 @@ def _best_linear_fold(table, n):
 
 
 def _execute(table, code, rows=None):
-    n = len(table).bit_length() - 1
     lines = code.splitlines()
-    maximum = 0
-    selected = range(1 << n) if rows is None else rows
     # A program past the compile cache's text bound reparses per machine:
     # 8 s a row at 21M cells, 290 s of the 129-class check's 36 rows.
     topology = _compile(tuple(lines))
+    expand = _functions._expand_function_body
+
+    @cache
+    def expanded(gate, body, bindings):
+        return expand(gate, body, dict(bindings))
+
+    # Width substitution reuse cut n=7/8/9 row sweeps from .24/.91/3.49s
+    # to .20/.75/2.67s with identical traces; every function call still runs.
+    with mock.patch.object(
+        _functions,
+        "_expand_function_body",
+        new=lambda gate, body, bindings: expanded(
+            gate, body, tuple(sorted(bindings.items()))
+        ),
+    ):
+        return _execute_rows(table, lines, topology, rows)
+
+
+def _execute_rows(table, lines, topology, rows):
+    n = len(table).bit_length() - 1
+    maximum = 0
+    selected = range(1 << n) if rows is None else rows
     for row in selected:
         io = ScriptedIO(f"{row:0{n}b}")
         with mock.patch(f"{_Machine.__module__}._compile", return_value=topology):
