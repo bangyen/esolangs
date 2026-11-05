@@ -53,9 +53,9 @@ def _packed_steps(n: int, cells: list[int]) -> int | None:
 def execution(n: int, program: str) -> int:
     """The stated execution bound, evaluated for n and the program.
 
-    Off the packed route the worst is the tree's 3n + 2 (n reads, 2n - 1 tests,
-    print, halt; a constant takes n + 1).  A packed program is counted exactly
-    from its chunks, so a row must meet that program's own worst row; over all
+    A tree uses one entry jump, n reads, at most n tests and n-1 relays,
+    then print and halt: at most 3n+2; a constant takes n+1. A packed program
+    is counted exactly from its chunks, so a row must meet its own worst row; over all
     tables the packed worst is 8T + (7n + 5)(floor(T/n) - 1) + 26n - 8, reached
     when the last full chunk is all ones.
     """

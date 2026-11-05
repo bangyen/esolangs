@@ -96,7 +96,7 @@ first = 1
 unit = "instructions"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.s_bleq.generator:s_bleq"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} to n = 9, the tree route; packed, worst 8T+(7n+5)(⌊T/n⌋-1)+26n-8 steps", formula = "3n + 2" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} through n=9, at most beyond, the tree route; packed, worst 8T+(7n+5)(⌊T/n⌋-1)+26n-8 steps", formula = "3n + 2" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.s_bleq.tests.formulas:_workspace"
