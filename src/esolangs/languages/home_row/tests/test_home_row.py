@@ -95,8 +95,12 @@ class TestStepMachine:
 
         machine = _Machine("a", ScriptedIO())
         before = machine.snapshot()
+        saved = machine.workspace_snapshot()
+        machine.snapshot = lambda: ()
         machine.step()  # a increments the current cell
-        assert machine.snapshot() != before
+        assert machine.workspace_snapshot().parts == machine.state
+        assert saved.parts == before
+        assert saved.parts != machine.workspace_snapshot().parts
         assert machine.grid[0] == 1
 
 

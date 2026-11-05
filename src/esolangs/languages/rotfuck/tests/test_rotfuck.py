@@ -220,6 +220,13 @@ def test_rotation_and_cursor_preclude_snapshot_cycles(code: str) -> None:
         if machine.halted:
             break
         before = machine.snapshot()
+        assert machine.workspace_snapshot().parts == (
+            machine.prog.rotation(),
+            machine.tape,
+            machine.ptr,
+            machine.ind,
+            machine.io.progress(),
+        )
         rank = (machine.prog.rotation(), machine.ind)
         try:
             machine.step()

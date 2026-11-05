@@ -23,6 +23,7 @@ from __future__ import annotations
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import unmatched
 from esolangs.runtime.io import IO
 
@@ -31,6 +32,8 @@ from esolangs.runtime.io import IO
 #: pairing never change, so they are transition parameters, not constant data
 #: in every state the cycle detector stores.
 type _State = tuple[int, int, tuple[int, ...]]
+
+_WORKSPACE_MODEL = WorkspaceModel("home-row-v1", ("instruction", "pointer", "grid"))
 
 
 def _matches(code: str) -> dict[int, int]:
@@ -148,6 +151,12 @@ class _Machine:
         # The state as it stands: it is already the (ind, ptr, grid) triple
         # this returned before the split, and it is already hashable.
         return self.state
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.ind, pointer=self.ptr, grid=self.grid
+        )
 
     def step(self) -> None:
         """Execute one command, advancing the cursor.

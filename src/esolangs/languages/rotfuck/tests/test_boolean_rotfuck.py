@@ -358,11 +358,11 @@ def _check_native_constants(bit: str) -> None:
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     io = ReadFirstIO(f"{row:0{n}b}" + "Q", expected=n)
                     machine = _Machine(program, io, rotation=rotation)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                         assert steps <= commands
                     assert steps == commands
@@ -409,12 +409,12 @@ def _check_symmetric_multipliers() -> None:
             for row in (0, (1 << n) - 1):
                 io = ScriptedIO(f"{row:0{n}b}" + "Q")
                 machine = _Machine(program, io, rotation=rotation)
-                written = WrittenState(machine.snapshot())
+                written = WrittenState(machine.workspace_snapshot())
                 for _ in range(2080 * len(program)):
                     if machine.halted:
                         break
                     machine.step()
-                    written.sample(machine.snapshot())
+                    written.sample(machine.workspace_snapshot())
                     if io.getvalue():
                         assert io.progress() == n
                 assert machine.halted

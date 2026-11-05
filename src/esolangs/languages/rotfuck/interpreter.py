@@ -34,6 +34,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 #: The rotation cycle per direction, each read as "turns into the next":
@@ -62,6 +63,10 @@ _COMMANDS = frozenset(ROTFUCK_CYCLES["forward"])
 #: reading -- which is why it belongs in the state and the characters do
 #: not.
 type _State = tuple[tuple[int, ...], int, int, int]
+
+_WORKSPACE_MODEL = WorkspaceModel(
+    "rotfuck-v1", ("rotation", "tape", "pointer", "instruction", "input_cursor")
+)
 
 
 def _at(chars: tuple[str, ...], rot: int, i: int, cycle: str) -> str:
@@ -241,6 +246,16 @@ class _Machine:
         """
         self.tape, self.ptr, self.ind, rot = state
         self.prog.set_rotation(rot)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            rotation=self.prog.rotation(),
+            tape=self.tape,
+            pointer=self.ptr,
+            instruction=self.ind,
+            input_cursor=self.io.progress(),
+        )
 
     def step(self) -> None:
         """Execute one command, advancing the cursor and rotation.
