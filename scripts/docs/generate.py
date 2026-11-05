@@ -322,28 +322,15 @@ def render_api_section() -> str:
     )
 
 
-def xor_language() -> str:
-    """Return the language whose XOR program the README shows first.
-
-    The shortest XOR among the languages reading their inputs as adjacent
-    characters, so it is short enough to read and never a removed language.
-    """
-    readers = [
-        name
-        for name in LANGUAGES
-        if (facts := esolangs.describe(name))["boolean_generator"]
-        and not facts["parameterized"]
-        and not facts["random"]
-        and facts["answer_mode"] == "output"
-        and facts["input_shape"] == "char_stream"
-        and facts["source_kind"] == "text"
-    ]
-    return min(readers, key=lambda name: len(str(esolangs.generate(name, "0110"))))
-
-
 def render_xor_section() -> str:
     """Render the README's first example: a generated XOR, and its length."""
-    language = xor_language()
+    match = re.search(
+        r"`esolangs generate (.+?) 0110` emits",
+        (ROOT / "README.md").read_text(encoding="utf-8"),
+    )
+    if match is None:
+        raise ValueError("README XOR example must name its language")
+    (language,) = shlex.split(match.group(1))
     program = str(esolangs.generate(language, "0110"))
     return "\n".join(
         [
@@ -409,19 +396,6 @@ def update_limitations(root: pathlib.Path = ROOT) -> bool:
     return _write_if_changed(path, text)
 
 
-def update_language_request(root: pathlib.Path = ROOT) -> bool:
-    """Rewrite the issue template's registry language count."""
-    path = root / ".github" / "ISSUE_TEMPLATE" / "language_request.yml"
-    text, replacements = re.subn(
-        r"(What it adds that the current )\d+( do not —)",
-        rf"\g<1>{len(LANGUAGES)}\g<2>",
-        path.read_text(),
-    )
-    if replacements != 1:
-        raise ValueError(f"expected one language count in {path}, found {replacements}")
-    return _write_if_changed(path, text)
-
-
 def update_readme(root: pathlib.Path = ROOT) -> bool:
     """Rewrite the generated sections of README.md between their markers."""
     path = root / "README.md"
@@ -475,10 +449,6 @@ def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
     report(
         "updated the generated paragraphs of docs/limitations.md",
         changed=update_limitations(output_root),
-    )
-    report(
-        "updated the generated facts of the language request template",
-        changed=update_language_request(output_root),
     )
     if unchanged:
         print(f"{unchanged} generated artifacts already up to date")

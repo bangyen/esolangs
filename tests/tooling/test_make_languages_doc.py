@@ -16,7 +16,6 @@ SCRIPT = REPO_ROOT / "scripts" / "docs" / "generate.py"
 README = REPO_ROOT / "README.md"
 USAGE_DOC = REPO_ROOT / "docs" / "usage.md"
 LIMITATIONS = REPO_ROOT / "docs" / "limitations.md"
-LANGUAGE_REQUEST = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "language_request.yml"
 
 
 def _markers(tag: str) -> tuple[str, str]:
@@ -43,15 +42,6 @@ def test_readme_counts_match_the_registry() -> None:
     assert f"  {count} of the" in module.render_boolean_count_section()
 
 
-def test_contributor_facts_match_the_registry() -> None:
-    """The issue template uses the registry language count."""
-    module = load_script()
-    assert (
-        f"What it adds that the current {len(module.LANGUAGES)} do not"
-        in LANGUAGE_REQUEST.read_text()
-    )
-
-
 def test_generators_live_in_their_language_packages() -> None:
     module = load_script()
     for language in module.LANGUAGES.values():
@@ -63,25 +53,6 @@ def test_generators_live_in_their_language_packages() -> None:
             source.is_relative_to(home.resolve())
             or source == home.with_suffix(".py").resolve()
         ), language.name
-
-
-def test_the_issue_template_must_contain_one_count(tmp_path: Path) -> None:
-    """A wording change cannot silently disable count generation."""
-    module = load_script()
-    path = tmp_path / ".github" / "ISSUE_TEMPLATE" / "language_request.yml"
-    path.parent.mkdir(parents=True)
-    path.write_text("no generated count here\n")
-    with pytest.raises(ValueError, match="expected one language count"):
-        module.update_language_request(tmp_path)
-
-
-def test_the_issue_template_count_is_rewritten(tmp_path: Path) -> None:
-    module = load_script()
-    path = tmp_path / ".github" / "ISSUE_TEMPLATE" / "language_request.yml"
-    path.parent.mkdir(parents=True)
-    path.write_text("What it adds that the current 1 do not — enough\n")
-    module.update_language_request(tmp_path)
-    assert f"current {len(module.LANGUAGES)} do not" in path.read_text()
 
 
 def test_main_updates_all_registry_derived_docs(
@@ -96,7 +67,6 @@ def test_main_updates_all_registry_derived_docs(
     module.update_readme = lambda _root: called.append("readme") or True
     module.update_usage = lambda _root: called.append("usage") or True
     module.update_limitations = lambda _root: called.append("limitations") or True
-    module.update_language_request = lambda _root: called.append("request") or True
     for relative in (
         "docs/proofs/index.md",
         "src/esolangs/languages/generators.py",
@@ -109,8 +79,7 @@ def test_main_updates_all_registry_derived_docs(
     out = capsys.readouterr().out
     stale = f"docs are stale; run uv run python scripts/docs/generate.py docs\n{out}"
     assert status == 0, stale
-    assert called == ["readme", "usage", "limitations", "request"]
-    assert "language request template" in out
+    assert called == ["readme", "usage", "limitations"]
     # The real exports and proof tables were copied in sync, so they earn
     # no "updated" line -- only the summary counts them.
     assert "updated the generated exports" not in out, stale
