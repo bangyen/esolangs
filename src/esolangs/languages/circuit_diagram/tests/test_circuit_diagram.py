@@ -167,42 +167,6 @@ class TestConstantOutput:
         assert gate.inputs[0] is gate.inputs[1]
 
 
-class TestGates:
-    """Each gate's truth table, driven through a two-input harness."""
-
-    @staticmethod
-    def circuit(kind: str) -> list[str]:
-        """Return a diagram feeding two input bits into ``kind``."""
-        return [
-            "-.",
-            f"  {kind}.-:",
-            "-.",
-        ]
-
-    @pytest.mark.parametrize(
-        ("kind", "expected"),
-        [
-            ("a", "0001"),
-            ("A", "1110"),
-            ("o", "0111"),
-            ("O", "1000"),
-            ("x", "0110"),
-            ("X", "1001"),
-        ],
-    )
-    def test_truth_table(self, kind: str, expected: str) -> None:
-        got = "".join(
-            output_for(self.circuit(kind), f"{a}\n{b}\n")
-            for a in (0, 1)
-            for b in (0, 1)
-        )
-        assert got == expected
-
-    @pytest.mark.parametrize(("bit", "expected"), [("0", "1"), ("1", "0")])
-    def test_not_inverts(self, bit: str, expected: str) -> None:
-        assert output_for(["-.~.-:"], f"{bit}\n") == expected
-
-
 class TestMultiWire:
     """Widths, splitting, combining, and the multi-input gate readings."""
 

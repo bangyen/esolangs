@@ -10,7 +10,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.streetcode.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 
 def _model(source, stdin):
@@ -106,20 +106,11 @@ def check_raw_streetcode():
             [(None, False, "", 0, 0)],
         )
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongCell(_Machine):
         def step(self):
             super().step()
             self.cells = {**self.cells, self.cp: self.cells.get(self.cp, 0) + 1}
 
-    class ReadsExtra(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
-    for factory in (Skips, WrongCell, ReadsExtra):
+    for factory in (stalled(_Machine), WrongCell, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, "^O;")

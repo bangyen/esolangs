@@ -4,6 +4,27 @@ from esolangs.exceptions import ArgumentError, HaltError, InterpreterLimitError
 from esolangs.runtime.io import ScriptedIO
 
 
+def stalled(factory):
+    """Return a fault that never steps."""
+
+    class Fault(factory):
+        def step(self):
+            pass
+
+    return Fault
+
+
+def overread(factory):
+    """Return a fault that consumes an extra character before every step."""
+
+    class Fault(factory):
+        def step(self):
+            self.io.input_char()
+            super().step()
+
+    return Fault
+
+
 def _error(error):
     if isinstance(error, ArgumentError):
         return "argument"

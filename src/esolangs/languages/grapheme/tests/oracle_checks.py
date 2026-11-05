@@ -10,7 +10,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.grapheme.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 
 def _integer(text, dialect):
@@ -278,21 +278,16 @@ def check_raw_grapheme():
     for code in ("", "FA\nFY", "a", " ", "\r", "EbadE"):
         _check(_Machine, code)
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongOutput(_Machine):
         def __init__(self, code, io, **kwargs):
             write = io.print_value
             io.print_value = lambda n: write(n + 1)
             super().__init__(code, io, **kwargs)
 
-    class ReadsExtra(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
-    for factory, code in ((Skips, "FAFY"), (WrongOutput, "FAFY"), (ReadsExtra, "WY")):
+    for factory, code in (
+        (stalled(_Machine), "FAFY"),
+        (WrongOutput, "FAFY"),
+        (overread(_Machine), "WY"),
+    ):
         with pytest.raises(AssertionError):
             _check(factory, code, "ab")

@@ -11,7 +11,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.object_disoriented.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 
 def _expression(value, zero):
@@ -108,20 +108,11 @@ def check_raw_object_disoriented():
             [(None, False, "", 0, 0)],
         )
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongBit(_Machine):
         def step(self):
             super().step()
             self.state = self.state._replace(out_bits=(*self.state.out_bits, 1))
 
-    class ReadsExtra(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
-    for factory in (Skips, WrongBit, ReadsExtra):
+    for factory in (stalled(_Machine), WrongBit, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, (("write", 0),) * 8)

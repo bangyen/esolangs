@@ -12,7 +12,7 @@ from operator import add, mod, mul, sub, truediv
 import pytest
 
 from esolangs.languages.algebraic_programming_language.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 _OPERATORS = {"+": add, "-": sub, "*": mul, "/": truediv, "%": mod, "**": pow}
 
@@ -143,20 +143,11 @@ def check_raw_algebraic_programming_language():
         assert error == "syntax"
         assert trace[-1][2:] == ("", 0, 0)
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongOutput(_Machine):
         def step(self):
             super().step()
             self.io.print_str("!")
 
-    class ReadsExtra(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
-    for factory in (Skips, WrongOutput, ReadsExtra):
+    for factory in (stalled(_Machine), WrongOutput, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, (("+", 2, 3),))

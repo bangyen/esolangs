@@ -11,7 +11,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.interprogck8.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 
 class _Port:
@@ -211,20 +211,11 @@ def check_raw_interprogck8():
     ):
         _check(_Machine, source)
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongAccumulator(_Machine):
         def step(self):
             super().step()
             self.state = replace(self.state, acc=(self.state.acc + 1) % 256)
 
-    class ReadsExtra(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
-    for factory in (Skips, WrongAccumulator, ReadsExtra):
+    for factory in (stalled(_Machine), WrongAccumulator, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, ("@nd", "div"))

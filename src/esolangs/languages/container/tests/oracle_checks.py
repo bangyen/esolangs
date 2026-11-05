@@ -6,7 +6,7 @@ from operator import ge, le
 import pytest
 
 from esolangs.languages.container.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, stalled
 
 
 def _source(network):
@@ -82,9 +82,5 @@ def check_raw_container():
         _check(_Machine, network, stdin)
     _check(_Machine, {}, "")
 
-    class DropsTick(_Machine):
-        def step(self):
-            pass
-
     with pytest.raises(AssertionError):
-        _check(DropsTick, {"OUT": (0, ((1, "OUT", ">=", 0),))}, "")
+        _check(stalled(_Machine), {"OUT": (0, ((1, "OUT", ">=", 0),))}, "")

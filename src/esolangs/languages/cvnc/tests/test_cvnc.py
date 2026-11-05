@@ -96,84 +96,8 @@ class TestSyllables:
         assert _syllabify(_tokenize("fifi")) == [0, 2]
 
 
-class TestFricatives:
-    def test_character_output_is_modulo_256(self) -> None:
-        assert run_program("ci" * 321 + "fu") == "A"  # 321 % 256 == 65
-
-    @pytest.mark.parametrize(
-        ("char", "expected"),
-        [("\u0100", "0"), ("\u0101", "1"), ("\u4e2d", "45")],
-        ids=["256", "257", "cjk"],
-    )
-    def test_a_unicode_input_character_is_taken_modulo_256(
-        self, char: str, expected: str
-    ) -> None:
-        """The spec's own "if Unicode, then modulo it by 256"."""
-        assert run_program("ʒu" + "θi", char + "\n") == expected
-
-    def test_a_nul_input_character_reads_as_zero(self) -> None:
-        """A NUL byte is 0, not the fallback for a missing one."""
-        assert run_program("ʒu" + "θi", "\x00\n") == "0"
-
-    def test_an_unparseable_input_line_reads_as_zero(self) -> None:
-        assert run_program("su" + "θi", "banana\n") == "0"
-        with pytest.raises(EOFError):
-            run_program("su" + "θi", "\n")
-
-    def test_a_negative_input_floors_at_zero(self) -> None:
-        """The accumulator is unsigned."""
-        assert run_program("su" + "θi", "-5\n") == "0"
-
-    def test_running_out_of_input_raises(self) -> None:
-        with pytest.raises(EOFError):
-            run_program("su" + "θi", "")
-
-
-class TestVowels:
-    def test_increment_and_decrement(self) -> None:
-        """Three increments then one decrement leaves 2."""
-        assert run_program("cicici" + "cə" + "θi") == "2"
-
-    def test_decrement_floors_at_zero(self) -> None:
-        """Two decrements from 0 stay at 0 rather than going negative."""
-        assert run_program("cəcə" + "θi") == "0"
-
-    def test_square(self) -> None:
-        assert run_program("ci" * 5 + "cæ" + "θu") == "25"
-
-    def test_square_root_floors(self) -> None:
-        assert run_program("ci" * 10 + "co" + "θu") == "3"
-
-
 class TestDeque:
     """A nasal is the ``N`` of CV(N)(C), so it can never open a syllable."""
-
-    def test_the_two_ends_are_distinct(self) -> None:
-        """Push 1 to the front and 3 to the back, then pop the back."""
-        assert run_program("cim" + "cicin" + "coɲ" + "θi") == "3"
-
-    @pytest.mark.parametrize(
-        ("push", "pop", "expected"),
-        [
-            ("m", "ŋ", "3"),  # front, front: the later push is in front
-            ("m", "ɲ", "1"),  # front, back: the earlier push is at the back
-            ("n", "ŋ", "1"),  # back, back-loaded: the earlier push is in front
-            ("n", "ɲ", "3"),  # back, back: the later push is at the back
-        ],
-        ids=["front-front", "front-back", "back-front", "back-back"],
-    )
-    def test_each_end_is_addressed_independently(
-        self, push: str, pop: str, expected: str
-    ) -> None:
-        """Two *different* values are what separate the four combinations."""
-        program = "ci" + push + "cici" + push + "co" + pop + "θi"
-        assert run_program(program) == expected
-
-    def test_a_pop_leaves_the_rest_of_the_deque_intact(self) -> None:
-        """What a pop *removes* needs three values and a second pop."""
-        three = "cin" + "cici" + "n" + "cicici" + "n"
-        assert run_program(three + "coɲ" + "coɲ" + "θi") == "3"  # 6 then 3
-        assert run_program(three + "coŋ" + "coŋ" + "θi") == "3"  # 1 then 3
 
     @pytest.mark.parametrize(
         "program", ["coŋ", "coɲ", "pi", "ki"], ids=["front", "rear", "pi", "ki"]

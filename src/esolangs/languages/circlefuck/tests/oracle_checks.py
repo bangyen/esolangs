@@ -5,7 +5,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.circlefuck.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, stalled
 
 
 def _branch(ring, pc, token):
@@ -81,9 +81,5 @@ def check_raw_circlefuck():
 
     _check(_Machine, b",+.@", "ÿ")
 
-    class SkipsExecution(_Machine):
-        def step(self):
-            pass
-
     with pytest.raises(AssertionError):
-        _check(SkipsExecution, b"@", "")
+        _check(stalled(_Machine), b"@", "")

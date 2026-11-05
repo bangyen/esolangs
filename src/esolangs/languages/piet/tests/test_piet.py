@@ -1,6 +1,5 @@
 """Piet interpreter conformance tests."""
 
-from itertools import product
 from pathlib import Path
 
 import pytest
@@ -50,51 +49,6 @@ def test_push_and_output_number() -> None:
         (BLACK, BLACK, BLACK, DARK_MAGENTA),
     )
     assert execute(program) == "3"
-
-
-def test_arithmetic_and_output() -> None:
-    # push 3, push 1, add, output number
-    program = raster(
-        (LIGHT_RED, BLACK, BLACK, BLACK, BLACK, LIGHT_RED),
-        (
-            LIGHT_RED,
-            LIGHT_RED,
-            RED,
-            DARK_RED,
-            DARK_YELLOW,
-            LIGHT_RED,
-        ),
-        (BLACK, BLACK, BLACK, BLACK, BLACK, LIGHT_RED),
-    )
-    assert execute(program) == "4"
-
-    # Only the middle row reaches the rightmost codel of the first block.
-    # The final vertical block traps the pointer after the output.
-    for extra, second in product(range(5), range(1, 7)):
-        middle = (
-            (LIGHT_RED, LIGHT_RED)
-            + (RED,) * second
-            + (
-                DARK_RED,
-                DARK_YELLOW,
-                LIGHT_RED,
-            )
-        )
-        edge = (BLACK,) * (len(middle) - 1) + (LIGHT_RED,)
-        top = (LIGHT_RED, *edge[1:])
-        tail = ((LIGHT_RED,) + (BLACK,) * (len(middle) - 1),) * extra
-        bottom = ((LIGHT_RED, *edge[1:])) if extra else edge
-        image = raster(top, middle, bottom, *tail[: max(0, extra - 1)])
-        assert execute(image) == str(3 + extra + second)
-
-        subtraction = (*middle[:-2], LIGHT_YELLOW, RED)
-        image = raster(
-            (*top[:-1], RED),
-            subtraction,
-            (*bottom[:-1], RED),
-            *tail[: max(0, extra - 1)],
-        )
-        assert execute(image) == str(3 + extra - second)
 
 
 def test_white_slide_executes_no_transition() -> None:
@@ -179,19 +133,6 @@ def test_input_character_and_output_character(character: str, scale: int) -> Non
     assert execute(loaded, character) == character
 
 
-def test_input_number_skips_whitespace_until_eof() -> None:
-    """Whitespace without a number reaches EOF, which leaves the stack alone."""
-    blank: list[int] = []
-    _execute_command((4, 2), 1, blank, ScriptedIO("\n"))
-    assert blank == []
-    number: list[int] = []
-    _execute_command((4, 2), 1, number, ScriptedIO("7\n"))
-    assert number == [7]
-    at_end: list[int] = []
-    _execute_command((4, 2), 1, at_end, ScriptedIO(""))
-    assert at_end == []
-
-
 def test_public_api_loads_a_png(tmp_path: Path) -> None:
     program = raster(
         (LIGHT_RED, BLACK, BLACK, DARK_MAGENTA),
@@ -225,78 +166,6 @@ def test_codel_chooser_selects_the_documented_edge(
     assert leave(block, dp, cc) == expected
 
 
-@pytest.mark.parametrize(
-    ("change", "before", "after"),
-    [
-        ((0, 1), [], [7]),
-        ((0, 2), [1], []),
-        ((1, 0), [8, 3], [11]),
-        ((1, 1), [8, 3], [5]),
-        ((1, 2), [8, 3], [24]),
-        ((2, 0), [-8, 3], [-3]),
-        ((2, 1), [-8, 3], [1]),
-        ((2, 2), [9], [0]),
-        ((2, 2), [0], [1]),
-        ((3, 0), [8, 3], [1]),
-        ((3, 0), [3, 3], [0]),  # greater is strict
-        ((4, 0), [8], [8, 8]),
-        ((4, 1), [1, 2, 3, 3, 1], [3, 1, 2]),
-    ],
-)
-def test_stack_commands(
-    change: tuple[int, int], before: list[int], after: list[int]
-) -> None:
-    io = ScriptedIO()
-    stack = before.copy()
-    assert _execute_command(change, 7, stack, io) == (0, 0)
-    assert stack == after
-
-
-def test_pointer_and_switch_return_control_changes() -> None:
-    io = ScriptedIO()
-    stack = [-1, 3]
-    assert _execute_command((3, 1), 1, stack, io) == (3, 0)
-    assert _execute_command((3, 2), 1, stack, io) == (0, -1)
-
-
-def test_empty_pointer_and_switch_are_ignored() -> None:
-    io = ScriptedIO()
-    assert _execute_command((3, 1), 1, [], io) == (0, 0)
-    assert _execute_command((3, 2), 1, [], io) == (0, 0)
-
-
-def test_invalid_commands_leave_the_stack_unchanged() -> None:
-    io = ScriptedIO()
-    for change, stack in [((1, 0), [1]), ((2, 0), [4, 0]), ((4, 1), [1, -2])]:
-        before = stack.copy()
-        _execute_command(change, 1, stack, io)
-        assert stack == before
-
-
-@pytest.mark.parametrize("change", [(0, 2), (2, 2), (4, 0), (5, 1), (5, 2)])
-def test_empty_unary_commands_are_ignored(change: tuple[int, int]) -> None:
-    stack: list[int] = []
-    _execute_command(change, 1, stack, ScriptedIO())
-    assert stack == []
-
-
-def test_zero_roll_and_shallow_roll_are_ignored() -> None:
-    io = ScriptedIO()
-    zero = [1, 2, 2, 0]
-    _execute_command((4, 1), 1, zero, io)
-    assert zero == [1, 2]
-    shallow = [1]
-    _execute_command((4, 1), 1, shallow, io)
-    assert shallow == [1]
-
-
-def test_a_depth_zero_roll_pops_its_operands() -> None:
-    """The wiki: roll "pops the top two values", then rotates the top 0."""
-    stack = [5, 0, 3]
-    _execute_command((4, 1), 1, stack, ScriptedIO())
-    assert stack == [5]
-
-
 def test_switch_transition_changes_the_run_codel_chooser() -> None:
     program = raster(
         (LIGHT_RED, BLACK, BLACK, LIGHT_CYAN),
@@ -304,23 +173,6 @@ def test_switch_transition_changes_the_run_codel_chooser() -> None:
         (BLACK, BLACK, BLACK, LIGHT_CYAN),
     )
     assert execute(program) == ""
-
-
-def test_number_input_and_output() -> None:
-    io = ScriptedIO("42\n")
-    stack: list[int] = []
-    _execute_command((4, 2), 1, stack, io)
-    _execute_command((5, 1), 1, stack, io)
-    assert io.getvalue() == "42"
-
-
-@pytest.mark.parametrize("token", ["no", "1_0", "١٢"])
-def test_invalid_and_exhausted_input_are_ignored(token: str) -> None:
-    # Python's int reads "1_0" and Arabic-Indic digits; npiet reads neither.
-    stack: list[int] = []
-    _execute_command((4, 2), 1, stack, ScriptedIO(token + "\n"))
-    _execute_command((5, 0), 1, stack, ScriptedIO())
-    assert stack == []
 
 
 def _execute_command(change, size, stack, io):

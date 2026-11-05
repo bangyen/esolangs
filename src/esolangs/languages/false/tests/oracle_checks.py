@@ -10,7 +10,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.false.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 
 def _signed(value):
@@ -159,21 +159,16 @@ def check_raw_false():
             [(None, False, "", 0, 0)],
         )
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongOutput(_Machine):
         def __init__(self, code, io):
             write = io.print_num
             io.print_num = lambda n: write(n + 1)
             super().__init__(code, io)
 
-    class ReadsExtra(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
-    for factory, code in ((Skips, "12+"), (WrongOutput, "1."), (ReadsExtra, "^,")):
+    for factory, code in (
+        (stalled(_Machine), "12+"),
+        (WrongOutput, "1."),
+        (overread(_Machine), "^,"),
+    ):
         with pytest.raises(AssertionError):
             _check(factory, code, "ab")

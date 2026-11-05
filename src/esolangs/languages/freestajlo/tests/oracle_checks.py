@@ -11,7 +11,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.freestajlo.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 
 def _cells(cells):
@@ -187,21 +187,16 @@ def check_raw_freestajlo():
             [(None, False, "", 0, 0)],
         )
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongOutput(_Machine):
         def __init__(self, source, io):
             write = io.print_num
             io.print_num = lambda n: write(n + 1)
             super().__init__(source, io)
 
-    class ReadsTwice(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
-    for factory, code in ((Skips, "1 2 +"), (WrongOutput, "1 :"), (ReadsTwice, ", :")):
+    for factory, code in (
+        (stalled(_Machine), "1 2 +"),
+        (WrongOutput, "1 :"),
+        (overread(_Machine), ", :"),
+    ):
         with pytest.raises(AssertionError):
             _check(factory, code, "ab")

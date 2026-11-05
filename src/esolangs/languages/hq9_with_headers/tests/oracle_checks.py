@@ -10,7 +10,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.hq9_with_headers.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 
 def _spell(operation):
@@ -219,21 +219,12 @@ def check_raw_hq9_with_headers():
             [(None, False, "", 0, 0)],
         )
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongOutput(_Machine):
         def __init__(self, code, io):
             write = io.print_num
             io.print_num = lambda value: write(value + 1)
             super().__init__(code, io)
 
-    class ReadsExtra(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
-    for factory in (Skips, WrongOutput, ReadsExtra):
+    for factory in (stalled(_Machine), WrongOutput, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, (("set", "v", 1),), (("out", "v"),))

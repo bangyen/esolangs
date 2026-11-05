@@ -7,7 +7,7 @@ from operator import add, floordiv, mul, neg
 import pytest
 
 from esolangs.languages.fackward.interpreter import Block, _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, stalled
 
 _MATH = {"+": add, "-": neg, "*": mul, "/": floordiv, "%": lambda n: int(not n)}
 _ARITY = dict(
@@ -120,9 +120,5 @@ def check_raw_fackward():
     for program in ((), (":", ":"), ("-", 1, "$", "H"), (0xD800,), (256,)):
         _check(_Machine, program, "abc")
 
-    class SkippedStep(_Machine):
-        def step(self):
-            pass
-
     with pytest.raises(AssertionError):
-        _check(SkippedStep, ("H",), "")
+        _check(stalled(_Machine), ("H",), "")

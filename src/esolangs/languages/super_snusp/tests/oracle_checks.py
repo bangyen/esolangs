@@ -11,7 +11,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.super_snusp.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 
 class _Draw:
@@ -217,19 +217,14 @@ def check_raw_super_snusp():
             [(None, False, "", 0, 0)],
         )
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongDraw(_Machine):
         def __init__(self, code, io, _rng):
             super().__init__(code, io, _Draw(1))
 
-    class ReadsExtra(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
-    for factory, code in ((Skips, '"1'), (WrongDraw, '"1{0=#'), (ReadsExtra, '",.#')):
+    for factory, code in (
+        (stalled(_Machine), '"1'),
+        (WrongDraw, '"1{0=#'),
+        (overread(_Machine), '",.#'),
+    ):
         with pytest.raises(AssertionError):
             _check(factory, code, "ab")

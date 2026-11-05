@@ -12,7 +12,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.unlambda.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 
 class _ExitError(Exception):
@@ -151,10 +151,6 @@ def check_raw_unlambda():
             [(None, False, "", 0, 0)],
         )
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongValue(_Machine):
         def step(self):
             super().step()
@@ -167,11 +163,6 @@ def check_raw_unlambda():
                     done,
                 )
 
-    class ReadsExtra(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
-    for factory in (Skips, WrongValue, ReadsExtra):
+    for factory in (stalled(_Machine), WrongValue, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, _app("i", "i"))

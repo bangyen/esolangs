@@ -10,7 +10,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.laserfuck.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, stalled
 
 
 class _Draw:
@@ -210,10 +210,6 @@ def check_raw_laserfuck():
     for source in ([], [""], ["oo"], ["nothing"], [" ", "o+x"]):
         _check(_Machine, source)
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongHeading(_Machine):
         def __init__(self, code, io, _rng):
             super().__init__(code, io, _Draw(0, 0))
@@ -223,6 +219,6 @@ def check_raw_laserfuck():
             super().dump()
             super().dump()
 
-    for factory in (Skips, WrongHeading, DoubleDump):
+    for factory in (stalled(_Machine), WrongHeading, DoubleDump):
         with pytest.raises(AssertionError):
             _check(factory, ["o+x"])

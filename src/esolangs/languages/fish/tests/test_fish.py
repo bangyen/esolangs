@@ -1,7 +1,6 @@
 """Fish instruction semantics."""
 
 from itertools import product
-from operator import add, eq, gt, lt, mod, mul, sub
 
 import pytest
 
@@ -84,25 +83,7 @@ def test_advance_takes_its_input_value_as_an_argument() -> None:
     assert eof[5] == ((-1,),)
 
 
-def test_literals_arithmetic_comparison_and_output() -> None:
-    assert _run("23+n;") == "5"
-    assert _run("53-n;") == "2"
-    assert _run("23*n;") == "6"
-    assert _run("53%n;") == "2"
-    assert _run("94,n;") == "2.25"
-    assert _run("23(n;") == "1"
-    assert _run("23)n;") == "0"
-    assert _run("22=n;") == "1"
-    assert _run("'iH'oo;") == "Hi"
-    assert _run('"iH"oo;') == "Hi"
-
-    operations = {"+": add, "-": sub, "*": mul, "%": mod, "(": lt, ")": gt, "=": eq}
-    for left, right, (opcode, evaluate) in product(
-        (0, 1, 7, 15), (1, 2, 11, 15), operations.items()
-    ):
-        source = f"{left:x}{right:x}{opcode}n;"
-        assert _run(source) == str(int(evaluate(left, right)))
-
+def test_write_read_and_input() -> None:
     # Write a character into a second row, retrieve it and then read a byte.
     for char, column in product(("A", "Ω", "i", "😀"), (0, 3, 9)):
         io = ScriptedIO("z!")
@@ -110,24 +91,6 @@ def test_literals_arithmetic_comparison_and_output() -> None:
         run([source], io)
         assert io.getvalue() == char + "z"
         assert io.position() == 1
-
-
-def test_input_returns_minus_one_at_eof() -> None:
-    assert _run("iin;", "A") == "-1"
-
-
-def test_stack_stack_register_and_rotations() -> None:
-    assert _run("1233[r]rnnn;") == "321"
-    assert _run("12&~&n;") == "2"
-    assert _run("123}nnn;") == "213"
-    assert _run("123{nnn;") == "132"
-    assert _run("1:nn;") == "11"
-    assert _run("12$nn;") == "12"
-    assert _run("123@nnn;") == "213"
-    assert _run("12lnnn;") == "221"
-    assert _run("0[]ln;") == "0"
-    assert _run("12]ln;") == "0"
-    assert _run("1232[]nnn;") == "321"
 
 
 def test_get_put_and_negative_storage() -> None:

@@ -10,7 +10,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.stisp.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread
 
 
 def _text(term):
@@ -149,15 +149,10 @@ def check_raw_stisp():
                 self.rendered = False
             super().step()
 
-    class ReadsInput(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
     for factory, frames in (
         (SkipsFrame, (("pair", ("B",)),)),
         (RepeatsResult, ()),
-        (ReadsInput, (("copy", ()),)),
+        (overread(_Machine), (("copy", ()),)),
     ):
         with pytest.raises(AssertionError):
             _check(factory, equations, "A", frames)

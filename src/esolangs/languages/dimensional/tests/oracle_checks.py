@@ -11,7 +11,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.dimensional.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 
 def _assemble(code):
@@ -257,20 +257,11 @@ def check_raw_dimensional():
     for code in (":", "=", "=f", "=xy", "[", "}", "*:*:", "[=zz]"):
         _check(_Machine, code)
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongByte(_Machine):
         def step(self):
             super().step()
             self.tape.set_value(self.tape.peek_value() + 1)
 
-    class ReadsExtra(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
-    for factory in (Skips, WrongByte, ReadsExtra):
+    for factory in (stalled(_Machine), WrongByte, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, "+$3>0+<0.")

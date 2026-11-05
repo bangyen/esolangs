@@ -13,7 +13,7 @@ import pytest
 
 from esolangs.languages.painfuck.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, stalled
 
 _BEFORE = "pysrlijouavbtkzhwqdec"
 _AFTER = "euopdhzbclkqsjwariyvt"
@@ -254,10 +254,6 @@ def check_raw_painfuck():
     ):
         _check(_Machine, code, stdin)
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongTranslation(_Machine):
         def __init__(self, code, io, rng):
             super().__init__(code, io, rng)
@@ -268,7 +264,7 @@ def check_raw_painfuck():
             super().__init__(code, io, _Coin(1))
 
     for factory, code in (
-        (Skips, "pou"),
+        (stalled(_Machine), "pou"),
         (WrongTranslation, "pou"),
         (WrongCoin, "ypo"),
     ):

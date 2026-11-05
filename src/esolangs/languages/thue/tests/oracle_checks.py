@@ -10,7 +10,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.thue.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, stalled
 
 
 class _Choices:
@@ -103,10 +103,6 @@ def check_raw_thue():
             [(None, False, "", 0, 0)],
         )
 
-    class SkipsRewrite(_Machine):
-        def step(self):
-            pass
-
     class DropsOutput(_Machine):
         def __init__(self, code, io, rng):
             io.print_str = lambda _: None
@@ -117,7 +113,7 @@ def check_raw_thue():
             super().__init__(code, io, _Choices((1,)))
 
     for factory, rules, text in (
-        (SkipsRewrite, (("a", "b"),), "a"),
+        (stalled(_Machine), (("a", "b"),), "a"),
         (DropsOutput, (("a", "~1"),), "a"),
         (WrongChoice, (("a", "b"), ("a", "~1")), "a"),
     ):

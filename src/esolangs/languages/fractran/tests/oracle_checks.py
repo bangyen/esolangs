@@ -10,7 +10,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.fractran.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread
 
 
 def _model(start, rules, offsets):
@@ -84,15 +84,10 @@ def check_raw_fractran():
             if self.halted:
                 self.io.print_num(self.value)
 
-    class ReadsInput(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
     for factory, start, rules in (
         (SkipsProduct, 2, ((3, 2),)),
         (PrintsTwice, 1, ()),
-        (ReadsInput, 1, ()),
+        (overread(_Machine), 1, ()),
     ):
         with pytest.raises(AssertionError):
             _check(factory, start, rules)

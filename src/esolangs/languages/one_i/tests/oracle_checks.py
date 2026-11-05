@@ -11,7 +11,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.one_i.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 _ZERO, _I = (Fraction(0), Fraction(0)), (Fraction(0), Fraction(1))
 
@@ -239,21 +239,16 @@ def check_raw_one_i():
             [(None, False, "", 0, 0)],
         )
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongOutput(_Machine):
         def __init__(self, code, io):
             write = io.print_str
             io.print_str = lambda text: write(text + "!")
             super().__init__(code, io)
 
-    class ReadsExtra(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
-    for factory, code in ((Skips, "ii+"), (WrongOutput, "ip"), (ReadsExtra, "Ap")):
+    for factory, code in (
+        (stalled(_Machine), "ii+"),
+        (WrongOutput, "ip"),
+        (overread(_Machine), "Ap"),
+    ):
         with pytest.raises(AssertionError):
             _check(factory, code, "ab")

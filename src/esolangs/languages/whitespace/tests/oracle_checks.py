@@ -12,7 +12,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.whitespace.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 # S/T/N spell the specification's space/tab/line-feed command table.
 _CODES = {
@@ -299,21 +299,12 @@ def check_raw_whitespace():
             [(None, False, "", 0, 0)],
         )
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
-    class ReadsExtra(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
     class WrongPrint(_Machine):
         def __init__(self, code, io):
             write = io.print_num
             io.print_num = lambda n: write(n + 1)
             super().__init__(code, io)
 
-    for factory in (Skips, ReadsExtra, WrongPrint):
+    for factory in (stalled(_Machine), overread(_Machine), WrongPrint):
         with pytest.raises(AssertionError):
             _check(factory, (("push", 1), ("out_num",), ("end",)))

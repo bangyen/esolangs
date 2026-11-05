@@ -7,6 +7,7 @@ import pytest
 
 from esolangs.languages.abcdirection.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.oracle_support import stalled
 
 _HEADINGS = (1, 1j, -1, -1j)
 
@@ -116,9 +117,5 @@ def check_raw_abcdirection():
 
     _check(_Machine, grids[3], "\x01")
 
-    class SkippedMovement(_Machine):
-        def step(self):
-            pass
-
     with pytest.raises(AssertionError):
-        _check(SkippedMovement, ["DDDDDD"], "")
+        _check(stalled(_Machine), ["DDDDDD"], "")

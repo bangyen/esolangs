@@ -11,7 +11,7 @@ from operator import add, eq, gt, lt, mod, mul, sub, truediv
 import pytest
 
 from esolangs.languages.fish.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 
 def _whole(value):
@@ -184,7 +184,7 @@ def _check(factory, source, stdin="unused"):
 
 
 def check_raw_fish():
-    for left, right, op in product("014af", "012f", "+-*,%=()"):
+    for left, right, op in product("014af7b", "012f7b", "+-*,%=()"):
         _check(_Machine, left + right + op + "n;")
     for prefix, op in product(
         ("", "1", "12", "123", "1234"),
@@ -231,10 +231,6 @@ def check_raw_fish():
     ):
         _check(_Machine, source, stdin)
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongSum(_Machine):
         def step(self):
             c = self.cells.get((self.x, self.y))
@@ -244,11 +240,6 @@ def check_raw_fish():
                 state[5] = ((*state[5][-1][:-1], state[5][-1][-1] + 1),)
                 self.state = tuple(state)
 
-    class ReadsExtra(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
-    for factory in (Skips, WrongSum, ReadsExtra):
+    for factory in (stalled(_Machine), WrongSum, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, "12+n;")

@@ -12,7 +12,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.cvnc.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 _SYMBOLS = {"d": "a", "b": "+", "t": "-", "ɡ": "×", "q": "÷", "ʔ": "(", "ʡ": ")"}
 
@@ -210,6 +210,13 @@ def check_raw_cvnc():
     )
     for first, second in product(choices, repeat=2):
         _check(_Machine, (first, second), "7")
+    for value, vowel in product((0, 1, 5, 10, 255, 321), "iəæou"):
+        _check(_Machine, (("s", "u"), ("c", vowel), ("f", "u")), str(value))
+    for char in ("\0", "\u0100", "\u0101", "中"):
+        _check(_Machine, (("ʒ", "u"), ("θ", "u")), char)
+    for push, pop in product("mn", ("ŋ", "ɲ")):
+        syllables = (("s", "u", push),) * 3 + (("c", "u", pop),) * 2
+        _check(_Machine, (*syllables, ("θ", "u")), "1 3 6")
     for value, word in product(
         (0, 1, 3), ("d", "dbd", "dbdɡd", "dtdbd", "ʔdbdʡɡd", "dq", "p", "pk")
     ):
@@ -249,20 +256,11 @@ def check_raw_cvnc():
             [(None, False, "", 0, 0)],
         )
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongFunction(_Machine):
         def step(self):
             super().step()
             self.function = tuple("*" if c == "+" else c for c in self.function)
 
-    class ReadsExtra(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
-    for factory in (Skips, WrongFunction, ReadsExtra):
+    for factory in (stalled(_Machine), WrongFunction, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, (("d", "u"), ("b", "u"), ("d", "u")))

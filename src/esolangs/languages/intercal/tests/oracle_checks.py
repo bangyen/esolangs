@@ -11,7 +11,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.intercal.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 _WORDS = [
     "ZERO",
@@ -267,23 +267,14 @@ def check_raw_intercal():
             [(None, False, "", 0, 0)],
         )
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongOutput(_Machine):
         def __init__(self, code, io):
             write = io.print_str
             io.print_str = lambda text: write(text + "!")
             super().__init__(code, io)
 
-    class ReadsExtra(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
     ops = (("set", (".", 1), 1), ("print", (".", 1)), ("halt",))
-    for factory in (Skips, WrongOutput, ReadsExtra):
+    for factory in (stalled(_Machine), WrongOutput, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, ops)
 

@@ -10,7 +10,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.dig.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 
 def _adjacent(cells, point):
@@ -171,20 +171,11 @@ def check_raw_dig():
     ):
         _check(_Machine, lines, "Hi")
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongValue(_Machine):
         def step(self):
             super().step()
             self.mole += 1
 
-    class ReadsExtra(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
-    for factory in (Skips, WrongValue, ReadsExtra):
+    for factory in (stalled(_Machine), WrongValue, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, [">$2:@", " 2"])

@@ -11,7 +11,7 @@ from operator import add, eq, floordiv, gt, lt, mul, ne, sub
 import pytest
 
 from esolangs.languages.qoibl.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 _ARITH = dict(zip("+-*/", (add, sub, mul, floordiv), strict=True))
 _COMPARE = dict(zip(("=", ">", "<", "!"), (eq, gt, lt, ne), strict=True))
@@ -178,20 +178,11 @@ def check_raw_qoibl():
             [(None, False, "", 0, 0)],
         )
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongStore(_Machine):
         def step(self):
             super().step()
             self.var = {**self.var, 7: 66}
 
-    class ReadsExtra(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
-    for factory in (Skips, WrongStore, ReadsExtra):
+    for factory in (stalled(_Machine), WrongStore, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, (("store", 7, 65), ("emit", ("at", 7))))

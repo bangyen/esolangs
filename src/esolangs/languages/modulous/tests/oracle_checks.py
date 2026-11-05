@@ -10,7 +10,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.modulous.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import observed, overread, stalled
 
 
 def _source(modules, curly):
@@ -239,21 +239,12 @@ def check_raw_modulous():
             [(None, False, "", 0, 0)],
         )
 
-    class Skips(_Machine):
-        def step(self):
-            pass
-
     class WrongSum(_Machine):
         def step(self):
             super().step()
             if self.stk:
                 self.stk = (*self.stk[:-1], self.stk[-1] + 1)
 
-    class ReadsExtra(_Machine):
-        def step(self):
-            self.io.input_char()
-            super().step()
-
-    for factory in (Skips, WrongSum, ReadsExtra):
+    for factory in (stalled(_Machine), WrongSum, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, (("PSH", "INT", "2"), ("ADD", "3"), ("PRT", "INT")))

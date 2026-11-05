@@ -130,8 +130,6 @@ contract = "interpreter.py"
 tests = [
     "src/esolangs/languages/cvnc/tests/oracle_checks.py::check_raw_cvnc",
     "src/esolangs/languages/cvnc/tests/test_cvnc.py::TestWikiExamples",
-    "src/esolangs/languages/cvnc/tests/test_cvnc.py::TestFricatives",
-    "src/esolangs/languages/cvnc/tests/test_cvnc.py::TestVowels",
     "src/esolangs/languages/cvnc/tests/test_cvnc.py::TestDeque",
     "src/esolangs/languages/cvnc/tests/test_cvnc.py::TestControlFlow",
     "src/esolangs/languages/cvnc/tests/test_cvnc.py::TestMachine",

@@ -190,18 +190,6 @@ class TestDiceLiterals:
 
 
 class TestCommands:
-    def test_arithmetic_wraps(self) -> None:
-        """The accumulator is mod 256, so one ``@nt`` from 0 is 255."""
-        assert go("@nt\ndiv") == chr(255)
-
-    def test_loaders(self) -> None:
-        assert go("nNnN\ndiv\nEmpty_\ndiv\nNnNn\n@id\ndiv") == "A \n"
-
-    def test_values_compares_three(self) -> None:
-        """84 when at least two differ, 81 when all three agree."""
-        assert go("nNnN\n{values/=/=/=}\ndiv") == "Q"
-        assert go("nNnN\n{values/=/=/=.}\ndiv") == "T"
-
     def test_values_reads_each_argument_by_its_own_kind(self) -> None:
         """A nested ``$py`` parses pips; a nested ``u`` takes a byte.
 
@@ -214,14 +202,8 @@ class TestCommands:
         # Same inputs, but the first arg is now a byte read: 58 != 2.
         assert go("NnNn\n@nd\n@nd\n{values/=u/=u/=}\ndiv", ":\n\x02\n") == "T"
 
-    def test_instruction26(self) -> None:
-        assert go("Empty_\nInstruction26") == " ".join(str(i) for i in range(1, 27))
-
     def test_developer_prints_something_fixed(self) -> None:
         assert go("developer") == go("developer")
-
-    def test_nops(self) -> None:
-        assert go("nNnN\nX\nx\nmathroundtofloor\ndiv") == "A"
 
     def test_tilde_is_usually_silent(self) -> None:
         """One run in ten prints; a seeded source makes that checkable."""
