@@ -1,7 +1,5 @@
 """Grapheme through the shared API, CLI and machinery."""
 
-import warnings
-
 import pytest
 
 import esolangs
@@ -15,7 +13,6 @@ from tests.support.reference import REFERENCE
 from tests.support.witness_tables import witnesses
 
 
-@pytest.mark.filterwarnings("ignore::UserWarning")
 class TestGraphemeReadsWhatTheDocsNowSay:
     """The stated mechanism was wrong, and so was its stated direction."""
 
@@ -148,7 +145,7 @@ class TestGrapheme:
         assert vm.stack == [1, 1]
 
 
-class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
+class TestInputUsesTheDeclaredAlphabet:
     """`encode` refused these bytes all along; `run` answered them."""
 
     def test_a_correct_encoding_is_silent_and_right(
@@ -169,20 +166,17 @@ class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
         assert esolangs.run("Grapheme", source, stdin="0\n1\n") == "0"
 
 
-class TestTheShapeWarningFiresOnlyWhenItShould:
-    """The last silent-wrong path: stdin in the shape a reader expects."""
-
-    def test_the_warning_does_not_change_the_answer(
+class TestRawInputKeepsItsNativeMeaning:
+    def test_the_cli_reads_the_supplied_alphabet(
         self, tmp_path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """It is advice; the run is exactly what it was."""
         path = tmp_path / "g.txt"
         path.write_text(esolangs.generate("Grapheme", "0110"))
-        warned = call_main(["run", "Grapheme", str(path)], capsys, stdin="1\n0\n")
+        raw = call_main(["run", "Grapheme", str(path)], capsys, stdin="1\n0\n")
         capsys.readouterr()
         stdin = esolangs.encode_inputs("Grapheme", [1, 0])
         right = call_main(["run", "Grapheme", str(path)], capsys, stdin=stdin)
-        assert warned == "0"
+        assert raw == "0"
         assert right == "1"
 
 
@@ -204,12 +198,9 @@ def test_the_named_alphabet_is_the_one_that_works() -> None:
     assert got == XOR
 
 
-def test_the_wrong_alphabet_is_warned_about() -> None:
-    """The same judgement `check_stdin` raises, rendered as advice."""
+def test_digit_lines_are_read_as_zero() -> None:
     program = esolangs.generate("Grapheme", "0110")
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        esolangs.run("Grapheme", program, stdin="0\n1\n", timeout=10)
+    assert esolangs.run("Grapheme", program, stdin="0\n1\n", timeout=10) == "0"
 
 
 def test_a_zero_line_reads_as_true_so_zero_is_percent() -> None:

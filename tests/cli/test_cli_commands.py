@@ -1,13 +1,12 @@
 """The subcommands that run a program and judge what it printed."""
 
 import json
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 import esolangs
-from tests.support.cli_support import _program, call_both, call_main
+from tests.support.cli_support import call_both, call_main
 from tests.support.generator_support import evaluate_generated
 from tests.support.pick import first, languages, one_where
 from tests.support.reference import REFERENCE
@@ -170,20 +169,3 @@ class TestTheWidthFlagDoesNotEatTheTable:
         """The hint must not fire where the width is a width."""
         out = call_main(["generate", "--width", "20", REFERENCE, "0110"], capsys)
         assert out.strip()
-
-
-def test_run_reports_an_interpreter_warning_once(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    import warnings
-
-    def run(*_args, **_kwargs):
-        warnings.warn("interpreter notice", UserWarning, stacklevel=1)
-        return "result"
-
-    monkeypatch.setattr("esolangs.cli.run.run", run)
-    out, err = call_both(
-        ["run", "--timeout", "1", REFERENCE, _program(tmp_path, ".")], capsys
-    )
-    assert out == "result"
-    assert err.count("interpreter notice") == 1

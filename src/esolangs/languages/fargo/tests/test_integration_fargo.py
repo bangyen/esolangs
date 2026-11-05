@@ -1,6 +1,5 @@
 """Fargo through the shared API, CLI and machinery."""
 
-import warnings
 from unittest.mock import patch
 
 import pytest
@@ -104,13 +103,14 @@ def test_a_bit_per_line_input_is_the_wrong_row() -> None:
     assert esolangs.read_answer("Fargo", wrong) == "0"
 
 
-def test_forgetting_stdin_entirely_is_warned_about() -> None:
+def test_missing_stdin_selects_row_zero() -> None:
     """Fargo answered row 0 -- the starkest case, since nothing was fed."""
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
+    assert (
         esolangs.run(
             "Fargo", esolangs.generate("Fargo", "10010110"), stdin="", timeout=10
         )
+        == "1"
+    )
 
 
 def test_inputs_are_one_number_indexed_by_bit() -> None:

@@ -1,6 +1,5 @@
 """Suffolk through the shared API, CLI and machinery."""
 
-import warnings
 from pathlib import Path
 
 import pytest
@@ -79,15 +78,12 @@ def test_the_value_growth_detector_proves_a_climb_and_declines_a_repeat() -> Non
         run_until_halt_or_value_growth(make_vm("Suffolk", "<"), 5_000)
 
 
-def test_a_language_whose_documented_stop_is_eof_is_not_warned_about() -> None:
+def test_documented_eof_halts_with_the_answer() -> None:
     """Suffolk's programs end *by* running out of input."""
 
     program = esolangs.generate("Suffolk", "0110")
     stdin = esolangs.encode_inputs("Suffolk", [1, 0], truth_table="0110")
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        assert esolangs.run("Suffolk", program, stdin=stdin, timeout=20) == "1"
-    assert not caught
+    assert esolangs.run("Suffolk", program, stdin=stdin, timeout=20) == "1"
 
 
 def test_suffolk_no_longer_disagrees_with_itself() -> None:

@@ -109,3 +109,11 @@ def test_owned_evidence_anchor_is_required(tmp_path, monkeypatch) -> None:
     document.write_text('# Bounds\n\n```html\n<a id="example-bound"></a>\n```\n')
     with pytest.raises(ValueError, match="missing evidence anchor"):
         status.validate(data)
+
+
+def test_loader_requires_a_fragment_root_instead_of_a_global_file(tmp_path):
+    legacy = tmp_path / "status.toml"
+    legacy.write_text("ledger = []\naudit = []\n")
+    for loader in (status.load_data, status.load):
+        with pytest.raises(NotADirectoryError):
+            loader(legacy)

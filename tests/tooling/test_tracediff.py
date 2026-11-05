@@ -89,3 +89,26 @@ def test_an_error_records_the_state_it_leaves() -> None:
     *_, last = tracediff.trace(module, ("+,", ""), frozenset())
     assert last[:2] == ("error", "InputExhaustedError")
     assert last[-1][:2] == (1, 0)  # still on the ``,``, pointer unmoved
+
+
+def test_views_include_inherited_properties_and_respect_overrides():
+    class Parent:
+        @property
+        def ip(self):
+            return 3
+
+    class Child(Parent):
+        pass
+
+    class Mutant(Parent):
+        @property
+        def ip(self):
+            return 4
+
+    class Hidden(Parent):
+        ip = 5
+
+    assert tracediff._views(Child(), frozenset()) == (("ip", "3"),)
+    assert tracediff._views(Mutant(), frozenset()) == (("ip", "4"),)
+    assert tracediff._views(Child(), frozenset({"ip"})) == ()
+    assert tracediff._views(Hidden(), frozenset()) == ()

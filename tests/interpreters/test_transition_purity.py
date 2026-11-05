@@ -108,7 +108,9 @@ def _core(frame: FrameType) -> bool:
     return (
         (name in _CORE_NAMES or name.startswith("_advance_"))
         and "." not in frame.f_code.co_qualname
-        and "/languages/" in frame.f_code.co_filename
+        and any(
+            part in frame.f_code.co_filename for part in ("/languages/", "/runtime/")
+        )
     )
 
 
@@ -188,13 +190,11 @@ class _Audit:
         sys.setprofile(self.previous)
 
 
-def test_purity_audit_detects_mutation_and_effects(tmp_path: Path) -> None:
+@pytest.mark.parametrize("tree", ["languages", "runtime"])
+def test_purity_audit_detects_mutation_and_effects(tmp_path: Path, tree: str) -> None:
     namespace: dict[str, Any] = {}
-    # A real path outside coverage's `source` (src/esolangs) that still looks
-    # like a language interpreter: `_core` keys on "/languages/".  A fake name
-    # under src/esolangs leaves a record coverage cannot read, and `coverage
-    # report` then exits nonzero on "No source for code".
-    filename = tmp_path / "languages" / "_positive_control" / "interpreter.py"
+    # A real path outside coverage's source avoids phantom source-file records.
+    filename = tmp_path / tree / "_positive_control.py"
     source = (
         "def _advance(state, io):\n"
         " state.append(1)\n"

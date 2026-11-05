@@ -30,7 +30,6 @@ _SAMPLE_BITS = [1, 0, 1]
 TEMPLATED, OTHER_TEMPLATED = languages(parameterized=True)[-2:]
 
 
-@pytest.mark.filterwarnings("ignore::UserWarning")
 class TestTheProseMatchesTheData:
     """Three documents named the shapes; one of the four names was wrong."""
 
@@ -231,7 +230,6 @@ class TestExamplePathsWorkFromAnywhere:
         assert esolangs.run(REFERENCE, example, stdin="1\n0\n", timeout=20)
 
 
-@pytest.mark.filterwarnings("ignore::UserWarning")
 class TestWhatHappensWhenAProgramIsUnderfed:
     """``run`` promised an exception for every language.  Most give it."""
 

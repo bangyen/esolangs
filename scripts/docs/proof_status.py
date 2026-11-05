@@ -171,36 +171,19 @@ def _generators() -> list[tuple[str, str]]:
     ]
 
 
-def load_data(path: Path | None = None) -> dict[str, list[dict[str, Any]]]:
-    """Return the raw ledger/audit rows, aggregated from the fragments.
-
-    ``path`` may name a root to aggregate instead of this checkout, or a
-    single TOML file in the former global shape.
-    """
-    if path is not None and path.is_file():
-        return tomllib.loads(path.read_text(encoding="utf-8"))
-    root = _CHECKOUT if path is None else path
+def load_data(root: Path = _CHECKOUT) -> dict[str, list[dict[str, Any]]]:
+    """Return raw ledger/audit rows from a checkout's package fragments."""
+    if not root.is_dir():
+        raise NotADirectoryError(root)
     return aggregate_fragments(root / "src/esolangs/languages", _generators())
 
 
 def load(
-    path: Path | None = None,
+    root: Path = _CHECKOUT,
 ) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow, ...]]:
-    """Return validated proof and audit rows from the package fragments.
-
-    Cached per process against the fragment fingerprint (or the single
-    file's stamp): the validated rows are immutable, and any fragment
-    added, removed, or edited changes the key, so a process that
-    mutates the tree never reads a stale load.
-    """
-    key: _LoadKey
-    if path is not None and path.is_file():
-        stat = path.stat()
-        key = (str(path), ((path.name, stat.st_mtime_ns, stat.st_size),))
-    else:
-        root = _CHECKOUT if path is None else path
-        key = (str(root), fingerprint(root / "src/esolangs/languages"))
-    return cached(_LOADS, key, lambda: validate(load_data(path)))
+    """Return validated rows, cached against the package fragment fingerprint."""
+    key = (str(root), fingerprint(root / "src/esolangs/languages"))
+    return cached(_LOADS, key, lambda: validate(load_data(root)))
 
 
 def _registry_ordered(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:

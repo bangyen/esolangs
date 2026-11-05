@@ -5,7 +5,6 @@ from __future__ import annotations
 import contextlib
 import re
 import signal
-import warnings
 
 import pytest
 
@@ -175,15 +174,13 @@ class TestBoolsAreRefusedForAStatedReason:
             esolangs.encode_inputs(REFERENCE, [True, False])
 
 
-class TestTheWarningHasItsOwnClass:
-    """So a sweep can escalate exactly these to errors."""
-
-    def test_run_raises_it_by_class(self) -> None:
-        """Which is what makes ``filterwarnings("error", ...)`` targeted."""
+class TestRawInputKeepsItsNativeMeaning:
+    def test_extra_input_does_not_change_the_row(self) -> None:
         program = esolangs.generate(REFERENCE, "00011011")
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
+        assert (
             esolangs.run(REFERENCE, program, stdin="1\n1\n0\n0\n1\n1\n", timeout=10)
+            == "0"
+        )
 
 
 class TestReadAnswerExplainsInWords:

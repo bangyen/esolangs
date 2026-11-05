@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-import warnings
 from contextlib import nullcontext
 
 from esolangs import describe, run
@@ -115,11 +114,7 @@ def _run(rest: list[str]) -> None:
     program = _read_program(path, timeout, language=language)
     stdin = _read_stdin(timeout, _stdin_hint(facts))
     try:
-        with (
-            _unbounded_notice("run") if timeout is None else nullcontext(),
-            warnings.catch_warnings(record=True) as caught,
-        ):
-            warnings.simplefilter("always")
+        with _unbounded_notice("run") if timeout is None else nullcontext():
             output = run(
                 language,
                 program,
@@ -132,8 +127,6 @@ def _run(rest: list[str]) -> None:
                 max_memory=max_memory,
                 settings=settings,
             )
-        for entry in caught:
-            _note(str(entry.message))
     except TemplateError as exc:
         _fail(_template_hint(exc, language))
     except ExecutionTimeoutError as exc:

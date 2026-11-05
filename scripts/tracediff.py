@@ -129,8 +129,8 @@ def _error(error: BaseException) -> Event:
 def _views(machine: object, ignored: frozenset[str]) -> Event:
     names = sorted(
         name
-        for name, attribute in vars(type(machine)).items()
-        if isinstance(attribute, property)
+        for name in dir(type(machine))
+        if isinstance(getattr(type(machine), name), property)
         and not name.startswith("_")
         and name not in ignored
     )
