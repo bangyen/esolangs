@@ -118,7 +118,7 @@ def nor_machine(truth_table: str) -> str:
     c = q.dup("x0")
     c_b = q.dup(c)
     zero = q.nor(q.dup(c), q.nor(c, c_b))
-    # With every input essential no 1 is needed until the mux, so none rides
+    # With every input essential the mux never materializes 1, so none rides
     # the queue through the T Horner shifts and the smear passes.
     lean = len(essential) == n
     one = ""
@@ -130,7 +130,7 @@ def nor_machine(truth_table: str) -> str:
         for i in range(n):
             if i not in essential:
                 one = q.nor(q.nor(f"x{i}", one), q.dup(zero))
-    packed = f"x{essential[-1]}" if essential else ""
+    packed = f"x{essential[-1]}"
     for i in reversed(essential[:-1]):
         q.shift("L", packed, 1)
         packed = q.or_(packed, f"x{i}")

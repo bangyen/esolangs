@@ -140,3 +140,6 @@ tests = [
     "src/esolangs/languages/interprogck8/tests/test_interprogck8.py::TestErrors",
     "src/esolangs/languages/interprogck8/tests/test_interprogck8.py::TestMachine",
 ]
+
+[ablations.flight_floor_guard_20261104]
+verdict = "Reject a private flight request when free+n-3 exceeds ceiling80; (32,52) formerly returned a negative column. Public general/parity gates already stay below this floor. Valid sources, numeric bounds, pins and Size anchors are unchanged. Existing column invariants cover general arities through40 and parity through31."

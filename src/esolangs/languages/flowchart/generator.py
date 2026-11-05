@@ -10,7 +10,8 @@ ASCII ``'0'`` (:data:`_ANSWER`), so the output byte is ``'0'`` or ``'1'``.
 
 The default is a deque lookup, one pushed entry a row (a run of equal entries
 sets the register once), so it has no subtrees to share.  A deque holds
-``2 ** ceil(n / 2)`` entries and the low inputs pop pairs off both ends to
+``2 ** ceil(m / 2)`` entries for m essential inputs; low inputs pop pairs
+off both ends to
 reach theirs, so the cursor rails shrink to ``sqrt(T)``.  With ``width`` it
 draws a decision tree, stacked if narrower; the stacked one draws a repeated
 subtree once when ``width`` leaves room for its rail columns and characters
@@ -831,17 +832,6 @@ def _deque_depth(levels: int) -> int:
 
 def _flowchart_deque(truth_table: str) -> str:
     r"""Address one preloaded answer by walking the deque cursor to it.
-
-    Entries ``2j`` and ``2j + 1`` are pushed onto deque ``j`` in that order,
-    so the preload leaves the cursor on ``T / 2 - 1`` and the first ``n - 1``
-    bits walk it back: a zero at level ``k`` steps the cursor down by
-    ``2 ** (n - 2 - k)`` and a one leaves it alone.  The last bit needs no
-    step at all -- the pair sharing a deque is one at each end, so it picks
-    ``\{ }/`` or ``/{ }\`` and halves both the ``[ >`` run and the walk.
-
-    Two rows; the pointer runs east to west, so the selector sits in the low
-    columns and the upper row stays short (a line is padded to its last
-    non-space cell).
 
     A deque holds ``2 ** k`` entries, ``k = ceil(m / 2)`` for ``m`` essential
     inputs (:func:`_deque_depth`): the even ones are pushed to the bottom, the

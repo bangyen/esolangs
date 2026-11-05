@@ -12,9 +12,9 @@ is mostly 1 stores its zeros as lines and subtracts the loaded cell from a 1
 pushed first.
 
 Size:
-    ``8s + (T-s) + O(n)`` characters for s stored one-lines
-    for m essential inputs and ``T = 2**m`` rows, so linear in T; n=4
-    parity: 1,678 chars. Constants: 1/24 chars, 1/2 commands and
+    O(T+n^2) characters for m essential inputs and T=2**m rows: eight per
+    stored one-line, one per blank, plus fewer than T/2 alignment lines.
+    n=4 parity: 1,678 chars. Constants: 1/24 chars, 1/2 commands and
     8n+4/8n+8 written bits for zero/one.
 
 Decisions:
@@ -47,8 +47,8 @@ def _push(value: int) -> str:
 def _program(rows: str, positions: list[int]) -> str:
     """Return the program reading ``positions`` and answering ``rows[index]``.
 
-    ``rows`` has one character a row; the minority character is the row
-    value stored as a ``chicken`` line.
+    ``rows`` has one character a row; its chosen polarity is stored as
+    ``chicken`` lines, inverted only when that repays the extra instructions.
     """
     ones = rows.count("1")
     invert = 2 * ones - len(rows) > _INVERT_MARGIN

@@ -103,6 +103,8 @@ def _columns(n: int, free: int = _FREE) -> list[int]:
     high column is cheap; 80 is the ceiling, a stop at 81 under the Q walker's
     landing at 82.
     """
+    if free + n - 3 > _CEILING:
+        raise AssertionError("flight floor exceeds column ceiling")
     columns, above = [], _CEILING + 1
     for depth in range(n):
         column = above - 1

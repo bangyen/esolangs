@@ -184,3 +184,8 @@ def test_three_input_corpus_size() -> None:
         )
         == 339776
     )
+
+
+def test_flight_column_floor_above_the_ceiling_is_rejected() -> None:
+    with pytest.raises(AssertionError, match="flight floor exceeds column ceiling"):
+        generator._columns(32, 52)

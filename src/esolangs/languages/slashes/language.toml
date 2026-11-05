@@ -113,3 +113,6 @@ contract = "interpreter.py"
 tests = [
     "src/esolangs/languages/slashes/tests/oracle_checks.py::check_raw_slashes",
 ]
+
+[ablations.ignored_slot_recognition_20261104]
+verdict = "Require an ignored X marker to prefix its own filled or unfilled slot. XX$$ formerly passed the canonical-template recognizer despite having no valid slot ordering. Ordinary emitted bytes, source/command/workspace bounds, size pins and Size anchors remain unchanged. All-ignored legacy templates remain recognized."

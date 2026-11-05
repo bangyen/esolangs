@@ -196,3 +196,9 @@ def _check_constants() -> None:
                     assert io.getvalue() == bit
                     assert io.reads == 0
                     assert io.input_char() == ord("7")
+
+
+@pytest.mark.parametrize("slots", ["XX$$", "$XX$", "X$$X", "$$XX"])
+def test_ignored_markers_must_prefix_their_own_slot(slots: str) -> None:
+    program = _IGNORE + _UNARY + _DECODE + slots + ">qA"
+    assert not _is_unfilled_template(program)

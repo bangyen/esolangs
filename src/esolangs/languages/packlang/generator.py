@@ -136,8 +136,8 @@ def _blocks(table: str) -> list[int]:
 
     :data:`_BLOCK`, plus each smaller one where two blocks are equal and can
     alias; a single block cannot, so repeats shorter than it were never
-    shared.  Tiled tables: -16..-18% at n=7, -22..-35% at n=8 (12 seeded
-    tables); random tables never offer one, so they cost nothing.
+    shared. Earlier tiled-table figures were not reproduced
+    ([ablations.smaller_block_offers]); random tables offer none.
     """
     n = len(table).bit_length() - 1
     top = min(n, _BLOCK)
@@ -324,8 +324,8 @@ def _writes(rows: str, *, runs: bool) -> tuple[list[str], bool]:
 
     Candidates: single writes, a fill with the zeros punched out, and (with
     ``runs``) a loop per run of ones.  ``q`` costs a declaration, so the
-    caller builds both.  Run loops pay on constant-leaf
-    tables, not random ones ([ablations.run_loops]).
+    caller builds both. Run loops pay most on constant-leaf tables and
+    sometimes on random ones ([ablations.run_loops]).
     """
     ones = rows.count("1")
     singles = [f"INCR t({row});" for row, bit in enumerate(rows) if bit == "1"]

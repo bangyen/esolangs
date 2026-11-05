@@ -133,7 +133,7 @@ def _is_unfilled_template(code: str) -> bool:
         not delimiter
         or not cursor
         or TEMPLATE_CHAR not in slots
-        or slots.strip(TEMPLATE_CHAR + "abX")
+        or not re.fullmatch(r"(?:X?[$ab])+", slots)
     ):
         return False
     if not re.fullmatch(r"(?:q[AB])*", table):
