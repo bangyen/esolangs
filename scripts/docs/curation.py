@@ -1,13 +1,10 @@
 """Load curation rows from each language package's ``language.toml``.
 
-The census dates live in the root ``snapshot.json``'s ``collected``
-block: they describe the census, not any one language.  A package with
-no file or no ``[curation]`` section is skipped.
+A package with no file or no ``[curation]`` section is skipped.
 """
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterable
 from datetime import date, datetime
 from pathlib import Path
@@ -25,7 +22,6 @@ FAME_BACKLINKS = 50
 _FIELDS = frozenset(
     {"admitted", "backlinks", "bf_derivative", "outside_implementation", "unassessed"}
 )
-_COLLECTED = {"checked": "curation", "bf_derivatives_checked": "bf_derivatives"}
 
 
 def _validate(path: Path, row: dict[str, Any]) -> dict[str, Any]:
@@ -100,26 +96,3 @@ def fragment_row(path: Path) -> dict[str, Any]:
 def rows(root: Path = ROOT) -> dict[str, dict[str, Any]]:
     """Return every language's curation row, keyed by name."""
     return aggregate_fragments(root / "src/esolangs/languages", registry())
-
-
-def dates(root: Path = ROOT) -> dict[str, str]:
-    """Return the census dates from the snapshot's ``collected`` block."""
-    data = json.loads((root / "snapshot.json").read_text(encoding="utf-8"))
-    collected = data.get("collected") if isinstance(data, dict) else None
-    if not isinstance(collected, dict):
-        raise ValueError("snapshot holds no collected block")
-    unknown = set(collected) - {"durations", *_COLLECTED.values()}
-    if unknown:
-        raise ValueError(f"snapshot collected holds unknown keys {sorted(unknown)}")
-    out = {}
-    for key, source in _COLLECTED.items():
-        value = collected.get(source)
-        if not isinstance(value, str) or not value:
-            raise ValueError(f"snapshot collected: {source} must be a nonempty date")
-        out[key] = value
-    return out
-
-
-def load(root: Path = ROOT) -> tuple[dict[str, str], dict[str, dict[str, Any]]]:
-    """Return the census dates and every language's curation row."""
-    return dates(root), rows(root)

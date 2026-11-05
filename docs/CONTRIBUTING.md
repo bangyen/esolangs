@@ -7,7 +7,9 @@ preclude generation. Record rejections in [limitations](limitations.md).
 ## Start here
 
 1. `just install-dev` (requires just >= 1.37), then `just test-quick`.
-   Without `just`, `python scripts/doctor.py` diagnoses setup problems.
+   Without `just`, run `uv sync --group dev` and
+   `git config core.hooksPath .githooks`, then
+   `uv run python scripts/verify/gate.py`.
 2. Improve a language, or check a new one's [admission](#what-makes-a-candidate-worth-adding).
 3. `just new-language "Name"` creates interpreter, generator and test stubs.
    Follow [interpreter conventions](#interpreter-conventions) and the
@@ -273,7 +275,7 @@ steps; bound each piece's upside before choosing it.
    with stated output (schema: `tests/interpreters/test_published_programs.py`).
    Bound potentially looping programs with `max_steps=10_000` or `timeout=5`.
 3. `just benchmark "Name" TABLE` records source units and commands, not wall
-   time (`--json` for details). `just bounds "Name"` prints worst steps and
+   time, as JSON. `just bounds "Name"` prints worst steps and
    written bits and witnesses. “Worst” must be
    exact; otherwise say “at most”.
 4. `just finish-language "Name"` regenerates examples, docs and size baseline,

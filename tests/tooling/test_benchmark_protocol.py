@@ -47,7 +47,7 @@ def test_oversized_record_is_bounded() -> None:
     assert worker.process is None
 
 
-def test_valid_multiline_protocol_runs_all_rows() -> None:
+def test_valid_multiline_protocol_runs_all_rows(monkeypatch, capsys) -> None:
     from scripts import benchmark
 
     record = benchmark.measure(
@@ -58,16 +58,14 @@ def test_valid_multiline_protocol_runs_all_rows() -> None:
         entry["actual_answer"] == entry["expected_answer"]
         for entry in record["executions"]
     )
+    monkeypatch.setattr(benchmark, "measure", lambda *_, **__: record)
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    assert benchmark.main(["Brainfuck", "01", "--all-rows"]) == 0
+    assert json.loads(capsys.readouterr().out) == record
     record["executions"][0] |= {"matches": False, "actual_answer": "1"}
     record["peak_stack_items"] = 3
-    head, wrong, peak, tail = benchmark.summary(record).splitlines()
-    assert head.startswith(
-        f"{record['language']} 01: 1/2 rows correct, {record['source_units']} "
-    )
-    assert head.endswith(f"worst {record['worst_row_commands']} commands")
-    assert wrong == "  row 0: answered '1', expected '0', halted"
-    assert peak == "  peak stack items 3"
-    assert tail == "--json for the full record"
+    assert benchmark.main(["Brainfuck", "01", "--all-rows"]) == 1
+    assert json.loads(capsys.readouterr().out) == record
 
 
 @pytest.mark.medium

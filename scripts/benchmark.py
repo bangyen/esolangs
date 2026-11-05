@@ -1,4 +1,4 @@
-"""Measure one generated artifact's size, time, steps, and actual answers."""
+"""Emit JSON measuring one generated artifact's size, time, steps and answers."""
 
 from __future__ import annotations
 
@@ -619,11 +619,6 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="sample stores; languages with a payload split report integers too",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="the full record; the default when stdout is not a terminal",
-    )
     args = parser.parse_args(argv)
     if args.repeat < 1 or args.step_cap < 1:
         parser.error("--repeat and --step-cap must be positive")
@@ -647,42 +642,8 @@ def main(argv: list[str] | None = None) -> int:
         generation_timeout=args.generation_timeout,
         track_store=args.track_store,
     )
-    if args.json or not sys.stdout.isatty():
-        print(json.dumps(result, indent=2, sort_keys=True))
-    else:
-        print(summary(result))
+    print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if all(item["matches"] is True for item in result["executions"]) else 1
-
-
-def summary(result: dict[str, Any]) -> str:
-    """Return the fields a size comparison reads, and every wrong row."""
-    rows = result["executions"]
-    right = sum(item["matches"] is True for item in rows)
-    commands = (
-        f"worst {result['worst_row_commands']} commands"
-        if result["all_rows"]
-        else f"{result['commands']} commands on row {result['row']}"
-    )
-    lines = [
-        f"{result['language']} {result['truth_table']}: {right}/{len(rows)} "
-        f"rows correct, {result['source_units']} source units "
-        f"({result['source_kind']}), {commands}"
-    ]
-    lines += [
-        f"  row {item['row']}: answered {item['actual_answer']!r}, expected "
-        f"{item['expected_answer']!r}, {item['execution_status']}"
-        for item in rows
-        if item["matches"] is not True
-    ]
-    peaks = [
-        f"{key.removeprefix('peak_').replace('_', ' ')} {value}"
-        for key, value in sorted(result.items())
-        if key.startswith("peak_") and value is not None
-    ]
-    if peaks:
-        lines.append("  peak " + ", ".join(peaks))
-    lines.append("--json for the full record")
-    return "\n".join(lines)
 
 
 def _post(
