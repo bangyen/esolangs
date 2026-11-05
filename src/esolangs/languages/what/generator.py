@@ -9,7 +9,8 @@ Past 15 inputs, blocks of ``2^15`` rows reload ``W`` behind a sentinel
 
 Size:
     Through 15 inputs, 7n + 1 chars plus 7 and the row's digits per change
-    point; constants use 3n+2 chars, n+2 commands and
+    point; past 15 inputs, B high-block labels add B(n-15) chars,
+    B=2**(n-15). Constants use 3n+2 chars, n+2 commands and
     256+bl(n+2)+bl(2n-1) written bits at most.
     5T + 6n - 5 steps at most through n=15; n=10 parity: 6,835 chars,
     n=10 random 1847: 5,276 chars.

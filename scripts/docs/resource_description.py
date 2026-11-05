@@ -8,7 +8,7 @@ from typing import Any, NamedTuple
 
 COLUMNS = frozenset({"scaling", "execution", "workspace"})
 SCALING_CLASSES = frozenset(
-    {"linear", "linear, time n log", "measured", "open", "lower bound"}
+    {"linear", "linear, time n log", "T log T", "measured", "open", "lower bound"}
 )
 EXECUTION_CLASSES = frozenset({"poly n", "linear", "unmeasured"})
 WORKSPACE_CLASSES = EXECUTION_CLASSES | {"T log T"}

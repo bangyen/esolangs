@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from scripts.docs.proof_status import ProofRow
+from scripts.docs.resource_description import SCALING_CLASSES
 
 #: Resolved from this file, not the working directory: the suite is run from
 #: the repo root, from `just`, and from a worktree, and only ``__file__`` is

@@ -94,7 +94,7 @@ first = 4
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.unlambda.generator:unlambda"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: 315-character halves" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: pre-shortcut composition" }
 
 [semantic_evidence]
 version = 1

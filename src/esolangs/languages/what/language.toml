@@ -82,7 +82,7 @@ first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.what.generator:what"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: alternating answers, every conditional true, the first row", formula = "E" }
+description = { growth = "T log T", claim = "worst", template = "{claim} {formula} {unit}: alternating answers, every conditional true, the first row", formula = "E" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.what.proof_formulas:workspace"
@@ -102,7 +102,7 @@ first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.what.generator:what"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: a change point costs 7 and its row's digits", formula = "S" }
+description = { growth = "T log T", claim = "worst", template = "{claim} {formula} {unit}: bounded low-row literals plus n-15 bits per high-block label", formula = "S" }
 
 [semantic_evidence]
 version = 1

@@ -976,3 +976,29 @@ def test_equal_cells_reach_the_global_minimum() -> None:
 
 def test_balancing_an_empty_program_returns_it() -> None:
     assert _balance_mammalian("") == ""
+
+
+def test_leaf_placement_does_not_rescan_weights_per_row() -> None:
+    from esolangs.languages.slow_acv_mammalian.generator import (
+        _LEAF_UNIT,
+        _weights,
+        _with_leaves,
+    )
+
+    class CountedWeights(list[int]):
+        reads = 0
+
+        def __getitem__(self, index):
+            self.reads += 1
+            return super().__getitem__(index)
+
+        def __iter__(self):
+            for index in range(len(self)):
+                yield self[index]
+
+    raw = _weights(7)
+    weights = CountedWeights(raw)
+    table = "".join(str(row.bit_count() % 2) for row in range(128))
+    padding = ["SEED"] * (1 + sum(raw) + _LEAF_UNIT)
+    _with_leaves(padding, 1, table, weights)
+    assert 0 < weights.reads <= 2 * len(weights)

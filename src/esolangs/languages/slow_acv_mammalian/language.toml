@@ -13,7 +13,7 @@ admitted = 2026-08-14T22:09:07-04:00
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "a read chain banks each bit on array 16 and the dispatch's `DIGEST LEAPFROG` reads that sum as the leaf address; the five lightest weights are CONSUMEd from planted cells, so they never read the sum and need not be multiples of 256, which puts the stride at an eight-token leaf"
+qualification = "a read chain banks each bit on array 16 and the dispatch's `DIGEST LEAPFROG` reads that sum as the leaf address; up to four pooled weights are CONSUMEd from planted cells, so they never read the sum and need not be multiples of 256, which puts the stride at an eight-token leaf"
 definitions = ["E = first jump, prologue, per-level prefix, node and arm, tail: each list at its residue maximum", "B = 8 bits a cell on arrays 0 and 16, pool zeros, heads, counters"]
 
 [generator_sizes]
@@ -124,3 +124,6 @@ contract = "interpreter.py"
 tests = [
     "src/esolangs/languages/slow_acv_mammalian/tests/oracle_checks.py::check_raw_slow_acv_mammalian",
 ]
+
+[ablations.leaf_carry_deltas_20261104]
+verdict = "construction repair: precompute weight-minus-suffix carry deltas, then update a leaf address at the lowest set bit of each binary row. Weight reads n5/6/7 fall160/384/896->5/6/7, removing the nT scan without changing leaf order or tokens.562 before/after programs are byte-identical;102 native controls include generic n5..12 and both IO moduli. All8 pins and Size anchors remain unchanged; numerical proof bounds/scopes unchanged. Pool wording now distinguishes the four blind pooled weights from the first light read arm."

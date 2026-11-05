@@ -109,8 +109,8 @@
   "thue": "linear: at most T + 187 characters: T/2 + 223 once pairs pack",
   "unary": "lower bound: worst source length at least 2**T - 1; zero-count encoding",
   "underload": "linear: at most F characters past n = 3: 241 a five-input half",
-  "unlambda": "linear: at most 169T/8 - 21 characters past n = 3: 315-character halves",
+  "unlambda": "linear: at most 169T/8 - 21 characters past n = 3: pre-shortcut composition",
   "unsquare": "linear: worst T + T/2^d + 16\u00b72^d + 10(n-d) + 10 characters",
-  "what": "linear: worst S characters: a change point costs 7 and its row's digits",
+  "what": "T log T: worst S characters: bounded low-row literals plus n-15 bits per high-block label",
   "whitespace": "linear: worst S characters: one literal and shared step"
 }

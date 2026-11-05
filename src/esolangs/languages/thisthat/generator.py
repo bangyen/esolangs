@@ -576,7 +576,7 @@ def _strip_tree(truth_table: str) -> str:
 def _tree(truth_table: str, *, prune: bool = True, flat: bool = False) -> str:
     """Build the tree; ``prune=False`` keeps every input and unfolds spans.
 
-    ``flat`` halves the vertical spans (twice as wide as tall, balance only).
+    ``flat`` halves the vertical spans (twice as wide as tall).
 
     Ignored inputs are read and dropped.  Kept inputs are tested in input
     order at every node; the root's arms are not swapped.

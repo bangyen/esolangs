@@ -2,7 +2,7 @@
 
 The default modulo-256 construction chains one read node per input.  Each
 bit's whole effect is banked on array 16's non-head sum as a weight -- the
-four lightest are banked blind, without ever reading the sum -- and the
+pooled weights are banked blind, without ever reading the sum -- and the
 dispatch jump lands on the non-head sum, so the banked total names the
 leaf slot directly.  A leaf clears the accumulator, SPRINTs to a print
 array, CONSUMEs its middle cell, and PRONOUNCEs it.  All inputs are read
@@ -810,8 +810,18 @@ def _with_leaves(
     """Overwrite the padded table at ``base`` with one leaf per row, at its own slot."""
     out = tokens.copy()
     n = len(weights)
+    # Incrementing a binary row adds one weight and clears its suffix.
+    # Precompute those carry deltas instead of scanning n weights per leaf.
+    deltas = [0] * n
+    suffix = 0
+    for i in range(n - 1, -1, -1):
+        weight = weights[i]
+        deltas[i] = weight - suffix
+        suffix += weight
+    banked = 0
     for row, entry in enumerate(truth_table):
-        banked = sum(w for i, w in enumerate(weights) if (row >> (n - 1 - i)) & 1)
+        if row:
+            banked += deltas[n - (row & -row).bit_length()]
         start = base + banked
         out[start : start + unit] = _leaf(int(entry), unit=unit)
         if out[start - 1] == "SEED":

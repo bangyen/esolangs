@@ -112,3 +112,6 @@ tests = [
     "src/esolangs/languages/stisp/tests/test_stisp.py::test_a_frame_rewrites_to_several_frames_in_order",
     "src/esolangs/languages/stisp/tests/test_stisp.py::test_list_sugar_prints_as_a_list",
 ]
+
+[ablations.workspace_registration_repair_20261104]
+verdict = "restore missing registry arities1/2 alongside3..7, matching the existing exact owner checks and restoration record. All rows of the seven existing witnesses execute and attain32/64/96/128/160/192/224 bits before the halt dump. Emitted bytes, numeric bounds, flags and pins unchanged."
