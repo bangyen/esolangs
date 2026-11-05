@@ -256,7 +256,7 @@ def test_execution_failure_never_becomes_an_answer(
         raise error
 
     monkeypatch.setattr(esolangs, "run", fail)
-    monkeypatch.setattr("esolangs.runtime._termination.run_until_halt_or_cycle", fail)
+    monkeypatch.setattr("esolangs.runtime._termination._halt_or_cycle_result", fail)
     with pytest.raises(error_type) as caught:
         _evaluate(name, program, inputs=1)
     assert caught.value is error

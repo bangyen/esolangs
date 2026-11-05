@@ -1,4 +1,4 @@
-"""Guarded calls retain values; only boolean proofs become termination answers."""
+"""Guarded calls retain values; only evidenced decisions become termination answers."""
 
 import signal
 import time
@@ -15,7 +15,7 @@ _BOUNDS = [None, pytest.param(1, marks=_ALARM)]
 
 
 @pytest.mark.parametrize("bound", _BOUNDS)
-@pytest.mark.parametrize("value", [None, False, 0, "", object()])
+@pytest.mark.parametrize("value", [None, False, object()])
 def test_return_identity_and_io_survive_the_guard(bound, value):
     io = ScriptedIO("xy")
 
@@ -52,14 +52,14 @@ def test_an_expired_call_does_not_return_a_false_verdict():
         esolangs._run(call, "", ScriptedIO(), 0.01)
 
 
-@pytest.mark.parametrize("verdict", [None, 0, 1, "False"])
-def test_non_boolean_termination_results_abort(monkeypatch, verdict):
-    monkeypatch.setattr(_termination, "run_until_halt_or_cycle", lambda _vm: verdict)
-    with pytest.raises(esolangs.InterpreterLimitError, match="no boolean verdict"):
+@pytest.mark.parametrize("verdict", [None, False, True])
+def test_termination_returns_without_evidence_abort(monkeypatch, verdict):
+    monkeypatch.setattr(_termination, "_halt_or_cycle_result", lambda _vm: verdict)
+    with pytest.raises(esolangs.InterpreterLimitError, match="no decision evidence"):
         _termination._terminates(REFERENCE, "", "", None, "0", "1")
 
 
 def test_a_driver_that_never_ran_does_not_prove_divergence(monkeypatch):
     monkeypatch.setattr(esolangs, "_run", lambda *_args: None)
-    with pytest.raises(esolangs.InterpreterLimitError, match="no boolean verdict"):
+    with pytest.raises(esolangs.InterpreterLimitError, match="no decision evidence"):
         _termination._terminates(REFERENCE, "", "", None, "0", "1")

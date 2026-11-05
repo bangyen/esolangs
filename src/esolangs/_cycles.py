@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Callable, Hashable, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
+from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, cast, runtime_checkable
 
+from esolangs.runtime._lifecycle import BoundaryCycle
+from esolangs.runtime._proof import BranchProof, CycleDecision
 from esolangs.runtime._validate import check_whole
 from esolangs.runtime.source_hints import with_hint
 
@@ -137,6 +139,20 @@ def run_until_halt_or_cycle(
     unbounded search; bound it when the machine may *grow* instead, which
     never repeats a state and so would not return.
     """
+    return cast("bool", _drive_halt_or_cycle(machine, limit, evidence=False))
+
+
+def _halt_or_cycle_result(
+    machine: _StepMachine | VM, limit: int | None = None
+) -> CycleDecision:
+    """Retain the command boundaries or complete branching evidence of a decision."""
+    return cast("CycleDecision", _drive_halt_or_cycle(machine, limit, evidence=True))
+
+
+def _drive_halt_or_cycle(
+    machine: _StepMachine | VM, limit: int | None, *, evidence: bool
+) -> bool | CycleDecision:
+    """Share transitions; Boolean readers need no retained branching graph."""
     machine = cast(
         _StepMachine,
         _checked_unwrap(
@@ -156,9 +172,15 @@ def run_until_halt_or_cycle(
     # machine's own draw source, so "some path halts" after a fork is not
     # this run's answer (a FirstDraw(0) coin loops where the other halts).
     if not machine.halted and isinstance(underlying, _BranchingStepMachine):
-        halts, forked = _branch_search(underlying, 10_000 if limit is None else limit)
-        if not halts or not forked:
-            return halts
+        result = _branch_search(
+            underlying, 10_000 if limit is None else limit, evidence=evidence
+        )
+        if not result.halts or not result.forked:
+            return (
+                CycleDecision(result.halts, None, branches=result.proof)
+                if evidence
+                else result.halts
+            )
         raise with_hint(
             TypeError(
                 "random machines: some draws halt this program, so whether "
@@ -167,6 +189,7 @@ def run_until_halt_or_cycle(
             "use run_until_halt_or_all_branches_cycle for the any-draw question",
         )
     tortoise = machine.snapshot()
+    first_step = 0
     power = 1
     length = 0
     steps = 0
@@ -186,14 +209,23 @@ def run_until_halt_or_cycle(
         # and won't re-widen it across `step()`; the explicit local defeats that.
         halted: bool = machine.halted
         if halted:
-            return True
+            return CycleDecision(halts=True, commands=steps) if evidence else True
         if machine.snapshot() == tortoise:
-            return False
+            return (
+                CycleDecision(
+                    halts=False,
+                    commands=steps,
+                    cycle=BoundaryCycle(tortoise, first_step, steps, 1),
+                )
+                if evidence
+                else False
+            )
         if length == power:
             tortoise = machine.snapshot()
+            first_step = steps
             power *= 2
             length = 0
-    return True
+    return CycleDecision(halts=True, commands=steps) if evidence else True
 
 
 def run_until_halt_or_all_branches_cycle(
@@ -219,12 +251,25 @@ def run_until_halt_or_all_branches_cycle(
             limit,
         ),
     )
-    return _branch_search(machine, limit)[0]
+    return _branch_search(machine, limit).halts
 
 
-def _branch_search(machine: _BranchingStepMachine, limit: int) -> tuple[bool, bool]:
-    """Return whether some path halts, and whether any state forked."""
-    pending = [machine.branching_snapshot()]
+class _BranchResult(NamedTuple):
+    halts: bool
+    forked: bool
+    proof: BranchProof | None
+
+
+def _branch_search(
+    machine: _BranchingStepMachine, limit: int, *, evidence: bool = False
+) -> _BranchResult:
+    """Retain transitions when requested, stopping at a halt or graph closure."""
+    root = machine.branching_snapshot()
+    pending = [root]
+    # Collecting for Boolean readers cost Caballo 11.5-11.6% at n=2/3.
+    transitions: list[tuple[Hashable, tuple[Hashable, ...]]] | None = (
+        [] if evidence else None
+    )
     seen: set[Hashable] = set()
     forked = False
     while pending:
@@ -246,7 +291,12 @@ def _branch_search(machine: _BranchingStepMachine, limit: int) -> tuple[bool, bo
             )
         seen.add(state)
         if machine.branching_halted(state):
-            return True, forked
+            proof = (
+                BranchProof(root, tuple(transitions), halts=True, terminal=state)
+                if transitions is not None
+                else None
+            )
+            return _BranchResult(halts=True, forked=forked, proof=proof)
         successors = machine.branching_successors(state, limit - len(seen))
         if successors is None:
             raise with_hint(
@@ -260,8 +310,18 @@ def _branch_search(machine: _BranchingStepMachine, limit: int) -> tuple[bool, bo
                 ),
             )
         forked = forked or len(successors) > 1
-        pending.extend(successors)
-    return False, forked
+        if transitions is not None:
+            outcomes = tuple(successors)
+            transitions.append((state, outcomes))
+            pending.extend(outcomes)
+        else:
+            pending.extend(successors)
+    proof = (
+        BranchProof(root, tuple(transitions), halts=False)
+        if transitions is not None
+        else None
+    )
+    return _BranchResult(halts=False, forked=forked, proof=proof)
 
 
 @runtime_checkable
