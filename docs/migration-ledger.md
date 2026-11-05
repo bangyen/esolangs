@@ -51,6 +51,10 @@ for all 114 backends. Release checks, audit replay, documentation and scaffoldin
 also use artifacts; replay loads preserve explicit bindings. Other source-returning
 callers remain open.
 
+Example builders return runnable artifacts through layout, binding and scaling.
+Regeneration writes them through `save_program`; the example builder no longer
+converts artifacts into tagged source.
+
 Accounting and analysis rows require owned witnesses, not just a declared hook
 or a recognized helper name. Certification needs an installed-package/lazy-import
 acceptance audit after the active separation work lands. Storage policy needs

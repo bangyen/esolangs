@@ -6,9 +6,12 @@ import argparse
 import pathlib
 from collections.abc import Iterator
 from itertools import zip_longest
+from tempfile import TemporaryDirectory
 
+from esolangs.artifacts import ProgramArtifact
 from esolangs.compressed import CompressedText
 from esolangs.generation.examples import BOOLEAN_EXAMPLES, BooleanExample
+from esolangs.portable import save_program
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.runtime._program import Program
@@ -19,7 +22,7 @@ _BY_ID = {lang.id: name for name, lang in LANGUAGES.items()}
 LANGUAGES_DIR = ROOT / "src" / "esolangs" / "languages"
 
 
-def boolean_programs() -> Iterator[tuple[str, Program]]:
+def boolean_programs() -> Iterator[tuple[str, ProgramArtifact[Program]]]:
     """Yield ``(stem, program)`` for every boolean example."""
     for stem, example in sorted(BOOLEAN_EXAMPLES.items()):
         yield stem, example.build(balance=True)
@@ -148,7 +151,9 @@ SETS = {
 }
 
 
-def _same_program(existing: bytes | None, encoded: bytes, generated: Program) -> bool:
+def _same_program(
+    existing: bytes | None, encoded: bytes, artifact: ProgramArtifact[Program]
+) -> bool:
     """Whether the file holding ``existing`` already is ``generated``.
 
     A raster compares by pixels, not bytes: the PNG encoder's zlib differs
@@ -158,6 +163,7 @@ def _same_program(existing: bytes | None, encoded: bytes, generated: Program) ->
     """
     if existing is None:
         return False
+    generated = artifact.source
     if isinstance(generated, Raster):
         return Raster.from_png(existing) == generated
     if isinstance(generated, CompressedText):
@@ -166,33 +172,22 @@ def _same_program(existing: bytes | None, encoded: bytes, generated: Program) ->
     return existing == encoded
 
 
-def _serialize(generated: Program) -> tuple[str, bytes]:
-    """Return the file suffix and bytes ``generated`` is committed as.
-
-    Append a file terminator only when the language permits it.
-    """
-    if isinstance(generated, Raster):
-        return ".png", generated.to_png()
-    if isinstance(generated, CompressedText):
-        return ".txt.gz", generated.to_gzip()
-    origin = getattr(generated, "language", None)
-    ending = "\n" if origin is None or LANGUAGES[origin].runtime.file_newline else ""
-    return ".txt", (generated + ending).encode("utf-8")
-
-
 def write_set(name: str) -> None:
     """Write one example directory from its generators, reporting each file."""
     for stem, generated in SETS[name]():
         directory = LANGUAGES_DIR / canonical_id(stem.replace("-", " "))
         directory.mkdir(parents=True, exist_ok=True)
-        suffix, program = _serialize(generated)
+        suffix = LANGUAGES[generated.language].source_suffix
         path = directory / f"{stem}{suffix}"
         existing = path.read_bytes() if path.exists() else None
-        if not _same_program(existing, program, generated):
-            path.write_bytes(program)
-            print(f"wrote     {path.relative_to(LANGUAGES_DIR)}")
-        else:
-            print(f"unchanged {path.relative_to(LANGUAGES_DIR)}")
+        with TemporaryDirectory(dir=directory) as temporary:
+            staged = pathlib.Path(temporary) / path.name
+            save_program(generated, staged)
+            if not _same_program(existing, staged.read_bytes(), generated):
+                staged.replace(path)
+                print(f"wrote     {path.relative_to(LANGUAGES_DIR)}")
+            else:
+                print(f"unchanged {path.relative_to(LANGUAGES_DIR)}")
     if name == "boolean":
         write_boolean_manifest()
 

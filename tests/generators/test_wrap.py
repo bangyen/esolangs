@@ -163,7 +163,7 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
     width = NARROW_WIDTH
     example = _example(name)
     if LANGUAGES[name].backend.layout_width:
-        plain = example.build(width)
+        plain = example.build(width).source
         wrapped = wrap_program(plain, LANGUAGES[name].id, max(1, width // 2))
         same_layout = LANGUAGES[name].backend.same_layout
         if same_layout is not None:
@@ -174,15 +174,17 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
             assert wrapped.replace("\n", "") == plain.replace("\n", "")
         assert _run(name, wrapped) == _run(name, plain)
         return
-    plain = example.build(width=None)
-    wrapped = example.build(width)
+    plain = example.build(width=None).source
+    wrapped = example.build(width).source
     if wrapped == plain:
         # A program short enough to need no break is left alone; there is
         # nothing to undo.
         return
     same_layout = LANGUAGES[name].backend.same_layout
     if same_layout is not None:
-        assert same_layout(wrapped, plain, lambda width: _example(name).build(width))
+        assert same_layout(
+            wrapped, plain, lambda width: _example(name).build(width).source
+        )
         return
     # The grid pads each token into a right-aligned cell, so the original is
     # not recoverable character for character -- the padding is new
@@ -219,8 +221,8 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
 def test_every_wrapper_actually_fires(name: str) -> None:
     """Every language in the table really does wrap, given enough program."""
     example = _example(name)
-    raw = example.build(width=None)
-    if any(example.build(width) != raw for width in (40, 1)):
+    raw = example.build(width=None).source
+    if any(example.build(width).source != raw for width in (40, 1)):
         return
     structural = LANGUAGES[name].backend.wrap_multiline
     for arity in range(1, 5):
@@ -298,7 +300,7 @@ def _laid_out(name: str, table: str, bits: str, width: int | None) -> str:
         inputs=() if example.fill else tuple(bits),
         scale=1,
     )
-    return variant.build(width)
+    return variant.build(width).source
 
 
 @pytest.mark.parametrize("name", WIDTH_HONOURING)

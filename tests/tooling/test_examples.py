@@ -24,6 +24,7 @@ from esolangs.vm import (
 )
 from tests.support.generator_support import CHECK
 from tests.support.pick import first
+from tests.support.reference import REFERENCE
 
 BASE_DIR = Path(__file__).parents[2]
 
@@ -73,7 +74,7 @@ def test_boolean_example_matches_generator(name: str) -> None:
     """Each committed boolean program is what its generator produces today."""
     example = BOOLEAN_GENERATED[name]
     path = BASE_DIR / "src/esolangs" / esolangs.describe(name)["examples"][0]
-    program = example.build(balance=True)
+    program = example.build(balance=True).source
     stale = f"{path.relative_to(BASE_DIR)} is stale; run {REGENERATE}"
     if isinstance(program, CompressedText):
         saved = CompressedText(path.read_bytes())
@@ -101,7 +102,16 @@ def test_regeneration_yields_public_balanced_programs(monkeypatch) -> None:
 
     monkeypatch.setattr(compat, "generate", compatibility_roundtrip)
     monkeypatch.setattr(compat, "instantiate", compatibility_roundtrip)
-    programs = dict(boolean_programs())
+    from esolangs import tagged
+
+    with monkeypatch.context() as guard:
+        guard.setattr(tagged, "source_adapter", compatibility_roundtrip)
+        with pytest.raises(pytest.fail.Exception, match="retain its artifact"):
+            tagged.source_adapter(generate(REFERENCE, "01"))
+        programs = dict(boolean_programs())
+    assert all(
+        isinstance(program, esolangs.ProgramArtifact) for program in programs.values()
+    )
     assert programs.keys() == BOOLEAN_GENERATED.keys()
     for stem, example in BOOLEAN_GENERATED.items():
         language = canonical_id(stem.replace("-", " "))
@@ -280,7 +290,8 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         module = self._redirect(monkeypatch, tmp_path / "examples")
-        monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("sample", "x")]))
+        program = esolangs.ProgramArtifact("x", REFERENCE)
+        monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("sample", program)]))
         module.write_set("boolean")
         capsys.readouterr()
         module.write_set("boolean")
@@ -302,8 +313,12 @@ class TestTheWritersWriteWhatTheBuildersBuild:
             for stem in BOOLEAN_GENERATED
             if canonical_id(stem.replace("-", " ")) == painted["id"]
         )
-        raster = Raster.from_png(BOOLEAN_GENERATED[stem].build(balance=True).to_png())
-        monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("img", raster)]))
+        program = BOOLEAN_GENERATED[stem].build(balance=True)
+        raster = Raster.from_png(program.source.to_png())
+        artifact = esolangs.ProgramArtifact(
+            raster, program.language, program.settings, program.scale
+        )
+        monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("img", artifact)]))
         module.write_set("boolean")
         path = tmp_path / "examples" / "img/img.png"
         Image.open(path).save(path, compress_level=1)
@@ -338,6 +353,6 @@ def test_compressed_example_equality_uses_source_text() -> None:
     first = gzip.compress(text, compresslevel=1, mtime=0)
     second = gzip.compress(text, compresslevel=9, mtime=0)
     assert first != second
-    program = CompressedText(second)
+    program = esolangs.ProgramArtifact(CompressedText(second), REFERENCE)
     assert _same_program(first, second, program)
     assert not _same_program(gzip.compress(text + b"1"), second, program)

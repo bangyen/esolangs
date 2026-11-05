@@ -48,7 +48,7 @@ def test_packlang_default_and_fitting_source_stay_unchanged() -> None:
 def test_wrapping_only_breaks_between_tokens() -> None:
     """The committed example retains its lexer tokens and output when reflowed."""
     example = BOOLEAN_EXAMPLES["packlang"]
-    plain = example.build(13)
+    plain = example.build(13).source
     wrapped = wrap_program(plain, "packlang", 6)
     assert _tokenize(wrapped) == _tokenize(plain)
     assert (

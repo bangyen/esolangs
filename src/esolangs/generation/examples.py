@@ -18,7 +18,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from typing import Any, cast
 
-from esolangs.artifacts import TemplateArtifact
+from esolangs.artifacts import ProgramArtifact, TemplateArtifact
 from esolangs.compressed import CompressedText
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
@@ -126,8 +126,8 @@ class BooleanExample:
 
     def build(
         self, width: int | None = DEFAULT_WIDTH, *, balance: bool = False
-    ) -> Program:
-        """Return the source this example commits.
+    ) -> ProgramArtifact[Program]:
+        """Return the runnable artifact this example commits.
 
         Wrapped to ``width`` by the token-aware wrapper ``stem`` selects
         (``None`` returns raw output; a language with no wrapper is unwrapped).
@@ -135,16 +135,16 @@ class BooleanExample:
         ``balance`` uses the balanced artifact pipeline instead of ``width``.
         """
         if balance:
-            from esolangs import generate_artifact
-            from esolangs.tagged import source_adapter
+            from esolangs import generate
 
-            artifact = generate_artifact(
+            artifact = generate(
                 self.language, self.table, balance=True, scale=self.scale
             )
             if self.fill is not None:
                 assert isinstance(artifact, TemplateArtifact)
                 artifact = artifact.fill(self.bits)
-            return source_adapter(artifact)
+            assert isinstance(artifact, ProgramArtifact)
+            return artifact
         backend = LANGUAGES[resolve(self.language)].backend
         assert backend is not None
         if width is not None and backend.layout_width:
@@ -152,12 +152,16 @@ class BooleanExample:
         else:
             program = self.generator(self.table)
         if isinstance(program, CompressedText):
-            return program.wrapped(width)
+            return ProgramArtifact(program.wrapped(width), self.language)
         if isinstance(program, Raster):
-            return program.upscaled(self.scale)
+            return ProgramArtifact(
+                program.upscaled(self.scale), self.language, scale=self.scale
+            )
         if self.fill is not None:
             program = self.fill(program, list(self.bits))
-        return wrap_program(program, self.language, width)
+        return ProgramArtifact(
+            wrap_program(program, self.language, width), self.language
+        )
 
     @property
     def stdin(self) -> str:
