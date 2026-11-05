@@ -9,7 +9,7 @@ import pytest
 
 from esolangs.compat import generate
 from esolangs.exceptions import GeneratorCapError
-from esolangs.languages import generators as boolean
+from esolangs.languages.malbolge import generator as boolean
 from esolangs.languages.malbolge.generator import digits as _digits
 from esolangs.languages.malbolge.generator import symmetric as _symmetric
 from esolangs.languages.malbolge.generator.core import _table_char

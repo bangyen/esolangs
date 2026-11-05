@@ -93,7 +93,7 @@ class TestParameterizedMinskySwap:
 
     def test_rmsn_growth_remains_linear(self) -> None:
         _check_pair_source_cap()
-        from esolangs.languages import generators
+        from esolangs.languages.minsky_swap import generator as generators
 
         sizes = [
             len(generators.minsky_swap("01101001" * (2 ** (n - 3)), 1))

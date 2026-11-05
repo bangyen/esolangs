@@ -10,7 +10,7 @@ from esolangs.compat import generate
 from esolangs.generation.wrap import (
     wrap_program,
 )
-from esolangs.languages import generators as boolean
+from esolangs.languages.dimensional import generator as boolean
 from esolangs.languages.dimensional.generator import dimensional
 from esolangs.languages.dimensional.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO

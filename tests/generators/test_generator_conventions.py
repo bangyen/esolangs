@@ -3,14 +3,11 @@
 import contextlib
 import inspect
 import json
-from collections.abc import Callable
 from pathlib import Path
-from typing import Any
 
 import pytest
 
 import esolangs
-import esolangs.languages.generators as boolean
 from esolangs import compat
 from esolangs.registry import LANGUAGES
 from esolangs.registry._certification import load as load_certification
@@ -20,28 +17,13 @@ from tests.support.generator_support import probe_table
 from tests.support.witness_tables import witnesses
 
 
-def _public(module: object) -> list[tuple[str, Callable[..., Any]]]:
-    """Return the public generator callables a package exports."""
-    return [
-        (name, getattr(module, name))
-        for name in module.__all__
-        if not name.startswith("_")
-        and callable(getattr(module, name, None))
-        and name not in {"instantiate", "main"}
-    ]
-
-
-def test_public_exports_resolve() -> None:
-    """Every advertised export exists, including non-callable metadata."""
-    for name in boolean.__all__:
-        assert hasattr(boolean, name), name
-
-
 def test_boolean_generators_take_a_truth_table() -> None:
     """Each generator takes ``truth_table`` and no required extra."""
     failures = {}
-    exported = dict(_public(boolean))
-    for name, fn in exported.items():
+    for name, lang in LANGUAGES.items():
+        if lang.backend is None:
+            continue
+        fn = lang.backend.generate
         params = list(inspect.signature(fn).parameters.values())
         issues = []
         if not params:

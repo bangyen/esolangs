@@ -5,7 +5,6 @@ from collections.abc import Callable
 import pytest
 
 import esolangs
-import esolangs.languages.generators as boolean
 from esolangs import compat
 from esolangs.generation.helpers import essential_inputs
 from esolangs.registry import BY_BOOLEAN, LANGUAGES
@@ -27,29 +26,9 @@ from tests.support.witness_tables import _one_minterm, dense, parity, row_bits
 pytestmark = pytest.mark.medium
 
 
-def _exported_generators() -> dict[str, str]:
-    """Every boolean generator the package exports, mapped to its language."""
-    by_id = {lang.id: name for name, lang in LANGUAGES.items()}
-    squashed = {lang.id.replace("_", ""): name for name, lang in LANGUAGES.items()}
-    found = {}
-    for fn in boolean.__all__:
-        if fn == "instantiate" or not callable(getattr(boolean, fn, None)):
-            continue
-        display = (
-            by_id.get(fn)
-            or squashed.get(fn.replace("_", ""))
-            or (BY_BOOLEAN[fn].name if fn in BY_BOOLEAN else None)
-        )
-        if display is not None:
-            found[fn] = display
-    return found
-
-
-def test_boolean_set_lists_exactly_the_exported_generators() -> None:
-    """Registry declarations and package exports name the same generators."""
-    exported = _exported_generators()
+def test_boolean_index_lists_all_declared_backends() -> None:
     declared = {name for name, lang in LANGUAGES.items() if lang.backend is not None}
-    assert set(exported.values()) == declared
+    assert {lang.name for lang in BY_BOOLEAN.values()} == declared
 
 
 def test_reorder_permutation_preserves_the_function() -> None:
@@ -178,7 +157,7 @@ def test_every_generator_builds_up_to_five_inputs(name: str) -> None:
     The round trips execute n=2..3; the CI deep band builds to n=8 but lets a
     capped row refuse, so this is the local gate on n=1, 4 and 5.
     """
-    fn = getattr(boolean, name)
+    fn = BY_BOOLEAN[name].backend.generate
     built = 0
     for n in range(1, 6):
         for shape, make in _SHAPES:

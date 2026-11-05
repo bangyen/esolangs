@@ -6,7 +6,7 @@ import random
 import pytest
 
 from esolangs import compat
-from esolangs.languages import generators as boolean
+from esolangs.languages.fargo import generator as boolean
 from tests.interpreters.runner import run_program
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_constant_output

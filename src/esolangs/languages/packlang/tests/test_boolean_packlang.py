@@ -10,7 +10,7 @@ from esolangs.generation.wrap import (
     balance_score,
     wrap_program,
 )
-from esolangs.languages import generators as boolean
+from esolangs.languages.packlang import generator as boolean
 from esolangs.languages.packlang.generator import _folded
 from esolangs.languages.packlang.interpreter import run as packlang_run
 from esolangs.languages.packlang.wrapping import _packlang

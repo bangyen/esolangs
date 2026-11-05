@@ -7,7 +7,7 @@ import pytest
 
 from esolangs import compat
 from esolangs.generation.wrap import balance_program, balance_score, wrap_program
-from esolangs.languages import generators as boolean
+from esolangs.languages.decleq import generator as boolean
 from tests.generators.boolean_runners import _runner
 from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import parity as _parity

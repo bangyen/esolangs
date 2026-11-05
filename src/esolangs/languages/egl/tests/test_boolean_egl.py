@@ -5,7 +5,7 @@ import itertools
 import pytest
 
 from esolangs import compat
-from esolangs.languages import generators as tools
+from esolangs.languages.egl import generator as tools
 from esolangs.languages.egl.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 from tests.support.event_io import ReadFirstIO

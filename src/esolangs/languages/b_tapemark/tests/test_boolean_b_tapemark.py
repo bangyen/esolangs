@@ -8,7 +8,7 @@ import esolangs
 from esolangs import compat
 from esolangs.generation.helpers import essential_inputs
 from esolangs.generation.wrap import balance_score
-from esolangs.languages import generators as tools
+from esolangs.languages.b_tapemark import generator as tools
 from esolangs.languages.b_tapemark.generator import _Builder
 from esolangs.languages.b_tapemark.interpreter import run
 from esolangs.runtime.io import ScriptedIO

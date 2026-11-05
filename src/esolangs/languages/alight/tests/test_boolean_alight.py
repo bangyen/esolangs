@@ -7,7 +7,7 @@ import pytest
 import esolangs
 from esolangs import compat, run
 from esolangs.generation.wrap import balance_score
-from esolangs.languages import generators as boolean
+from esolangs.languages.alight import generator as boolean
 from esolangs.languages.alight.interpreter import run as alight_run
 from esolangs.runtime.io import ScriptedIO
 from tests.support.evaluation import _evaluate

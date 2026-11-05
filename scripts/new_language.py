@@ -20,7 +20,6 @@ from __future__ import annotations
 import argparse
 import importlib
 import keyword
-import os
 import shlex
 import subprocess
 import sys
@@ -240,7 +239,7 @@ def _unregistered(name: str, slug: str) -> list[Gap]:
             "add a BooleanBackend with a FunctionRef entrypoint for a generator, "
             "split=True only when run() takes source lines, "
             "and the Boolean I/O contract; "
-            "run `python scripts/docs/generate.py docs` to regenerate exports",
+            "run `python scripts/docs/generate.py docs` to refresh documentation",
         )
     ]
 
@@ -328,10 +327,8 @@ def _generator_gaps(lang: Language) -> list[Gap]:
     from docs.fragments import section
 
     from esolangs.generation.wrap import takes_width
-    from esolangs.languages import generators
 
     assert lang.backend is not None
-    gen = lang.backend.generate.__name__
     module_rel = lang.backend.generate.__module__.replace(".", "/")
     base = ROOT / f"src/{module_rel}"
     source = _source_file(base) or base / "__init__.py"
@@ -363,14 +360,6 @@ def _generator_gaps(lang: Language) -> list[Gap]:
                 source_rel,
                 "implement the generator; tests/support/samples.py derives the "
                 "language's VM sample from its one-input program",
-            )
-        )
-    if gen not in generators.__all__:
-        gaps.append(
-            Gap(
-                "src/esolangs/languages/generators.py",
-                "declare the language's descriptor and run "
-                "`python scripts/docs/generate.py docs` to regenerate the exports",
             )
         )
     width = takes_width(lang.backend.generate)
@@ -784,15 +773,6 @@ def main(argv: list[str] | None = None) -> int:
     measure.add_argument("--max-n", type=int, default=6)
     args = parser.parse_args(argv)
     if args.command in {"check", "finish", "bounds"}:
-        # A new LANGUAGE is registered by the export this writes, but
-        # docs.generate imports the package first, so its registry predates
-        # the export: rerun on the new one.  The first check after `start`
-        # otherwise asked for the LANGUAGE the stub already had.
-        sys.path.insert(0, str(ROOT / "scripts"))
-        from docs.generate import update_exports
-
-        if update_exports(ROOT, ROOT):
-            os.execv(sys.executable, [sys.executable, __file__, *argv])
         try:
             args.name = _registered_name(args.name)
         except ValueError as exc:

@@ -3,7 +3,7 @@
 import random
 
 from esolangs import compat
-from esolangs.languages import generators as tools
+from esolangs.languages.smu import generator as tools
 from esolangs.languages.smu.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.sample_tables import five_input_sample

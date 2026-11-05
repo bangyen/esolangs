@@ -10,7 +10,7 @@ import pytest
 
 from esolangs import compat
 from esolangs.exceptions import HaltError
-from esolangs.languages import generators as boolean
+from esolangs.languages.forbin import generator as boolean
 from esolangs.languages.forbin.generator import _BLOCK_WIDTHS, _Names
 from esolangs.languages.forbin.tests.forbin_support import _build
 from tests.generators.boolean_runners import _runner

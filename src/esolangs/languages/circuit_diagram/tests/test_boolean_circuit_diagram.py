@@ -10,7 +10,7 @@ import esolangs
 from esolangs import compat
 from esolangs import run as execute
 from esolangs.generation.wrap import balance_score
-from esolangs.languages import generators as boolean
+from esolangs.languages.circuit_diagram import generator as boolean
 from esolangs.languages.circuit_diagram.generator.hlayout import _LATTICE, _h_size
 from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import witnesses

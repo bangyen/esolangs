@@ -9,7 +9,7 @@ import pytest
 import esolangs
 from esolangs import compat
 from esolangs import run as execute
-from esolangs.languages import generators as boolean
+from esolangs.languages.dig import generator as boolean
 from esolangs.languages.dig.generator import _DIG_BRANCH, _DIG_STRIDE
 from esolangs.languages.dig.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO

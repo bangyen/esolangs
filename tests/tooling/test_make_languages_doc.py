@@ -69,7 +69,6 @@ def test_main_updates_all_registry_derived_docs(
     module.update_limitations = lambda _root: called.append("limitations") or True
     for relative in (
         "docs/proofs/index.md",
-        "src/esolangs/languages/generators.py",
         "src/esolangs/registry/scaling.json",
     ):
         target = tmp_path / relative
@@ -80,11 +79,10 @@ def test_main_updates_all_registry_derived_docs(
     stale = f"docs are stale; run uv run python scripts/docs/generate.py docs\n{out}"
     assert status == 0, stale
     assert called == ["readme", "usage", "limitations"]
-    # The real exports and proof tables were copied in sync, so they earn
+    # The real proof tables and scaling catalogue were copied in sync, so they earn
     # no "updated" line -- only the summary counts them.
-    assert "updated the generated exports" not in out, stale
     assert "updated the generated tables of docs/proofs" not in out, stale
-    assert "3 generated artifacts already up to date" in out
+    assert "2 generated artifacts already up to date" in out
 
 
 def test_the_writers_rewrite_the_committed_sections(tmp_path: Path) -> None:
@@ -233,59 +231,3 @@ def test_missing_canonical_interpreter_does_not_link_to_an_old_path(tmp_path) ->
     old.write_text("owned")
     with pytest.raises(FileNotFoundError, match="no canonical interpreter"):
         module._source_link(language.name)
-
-
-def test_exports_use_the_canonical_generator_module(tmp_path) -> None:
-    from scripts.docs.generate import declared
-
-    tools = tmp_path / "src/esolangs/generation"
-    tools.mkdir(parents=True)
-    (tools / "different.py").write_text(
-        "if TYPE_CHECKING:\n"
-        "    from esolangs.languages.fixture.generator import fixture as fixture\n"
-    )
-    package = tmp_path / "src/esolangs/languages/fixture"
-    package.mkdir(parents=True)
-    (package / "descriptor.py").write_text(
-        "def fixture(table): return table\n"
-        "LANGUAGE = Language('Fixture', backend=BooleanBackend(entrypoint="
-        "FunctionRef('esolangs.languages.fixture.generator', 'fixture')))\n"
-    )
-    assert declared(tmp_path) == [("esolangs.languages.fixture.generator", "fixture")]
-
-
-def test_discovery_ignores_noncanonical_declarations(tmp_path) -> None:
-    from scripts.docs.generate import declared
-
-    language = tmp_path / "src/esolangs/languages/fixture"
-    package = language / "generator"
-    package.mkdir(parents=True)
-    source = (
-        "LANGUAGE = Language('Fixture', backend=BooleanBackend(entrypoint="
-        "FunctionRef('esolangs.languages.fixture.generator', 'fixture')))\n"
-    )
-    (language / "descriptor.py").write_text(source)
-    (package / "__init__.py").write_text(source)
-    (package / "helper.py").write_text(source)
-    (language / "interpreter.py").write_text(source)
-    assert declared(tmp_path) == [("esolangs.languages.fixture.generator", "fixture")]
-
-
-def test_exports_discover_independent_descriptors(tmp_path):
-    from scripts.docs.generate import declared, render
-
-    package = tmp_path / "src/esolangs/languages/fixture"
-    package.mkdir(parents=True)
-    descriptor = package / "descriptor.py"
-    source = (
-        "LANGUAGE = Language('Fixture', backend=BooleanBackend("
-        "entrypoint=FunctionRef('esolangs.languages.fixture.generator', "
-        "'fixture')))\n"
-    )
-    descriptor.write_text(source)
-    assert declared(tmp_path) == [("esolangs.languages.fixture.generator", "fixture")]
-    exports = render(tmp_path)
-    assert "from esolangs.languages.fixture.generator import fixture" in exports
-    descriptor.write_text(source.replace("fixture.generator", "fixture.unrelated"))
-    with pytest.raises(ValueError, match="generator reference"):
-        declared(tmp_path)

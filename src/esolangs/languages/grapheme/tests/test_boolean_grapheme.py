@@ -7,7 +7,7 @@ import pytest
 import esolangs
 from esolangs import compat
 from esolangs import run as execute
-from esolangs.languages import generators as boolean
+from esolangs.languages.grapheme import generator as boolean
 from esolangs.languages.grapheme.generator import (
     _grapheme_literal,
     _grapheme_push65,

@@ -6,7 +6,7 @@ import re
 import pytest
 
 from esolangs import compat
-from esolangs.languages import generators as boolean
+from esolangs.languages.ram0 import generator as boolean
 from tests.support.generator_support import assert_parity_at_most_doubles
 from tests.support.witness_tables import row_bits
 
@@ -36,7 +36,7 @@ class TestParameterizedRam0:
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
         from esolangs.generation.helpers import TEMPLATE_CHAR, runs
-        from esolangs.languages import generators
+        from esolangs.languages.ram0 import generator as generators
         from esolangs.languages.ram0.generator import PAIR as RAM0_PAIR
 
         template = generators.ram0("0110")
@@ -45,7 +45,7 @@ class TestParameterizedRam0:
 
     def test_leaves_share_a_low_address_halt_trampoline(self) -> None:
         """Every leaf jumps to 2; only the trampoline names the end."""
-        from esolangs.languages import generators
+        from esolangs.languages.ram0 import generator as generators
         from esolangs.languages.ram0.generator import _ram0_ordered
 
         tokens = generators.ram0("01101001").split()
@@ -57,7 +57,7 @@ class TestParameterizedRam0:
     @staticmethod
     def _sharing_totals(tables: list[str]) -> tuple[int, int]:
         """(before, shipped) totals, each table checked not to grow."""
-        from esolangs.languages import generators
+        from esolangs.languages.ram0 import generator as generators
         from esolangs.languages.ram0.generator import _ram0_ordered
 
         before = after = 0
@@ -74,7 +74,7 @@ class TestParameterizedRam0:
 
     def test_shared_tree_executes_wide_rows(self) -> None:
         """A seeded seven-input table, every row, through the shared tree."""
-        from esolangs.languages import generators
+        from esolangs.languages.ram0 import generator as generators
 
         n = 7
         table = format(random.Random(7).getrandbits(2**n), f"0{2**n}b")

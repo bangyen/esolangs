@@ -7,7 +7,7 @@ import pytest
 
 import esolangs
 from esolangs import compat
-from esolangs.languages import generators as boolean
+from esolangs.languages.three_x import generator as boolean
 from esolangs.languages.three_x.generator import _constant, _gain
 from esolangs.languages.three_x.tests.formulas import _key
 from scripts.benchmark import state_bits

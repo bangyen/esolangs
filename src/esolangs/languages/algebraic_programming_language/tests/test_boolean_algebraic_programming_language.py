@@ -10,7 +10,7 @@ import esolangs
 from esolangs import compat
 from esolangs import run as execute_program
 from esolangs.compat import generate
-from esolangs.languages import generators as boolean
+from esolangs.languages.algebraic_programming_language import generator as boolean
 from esolangs.languages.algebraic_programming_language.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner

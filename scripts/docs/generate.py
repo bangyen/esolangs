@@ -1,4 +1,4 @@
-"""Regenerate the committed documentation and the tools export block."""
+"""Regenerate the committed documentation."""
 
 import sys
 from pathlib import Path
@@ -7,8 +7,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import argparse
-import ast
-import builtins
 import inspect
 import pathlib
 import re
@@ -429,10 +427,6 @@ def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
             unchanged += 1
 
     report(
-        "updated the generated exports of esolangs.languages",
-        changed=update_exports(output_root),
-    )
-    report(
         "updated the generated tables of docs/proofs/index.md",
         changed=update_docs(output_root),
     )
@@ -455,89 +449,6 @@ def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
     if unchanged:
         print(f"{unchanged} generated artifacts already up to date")
     return 0
-
-
-INIT = "src/esolangs/languages/generators.py"
-START = "# BEGIN GENERATED EXPORTS: python scripts/docs/generate.py docs"
-END = "# END GENERATED EXPORTS"
-#: Ruff's line limit, which the generated import block must respect.
-LINE_LIMIT = 88
-
-
-def declared(root: pathlib.Path = ROOT) -> list[tuple[str, str]]:
-    """Return canonical module and function names for declared generators."""
-    found = []
-    languages = root / "src/esolangs/languages"
-    paths = languages.glob("*/descriptor.py")
-    for path in sorted(paths):
-        text = path.read_text(encoding="utf-8")
-        for statement in ast.parse(text).body:
-            if not (
-                isinstance(statement, ast.Assign)
-                and any(
-                    isinstance(target, ast.Name) and target.id == "LANGUAGE"
-                    for target in statement.targets
-                )
-                and isinstance(statement.value, ast.Call)
-            ):
-                continue
-            backend = next(
-                (
-                    kw.value
-                    for kw in statement.value.keywords
-                    if kw.arg == "backend" and isinstance(kw.value, ast.Call)
-                ),
-                None,
-            )
-            if backend is None:
-                continue
-            entrypoint = next(
-                kw.value
-                for kw in backend.keywords
-                if kw.arg == "entrypoint" and isinstance(kw.value, ast.Call)
-            )
-            module, generator = (ast.literal_eval(arg) for arg in entrypoint.args[:2])
-            expected = f"esolangs.languages.{path.parent.name}.generator"
-            if (
-                module != expected
-                or not isinstance(generator, str)
-                or not generator.isidentifier()
-            ):
-                raise ValueError(f"{path}: invalid canonical generator reference")
-            found.append((module, generator))
-    return sorted(found)
-
-
-def render(root: pathlib.Path = ROOT) -> str:
-    """Return the import block and ``__all__`` for :data:`declared`."""
-    pairs = declared(root)
-    lines = []
-    for module, name in pairs:
-        # language-owners: ["Eval"]
-        comment = (
-            "  # noqa: A004 - the language's name" if hasattr(builtins, name) else ""
-        )
-        line = f"from {module} import {name}"
-        if len(line + comment) > LINE_LIMIT:
-            lines.append(f"from {module} import (\n    {name},{comment}\n)")
-        else:
-            lines.append(line + comment)
-    imports = "\n".join(lines)
-    listed = "\n".join(f'    "{name}",' for name in sorted(g for _, g in pairs))
-    return f"{imports}\n\n__all__ = [\n{listed}\n]"
-
-
-def update_exports(
-    output_root: pathlib.Path = ROOT, source_root: pathlib.Path = ROOT
-) -> bool:
-    """Rewrite the marked language export block under ``output_root``."""
-    path = output_root / INIT
-    text = path.read_text(encoding="utf-8")
-    block = START + "\n" + render(source_root) + "\n" + END
-    head, rest = text.split(START, 1)
-    return _write_if_changed(
-        path, head + block + rest.split(END, 1)[1], encoding="utf-8"
-    )
 
 
 if __name__ == "__main__":

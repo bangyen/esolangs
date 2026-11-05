@@ -8,7 +8,7 @@ import pytest
 
 from esolangs import compat
 from esolangs.generation.helpers import in_input_order
-from esolangs.languages import generators as boolean
+from esolangs.languages.cvnc import generator as boolean
 from esolangs.languages.cvnc.generator import (
     _HALT_SQUARINGS,
     _direct,

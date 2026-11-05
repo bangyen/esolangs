@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from math import sqrt
 from pathlib import Path
 
-import esolangs.languages.generators as boolean
 from esolangs.registry import BY_BOOLEAN
 from scripts.source_units import source_units
 from tests.proofs._ledger import load as load_ledger
@@ -178,7 +177,7 @@ def _ratio(series: list[tuple[int, int]]) -> float | None:
 
 def measure(key: str, name: str) -> Growth:
     """Worst-fitting shape for one generator, past any route change."""
-    fn = getattr(boolean, key)
+    fn = BY_BOOLEAN[key].backend.generate
     top = ARITY_OVERRIDE.get(key, MAX_ARITY)
     worst = Growth(generator=name, reason="no shape produced enough rungs")
     for shape, make in _SHAPES:

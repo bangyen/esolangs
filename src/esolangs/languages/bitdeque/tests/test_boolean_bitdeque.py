@@ -36,7 +36,7 @@ class TestParameterizedBitdeque:
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
         from esolangs.generation.helpers import runs
-        from esolangs.languages import generators
+        from esolangs.languages.bitdeque import generator as generators
         from esolangs.languages.bitdeque.generator import BITDEQUE_PAIR
 
         for n in (2, 5):
@@ -48,7 +48,7 @@ class TestParameterizedBitdeque:
 
     def test_odd_inputs_are_pushed_complemented(self) -> None:
         """The load flips the register per block; the tree's table absorbs it."""
-        from esolangs.languages import generators
+        from esolangs.languages.bitdeque import generator as generators
         from esolangs.languages.bitdeque.interpreter import run
         from esolangs.runtime.io import ScriptedIO
 
@@ -62,7 +62,7 @@ class TestParameterizedBitdeque:
 
     def test_constant_leaf_and_shared_halt_trampoline(self) -> None:
         """Whole constants need no trampoline; branching leaves still share one."""
-        from esolangs.languages import generators
+        from esolangs.languages.bitdeque import generator as generators
 
         template = generators.bitdeque("0000")
         assert "POP" in template

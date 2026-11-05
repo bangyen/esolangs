@@ -73,7 +73,7 @@ class TestParameterizedHomeRow:
     def test_five_inputs_sample(self) -> None:
         """A sample of dense five-input tables, past the removed n <= 2 cap."""
 
-        from esolangs.languages import generators
+        from esolangs.languages.home_row import generator as generators
 
         n = 5
         rng = random.Random(0)
@@ -88,7 +88,7 @@ class TestParameterizedHomeRow:
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
         from esolangs.generation.helpers import runs
-        from esolangs.languages import generators
+        from esolangs.languages.home_row import generator as generators
         from esolangs.languages.home_row.generator import HOME_ROW_PAIR
 
         template = generators.home_row("0110")
@@ -102,7 +102,7 @@ class TestParameterizedHomeRow:
 
     def test_pairs_that_agree_with_the_last_share_its_leaf(self) -> None:
         """Only the pairs before the table's trailing run get a guarded leaf."""
-        from esolangs.languages import generators
+        from esolangs.languages.home_row import generator as generators
         from esolangs.languages.home_row.generator import _SETUP
 
         gates = "a$lsfffaffla$lsfafffsfl"
@@ -117,7 +117,7 @@ class TestParameterizedHomeRow:
 
     def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
         """Total emitted bytes over every three-input table."""
-        from esolangs.languages import generators
+        from esolangs.languages.home_row import generator as generators
 
         tables = (format(v, "08b") for v in range(256))
         assert sum(len(generators.home_row(t)) for t in tables) == 32776

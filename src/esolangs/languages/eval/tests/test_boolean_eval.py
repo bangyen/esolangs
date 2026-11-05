@@ -2,7 +2,7 @@
 
 from esolangs import compat
 from esolangs.generation.helpers import TEMPLATE_CHAR, permute_truth_table
-from esolangs.languages import generators as boolean
+from esolangs.languages.eval import generator as boolean
 from esolangs.languages.eval.generator import PAIR
 from esolangs.languages.eval.tests.eval_support import (
     _eval_ordered,

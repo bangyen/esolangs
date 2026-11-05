@@ -6,7 +6,7 @@ from itertools import pairwise
 import pytest
 
 from esolangs import compat
-from esolangs.languages import generators as boolean
+from esolangs.languages.flowchart import generator as boolean
 from esolangs.languages.flowchart.generator import (
     _flowchart_cells,
     _flowchart_deque,

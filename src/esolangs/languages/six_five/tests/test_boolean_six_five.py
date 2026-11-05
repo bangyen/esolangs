@@ -14,7 +14,7 @@ from esolangs.generation.helpers import permute_truth_table
 from esolangs.generation.wrap import (
     _six_five,
 )
-from esolangs.languages import generators as boolean
+from esolangs.languages.six_five import generator as boolean
 from esolangs.languages.six_five.generator import (
     _SIX_FIVE_TEST,
     _SIX_FIVE_TREE_NORMALIZE,

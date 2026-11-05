@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-import esolangs.languages.generators as boolean
 from esolangs.generation.helpers import runs
 from esolangs.registry import BY_BOOLEAN
 from scripts.source_units import source_units
@@ -54,7 +53,7 @@ def _generator(row: Row) -> object:
     """The callable behind a ledger row."""
     for key, lang in BY_BOOLEAN.items():
         if lang.name == row.generator:
-            return getattr(boolean, key)
+            return BY_BOOLEAN[key].backend.generate
     raise AssertionError(f"{row.generator} is not in BY_BOOLEAN")
 
 

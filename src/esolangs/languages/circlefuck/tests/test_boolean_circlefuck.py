@@ -6,7 +6,7 @@ import pytest
 
 from esolangs import compat
 from esolangs import run as execute
-from esolangs.languages import generators as boolean
+from esolangs.languages.circlefuck import generator as boolean
 from tests.generators.boolean_runners import _runner
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_constant_output, measure_run

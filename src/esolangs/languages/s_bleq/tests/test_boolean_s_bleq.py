@@ -9,7 +9,7 @@ import esolangs
 from esolangs import compat
 from esolangs.generation.branch_decoder import hoisted_tree
 from esolangs.generation.packed_decoder import packed_decoder
-from esolangs.languages import generators as boolean
+from esolangs.languages.s_bleq import generator as boolean
 from esolangs.languages.s_bleq.generator import _compact_tree, _tree_min_chars
 from esolangs.languages.s_bleq.interpreter import _Machine
 from esolangs.languages.s_bleq.tests.formulas import below_eleven, tree_chars

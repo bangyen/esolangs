@@ -45,7 +45,6 @@ GENERATED = (
     "docs/usage.md",
     "docs/limitations.md",
     "docs/CONTRIBUTING.md",
-    "src/esolangs/languages/generators.py",
     "src/esolangs/registry/scaling.json",
 )
 

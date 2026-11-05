@@ -9,7 +9,7 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import compat, run
 from esolangs.generation.helpers import in_input_order
-from esolangs.languages import generators as boolean
+from esolangs.languages.addsubjump import generator as boolean
 from esolangs.languages.addsubjump.generator import (
     _addsubjump_ordered,
     _addsubjump_packed,

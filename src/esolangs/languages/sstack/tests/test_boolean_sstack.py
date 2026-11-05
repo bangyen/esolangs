@@ -7,7 +7,7 @@ import pytest
 import esolangs
 from esolangs import compat
 from esolangs import run as execute
-from esolangs.languages import generators as boolean
+from esolangs.languages.sstack import generator as boolean
 from esolangs.vm import _capture_workspace
 from scripts import new_language
 from tests.generators.boolean_runners import _runner

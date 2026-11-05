@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs import compat, run
-from esolangs.languages import generators as boolean
+from esolangs.languages.clockwise import generator as boolean
 from tests.support.witness_tables import parity, row_bits, witnesses
 
 

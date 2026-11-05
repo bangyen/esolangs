@@ -11,7 +11,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import get_context
 
-import esolangs.languages.generators as boolean
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import Row, load
 from tests.proofs.deep._lemmas import (
@@ -104,7 +103,7 @@ def _assert_the_lemmas_bite() -> None:
 
 def battery(row: Row, key: str) -> Result:
     """Run every applicable lemma for one generator."""
-    fn = getattr(boolean, key)
+    fn = BY_BOOLEAN[key].backend.generate
     scheme = row.schemes[0] if row.schemes else "exception"
     allow = "cap" in row.labels or "exception" in row.labels
     result = Result(generator=row.generator, scheme=scheme)

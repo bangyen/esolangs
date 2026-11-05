@@ -6,7 +6,7 @@ import pytest
 
 from esolangs import compat
 from esolangs.generation.helpers import essential_inputs, permute_truth_table
-from esolangs.languages import generators as boolean
+from esolangs.languages.for_thorn import generator as boolean
 from tests.generators.sample_tables import five_input_sample
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (

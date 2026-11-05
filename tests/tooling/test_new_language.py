@@ -69,12 +69,12 @@ def test_scaffold_refuses_overwrite(root: Path) -> None:
         new_language.scaffold("Tiny", "other")
 
 
-def test_scaffold_refuses_a_shared_namespace_module(root: Path) -> None:
-    target = root / "src/esolangs/languages/generators.py"
+def test_scaffold_refuses_an_existing_namespace_module(root: Path) -> None:
+    target = root / "src/esolangs/languages/fixture.py"
     target.parent.mkdir(parents=True)
     target.write_text("owned")
     with pytest.raises(FileExistsError, match="refusing to overwrite"):
-        new_language.scaffold("Generators", "other")
+        new_language.scaffold("Fixture", "other")
     assert target.read_text() == "owned"
     assert not target.with_suffix("").exists()
 
@@ -162,37 +162,11 @@ def test_gate_runs_the_full_gate_not_a_scoped_one(
 def test_check_with_open_steps_is_not_a_failure(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    import types
-
-    # main imports ``from docs.generate import update_exports``; shadow that
-    # module, not a bare ``generate``, or the real writer runs against ROOT
-    # and rewrites src/esolangs/languages/generators.py in the working tree.
-    fake = types.ModuleType("docs.generate")
-    fake.update_exports = lambda *_: None
-    monkeypatch.setitem(sys.modules, "docs.generate", fake)
+    monkeypatch.setitem(sys.modules, "docs.generate", None)
     gap = new_language.Gap("somewhere", "do it")
     monkeypatch.setattr(new_language, "check", lambda _: [gap])
     assert new_language.main(["check", "Tiny"]) == 0
     assert "1 step(s) left" in capsys.readouterr().out
-
-
-def test_check_reruns_once_its_export_registers_a_language(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The registry loaded before the export was written lacks the language."""
-    import types
-
-    fake = types.ModuleType("docs.generate")
-    fake.update_exports = lambda *_: True
-    monkeypatch.setitem(sys.modules, "docs.generate", fake)
-
-    def execv(_: str, args: list[str]) -> None:
-        raise SystemExit(args)
-
-    monkeypatch.setattr(new_language.os, "execv", execv)
-    with pytest.raises(SystemExit) as rerun:
-        new_language.main(["check", "Tiny"])
-    assert rerun.value.code == [sys.executable, new_language.__file__, "check", "Tiny"]
 
 
 @pytest.mark.usefixtures("root")

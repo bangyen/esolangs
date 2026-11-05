@@ -27,7 +27,7 @@ class TestParameterizedArrowQueue:
 
     def test_random_tables(self) -> None:
         """Seeded random tables through five inputs produce the right result."""
-        from esolangs.languages import generators
+        from esolangs.languages.arrowqueue import generator as generators
 
         random.seed(13)
         for n in (1, 2, 3, 4, 5):
@@ -47,7 +47,7 @@ class TestParameterizedArrowQueue:
         The cascade reaches it; past n=3 the default folds the witness
         into fewer, wider rows.
         """
-        from esolangs.languages import generators
+        from esolangs.languages.arrowqueue import generator as generators
         from esolangs.languages.arrowqueue.generator import _program
 
         width = 2**n
@@ -67,7 +67,7 @@ class TestParameterizedArrowQueue:
     @pytest.mark.parametrize("table", ["0110", "0110100110010110" * 2])
     def test_every_input_is_the_same_one_cell(self, table: str) -> None:
         """Both routes spell every input as one cell, ``.`` against ``~``."""
-        from esolangs.languages import generators
+        from esolangs.languages.arrowqueue import generator as generators
 
         n = len(table).bit_length() - 1
         template = generators.arrowqueue(table)
@@ -92,7 +92,7 @@ class TestParameterizedArrowQueue:
     )
     def test_folded_tables_past_three_inputs(self, table: str, n: int) -> None:
         """Folded leaves stay correct deeper than the exhaustive n <= 3 sweep."""
-        from esolangs.languages import generators
+        from esolangs.languages.arrowqueue import generator as generators
 
         template = generators.arrowqueue(table)
         for combo in range(2**n):

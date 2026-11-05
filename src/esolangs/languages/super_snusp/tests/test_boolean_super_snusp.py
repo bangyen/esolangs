@@ -5,7 +5,7 @@ import pytest
 import esolangs
 from esolangs import compat
 from esolangs import run as execute
-from esolangs.languages import generators as boolean
+from esolangs.languages.super_snusp import generator as boolean
 from esolangs.languages.super_snusp.generator import balance_super_snusp
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_constant_output, measure_run

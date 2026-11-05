@@ -4,7 +4,7 @@ import pytest
 
 from esolangs import compat
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.languages import generators as boolean
+from esolangs.languages.unlambda import generator as boolean
 from esolangs.languages.unlambda.generator import unlambda
 from tests.generators.plain_oracles import separated_tree_text
 from tests.generators.reader_support import (

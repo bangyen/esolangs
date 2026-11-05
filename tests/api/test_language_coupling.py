@@ -30,7 +30,6 @@ TREES = ("src/", "tests/", "scripts/")
 MANAGED = frozenset(
     {
         "src/esolangs/registry/_table.py",
-        "src/esolangs/languages/generators.py",
         "tests/support/samples.py",
         "tests/generators/test_wrap.py",
         "tests/proofs/measurement.py",

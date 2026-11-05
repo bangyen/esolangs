@@ -48,15 +48,19 @@ try:
 finally:
     sys.meta_path.remove(block)
 
-assert 'generators' in dir(esolangs.languages)
-generators = esolangs.languages.generators
+assert 'generators' not in dir(esolangs.languages)
+assert not hasattr(esolangs.languages, 'generators')
+try:
+    importlib.import_module('esolangs.languages.generators')
+except ModuleNotFoundError as error:
+    assert error.name == 'esolangs.languages.generators'
+else:
+    raise AssertionError('retired generator facade imported')
 for lang in pilots:
     backend = lang.backend
     generate = backend.generate
     module = sys.modules[generate.__module__]
     assert getattr(module, generate.__name__) is generate
-    assert getattr(generators, generate.__name__) is generate
-    assert generate.__name__ in dir(generators)
     assert module.LANGUAGE is lang
     assert inspect.getsourcefile(generate) == module.__file__
     assert (tuple(inspect.signature(generate).parameters)

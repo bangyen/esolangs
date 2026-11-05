@@ -7,7 +7,7 @@ import pytest
 
 from esolangs import compat
 from esolangs.compat import generate
-from esolangs.languages import generators as boolean
+from esolangs.languages.thue import generator as boolean
 from esolangs.languages.thue.generator import thue
 from esolangs.languages.thue.interpreter import _Machine, _matches
 from esolangs.languages.thue.interpreter import run as run_thue

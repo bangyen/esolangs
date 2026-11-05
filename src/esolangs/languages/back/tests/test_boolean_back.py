@@ -94,7 +94,7 @@ class TestParameterizedBack:
         """A one-edge onto an equal zero side draws no rows, and still answers."""
         import random
 
-        from esolangs.languages import generators
+        from esolangs.languages.back import generator as generators
 
         rng = random.Random(5)
         table = "".join(rng.choice("01") for _ in range(128))
@@ -120,7 +120,7 @@ class TestParameterizedBack:
     def test_area_is_linear_where_the_comb_is_not(self) -> None:
         """Rudin-Shapiro shares nothing: the comb is 3n + 5 wide, the fold is not."""
         from esolangs.generation.helpers import grid_area
-        from esolangs.languages import generators
+        from esolangs.languages.back import generator as generators
 
         n = 12
         table = "".join(
@@ -133,7 +133,7 @@ class TestParameterizedBack:
 
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
-        from esolangs.languages import generators
+        from esolangs.languages.back import generator as generators
         from esolangs.languages.back.generator import PAIR
 
         template = generators.back("0110")
@@ -188,7 +188,7 @@ class TestParameterizedBack:
 
     def test_tree_uses_tape_decision_nodes(self) -> None:
         """The reflected decision tree retains its skip and both mirrors."""
-        from esolangs.languages import generators
+        from esolangs.languages.back import generator as generators
 
         template = generators.back("0110")
         assert "+" in template
@@ -198,7 +198,7 @@ class TestParameterizedBack:
 
     def test_the_natural_order_folds_its_aligned_dependency(self) -> None:
         """A one-input dependency folds wherever the input sits."""
-        from esolangs.languages import generators
+        from esolangs.languages.back import generator as generators
 
         scattered = len(generators.back("10101010"))
         aligned = len(generators.back("11110000"))
@@ -208,7 +208,7 @@ class TestParameterizedBack:
 
     def test_symmetric_tables_reverse_the_loader(self) -> None:
         """Symmetric tables keep their tree and shorten the loader walk."""
-        from esolangs.languages import generators
+        from esolangs.languages.back import generator as generators
 
         # Every input matters in each; an ignored one is indexed past.
         for table in ("01101001", "00010111", "01111110", "00011110", "10010110"):
@@ -237,7 +237,7 @@ class TestParameterizedBack:
     def test_placeholders_run_in_name_order_while_still_reordering(self) -> None:
         """Back reorders through the *walk*, not through its input order."""
 
-        from esolangs.languages import generators
+        from esolangs.languages.back import generator as generators
 
         walked = 0
         for table in ("11110000", "10101010", "01101001", "00111100"):
@@ -254,7 +254,7 @@ class TestParameterizedBack:
 
     def test_reordering_keeps_the_equal_width_embedding(self) -> None:
         """Reordered loads still cost the same for either bit."""
-        from esolangs.languages import generators
+        from esolangs.languages.back import generator as generators
         from tests.generators.fills import fill
 
         _fill_back = fill("Back")

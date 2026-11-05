@@ -8,7 +8,7 @@ import pytest
 
 from esolangs import compat
 from esolangs.generation.wrap import balance_score
-from esolangs.languages import generators as boolean
+from esolangs.languages.streetcode import generator as boolean
 from tests.generators.boolean_runners import _runner
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO

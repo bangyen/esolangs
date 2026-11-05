@@ -7,7 +7,7 @@ import re
 import pytest
 
 from esolangs import compat
-from esolangs.languages import generators as boolean
+from esolangs.languages.laserfuck import generator as boolean
 from esolangs.languages.laserfuck.generator import MARGIN
 from esolangs.languages.laserfuck.tests.runners import run_laserfuck
 from tests.support.generator_support import measure_run

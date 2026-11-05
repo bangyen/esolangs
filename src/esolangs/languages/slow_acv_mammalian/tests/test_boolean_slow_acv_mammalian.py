@@ -11,7 +11,7 @@ import esolangs
 from esolangs import compat
 from esolangs import run as execute
 from esolangs.generation.wrap import balance_score
-from esolangs.languages import generators as boolean
+from esolangs.languages.slow_acv_mammalian import generator as boolean
 from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
 from esolangs.languages.slow_acv_mammalian.generator import (
     _merge_address,

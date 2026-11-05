@@ -6,7 +6,7 @@ from functools import cache
 import pytest
 
 from esolangs import compat
-from esolangs.languages import generators as boolean
+from esolangs.languages.rotfuck import generator as boolean
 from tests.generators.boolean_runners import _runner
 from tests.interpreters.runner import run_program
 from tests.support.event_io import ReadFirstIO

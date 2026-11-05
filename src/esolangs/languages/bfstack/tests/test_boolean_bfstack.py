@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import compat, run
-from esolangs.languages import generators as boolean
+from esolangs.languages.bfstack import generator as boolean
 from esolangs.registry._certification import load as load_certification
 from tests.generators.boolean_runners import _runner
 from tests.support.event_io import ReadFirstIO
