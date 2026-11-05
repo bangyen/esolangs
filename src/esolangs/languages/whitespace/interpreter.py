@@ -55,8 +55,10 @@ Decisions:
       outside that range halt instead of reproducing host Int narrowing.
       Numeric reads consume a line, matching getLine; signed ASCII decimal
       syntax is retained rather than Haskell's full Read Integer grammar.
-      The zero-filled sparse integer-addressed heap remains an open
-      compatibility choice against the list VM.
+    * The heap deliberately accepts all integer addresses: absent cells read
+      as zero, and zero stores erase sparse entries. VM.hs uses a finite list;
+      its out-of-range read errors, host index narrowing and negative-store
+      divergence are not reproduced. Workspace counts the sparse pairs.
 """
 
 from __future__ import annotations

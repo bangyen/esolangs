@@ -201,6 +201,15 @@ def _check(factory, program, stdin="unused"):
 
 
 def check_raw_whitespace():
+    for address in (-(2**80), -1, 0, 17, 2**80):
+        read = (("push", address), ("retrieve",), ("out_num",))
+        _check(_Machine, (*read, ("end",)))
+        for value in (0, 9):
+            store = (("push", address), ("push", value), ("store",))
+            gap = (("push", address - 1), ("retrieve",), ("out_num",))
+            _check(_Machine, (*store, *gap, *read, ("end",)))
+        clear = (("push", address), ("push", 0), ("store",))
+        _check(_Machine, (*store, *clear, *read, ("end",)))
     for value in (-1, 0, 255, 256, 0xD800, 0xDFFF, 0x10000, 0x10FFFF, 0x110000, 2**80):
         _check(_Machine, (("push", value), ("out_char",), ("end",)))
     for address, left, right, operation in product(
