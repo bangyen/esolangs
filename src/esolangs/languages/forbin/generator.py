@@ -44,9 +44,10 @@ from esolangs.generation.helpers import (
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
 from esolangs.languages.forbin.proof_formulas import workspace
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 _FORBIN_ALPHABET = ascii_letters
@@ -343,12 +344,14 @@ LANGUAGE = Language(
         category="variable_based",
         empty_program="Forbin program has no main function",
     ),
-    boolean=forbin,
-    # Not a tree: one painted call argument per entry, halved down to the first.
-    shape=Shape.LOOKUP,
+    backend=BooleanBackend(
+        generate=forbin,
+        # Not a tree: one painted call argument per entry, halved down to the first.
+        shape=Shape.LOOKUP,
+        balance=_balance,
+    ),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    balance=_balance,
     certification=CertificationSpec(proof_workspace=(workspace, True, (3, 8))),
 )

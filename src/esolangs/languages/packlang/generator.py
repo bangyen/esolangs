@@ -53,9 +53,10 @@ from esolangs.languages.packlang.wrapping import (
     _PACKLANG_LEXEME,
     _packlang,
 )
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["packlang"]
@@ -389,19 +390,21 @@ LANGUAGE = Language(
         eof="an exhausted charGet is newline byte 10",
         empty_program="empty program",
     ),
-    boolean=packlang,
-    # Not a tree: one painted array cell per differing row, read by index.
-    shape=Shape.LOOKUP,
+    backend=BooleanBackend(
+        generate=packlang,
+        # Not a tree: one painted array cell per differing row, read by index.
+        shape=Shape.LOOKUP,
+        # One statement a line; each folds on its own.
+        # Generators emit indented blocks; fold only an over-wide line.
+        # Packlang punctuation separates tokens even without a space.
+        wrap=_packlang,
+        wrap_multiline=True,
+        same_layout=same_ignoring_whitespace,
+        balance=balance_packlang,
+    ),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    # One statement a line; each folds on its own.
-    # Generators emit indented blocks; fold only an over-wide line.
-    # Packlang punctuation separates tokens even without a space.
-    wrap=_packlang,
-    wrap_multiline=True,
-    same_layout=same_ignoring_whitespace,
-    balance=balance_packlang,
     certification=CertificationSpec(
         proof_execution=(execution, False, (3, 7)),
         proof_workspace=(workspace, False, (3, 5)),

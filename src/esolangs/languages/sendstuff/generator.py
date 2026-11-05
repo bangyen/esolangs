@@ -21,6 +21,7 @@ Size:
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import TokenWrapper
 from esolangs.languages.sendstuff.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -87,9 +88,8 @@ LANGUAGE = Language(
         category="other",
         eof="an exhausted Input or InputNumber sends nothing, as the spec says",
     ),
-    boolean=sendstuff,
+    backend=BooleanBackend(generate=sendstuff, wrap=_wrap),
     contract=BooleanContract(input_shape="char_stream"),
-    wrap=_wrap,
     certification=CertificationSpec(
         proof_workspace=(workspace, True, (3, 4, 5, 6, 7)),
         proof_execution=(execution, True, (1, 2, 3, 6)),

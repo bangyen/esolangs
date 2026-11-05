@@ -20,8 +20,8 @@ def _wrappable() -> list[str]:
     return sorted(
         name
         for name, lang in LANGUAGES.items()
-        if lang.boolean is not None
-        and lang.wrap is not None
+        if lang.backend is not None
+        and lang.backend.wrap is not None
         and esolangs.describe(name)["answer_mode"] != "termination"
     )
 

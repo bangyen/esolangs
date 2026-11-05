@@ -27,8 +27,9 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 #: Opcodes, as chickens a line.
@@ -98,11 +99,13 @@ LANGUAGE = Language(
         category="stack_based",
         eof="a short input is a shorter string; a missing bit is not 1, so reads 0",
     ),
-    boolean=chicken,
-    shape=Shape.LOOKUP,
+    backend=BooleanBackend(
+        generate=chicken,
+        shape=Shape.LOOKUP,
+        no_wrap="a line break is the instruction boundary and a blank line is a cell",
+    ),
     contract=BooleanContract(
         input_shape="char_stream",
         note="Chicken's input is one string; input[i] is bit i",
     ),
-    no_wrap="a line break is the instruction boundary and a blank line is a cell",
 )

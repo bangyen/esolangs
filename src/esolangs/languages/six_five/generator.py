@@ -34,6 +34,7 @@ from esolangs.generation.helpers import (
     subtree_slot,
 )
 from esolangs.generation.wrap import _six_five
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -580,10 +581,12 @@ def _six_five_const(value: int) -> str:
 LANGUAGE = Language(
     "6-5",
     RuntimeSpec("six_five", category="tape_based"),
-    boolean=six_five,
+    backend=BooleanBackend(
+        generate=six_five,
+        # 7n/8n are two-character tokens; see ``_SIX_FIVE_COMMAND``.
+        wrap=_six_five,
+    ),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    # 7n/8n are two-character tokens; see ``_SIX_FIVE_COMMAND``.
-    wrap=_six_five,
 )

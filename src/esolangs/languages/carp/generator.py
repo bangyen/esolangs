@@ -28,6 +28,7 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 from esolangs.runtime.source_hints import with_hint
@@ -145,7 +146,7 @@ LANGUAGE = Language(
         category="register_based",
         empty_program="a program needs at least one instruction",
     ),
-    boolean=carp,
-    generator_max_inputs=MAX_INPUTS,
-    no_wrap="a line break ends an instruction",
+    backend=BooleanBackend(
+        generate=carp, max_inputs=MAX_INPUTS, no_wrap="a line break ends an instruction"
+    ),
 )

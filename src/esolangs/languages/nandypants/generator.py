@@ -26,6 +26,7 @@ from heapq import heapify, heappop, heappush
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.languages.nandypants.proof_formulas import workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -183,9 +184,11 @@ def nandypants(truth_table: str) -> str:
 LANGUAGE = Language(
     "Nandypants",
     RuntimeSpec("nandypants", category="tape_based"),
-    boolean=nandypants,
+    backend=BooleanBackend(
+        generate=nandypants,
+        no_wrap="a line break inside a label would split one number into two",
+    ),
     contract=BooleanContract(input_shape="char_stream"),
-    no_wrap="a line break inside a label would split one number into two",
     certification=CertificationSpec(
         proof_workspace=(workspace, False, (3, 4, 5, 6, 7))
     ),

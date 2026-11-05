@@ -43,6 +43,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.languages.ascenic.proof_formulas import workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -188,7 +189,8 @@ def ascenic(truth_table: str) -> str:
 LANGUAGE = Language(
     "Ascenic",
     RuntimeSpec("ascenic", category="stack_based", random=True),
-    boolean=ascenic,
-    no_wrap="a line's length is its opcode and argument",
+    backend=BooleanBackend(
+        generate=ascenic, no_wrap="a line's length is its opcode and argument"
+    ),
     certification=CertificationSpec(proof_workspace=(workspace, True, (3, 4, 5, 6, 7))),
 )

@@ -38,7 +38,7 @@ _LANGUAGES_DIR = pathlib.Path(esolangs.__file__).parent / "languages"
 
 def _generated() -> list[str]:
     """Return every language with a Boolean generator, sorted."""
-    return sorted(name for name, lang in LANGUAGES.items() if lang.boolean)
+    return sorted(name for name, lang in LANGUAGES.items() if lang.backend)
 
 
 def _files(name: str) -> list[pathlib.Path]:
@@ -59,8 +59,8 @@ def _capped(name: str) -> bool:
     lang = LANGUAGES[name]
     source = "".join(path.read_text() for path in _files(name))
     return bool(
-        lang.generator_max_inputs
-        or lang.generator_restrictions
+        lang.backend.max_inputs
+        or lang.backend.restrictions
         or "GeneratorCapError" in source
     )
 

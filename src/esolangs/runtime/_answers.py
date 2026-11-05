@@ -52,14 +52,14 @@ def encode_inputs(
             f"there is nothing to encode; pass the bits to instantiate() "
             f"instead"
         )
-    if lang.boolean is None:
+    if lang.backend is None:
         # Deadfish, HQ9+ and Nope. have no input instruction; the registry's
         # default contract encoded ``"1\n0\n"`` for them all the same.
         raise ArgumentError(f"{name} reads no stdin, so there is nothing to encode")
     # As in ``instantiate``: a 2 or a "1" is not caught downstream; it
     # encodes as a 1 and the program silently answers another row.
     bits = check_bits(bits, "bits")
-    if truth_table is not None and lang.boolean is not None:
+    if truth_table is not None and lang.backend is not None:
         check_table_text(truth_table)
         arity = _validate_truth_table(truth_table)
         if len(bits) != arity:

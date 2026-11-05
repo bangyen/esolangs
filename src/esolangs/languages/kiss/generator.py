@@ -19,6 +19,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import wrap_chars
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -64,7 +65,6 @@ LANGUAGE = Language(
         category="other",
         empty_program="a Kiss program needs at least one combinator",
     ),
-    boolean=kiss,
+    backend=BooleanBackend(generate=kiss, wrap=wrap_chars),
     contract=BooleanContract(input_shape="char_stream"),
-    wrap=wrap_chars,
 )

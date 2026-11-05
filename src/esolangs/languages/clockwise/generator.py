@@ -32,8 +32,9 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 # The ring's own columns: 3 descends at the start, 2 climbs into the first
@@ -566,9 +567,14 @@ LANGUAGE = Language(
         split=True,
         empty_program="Clockwise program cannot be empty",
     ),
-    boolean=clockwise,
-    # Not a tree: a countdown stops on the entry's own column.
-    shape=Shape.LOOKUP,
+    backend=BooleanBackend(
+        generate=clockwise,
+        # Not a tree: a countdown stops on the entry's own column.
+        shape=Shape.LOOKUP,
+        balance=_balance,
+        no_wrap="a row is a ring row; the walk's turns sit at fixed cells",
+        grid=True,
+    ),
     contract=BooleanContract(
         input_shape="char_stream_cyclic",
         note="Clockwise reads all its input bits in one go, so they go "
@@ -577,7 +583,4 @@ LANGUAGE = Language(
         "but is on the output side. A line per bit, or a packed one, "
         "is read as a different row and answered wrongly",
     ),
-    balance=_balance,
-    no_wrap="a row is a ring row; the walk's turns sit at fixed cells",
-    grid=True,
 )

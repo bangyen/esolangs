@@ -18,6 +18,7 @@ Decisions:
 """
 
 from esolangs.generation.helpers import subtree_ids
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -54,8 +55,9 @@ def basicer(truth_table: str) -> str:
 LANGUAGE = Language(
     "BASICER",
     RuntimeSpec("basicer", category="program_based"),
-    boolean=basicer,
+    backend=BooleanBackend(
+        generate=basicer, no_wrap="each line is one instruction and a break splits it"
+    ),
     contract=BooleanContract(alphabet=("1", "2")),
     example=Example(expected="0\n"),
-    no_wrap="each line is one instruction and a break splits it",
 )

@@ -44,8 +44,9 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import wrap_tokens
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 #: One instruction and its separator; a break after ``;`` is whitespace.
@@ -199,13 +200,15 @@ LANGUAGE = Language(
         category="register_based",
         empty_program="a Blindfolded Arithmetic program needs at least one instruction",
     ),
-    boolean=blindfolded_arithmetic,
+    backend=BooleanBackend(
+        generate=blindfolded_arithmetic,
+        wrap=_wrap,
+        # No flow control: the table is data, indexed by arithmetic, not a tree.
+        shape=Shape.LOOKUP,
+    ),
     contract=BooleanContract(
         input_shape="row_number",
         note="the input must be a positive integer, so the committed input is "
         "the row index plus one",
     ),
-    wrap=_wrap,
-    # No flow control: the table is data, indexed by arithmetic, not a tree.
-    shape=Shape.LOOKUP,
 )

@@ -36,6 +36,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.shared_block import repeated_block, repeated_blocks
 from esolangs.generation.shared_flag import FlagDialect, flag_tree_body
 from esolangs.generation.wrap import wrap_chars
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -121,7 +122,6 @@ def qrain(truth_table: str) -> str:
 LANGUAGE = Language(
     "Qrain",
     RuntimeSpec("qrain", category="queue_based", eof="EOF supplies byte 0"),
-    boolean=qrain,
+    backend=BooleanBackend(generate=qrain, wrap=wrap_chars),
     contract=BooleanContract(input_shape="char_stream"),
-    wrap=wrap_chars,
 )

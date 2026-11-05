@@ -20,6 +20,7 @@ from esolangs.generation.wrap import (
     wrap_tokens,
 )
 from esolangs.registry import LANGUAGES, canonical_id
+from esolangs.registry._backend import BooleanBackend
 from tests.support.divergence import diverges, terminates
 from tests.support.generator_support import CHECK
 from tests.support.witness_tables import parity
@@ -56,7 +57,11 @@ NARROW_WIDTH = 13
 # subtrees.  What this table says is only that :func:`wrap_program` must
 # not touch the finished text -- the reasons above are why a break is
 # destructive, and those hold whatever the generator learns to do.
-UNWRAPPABLE = {lang.id: lang.no_wrap for lang in LANGUAGES.values() if lang.no_wrap}
+UNWRAPPABLE = {
+    lang.id: lang.backend.no_wrap
+    for lang in LANGUAGES.values()
+    if lang.backend is not None and lang.backend.no_wrap
+}
 
 # language-owners: ["Dig", "LaserFuck", "Streetcode"]
 # These are 2D too, and wrap_program must not touch them either -- but each
@@ -75,7 +80,7 @@ UNWRAPPABLE = {lang.id: lang.no_wrap for lang in LANGUAGES.values() if lang.no_w
 WIDTH_HONOURING = sorted(
     lang.id
     for lang in LANGUAGES.values()
-    if lang.boolean is not None and takes_width(lang.boolean)
+    if lang.backend is not None and takes_width(lang.backend.generate)
 )
 
 # language-owners: ["6-5"]
@@ -91,9 +96,9 @@ EXAMPLE_BY_ID = {
 WRAPPED = sorted(
     name
     for name, lang in LANGUAGES.items()
-    if lang.boolean
+    if lang.backend is not None
     and lang.runtime.interpreter
-    and lang.wrap is not None
+    and lang.backend.wrap is not None
     and lang.id in EXAMPLE_BY_ID
 )
 
@@ -109,7 +114,7 @@ def _wrapper_witnesses() -> list[str]:
     chosen = []
     for name in WRAPPED:
         example = EXAMPLE_BY_ID[LANGUAGES[name].id]
-        key = (LANGUAGES[name].wrap, example.fill is None)
+        key = (LANGUAGES[name].backend.wrap, example.fill is None)
         if takes_width(example.generator) or key not in seen:
             seen.add(key)
             chosen.append(name)
@@ -121,10 +126,10 @@ def test_every_generator_has_a_width_policy() -> None:
     missing = {
         language.id
         for language in LANGUAGES.values()
-        if language.boolean is not None
-        and language.wrap is None
-        and not takes_width(language.boolean)
-        and not language.no_wrap.strip()
+        if language.backend is not None
+        and language.backend.wrap is None
+        and not takes_width(language.backend.generate)
+        and not language.backend.no_wrap.strip()
     }
     assert not missing, f"{sorted(missing)} have no width policy; {CHECK}"
 
@@ -141,7 +146,7 @@ def _stdin(name: str) -> str:
 
 def _is_grid(name: str) -> bool:
     """Whether ``name``'s wrapper lays its tokens out as a padded grid."""
-    return LANGUAGES[name].wrap is wrap_grid
+    return LANGUAGES[name].backend.wrap is wrap_grid
 
 
 def _run(name: str, program: str) -> str:
@@ -160,7 +165,7 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
     if takes_width(example.generator):
         plain = example.build(width)
         wrapped = wrap_program(plain, LANGUAGES[name].id, max(1, width // 2))
-        same_layout = LANGUAGES[name].same_layout
+        same_layout = LANGUAGES[name].backend.same_layout
         if same_layout is not None:
             assert same_layout(wrapped, plain, example.build)
         elif name in {"FRACTRAN", "RAM0"}:
@@ -175,7 +180,7 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
         # A program short enough to need no break is left alone; there is
         # nothing to undo.
         return
-    same_layout = LANGUAGES[name].same_layout
+    same_layout = LANGUAGES[name].backend.same_layout
     if same_layout is not None:
         assert same_layout(wrapped, plain, lambda width: _example(name).build(width))
         return
@@ -196,7 +201,7 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
         assert wrapped.split() == plain.split()
         return
     # Structural wrappers preserve the first line while reflowing commands.
-    if LANGUAGES[name].wrap_multiline and "\n" in plain:
+    if LANGUAGES[name].backend.wrap_multiline and "\n" in plain:
         seed, _, rest = wrapped.partition("\n")
         plain_seed, _, plain_rest = plain.partition("\n")
         assert seed == plain_seed
@@ -217,7 +222,7 @@ def test_every_wrapper_actually_fires(name: str) -> None:
     raw = example.build(width=None)
     if any(example.build(width) != raw for width in (40, 1)):
         return
-    structural = LANGUAGES[name].wrap_multiline
+    structural = LANGUAGES[name].backend.wrap_multiline
     for arity in range(1, 5):
         grown = _grown(name, parity(arity), None)
         # A newline disqualifies a grown program only where it means layout.
@@ -381,7 +386,9 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
 
 def test_unwrappable_languages_have_no_wrapper() -> None:
     assert all(
-        lang.wrap is None for lang in LANGUAGES.values() if lang.id in UNWRAPPABLE
+        lang.backend.wrap is None
+        for lang in LANGUAGES.values()
+        if lang.id in UNWRAPPABLE
     )
 
 
@@ -395,9 +402,7 @@ def test_multiline_reflow_follows_registry_metadata(monkeypatch, structural) -> 
     language = replace(
         next(iter(LANGUAGES.values())),
         id="synthetic",
-        wrap=wrapper,
-        no_wrap="",
-        wrap_multiline=structural,
+        backend=BooleanBackend(generate=str, wrap=wrapper, wrap_multiline=structural),
     )
     monkeypatch.setattr(registry, "LANGUAGES", {language.name: language})
     source = "first\nsecond"

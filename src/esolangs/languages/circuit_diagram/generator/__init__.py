@@ -62,6 +62,7 @@ from esolangs.languages.circuit_diagram.generator.layout import (
     _resolve_order,
 )
 from esolangs.languages.circuit_diagram.proof_formulas import workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
@@ -811,11 +812,9 @@ LANGUAGE = Language(
         proof_workspace=(workspace, False, (3, 6)),
     ),
     example=Example(slow_build=True),
-    boolean=circuit_diagram,
+    backend=BooleanBackend(generate=circuit_diagram, balance=_balance, grid=True),
     contract=BooleanContract(
         input_shape="char_stream",
         ignores_whitespace=True,
     ),
-    balance=_balance,
-    grid=True,
 )

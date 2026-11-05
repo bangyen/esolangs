@@ -28,6 +28,7 @@ Decisions:
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.hot.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -104,9 +105,8 @@ LANGUAGE = Language(
         eof="the stream past the input string is 0 bits",
         empty_program="a Hot program needs at least one combinator",
     ),
-    boolean=hot,
+    backend=BooleanBackend(generate=hot, wrap=wrap_chars),
     contract=BooleanContract(input_shape="char_stream"),
-    wrap=wrap_chars,
     certification=CertificationSpec(
         proof_execution=(execution, True, (1, 2, 3, 6)),
         proof_workspace=(workspace, True, (2, 3, 6)),

@@ -215,7 +215,7 @@ def construction_symbols(path: Path, root: Path, symbol: str) -> set[str]:
 @cache
 def generator_symbols(name: str) -> set[str]:
     """Return the generator and its statically referenced construction symbols."""
-    fn = LANGUAGES[name].boolean
+    fn = LANGUAGES[name].backend.generate
     assert fn is not None
     source = inspect.getsourcefile(fn)
     assert source is not None

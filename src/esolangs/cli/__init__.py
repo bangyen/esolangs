@@ -98,8 +98,8 @@ def _encode(rest: list[str]) -> None:
 
 #: ``list``'s filters; every other fact is in ``list --json --details``.
 _FLAG_FILTERS: dict[str, Callable[[Language], bool]] = {
-    "--generator": lambda lang: lang.boolean is not None,
-    "--interpreter-only": lambda lang: lang.boolean is None,
+    "--generator": lambda lang: lang.backend is not None,
+    "--interpreter-only": lambda lang: lang.backend is None,
 }
 
 
@@ -250,8 +250,9 @@ def _eaten_width_note(before: list[str]) -> str:
 
 def _layout_ignored(language: str, *, balance: bool) -> bool:
     """Whether ``--width``/``--balance`` cannot change ``language``'s layout."""
+    backend = LANGUAGES[resolve(language)].backend
     return describe(language)["width_effect"] == "none" and not (
-        balance and LANGUAGES[resolve(language)].balance is not None
+        balance and backend is not None and backend.balance is not None
     )
 
 

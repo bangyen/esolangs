@@ -11,7 +11,7 @@ from urllib.parse import quote
 from esolangs.exceptions import TemplateError, UnknownLanguageError
 from esolangs.generation.helpers import MOST_INPUTS, Setters, mark_runs, runs, unmark
 from esolangs.generation.wrap import wrap_program
-from esolangs.registry._language import TemplateSpec
+from esolangs.registry._backend import TemplateSpec
 from esolangs.registry._slug import SUGGESTION_CUTOFF, canonical_id
 from esolangs.registry._table import LANGUAGES, Generator, Language, SourceKind
 
@@ -42,9 +42,9 @@ __all__ = [
 # sweep skip sixteen boolean generators silently, which is how one
 # language's input count survived; one map leaves no wrong pick.
 BY_BOOLEAN: dict[str, Language] = {
-    lang.boolean.__name__: lang
+    lang.backend.generate.__name__: lang
     for lang in LANGUAGES.values()
-    if lang.boolean is not None
+    if lang.backend is not None
 }
 
 # Display name -> (interpreter module, split lines).
@@ -56,9 +56,9 @@ RUNNERS: dict[str, tuple[str, bool]] = {
 
 # Public workflows select by capability.
 GENERATORS = {
-    name: generator
+    name: lang.backend.generate
     for name, lang in LANGUAGES.items()
-    if (generator := lang.boolean) is not None
+    if lang.backend is not None
 }
 INTERPRETERS = {
     name: f"esolangs.languages.{lang.id}.interpreter"
@@ -99,7 +99,10 @@ def template_char(language_id: str) -> str | None:
 def _template(language_id: str) -> TemplateSpec | None:
     """Return a backend's input binding declaration using the existing id index."""
     name = _BY_ID.get(language_id)
-    return None if name is None else LANGUAGES[name].template
+    if name is None:
+        return None
+    backend = LANGUAGES[name].backend
+    return None if backend is None else backend.template
 
 
 def template_setters(language_id: str, template: str, n: int) -> Setters:

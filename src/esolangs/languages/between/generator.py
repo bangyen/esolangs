@@ -27,6 +27,7 @@ from esolangs.generation.helpers import (
     short_name,
     subtree_ids,
 )
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
@@ -136,6 +137,7 @@ def between(truth_table: str) -> str:
 LANGUAGE = Language(
     "Between",
     RuntimeSpec("between", category="register_based"),
-    boolean=between,
-    no_wrap="each line is one instruction and a break splits it",
+    backend=BooleanBackend(
+        generate=between, no_wrap="each line is one instruction and a break splits it"
+    ),
 )

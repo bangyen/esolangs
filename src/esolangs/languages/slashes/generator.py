@@ -38,9 +38,10 @@ from esolangs.generation.helpers import (
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, _tokens, balance_score
 from esolangs.languages.slashes.proof_formulas import workspace
+from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape, TemplateSpec
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 #: Binary to unary, most significant bit first: the row as that many ``*``.
@@ -156,15 +157,17 @@ LANGUAGE = Language(
     RuntimeSpec("slashes", category="program_based", path_like_source=True),
     id="slashes",
     aliases=("Slashalash",),
-    boolean=slashes,
-    # Not a tree: an indexed table rewrite.
-    shape=Shape.LOOKUP,
+    backend=BooleanBackend(
+        generate=slashes,
+        # Not a tree: an indexed table rewrite.
+        shape=Shape.LOOKUP,
+        no_wrap="newlines are literal output and substitution data",
+        wrap_balance=_balance,
+        template=TemplateSpec(pair=("a", "b"), unfilled=_is_unfilled_template),
+    ),
     contract=BooleanContract(
         note="Inputs fill the binary row index before unary selection; "
         "constant tables parse the input letters as a nonmatching rule pattern.",
     ),
-    no_wrap="newlines are literal output and substitution data",
-    wrap_balance=_balance,
     certification=CertificationSpec(proof_workspace=(workspace, True, (1, 2, 3, 5))),
-    template=TemplateSpec(pair=("a", "b"), unfilled=_is_unfilled_template),
 )

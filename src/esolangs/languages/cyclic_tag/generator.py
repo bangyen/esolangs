@@ -26,9 +26,10 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.cyclic_tag.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape, TemplateSpec
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 #: One bit of the initial data-string, so an input's run is one TEMPLATE_CHAR.
@@ -76,16 +77,18 @@ LANGUAGE = Language(
         category="queue_based",
         empty_program="Cyclic tag requires productions,queue using bits and semicolons",
     ),
-    boolean=cyclic_tag,
-    # A positional production walk, not a tree of callable residuals.
-    shape=Shape.LOOKUP,
+    backend=BooleanBackend(
+        generate=cyclic_tag,
+        # A positional production walk, not a tree of callable residuals.
+        shape=Shape.LOOKUP,
+        wrap=wrap_chars,
+        template=TemplateSpec(pair=PAIR),
+    ),
     contract=BooleanContract(
         note="Inputs fill the initial queue; the final deleted bit is the answer.",
     ),
-    wrap=wrap_chars,
     certification=CertificationSpec(
         proof_execution=(execution, True, (1, 2, 3, 5)),
         proof_workspace=(workspace, True, (1, 2, 3, 5)),
     ),
-    template=TemplateSpec(pair=PAIR),
 )

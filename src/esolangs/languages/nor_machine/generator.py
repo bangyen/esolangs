@@ -29,8 +29,9 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.nor_machine.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 
@@ -203,12 +204,14 @@ LANGUAGE = Language(
         eof="every input is enqueued first, so a short input is a shorter queue",
         empty_program="a program with no command loops forever",
     ),
-    boolean=nor_machine,
+    backend=BooleanBackend(
+        generate=nor_machine,
+        # Not a tree: Horner's rule packs every row of the essential-input table.
+        shape=Shape.LOOKUP,
+        wrap=wrap_chars,
+    ),
     certification=CertificationSpec(
         proof_execution=(execution, False, (1, 2, 3, 5)),
         proof_workspace=(workspace, False, (1, 2, 3, 5)),
     ),
-    # Not a tree: Horner's rule packs every row of the essential-input table.
-    shape=Shape.LOOKUP,
-    wrap=wrap_chars,
 )

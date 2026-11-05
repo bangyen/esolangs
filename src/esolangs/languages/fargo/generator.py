@@ -48,6 +48,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.fargo.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -456,14 +457,16 @@ LANGUAGE = Language(
     RuntimeSpec(
         "fargo", category="other", eof="the interpreter reads before the program starts"
     ),
-    boolean=fargo,
+    backend=BooleanBackend(
+        generate=fargo,
+        balance=_balance,
+        no_wrap="each physical line is one command; expressions have no continuation",
+    ),
     contract=BooleanContract(
         input_shape="row_index",
         note="Fargo reads one number whose bits are the inputs, so the "
         "committed input is the row index rather than a bit per line",
     ),
-    balance=_balance,
-    no_wrap="each physical line is one command; expressions have no continuation",
     certification=CertificationSpec(
         # Fargo reads one *number* before the program starts, not a bit per
         # line, and ``@ k`` indexes that number's bits.  The boolean

@@ -29,9 +29,10 @@ from esolangs.generation.helpers import (
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.super_snusp.proof_formulas import commands
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["super_snusp"]
@@ -270,14 +271,16 @@ LANGUAGE = Language(
         split=True,
         empty_program="Super SNUSP program cannot be empty",
     ),
-    boolean=super_snusp,
-    # A sum, not a tree: a lookup over the essential inputs only.
-    shape=Shape.REDUCING,
+    backend=BooleanBackend(
+        generate=super_snusp,
+        # A sum, not a tree: a lookup over the essential inputs only.
+        shape=Shape.REDUCING,
+        balance=_balance,
+        no_wrap="a row is a grid row; a break moves code, it does not reflow",
+        grid=True,
+    ),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    balance=_balance,
-    no_wrap="a row is a grid row; a break moves code, it does not reflow",
-    grid=True,
     certification=CertificationSpec(proof_execution=(commands, True, (1, 2, 3, 5, 6))),
 )

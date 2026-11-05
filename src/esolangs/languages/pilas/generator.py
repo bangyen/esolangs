@@ -22,6 +22,7 @@ Decisions:
 from functools import cache
 
 from esolangs.generation.helpers import _validate_truth_table, constant_span_test
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -83,7 +84,9 @@ def pilas(truth_table: str) -> str:
 LANGUAGE = Language(
     "Pilas",
     RuntimeSpec("pilas", category="stack_based"),
-    boolean=pilas,
+    backend=BooleanBackend(
+        generate=pilas,
+        no_wrap="a newline starts line two, which runs a different stack",
+    ),
     contract=BooleanContract(input_shape="char_stream"),
-    no_wrap="a newline starts line two, which runs a different stack",
 )

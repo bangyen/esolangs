@@ -91,6 +91,7 @@ Decisions:
 """
 
 from esolangs.registry._language import Language
+from esolangs.registry._backend import BooleanBackend
 from esolangs.runtime._definition import RuntimeSpec
 from esolangs.generation.helpers import _validate_truth_table
 
@@ -104,15 +105,16 @@ def {slug}(truth_table: str) -> str:
 # RuntimeSpec owns split=True if run() takes source lines, eof="..." for an
 # EOF value, empty_program="..." for an empty-source error, and random=True
 # for random instructions. Language owns contract=BooleanContract(...) for
-# input other than one 0/1 line per input (CONTRIBUTING's Boolean I/O contract),
-# wrap=wrap_chars (esolangs.generation.wrap) if a newline anywhere is harmless,
+# input other than one 0/1 line per input (CONTRIBUTING's Boolean I/O contract).
+# BooleanBackend owns wrap=wrap_chars if a newline anywhere is harmless,
 # else no_wrap="<why a break changes the program>";
 # a generator taking a width needs balance=, picking its squarest regime;
 # template=TemplateSpec(pair=PAIR) for embedded inputs, and
-# example=Example(expected=...) when the 0,1 row's output is not a bare "0" (a
+# Language owns example=Example(expected=...) when the output is not "0" (a
 # trailing newline, a dump).
 LANGUAGE = Language(
-    "{name}", RuntimeSpec("{slug}", category="{category}"), boolean={slug}
+    "{name}", RuntimeSpec("{slug}", category="{category}"),
+    backend=BooleanBackend(generate={slug}),
 )
 '''
 
@@ -239,7 +241,8 @@ def _unregistered(name: str, slug: str) -> list[Gap]:
         Gap(
             str(generator.relative_to(ROOT)),
             f'end it with LANGUAGE = Language("{name}", RuntimeSpec("{slug}"), '
-            f"boolean={slug}); add split=True inside RuntimeSpec only if "
+            f"backend=BooleanBackend(generate={slug})); "
+            "add split=True inside RuntimeSpec only if "
             "run() takes list[str], "
             "one string per source line, and contract=BooleanContract(...) if "
             "its programs do not read one 0/1 line per input "
@@ -253,7 +256,7 @@ def _registered_generator(name: str) -> bool:
     from esolangs.registry import LANGUAGES
 
     lang = LANGUAGES.get(name)
-    return lang is not None and lang.boolean is not None
+    return lang is not None and lang.backend is not None
 
 
 def _common_gaps(name: str, module: str) -> list[Gap]:
@@ -329,9 +332,9 @@ def _generator_gaps(lang: Language) -> list[Gap]:
     from esolangs.generation.wrap import takes_width
     from esolangs.languages import generators
 
-    assert lang.boolean is not None
-    gen = lang.boolean.__name__
-    module_rel = lang.boolean.__module__.replace(".", "/")
+    assert lang.backend is not None
+    gen = lang.backend.generate.__name__
+    module_rel = lang.backend.generate.__module__.replace(".", "/")
     base = ROOT / f"src/{module_rel}"
     source = _source_file(base) or base / "__init__.py"
     source_rel = str(source.relative_to(ROOT))
@@ -356,8 +359,8 @@ def _generator_gaps(lang: Language) -> list[Gap]:
                 "`python scripts/docs/generate.py docs` to regenerate the exports",
             )
         )
-    width = takes_width(lang.boolean)
-    if not width and lang.wrap is None and not lang.no_wrap:
+    width = takes_width(lang.backend.generate)
+    if not width and lang.backend.wrap is None and not lang.backend.no_wrap:
         gaps.append(
             Gap(
                 source_rel,
@@ -367,7 +370,7 @@ def _generator_gaps(lang: Language) -> list[Gap]:
                 'would change the program as no_wrap="..."',
             )
         )
-    if width and lang.balance is None:
+    if width and lang.backend.balance is None:
         gaps.append(
             Gap(
                 source_rel,
@@ -427,7 +430,7 @@ def check(name: str) -> list[Gap]:
     if lang is None:
         return _unregistered(name, canonical_id(name))
     gaps = _common_gaps(name, lang.runtime.interpreter or "")
-    if lang.boolean is not None:
+    if lang.backend is not None:
         gaps += _generator_gaps(lang)
     return gaps
 
@@ -447,7 +450,7 @@ def quick_tests(name: str) -> list[str]:
     its formula rows at their smallest arity, and the docstring conventions.
     """
     from esolangs.registry import LANGUAGES, example_stems
-    from esolangs.registry._language import Shape
+    from esolangs.registry._backend import Shape
 
     lang = LANGUAGES[name]
     nodes = [
@@ -469,7 +472,7 @@ def quick_tests(name: str) -> list[str]:
         "tests/interpreters/test_transition_purity.py"
         f"::test_interpreter_core_is_pure_for_its_sample[{name}]",
     ]
-    if lang.boolean is None:
+    if lang.backend is None:
         return _escaped(nodes)
     nodes += [
         "tests/proofs/test_ledger.py",
@@ -492,7 +495,7 @@ def quick_tests(name: str) -> list[str]:
         nodes.append(
             catalogue + f"test_an_ignored_input_costs_under_half_a_real_one[{name}]"
         )
-    if lang.shape is not Shape.LOOKUP:
+    if lang.backend.shape is not Shape.LOOKUP:
         # A tree generator must fold an input the table ignores.
         nodes.append(
             "tests/generators/test_boolean_contract.py"
@@ -544,8 +547,8 @@ def sources(name: str) -> list[str]:
         if lang.runtime.interpreter
         else []
     )
-    if lang.boolean is not None:
-        modules.append(lang.boolean.__module__)
+    if lang.backend is not None:
+        modules.append(lang.backend.generate.__module__)
     found = []
     for module in dict.fromkeys(modules):
         base = ROOT / "src" / module.replace(".", "/")
@@ -592,9 +595,10 @@ def size_anchors(name: str) -> list[str]:
     import esolangs
     from esolangs.registry import LANGUAGES
 
-    boolean = LANGUAGES[name].boolean
-    if boolean is None:
+    backend = LANGUAGES[name].backend
+    if backend is None:
         return []
+    boolean = backend.generate
     doc = inspect.cleandoc(importlib.import_module(boolean.__module__).__doc__ or "")
     sections = importlib.import_module("tests.generators.generator_sections")
     named_table = sections.named_table

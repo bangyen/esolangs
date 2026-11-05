@@ -31,7 +31,8 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import wrap_space_delimited
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._backend import BooleanBackend, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 #: Bits packed by one sentence; bounds the parser's nesting.
@@ -167,7 +168,7 @@ LANGUAGE = Language(
         category="stack_based",
         empty_program="Shakespeare line 1: empty play",
     ),
-    boolean=shakespeare,
-    shape=Shape.LOOKUP,
-    wrap=wrap_space_delimited,
+    backend=BooleanBackend(
+        generate=shakespeare, shape=Shape.LOOKUP, wrap=wrap_space_delimited
+    ),
 )

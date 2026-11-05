@@ -25,13 +25,13 @@ def test_certification_facts_have_one_owner():
 @pytest.mark.parametrize("language", languages(boolean_generator=True))
 def test_clearing_certification_preserves_generated_source(language, monkeypatch):
     original = LANGUAGES[language]
-    module = importlib.import_module(original.boolean.__module__)
+    module = importlib.import_module(original.backend.generate.__module__)
     assert module.LANGUAGE is original
     before = esolangs.dump_program(language, esolangs.generate(language, "01"))
     changed = replace(original, certification=CertificationSpec())
     assert changed.runtime is original.runtime
-    assert changed.boolean is original.boolean
-    assert changed.template is original.template
+    assert changed.backend.generate is original.backend.generate
+    assert changed.backend.template is original.backend.template
     monkeypatch.setitem(LANGUAGES, language, changed)
     monkeypatch.setattr(module, "LANGUAGE", changed)
     after = esolangs.dump_program(language, esolangs.generate(language, "01"))

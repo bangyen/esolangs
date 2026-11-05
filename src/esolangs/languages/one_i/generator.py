@@ -31,6 +31,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.one_i.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -143,8 +144,7 @@ def _parity_reader(t: str, used: list[int], n: int) -> str | None:
 LANGUAGE = Language(
     "1 + i",
     RuntimeSpec("one_i", category="stack_based"),
-    boolean=one_i,
-    wrap=wrap_chars,
+    backend=BooleanBackend(generate=one_i, wrap=wrap_chars),
     certification=CertificationSpec(
         proof_execution=(execution, True, (1, 2, 3, 5, 6)),
         proof_workspace=(workspace, True, (2, 3, 4, 5, 6, 7, 8, 9)),

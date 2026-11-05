@@ -205,7 +205,7 @@ def _iter_evaluate(
                 return instantiator(name, cast("str", program), bits), ""
             # A language with no generator reads no stdin at all.
             return program, (
-                encode_inputs(name, bits) if LANGUAGES[name].boolean is not None else ""
+                encode_inputs(name, bits) if LANGUAGES[name].backend is not None else ""
             )
 
         try:

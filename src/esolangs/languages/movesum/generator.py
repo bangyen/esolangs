@@ -23,7 +23,8 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.registry._language import Example, Language, Shape
+from esolangs.registry._backend import BooleanBackend, Shape
+from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
 
 #: Cells: 0 sum/test, 1/2/3/4 addends (4 stays 0), 5 V,
@@ -61,9 +62,11 @@ LANGUAGE = Language(
         eof="a read at EOF is 0",
         empty_program="Movesum program is empty",
     ),
-    boolean=movesum,
-    # Not a tree: one rung per row, whatever the table says.
-    shape=Shape.LOOKUP,
+    backend=BooleanBackend(
+        generate=movesum,
+        # Not a tree: one rung per row, whatever the table says.
+        shape=Shape.LOOKUP,
+        no_wrap="each line is one instruction and a break splits it",
+    ),
     example=Example(expected="0 0"),
-    no_wrap="each line is one instruction and a break splits it",
 )

@@ -25,6 +25,7 @@ Decisions:
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import wrap_chars
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -86,7 +87,7 @@ LANGUAGE = Language(
         random=True,
         eof="the whole input is read once as the initial stack; no read meets EOF",
     ),
-    boolean=caballo,
+    backend=BooleanBackend(generate=caballo, wrap=wrap_chars),
     contract=BooleanContract(
         answer_mode="dump",
         answer_pattern=r"^(\[\]|\[1\])$",
@@ -94,6 +95,5 @@ LANGUAGE = Language(
         note="Caballo reads its inputs as the initial stack, the first on "
         "top, and prints the surviving stack: [1] for one, [] for zero",
     ),
-    wrap=wrap_chars,
     example=Example(expected="[]"),
 )

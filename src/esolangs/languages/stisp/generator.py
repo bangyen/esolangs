@@ -33,9 +33,10 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import TokenWrapper
 from esolangs.languages.stisp.proof_formulas import workspace
+from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, TemplateSpec
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 #: Each input is one atom, ``0`` or ``1``, inside its frame.
@@ -105,14 +106,14 @@ LANGUAGE = Language(
         category="other",
         empty_program="a Stisp program needs a stack expression",
     ),
-    boolean=stisp,
+    backend=BooleanBackend(
+        generate=stisp, wrap=TokenWrapper(_TOKEN), template=TemplateSpec(pair=PAIR)
+    ),
     contract=BooleanContract(
         answer_mode="dump",
         note="Stisp has no input or output: each input is the atom 0 or 1 "
         "in the template, and the result printed at halt is the answer atom",
     ),
-    wrap=TokenWrapper(_TOKEN),
-    template=TemplateSpec(pair=PAIR),
     certification=CertificationSpec(
         proof_workspace=(workspace, False, (3, 4, 5, 6, 7))
     ),

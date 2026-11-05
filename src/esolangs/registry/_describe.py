@@ -14,6 +14,7 @@ from esolangs.registry import (
     resolve,
     wiki_url,
 )
+from esolangs.registry._backend import Shape
 from esolangs.registry._contracts import (
     AnswerMode,
     GeneratorShape,
@@ -23,7 +24,6 @@ from esolangs.registry._contracts import (
     StateModel,
     WidthEffect,
 )
-from esolangs.registry._language import Shape
 from esolangs.runtime._execution import interpreter_module
 from esolangs.settings import DialectOption, dialect_choices
 from esolangs.vm import machine_traits
@@ -160,7 +160,8 @@ def describe(language: str) -> LanguageInfo:
     contract = lang.contract
     width_effect = _width_effect(lang)
     scaling = _SCALING.get(lang.id)
-    generates = lang.boolean is not None
+    backend = lang.backend
+    generates = backend is not None
     reads_input = generates and not parameterized
     return {
         "name": name,
@@ -169,12 +170,14 @@ def describe(language: str) -> LanguageInfo:
         "id": lang.id,
         "source_kind": lang.runtime.source_kind.value,
         "state_model": _STATE_MODELS[lang.runtime.category],
-        "shape": lang.shape.value if generates else None,
+        "shape": backend.shape.value if backend is not None else None,
         "boolean_generator": generates,
         "generator_scaling": scaling,
         "proof_status": _proof_status(scaling) if scaling is not None else None,
-        "generator_max_inputs": lang.generator_max_inputs,
-        "generator_restrictions": lang.generator_restrictions or None,
+        "generator_max_inputs": backend.max_inputs if backend is not None else None,
+        "generator_restrictions": (backend.restrictions or None)
+        if backend is not None
+        else None,
         "parameterized": parameterized,
         "reads_input": reads_input,
         "width_effect": width_effect,
@@ -200,10 +203,12 @@ def describe(language: str) -> LanguageInfo:
 
 def _width_effect(lang: Language) -> WidthEffect:
     """Return ``"layout"`` (a shape built to fit), ``"wrap"`` or ``"none"``."""
-    generator = lang.boolean
-    if generator is not None and _takes_width(generator):
+    backend = lang.backend
+    if backend is None:
+        return "none"
+    if _takes_width(backend.generate):
         return "layout"
-    return "wrap" if lang.wrap is not None else "none"
+    return "wrap" if backend.wrap is not None else "none"
 
 
 def _spec(language: str) -> str:

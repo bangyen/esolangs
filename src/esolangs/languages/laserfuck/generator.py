@@ -39,6 +39,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.languages.laserfuck.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
@@ -884,18 +885,16 @@ def balance_laserfuck(table: str, default: str) -> str:
 LANGUAGE = Language(
     "LaserFuck",
     RuntimeSpec("laserfuck", category="grid_based", random=True, split=True),
-    boolean=laserfuck,
+    backend=BooleanBackend(generate=laserfuck, balance=balance_laserfuck, grid=True),
     contract=BooleanContract(
         answer_mode="dump",
         note="the initial heading is random by spec, so the example pins "
         "the source it is drawn from: seed 0 draws heading 3",
         input_shape="char_stream",
     ),
-    balance=balance_laserfuck,
     certification=CertificationSpec(
         proof_execution=(execution, True, (5, 6, 7)),
         proof_workspace=(workspace, True, (5, 6, 7)),
     ),
     example=Example(expected="0", kwargs=(("seed", 0),)),
-    grid=True,
 )

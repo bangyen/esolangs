@@ -18,7 +18,7 @@ import pytest
 import esolangs
 from esolangs.generation.helpers import essential_inputs
 from esolangs.registry import LANGUAGES
-from esolangs.registry._language import Shape
+from esolangs.registry._backend import Shape
 from scripts.docs.catalogue import load as _catalogue_load
 from scripts.source_units import source_units
 from tests.generators.source_support import generator_symbols as _source
@@ -40,7 +40,7 @@ def _tree_generators() -> set[str]:
     return {
         name
         for name, lang in LANGUAGES.items()
-        if lang.boolean is not None and lang.shape is Shape.TREE
+        if lang.backend is not None and lang.backend.shape is Shape.TREE
     }
 
 
@@ -59,7 +59,7 @@ def _blocks(n: int, seed: int) -> tuple[str, str]:
 
 
 def _ratios(name: str, n: int):
-    build = LANGUAGES[name].boolean
+    build = LANGUAGES[name].backend.generate
     assert build is not None
     yield source_units(build(parity(n))) / source_units(build(dense(n)))
     pairs = [_blocks(n, seed) for seed in range(8)]

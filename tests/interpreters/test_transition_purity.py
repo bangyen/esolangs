@@ -213,7 +213,7 @@ def test_purity_audit_detects_mutation_and_effects(tmp_path: Path, tree: str) ->
 @pytest.mark.parametrize("language", sorted(LANGUAGES))
 def test_interpreter_core_is_pure_for_its_sample(language: str) -> None:
     program, stdin = SAMPLES[language]
-    if program == "" and LANGUAGES[language].boolean is not None:
+    if program == "" and LANGUAGES[language].backend is not None:
         program = esolangs.generate(language, "01")
         stdin = encode_inputs(language, (0,), truth_table="01")
     vm = make_vm(language, program, stdin=stdin)

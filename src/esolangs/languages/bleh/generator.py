@@ -23,6 +23,7 @@ from string import ascii_letters
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import TokenWrapper
 from esolangs.languages.bleh.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -103,9 +104,8 @@ LANGUAGE = Language(
         underfed_raises=True,
         empty_program="a Bleh program needs a main function",
     ),
-    boolean=bleh,
+    backend=BooleanBackend(generate=bleh, wrap=TokenWrapper(_TOKEN)),
     contract=BooleanContract(input_shape="char_stream"),
-    wrap=TokenWrapper(_TOKEN),
     certification=CertificationSpec(
         proof_workspace=(workspace, False, (3, 4, 5, 6, 7)),
         proof_execution=(execution, True, (1, 2, 3, 6)),

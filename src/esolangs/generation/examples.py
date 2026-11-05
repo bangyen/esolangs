@@ -275,17 +275,17 @@ def _register() -> None:
     # Everything an example needs is in its ``LANGUAGE``: the registry facts
     # ``_reader`` takes, backend bindings, and the committed invocation.
     for lang in LANGUAGES.values():
-        if lang.boolean is None or lang.runtime.interpreter is None:
+        if lang.backend is None or lang.runtime.interpreter is None:
             continue
         spec = lang.example
-        if lang.template is not None:
+        if lang.backend.template is not None:
             example = _embedded(
-                cast(Callable[[str], str], lang.boolean),
+                cast(Callable[[str], str], lang.backend.generate),
                 lang.runtime.interpreter,
                 table=spec.table,
                 bits=spec.bits,
-                setters=lang.template.bindings,
-                char=lang.template.char,
+                setters=lang.backend.template.bindings,
+                char=lang.backend.template.char,
                 expected=spec.expected,
                 split=lang.runtime.split,
                 kwargs=spec.kwargs,
@@ -293,7 +293,7 @@ def _register() -> None:
         else:
             stdin = encode_inputs(lang.name, spec.bits, truth_table=spec.table)
             example = _reader(
-                lang.boolean,
+                lang.backend.generate,
                 lang.runtime.interpreter,
                 table=spec.table,
                 inputs=(stdin,)

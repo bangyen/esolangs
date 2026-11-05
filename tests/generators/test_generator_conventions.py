@@ -59,9 +59,9 @@ def test_boolean_generators_take_a_truth_table() -> None:
 @pytest.mark.parametrize(
     ("name", "cap"),
     [
-        (name, lang.generator_max_inputs)
+        (name, lang.backend.max_inputs)
         for name, lang in LANGUAGES.items()
-        if lang.generator_max_inputs is not None
+        if lang.backend is not None and lang.backend.max_inputs is not None
     ],
 )
 def test_declared_arity_cap_is_enforced(name, cap) -> None:
@@ -70,11 +70,11 @@ def test_declared_arity_cap_is_enforced(name, cap) -> None:
 
 
 @pytest.mark.parametrize(
-    "name", sorted(name for name, lang in LANGUAGES.items() if lang.boolean)
+    "name", sorted(name for name, lang in LANGUAGES.items() if lang.backend)
 )
 def test_structured_witnesses_build_at_the_arity_cap(name) -> None:
     """Up to the cap (or 11), structured tables build or refuse by contract."""
-    inputs = min(LANGUAGES[name].generator_max_inputs or 11, 11)
+    inputs = min(LANGUAGES[name].backend.max_inputs or 11, 11)
     for table in witnesses(inputs)[:-1]:  # the random witness is priced per language
         with contextlib.suppress(esolangs.GeneratorCapError):
             esolangs.generate(name, table)
@@ -90,17 +90,17 @@ def test_a_generator_that_can_refuse_declares_its_limit() -> None:
     """A ``GeneratorCapError`` a caller can see is in ``describe``."""
     undeclared = []
     for name, lang in LANGUAGES.items():
-        if lang.boolean is None or name in _INTERNAL_CAPS:
+        if lang.backend is None or name in _INTERNAL_CAPS:
             continue
-        module = Path(inspect.getfile(lang.boolean))
+        module = Path(inspect.getfile(lang.backend.generate))
         files = module.parent.glob("*.py") if module.stem == "__init__" else [module]
         refuses = any("GeneratorCapError(" in f.read_text("utf-8") for f in files)
-        declared = lang.generator_max_inputs or lang.generator_restrictions
+        declared = lang.backend.max_inputs or lang.backend.restrictions
         if refuses and not declared:
             undeclared.append(name)
     assert not undeclared, (
-        f"{undeclared} raise GeneratorCapError; set generator_max_inputs= or "
-        "generator_restrictions= in its LANGUAGE"
+        f"{undeclared} raise GeneratorCapError; set max_inputs= or "
+        "restrictions= in its BooleanBackend"
     )
 
 
@@ -111,7 +111,8 @@ def test_a_generator_that_can_refuse_declares_its_limit() -> None:
         {
             name
             for name, lang in LANGUAGES.items()
-            if lang.generator_max_inputs or lang.generator_restrictions
+            if lang.backend is not None
+            and (lang.backend.max_inputs or lang.backend.restrictions)
         }
         | _INTERNAL_CAPS
     ),
@@ -130,10 +131,12 @@ def test_restricted_generators_have_executed_positive_controls(name) -> None:
 def test_list_exposes_limits_in_both_formats(capsys) -> None:
     text = call_main(["list", "--details"], capsys)
     for lang in LANGUAGES.values():
-        if lang.generator_max_inputs is not None:
-            assert f"max-inputs={lang.generator_max_inputs}" in text, lang.name
-        if lang.generator_restrictions:
-            assert lang.generator_restrictions in " ".join(text.split()), lang.name
+        if lang.backend is None:
+            continue
+        if lang.backend.max_inputs is not None:
+            assert f"max-inputs={lang.backend.max_inputs}" in text, lang.name
+        if lang.backend.restrictions:
+            assert lang.backend.restrictions in " ".join(text.split()), lang.name
     out = call_main(["list", "--details", "--json"], capsys)
     for row in json.loads(out):
         facts = esolangs.describe(row["name"])

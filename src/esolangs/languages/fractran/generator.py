@@ -37,9 +37,10 @@ from esolangs.generation.wrap import (
 )
 from esolangs.languages.fractran.interpreter.index import SMALL_BASE
 from esolangs.languages.fractran.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, TemplateSpec
+from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
 
 #: How each input is set: the exponent of its prime in the starting value.
@@ -218,8 +219,15 @@ LANGUAGE = Language(
         category="register_based",
         empty_program="a FRACTRAN program needs a starting value",
     ),
-    boolean=fractran,
-    same_layout=_same_layout,
+    backend=BooleanBackend(
+        generate=fractran,
+        same_layout=_same_layout,
+        # Whitespace- or comma-separated tokens, and a break inside one would
+        # change a number.
+        wrap=wrap_space_delimited,
+        balance=_balance,
+        template=TemplateSpec(pair=PAIR),
+    ),
     contract=BooleanContract(
         answer_mode="dump",
         answer_values=("1", "2"),
@@ -227,11 +235,6 @@ LANGUAGE = Language(
         "exponents of n primes in the starting value, and the answer "
         "is the value the run stops on -- 1 for a zero and 2 for a one",
     ),
-    # Whitespace- or comma-separated tokens, and a break inside one would
-    # change a number.
-    wrap=wrap_space_delimited,
-    balance=_balance,
-    template=TemplateSpec(pair=PAIR),
     example=Example(expected="1"),
     certification=CertificationSpec(
         proof_execution=(execution, True, (3, 5)),

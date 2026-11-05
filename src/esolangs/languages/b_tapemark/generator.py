@@ -39,8 +39,9 @@ from esolangs.languages.b_tapemark.interpreter import (
     SWAP_MARKERS,
     validate_swap_marker,
 )
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 #: The stage, row by row, with its run of ``|`` left out.  The two ``*``
@@ -486,12 +487,14 @@ LANGUAGE = Language(
         dialect_values={"swap_marker": SWAP_MARKERS},
         empty_program="B-tapemark program needs exactly one start marker",
     ),
-    boolean=b_tapemark,
-    # Not a tree: the table copied onto the grid, one mark per row.
-    shape=Shape.LOOKUP,
+    backend=BooleanBackend(
+        generate=b_tapemark,
+        # Not a tree: the table copied onto the grid, one mark per row.
+        shape=Shape.LOOKUP,
+        balance=_balance,
+        grid=True,
+    ),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    balance=_balance,
-    grid=True,
 )

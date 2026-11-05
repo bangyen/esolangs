@@ -34,6 +34,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.cvnc.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -408,9 +409,11 @@ LANGUAGE = Language(
     RuntimeSpec("cvnc", category="other", empty_program="program is empty"),
     # The parentheses mark optional slots; the language is written as one word.
     id="cvnc",
-    boolean=cvnc,
-    # LF-only source-format deviation: discard breaks before parsing or addressing.
-    wrap=wrap_chars,
+    backend=BooleanBackend(
+        generate=cvnc,
+        # LF-only source-format deviation: discard breaks before parsing or addressing.
+        wrap=wrap_chars,
+    ),
     certification=CertificationSpec(
         proof_execution=(execution, False, (3, 5)),
         proof_workspace=(workspace, True, (4, 6)),

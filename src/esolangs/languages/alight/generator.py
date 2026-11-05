@@ -36,9 +36,10 @@ from esolangs.languages.alight.interpreter._dialect import (
     list_update as validate_list_update,
 )
 from esolangs.languages.alight.proof_formulas import workspace
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["alight"]
@@ -587,13 +588,15 @@ LANGUAGE = Language(
         underfed_raises=True,
         empty_program="empty program",
     ),
-    boolean=alight,
-    # Not a tree: a Horner row index into a string literal.
-    shape=Shape.LOOKUP,
+    backend=BooleanBackend(
+        generate=alight,
+        # Not a tree: a Horner row index into a string literal.
+        shape=Shape.LOOKUP,
+        balance=balance_alight,
+        no_wrap="a command is a word walked cell by cell; a row end cuts it",
+    ),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    balance=balance_alight,
-    no_wrap="a command is a word walked cell by cell; a row end cuts it",
     certification=CertificationSpec(proof_workspace=(workspace, True, (3, 5))),
 )

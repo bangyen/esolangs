@@ -20,6 +20,7 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -105,7 +106,9 @@ def iebel(truth_table: str) -> str:
 LANGUAGE = Language(
     "IEBEL",
     RuntimeSpec("iebel", category="register_based"),
-    boolean=iebel,
+    backend=BooleanBackend(
+        generate=iebel,
+        no_wrap="each line is one instruction; a break splits its fields",
+    ),
     contract=BooleanContract(input_shape="char_stream"),
-    no_wrap="each line is one instruction; a break splits its fields",
 )

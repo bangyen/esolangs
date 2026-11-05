@@ -19,6 +19,7 @@ Decisions:
 from functools import cache
 
 from esolangs.generation.helpers import _validate_truth_table, constant_span_test
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
@@ -56,6 +57,8 @@ def lol_waht_i_cant_edit_talk_pages(truth_table: str) -> str:
 LANGUAGE = Language(
     "lol waht i cant edit talk pages",
     RuntimeSpec("lol_waht_i_cant_edit_talk_pages", category="variable_based"),
-    boolean=lol_waht_i_cant_edit_talk_pages,
-    no_wrap="every statement is one line, so a break splits a command",
+    backend=BooleanBackend(
+        generate=lol_waht_i_cant_edit_talk_pages,
+        no_wrap="every statement is one line, so a break splits a command",
+    ),
 )

@@ -26,6 +26,7 @@ from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.token_balance import CELL_ASPECT, balanced_token_width
 from esolangs.generation.wrap import wrap_space_delimited
 from esolangs.languages.quassaunt.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -183,11 +184,13 @@ def _balance(_table: str, default: str) -> str:
 LANGUAGE = Language(
     "Quassaunt",
     RuntimeSpec("quassaunt", category="stack_based"),
-    boolean=quassaunt,
+    backend=BooleanBackend(
+        generate=quassaunt,
+        # Whitespace separates words and a word holds none, so break only there.
+        wrap=wrap_space_delimited,
+        balance=_balance,
+    ),
     contract=BooleanContract(input_shape="char_stream"),
-    # Whitespace separates words and a word holds none, so break only there.
-    wrap=wrap_space_delimited,
-    balance=_balance,
     certification=CertificationSpec(
         proof_execution=(execution, True, (3, 6)),
         proof_workspace=(workspace, True, (3, 4, 5, 6)),

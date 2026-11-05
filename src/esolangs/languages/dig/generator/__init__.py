@@ -60,6 +60,7 @@ from esolangs.languages.dig.generator._leaf import (
 )
 from esolangs.languages.dig.generator._shared import _dig_indexed_shared
 from esolangs.languages.dig.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -596,11 +597,9 @@ LANGUAGE = Language(
         split=True,
         empty_program="Dig program cannot be empty",
     ),
-    boolean=dig,
-    balance=_balance,
+    backend=BooleanBackend(generate=dig, balance=_balance, grid=True),
     certification=CertificationSpec(
         proof_execution=(execution, False, (7, 8, 9, 10, 11, 12)),
         proof_workspace=(workspace, True, (5,)),
     ),
-    grid=True,
 )

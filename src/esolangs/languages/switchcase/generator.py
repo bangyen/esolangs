@@ -23,9 +23,10 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.languages.switchcase.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 
@@ -95,10 +96,12 @@ def _diagram(n: int, essential: list[int], table: str) -> str:
 LANGUAGE = Language(
     "SwitchCase",
     RuntimeSpec("switchcase", category="variable_based"),
-    boolean=switchcase,
-    shape=Shape.TREE,
+    backend=BooleanBackend(
+        generate=switchcase,
+        shape=Shape.TREE,
+        no_wrap="a line is one arm, and a case's arms follow its $ line",
+    ),
     contract=BooleanContract(input_shape="char_stream"),
-    no_wrap="a line is one arm, and a case's arms follow its $ line",
     certification=CertificationSpec(
         proof_execution=(execution, True, (3, 5)),
         proof_workspace=(workspace, False, (3, 5)),

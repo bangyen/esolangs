@@ -49,9 +49,10 @@ from esolangs.languages.rotfuck.interpreter import (
     validate_rotation,
 )
 from esolangs.languages.rotfuck.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["rotfuck"]
@@ -453,13 +454,15 @@ LANGUAGE = Language(
         dialect=_dialect,
         dialect_values={"rotation": ROTATIONS},
     ),
-    boolean=rotfuck,
-    # A sum, not a tree: a lookup over the essential inputs only.
-    shape=Shape.REDUCING,
+    backend=BooleanBackend(
+        generate=rotfuck,
+        # A sum, not a tree: a lookup over the essential inputs only.
+        shape=Shape.REDUCING,
+        wrap=wrap_chars,
+    ),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    wrap=wrap_chars,
     certification=CertificationSpec(
         # Retain the even scaling rungs across bias phases; parity now measures
         # 285/339/390 chars there ([ablations.constant_runs_by_multiplication]).

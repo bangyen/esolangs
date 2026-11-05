@@ -37,8 +37,9 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.wrap import balance_score
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 
@@ -310,13 +311,15 @@ LANGUAGE = Language(
         eof="an exhausted 'i' is the spec's -1",
         empty_program="Fish program cannot be empty",
     ),
-    boolean=fish,
-    # Not a tree: an indexed table read.
-    shape=Shape.LOOKUP,
+    backend=BooleanBackend(
+        generate=fish,
+        # Not a tree: an indexed table read.
+        shape=Shape.LOOKUP,
+        balance=balance_fish,
+        no_wrap="a row is a codebox row and the lookup table is indexed by column",
+        grid=True,
+    ),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    balance=balance_fish,
-    no_wrap="a row is a codebox row and the lookup table is indexed by column",
-    grid=True,
 )

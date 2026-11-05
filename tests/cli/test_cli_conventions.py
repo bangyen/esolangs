@@ -10,6 +10,7 @@ import pytest
 import esolangs
 from esolangs.cli import HELP, USAGE
 from esolangs.registry import wiki_url
+from esolangs.registry._backend import BooleanBackend
 from esolangs.runtime._definition import RuntimeSpec
 from tests.support.cli_support import call_main
 from tests.support.pick import first
@@ -20,7 +21,7 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
 
     from esolangs.cli import help as help_module
     from esolangs.registry import Language
-    from esolangs.registry._language import TemplateSpec
+    from esolangs.registry._backend import TemplateSpec
 
     def build(table):
         return table
@@ -29,15 +30,16 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
         "Template Choice": Language(
             "Template Choice",
             RuntimeSpec("template_choice"),
-            boolean=build,
-            template=TemplateSpec(pair=("0", "1")),
+            backend=BooleanBackend(
+                generate=build, template=TemplateSpec(pair=("0", "1"))
+            ),
         ),
         "Dialect Choice": Language(
             "Dialect Choice",
             RuntimeSpec(
                 "dialect_choice", dialect_values={"mode": ("plain", "with spaces")}
             ),
-            boolean=build,
+            backend=BooleanBackend(generate=build),
         ),
     }
     monkeypatch.setattr(help_module, "LANGUAGES", languages)
@@ -51,14 +53,16 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
     # values has nothing to name: both are skipped rather than quoted.
     languages.clear()
     languages["Capped"] = Language(
-        "Capped", RuntimeSpec("capped"), boolean=build, generator_max_inputs=1
+        "Capped",
+        RuntimeSpec("capped"),
+        backend=BooleanBackend(generate=build, max_inputs=1),
     )
     assert help_module._capability_examples() == ("", "")
     languages.clear()
     languages["Empty Dialect"] = Language(
         "Empty Dialect",
         RuntimeSpec("empty_dialect", dialect_values={"mode": ()}),
-        boolean=build,
+        backend=BooleanBackend(generate=build),
     )
     assert help_module._capability_examples() == ("", "")
     languages.clear()

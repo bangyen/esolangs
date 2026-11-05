@@ -39,9 +39,10 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.a_painter_ant.proof_formulas import execution
+from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, Shape, TemplateSpec
+from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["a_painter_ant"]
@@ -155,9 +156,13 @@ def _westward_flipped(table: str, weights: list[int], *, invert: bool) -> str:
 LANGUAGE = Language(
     "A Painter Ant",
     RuntimeSpec("a_painter_ant", category="grid_based"),
-    boolean=a_painter_ant,
-    # Not a tree: one corridor cell per row, walked by the inputs' weights.
-    shape=Shape.LOOKUP,
+    backend=BooleanBackend(
+        generate=a_painter_ant,
+        # Not a tree: one corridor cell per row, walked by the inputs' weights.
+        shape=Shape.LOOKUP,
+        wrap=wrap_chars,
+        template=TemplateSpec(pair=PAIR),
+    ),
     contract=BooleanContract(
         answer_mode="dump",
         answer_pattern=r"(?m)^[.#o@]*([o@])[.#o@]*$",
@@ -166,8 +171,6 @@ LANGUAGE = Language(
         "is the colour of the cell the ant rests on, "
         "shown by 'o' (on black, a zero) or '@' (on white, a one)",
     ),
-    wrap=wrap_chars,
-    template=TemplateSpec(pair=PAIR),
     example=Example(expected="....\n####\n.o.#"),
     certification=CertificationSpec(proof_execution=(execution, True, (3, 6))),
 )

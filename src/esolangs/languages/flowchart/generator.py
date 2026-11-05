@@ -39,9 +39,10 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.flowchart.proof_formulas import workspace
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 # Fewest table rows a subtree must span for the stacked layout to draw it once.
@@ -990,13 +991,15 @@ LANGUAGE = Language(
         eof="reads at input nodes, including the constant skip chain",
         empty_program="Flowchart program has no '( )' start node",
     ),
-    boolean=flowchart,
-    # Not a tree: one deque push per entry.
-    shape=Shape.LOOKUP,
+    backend=BooleanBackend(
+        generate=flowchart,
+        # Not a tree: one deque push per entry.
+        shape=Shape.LOOKUP,
+        balance=_balance,
+        grid=True,
+    ),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    balance=_balance,
     certification=CertificationSpec(proof_workspace=(workspace, True, (3, 4, 5))),
-    grid=True,
 )

@@ -43,9 +43,10 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 #: Entries are ``a``/``b`` so a ``0``/``1`` input line is never mistaken for
@@ -505,15 +506,17 @@ LANGUAGE = Language(
         ),
     ),
     certification=CertificationSpec(reader_checked=True),
-    boolean=thue,
-    # Not a tree: the table is the state, and each read halves it.
-    shape=Shape.LOOKUP,
+    backend=BooleanBackend(
+        generate=thue,
+        # Not a tree: the table is the state, and each read halves it.
+        shape=Shape.LOOKUP,
+        balance=balance_thue,
+        no_wrap="a newline ends a rule, and the state's own newlines are part of it",
+    ),
     contract=BooleanContract(
         note="Thue draws which rewrite to make, by spec, and the "
         "interpreter draws too; this program's rules are written so that "
         "every state it reaches has exactly one, leaving the draw nothing "
         "to change",
     ),
-    balance=balance_thue,
-    no_wrap="a newline ends a rule, and the state's own newlines are part of it",
 )

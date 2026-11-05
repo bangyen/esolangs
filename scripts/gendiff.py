@@ -88,7 +88,10 @@ def _mutated(mutant: Path, name: str, scratch: Path) -> Path:
     """Copy the working ``src`` with the generator's module replaced by ``mutant``."""
     import esolangs.registry
 
-    module = esolangs.registry.LANGUAGES[name].boolean.__module__
+    backend = esolangs.registry.LANGUAGES[name].backend
+    if backend is None:
+        raise SystemExit(f"{name} has no Boolean generator")
+    module = backend.generate.__module__
     target = Path(importlib.import_module(module).__file__ or "")
     src = scratch / "src"
     shutil.copytree(ROOT / "src", src, ignore=shutil.ignore_patterns("__pycache__"))

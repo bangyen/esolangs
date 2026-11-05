@@ -34,6 +34,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.container.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -657,13 +658,15 @@ LANGUAGE = Language(
         # Wiki: the empty container sets IN "with EOF returning 0".
         eof="an exhausted read sets IN to the spec's 0",
     ),
-    boolean=container,
+    backend=BooleanBackend(
+        generate=container,
+        balance=balance_container,
+        no_wrap="each line declares a container or one of its rules",
+    ),
     contract=BooleanContract(
         note="Container prints the answer; module.run returns the EXIT code.",
         input_shape="char_stream",
     ),
-    balance=balance_container,
-    no_wrap="each line declares a container or one of its rules",
     certification=CertificationSpec(
         proof_execution=(execution, True, (3, 7)),
         proof_workspace=(workspace, False, (3, 7)),

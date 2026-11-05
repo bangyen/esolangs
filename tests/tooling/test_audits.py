@@ -17,7 +17,7 @@ def test_a_plain_rewrite_audit_names_a_generator() -> None:
     stray = [
         name
         for name, row in rows().items()
-        if "plain_rewrite" in row and LANGUAGES[name].boolean is None
+        if "plain_rewrite" in row and LANGUAGES[name].backend is None
     ]
     assert stray == []
 

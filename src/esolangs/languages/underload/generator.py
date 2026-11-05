@@ -46,8 +46,9 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import wrap_tokens
+from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, TemplateSpec
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 # A zero duplicates the returned bit, giving both selectors five characters.
@@ -201,10 +202,12 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
 LANGUAGE = Language(
     "Underload",
     RuntimeSpec("underload", category="stack_based"),
-    boolean=underload,
-    same_layout=_same_layout,
+    backend=BooleanBackend(
+        generate=underload,
+        same_layout=_same_layout,
+        balance=_balance,
+        no_wrap="a break inside a pushed element changes the string it contains",
+        template=TemplateSpec(setters=underload_setters),
+    ),
     contract=BooleanContract(),
-    balance=_balance,
-    no_wrap="a break inside a pushed element changes the string it contains",
-    template=TemplateSpec(setters=underload_setters),
 )

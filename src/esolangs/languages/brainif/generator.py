@@ -32,6 +32,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.languages.brainif.proof_formulas import workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -679,11 +680,13 @@ def _balance(_table: str, default: str) -> str:
 LANGUAGE = Language(
     "BrainIf",
     RuntimeSpec("brainif", category="tape_based", split=True),
-    boolean=brainif,
+    backend=BooleanBackend(
+        generate=brainif,
+        balance=_balance,
+        no_wrap="each line is one instruction and goto targets are line numbers",
+    ),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    balance=_balance,
-    no_wrap="each line is one instruction and goto targets are line numbers",
     certification=CertificationSpec(proof_workspace=(workspace, False, (3, 6))),
 )

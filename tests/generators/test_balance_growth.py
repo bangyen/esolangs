@@ -58,7 +58,7 @@ def _cases() -> list[object]:
             if _recorded(name, "open")
             else (),
         )
-        for name in sorted(name for name, lang in LANGUAGES.items() if lang.boolean)
+        for name in sorted(name for name, lang in LANGUAGES.items() if lang.backend)
     ]
 
 
@@ -70,8 +70,8 @@ def test_balanced_area_grows_about_linearly(name: str) -> None:
     no ``balance`` hook, whose layout the generator does not choose, and a
     recorded ``wall``: a line carries O(log T) bits, so area >= T**2/log**2 T."""
     language = LANGUAGES[name]
-    if language.no_wrap and language.balance is None:
-        pytest.skip(language.no_wrap)
+    if language.backend.no_wrap and language.backend.balance is None:
+        pytest.skip(language.backend.no_wrap)
     if wall := _recorded(name, "wall"):
         pytest.skip(wall)
     try:

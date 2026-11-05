@@ -42,6 +42,7 @@ from esolangs.generation.raster_lookup.balance import (
 )
 from esolangs.generation.raster_lookup.packing import _raster_score, smallest
 from esolangs.raster import Raster
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec, SourceKind
@@ -183,11 +184,10 @@ LANGUAGE = Language(
         source_kind=SourceKind.RASTER,
         eof="an exhausted input command is ignored, as the spec requires",
     ),
-    boolean=piet,
+    backend=BooleanBackend(generate=piet, balance=_balance),
     contract=BooleanContract(
         note="the committed example is drawn at 80 pixels per codel; "
         "generate draws 1 unless --scale says otherwise"
     ),
-    balance=_balance,
     example=Example(scale=80),
 )

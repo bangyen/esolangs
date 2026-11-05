@@ -27,9 +27,10 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
 from esolangs.languages.qoibl.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["qoibl"]
@@ -266,15 +267,17 @@ def balance_qoibl(table: str, default: str) -> str:
 LANGUAGE = Language(
     "Qoibl",
     RuntimeSpec("qoibl", category="register_based", split=True),
-    boolean=qoibl,
+    backend=BooleanBackend(
+        generate=qoibl,
+        # Not a tree: the table is one binary literal the reads divide down.
+        shape=Shape.LOOKUP,
+        balance=balance_qoibl,
+    ),
     certification=CertificationSpec(
         proof_execution=(execution, True, (1, 2, 3, 6)),
         proof_workspace=(workspace, True, (1, 2, 3, 6)),
     ),
-    # Not a tree: the table is one binary literal the reads divide down.
-    shape=Shape.LOOKUP,
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    balance=balance_qoibl,
 )

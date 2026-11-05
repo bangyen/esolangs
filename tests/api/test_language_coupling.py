@@ -216,12 +216,12 @@ def _own(lang: Language) -> tuple[set[str], tuple[str, ...]]:
         if lang.runtime.interpreter
         else []
     )
-    if lang.boolean is not None:
-        modules.append(lang.boolean.__module__.removesuffix(".__init__"))
+    if lang.backend is not None:
+        modules.append(lang.backend.generate.__module__.removesuffix(".__init__"))
     canonical = [m for m in modules if m.startswith("esolangs.languages.")]
     stems = {lang.id}
-    if lang.boolean is not None:
-        stems.add(lang.boolean.__name__)
+    if lang.backend is not None:
+        stems.add(lang.backend.generate.__name__)
     prefixes = [f"src/{m.replace('.', '/')}" for m in modules]
     prefixes.append(f"src/esolangs/languages/{lang.id}/")
     prefixes += [f"src/{m.split('.generator')[0].replace('.', '/')}" for m in canonical]

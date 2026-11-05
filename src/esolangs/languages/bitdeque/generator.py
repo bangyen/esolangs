@@ -37,9 +37,10 @@ from esolangs.generation.helpers import (
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens
 from esolangs.languages.bitdeque.proof_formulas import workspace
+from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, TemplateSpec
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["BITDEQUE_PAIR", "bitdeque", "bitdeque_setters"]
@@ -273,17 +274,19 @@ def _bitdeque_tokens(program: str) -> list[str]:
 LANGUAGE = Language(
     "Bitdeque",
     RuntimeSpec("bitdeque", category="queue_based"),
-    boolean=bitdeque,
-    same_layout=_same_layout,
+    backend=BooleanBackend(
+        generate=bitdeque,
+        same_layout=_same_layout,
+        # Space-delimited, but ``GOTO`` and its target must stay on one line.
+        wrap=_bitdeque,
+        balance=_balance,
+        template=TemplateSpec(setters=bitdeque_setters),
+    ),
     contract=BooleanContract(
         answer_mode="dump",
         note="Bitdeque has no output instruction and dumps its deque at "
         "halt; the generator leaves exactly one bit on it, so the "
         "whole dump is the answer and there is no position to name",
     ),
-    # Space-delimited, but ``GOTO`` and its target must stay on one line.
-    wrap=_bitdeque,
-    balance=_balance,
-    template=TemplateSpec(setters=bitdeque_setters),
     certification=CertificationSpec(proof_workspace=(workspace, True, (3, 4, 5, 6))),
 )

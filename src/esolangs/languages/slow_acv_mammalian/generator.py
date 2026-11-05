@@ -63,9 +63,10 @@ from esolangs.languages.slow_acv_mammalian.wrapping import (
     _balance_mammalian,
     _mammalian,
 )
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["slow_acv_mammalian"]
@@ -860,16 +861,18 @@ LANGUAGE = Language(
             "leapfrog_resume": LEAPFROG_RESUMES,
         },
     ),
-    boolean=slow_acv_mammalian,
-    # Not a tree: a branch-free chain into a flat leaf table.
-    shape=Shape.LOOKUP,
+    backend=BooleanBackend(
+        generate=slow_acv_mammalian,
+        # Not a tree: a branch-free chain into a flat leaf table.
+        shape=Shape.LOOKUP,
+        # Four-character cells align the ``SEED`` runs; longer words span cells.
+        wrap=_mammalian,
+        wrap_balance=_balance_mammalian,
+        same_layout=same_token_layout,
+    ),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    # Four-character cells align the ``SEED`` runs; longer words span cells.
-    wrap=_mammalian,
-    wrap_balance=_balance_mammalian,
-    same_layout=same_token_layout,
     certification=CertificationSpec(
         slow_width_sweep=True,
         proof_execution=(execution, False, (1, 2, 3, 4, 5, 6)),

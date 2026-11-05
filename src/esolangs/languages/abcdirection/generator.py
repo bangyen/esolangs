@@ -65,9 +65,10 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.abcdirection.proof_formulas import execution
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 RIGHT, DOWN, LEFT, UP = range(4)
@@ -505,11 +506,13 @@ LANGUAGE = Language(
         eof="EOF supplies zero bits",
         empty_program="program must contain a line with DDDDDD",
     ),
-    boolean=abcdirection,
-    shape=Shape.REDUCING,
-    balance=_balance,
+    backend=BooleanBackend(
+        generate=abcdirection,
+        shape=Shape.REDUCING,
+        balance=_balance,
+        no_wrap="a newline adds a grid row and moves every vertical path",
+        grid=True,
+    ),
     contract=BooleanContract(input_shape="char_stream"),
-    no_wrap="a newline adds a grid row and moves every vertical path",
     certification=CertificationSpec(proof_execution=(execution, True, (3, 7))),
-    grid=True,
 )

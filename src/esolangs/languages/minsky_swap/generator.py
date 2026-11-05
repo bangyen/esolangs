@@ -30,9 +30,10 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.minsky_swap.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, Shape, TemplateSpec
+from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["MINSKY_SWAP_PAIR", "minsky_swap", "minsky_swap_setters"]
@@ -226,18 +227,20 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
 LANGUAGE = Language(
     "Minsky Swap",
     RuntimeSpec("minsky_swap", category="register_based"),
-    boolean=minsky_swap,
-    same_layout=_same_layout,
-    # Not a tree: each input adds its weight; a ``~`` cascade picks one of two leaves.
-    shape=Shape.LOOKUP,
+    backend=BooleanBackend(
+        generate=minsky_swap,
+        same_layout=_same_layout,
+        # Each input adds its weight; a ``~`` cascade picks one of two leaves.
+        shape=Shape.LOOKUP,
+        balance=_balance,
+        no_wrap="only line 1 is code; line 2 gives its numeric jump distances",
+        template=TemplateSpec(setters=minsky_swap_setters),
+    ),
     contract=BooleanContract(
         answer_mode="dump",
         note="Minsky Swap has no output instruction and dumps its "
         "registers at halt; the answer is the second one",
     ),
-    balance=_balance,
-    no_wrap="only line 1 is code; line 2 gives its numeric jump distances",
-    template=TemplateSpec(setters=minsky_swap_setters),
     example=Example(expected="1 0"),
     certification=CertificationSpec(
         proof_execution=(execution, True, (3, 5)),

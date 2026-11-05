@@ -26,6 +26,7 @@ Decisions:
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.wrap import TokenWrapper
 from esolangs.languages.what.proof_formulas import workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -77,8 +78,10 @@ _wrap = TokenWrapper(r'\[(?:\d+>|"[01]+":)|\d+|[?!]+|[\s\S]')
 LANGUAGE = Language(
     "What!?",
     RuntimeSpec("what", category="tape_based", eof="a read at EOF yields 0"),
-    boolean=what,
-    # Whitespace only separates tokens, so a newline between two is harmless.
-    wrap=_wrap,
+    backend=BooleanBackend(
+        generate=what,
+        # Whitespace only separates tokens, so a newline between two is harmless.
+        wrap=_wrap,
+    ),
     certification=CertificationSpec(proof_workspace=(workspace, True, (3, 4, 5, 6))),
 )

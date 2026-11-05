@@ -28,6 +28,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
 )
 from esolangs.generation.wrap import _unlambda
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -138,9 +139,8 @@ LANGUAGE = Language(
         empty_program="an Unlambda program cannot be empty",
     ),
     certification=CertificationSpec(reader_checked=True),
-    boolean=unlambda,
+    backend=BooleanBackend(generate=unlambda, wrap=_unlambda),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    wrap=_unlambda,
 )

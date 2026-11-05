@@ -29,9 +29,10 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import _join_tokens, balance_score
 from esolangs.languages.intercal.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, TemplateSpec
+from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
 
 TEMPLATE_CHAR = "@"
@@ -474,15 +475,17 @@ LANGUAGE = Language(
         random=True,
         empty_program="INTERCAL program is insufficiently or excessively polite (E099)",
     ),
-    boolean=intercal,
-    same_layout=_same_layout,
+    backend=BooleanBackend(
+        generate=intercal,
+        same_layout=_same_layout,
+        balance=balance_intercal,
+        template=TemplateSpec(pair=PAIR, char=TEMPLATE_CHAR),
+    ),
     contract=BooleanContract(
         answer_pattern=r"(?s)^(_\n|I)\n$",
         answer_values=("_\n", "I"),
         note="INTERCAL READ OUT prints a lone overbar for zero and I for one",
     ),
-    balance=balance_intercal,
-    template=TemplateSpec(pair=PAIR, char=TEMPLATE_CHAR),
     example=Example(expected="_\n\n"),
     certification=CertificationSpec(
         proof_execution=(execution, True, (3, 4, 5, 6, 7, 8)),

@@ -27,6 +27,7 @@ from functools import cache
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import wrap_chars
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -88,7 +89,6 @@ def aprknia(truth_table: str) -> str:
 LANGUAGE = Language(
     "Aprknia",
     RuntimeSpec("aprknia", category="stack_based"),
-    boolean=aprknia,
+    backend=BooleanBackend(generate=aprknia, wrap=wrap_chars),
     contract=BooleanContract(input_shape="char_stream"),
-    wrap=wrap_chars,
 )

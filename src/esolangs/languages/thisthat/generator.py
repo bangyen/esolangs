@@ -32,6 +32,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.thisthat.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -853,17 +854,19 @@ LANGUAGE = Language(
         eof="an exhausted '◇' sends the spec's empty transfer",
         empty_program="thisthat needs at least one start node",
     ),
-    boolean=thisthat,
+    backend=BooleanBackend(
+        generate=thisthat,
+        balance=_balance,
+        no_wrap="the H-tree's nodes and wires occupy fixed grid coordinates",
+        grid=True,
+    ),
     contract=BooleanContract(
         input_shape="char_stream",
         ignores_whitespace=True,
         input_sets=True,
     ),
-    balance=_balance,
-    no_wrap="the H-tree's nodes and wires occupy fixed grid coordinates",
     certification=CertificationSpec(
         proof_execution=(execution, False, (3, 4)),
         proof_workspace=(workspace, False, (3, 5)),
     ),
-    grid=True,
 )

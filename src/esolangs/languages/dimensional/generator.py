@@ -40,8 +40,9 @@ from esolangs.generation.wrap import (
     wrap_program,
 )
 from esolangs.languages.dimensional.proof_formulas import workspace
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["dimensional"]
@@ -234,10 +235,12 @@ def _balance(table: str, default: str) -> str:
 LANGUAGE = Language(
     "Dimensional",
     RuntimeSpec("dimensional", category="tape_based"),
-    boolean=dimensional,
-    # Not a tree: one painted cell per entry along dimension 1.
-    shape=Shape.LOOKUP,
-    wrap=_dimensional,
-    balance=_balance,
+    backend=BooleanBackend(
+        generate=dimensional,
+        # Not a tree: one painted cell per entry along dimension 1.
+        shape=Shape.LOOKUP,
+        wrap=_dimensional,
+        balance=_balance,
+    ),
     certification=CertificationSpec(proof_workspace=(workspace, True, (3, 4))),
 )

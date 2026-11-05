@@ -296,13 +296,14 @@ def _generate_artifact(
         return _generate_balanced(language, truth_table, options, settings)
     resolved = resolve(language)
     lang = LANGUAGES[resolved]
-    fn = lang.boolean
-    if fn is None:
+    backend = lang.backend
+    if backend is None:
         # The language reads input but cannot meet the generator's size contract.
         raise ArgumentError(
             f"{resolved} has no boolean generator under this repository's "
             f"generator contracts. `esolangs list --details` marks it 'int'"
         )
+    fn = backend.generate
     check_table_text(truth_table)
     check_width(width)
     laid_out = width is not None and _takes_width(fn)
@@ -348,7 +349,9 @@ def _generate_balanced(
     source = default.source
     name = resolve(language)
     lang = LANGUAGES[name]
-    balancer = lang.balance
+    backend = lang.backend
+    assert backend is not None  # the default was generated above
+    balancer = backend.balance
     if isinstance(source, CompressedText):
         return ProgramArtifact(
             source.wrapped(max(1, isqrt(CELL_ASPECT * len(source)))), name, settings
@@ -393,8 +396,9 @@ def _is_template_for(
         return False
     if template == plain:
         return True
-    generator = LANGUAGES[name].boolean
-    width_aware = generator is not None and _takes_width(generator)
+    backend = LANGUAGES[name].backend
+    assert backend is not None  # generate above refuses absent backends
+    width_aware = _takes_width(backend.generate)
 
     @cache
     def layout(width: int) -> Program:
@@ -409,7 +413,7 @@ def _is_template_for(
     widest = max(map(len, template.splitlines()), default=0)
     if width_aware and widest and template == layout(widest):
         return True
-    same_layout = LANGUAGES[name].same_layout or (
+    same_layout = backend.same_layout or (
         lambda template, plain, _layout: same_up_to_wrapping(template, plain)
     )
     return same_layout(template, plain, layout)
@@ -641,7 +645,9 @@ def _check_runnable(language: str, program: Program) -> None:
         )
     char = template_char(LANGUAGES[name].id)
     if char is not None and char in program:
-        spec = LANGUAGES[name].template
+        backend = LANGUAGES[name].backend
+        assert backend is not None
+        spec = backend.template
         assert spec is not None  # template_char uses the same declaration
         unfilled = spec.unfilled
         if (

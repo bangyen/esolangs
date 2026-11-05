@@ -30,8 +30,9 @@ from esolangs.generation.helpers import (
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.befunge.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
-from esolangs.registry._language import Example, Language, Shape
+from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
 from esolangs.runtime.source_hints import with_hint
 
@@ -378,14 +379,16 @@ LANGUAGE = Language(
         proof_execution=(execution, True, (3, 9, 11)),
         proof_workspace=(workspace, True, (3, 9, 11)),
     ),
-    generator_max_inputs=MAX_INPUTS,
-    boolean=befunge,
-    # Not a tree: reads a packed grid cell with ``g``.
-    shape=Shape.LOOKUP,
-    balance=balance_befunge,
-    no_wrap="a row is a grid row and the lookup table is indexed by column",
+    backend=BooleanBackend(
+        max_inputs=MAX_INPUTS,
+        generate=befunge,
+        # Not a tree: reads a packed grid cell with ``g``.
+        shape=Shape.LOOKUP,
+        balance=balance_befunge,
+        no_wrap="a row is a grid row and the lookup table is indexed by column",
+        grid=True,
+    ),
     # ``.`` writes the digit and a trailing space, so the committed
     # answer carries it and the sweep strips it.
     example=Example(expected="0 "),
-    grid=True,
 )

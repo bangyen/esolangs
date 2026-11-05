@@ -44,9 +44,10 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
 from esolangs.languages.crement.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, TemplateSpec
+from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["crement"]
@@ -285,8 +286,13 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
 LANGUAGE = Language(
     "Crement",
     RuntimeSpec("crement", category="program_based"),
-    boolean=crement,
-    same_layout=_same_layout,
+    backend=BooleanBackend(
+        generate=crement,
+        same_layout=_same_layout,
+        balance=_balance,
+        no_wrap="jumps and patches name instruction numbers, so lines stay whole",
+        template=TemplateSpec(setters=crement_setters),
+    ),
     contract=BooleanContract(
         answer_mode="termination",
         answer_values=("halts", "diverges"),
@@ -294,9 +300,6 @@ LANGUAGE = Language(
         "per-input tester's jump targets, and the row lands past the "
         "end (halts, 0) or on a self-jump (diverges, 1)",
     ),
-    balance=_balance,
-    no_wrap="jumps and patches name instruction numbers, so lines stay whole",
-    template=TemplateSpec(setters=crement_setters),
     example=Example(expected=""),
     certification=CertificationSpec(
         proof_workspace=(workspace, False, (3, 6)),

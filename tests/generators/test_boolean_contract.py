@@ -11,7 +11,7 @@ import esolangs.languages.generators as boolean
 from esolangs.generation.helpers import essential_inputs
 from esolangs.raster import Raster
 from esolangs.registry import BY_BOOLEAN, INTERPRETERS, LANGUAGES
-from esolangs.registry._language import Shape
+from esolangs.registry._backend import Shape
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _BranchingStepMachine, run_until_halt, run_until_halt_or_cycle
 from scripts.docs.proof_status import load as _load_proof_status
@@ -138,7 +138,7 @@ def _exported_generators() -> dict[str, str]:
 def test_boolean_set_lists_exactly_the_exported_generators() -> None:
     """Registry declarations and package exports name the same generators."""
     exported = _exported_generators()
-    declared = {name for name, lang in LANGUAGES.items() if lang.boolean is not None}
+    declared = {name for name, lang in LANGUAGES.items() if lang.backend is not None}
     assert set(exported.values()) == declared
 
 
@@ -225,12 +225,12 @@ _PARITY = "01101001"
     sorted(
         name
         for name, lang in LANGUAGES.items()
-        if lang.boolean is not None and lang.shape is not Shape.LOOKUP
+        if lang.backend is not None and lang.backend.shape is not Shape.LOOKUP
     ),
 )
 def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
     """A tree folds a one-dependency table; a reducing sum drops its inputs."""
-    fn = LANGUAGES[name].boolean
+    fn = LANGUAGES[name].backend.generate
     assert fn is not None
     try:
         best = min(source_units(fn(table)) for table in _ONE_DEPENDENCY)
@@ -239,7 +239,7 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
         assert_proved_resource_cap(name)
         pytest.skip("fold probe exceeds a proved language resource cap")
     folds = 1 - best / parity
-    if LANGUAGES[name].shape is Shape.REDUCING:
+    if LANGUAGES[name].backend.shape is Shape.REDUCING:
         # The gain is real but is not a fold, so assert it from the other
         # direction: the saving must come from dropped inputs, which means a
         # table that depends on *every* input cannot be shortened at all.
@@ -254,7 +254,7 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
         f"{name} is a tree (the default shape) but folds only {folds:.1%} on "
         "a table that ignores inputs: fold equal subtrees, or declare "
         "shape=Shape.REDUCING or Shape.LOOKUP on its LANGUAGE, with the reason "
-        "(from esolangs.registry._language import Shape)"
+        "(from esolangs.registry._backend import Shape)"
     )
 
 
@@ -325,7 +325,7 @@ _EXEC_SHAPES = (("one_minterm", _one_minterm), ("one_hot", _one_hot))
 )
 @pytest.mark.parametrize(
     "name",
-    sorted(n for n in esolangs.list_languages() if LANGUAGES[n].boolean is not None),
+    sorted(n for n in esolangs.list_languages() if LANGUAGES[n].backend is not None),
 )
 @pytest.mark.slow
 def test_every_generator_runs_what_it_builds(
@@ -378,7 +378,7 @@ _LANGUAGE_SUPERLINEAR_SCALING = {
 _LINEAR_SCALING = sorted(
     name
     for name, lang in LANGUAGES.items()
-    if lang.boolean is not None and name not in _LANGUAGE_SUPERLINEAR_SCALING
+    if lang.backend is not None and name not in _LANGUAGE_SUPERLINEAR_SCALING
 )
 
 
@@ -394,7 +394,7 @@ _LINEAR_SCALING = sorted(
 def test_generators_scale_linearly(name: str) -> None:
     """Three same-parity rungs grow by four, whatever the prologue."""
     lang = LANGUAGES[name]
-    fn = lang.boolean
+    fn = lang.backend.generate
     assert fn is not None
     arities = lang.certification.scaling_rungs
     sizes = [source_units(fn(parity(n))) for n in arities]
@@ -437,7 +437,7 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
         (len(esolangs.generate(name, dense(9))), name)
         for name in esolangs.list_languages()
         if name not in _DOCUMENTED_SIZES
-        and LANGUAGES[name].boolean is not None
+        and LANGUAGES[name].backend is not None
         and not LANGUAGES[name].certification.benchmark_tables
         and esolangs.describe(name)["source_kind"] == "text"
     )

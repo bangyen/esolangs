@@ -99,6 +99,6 @@ def test_grid_sizes_are_cells() -> None:
     wrong = sorted(
         name
         for name, unit in _UNIT.items()
-        if LANGUAGES[name].grid != (unit == "cells")
+        if LANGUAGES[name].backend.grid != (unit == "cells")
     )
     assert not wrong, f"{wrong}: a grid states cells, any other source does not"

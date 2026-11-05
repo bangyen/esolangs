@@ -25,6 +25,7 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.wrap import wrap_chars
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -106,9 +107,8 @@ def unsquare(truth_table: str) -> str:
 LANGUAGE = Language(
     "Unsquare",
     RuntimeSpec("unsquare", category="stack_based"),
-    boolean=unsquare,
+    backend=BooleanBackend(generate=unsquare, wrap=wrap_chars),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    wrap=wrap_chars,
 )

@@ -152,7 +152,7 @@ class TestDescribe:
         signature = {
             name
             for name, lang in LANGUAGES.items()
-            if (generator := lang.boolean) is not None and takes_width(generator)
+            if lang.backend is not None and takes_width(lang.backend.generate)
         }
         assert aware == signature
         assert aware, "no generator lays itself out; the flag guards nothing"
@@ -495,7 +495,7 @@ def test_the_closed_string_sets_match_their_sources() -> None:
     from typing import get_args
 
     from esolangs.registry import _contracts, _describe
-    from esolangs.registry._language import Shape
+    from esolangs.registry._backend import Shape
     from esolangs.runtime._definition import SourceKind
     from esolangs.vm import IpShape
 

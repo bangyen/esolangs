@@ -18,6 +18,7 @@ Size:
 from esolangs.generation.helpers import _parity_bias, _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.nq.interpreter import GUARD_BINDINGS, guard_dialect
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -70,8 +71,7 @@ LANGUAGE = Language(
         dialect=guard_dialect,
         dialect_values={"guard_binding": GUARD_BINDINGS},
     ),
-    boolean=nq,
-    wrap=wrap_chars,
+    backend=BooleanBackend(generate=nq, wrap=wrap_chars),
     contract=BooleanContract(
         input_shape="char_stream",
         answer_pattern="([ #])",

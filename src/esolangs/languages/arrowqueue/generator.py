@@ -40,8 +40,9 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import balance_score
+from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, TemplateSpec
+from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
 
 #: Each input's cell: ``~`` pushes a down heading, ``.`` nothing.
@@ -313,7 +314,13 @@ def _balance(table: str, default: str) -> str:
 LANGUAGE = Language(
     "ArrowQueue",
     RuntimeSpec("arrowqueue", category="grid_based", split=True),
-    boolean=arrowqueue,
+    backend=BooleanBackend(
+        generate=arrowqueue,
+        balance=_balance,
+        no_wrap="the queue and decision tree occupy fixed grid coordinates",
+        template=TemplateSpec(pair=PAIR),
+        grid=True,
+    ),
     contract=BooleanContract(
         answer_mode="termination",
         answer_values=("halts", "diverges"),
@@ -323,9 +330,5 @@ LANGUAGE = Language(
         "queue dump, which the verdict does not read: the answer is "
         "that the program halted at all",
     ),
-    balance=_balance,
-    no_wrap="the queue and decision tree occupy fixed grid coordinates",
-    template=TemplateSpec(pair=PAIR),
     example=Example(expected=""),
-    grid=True,
 )

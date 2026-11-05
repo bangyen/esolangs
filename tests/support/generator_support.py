@@ -35,7 +35,7 @@ def assert_proved_resource_cap(name: str) -> None:
     assert row is not None
     assert row.totality == "Cap"
     assert row.output_size == "Language lower bound"
-    assert lang.generator_restrictions
+    assert lang.backend.restrictions
 
 
 def probe_table(name: str, default: str = "0110") -> str:
@@ -117,7 +117,7 @@ def assert_an_ignored_input_costs(name: str, n: int, cost: int) -> None:
     from esolangs.registry import LANGUAGES
 
     inner = "".join(str(int(row.bit_count() == 1)) for row in range(2**n))
-    build = LANGUAGES[name].boolean
+    build = LANGUAGES[name].backend.generate
     assert build is not None
     for at in (0, n // 2, n):
         low = n - at

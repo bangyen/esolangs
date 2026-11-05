@@ -33,6 +33,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import _bracket_literal
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
@@ -385,6 +386,5 @@ def _three_x_emit(
 LANGUAGE = Language(
     "3x",
     RuntimeSpec("three_x", category="stack_based"),
-    boolean=three_x,
-    wrap=_bracket_literal,
+    backend=BooleanBackend(generate=three_x, wrap=_bracket_literal),
 )

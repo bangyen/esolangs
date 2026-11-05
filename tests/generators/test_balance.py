@@ -22,7 +22,7 @@ from tests.support.witness_tables import row_bits
 _TEXT = [
     lang
     for lang in LANGUAGES.values()
-    if lang.boolean
+    if lang.backend is not None
     and lang.runtime.source_kind is SourceKind.TEXT
     and esolangs.describe(lang.name)["answer_mode"] == "output"
 ]
@@ -34,14 +34,15 @@ BALANCED = sorted(
         next(
             lang.name
             for lang in _TEXT
-            if lang.balance is None
-            and lang.wrap is not None
-            and lang.wrap is not wrap_chars
+            if lang.backend.balance is None
+            and lang.backend.wrap is not None
+            and lang.backend.wrap is not wrap_chars
         ),
         next(
             lang.name
             for lang in _TEXT
-            if lang.balance is not None and lang.balance.__name__ != "_balance"
+            if lang.backend.balance is not None
+            and lang.backend.balance.__name__ != "_balance"
         ),
         first(
             parameterized=True,
@@ -54,9 +55,10 @@ BALANCED = sorted(
 #: One language per token wrapper the global minimum is checked against.
 CELLED = list(
     {
-        lang.wrap: lang.id
+        lang.backend.wrap: lang.id
         for lang in LANGUAGES.values()
-        if lang.wrap in (wrap_space_delimited, wrap_grid)
+        if lang.backend is not None
+        and lang.backend.wrap in (wrap_space_delimited, wrap_grid)
     }.values()
 )
 

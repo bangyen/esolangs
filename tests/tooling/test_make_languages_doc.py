@@ -37,7 +37,7 @@ def test_readme_counts_match_the_registry() -> None:
     """The rendered counts are the registry's, not a hand-typed number."""
     module = load_script()
     examples = module.render_examples_section()
-    count = sum(lang.boolean is not None for lang in module.LANGUAGES.values())
+    count = sum(lang.backend is not None for lang in module.LANGUAGES.values())
     assert f"each of the {count}\nlanguages with a boolean" in examples
     assert f"  {count} of the" in module.render_boolean_count_section()
 
@@ -45,9 +45,9 @@ def test_readme_counts_match_the_registry() -> None:
 def test_generators_live_in_their_language_packages() -> None:
     module = load_script()
     for language in module.LANGUAGES.values():
-        if language.boolean is None:
+        if language.backend is None:
             continue
-        source = Path(language.boolean.__code__.co_filename).resolve()
+        source = Path(language.backend.generate.__code__.co_filename).resolve()
         home = REPO_ROOT / "src/esolangs/languages" / language.id / "generator"
         assert (
             source.is_relative_to(home.resolve())
@@ -248,7 +248,7 @@ def test_exports_use_the_canonical_generator_module(tmp_path) -> None:
     package.mkdir(parents=True)
     (package / "generator.py").write_text(
         "def fixture(table): return table\n"
-        "LANGUAGE = Language('Fixture', boolean=fixture)\n"
+        "LANGUAGE = Language('Fixture', backend=BooleanBackend(generate=fixture))\n"
     )
     assert declared(tmp_path) == [("esolangs.languages.fixture.generator", "fixture")]
 
@@ -259,7 +259,9 @@ def test_discovery_ignores_noncanonical_declarations(tmp_path) -> None:
     language = tmp_path / "src/esolangs/languages/fixture"
     package = language / "generator"
     package.mkdir(parents=True)
-    source = "LANGUAGE = Language('Fixture', boolean=fixture)\n"
+    source = (
+        "LANGUAGE = Language('Fixture', backend=BooleanBackend(generate=fixture))\n"
+    )
     (package / "__init__.py").write_text(source)
     (package / "helper.py").write_text(source)
     (language / "interpreter.py").write_text(source)

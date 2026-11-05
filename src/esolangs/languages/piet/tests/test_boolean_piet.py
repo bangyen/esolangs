@@ -184,7 +184,13 @@ def test_balance_raster_retains_layout(monkeypatch: pytest.MonkeyPatch) -> None:
 
     from esolangs.registry import LANGUAGES
 
-    monkeypatch.setitem(LANGUAGES, "Piet", replace(LANGUAGES["Piet"], balance=None))
+    monkeypatch.setitem(
+        LANGUAGES,
+        "Piet",
+        replace(
+            LANGUAGES["Piet"], backend=replace(LANGUAGES["Piet"].backend, balance=None)
+        ),
+    )
     default = esolangs.generate("Piet", "0110")
     balanced = esolangs.generate("Piet", "0110", balance=True)
     assert isinstance(default, esolangs.Raster)

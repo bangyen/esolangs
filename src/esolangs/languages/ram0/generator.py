@@ -28,9 +28,10 @@ from esolangs.generation.helpers import (
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
 from esolangs.languages.ram0.proof_formulas import workspace
+from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, TemplateSpec
+from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
 
 #: A fixed Z precedes each slot; the one-command pair selects zero or one.
@@ -258,19 +259,21 @@ def _balance(_table: str, default: str) -> str:
 LANGUAGE = Language(
     "RAM0",
     RuntimeSpec("ram0", category="register_based"),
-    boolean=ram0,
-    same_layout=same_token_layout,
+    backend=BooleanBackend(
+        generate=ram0,
+        same_layout=same_token_layout,
+        # Multi-character tokens (``vs``, ``0b1``, ``L C 19``); space is the
+        # only safe break.
+        wrap=wrap_space_delimited,
+        balance=_balance,
+        template=TemplateSpec(pair=PAIR),
+    ),
     contract=BooleanContract(
         answer_mode="dump",
         answer_pattern=r"z: (\d+)",
         note="RAM0 has no output instruction and dumps its whole state "
         "at halt; the answer is the 'z' register",
     ),
-    # Multi-character tokens (``vs``, ``0b1``, ``L C 19``); space is the
-    # only safe break.
-    wrap=wrap_space_delimited,
-    balance=_balance,
-    template=TemplateSpec(pair=PAIR),
     example=Example(expected="z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}"),
     certification=CertificationSpec(proof_workspace=(workspace, True, (3, 6))),
 )

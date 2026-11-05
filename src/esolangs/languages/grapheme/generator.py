@@ -19,6 +19,7 @@ from esolangs.languages.grapheme.interpreter import (
     GraphemeDialect,
 )
 from esolangs.languages.grapheme.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -158,7 +159,7 @@ LANGUAGE = Language(
         dialect=GraphemeDialect,
         dialect_values={"integer_conversion": INTEGER_CONVERSIONS},
     ),
-    boolean=grapheme,
+    backend=BooleanBackend(generate=grapheme, wrap=wrap_chars),
     # Each input line is normalized with ord(line[0]) - 65 and then zero is
     # mapped to 1; the second step is what makes 'A' a 1 -- ord('A') - 65 is
     # 0, so the subtraction alone says the opposite.
@@ -168,7 +169,6 @@ LANGUAGE = Language(
         "and any other line a 0, so a 0/1 line reads as 0 and the program "
         "answers the all-zeros row; esolangs encode spells them",
     ),
-    wrap=wrap_chars,
     certification=CertificationSpec(
         proof_execution=(execution, True, (3, 5)),
         proof_workspace=(workspace, True, (3, 5)),

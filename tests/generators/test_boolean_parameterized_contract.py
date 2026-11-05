@@ -17,9 +17,9 @@ def _parameterized_generators():
 
     ids = parameterized_ids()
     return [
-        (language.id, language.boolean)
+        (language.id, language.backend.generate)
         for language in LANGUAGES.values()
-        if language.id in ids and language.boolean is not None
+        if language.id in ids and language.backend is not None
     ]
 
 
@@ -27,8 +27,12 @@ def _embedded_inputs(gen: object, template: str, n: int) -> list[int]:
     """The inputs ``template`` embeds, in the order it embeds them."""
     from esolangs.generation.helpers import runs
 
-    language = next(lang for lang in LANGUAGES.values() if lang.boolean is gen)
-    spec = language.template
+    language = next(
+        lang
+        for lang in LANGUAGES.values()
+        if lang.backend is not None and lang.backend.generate is gen
+    )
+    spec = language.backend.template
     assert spec is not None
     spans = runs(template, spec.char, spec.bindings(template, n))
     return list(range(len(spans)))
@@ -136,7 +140,7 @@ class TestGeneratorEdgePaths:
     @pytest.mark.parametrize("name", languages(parameterized=True)[:2])
     def test_parameterized_validation(self, name: str) -> None:
         """A template generator rejects malformed truth tables."""
-        generate = LANGUAGES[name].boolean
+        generate = LANGUAGES[name].backend.generate
         assert generate is not None
         with pytest.raises(ValueError, match="power-of-two"):
             generate("011")

@@ -8,10 +8,10 @@ Generators detected by :func:`takes_width` lay out their own programs.
 They preserve structural lines and return a width floor when the requested
 width cannot fit whole tokens, statements or routing cells.
 
-``Language.wrap_multiline`` marks wrappers that handle structural lines.
+``BooleanBackend.wrap_multiline`` marks wrappers that handle structural lines.
 Language-owned wrappers preserve their own token and term boundaries;
 :func:`wrap_grid` right-aligns instruction cells.
-``Language.wrap`` names its wrapper; :func:`wrap_program` is the entry point.
+``BooleanBackend.wrap`` names its wrapper; :func:`wrap_program` is the entry point.
 """
 
 import inspect
@@ -29,7 +29,7 @@ from esolangs.generation.token_balance import (
 )
 
 if TYPE_CHECKING:
-    from esolangs.registry import Language
+    from esolangs.registry._backend import BooleanBackend
 
 # 80: the conventional review/diff width, close to the repo's 88 for Python.
 DEFAULT_WIDTH = 80
@@ -214,11 +214,13 @@ _bracket_literal = TokenWrapper(_BRACKET_LITERAL)
 _quote_literal = TokenWrapper(_EVAL_UNIT)
 
 
-def _language(language_id: str) -> "Language | None":
-    """Return the registered language with ``language_id``, if any."""
+def _backend(language_id: str) -> "BooleanBackend | None":
+    """Return the registered backend for ``language_id``, if any."""
     from esolangs.registry import LANGUAGES
 
-    return next((lang for lang in LANGUAGES.values() if lang.id == language_id), None)
+    return next(
+        (lang.backend for lang in LANGUAGES.values() if lang.id == language_id), None
+    )
 
 
 def takes_width(fn: Callable[..., object]) -> bool:
@@ -242,12 +244,12 @@ def wrap_program(program: str, language_id: str, width: int | None) -> str:
     """
     if width is None or width <= 0:
         return program
-    lang = _language(language_id)
-    if lang is None or lang.wrap is None:
+    backend = _backend(language_id)
+    if backend is None or backend.wrap is None:
         return program
-    if "\n" in program and not lang.wrap_multiline:
+    if "\n" in program and not backend.wrap_multiline:
         return program
-    return lang.wrap(program, width)
+    return backend.wrap(program, width)
 
 
 def balance_width(program: str) -> int:
@@ -289,12 +291,12 @@ def balance_program(program: str, language_id: str) -> str:
 
 def _balance_line(program: str, language_id: str) -> str | None:
     """Balance a one-line program by its wrapper's tokens, or None to estimate."""
-    lang = _language(language_id)
-    if lang is None:
+    backend = _backend(language_id)
+    if backend is None:
         return None
-    if lang.wrap_balance is not None:
-        return lang.wrap_balance(program)
-    wrapper = lang.wrap
+    if backend.wrap_balance is not None:
+        return backend.wrap_balance(program)
+    wrapper = backend.wrap
     if wrapper is wrap_space_delimited:
         return _token_fit(program, program.split(), " ")
     if isinstance(wrapper, TokenWrapper):

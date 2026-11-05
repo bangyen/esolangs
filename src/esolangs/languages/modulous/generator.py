@@ -35,8 +35,9 @@ from esolangs.generation.wrap import (
     wrap_space_delimited,
 )
 from esolangs.languages.modulous.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 # Characters around the table in its literal push: ``[PSH STR "`` opens it
@@ -200,12 +201,14 @@ def _balance(table: str, default: str) -> str:
 LANGUAGE = Language(
     "Modulous",
     RuntimeSpec("modulous", category="stack_based", random=True),
-    boolean=modulous,
+    backend=BooleanBackend(
+        generate=modulous,
+        # Not a tree: pops a ``PSH STR`` table down to the indexed character.
+        shape=Shape.LOOKUP,
+        balance=_balance,
+    ),
     certification=CertificationSpec(
         proof_execution=(execution, True, (1, 2, 3, 5)),
         proof_workspace=(workspace, True, (2, 3, 4, 6)),
     ),
-    # Not a tree: pops a ``PSH STR`` table down to the indexed character.
-    shape=Shape.LOOKUP,
-    balance=_balance,
 )

@@ -23,6 +23,7 @@ Size:
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import wrap_chars
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -76,7 +77,6 @@ LANGUAGE = Language(
     RuntimeSpec(
         "monotonic_boolfuck", category="tape_based", eof="EOF supplies zero bits"
     ),
-    boolean=monotonic_boolfuck,
+    backend=BooleanBackend(generate=monotonic_boolfuck, wrap=wrap_chars),
     contract=BooleanContract(input_shape="char_stream"),
-    wrap=wrap_chars,
 )

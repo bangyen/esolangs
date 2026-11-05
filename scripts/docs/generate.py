@@ -162,7 +162,7 @@ def render_languages_section() -> str:
         # bug; use the registry's URL builder for both.
         for name in sorted(groups[prefix]):
             tier = (
-                "" if LANGUAGES[name].boolean is not None else " *(interpreter-only)*"
+                "" if LANGUAGES[name].backend is not None else " *(interpreter-only)*"
             )
             out.append(
                 f"- [{name}]({wiki_url(name)}) ([code]({_source_link(name)})){tier}"
@@ -198,7 +198,7 @@ def render_boolean_count_section() -> str:
             "The truth table is a binary string of length `2**n`,"
             " most-significant input",
             f"first; its length implies `n`, so it isn't passed separately."
-            f"  {sum(lang.boolean is not None for lang in LANGUAGES.values())} of the",
+            f"  {sum(lang.backend is not None for lang in LANGUAGES.values())} of the",
             "languages have such a generator, some covering only a"
             " documented subset of",
             "tables.",
@@ -484,10 +484,15 @@ def declared(root: pathlib.Path = ROOT) -> list[tuple[str, str]]:
                 and isinstance(statement.value, ast.Call)
             ):
                 continue
+            backend = next(
+                kw.value
+                for kw in statement.value.keywords
+                if kw.arg == "backend" and isinstance(kw.value, ast.Call)
+            )
             generator = next(
                 kw.value.id
-                for kw in statement.value.keywords
-                if kw.arg == "boolean" and isinstance(kw.value, ast.Name)
+                for kw in backend.keywords
+                if kw.arg == "generate" and isinstance(kw.value, ast.Name)
             )
             parts = path.relative_to(root / "src").with_suffix("").parts
             module = ".".join(parts[:-1] if path.name == "__init__.py" else parts)

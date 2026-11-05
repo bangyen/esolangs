@@ -36,6 +36,7 @@ from esolangs.generation.shared_block import (
 from esolangs.generation.shared_flag import FlagDialect, flag_tree_body
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.painfuck.interpreter import _CYCLES
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
@@ -207,6 +208,5 @@ def _painfuck_shared(
 LANGUAGE = Language(
     "Painfuck",
     RuntimeSpec("painfuck", category="tape_based", random=True),
-    boolean=painfuck,
-    wrap=wrap_chars,
+    backend=BooleanBackend(generate=painfuck, wrap=wrap_chars),
 )

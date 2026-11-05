@@ -8,7 +8,8 @@ import pytest
 
 import esolangs
 from esolangs.registry import LANGUAGES
-from esolangs.registry._language import Example, TemplateSpec
+from esolangs.registry._backend import TemplateSpec
+from esolangs.registry._language import Example
 from tests.support.pick import languages, one
 from tests.support.reference import REFERENCE
 

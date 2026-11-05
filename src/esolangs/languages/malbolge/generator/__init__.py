@@ -35,9 +35,10 @@ from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.malbolge.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 from esolangs.runtime.source_hints import with_hint
 
@@ -98,18 +99,20 @@ LANGUAGE = Language(
         proof_execution=(execution, True, (2, 3, 6)),
         proof_workspace=(workspace, False, (2, 3)),
     ),
-    generator_max_inputs=MAX_INPUTS + 1,
-    generator_restrictions=(
-        "seventeen inputs only for a table that ignores an input "
-        "or is constant on Hamming-weight classes"
+    backend=BooleanBackend(
+        max_inputs=MAX_INPUTS + 1,
+        restrictions=(
+            "seventeen inputs only for a table that ignores an input "
+            "or is constant on Hamming-weight classes"
+        ),
+        generate=malbolge,
+        # Not a tree: straight-line code into the fixed store.
+        shape=Shape.LOOKUP,
+        # Loader whitespace is discarded before assigning memory addresses.
+        wrap=wrap_chars,
     ),
-    boolean=malbolge,
-    # Not a tree: straight-line code into the fixed store.
-    shape=Shape.LOOKUP,
     contract=BooleanContract(
         note="the answer is one character and is printed with no newline",
         input_shape="char_stream",
     ),
-    # Loader whitespace is discarded before assigning memory addresses.
-    wrap=wrap_chars,
 )

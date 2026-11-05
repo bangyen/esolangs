@@ -167,7 +167,7 @@ def _generators() -> list[tuple[str, str]]:
     from esolangs.registry import LANGUAGES
 
     return [
-        (name, lang.id) for name, lang in LANGUAGES.items() if lang.boolean is not None
+        (name, lang.id) for name, lang in LANGUAGES.items() if lang.backend is not None
     ]
 
 

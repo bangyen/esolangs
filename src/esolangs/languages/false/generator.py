@@ -38,6 +38,7 @@ from esolangs.generation.wrap import (
     balance_score,
     wrap_program,
 )
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -553,11 +554,13 @@ LANGUAGE = Language(
         "false", category="stack_based", eof="an exhausted '^' is the spec's -1"
     ),
     certification=CertificationSpec(reader_checked=True),
-    boolean=false,
+    backend=BooleanBackend(
+        generate=false,
+        # ``'x`` and ``.x``/``?x`` take the character after them.
+        wrap=_false,
+        balance=_balance,
+    ),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    # ``'x`` and ``.x``/``?x`` take the character after them.
-    wrap=_false,
-    balance=_balance,
 )

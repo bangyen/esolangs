@@ -18,9 +18,10 @@ from esolangs.generation.helpers import _validate_truth_table, in_input_order
 from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.generation.wrap import wrap_grid
 from esolangs.languages.subleq.proof_formulas import workspace
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec, Payload
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 
@@ -50,11 +51,13 @@ LANGUAGE = Language(
     certification=CertificationSpec(
         payload=_payload, proof_workspace=(workspace, True, (3, 5, 9))
     ),
-    boolean=subleq,
-    # Shared tree or packed lookup.
-    shape=Shape.LOOKUP,
+    backend=BooleanBackend(
+        generate=subleq,
+        # Shared tree or packed lookup.
+        shape=Shape.LOOKUP,
+        wrap=wrap_grid,
+    ),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    wrap=wrap_grid,
 )

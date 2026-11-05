@@ -16,9 +16,12 @@ gendiff = load(REPO_ROOT / "scripts" / "gendiff.py")
 _MUTATION = """
 import dataclasses as _dataclasses
 
-_unmutated = LANGUAGE.boolean
+_unmutated = LANGUAGE.backend.generate
 LANGUAGE = _dataclasses.replace(
-    LANGUAGE, boolean=lambda table, *a, **k: "+" + _unmutated(table, *a, **k)
+    LANGUAGE, backend=_dataclasses.replace(
+        LANGUAGE.backend,
+        generate=lambda table, *a, **k: "+" + _unmutated(table, *a, **k)
+    )
 )
 """
 
@@ -48,7 +51,7 @@ def test_an_unchanged_tree_matches_and_a_mutant_is_caught(
         )
 
     monkeypatch.setattr(gendiff, "_checkout", snapshot)
-    module = importlib.import_module(LANGUAGES[REFERENCE].boolean.__module__)
+    module = importlib.import_module(LANGUAGES[REFERENCE].backend.generate.__module__)
     mutant = tmp_path / "mutant.py"
     mutant.write_text(Path(module.__file__ or "").read_text() + _MUTATION)
     argv = [REFERENCE, "--old", "snapshot", "--max-n", "1", "--mutant", str(mutant)]

@@ -24,9 +24,10 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.suffolk.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 #: The cell plan.  Cost here is a cell's *index* -- every read spends one
@@ -271,13 +272,15 @@ LANGUAGE = Language(
         eof="reads to exhaustion, so EOF is the halt",
         empty_program="Suffolk program cannot be empty",
     ),
-    boolean=suffolk,
-    # Both routes project to the essential inputs.
-    shape=Shape.REDUCING,
+    backend=BooleanBackend(
+        generate=suffolk,
+        # Both routes project to the essential inputs.
+        shape=Shape.REDUCING,
+        wrap=wrap_chars,
+    ),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    wrap=wrap_chars,
     certification=CertificationSpec(
         proof_execution=(execution, True, (3, 6)),
         proof_workspace=(workspace, False, (3, 5, 6)),

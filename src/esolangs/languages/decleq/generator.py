@@ -27,6 +27,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import wrap_grid
 from esolangs.languages.decleq.proof_formulas import workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -232,10 +233,9 @@ class _OwnerBuilder(_CodeBuilder):
 LANGUAGE = Language(
     "Decleq",
     RuntimeSpec("decleq", category="register_based"),
-    boolean=decleq,
+    backend=BooleanBackend(generate=decleq, wrap=wrap_grid),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    wrap=wrap_grid,
     certification=CertificationSpec(proof_workspace=(workspace, True, (1, 2, 3, 4))),
 )

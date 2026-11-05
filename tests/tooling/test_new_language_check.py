@@ -136,7 +136,7 @@ def test_quick_tests_spell_ids_as_pytest_does() -> None:
 def test_bounds_flags_a_stale_size_anchor(monkeypatch: pytest.MonkeyPatch) -> None:
     """Positive control: an anchor one char off is named with the real size."""
     name = first(boolean_generator=True, parameterized=False, answer_mode="output")
-    module = importlib.import_module(LANGUAGES[name].boolean.__module__)
+    module = importlib.import_module(LANGUAGES[name].backend.generate.__module__)
     size = len(str(esolangs.generate(name, "0110")))
     monkeypatch.setattr(module, "__doc__", f"Size:\n    n=2 parity: {size + 1} chars.")
     assert new_language.size_anchors(name) == [
@@ -156,13 +156,13 @@ def test_a_generator_language_needs_no_hand_sample() -> None:
 
 def test_sources_names_the_interpreter_and_generator() -> None:
     for name, lang in LANGUAGES.items():
-        if lang.runtime.interpreter is None or lang.boolean is None:
+        if lang.runtime.interpreter is None or lang.backend is None:
             continue
         found = new_language.sources(name)
         interpreter = f"src/esolangs/languages/{lang.id}/interpreter"
         # A package interpreter is its directory.
         assert found[0] in {f"{interpreter}.py", interpreter}, name
-        generator = Path(inspect.getfile(lang.boolean))
+        generator = Path(inspect.getfile(lang.backend.generate))
         if generator.name == "__init__.py":
             generator = generator.parent
         assert found[1] == generator.relative_to(new_language.ROOT).as_posix(), name

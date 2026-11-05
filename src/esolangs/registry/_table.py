@@ -9,7 +9,8 @@ listed here.
 from __future__ import annotations
 
 from esolangs.languages.generators import _LANGUAGES
-from esolangs.registry._language import Generator, Language
+from esolangs.registry._backend import Generator
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec, SourceKind
 
 __all__ = ["LANGUAGES", "Generator", "Language", "SourceKind"]

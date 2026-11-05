@@ -44,7 +44,7 @@ def _native() -> tuple[dict[str, str], dict[str, str]]:
 
 
 def _generators() -> set[str]:
-    return {name for name, lang in LANGUAGES.items() if lang.boolean is not None}
+    return {name for name, lang in LANGUAGES.items() if lang.backend is not None}
 
 
 def _lacking(helpers: tuple[str, ...]) -> set[str]:
@@ -101,7 +101,7 @@ def _lift(inner: str, at: int, n: int) -> str:
 
 
 def _size(name: str, table: str) -> int:
-    build = LANGUAGES[name].boolean
+    build = LANGUAGES[name].backend.generate
     assert build is not None
     try:
         return source_units(build(table))

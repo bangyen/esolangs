@@ -48,7 +48,7 @@ def test_raster_interpreter_owns_loading_and_scale_support(
         replace(
             LANGUAGES["Piet"],
             runtime=replace(LANGUAGES["Piet"].runtime, source_kind=SourceKind.TEXT),
-            boolean=None,
+            backend=None,
         ),
     )
     assert esolangs.run("Piet", program.to_png(), stdin="1", scale=2) == "1"

@@ -11,7 +11,7 @@ from tests.support.evaluation import _evaluate
 from tests.support.generator_support import assert_proved_resource_cap
 
 GENERATORS = sorted(
-    name for name, lang in LANGUAGES.items() if lang.boolean is not None
+    name for name, lang in LANGUAGES.items() if lang.backend is not None
 )
 pytestmark = pytest.mark.medium
 

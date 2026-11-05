@@ -284,15 +284,15 @@ def _generator_test_scope(module: str) -> list[str] | None:
     owners: dict[str, str] = {}
     modules: dict[str, str] = {}
     for language in LANGUAGES.values():
-        if language.boolean is not None:
-            defining = language.boolean.__module__
+        if language.backend is not None:
+            defining = language.backend.generate.__module__
             owner = language.id
             modules[defining] = owner
             for name in (
                 language.id,
                 language.name,
                 *language.aliases,
-                language.boolean.__name__,
+                language.backend.generate.__name__,
             ):
                 owners[name] = owner
 

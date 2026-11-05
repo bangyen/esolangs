@@ -32,6 +32,7 @@ from esolangs.generation.helpers import (
     short_name,
     subtree_ids,
 )
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -165,8 +166,9 @@ LANGUAGE = Language(
         empty_program="missing directive or #allocate",
         eof="`read` at EOF raises: the page's cat covers three EOF conventions",
     ),
-    boolean=basicfuck,
+    backend=BooleanBackend(
+        generate=basicfuck, no_wrap="the directive and #allocate are lines one and two"
+    ),
     contract=BooleanContract(input_shape="char_stream"),
-    no_wrap="the directive and #allocate are lines one and two",
     example=Example(expected="0"),
 )

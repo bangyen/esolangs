@@ -23,7 +23,7 @@ def test_runtime_facts_are_owned_only_by_the_runtime_record():
 
 def test_backend_and_example_changes_preserve_the_runtime_definition():
     for lang in LANGUAGES.values():
-        changed = replace(lang, boolean=None, template=None, example=Example())
+        changed = replace(lang, backend=None, example=Example())
         assert changed.runtime is lang.runtime
         assert changed.source_suffix == lang.source_suffix
 

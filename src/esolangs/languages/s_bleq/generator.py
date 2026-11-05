@@ -23,6 +23,7 @@ from esolangs.generation.packed_decoder import (
 )
 from esolangs.generation.wrap import wrap_grid
 from esolangs.languages.s_bleq.proof_formulas import execution
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -182,11 +183,10 @@ LANGUAGE = Language(
         category="tape_based",
         eof="a failed read leaves the cell alone and the program runs on",
     ),
-    boolean=s_bleq,
+    backend=BooleanBackend(generate=s_bleq, wrap=wrap_grid),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    wrap=wrap_grid,
     certification=CertificationSpec(
         proof_execution=(execution, True, (3, 4, 5, 6, 7, 8, 9))
     ),

@@ -87,7 +87,7 @@ def test_trimmed_row_ends_keep_the_width_lattice() -> None:
     [
         n
         for n, lang in LANGUAGES.items()
-        if lang.boolean and lang.wrap is _wrap.wrap_grid
+        if lang.backend is not None and lang.backend.wrap is _wrap.wrap_grid
     ],
 )
 @pytest.mark.parametrize("table", ["0110", "10010110"])
@@ -111,7 +111,12 @@ def _regime_tables():
 
 def _balances_whole_tokens(wrapper: object) -> bool:
     """Whether ``balance_program`` fits ``wrapper``'s tokens, not characters."""
-    if any(lang.wrap is wrapper and lang.wrap_balance for lang in LANGUAGES.values()):
+    if any(
+        lang.backend is not None
+        and lang.backend.wrap is wrapper
+        and lang.backend.wrap_balance
+        for lang in LANGUAGES.values()
+    ):
         return True
     return isinstance(wrapper, _wrap.TokenWrapper) or wrapper in (
         _wrap.wrap_space_delimited,
@@ -124,12 +129,12 @@ def _balanced_languages() -> list[str]:
     return sorted(
         name
         for name, lang in LANGUAGES.items()
-        if lang.boolean is not None
+        if lang.backend is not None
         and lang.runtime.source_kind is SourceKind.TEXT
         and (
-            lang.balance is not None
-            or _balances_whole_tokens(lang.wrap)
-            or (lang.wrap is wrap_chars and lang.parameterized)
+            lang.backend.balance is not None
+            or _balances_whole_tokens(lang.backend.wrap)
+            or (lang.backend.wrap is wrap_chars and lang.parameterized)
         )
         and not lang.certification.slow_width_sweep
     )
@@ -146,9 +151,9 @@ def test_balance_reaches_the_supported_minimum(language, table) -> None:
     # Rebuilding character-only layouts at every width exceeded the
     # five-second medium band; their source only needs reflowing.
     reflow = (
-        lang.wrap is wrap_chars
+        lang.backend.wrap is wrap_chars
         and not lang.parameterized
-        and "width" not in signature(lang.boolean).parameters
+        and "width" not in signature(lang.backend.generate).parameters
     )
     layouts = [default] + [
         wrap_program(default, lang.id, width)
@@ -169,7 +174,7 @@ def test_native_width_generators_have_balance_rules() -> None:
     assert not [
         name
         for name, language in LANGUAGES.items()
-        if (generator := language.boolean) is not None
-        and takes_width(generator)
-        and language.balance is None
+        if language.backend is not None
+        and takes_width(language.backend.generate)
+        and language.backend.balance is None
     ]

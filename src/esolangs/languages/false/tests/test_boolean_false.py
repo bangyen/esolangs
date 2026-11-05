@@ -142,8 +142,12 @@ def _check_lookup_and_cached_formula() -> None:
 
     for table in ("1" + "0" * 31, "0" * 31 + "1", "1" * 32, "01" * 16):
         program = _lookup(table, 5, list(range(5)))
-        assert LANGUAGE.wrap is not None
-        for source in (program, _balance(table, program), LANGUAGE.wrap(program, 1)):
+        assert LANGUAGE.backend.wrap is not None
+        for source in (
+            program,
+            _balance(table, program),
+            LANGUAGE.backend.wrap(program, 1),
+        ):
             for row, expected in enumerate(table):
                 io = ScriptedIO(f"{row:05b}7")
                 run(source, io)
@@ -158,7 +162,7 @@ def _check_lookup_and_cached_formula() -> None:
     ):
         for width in (1, 2, 7):
             io = ScriptedIO("")
-            run(LANGUAGE.wrap(source, width), io)
+            run(LANGUAGE.backend.wrap(source, width), io)
             assert io.getvalue() == expected
     table = "".join(str(int(row.bit_count() >= 3)) for row in range(128))
     program = _expression(table, 7, list(range(7)))

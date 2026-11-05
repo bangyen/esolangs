@@ -24,9 +24,10 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.circlefuck.proof_formulas import execution, workspace
+from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
 #: Bits an index digit carries: seven is the widest power of two a byte can
@@ -143,13 +144,15 @@ LANGUAGE = Language(
         eof="its input command is a no-op at EOF, as the spec says",
         empty_program="Circlefuck program cannot be empty",
     ),
-    boolean=circlefuck,
-    # A sum, not a tree: a lookup over the essential inputs only.
-    shape=Shape.REDUCING,
+    backend=BooleanBackend(
+        generate=circlefuck,
+        # A sum, not a tree: a lookup over the essential inputs only.
+        shape=Shape.REDUCING,
+        wrap=wrap_chars,
+    ),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    wrap=wrap_chars,
     certification=CertificationSpec(
         proof_execution=(execution, True, (3, 5)),
         proof_workspace=(workspace, True, (3, 5)),

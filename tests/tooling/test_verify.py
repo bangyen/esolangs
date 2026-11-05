@@ -16,6 +16,7 @@ from unittest import mock
 
 import pytest
 
+from esolangs.registry._backend import BooleanBackend
 from tests.tooling.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -436,7 +437,6 @@ class TestGeneratorScope:
 def test_generator_scope_keeps_transitive_dependents(
     tmp_path, monkeypatch, *, package
 ) -> None:
-    from types import SimpleNamespace
 
     from esolangs import registry
 
@@ -450,7 +450,9 @@ def test_generator_scope_keeps_transitive_dependents(
 
         build.__module__ = f"esolangs.languages.{name}.generator"
         build.__name__ = name
-        languages[name] = SimpleNamespace(id=name, name=name, aliases=(), boolean=build)
+        languages[name] = registry.Language(
+            name, id=name, backend=BooleanBackend(generate=build)
+        )
     monkeypatch.setattr(registry, "LANGUAGES", languages)
     consumer = (
         "src/esolangs/languages/consumer/generator/__init__.py"
@@ -892,7 +894,6 @@ assert Path({str(marker)!r}).exists(), 'stream withheld a flushed short line'
 
 @pytest.fixture
 def colocated_scope(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Any:
-    from types import SimpleNamespace
 
     from esolangs import registry
 
@@ -905,8 +906,8 @@ def colocated_scope(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Any:
             return table
 
         generate.__module__ = f"esolangs.languages.{slug}.generator"
-        languages[slug] = SimpleNamespace(
-            id=slug, name=slug, aliases=(), boolean=generate
+        languages[slug] = registry.Language(
+            slug, id=slug, backend=BooleanBackend(generate=generate)
         )
         for relative in (
             f"src/esolangs/languages/{slug}/generator.py",

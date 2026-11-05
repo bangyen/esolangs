@@ -48,6 +48,7 @@ Decisions:
 from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.helpers import _parity_bias, _validate_truth_table, subtree_ids
 from esolangs.languages.interprogck8.proof_formulas import workspace
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -242,10 +243,12 @@ def interprogck8(truth_table: str) -> str:
 LANGUAGE = Language(
     "Interprogck8",
     RuntimeSpec("interprogck8", category="register_based", split=True, random=True),
-    generator_restrictions=(
-        f"at most {_MAX_INPUTS} inputs, past any table that fits in memory"
+    backend=BooleanBackend(
+        restrictions=(
+            f"at most {_MAX_INPUTS} inputs, past any table that fits in memory"
+        ),
+        generate=interprogck8,
+        no_wrap="a newline adds a line and moves every DownAccLines landing",
     ),
-    boolean=interprogck8,
-    no_wrap="a newline adds a line and moves every DownAccLines landing",
     certification=CertificationSpec(proof_workspace=(workspace, True, (3, 4, 5, 6))),
 )

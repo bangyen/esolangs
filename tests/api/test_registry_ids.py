@@ -5,6 +5,7 @@ import importlib
 import pytest
 
 from esolangs.registry import LANGUAGES, resolve
+from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._slug import canonical_id
 
 
@@ -14,11 +15,14 @@ def test_language_names_keep_their_package_namespace() -> None:
     for lang in LANGUAGES.values():
         package = importlib.import_module(f"esolangs.languages.{lang.id}")
         assert getattr(languages, lang.id) is package
-        if lang.boolean is not None:
+        if lang.backend is not None:
             generator = importlib.import_module(
                 f"esolangs.languages.{lang.id}.generator"
             )
-            assert getattr(generator, lang.boolean.__name__) is lang.boolean
+            assert (
+                getattr(generator, lang.backend.generate.__name__)
+                is lang.backend.generate
+            )
 
 
 def test_every_language_has_a_canonical_id() -> None:
@@ -62,8 +66,8 @@ def test_id_matches_the_interpreter_module() -> None:
 def test_id_matches_the_generator_function() -> None:
     """The canonical id is also the generator function's name."""
     for name, lang in LANGUAGES.items():
-        if lang.boolean:
-            fn = lang.boolean.__name__
+        if lang.backend:
+            fn = lang.backend.generate.__name__
             assert fn in (lang.id, lang.id.replace("_", "")), name
 
 
@@ -72,15 +76,24 @@ def test_a_language_cannot_both_wrap_and_refuse_to() -> None:
     from esolangs.registry._language import Language
 
     with pytest.raises(ValueError, match="exclude each other"):
-        Language("X", wrap=wrap_chars, no_wrap="a break changes it")
+        Language(
+            "X",
+            backend=BooleanBackend(
+                generate=str, wrap=wrap_chars, no_wrap="a break changes it"
+            ),
+        )
 
 
 def test_parameterized_follows_the_backend_independently_of_examples() -> None:
     from dataclasses import replace
 
-    from esolangs.registry._language import Example, Language, TemplateSpec
+    from esolangs.registry._backend import TemplateSpec
+    from esolangs.registry._language import Example, Language
 
-    embedded = Language("X", template=TemplateSpec(pair=("a", "b")))
+    embedded = Language(
+        "X",
+        backend=BooleanBackend(generate=str, template=TemplateSpec(pair=("a", "b"))),
+    )
     assert embedded.parameterized
     assert replace(embedded, example=Example(table="01", bits=(1,))).parameterized
     reader = Language("X", example=Example(table="01", bits=(1,)))

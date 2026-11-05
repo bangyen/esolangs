@@ -13,10 +13,10 @@ from tests.support.witness_tables import row_bits
 def _reader(language_id: str) -> tuple[Callable[[str], Any], Callable[..., None]]:
     """Return any registered language's generator and interpreter ``run``."""
     lang = next(lang for lang in LANGUAGES.values() if lang.id == language_id)
-    assert lang.boolean is not None
+    assert lang.backend is not None
     assert lang.runtime.interpreter is not None
     module = importlib.import_module(f"esolangs.languages.{lang.id}.interpreter")
-    return lang.boolean, module.run
+    return lang.backend.generate, module.run
 
 
 #: The tree readers whose ``LANGUAGE`` asks for these shared checks.
