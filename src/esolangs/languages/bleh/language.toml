@@ -8,9 +8,6 @@ admitted = 2026-10-20T08:59:29-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "shared-node functions match their input; short nullary read aliases preserve forcing order; constants use a flat read/print block"
-scaling = "linear: worst F characters, n=3..23; at most beyond: actual alias read prices"
-execution = "poly n: worst 10n+5 steps: two extra alias transitions per read"
-workspace = "poly n: worst H+C(w)+K(w)+2bl(n) bits through n=7; at most beyond"
 definitions = ["H = 64n+1+Σ_{0<a<n} bl(a)", "w = max(ceil((n+1)/5),1+digits10(n-1))", "C = max(128,8w+16,8w+bl(n)+1)", "K = max(105,8w+17,8w+2bl(n)+1)"]
 
 [generator_sizes]
@@ -134,8 +131,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "steps"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bleh.generator:bleh"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: two extra alias transitions per read", formula = "10n+5" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.bleh.proof_formulas:workspace"
@@ -143,8 +141,9 @@ exact = [1, 2, 3, 4, 5, 6, 7]
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bleh.generator:bleh"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} through n=7; at most beyond", formula = "H+C(w)+K(w)+2bl(n)" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.bleh.tests.formulas:_chars"
@@ -152,5 +151,6 @@ exact = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22
 arities = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
 first = 3
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bleh.generator:bleh"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n=3..23; at most beyond: actual alias read prices", formula = "F" }

@@ -8,9 +8,6 @@ admitted = 2026-10-07T12:46:28-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "a node stores its halves under the input bit's own names and pushes the one the bit names as the next run's program, above seven skip runs for the byte's other bits; a node with equal halves is a pad; five macros and up to three delimiter macros carry the repeated text, and a subtree two parents reach is one more when that is shorter"
-scaling = "linear: at most C characters to n = 16, 6T+86 after"
-execution = "poly n: worst 55n + 5 commands, one tree path of eight runs a level"
-workspace = "linear: worst 24E - 1214 + bl(E) + bl(n) bits for n ≥ 2: code, stack, variables"
 definitions = ["E = 93T - 80, the macro-expanded program with no constant subtree"]
 
 [generator_sizes]
@@ -147,8 +144,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.smu.generator:smu"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, one tree path of eight runs a level" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.smu.proof_formulas:workspace"
@@ -156,8 +154,9 @@ exact = true
 arities = [2, 4]
 first = 2
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.smu.generator:smu"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n ≥ 2: code, stack, variables", formula = "24E - 1214 + bl(E) + bl(n)" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.smu.tests.formulas:_chars"
@@ -165,5 +164,6 @@ exact = [3, 5, 9, 10, 11]
 arities = [1, 2, 3, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.smu.generator:smu"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} to n = 16, 6T+86 after", formula = "C" }

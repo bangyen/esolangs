@@ -8,9 +8,6 @@ admitted = 2026-08-14T12:11:48-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the whole table is one int-mode literal read in base 10, and after the seeded first factor each `W` squares an accumulator and doubles it on a 0 (or a 1), which is Horner's rule for the complemented (or direct) index, so the accumulator is exactly the power of two that `R` shifts the wanted entry down to bit 0"
-scaling = "linear: at most 17n + 15 + digits(2^T) characters from n=2"
-execution = "linear: at most 17n + 15 + d commands from n=2, d the digits of 2^T: one per program character"
-workspace = "linear: at most 16d + 136n + 155 + bl(17n+d) + max(T+14, 2bl(λ)+2) + bl(2n) + bl(n) bits from n=2"
 definitions = ["λ = the largest lift of d + 1 digits, d those of 2^T"]
 
 [generator_sizes]
@@ -109,8 +106,9 @@ exact = true
 arities = [2, 3, 5]
 first = 2
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.grapheme.generator:grapheme"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} from n=2, d the digits of 2^T: one per program character", formula = "17n + 15 + d" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.grapheme.proof_formulas:workspace"
@@ -118,8 +116,9 @@ exact = true
 arities = [2, 3, 5]
 first = 2
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.grapheme.generator:grapheme"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} from n=2", formula = "16d + 136n + 155 + bl(17n+d) + max(T+14, 2bl(λ)+2) + bl(2n) + bl(n)" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.grapheme.tests.formulas:_chars"
@@ -127,5 +126,6 @@ exact = true
 arities = [2, 3, 5]
 first = 2
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.grapheme.generator:grapheme"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} from n=2", formula = "17n + 15 + digits(2^T)" }

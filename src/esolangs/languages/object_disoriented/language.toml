@@ -8,9 +8,6 @@ admitted = 2026-10-15T11:05:46-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "a node keeps its input bit in `t` and its negation in `a`, via reader B and a negation object that is a 1 until a 1 bit calls it; each bit object calls its branch only on a 1; constant subtables fold, and a repeated branch is a class written once"
-scaling = "linear: worst D characters to n = 8, at most min(24T+56, S)"
-execution = "poly n: worst 76n + 34 commands: one tree path, 76 ops a level"
-workspace = "poly n: at most F + H + M + bl(6n+9) + bl(n) + 14 bits, c code ids, 2n+4 frames"
 definitions = ["c = 3 + the `n` and `d` letters", "F = Σ_{j<2n+3} (bl(c) + p_j + 3(bl(6⌈j/2⌉+9)+1)) + 4bl(6n+9) + 5; p_j = 4 even j, else bl(16n+40)", "H = bl(c) + bl(16n+40) + 3(bl(6n+9)+1): reader frame", "M = (n+1)(4bl(c)+8) + 6n + 9"]
 
 [generator_sizes]
@@ -118,8 +115,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.object_disoriented.generator:object_disoriented"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: one tree path, 76 ops a level" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.object_disoriented.tests.formulas:_workspace"
@@ -127,8 +125,9 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.object_disoriented.generator:object_disoriented"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, c code ids, 2n+4 frames", formula = "F + H + M + bl(6n+9) + bl(n) + 14" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.object_disoriented.tests.formulas:_chars"
@@ -136,5 +135,6 @@ exact = [2, 3, 4, 5, 6, 7, 8]
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.object_disoriented.generator:object_disoriented"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} to n = 8, at most min(24T+56, S)", formula = "D" }

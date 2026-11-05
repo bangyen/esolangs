@@ -8,9 +8,6 @@ admitted = 2026-08-30T09:35:25-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "the halting goto squares once more whenever the program is not shorter than its reach, so every finite tree halts, and a subtree already emitted at its level is entered by climbing the accumulator to its syllable and `j`, where shorter"
-scaling = "linear: at most 17T/2 + 13 characters: pair 12, node 5, prologue 18"
-execution = "linear: at most 17 + 4n + (n-1)(3 + sqrt(2L)) tokens: the path plus shared-subtree climbs"
-workspace = "poly n: worst 17 + bl(2n-1) + bl(L) bits, n in 4..13"
 
 [generator_sizes]
 "00000001" = { commands = 24, commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 23, "5" = 23, "6" = 24, "7" = 24 }, source_units = 49 }
@@ -120,8 +117,9 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.cvnc.generator:cvnc"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}", formula = "17 + 4n + (n-1)(3 + sqrt(2L)) tokens: the path plus shared-subtree climbs" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.cvnc.proof_formulas:workspace"
@@ -129,8 +127,9 @@ exact = true
 arities = [1, 2, 3, 4, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.cvnc.generator:cvnc"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, n in 4..13", formula = "17 + bl(2n-1) + bl(L)" }
 
 [resource_evidence.scaling]
 expression = "17T/2 + 13"
@@ -138,5 +137,6 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.cvnc.generator:cvnc"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: pair 12, node 5, prologue 18" }

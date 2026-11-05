@@ -7,9 +7,6 @@ backlinks = 158
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the table is the starting state, one character an entry, and the bit read rewrites every adjacent pair to one of its two members, so the state halves per essential input and the last character is the answer; an ignored input's round reads its line and deletes it; the rules never overlap, so the language's random rule choice has nothing to choose"
-scaling = "linear: at most T + 187 characters: T/2 + 223 once pairs pack"
-execution = "linear: at most 5T/2 + 3n - 1 rewrites: n marker sweeps, one expanding pairs"
-workspace = "linear: worst 8T + 24 + bl(2n) bits: the T + 3 character state string"
 
 [generator_sizes]
 "00000001" = { commands = 23, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 23, "5" = 23, "6" = 23, "7" = 23 }, source_units = 195 }
@@ -124,8 +121,9 @@ exact = false
 arities = [3, 7]
 first = 1
 unit = "rewrites"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.thue.generator:thue"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: n marker sweeps, one expanding pairs" }
 
 [resource_evidence.workspace]
 expression = "8T + 24 + bl(2n)"
@@ -133,8 +131,9 @@ exact = true
 arities = [3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.thue.generator:thue"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the T + 3 character state string" }
 
 [resource_evidence.scaling]
 expression = "T + 187"
@@ -142,5 +141,6 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.thue.generator:thue"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: T/2 + 223 once pairs pack" }

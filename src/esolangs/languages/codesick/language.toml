@@ -8,9 +8,6 @@ admitted = 2026-10-15T12:56:28-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "shared nodes append non-bit ASCII names; a bit-name substring test deletes the last unread bit; frequency buckets assign short names to frequent references"
-scaling = "linear: at most (68+10digits(C+1))C+43 characters for n>=2: bounded label widths"
-execution = "poly n: worst 3n - 1 steps: three a level, two at the last"
-workspace = "poly n: at most 16n + 8 + 8·digits(C+1) + bl(3C+1) bits: the input as key, the unread bits, the ip"
 definitions = ["C = Σ_{d<n} min(2^d, 2^2^(n-d) - 2), the most non-constant nodes; digits counts decimal digits"]
 
 [generator_sizes]
@@ -112,8 +109,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "steps"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.codesick.generator:codesick"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: three a level, two at the last" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.codesick.proof_formulas:workspace"
@@ -121,8 +119,9 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.codesick.generator:codesick"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: the input as key, the unread bits, the ip", formula = "16n + 8 + 8·digits(C+1) + bl(3C+1)" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.codesick.tests.formulas:_chars"
@@ -130,5 +129,6 @@ exact = false
 arities = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 first = 2
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.codesick.generator:codesick"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} for n>=2: bounded label widths", formula = "(68+10digits(C+1))C+43" }

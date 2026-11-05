@@ -8,9 +8,6 @@ admitted = 2026-08-13T14:31:11-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "each node tests its variable with if and if!, equal halves skip the test, a repeated subtree is a block entered through a flag, and marked leaves count in one cell"
-scaling = "linear: at most 14T + 16n + 43 characters: the plain tree"
-execution = "poly n: at most 5n + 55 commands: reads, two tests and a call a level, block tests"
-workspace = "poly n: at most 6n + 60 + bl(L) + bl(n) bits: digit cells, the answer, flags, counter"
 
 [generator_sizes]
 "00000001" = { commands = 12, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 10, "5" = 10, "6" = 11, "7" = 12 }, source_units = 131 }
@@ -98,8 +95,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.basicfuck.generator:basicfuck"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: reads, two tests and a call a level, block tests" }
 
 [resource_evidence.workspace]
 expression = "6n + 60 + bl(L) + bl(n)"
@@ -107,8 +105,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.basicfuck.generator:basicfuck"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: digit cells, the answer, flags, counter" }
 
 [resource_evidence.scaling]
 expression = "14T + 16n + 43"
@@ -116,5 +115,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.basicfuck.generator:basicfuck"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the plain tree" }

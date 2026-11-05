@@ -8,9 +8,6 @@ admitted = 2026-10-15T12:24:04-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "shared residuals read every input depth; a fixed helper stores all code before the root runs"
-scaling = "linear: at most F characters: bounded names and nodes"
-execution = "linear: worst 26N + 15n + 66 steps: store loop, then one path"
-workspace = "linear: worst G bits: frames, stack, globals, locals and input"
 definitions = ["N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables", "G = 96n+161+bl(n+1)+bl(n) for constants; otherwise 8(R+26+2B+3A+2H+K)+10+bl(P-1)+bl(n). R/P=word characters/count; A/B=payload name/body lengths; H=helper body length; K=longest key; payload excludes helper/dummy."]
 
 [generator_sizes]
@@ -127,8 +124,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "steps"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.quassaunt.generator:quassaunt"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: store loop, then one path", formula = "26N + 15n + 66" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.quassaunt.proof_formulas:workspace"
@@ -136,8 +134,9 @@ exact = true
 arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.quassaunt.generator:quassaunt"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: frames, stack, globals, locals and input", formula = "G" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.quassaunt.tests.formulas:_chars"
@@ -145,5 +144,6 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.quassaunt.generator:quassaunt"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: bounded names and nodes", formula = "F" }

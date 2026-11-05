@@ -14,9 +14,6 @@ folds_without_tree = true
 [proof_status]
 labels = ["linear lookup"]
 qualification = "Horner builds the projected table above packed inputs in one accumulator; four NORs select each cofactor, whole right shifts consume its input, and large levels rebuild -2 only from the sole live accumulator"
-scaling = "linear: 6T + 8r + O(n^2) characters for r runs of 1s"
-execution = "linear: at most 15T + 12n^2 + 93n - 20 commands, each run once"
-workspace = "linear: at most 3T + 4n + bl(L) + 24 bits: three accumulator copies or two selected arms"
 
 [ablations]
 audited = "2026-10-29"
@@ -119,8 +116,9 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.nor_machine.generator:nor_machine"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}, each run once", formula = "15T + 12n^2 + 93n - 20" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.nor_machine.proof_formulas:workspace"
@@ -128,5 +126,9 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.nor_machine.generator:nor_machine"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: three accumulator copies or two selected arms", formula = "3T + 4n + bl(L) + 24" }
+
+[resource_evidence.scaling]
+qualitative = { growth = "linear", text = "6T + 8r + O(n^2) characters for r runs of 1s" }

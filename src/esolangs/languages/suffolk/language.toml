@@ -8,9 +8,6 @@ admitted = 2020-07-13T01:25:59-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "workspace-limited NOR cofactors share computed values; fallback stores inputs through n=10 and uses the original countdown beyond"
-scaling = "linear: worst F characters, n >= 4"
-execution = "linear: worst L + R commands, R the prefix through the first read: one pass, then EOF"
-workspace = "poly n: at most W bits from n=3: input storage and countdown"
 definitions = ["W = bl(L-1)+max(6,n-1)+max(19,4n-1)+bl(n)+4, plus 3+max(0,n-6)+bl(max(7,n+1)) through n=10"]
 
 [generator_sizes]
@@ -134,8 +131,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.suffolk.generator:suffolk"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, R the prefix through the first read: one pass, then EOF", formula = "L + R" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.suffolk.proof_formulas:workspace"
@@ -143,8 +141,9 @@ exact = false
 arities = [3, 5, 6]
 first = 3
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.suffolk.generator:suffolk"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} from n=3: input storage and countdown", formula = "W" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.suffolk.tests.formulas:_chars"
@@ -152,5 +151,6 @@ exact = true
 arities = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 first = 4
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.suffolk.generator:suffolk"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n >= 4", formula = "F" }

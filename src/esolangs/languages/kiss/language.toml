@@ -8,9 +8,6 @@ admitted = 2026-10-21T23:43:42-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "a node is S over its two halves, which S reads a bit to choose; a node whose halves agree reads it through SS(SKK)"
-scaling = "linear: worst 7T-5 characters: 5 a node, 2 a leaf"
-execution = "poly n: worst 4n - 1 rewrites: four a skip level, then a read, the output and the halt"
-workspace = "linear: worst 24T + 2bl(n) + 17 bits past n = 1: a root skip holds its half twice"
 
 [ablations]
 audited = "2026-10-29"
@@ -96,8 +93,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "rewrites"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.kiss.generator:kiss"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: four a skip level, then a read, the output and the halt" }
 
 [resource_evidence.workspace]
 expression = "24T + 2bl(n) + 17"
@@ -105,8 +103,9 @@ exact = true
 arities = [2, 3, 6]
 first = 2
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.kiss.generator:kiss"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: a root skip holds its half twice" }
 
 [resource_evidence.scaling]
 expression = "7T-5"
@@ -114,5 +113,6 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.kiss.generator:kiss"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: 5 a node, 2 a leaf" }

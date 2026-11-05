@@ -1,10 +1,12 @@
 """Proof status records and consistency."""
 
+import copy
 from pathlib import Path
 
 import pytest
 
 from scripts.docs import proof_status as status
+from scripts.docs.resource_description import parse_descriptions
 
 
 def test_rendering_preserves_committed_tables(
@@ -55,6 +57,34 @@ def test_invalid_status_cannot_grant_an_exemption(case: str) -> None:
     elif case == "labels":
         data["ledger"][0]["labels"] = []
     else:
+        original = data["ledger"][0]["resources"]
+        for changes in (
+            {"growth": "linera"},
+            {"claim": "unproven"},
+            {"claim": []},
+            {"template": "{claim} {formula.__class__}"},
+            {"template": "{claim} {formula!r}"},
+            {"template": "{claim} {formula:>2}"},
+            {"template": "{formula}"},
+            {"unexpected": 1},
+        ):
+            broken = copy.deepcopy(original)
+            broken["execution"]["description"].update(changes)
+            with pytest.raises(ValueError, match=r"invalid|resource"):
+                parse_descriptions(broken)
+        broken = copy.deepcopy(original)
+        broken["execution"]["description"]["claim"] = "worst"
+        broken["execution"]["exact"] = False
+        with pytest.raises(ValueError, match="exact"):
+            parse_descriptions(broken)
+        broken = copy.deepcopy(original)
+        broken["execution"] = {"qualitative": {"growth": "linear", "text": "why"}}
+        with pytest.raises(ValueError, match="qualitative"):
+            parse_descriptions(broken)
+        broken = copy.deepcopy(original)
+        del broken["scaling"]
+        with pytest.raises(ValueError, match="schema"):
+            parse_descriptions(broken)
         data["ledger"][0]["scaling"] = False
     with pytest.raises(ValueError, match=r"invalid|unknown|duplicate|missing"):
         status.validate(data)

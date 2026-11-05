@@ -9,9 +9,6 @@ bf_derivative = true
 [proof_status]
 labels = ["tree"]
 qualification = "the first bit of each input byte is read into b and branched on, the other seven are discarded at the head of the next block; equal subtables share one block, laid out in topological chains so every jump is a forward odd label, and a constant subtable reads its remaining bits and prints the answer byte"
-scaling = "linear: Θ(T / log T) blocks of O(log T) digits"
-execution = "poly n: at most 12n + 18 commands"
-workspace = "poly n: at most bl(L-1) + bl(n) + 16 bits"
 
 [generator_sizes]
 "00000001" = { commands = 46, commands_by_row = { "0" = 46, "1" = 46, "2" = 46, "3" = 46, "4" = 46, "5" = 46, "6" = 46, "7" = 46 }, source_units = 85 }
@@ -109,8 +106,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.nandypants.generator:nandypants"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.nandypants.proof_formulas:workspace"
@@ -118,5 +116,9 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.nandypants.generator:nandypants"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}", formula = "bl(L-1) + bl(n) + 16" }
+
+[resource_evidence.scaling]
+qualitative = { growth = "linear", text = "Θ(T / log T) blocks of O(log T) digits" }

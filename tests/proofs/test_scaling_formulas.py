@@ -10,8 +10,6 @@ bounds were false while nothing measured them: one 14T where parity reaches
 15T - 14, one 6n + 3T rows reaching 17 at n=1.
 """
 
-import re
-
 import pytest
 
 import esolangs
@@ -24,11 +22,6 @@ from tests.proofs._witnesses import _WITNESS_BAND, band_marks
 from tests.proofs.execution import tables as _tables
 from tests.support.generator_support import CHECK
 
-#: A stated size bound: the unit follows its formula.
-_SIZE = re.compile(
-    r"^(?:at most|worst) (.+?) (characters|lines|rows|cells|codels|pixels)\b"
-)
-
 #: A raster is judged by its rows times its width, at the default scale of 1.
 _RASTER = {"codels", "pixels"}
 
@@ -40,9 +33,9 @@ def _raster_area(program: object) -> int:
 
 FORMULAS = ledger_formulas("scaling")
 _UNIT = {
-    row.generator: match.group(2)
+    row.generator: row.resources.scaling.unit
     for row in load_ledger().rows
-    if (match := _SIZE.match(row.scaling_clause))
+    if row.resources.scaling.bounded
 }
 
 

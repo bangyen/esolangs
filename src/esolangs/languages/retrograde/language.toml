@@ -5,9 +5,6 @@ admitted = 2026-11-01T17:12:11-05:00
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "a single turn chooses one emitted child in either direction when its two functions match the siblings; backward ids are interned bottom-up; input bits and entry direction are restored, ordered setters precede the tree and the final cell carries the answer"
-scaling = "linear: at most 14T + 4n - 13 characters"
-execution = "poly n: worst 12n - 2 commands: native decisions and one final dump"
-workspace = "poly n: at most n + bl(L) + bl(n+1) + 16 bits: packed tape halves, pointers and direction"
 
 [catalogue]
 sharing_exempt = "the inline tree nests each body under paired lexical turns; there are no named calls or arbitrary target jumps for a local subtree-sharing rule"
@@ -127,8 +124,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.retrograde.generator:retrograde"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: native decisions and one final dump" }
 
 [resource_evidence.workspace]
 expression = "n + bl(L) + bl(n+1) + 16"
@@ -136,8 +134,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.retrograde.generator:retrograde"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: packed tape halves, pointers and direction" }
 
 [resource_evidence.scaling]
 expression = "14T + 4n - 13"
@@ -145,5 +144,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.retrograde.generator:retrograde"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }

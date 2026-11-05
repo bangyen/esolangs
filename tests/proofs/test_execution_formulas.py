@@ -22,9 +22,7 @@ from tests.support.reference import REFERENCE
 def test_every_formula_cell_is_checked() -> None:
     """Every bounded or exact Execution clause has a formula here, and back."""
     stated = {
-        row.generator
-        for row in load_ledger().rows
-        if row.execution_clause.startswith(("worst ", "at most ", "exact "))
+        row.generator for row in load_ledger().rows if row.resources.execution.bounded
     }
     unchecked = sorted(stated - set(FORMULAS))
     assert not unchecked, f"{unchecked} state a bound with no FORMULAS row; {CHECK}"

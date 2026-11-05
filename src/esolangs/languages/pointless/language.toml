@@ -8,9 +8,6 @@ admitted = 2026-10-15T14:21:44-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "each distinct subtable is one function, pasted in where that is shorter; `,=` maps a character to its bit through the cells 48 and 49, and `[` tests the bit's cell; the one `!` seeds the 1s that make `+` an increment"
-scaling = "linear: at most F characters: every function declared"
-execution = "poly n: worst 26n + 309 steps past n = 2: setup 6n + 305, 16 a level"
-workspace = "poly n: at most (n+1)(2bl(L)+4) + 16n + 430 bits: a frame a level, the tape"
 
 [generator_sizes]
 "00000001" = { commands = 383, commands_by_row = { "0" = 361, "1" = 361, "2" = 361, "3" = 361, "4" = 371, "5" = 371, "6" = 380, "7" = 383 }, source_units = 459 }
@@ -103,8 +100,9 @@ exact = true
 arities = [3, 6]
 first = 3
 unit = "steps"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.pointless.generator:pointless"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: setup 6n + 305, 16 a level", formula = "26n + 309" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.pointless.proof_formulas:workspace"
@@ -112,8 +110,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.pointless.generator:pointless"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: a frame a level, the tape", formula = "(n+1)(2bl(L)+4) + 16n + 430" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.pointless.tests.formulas:_chars"
@@ -121,5 +120,6 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.pointless.generator:pointless"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: every function declared", formula = "F" }

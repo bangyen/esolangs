@@ -33,7 +33,7 @@ MANAGED = frozenset(
         "src/esolangs/languages/generators.py",
         "tests/support/samples.py",
         "tests/generators/test_wrap.py",
-        "tests/proofs/execution.py",
+        "tests/proofs/measurement.py",
         "tests/proofs/_witnesses.py",
         "tests/proofs/test_workspace_formulas.py",
         "tests/api/test_language_coupling.py",

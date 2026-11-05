@@ -8,9 +8,6 @@ admitted = 2026-10-16T16:30:03-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the table read at its essential inputs is one integer built by Horner in base8 (parity: base16), and each essential bit of the row divides it by 1 or by 2^2^m, squared up from 2, so its low bit is the answer"
-scaling = "linear: worst 3T + 6⌈T/3⌉ + 48n + 53 characters: six an instruction"
-execution = "linear: worst ⌊T/2⌋ + ⌈T/3⌉ + 8n + 9 commands: half the rows set, run once"
-workspace = "linear: worst 2T + 6 + bl(⌊T/2⌋+⌈T/3⌉+8n+6) bits past n = 2: b and its even copy"
 
 [generator_sizes]
 "00000001" = { commands = 37, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 37, "5" = 37, "6" = 37, "7" = 37 }, source_units = 221 }
@@ -130,8 +127,9 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: half the rows set, run once" }
 
 [resource_evidence.workspace]
 expression = "2T + 6 + bl(⌊T/2⌋+⌈T/3⌉+8n+6)"
@@ -139,8 +137,9 @@ exact = true
 arities = [3, 5]
 first = 3
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: b and its even copy" }
 
 [resource_evidence.scaling]
 expression = "3T + 6⌈T/3⌉ + 48n + 53"
@@ -148,5 +147,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: six an instruction" }

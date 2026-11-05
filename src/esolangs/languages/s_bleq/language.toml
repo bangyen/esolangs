@@ -8,9 +8,6 @@ admitted = 2026-08-12T17:01:43-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "packed chunks decoded after the hoisted read block, against a hoisted tree that lays out each distinct subtable once and jumps to it"
-scaling = "linear: worst P characters, n = 11..28; below, at most min(tree, P)"
-execution = "linear: worst 3n + 2 instructions to n = 9, the tree route; packed, worst 8T+(7n+5)(⌊T/n⌋-1)+26n-8 steps"
-workspace = "linear: at most B + 6n + bl(3C) + bl(n) + 1 bits: the self-modified program, decimal cells"
 definitions = ["B = the program cells' bits, a sign one more", "C = the program's cell count"]
 
 [generator_sizes]
@@ -170,8 +167,9 @@ exact = true
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 first = 1
 unit = "instructions"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.s_bleq.generator:s_bleq"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} to n = 9, the tree route; packed, worst 8T+(7n+5)(⌊T/n⌋-1)+26n-8 steps", formula = "3n + 2" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.s_bleq.tests.formulas:_workspace"
@@ -179,8 +177,9 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.s_bleq.generator:s_bleq"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the self-modified program, decimal cells", formula = "B + 6n + bl(3C) + bl(n) + 1" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.s_bleq.tests.formulas:_scaling"
@@ -188,5 +187,6 @@ exact = [11, 12, 13, 19, 20, 21, 22, 23, 24, 25]
 arities = [5, 8, 10, 11, 12, 13, 19, 20, 21, 22, 23, 24, 25]
 first = 11
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.s_bleq.generator:s_bleq"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n = 11..28; below, at most min(tree, P)", formula = "P" }

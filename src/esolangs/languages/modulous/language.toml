@@ -8,9 +8,6 @@ admitted = 2021-05-16T15:17:47-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "pair literal for asymmetric inputs; O(n)-source symmetric count reader retained; default exact maxima, split literals pay extra pushes/cursor bits"
-scaling = "linear: worst S characters past n=1; worst68 at n=1"
-execution = "linear: worst E commands past n=1; worst7 at n=1; split literal adds H-1"
-workspace = "linear: worst W bits past n=1; worst13 at n=1; split literal uses max(P,actual) command cursor"
 definitions = ["S = 6T+28n+21 at n=2..4; 3T+28n+144 at n=5; otherwise T/2+48n+157+sum(digits(2^k),k=0..n-2)", "E = T+3n+2 at n=2..4; T/2+3n+6 at n=5; otherwise 5T/2+5n-31", "P = T+3n+2 at n=2..4; T/2+3n+14 at n=5; otherwise 6n+17 default commands", "W = 6T+2+bl(P)+bl(2n-1)+bl(n) at n=2..4; otherwise 3T+(2 if n<=5 else n+1)+bl(P)+bl(2n-1)+bl(n)", "H = number of table-literal pushes"]
 
 [generator_sizes]
@@ -133,8 +130,9 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.modulous.generator:modulous"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n=1; worst7 at n=1; split literal adds H-1", formula = "E" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.modulous.proof_formulas:workspace"
@@ -142,8 +140,9 @@ exact = true
 arities = [1, 2, 3, 4, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.modulous.generator:modulous"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n=1; worst13 at n=1; split literal uses max(P,actual) command cursor", formula = "W" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.modulous.tests.formulas:_chars"
@@ -151,5 +150,6 @@ exact = true
 arities = [1, 2, 3, 4, 5, 8]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.modulous.generator:modulous"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n=1; worst68 at n=1", formula = "S" }

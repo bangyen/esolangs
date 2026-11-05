@@ -8,9 +8,6 @@ admitted = 2026-10-20T08:38:48-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the table is one `\"` literal, row 0 on top, and Horner's rule over the essential inputs gives the depth `&` copies; past the crossover the literal packs six entries a character and the row splits into that depth and a bit"
-scaling = "linear: worst min(T + 4n + 1, ⌈T/6⌉ + 4n + 19) characters"
-execution = "poly n: worst 4n commands to n = 4, then 4n + 17: the literal, the reads and folds, the decode"
-workspace = "linear: worst max(P, W) bits: the literal's codes on the stack, plain or packed"
 definitions = ["P = 6t + 7 + bl(t+2) + bl(2n+2m) + bl(2n), m = min(n, 4), t = 2^m", "W = 7⌊T/6⌋ + 7 + bl(⌈T/6⌉+4) + max(16, 2n+3) + bl(4n+18) + bl(2n), 0 below n = 5"]
 
 [catalogue]
@@ -139,8 +136,9 @@ exact = true
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.freestajlo.generator:freestajlo"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} to n = 4, then 4n + 17: the literal, the reads and folds, the decode", formula = "4n" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.freestajlo.tests.formulas:_freestajlo"
@@ -148,8 +146,9 @@ exact = true
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.freestajlo.generator:freestajlo"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the literal's codes on the stack, plain or packed", formula = "max(P, W)" }
 
 [resource_evidence.scaling]
 expression = "min(T + 4n + 1, ⌈T/6⌉ + 4n + 19)"
@@ -157,5 +156,6 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.freestajlo.generator:freestajlo"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }

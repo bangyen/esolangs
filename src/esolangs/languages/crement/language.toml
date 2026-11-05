@@ -8,9 +8,6 @@ admitted = 2026-09-13T11:40:58-04:00
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, a folded subtree targets the shared self-jump or the line past the end, and a subtree already emitted at its level is targeted, not repeated; parity and thresholds reuse initial tester targets without revisiting a level"
-scaling = "linear: worst N lines: subtree ids"
-execution = "poly n: worst E commands over halting rows, shared self-patching testers"
-workspace = "linear: at most 2bl(N) + 32 + bl(2n+3) + 2n(10+bl(N-1)) + P(28+3bl(2n+2)+2bl(N-2)) bits: whole program state"
 definitions = ["P = Σ_{k<n} min(2^k, 4^s - 2^s), s = 2^(n-k-1), the shared nodes per level", "N = 5 at n=1, 13 at n=2, otherwise 3P+2n+3", "E = 4 at n=1, otherwise 5n+2"]
 
 [generator_sizes]
@@ -116,8 +113,9 @@ exact = true
 arities = [1, 2, 3, 5, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.crement.generator:crement"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} over halting rows, shared self-patching testers", formula = "E" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.crement.proof_formulas:workspace"
@@ -125,8 +123,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.crement.generator:crement"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: whole program state", formula = "2bl(N) + 32 + bl(2n+3) + 2n(10+bl(N-1)) + P(28+3bl(2n+2)+2bl(N-2))" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.crement.tests.formulas:_lines"
@@ -134,5 +133,6 @@ exact = true
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "lines"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.crement.generator:crement"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: subtree ids", formula = "N" }

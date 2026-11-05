@@ -8,9 +8,6 @@ admitted = 2021-06-21T00:20:21-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the table is one binary literal, divided by the power of two the reads build"
-scaling = "linear: worst T+35n+94 characters: T-1 bit literal, 35 an input"
-execution = "poly n: worst n + 6 commands, one statement per input"
-workspace = "linear: worst 2T + 19 + bl(n) bits: the row, its half, two digit cells"
 
 [generator_sizes]
 "00000001" = { commands = 9, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 9, "5" = 9, "6" = 9, "7" = 9 }, source_units = 201 }
@@ -141,8 +138,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.qoibl.generator:qoibl"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, one statement per input", formula = "n + 6" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.qoibl.proof_formulas:workspace"
@@ -150,8 +148,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.qoibl.generator:qoibl"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the row, its half, two digit cells", formula = "2T + 19 + bl(n)" }
 
 [resource_evidence.scaling]
 expression = "T+35n+94"
@@ -159,5 +158,6 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.qoibl.generator:qoibl"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: T-1 bit literal, 35 an input" }

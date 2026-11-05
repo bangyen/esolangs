@@ -8,9 +8,6 @@ admitted = 2026-10-21T23:43:42-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "inputs buffer in stream order; shared residual cases branch on character codes, equal children skip, and constant residuals share printing leaves"
-scaling = "linear: at most N characters: O(T/log T) shared residuals, O(log T) address digits"
-execution = "poly n: worst 6n+8 commands: define buffers, read all inputs, at most n binary branches, print"
-workspace = "poly n: at most B+27+bl(n+diagram_cap(n))+bl(n) bits; equality at n=1,2,3,5: buffers and branch"
 definitions = ["B = Σ_{0<=i<n}(8len(x_i)+6)"]
 
 [ablations]
@@ -124,8 +121,9 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.switchcase.generator:switchcase"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: define buffers, read all inputs, at most n binary branches, print", formula = "6n+8" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.switchcase.proof_formulas:workspace"
@@ -133,8 +131,9 @@ exact = [1, 2, 3, 5]
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.switchcase.generator:switchcase"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}; equality at n=1,2,3,5: buffers and branch", formula = "B+27+bl(n+diagram_cap(n))+bl(n)" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.switchcase.tests.formulas:_chars"
@@ -142,5 +141,6 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6, 8, 9, 10, 12]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.switchcase.generator:switchcase"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: O(T/log T) shared residuals, O(log T) address digits", formula = "N" }

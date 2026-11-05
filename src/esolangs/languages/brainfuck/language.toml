@@ -7,9 +7,6 @@ backlinks = 2031
 [proof_status]
 labels = ["tree"]
 qualification = "zero-pruned decision tree; residuals defer through level flags; affine tables stream; literal conjunctions/disjunctions share ASCII normalization"
-scaling = "linear: at most 35T/2 + 55n + 25 characters: the plain tree"
-execution = "poly n: worst 75n + 49 commands past n = 2: OR all-zeros"
-workspace = "poly n: at most max(7n,2n+7) + bl(2n) + bl(n) + bl(L) bits"
 
 [generator_sizes]
 "00000001" = { commands = 261, commands_by_row = { "0" = 240, "1" = 240, "2" = 240, "3" = 240, "4" = 247, "5" = 247, "6" = 254, "7" = 261 }, source_units = 179 }
@@ -173,8 +170,9 @@ exact = true
 arities = [3, 6]
 first = 3
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.brainfuck.generator:brainfuck"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: OR all-zeros" }
 
 [resource_evidence.workspace]
 expression = "max(7n,2n+7) + bl(2n) + bl(n) + bl(L)"
@@ -182,8 +180,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.brainfuck.generator:brainfuck"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.brainfuck.tests.formulas:_chars"
@@ -191,5 +190,6 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.brainfuck.generator:brainfuck"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the plain tree", formula = "35T/2 + 55n + 25" }

@@ -8,9 +8,6 @@ admitted = 2026-10-27T10:54:26+00:00
 [proof_status]
 labels = ["tree"]
 qualification = "—"
-scaling = "linear: at most 38T characters: before zero-add cancellation"
-execution = "poly n: worst 46n - 21 commands past n = 1: 29 at n=1"
-workspace = "poly n: at most 3n + 24 bits"
 
 [catalogue]
 sharing_exempt = "no names or jumps across lines: code runs once per place it is written"
@@ -102,8 +99,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.pilas.generator:pilas"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = 1: 29 at n=1", formula = "46n - 21" }
 
 [resource_evidence.workspace]
 expression = "3n + 24"
@@ -111,8 +109,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.pilas.generator:pilas"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
 expression = "38T"
@@ -120,5 +119,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.pilas.generator:pilas"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: before zero-add cancellation" }

@@ -8,9 +8,6 @@ admitted = 2021-05-25T19:49:44-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the ring is the table: one `!` per entry in a countdown row, and the index in the accumulator picks which one it is zero on, turning the pointer down that entry's own column; seven `.` an input build the index by Horner's rule, doubled between inputs by a two-row gadget that spends the accumulator as distance and buys back two per unit"
-scaling = "linear: worst 25T + 40n + 20 cells past n = 1"
-execution = "linear: worst 16T + 22n + 2 steps past n = 1: the pointer's path to the last row"
-workspace = "poly n: worst 57n + 54 + bl(5*2^n+8n+3) bits: 7n-character queue"
 
 [generator_sizes]
 "00000001" = { commands = 196, commands_by_row = { "0" = 144, "1" = 148, "2" = 158, "3" = 162, "4" = 178, "5" = 182, "6" = 192, "7" = 196 }, source_units = 321 }
@@ -152,8 +149,9 @@ exact = true
 arities = [2, 3, 5]
 first = 2
 unit = "steps"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.clockwise.generator:clockwise"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: the pointer's path to the last row" }
 
 [resource_evidence.workspace]
 expression = "57n + 54 + bl(5*2^n+8n+3)"
@@ -161,8 +159,9 @@ exact = true
 arities = [3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.clockwise.generator:clockwise"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: 7n-character queue" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.clockwise.tests.formulas:_cells"
@@ -170,5 +169,6 @@ exact = true
 arities = [2, 3, 4, 5, 6, 7, 8, 9, 10]
 first = 2
 unit = "cells"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.clockwise.generator:clockwise"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}", formula = "25T + 40n + 20" }

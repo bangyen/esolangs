@@ -8,9 +8,6 @@ admitted = 2026-10-15T13:25:54-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "a node pushes its two child functions and B? invokes one; essential-input projection interleaves ignored B$ reads; two-bit tails derive arithmetic, parity uses an exact sum/power, and constants drain remaining inputs"
-scaling = "linear: worst 9T/2 - 6 characters past n = 1: six a node"
-execution = "poly n: worst E steps: four a branch level, twelve in an arithmetic tail"
-workspace = "poly n: worst W bits past n = 1: default frame, stack and input position"
 definitions = ["E = 7 at n=1, 4n+4 from n=2", "W = 24/64/112 at n=2/3/4; 2n^2+34n-61+bl(2n-1) from n=5"]
 
 [generator_sizes]
@@ -146,8 +143,9 @@ exact = true
 arities = [1, 2, 3, 5, 6]
 first = 1
 unit = "steps"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.one_i.generator:one_i"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: four a branch level, twelve in an arithmetic tail", formula = "E" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.one_i.proof_formulas:workspace"
@@ -155,8 +153,9 @@ exact = true
 arities = [2, 3, 4, 5, 6, 7, 8, 9]
 first = 2
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.one_i.generator:one_i"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: default frame, stack and input position", formula = "W" }
 
 [resource_evidence.scaling]
 expression = "9T/2 - 6"
@@ -164,5 +163,6 @@ exact = true
 arities = [2, 3, 6]
 first = 2
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.one_i.generator:one_i"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: six a node" }

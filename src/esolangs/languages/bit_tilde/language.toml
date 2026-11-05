@@ -8,9 +8,6 @@ admitted = 2026-08-13T17:57:16-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the first input partitions planting, then weighted jumps and one selector address a three-cell pair"
-scaling = "linear: worst 3T+19n+115 characters past n = 3: minority planting"
-execution = "linear: worst 19T/4+18n+123 commands past n = 3: planting and two walks"
-workspace = "linear: worst 3T/2+50+bl(3T/2+42)+bl(3T+19n+115)+bl(n) bits past n = 3: tape and cursors"
 
 
 [generator_sizes]
@@ -135,8 +132,9 @@ exact = true
 arities = [4, 5, 6, 8]
 first = 4
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bit_tilde.generator:bit_tilde"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: planting and two walks" }
 
 [resource_evidence.workspace]
 expression = "3T/2+50+bl(3T/2+42)+bl(3T+19n+115)+bl(n)"
@@ -144,8 +142,9 @@ exact = true
 arities = [4, 5, 6, 8]
 first = 4
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bit_tilde.generator:bit_tilde"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: tape and cursors" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.bit_tilde.tests.formulas:_chars"
@@ -153,5 +152,6 @@ exact = true
 arities = [4, 6, 8]
 first = 4
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bit_tilde.generator:bit_tilde"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: minority planting", formula = "3T+19n+115" }

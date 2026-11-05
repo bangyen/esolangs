@@ -8,9 +8,6 @@ admitted = 2026-10-07T12:40:41-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "each input byte is compared with stacked '1' and '0', then popped before descent; the empty test stack ends both one-shot loops; a constant subtree reads its remaining inputs and prints; repeated residuals use guarded labels"
-scaling = "linear: at most 24T-9 characters: 21 a node, 3 a leaf, 12 prologue"
-execution = "poly n: at most 7n + 3 commands, six a tree node plus guarded dispatch"
-workspace = "poly n: worst 6n + 12 + bl(K) + bl(n) bits, K commands: n stacked input bytes"
 
 [generator_sizes]
 "00000001" = { commands = 17, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 16, "5" = 16, "6" = 17, "7" = 17 }, source_units = 78 }
@@ -136,8 +133,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.sstack.generator:sstack"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, six a tree node plus guarded dispatch" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.sstack.proof_formulas:workspace"
@@ -145,8 +143,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.sstack.generator:sstack"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, K commands: n stacked input bytes", formula = "6n + 12 + bl(K) + bl(n)" }
 
 [resource_evidence.scaling]
 expression = "24T-9"
@@ -154,5 +153,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.sstack.generator:sstack"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: 21 a node, 3 a leaf, 12 prologue" }

@@ -9,9 +9,6 @@ outside_implementation = { date = 2022-10-07, source = "BoundedBeans' interprete
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "—"
-scaling = "linear: worst 6T + 10n + 61 characters past n = 1: pairs"
-execution = "linear: worst 9T/2 + 10n + 284 commands past n = 1: every leaf run, all weights set"
-workspace = "poly n: worst n + 49 + bl(6T+10n+61) bits past n = 1: index cell, four flags, cursor, a -1 setter cell"
 
 [generator_sizes]
 "00000001" = { commands = 304, commands_by_row = { "0" = 335, "1" = 326, "2" = 327, "3" = 318, "4" = 326, "5" = 317, "6" = 313, "7" = 304 }, source_units = 118 }
@@ -143,8 +140,9 @@ exact = true
 arities = [2, 3, 5]
 first = 2
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.home_row.generator:home_row"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: every leaf run, all weights set" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.home_row.proof_formulas:workspace"
@@ -152,8 +150,9 @@ exact = true
 arities = [2, 3, 4, 5, 6]
 first = 2
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.home_row.generator:home_row"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: index cell, four flags, cursor, a -1 setter cell", formula = "n + 49 + bl(6T+10n+61)" }
 
 [resource_evidence.scaling]
 expression = "6T + 10n + 61"
@@ -161,5 +160,6 @@ exact = true
 arities = [2, 3, 5]
 first = 2
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.home_row.generator:home_row"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: pairs" }

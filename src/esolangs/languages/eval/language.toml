@@ -8,9 +8,6 @@ admitted = 2020-07-10T17:59:42-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "fixed reversed stack order selects the indexed row"
-scaling = "linear: worst S characters past n=3: Gray-indexed table halves"
-execution = "linear: worst L+1 commands past n=3: unwrapped L<=S; all-one setters skip nothing"
-workspace = "linear: worst W bits past n=3: one frame and staged Boolean cells"
 definitions = ["S = 2T+7n at n=4,5; 7T/4+9n+1 from n=6 (unwrapped)", "W = 8L+T+2n+1+bl(L), minus n when T<8n+4"]
 
 [generator_sizes]
@@ -125,8 +122,9 @@ exact = true
 arities = [4, 6]
 first = 4
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.eval.generator:eval"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n={previous}: unwrapped L<=S; all-one setters skip nothing" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.eval.tests.formulas:_workspace"
@@ -134,8 +132,9 @@ exact = true
 arities = [4, 6]
 first = 4
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.eval.generator:eval"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n={previous}: one frame and staged Boolean cells", formula = "W" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.eval.tests.formulas:_chars"
@@ -143,5 +142,6 @@ exact = true
 arities = [4, 6]
 first = 4
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.eval.generator:eval"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n={previous}: Gray-indexed table halves", formula = "S" }

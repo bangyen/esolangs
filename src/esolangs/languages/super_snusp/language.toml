@@ -8,9 +8,6 @@ admitted = 2026-09-03T18:39:07-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "all reads precede a finite literal/shift lookup; persistent stack operands survive the read and chunk phases"
-scaling = "linear: worst D+8n+19 cells: one row"
-execution = "linear: worst D+8n+19 commands: straight line"
-workspace = "linear: worst T+2n+14+bl(L)+bl(n) bits past n = 4: flat lookup"
 definitions = ["D = decimal digits of 2^(T-1)"]
 
 [generator_sizes]
@@ -149,8 +146,9 @@ exact = true
 arities = [1, 2, 3, 5, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.super_snusp.generator:super_snusp"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: straight line", formula = "D+8n+19" }
 
 [resource_evidence.workspace]
 expression = "T+2n+14+bl(L)+bl(n)"
@@ -158,8 +156,9 @@ exact = true
 arities = [5, 6]
 first = 5
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.super_snusp.generator:super_snusp"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: flat lookup" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.super_snusp.proof_formulas:commands"
@@ -167,5 +166,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "cells"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.super_snusp.generator:super_snusp"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one row", formula = "D+8n+19" }

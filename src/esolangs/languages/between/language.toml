@@ -8,9 +8,6 @@ admitted = 2026-08-12T18:39:04-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "—"
-scaling = "linear: at most 2T + 2n + 2 lines"
-execution = "poly n: worst 4n + 1 commands"
-workspace = "poly n: at most 16n + bl(L) + bl(2n) + 1 bits"
 
 [generator_sizes]
 "00000001" = { commands = 11, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 10, "5" = 10, "6" = 11, "7" = 11 }, source_units = 100 }
@@ -98,8 +95,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.between.generator:between"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
 expression = "16n + bl(L) + bl(2n) + 1"
@@ -107,8 +105,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.between.generator:between"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
 expression = "2T + 2n + 2"
@@ -116,5 +115,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "lines"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.between.generator:between"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }

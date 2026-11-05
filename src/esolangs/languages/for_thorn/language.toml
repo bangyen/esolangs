@@ -8,9 +8,6 @@ admitted = 2026-10-16T20:51:56-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "the tree tests the essential inputs; an ignored one is read and dropped as `,0*+`"
-scaling = "linear: at most S characters: scope counts per level, twins called"
-execution = "linear: at most 6T + 12n - 3 commands: define each scope once; dispatch ends in literals or bit arithmetic"
-workspace = "T log T: at most (2n+364)T + 43n + 2bl(n) bits: frame text and the scope dictionary"
 
 [generator_sizes]
 "00000001" = { commands = 44, commands_by_row = { "0" = 37, "1" = 44, "2" = 37, "3" = 44, "4" = 37, "5" = 44, "6" = 37, "7" = 44 }, source_units = 57 }
@@ -117,8 +114,9 @@ exact = false
 arities = [3, 7]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.for_thorn.generator:for_thorn"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: define each scope once; dispatch ends in literals or bit arithmetic" }
 
 [resource_evidence.workspace]
 expression = "(2n+364)T + 43n + 2bl(n)"
@@ -126,8 +124,9 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.for_thorn.generator:for_thorn"
+description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit}: frame text and the scope dictionary" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.for_thorn.tests.formulas:_chars"
@@ -135,5 +134,6 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.for_thorn.generator:for_thorn"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: scope counts per level, twins called", formula = "S" }

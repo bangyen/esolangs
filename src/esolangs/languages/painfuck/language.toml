@@ -9,9 +9,6 @@ bf_derivative = true
 [proof_status]
 labels = ["tree"]
 qualification = "native numeric reads feed a flag-dispatched tree; known-zero children omit their dead flag, and one result cell is printed"
-scaling = "linear: at most 31T/2+3n-21 characters past n = 3: to n = 15"
-execution = "poly n: at most 65 commands at n=3, then max(P,B,22n): affine, admitted banks or inline"
-workspace = "poly n: at most 2n + 5 + 3bl(n) + (n+1)bl(L) bits: 2n + 2 cells, loop stack ≤ n"
 
 definitions = ["P = 4n^2+9n+5-6⌊n/2⌋: affine loops", "B = ⌊(3n^2+3)/4⌋+20n+4: shared-form admission"]
 
@@ -156,8 +153,9 @@ exact = true
 arities = [3, 6]
 first = 3
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.painfuck.generator:painfuck"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} at n=3, then max(P,B,22n): affine, admitted banks or inline", formula = "65" }
 
 [resource_evidence.workspace]
 expression = "2n + 5 + 3bl(n) + (n+1)bl(L)"
@@ -165,8 +163,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.painfuck.generator:painfuck"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: 2n + 2 cells, loop stack ≤ n" }
 
 [resource_evidence.scaling]
 expression = "31T/2+3n-21"
@@ -174,5 +173,6 @@ exact = false
 arities = [4, 7]
 first = 4
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.painfuck.generator:painfuck"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: to n = 15" }

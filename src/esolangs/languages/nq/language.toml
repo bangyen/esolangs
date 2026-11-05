@@ -5,9 +5,6 @@ admitted = 2026-11-01T17:53:41-05:00
 [proof_status]
 labels = ["tree"]
 qualification = "a lexical guard selects the true child; every leaf halts before its sibling, and folded suffixes consume all remaining inputs in order; grouped internal guards and complete parity-leaf enqueue targets work under both binding readings"
-scaling = "linear: at most 10T - 6 characters"
-execution = "poly n: at most 3n + 4 commands: one extra guard for compact parity leaves"
-workspace = "poly n: at most 2n + bl(L) + 32 bits: queued trits, flag, cursor, lap and input progress"
 
 [catalogue]
 sharing_exempt = "lexical guard bodies halt rather than return; the language has no named calls or arbitrary target jumps for local subtree sharing"
@@ -138,8 +135,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.nq.generator:nq"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: one extra guard for compact parity leaves" }
 
 [resource_evidence.workspace]
 expression = "2n + bl(L) + 32"
@@ -147,8 +145,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.nq.generator:nq"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: queued trits, flag, cursor, lap and input progress" }
 
 [resource_evidence.scaling]
 expression = "10T - 6"
@@ -156,5 +155,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.nq.generator:nq"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }

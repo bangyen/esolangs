@@ -8,9 +8,6 @@ admitted = 2026-08-13T22:20:56-04:00
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "embedded inputs select a corridor or lane and walk by weight; the endpoint clamps a constant run, and all-but-one thresholds build westward from the mirror wall"
-scaling = "linear: worst 13T/2 + 3n - 2 characters"
-execution = "linear: worst 2L commands: one pass to the fixed point, one proving the repeat"
-workspace = "T log T: at most 2(n+1)T + 3 + bl(L-1) bits: corridor, answers, ant, cursor"
 
 [generator_sizes]
 "00000001" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 34 }
@@ -132,8 +129,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one pass to the fixed point, one proving the repeat", formula = "2L" }
 
 [resource_evidence.workspace]
 expression = "2(n+1)T + 3 + bl(L-1)"
@@ -141,8 +139,9 @@ exact = false
 arities = [3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant"
+description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit}: corridor, answers, ant, cursor" }
 
 [resource_evidence.scaling]
 expression = "13T/2 + 3n - 2"
@@ -150,5 +149,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }

@@ -8,9 +8,6 @@ admitted = 2026-10-27T11:07:52+00:00
 [proof_status]
 labels = ["tree"]
 qualification = "equal subtables share one block, reached by line-number jumps"
-scaling = "linear: one block per distinct subtable, jumps of log T digits"
-execution = "poly n: at most 3n + 2 commands past n = 1"
-workspace = "poly n: worst n + 274 + min(1,n-1) bits"
 
 [generator_sizes]
 "00000001" = { commands = 10, commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 8, "5" = 8, "6" = 9, "7" = 10 }, source_units = 90 }
@@ -96,8 +93,9 @@ exact = false
 arities = [2, 3, 6]
 first = 2
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.iebel.generator:iebel"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}" }
 
 [resource_evidence.workspace]
 expression = "n + 274 + min(1,n-1)"
@@ -105,5 +103,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.iebel.generator:iebel"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
+
+[resource_evidence.scaling]
+qualitative = { growth = "linear", text = "one block per distinct subtable, jumps of log T digits" }

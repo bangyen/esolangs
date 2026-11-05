@@ -8,9 +8,6 @@ admitted = 2026-08-13T21:46:33-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "an array subscript may name `lineNumber`, so a cell is addressed by the number of the line that writes it"
-scaling = "linear: at most N characters past n = 2: a line per cell"
-execution = "linear: at most T/4 + 3n + 4m + 2K + 10 lines past n = 2: one step per line"
-workspace = "T log T: at most end-state registers, arrays A and D, ip, input counter bits past n = 2: top code repeated"
 definitions = ["m = min(16, T/4), the distinct four-row cells", "K = the constants closure: 30 for n = 6..8, 2n + 14 past n = 8", "A = the cell array, an (index, value) pair per entry", "D = the decoder array, one entry per set bit of the m cells"]
 
 [generator_sizes]
@@ -179,8 +176,9 @@ exact = false
 arities = [3, 5, 6, 8]
 first = 3
 unit = "lines"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: one step per line", formula = "T/4 + 3n + 4m + 2K + 10" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.collatz_multiverse.proof_formulas:workspace"
@@ -188,8 +186,9 @@ exact = false
 arities = [3, 4, 5, 6, 7, 9]
 first = 3
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"
+description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: top code repeated", formula = "end-state registers, arrays A and D, ip, input counter" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.collatz_multiverse.tests.formulas:_chars"
@@ -197,5 +196,6 @@ exact = false
 arities = [3, 4, 5, 6, 7]
 first = 3
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: a line per cell", formula = "N" }

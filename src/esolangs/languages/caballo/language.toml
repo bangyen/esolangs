@@ -8,9 +8,6 @@ admitted = 2026-10-15T02:01:50-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "the inputs are the initial stack; selectors `dp` (keeps a 1 and pops it), `(p+dp-)` (keeps a 0 and pops it) build a tree leaving an empty stack of weight 1 on each 1 row, a 0 subtable no branch and a constant 1 its pops; `(i+-)` beside n pops makes that `[1]` and the 0 rows `[]`; more ones than zeros builds the complement; equal halves pop untested"
-scaling = "linear: worst 33T/4 + n - 4 characters past n = 1: parity"
-execution = "poly n: worst n^2 + 12n + 6 commands past n = 2: a skipped dp chain, 2 a level"
-workspace = "poly n: at most (n+1)(n+2)/2 + 51n + 82 + bl(n) + (3n+3) bl(⌊2L/5⌋) + (n+1) bl(n+3) bits: nested frames"
 
 [generator_sizes]
 "00000001" = { commands = 18, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 14, "5" = 14, "6" = 14, "7" = 18 }, source_units = 17 }
@@ -126,8 +123,9 @@ exact = true
 arities = [3, 6]
 first = 3
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.caballo.generator:caballo"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: a skipped dp chain, 2 a level" }
 
 [resource_evidence.workspace]
 expression = "(n+1)(n+2)/2 + 51n + 82 + bl(n) + (3n+3) bl(⌊2L/5⌋) + (n+1) bl(n+3)"
@@ -135,8 +133,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.caballo.generator:caballo"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: nested frames" }
 
 [resource_evidence.scaling]
 expression = "33T/4 + n - 4"
@@ -144,5 +143,6 @@ exact = true
 arities = [2, 3, 6]
 first = 2
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.caballo.generator:caballo"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: parity" }

@@ -8,9 +8,6 @@ admitted = 2020-07-25T21:13:52-04:00
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "uniform ++/** runs; weighted stages index higher essential inputs while the last essential input stays in scratch through bounded ignored-tail macros, and a cascade routes row pairs to four fixed leaves; symmetric tables count set inputs"
-scaling = "linear: worst N characters through n=5; at most beyond"
-execution = "linear: worst max(T+6n+5,16n-3) commands: unary index or ignored-tail macros; dump follows"
-workspace = "poly n: at most W bits; equality at n=1,2,3,6: registers, pointer, cursor"
 definitions = ["N = 40n+11 through n=5; global ceiling beyond", "W = n+3+bl(max(T+6n+12,16n+4)), minus 1 from n=3"]
 
 [generator_sizes]
@@ -154,8 +151,9 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.minsky_swap.generator:minsky_swap"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: unary index or ignored-tail macros; dump follows", formula = "max(T+6n+5,16n-3)" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.minsky_swap.proof_formulas:workspace"
@@ -163,8 +161,9 @@ exact = [1, 2, 3, 6]
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.minsky_swap.generator:minsky_swap"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}; equality at n=1,2,3,6: registers, pointer, cursor", formula = "W" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.minsky_swap.tests.formulas:_chars"
@@ -172,5 +171,6 @@ exact = [1, 2, 3, 4, 5]
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.minsky_swap.generator:minsky_swap"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} through n=5; at most beyond", formula = "N" }

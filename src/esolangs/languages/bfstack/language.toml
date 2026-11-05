@@ -12,9 +12,6 @@ bf_derivative = true
 [proof_status]
 labels = ["minterms"]
 qualification = "—"
-scaling = "linear: worst N characters past n = 2: zero-row walk telescopes to T"
-execution = "poly n: worst 60n + 1290 commands past n = 8"
-workspace = "poly n: worst n+6+bl(n)+(d+1)bl(L) bits at n = 5 and past n = 8, d = max(n-8,0) + min(T,255) + 1"
 
 [generator_sizes]
 "00000001" = { commands = 242, commands_by_row = { "0" = 211, "1" = 220, "2" = 220, "3" = 229, "4" = 220, "5" = 229, "6" = 229, "7" = 242 }, source_units = 234 }
@@ -148,8 +145,9 @@ exact = true
 arities = [8, 9, 10]
 first = 9
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bfstack.generator:bfstack"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}", formula = "60n + 1290" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.bfstack.proof_formulas:workspace"
@@ -157,8 +155,9 @@ exact = [5, 9, 10, 11]
 arities = [3, 5, 6, 9, 10, 11]
 first = 5
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bfstack.generator:bfstack"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} at n = 5 and past n = 8, d = max(n-8,0) + min(T,255) + 1", formula = "n+6+bl(n)+(d+1)bl(L)" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.bfstack.tests.formulas:_chars"
@@ -166,5 +165,6 @@ exact = true
 arities = [3, 4, 5, 6, 7, 8, 9]
 first = 3
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bfstack.generator:bfstack"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: zero-row walk telescopes to T", formula = "N" }

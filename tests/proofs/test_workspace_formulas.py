@@ -95,10 +95,7 @@ def test_execution_and_workspace_formulas_hold(name: str, n: int) -> None:
 def test_every_formula_cell_is_checked() -> None:
     """Every bounded or exact Workspace clause in bits has a formula here."""
     stated = {
-        row.generator
-        for row in load_ledger().rows
-        if row.workspace_clause.startswith(("worst ", "at most ", "exact "))
-        and " bits" in row.workspace_clause
+        row.generator for row in load_ledger().rows if row.resources.workspace.bounded
     }
     unchecked = sorted(stated - set(FORMULAS))
     assert not unchecked, f"{unchecked} state a bound with no FORMULAS row; {CHECK}"

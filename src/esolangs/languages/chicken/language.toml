@@ -7,9 +7,6 @@ backlinks = 55
 [proof_status]
 labels = ["finite lookup"]
 qualification = "the essential input bits fold into a row number from a pushed base, and a load reads that row's chicken count back out of the program's own lines"
-scaling = "linear: at most 5T + 4n^2 + 372n + 300 characters"
-execution = "linear: at most 9n + 3 commands"
-workspace = "linear: at most 3T/2 + 80n + 300 bits"
 
 [catalogue]
 folding_constant_local = "essential_inputs"  # no essential input: one push line
@@ -92,8 +89,9 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.chicken.generator:chicken"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
 expression = "3T/2 + 80n + 300"
@@ -101,8 +99,9 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.chicken.generator:chicken"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
 expression = "5T + 4n^2 + 372n + 300"
@@ -110,5 +109,6 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.chicken.generator:chicken"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }

@@ -10,9 +10,6 @@ backlinks = 90
 [proof_status]
 labels = ["tree"]
 qualification = "shared trees/formulas or a conditional packet tree; signed 32-bit multiplication extracts the answer"
-scaling = "linear: at most 9T/2+5n-7 characters past n = 3: to n = 15"
-execution = "linear: at most 9T/2 + 5n - 7 commands past n = 3: formula budget or diagram path"
-workspace = "poly n: at most W bits past n = 2, b = bl(L), S stores: the build's stack, variables, frames"
 definitions = ["W = bl(n)+6n+2b+1 constant, bl(n)+5n+6+2b(S+2n+2) expression, bl(n)+34n+67+2b(n+2) lookup, bl(n)+n+1+2b(S+n+2) diagram"]
 
 [generator_sizes]
@@ -143,8 +140,9 @@ exact = false
 arities = [4, 6]
 first = 4
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.false.generator:false"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: formula budget or diagram path" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.false.tests.formulas:workspace"
@@ -152,8 +150,9 @@ exact = false
 arities = [3, 4, 5, 6, 8, 9]
 first = 3
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.false.generator:false"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}, b = bl(L), S stores: the build's stack, variables, frames", formula = "W" }
 
 [resource_evidence.scaling]
 expression = "9T/2+5n-7"
@@ -161,5 +160,6 @@ exact = false
 arities = [4, 6]
 first = 4
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.false.generator:false"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: to n = 15" }

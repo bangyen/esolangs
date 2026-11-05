@@ -8,9 +8,6 @@ admitted = 2026-09-13T09:46:59-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "a boustrophedon table has three rows per block; binary weights walk horizontally or down whole blocks; symmetric tables retain the count reader"
-scaling = "linear: worst F characters: full binary layout with T-1 painted ones"
-execution = "linear: worst E default commands; at most 2E+1 with wrapping newlines"
-workspace = "linear: worst W bits: grid, one counter frame and cursors"
 definitions = ["F = 3T+25n+digits(T)+8 through n=3; 2T+c+5r+25n+digits(c)+digits(3r)+1 beyond; c = 2^min(n,floor((n+3)/2)), r = T/c", "E = 3T+85n+5 through n=3; 2T+c+5r+85n-1 beyond, with c,r as in F", "W = 3T+2n+10+bl(L-d-3)+bl(L-d-9)+2bl(n) through n=3, d = digits(T); wh+7+2b(w-1)+2b(h-1)+2b(B)+2b(n) beyond; w,h declared dimensions, B body length, b(x) = max(1,bl(x))"]
 
 
@@ -146,8 +143,9 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.egl.generator:egl"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}; at most 2E+1 with wrapping newlines", formula = "E default" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.egl.proof_formulas:workspace"
@@ -155,8 +153,9 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.egl.generator:egl"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: grid, one counter frame and cursors", formula = "W" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.egl.tests.formulas:_chars"
@@ -164,5 +163,6 @@ exact = true
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.egl.generator:egl"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: full binary layout with T-1 painted ones", formula = "F" }

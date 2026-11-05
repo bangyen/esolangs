@@ -9,9 +9,6 @@ bf_derivative = true
 [proof_status]
 labels = ["tree"]
 qualification = "equal cofactors share a layered DAG; OR uses a known-zero entry and holds its answer beside trailing input; width requests retain tree/spatial readers"
-scaling = "linear: at most W characters: widest layered DAG, before the fall-through layout"
-execution = "poly n: at most 4n + 50 commands, one DAG path and a tail"
-workspace = "poly n: at most 13 + bl(lines) + bl(n) bits: two cells, a line cursor"
 
 [generator_sizes]
 "00000001" = { commands = 11, commands_by_row = { "0" = 57, "1" = 57, "2" = 57, "3" = 57, "4" = 58, "5" = 58, "6" = 59, "7" = 11 }, source_units = 1007 }
@@ -156,8 +153,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.brainif.generator:brainif"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, one DAG path and a tail" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.brainif.proof_formulas:workspace"
@@ -165,8 +163,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.brainif.generator:brainif"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: two cells, a line cursor", formula = "13 + bl(lines) + bl(n)" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.brainif.tests.formulas:_chars"
@@ -174,5 +173,6 @@ exact = false
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.brainif.generator:brainif"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: widest layered DAG, before the fall-through layout", formula = "W" }

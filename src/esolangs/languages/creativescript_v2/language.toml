@@ -8,9 +8,6 @@ admitted = 2026-10-29T15:05:01-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the table read at its essential inputs is one integer literal, and each essential input of the row multiplies a divisor by 1 or by 2^2^m, squared up from 2, so the quotient's low bit is the answer"
-scaling = "linear: at most ⌈T/3⌉ + 70n + 62 characters: one literal"
-execution = "poly n: worst 6n + 5 commands"
-workspace = "linear: at most 3T + n + 6 + bl(6n+5) + bl(n) bits"
 
 [catalogue]
 folding_constant = "a constant table is the literal 0 or 1 with no essential input: no divisor is built"
@@ -82,8 +79,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.creativescript_v2.generator:creativescript_v2"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
 expression = "3T + n + 6 + bl(6n+5) + bl(n)"
@@ -91,8 +89,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.creativescript_v2.generator:creativescript_v2"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
 expression = "⌈T/3⌉ + 70n + 62"
@@ -100,5 +99,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.creativescript_v2.generator:creativescript_v2"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: one literal" }

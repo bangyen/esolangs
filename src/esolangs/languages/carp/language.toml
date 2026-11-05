@@ -8,9 +8,6 @@ admitted = 2026-10-29T15:06:53-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "the diagram branches on every essential input with DEC; an equal subtree is emitted once, reached by a jump through a register held at 15, and constants jump to one of two print gadgets"
-scaling = "linear: at most 2T + n + 20 lines"
-execution = "poly n: at most 3n + 19 commands"
-workspace = "poly n: worst n + 23 bits"
 
 [generator_sizes]
 "00000001" = { commands = 25, commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 23, "5" = 23, "6" = 24, "7" = 25 }, source_units = 299 }
@@ -80,8 +77,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.carp.generator:carp"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
 expression = "n + 23"
@@ -89,8 +87,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.carp.generator:carp"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
 expression = "2T + n + 20"
@@ -98,5 +97,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "lines"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.carp.generator:carp"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }

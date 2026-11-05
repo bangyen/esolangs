@@ -8,9 +8,6 @@ admitted = 2026-09-27T20:34:26-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "inputs go to either end of one bistack row, an ignored one to the column; each end pop drives the next alternating-axis decision node, or goes to the column where the halves agree, in an order the row can pop; repeated identical straight transit strips contract to one"
-scaling = "linear: at most N cells past n = 2: H-tree `O(sqrt(T))` sides"
-execution = "linear: at most 32·2^(n/2) - 29 for even n, 48·2^((n-1)/2) - 29 for odd, past n = 2: about sqrt T"
-workspace = "poly n: at most 4n + 89 + 2bl(n) + Σ_{c<n} max(1,bl(c)) bits past n = 2"
 
 [generator_sizes]
 "00000001" = { commands = 29, commands_by_row = { "0" = 35, "1" = 35, "2" = 35, "3" = 35, "4" = 29, "5" = 29, "6" = 29, "7" = 29 }, source_units = 211 }
@@ -143,8 +140,9 @@ exact = false
 arities = [3, 4]
 first = 3
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.thisthat.generator:thisthat"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}", formula = "32·2^(n/2) - 29 for even n, 48·2^((n-1)/2) - 29 for odd, past n = 2: about sqrt T" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.thisthat.proof_formulas:workspace"
@@ -152,8 +150,9 @@ exact = false
 arities = [3, 5]
 first = 3
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.thisthat.generator:thisthat"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}", formula = "4n + 89 + 2bl(n) + Σ_{c<n} max(1,bl(c))" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.thisthat.tests.formulas:_cells"
@@ -161,5 +160,6 @@ exact = false
 arities = [3, 4, 5, 6, 7, 8]
 first = 3
 unit = "cells"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.thisthat.generator:thisthat"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: H-tree `O(sqrt(T))` sides", formula = "N" }

@@ -10,6 +10,7 @@ from typing import Any
 
 from .anchors import anchors
 from .fragments import AggregateKey, cached, fingerprint
+from .resource_description import ResourceDescriptions, parse_descriptions
 from .writing import write_if_changed as _write_if_changed
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -24,9 +25,6 @@ _LEDGER_KEYS = frozenset(
     {
         "labels",
         "qualification",
-        "scaling",
-        "execution",
-        "workspace",
         "evidence",
         "definitions",
     }
@@ -41,13 +39,31 @@ class ProofRow:
     generator: str
     labels: tuple[str, ...]
     qualification: str
-    scaling: str
-    execution: str
-    workspace: str
+    resources: ResourceDescriptions
     evidence: str
     #: ``"S = ..."`` symbols a formula cell uses, rendered under the table
     #: so the cell itself stays short.
     definitions: tuple[str, ...] = ()
+
+    @property
+    def scaling(self) -> str:
+        """Return the rendered source/generation bound."""
+        return self.resources.scaling.text
+
+    @property
+    def execution(self) -> str:
+        """Return the rendered command bound."""
+        return self.resources.execution.text
+
+    @property
+    def workspace(self) -> str:
+        """Return the rendered written-state bound."""
+        return self.resources.workspace.text
+
+    @property
+    def scaling_class(self) -> str:
+        """Return the declared source/generation growth class."""
+        return self.resources.scaling.growth
 
 
 @dataclass(frozen=True)
@@ -133,7 +149,8 @@ def _aggregate_fragments(
         path = packages / slug / FRAGMENT
         if not path.is_file():
             continue
-        section = tomllib.loads(path.read_text(encoding="utf-8")).get("proof_status")
+        fragment = tomllib.loads(path.read_text(encoding="utf-8"))
+        section = fragment.get("proof_status")
         if section is None:
             continue
         if not isinstance(section, dict):
@@ -149,6 +166,14 @@ def _aggregate_fragments(
             if not isinstance(raw, dict):
                 raise ValueError(f"{path}: [proof_status] {group} must be a table")
             row = _fragment_row(path, raw, keys, group)
+            if group == "ledger":
+                resources = fragment.get("resource_evidence", {})
+                descriptions = parse_descriptions(resources)
+                row |= {
+                    column: getattr(descriptions, column).text
+                    for column in ("scaling", "execution", "workspace")
+                }
+                row["resources"] = resources
             data[group].append(row | {"generator": name})
     if packages.is_dir():
         for path in packages.glob(f"*/{FRAGMENT}"):
@@ -225,14 +250,16 @@ def validate(
             raise ValueError("invalid proof definitions")
         if row.get("evidence") == LEDGER_EVIDENCE:
             raise ValueError(f"{row['generator']}: omit the default evidence")
+        resources = parse_descriptions(row.get("resources", {}))
+        for column in ("scaling", "execution", "workspace"):
+            if _text(row, column) != getattr(resources, column).text:
+                raise ValueError("invalid rendered resource cell")
         proofs.append(
             ProofRow(
                 _text(row, "generator"),
                 tuple(labels),
                 _text(row, "qualification"),
-                _text(row, "scaling"),
-                _text(row, "execution"),
-                _text(row, "workspace"),
+                resources,
                 _text({"evidence": LEDGER_EVIDENCE} | row, "evidence"),
                 tuple(definitions),
             )

@@ -9,9 +9,6 @@ bf_derivative = true
 [proof_status]
 labels = ["tree"]
 qualification = "—"
-scaling = "linear: worst 53T/2 - 21 characters past n = 1"
-execution = "poly n: worst 21n + 13 commands"
-workspace = "poly n: at most bl(L) + bl(4n + 2) + 2n·bl(2n) + 25 bits"
 
 [catalogue]
 sharing_exempt = "structured loops only, no names or jumps: code runs once per place it is written"
@@ -102,8 +99,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.monotonic_boolfuck.generator:monotonic_boolfuck"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
 expression = "bl(L) + bl(4n + 2) + 2n·bl(2n) + 25"
@@ -111,8 +109,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.monotonic_boolfuck.generator:monotonic_boolfuck"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
 expression = "53T/2 - 21"
@@ -120,5 +119,6 @@ exact = true
 arities = [2, 3, 6]
 first = 2
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.monotonic_boolfuck.generator:monotonic_boolfuck"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}" }

@@ -7,9 +7,6 @@ backlinks = 100
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "equal-width inputs feed a reduced diagram; actual folded expressions and coupled selector/mask aliases are shared where shorter"
-scaling = "linear: at most F characters: unshared-select envelope plus bounded spilling"
-execution = "linear: exact S statements per emitted program: straight-line"
-workspace = "linear: exact W bits per emitted program: all-one worst row"
 definitions = ["S = emitted DO/PLEASE statement count, including GIVE UP, independent of wrapping; separate global ceilings are not claimed attained", "W = Boolean scalar keys/values, two-bit named masks, actual array dimensions/written elements, and bl(S)", "F = U+3 without spilling, otherwise 5(U+3)+DIM; U is the full unshared-select template"]
 
 [generator_sizes]
@@ -152,8 +149,9 @@ exact = true
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.intercal.generator:intercal"
+description = { growth = "linear", claim = "exact", template = "{claim} {formula}", formula = "S statements per emitted program: straight-line" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.intercal.proof_formulas:workspace"
@@ -161,8 +159,9 @@ exact = true
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.intercal.generator:intercal"
+description = { growth = "linear", claim = "exact", template = "{claim} {formula} {unit} per emitted program: all-one worst row", formula = "W" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.intercal.tests.formulas:_chars"
@@ -170,5 +169,6 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.intercal.generator:intercal"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: unshared-select envelope plus bounded spilling", formula = "F" }

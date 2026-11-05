@@ -13,6 +13,7 @@ from typing import Any, cast
 
 from esolangs.registry import LANGUAGES
 
+from .resource_description import parse_descriptions
 from .resource_formula import expression_formula
 
 PACKAGES = Path(__file__).resolve().parents[2] / "src/esolangs/languages"
@@ -81,13 +82,7 @@ def _provider(language: str, reference: object) -> Formula:
 
 def parse_bounds(language: str, data: dict[str, Any]) -> dict[str, ResourceBound]:
     """Validate formula records without interpreting proof prose."""
-    if (
-        not isinstance(data, dict)
-        or set(data) - COLUMNS != {"version"}
-        or type(data.get("version")) is not int
-        or data["version"] != 1
-    ):
-        raise ValueError("unsupported resource evidence schema")
+    descriptions = parse_descriptions(data)
     backend = LANGUAGES[language].backend
     if backend is None:
         raise ValueError("resource evidence requires a Boolean generator")
@@ -95,8 +90,18 @@ def parse_bounds(language: str, data: dict[str, Any]) -> dict[str, ResourceBound
     construction = f"{generate.__module__}:{generate.__name__}"
     found = {}
     for column in COLUMNS & data.keys():
+        if not getattr(descriptions, column).bounded:
+            continue
         row = data[column]
-        required = {"exact", "arities", "first", "unit", "witnesses", "construction"}
+        required = {
+            "exact",
+            "arities",
+            "first",
+            "unit",
+            "witnesses",
+            "construction",
+            "description",
+        }
         if not isinstance(row, dict) or set(row) not in (
             required | {"expression"},
             required | {"provider"},
@@ -131,7 +136,7 @@ def parse_bounds(language: str, data: dict[str, Any]) -> dict[str, ResourceBound
             "pixels",
         }:
             raise ValueError("scaling bounds require an emitted source unit")
-        if row["witnesses"] != "tests.proofs.execution:tables":
+        if row["witnesses"] != "tests.proofs.measurement:tables":
             raise ValueError("resource witnesses must retain the execution corpus")
         if row["construction"] != construction:
             raise ValueError("resource construction does not match its backend")

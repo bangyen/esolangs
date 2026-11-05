@@ -7,9 +7,6 @@ backlinks = 91
 [proof_status]
 labels = ["finite lookup"]
 qualification = "the inputs form a Horner index and g fetches its table bit; six-bit packing is used only while float coordinates remain exact"
-scaling = "linear: worst F cells from n=2: exact-address packing or plain"
-execution = "poly n: worst 9n+9 commands for n = 2, then E: packed literals have c cells"
-workspace = "poly n: at most bl(9n+8)+n+13+bl(n) bits for n = 2, then bl(S-1)+bl(n)+1+max(2max(7,n)+3,bl(s)+71)"
 definitions = ["c = 3 to n = 45, then 2bl(s)-1: column-literal length", "S = 4n+37+2c; E = max(S,6n+9) to n=55, then 9n+9", "s = 15⌈(4n+43)/15⌉ to n = 45, then the two-pass column"]
 
 [generator_sizes]
@@ -135,8 +132,9 @@ exact = true
 arities = [2, 3, 4, 5, 6, 7]
 first = 2
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.fish.generator:fish"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} for n = 2, then E: packed literals have c cells", formula = "9n+9" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.fish.tests.formulas:_workspace"
@@ -144,8 +142,9 @@ exact = true
 arities = [2, 3, 4, 5, 6, 7]
 first = 2
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.fish.generator:fish"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} for n = 2, then bl(S-1)+bl(n)+1+max(2max(7,n)+3,bl(s)+71)", formula = "bl(9n+8)+n+13+bl(n)" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.fish.tests.formulas:_scaling"
@@ -153,5 +152,6 @@ exact = true
 arities = [2, 3, 4, 5, 6, 7]
 first = 2
 unit = "cells"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.fish.generator:fish"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} from n=2: exact-address packing or plain", formula = "F" }

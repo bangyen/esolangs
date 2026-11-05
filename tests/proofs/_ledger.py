@@ -6,6 +6,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from scripts.docs.proof_status import ProofRow
+
 #: Resolved from this file, not the working directory: the suite is run from
 #: the repo root, from `just`, and from a worktree, and only ``__file__`` is
 #: stable across all three.
@@ -38,14 +40,6 @@ QUALIFIERS = frozenset({"cap", "exception"})
 
 _WORD_NUMBERS = {"no": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
 
-#: The Scaling column's classes, the text before the cell's first colon.
-#: ``linear`` is proved O(T) size and time; ``linear, time n log`` keeps one
-#: stated log factor in generation time; ``measured`` has no bound at all;
-#: ``open`` and ``lower bound`` are the scaling audit's open rows.
-SCALING_CLASSES = frozenset(
-    {"linear", "linear, time n log", "measured", "open", "lower bound"}
-)
-
 #: The classes whose rows the scaling audit table must carry as open on
 #: generation time or output size, and vice versa.
 UNSETTLED_SCALING = frozenset({"measured", "open", "lower bound"})
@@ -57,61 +51,39 @@ LINEAR_CLAUSE_WORDS = 12
 #: whose spaced operators count as words.
 FORMULA_CLAUSE_WORDS = 20
 
-#: The Execution column's classes: commands to halt, held to their growth by
-#: ``tests/proofs/deep/execution.py``.  ``unmeasured`` says why.
-EXECUTION_CLASSES = frozenset({"poly n", "linear", "unmeasured"})
 
-#: The Workspace column's classes: peak written state in bits, held to its
-#: growth by ``tests/proofs/deep/workspace.py``.  ``T log T`` is T cells of
-#: ``log T``-bit values.
-WORKSPACE_CLASSES = EXECUTION_CLASSES | {"T log T"}
-
-
-@dataclass(frozen=True)
-class Row:
-    """One generator ledger row."""
-
-    generator: str
-    labels: tuple[str, ...]
-    qualification: str
-    scaling: str
-    execution: str
-    workspace: str
+class Row(ProofRow):
+    """One structured generator ledger row with scheme and growth views."""
 
     @property
     def schemes(self) -> tuple[str, ...]:
-        """The labels that name a proof scheme rather than a qualifier."""
+        """Return the labels naming proof schemes rather than qualifiers."""
         return tuple(x for x in self.labels if x not in QUALIFIERS)
 
     @property
-    def scaling_class(self) -> str:
-        """The Scaling cell's class: the text before its first colon."""
-        return self.scaling.split(":", 1)[0].strip()
-
-    @property
     def scaling_clause(self) -> str:
-        """The Scaling cell's argument or term: the text after its class."""
-        return self.scaling.split(":", 1)[1].strip() if ":" in self.scaling else ""
+        """Return the declared scaling argument."""
+        return self.resources.scaling.clause
 
     @property
     def execution_class(self) -> str:
-        """The Execution cell's class: the text before its first colon."""
-        return self.execution.split(":", 1)[0].strip()
+        """Return the declared execution growth class."""
+        return self.resources.execution.growth
 
     @property
     def execution_clause(self) -> str:
-        """The Execution cell's reason: the text after its class."""
-        return self.execution.split(":", 1)[1].strip() if ":" in self.execution else ""
+        """Return the declared execution bound."""
+        return self.resources.execution.clause
 
     @property
     def workspace_class(self) -> str:
-        """The Workspace cell's class: the text before its first colon."""
-        return self.workspace.split(":", 1)[0].strip()
+        """Return the declared workspace growth class."""
+        return self.resources.workspace.growth
 
     @property
     def workspace_clause(self) -> str:
-        """The Workspace cell's store: the text after its class."""
-        return self.workspace.split(":", 1)[1].strip() if ":" in self.workspace else ""
+        """Return the declared workspace bound."""
+        return self.resources.workspace.clause
 
 
 @dataclass(frozen=True)
@@ -163,9 +135,9 @@ def load(path: Path | None = None) -> Ledger:
             row.generator,
             row.labels,
             row.qualification,
-            row.scaling,
-            row.execution,
-            row.workspace,
+            row.resources,
+            row.evidence,
+            row.definitions,
         )
         for row in proofs
     ]

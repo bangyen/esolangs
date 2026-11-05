@@ -9,9 +9,6 @@ outside_implementation = { date = 2020-07-09T19:30:00Z, source = "DeybisMelendez
 [proof_status]
 labels = ["tree"]
 qualification = "ordered primitive lookups or a direct complementary-residual parity chain"
-scaling = "linear: worst A cells past n = 6: the dense table"
-execution = "linear: at most max(H,48n-48) commands past n=6; H includes the indexed caps"
-workspace = "linear: at most W bits past n=4: byte grid, coordinates and derived transient maxima; equality at n=5"
 
 [generator_sizes]
 "00000001" = { commands = 28, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 22, "5" = 22, "6" = 28, "7" = 28 }, source_units = 113 }
@@ -206,8 +203,9 @@ exact = false
 arities = [7, 8, 9, 10, 11, 12]
 first = 7
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.dig.generator:dig"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n={previous}; H includes the indexed caps", formula = "max(H,48n-48)" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.dig.proof_formulas:workspace"
@@ -215,8 +213,9 @@ exact = true
 arities = [5]
 first = 5
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.dig.generator:dig"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n={previous}: byte grid, coordinates and derived transient maxima; equality at n=5", formula = "W" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.dig.tests.formulas:_cells"
@@ -224,5 +223,6 @@ exact = [10]
 arities = [7, 8, 10]
 first = 7
 unit = "cells"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.dig.generator:dig"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: the dense table", formula = "A" }

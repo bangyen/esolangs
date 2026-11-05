@@ -8,9 +8,6 @@ admitted = 2026-10-27T11:14:25+00:00
 [proof_status]
 labels = ["tree"]
 qualification = "—"
-scaling = "linear: at most T + 2 lines: one menu per diagram node"
-execution = "linear: worst n + 2 commands"
-workspace = "linear: worst n + 4 bits"
 
 [generator_sizes]
 "00000001" = { commands = 4, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 4 }, source_units = 83 }
@@ -72,8 +69,9 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.basicer.generator:basicer"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
 expression = "n + 4"
@@ -81,8 +79,9 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.basicer.generator:basicer"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
 expression = "T + 2"
@@ -90,5 +89,6 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "lines"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.basicer.generator:basicer"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: one menu per diagram node" }

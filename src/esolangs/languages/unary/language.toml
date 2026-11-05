@@ -8,9 +8,6 @@ bf_derivative = true
 [proof_status]
 labels = ["tree", "cap"]
 qualification = "complemented-byte decision tree; constants decrement the final byte before a fixed loop; projections and conjunction guards avoid flags"
-scaling = "lower bound: worst source length at least 2**T - 1; zero-count encoding"
-execution = "unmeasured: worst max(n, min(n + 4, 8)) commands past n = 2: at most nine commands, the last ] never run"
-workspace = "poly n: worst W bits past n = 1: the programs of at most nine commands"
 definitions = ["W = max t + bl(n) + bl(n+k): (k,t) = (0,8) (2,8) (3,8) (4,10) (5,17), n+k ≤ 9"]
 evidence = "docs/limitations.md#unary"
 
@@ -130,8 +127,9 @@ exact = true
 arities = [3, 4, 5, 6, 7, 8]
 first = 3
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.unary.generator:unary"
+description = { growth = "unmeasured", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: at most nine commands, the last ] never run" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.unary.tests.formulas:workspace"
@@ -139,5 +137,9 @@ exact = true
 arities = [2, 3, 4, 5, 6, 7, 8]
 first = 2
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.unary.generator:unary"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: the programs of at most nine commands", formula = "W" }
+
+[resource_evidence.scaling]
+qualitative = { growth = "lower bound", text = "worst source length at least 2**T - 1; zero-count encoding" }

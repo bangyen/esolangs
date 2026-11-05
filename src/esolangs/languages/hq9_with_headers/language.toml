@@ -8,9 +8,6 @@ admitted = 2026-10-15T17:48:43-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "constant tables consume every input and print directly in n+2 commands; otherwise the table is one decimal literal, divided by the power of two the reads square up, and `[~::]` tests the quotient's parity"
-scaling = "linear: at most one table literal, one read command per input"
-execution = "poly n: worst 4n + 9 commands"
-workspace = "linear: worst 3T + 4 + bl(4n+10) + bl(2n) bits: variables, op index and reads"
 
 [catalogue]
 folding_ignored = "nonconstant tables retain the full literal and read/square ignored inputs; constants only consume them"
@@ -103,8 +100,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
 expression = "3T + 4 + bl(4n+10) + bl(2n)"
@@ -112,5 +110,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: variables, op index and reads" }
+
+[resource_evidence.scaling]
+qualitative = { growth = "linear", text = "at most one table literal, one read command per input" }

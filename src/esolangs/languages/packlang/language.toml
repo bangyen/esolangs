@@ -8,9 +8,6 @@ admitted = 2026-09-08T20:07:30-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "one 128-row array block, painted inside the `If` that selects it"
-scaling = "linear: at most N characters: one write per differing row"
-execution = "linear: at most 19T/2 - n - 5 steps for n = 3..7, then 3T/64 + 1205 - n"
-workspace = "poly n: at most min(T,128) + 2n + min(n,7) + 192 + 16[n>7] + bl(L) + 2bl(n) bits: one frame, array"
 
 [generator_sizes]
 "00000001" = { commands = 34, commands_by_row = { "0" = 11, "1" = 12, "2" = 17, "3" = 18, "4" = 27, "5" = 28, "6" = 33, "7" = 34 }, source_units = 297 }
@@ -160,8 +157,9 @@ exact = false
 arities = [3, 7]
 first = 3
 unit = "steps"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.packlang.generator:packlang"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} for n = 3..7, then 3T/64 + 1205 - n", formula = "19T/2 - n - 5" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.packlang.proof_formulas:workspace"
@@ -169,8 +167,9 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.packlang.generator:packlang"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: one frame, array", formula = "min(T,128) + 2n + min(n,7) + 192 + 16[n>7] + bl(L) + 2bl(n)" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.packlang.tests.formulas:_chars"
@@ -178,5 +177,6 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.packlang.generator:packlang"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: one write per differing row", formula = "N" }

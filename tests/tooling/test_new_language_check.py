@@ -1,6 +1,7 @@
 """``new_language.py check`` agrees with the suite on every registered language."""
 
 import dataclasses
+import importlib
 import inspect
 import subprocess
 from pathlib import Path
@@ -116,8 +117,7 @@ def test_a_pasted_section_with_fill_left_is_a_gap(
     rows, other = new_language._proof_status_load()
     row = next(row for row in rows if row.generator == _LONGEST)
     rows = [
-        dataclasses.replace(row, scaling="FILL: linear") if r is row else r
-        for r in rows
+        dataclasses.replace(row, qualification="FILL") if r is row else r for r in rows
     ]
     monkeypatch.setattr(new_language, "_proof_status_load", lambda: (rows, other))
     (gap,) = new_language._ledger_gaps(_LONGEST)
@@ -148,6 +148,20 @@ def test_bounds_flags_a_stale_size_anchor(monkeypatch: pytest.MonkeyPatch) -> No
     assert new_language.size_anchors(name) == [
         f"  n=2 parity: {size + 1:,} chars  STALE: emits {size:,}"
     ]
+    load_module = importlib.import_module
+
+    def without_formula_records(module, *args, **kwargs):
+        assert module != "tests.proofs.execution", "measurement loaded its own claims"
+        return load_module(module, *args, **kwargs)
+
+    monkeypatch.setattr(importlib, "import_module", without_formula_records)
+    assert len(new_language.bounds(name, range(1, 2))) == 1
+
+    def absent(_name):
+        raise KeyError("evidence")
+
+    monkeypatch.setattr(evidence, "source_anchors", absent)
+    assert new_language.size_anchors(name) == []
 
 
 def test_a_generator_language_needs_no_hand_sample() -> None:

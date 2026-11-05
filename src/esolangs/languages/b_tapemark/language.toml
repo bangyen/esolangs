@@ -12,9 +12,6 @@ admitted = 2026-09-13T10:37:33-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on; the bounds are the default swap_marker dialect's — the old dialect shares the constructions with each stage rebuilt for its own round-trip landing, a constant number of cells and steps per stage apart, and is verified by execution (each dialect over the generated corpus at n=1..4, plus a swap witness distinguishing the readings) rather than re-derived"
-scaling = "linear: worst A cells past n = 1: the least-area of four layouts"
-execution = "linear: worst E steps: the all-zero row of the least-area layout"
-workspace = "T log T: worst W bits to n = 8, at most B after: program cells, marks, pointers"
 definitions = ["B = 8 + coordinate bits per program cell, plus a widest-coordinate mark per * or - cell"]
 
 [generator_sizes]
@@ -143,8 +140,9 @@ exact = true
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "steps"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.b_tapemark.generator:b_tapemark"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the all-zero row of the least-area layout", formula = "E" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.b_tapemark.tests.formulas:_workspace"
@@ -152,8 +150,9 @@ exact = [3, 4, 5, 6, 7, 8]
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.b_tapemark.generator:b_tapemark"
+description = { growth = "T log T", claim = "worst", template = "{claim} {formula} {unit} to n = 8, at most B after: program cells, marks, pointers", formula = "W" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.b_tapemark.tests.formulas:_cells"
@@ -161,5 +160,6 @@ exact = true
 arities = [2, 3, 4, 5, 6, 7, 8]
 first = 2
 unit = "cells"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.b_tapemark.generator:b_tapemark"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: the least-area of four layouts", formula = "A" }

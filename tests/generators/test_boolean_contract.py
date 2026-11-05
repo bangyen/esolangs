@@ -373,7 +373,7 @@ _LANGUAGE_SUPERLINEAR_SCALING = {
     # mutation bundle has no ``tests/proofs`` to parse it with.
     row.generator
     for row in _load_proof_status()[0]
-    if row.scaling.startswith("lower bound:")
+    if row.scaling_class == "lower bound"
 }
 _LINEAR_SCALING = sorted(
     name

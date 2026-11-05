@@ -8,9 +8,6 @@ admitted = 2026-10-29T22:17:36-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "each input byte is read onto its own queue and tested in place by a flag-dispatched decision tree; repeated residuals defer through level flags; the first byte splits into a test bit and a fixed seven-bit tail that completes the answer byte"
-scaling = "linear: at most 29T + 10n + 25 characters: the plain tree"
-execution = "poly n: at most 36n + 60 commands: reads, split, one tree path, print"
-workspace = "poly n: at most bl(L) + (2n + 4)bl(2n + 2) + 9n + bl(n) + 10 bits: queues, indices, flags"
 
 [generator_sizes]
 "00000001" = { commands = 89, commands_by_row = { "0" = 52, "1" = 52, "2" = 52, "3" = 52, "4" = 74, "5" = 74, "6" = 81, "7" = 89 }, source_units = 94 }
@@ -78,8 +75,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.qrain.generator:qrain"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: reads, split, one tree path, print" }
 
 [resource_evidence.workspace]
 expression = "bl(L) + (2n + 4)bl(2n + 2) + 9n + bl(n) + 10"
@@ -87,8 +85,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.qrain.generator:qrain"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: queues, indices, flags" }
 
 [resource_evidence.scaling]
 expression = "29T + 10n + 25"
@@ -96,5 +95,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.qrain.generator:qrain"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the plain tree" }

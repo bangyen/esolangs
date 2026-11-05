@@ -12,7 +12,8 @@ scaling alone does not prove linearity. Preserve totality, execution, and
 workspace contracts.
 
 The [scaling status](proofs/index.md#scaling-status) records current verdicts.
-Edit the `[proof_status]` section of the language's own `language.toml` and run
+Edit `[resource_evidence.scaling]` and `[proof_status.audit]` in its
+`language.toml` and run
 `just docs` to update it. Proved limits remain
 evidence, not optimization tasks.
 
@@ -69,10 +70,9 @@ the standing budget. Preserve public behavior through adapters; incompatible
 API changes need a major release. Follow the refactor and optimization gates
 in [Contributing](CONTRIBUTING.md).
 
-1. **Structured evidence rendering.** Generate resource descriptions and
-   ablation documentation from validated claims. Retire remaining unit and
-   coverage prose readers while retaining witnesses and execution gates.
-   Preserve open and upper-bound verdicts.
+1. **Structured ablations.** Validate audit claims, provenance and retirement
+   records without semantic prose parsing. Retain measured figures, source
+   citations and replay gates; preserve unresolved and upper-bound verdicts.
 2. **Independent semantic checks.** Extend the Engineering oracles below into
    language admission. Derive each bounded oracle from the spec independently
    of production helpers and generator structure; record ambiguities first.

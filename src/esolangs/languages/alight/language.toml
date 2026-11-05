@@ -8,9 +8,6 @@ admitted = 2026-09-08T20:09:04-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "inputs folded into a row index by Horner's rule; the table is a string literal read with `at` (two rows to a character from n=6), so the program has no branches"
-scaling = "linear: worst T/2 + 16n + 61 + digits(48(T/2-1)) characters: one literal"
-execution = "poly n: worst 2n + 5 commands, n Horner reads and one `at`"
-workspace = "poly n: worst 72n + 762 + bl(6n+12) + bl(n) bits, n in 2..25"
 
 [generator_sizes]
 "00000001" = { commands = 11, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 11, "5" = 11, "6" = 11, "7" = 11 }, source_units = 97 }
@@ -110,8 +107,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.alight.generator:alight"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, n Horner reads and one `at`" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.alight.proof_formulas:workspace"
@@ -119,8 +117,9 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.alight.generator:alight"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, n in 2..25", formula = "72n + 762 + bl(6n+12) + bl(n)" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.alight.tests.formulas:_chars"
@@ -128,5 +127,6 @@ exact = true
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.alight.generator:alight"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one literal", formula = "T/2 + 16n + 61 + digits(48(T/2-1))" }

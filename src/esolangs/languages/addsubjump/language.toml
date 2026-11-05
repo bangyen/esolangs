@@ -13,9 +13,6 @@ admitted = 2026-08-14T07:18:25-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "essential raw-byte Horner index; fixed hot data slots; packed cells selected by a self-modified operand"
-scaling = "linear: worst P characters past n = 5, at most min(P, R) below"
-execution = "linear: worst (11n+4)⌊T/n⌋ + 11T + 10n - 15 past n = 5, one more from n = 10"
-workspace = "linear: at most Σ_{a<M} bl(a) + C(n + bl(B+13+C)) + 3n + 5bl(n) + Q bits: program cells, T/n packed"
 definitions = ["C = ⌈T/n⌉, I = 5n + 54, B = 4I, M = B + 14 + 2C", "Q = I·bl(B) + (3I-2)bl(B+13) + 2bl(M-1) + bl(20n+212) + 23"]
 
 [generator_sizes]
@@ -148,8 +145,9 @@ exact = true
 arities = [6]
 first = 6
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.addsubjump.generator:addsubjump"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}", formula = "(11n+4)⌊T/n⌋ + 11T + 10n - 15 past n = 5, one more from n = 10" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.addsubjump.proof_formulas:workspace"
@@ -157,8 +155,9 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.addsubjump.generator:addsubjump"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: program cells, T/n packed", formula = "Σ_{a<M} bl(a) + C(n + bl(B+13+C)) + 3n + 5bl(n) + Q" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.addsubjump.tests.formulas:_chars"
@@ -166,5 +165,6 @@ exact = [6, 7, 8, 9]
 arities = [2, 3, 4, 5, 6, 7, 8, 9]
 first = 6
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.addsubjump.generator:addsubjump"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}, at most min(P, R) below", formula = "P" }

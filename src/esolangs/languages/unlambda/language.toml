@@ -10,9 +10,6 @@ backlinks = 89
 [proof_status]
 labels = ["tree"]
 qualification = "each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate"
-scaling = "linear: at most 169T/8 - 21 characters past n = 3: 315-character halves"
-execution = "poly n: at most max(77n + 12, 84n - 9) steps: 77 a split level, 7 a bound node"
-workspace = "T log T: at most 16(P + n·S) + (3n+9)bl(3n+9) + 9 + bl(n) bits: a copy of the shared subterm per read"
 definitions = ["P = the program's leaves, each k and s counted twice", "S = the same count for its largest X in an @-node's `N`dX"]
 
 [generator_sizes]
@@ -116,8 +113,9 @@ exact = false
 arities = [3, 7]
 first = 1
 unit = "steps"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.unlambda.generator:unlambda"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: 77 a split level, 7 a bound node" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.unlambda.tests.formulas:_workspace"
@@ -125,8 +123,9 @@ exact = false
 arities = [1, 2, 3, 4]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.unlambda.generator:unlambda"
+description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit}: a copy of the shared subterm per read", formula = "16(P + n·S) + (3n+9)bl(3n+9) + 9 + bl(n)" }
 
 [resource_evidence.scaling]
 expression = "169T/8 - 21"
@@ -134,5 +133,6 @@ exact = false
 arities = [4, 7]
 first = 4
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.unlambda.generator:unlambda"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: 315-character halves" }

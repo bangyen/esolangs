@@ -7,9 +7,6 @@ backlinks = 167
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "equal-width input programs leave one selector apiece; each node stores both branches as strings and the selector evaluates exactly one, while a constant leaf discards unused selectors except in named AND/OR and threshold-2 tails; a repeated subtree is pushed once and carried above the next selector, and the plain tree stays a candidate"
-scaling = "linear: at most F characters past n = 3: 241 a five-input half"
-execution = "poly n: worst 10n + 3 + 2⌊(n-1)/2⌋ commands past n = 2: n slots, 9 a level, carries"
-workspace = "linear: at most 24L + 168T + 32n - 168 + bl(2L+14T+6n-14) bits: spliced program, stack"
 
 [generator_sizes]
 "00000001" = { commands = 31, commands_by_row = { "0" = 15, "1" = 23, "2" = 15, "3" = 31, "4" = 15, "5" = 23, "6" = 15, "7" = 31 }, source_units = 52 }
@@ -128,8 +125,9 @@ exact = true
 arities = [3, 6]
 first = 3
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.underload.generator:underload"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: n slots, 9 a level, carries" }
 
 [resource_evidence.workspace]
 expression = "24L + 168T + 32n - 168 + bl(2L+14T+6n-14)"
@@ -137,8 +135,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.underload.generator:underload"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: spliced program, stack" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.underload.tests.formulas:scaling"
@@ -146,5 +145,6 @@ exact = false
 arities = [4, 5, 6, 7]
 first = 4
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.underload.generator:underload"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: 241 a five-input half", formula = "F" }

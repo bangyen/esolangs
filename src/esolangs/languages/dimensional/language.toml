@@ -11,9 +11,6 @@ admitted = 2022-05-09T19:20:51-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "a bare `>` takes its dimension from the byte it stands on, so `d>` is a pointer displacement by the bit read: the index is a coordinate, doubled between reads by a two-loop `{`/`}` gadget, and it addresses one painted cell an entry along dimension 1"
-scaling = "linear: worst 2T + 20n + 42 characters: two per entry"
-execution = "linear: worst 11T + ⌊(2T+1)/5⌋ - 4n + 43 commands past n = 3: zero runs of nine loop"
-workspace = "T log T: worst Σ_{k≤T} bl(k) + 5T + n(n-1)/2 + 4n + 11 + bl(2T+20n+40) + bl(2n-1) bits"
 
 [generator_sizes]
 "00000001" = { commands = 112, commands_by_row = { "0" = 76, "1" = 76, "2" = 85, "3" = 85, "4" = 103, "5" = 103, "6" = 112, "7" = 112 }, source_units = 118 }
@@ -157,8 +154,9 @@ exact = true
 arities = [4, 6]
 first = 4
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.dimensional.generator:dimensional"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: zero runs of nine loop" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.dimensional.proof_formulas:workspace"
@@ -166,8 +164,9 @@ exact = true
 arities = [1, 2, 3, 4]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.dimensional.generator:dimensional"
+description = { growth = "T log T", claim = "worst", template = "{claim} {formula} {unit}", formula = "Σ_{k≤T} bl(k) + 5T + n(n-1)/2 + 4n + 11 + bl(2T+20n+40) + bl(2n-1)" }
 
 [resource_evidence.scaling]
 expression = "2T + 20n + 42"
@@ -175,5 +174,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.dimensional.generator:dimensional"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: two per entry" }

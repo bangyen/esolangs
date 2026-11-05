@@ -8,9 +8,6 @@ admitted = 2020-07-11T16:22:36-04:00
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "the inputs are stored once and each node loads its bit with `L`; a subtree already emitted is reached by `goto`, so only the distinct subtables are laid out"
-scaling = "linear: at most C characters: tokens per distinct subtable"
-execution = "poly n: worst n^2 + 7n + 4 commands past n = 2, one root-to-leaf path"
-workspace = "poly n: worst n + bl(S) + 2max(1,bl(n-1)) + Σ_{a<n} max(1,bl(a)) bits past n = 2, S the token count"
 
 [generator_sizes]
 "00000001" = { commands = 33, commands_by_row = { "0" = 26, "1" = 26, "2" = 26, "3" = 26, "4" = 30, "5" = 30, "6" = 34, "7" = 33 }, source_units = 83 }
@@ -131,8 +128,9 @@ exact = true
 arities = [3, 6]
 first = 3
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.ram0.generator:ram0"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}, one root-to-leaf path" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.ram0.proof_formulas:workspace"
@@ -140,8 +138,9 @@ exact = true
 arities = [3, 6]
 first = 3
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.ram0.generator:ram0"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}, S the token count", formula = "n + bl(S) + 2max(1,bl(n-1)) + Σ_{a<n} max(1,bl(a))" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.ram0.tests.formulas:_chars"
@@ -149,5 +148,6 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.ram0.generator:ram0"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: tokens per distinct subtable", formula = "C" }

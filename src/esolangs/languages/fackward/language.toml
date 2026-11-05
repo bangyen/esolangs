@@ -8,9 +8,6 @@ admitted = 2026-10-15T15:50:46-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "a level is a block whose quiet pass reads the bit; `/ c 49` makes it 0 or 1, that many `~` swap the two child blocks, `!` drops one and `)` runs the other; equal halves fold"
-scaling = "linear: worst 43T/2 - 29 characters past n = 1: block per node"
-execution = "poly n: worst 38n - 26 steps: 38 a level, the last printing what it reads"
-workspace = "linear: worst 159T - 225 + bl(n) bits past n = 1: the two stacks hold the program's tokens"
 
 [generator_sizes]
 "00000001" = { commands = 87, commands_by_row = { "0" = 58, "1" = 58, "2" = 58, "3" = 58, "4" = 88, "5" = 88, "6" = 87, "7" = 87 }, source_units = 101 }
@@ -120,8 +117,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "steps"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.fackward.generator:fackward"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: 38 a level, the last printing what it reads" }
 
 [resource_evidence.workspace]
 expression = "159T - 225 + bl(n)"
@@ -129,8 +127,9 @@ exact = true
 arities = [2, 3, 6]
 first = 2
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.fackward.generator:fackward"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: the two stacks hold the program's tokens" }
 
 [resource_evidence.scaling]
 expression = "43T/2 - 29"
@@ -138,5 +137,6 @@ exact = true
 arities = [2, 3, 6]
 first = 2
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.fackward.generator:fackward"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: block per node" }

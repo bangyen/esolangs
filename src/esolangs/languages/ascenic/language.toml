@@ -8,9 +8,6 @@ admitted = 2026-10-15T15:04:44-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "Horner's rule by built `-2` constants makes each row's code `base + 2r`; `LT t`, `ADDS` at every change point adds 1 to codes below `t`, so the parity answers; straight-line code, no jump; named parity sums retained bits instead"
-scaling = "lower bound: worst N characters from n = 2: generated Θ(T**2), N the size of the alternating table with its first pair flipped ([summary](#ascenic-bound))"
-execution = "linear: worst 2T + 7n + 1 - 2⌊n/2⌋ commands past n = 1: one pair flipped, two lines a change"
-workspace = "poly n: worst bl(L) + max(bl(a)+bl(a+2)+n+2, bl((c+2T-2)(c+2T-1))) + bl(2n-1) bits from n = 3: index, stack, cursor"
 definitions = ["L = 2T+6n+5-(n mod 2), a = 8n-5, c = 8n+3: the mirrored scan's lines, last push, base"]
 
 [proof_status.audit]
@@ -122,8 +119,9 @@ exact = true
 arities = [2, 3, 5]
 first = 2
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.ascenic.generator:ascenic"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: one pair flipped, two lines a change" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.ascenic.proof_formulas:workspace"
@@ -131,8 +129,9 @@ exact = true
 arities = [3, 4, 5, 6, 7]
 first = 3
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.ascenic.generator:ascenic"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} from n = 3: index, stack, cursor", formula = "bl(L) + max(bl(a)+bl(a+2)+n+2, bl((c+2T-2)(c+2T-1))) + bl(2n-1)" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.ascenic.tests.formulas:_chars"
@@ -140,5 +139,6 @@ exact = [2, 3, 4, 5, 6, 7]
 arities = [2, 3, 4, 5, 6, 7]
 first = 2
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.ascenic.generator:ascenic"
+description = { growth = "lower bound", claim = "worst", template = "{claim} {formula} {unit} from n = 2: generated Θ(T**2), N the size of the alternating table with its first pair flipped ([summary](#ascenic-bound))", formula = "N" }

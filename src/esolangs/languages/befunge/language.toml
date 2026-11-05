@@ -7,9 +7,6 @@ backlinks = 382
 [proof_status]
 labels = ["exception"]
 qualification = "one-row nibbles through eight essential inputs, six-bit ASCII above; ships through thirteen inputs; finite source space excludes some sixteen-input tables"
-scaling = "linear: worst N cells: one-row nibbles, six-bit packed from n = 9"
-execution = "unmeasured: worst max(2n+23,4n+10) steps for n = 2..8, 5n+67 to 13"
-workspace = "poly n: worst 18+bl(max(2n+18,4n+10))+bl(2n-1) bits for n = 2..8, then 2n+bl(2n-1)+23"
 
 [proof_status.audit]
 totality = "Exception"
@@ -143,8 +140,9 @@ exact = true
 arities = [2, 3, 9, 11]
 first = 2
 unit = "steps"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.befunge.generator:befunge"
+description = { growth = "unmeasured", claim = "worst", template = "{claim} {formula} {unit} for n = 2..8, 5n+67 to 13", formula = "max(2n+23,4n+10)" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.befunge.proof_formulas:workspace"
@@ -152,8 +150,9 @@ exact = true
 arities = [2, 3, 9, 11]
 first = 2
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.befunge.generator:befunge"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} for n = 2..8, then 2n+bl(2n-1)+23", formula = "18+bl(max(2n+18,4n+10))+bl(2n-1)" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.befunge.tests.formulas:_cells"
@@ -161,5 +160,6 @@ exact = true
 arities = [7, 8, 9, 10, 11, 12, 13]
 first = 9
 unit = "cells"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.befunge.generator:befunge"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one-row nibbles, six-bit packed from n = 9", formula = "N" }

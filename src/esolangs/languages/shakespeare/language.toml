@@ -7,9 +7,6 @@ backlinks = 54
 [proof_status]
 labels = ["linear lookup"]
 qualification = "parity sums retained inputs modulo two; otherwise the table is one number packed by Horner's rule; each input multiplies a running power of two by 1 + bit * (2^w - 1), and the answer is the number divided by that power, mod 2"
-scaling = "linear: at most 16T + 7n^2 + 180n + 300 characters"
-execution = "linear: worst E commands: n reads, at most n multiplies, K packing assignments"
-workspace = "linear: at most 2T + bl(2n+ceil(T/64)+6) + bl(2n-1) + 4 bits"
 definitions = ["K = ceil(T/64), E = 6 for n=1, otherwise 2n+K+6"]
 
 [catalogue]
@@ -105,8 +102,9 @@ exact = true
 arities = [1, 2, 3, 5, 7, 8, 10]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.shakespeare.generator:shakespeare"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: n reads, at most n multiplies, K packing assignments", formula = "E" }
 
 [resource_evidence.workspace]
 expression = "2T + bl(2n+ceil(T/64)+6) + bl(2n-1) + 4"
@@ -114,8 +112,9 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.shakespeare.generator:shakespeare"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
 expression = "16T + 7n^2 + 180n + 300"
@@ -123,5 +122,6 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.shakespeare.generator:shakespeare"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }

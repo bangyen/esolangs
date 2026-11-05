@@ -11,9 +11,6 @@ admitted = 2026-08-07T14:43:11-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "—"
-scaling = "linear: worst 3T+12n²+17n+12 characters past n = 2: nibble leaves"
-execution = "linear: worst C+56 commands past n = 2: literal seed; bootstrap at most B+C+56"
-workspace = "linear: worst Q+bl(C)+bl(n) bits past n = 2: literal seed; bootstrap at most max(Q,7B,28)+bl(A)+bl(n)"
 definitions = ["C = 5T/2+12n²+7n+13 literal-seed command tokens", "Q = 7T/4+17n+20 queue bits after all reads", "B = bootstrap setup tokens before the first h", "A = total bootstrap-layout command tokens"]
 
 [generator_sizes]
@@ -129,8 +126,9 @@ exact = true
 arities = [3, 4, 5]
 first = 3
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.taglate.generator:taglate"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: literal seed; bootstrap at most B+C+56", formula = "C+56" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.taglate.proof_formulas:workspace"
@@ -138,8 +136,9 @@ exact = true
 arities = [3, 4, 5]
 first = 3
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.taglate.generator:taglate"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: literal seed; bootstrap at most max(Q,7B,28)+bl(A)+bl(n)", formula = "Q+bl(C)+bl(n)" }
 
 [resource_evidence.scaling]
 expression = "3T+12n²+17n+12"
@@ -147,5 +146,6 @@ exact = true
 arities = [3, 5]
 first = 3
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.taglate.generator:taglate"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: nibble leaves" }

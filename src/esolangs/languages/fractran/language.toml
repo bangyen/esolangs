@@ -7,9 +7,6 @@ backlinks = 65
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "the bits are the exponents of `n` primes in the starting value, a decision tree gives equal subtables one state prime, and the first-match rule is the else-branch"
-scaling = "linear: worst C = Σ_{d<n} min(2^d,2^2^(n-d)-2^2^(n-d-1)) states, O(log T) digits"
-execution = "poly n: worst n + 1: a step a level or unread set bit, then the halt"
-workspace = "poly n: worst bl(p_{n+1+C}) + n + 2 + Σ_{i≤n} bl(p_{i+1}) bits, p_k the kth prime: all-ones start"
 
 [generator_sizes]
 "00000001" = { commands = 4, commands_by_row = { "0" = 2, "1" = 3, "2" = 3, "3" = 4, "4" = 3, "5" = 4, "6" = 4, "7" = 4 }, source_units = 54 }
@@ -132,8 +129,9 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.fractran.generator:fractran"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula}", formula = "n + 1: a step a level or unread set bit, then the halt" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.fractran.proof_formulas:workspace"
@@ -141,5 +139,9 @@ exact = true
 arities = [1, 2, 3, 5, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.fractran.generator:fractran"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, p_k the kth prime: all-ones start", formula = "bl(p_{n+1+C}) + n + 2 + Σ_{i≤n} bl(p_{i+1})" }
+
+[resource_evidence.scaling]
+qualitative = { growth = "linear", text = "worst C = Σ_{d<n} min(2^d,2^2^(n-d)-2^2^(n-d-1)) states, O(log T) digits" }

@@ -8,9 +8,6 @@ bf_derivative = true
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "a five-level banded prefix writes four Davio coefficients; three spare cells hold the suffix weights, then two destructive input loops update the answer; deferred definitions advance in depth"
-scaling = "linear: at most Q characters: coefficient recurrence plus a 20n+100 tail"
-execution = "poly n: at most 9n^2 + 100n + 20 commands, one prefix path, forward guards and a two-input tail"
-workspace = "linear: worst L + bl(L) + bl(3n) bits: one tape bit per source character"
 
 [generator_sizes]
 "00000001" = { commands = 94, commands_by_row = { "0" = 38, "1" = 45, "2" = 50, "3" = 57, "4" = 57, "5" = 64, "6" = 74, "7" = 94 }, source_units = 109 }
@@ -152,8 +149,9 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.smallfuck.generator:smallfuck"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, one prefix path, forward guards and a two-input tail" }
 
 [resource_evidence.workspace]
 expression = "L + bl(L) + bl(3n)"
@@ -161,8 +159,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.smallfuck.generator:smallfuck"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one tape bit per source character" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.smallfuck.tests.formulas:_chars"
@@ -170,5 +169,6 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.smallfuck.generator:smallfuck"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: coefficient recurrence plus a 20n+100 tail", formula = "Q" }

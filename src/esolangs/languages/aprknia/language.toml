@@ -8,9 +8,6 @@ admitted = 2026-10-27T11:08:19+00:00
 [proof_status]
 labels = ["tree"]
 qualification = "ASCII parity leaves retain quotient24; a fresh zero pair and pop select the zero arm, whose reset is omitted only for a statically exact-zero exit"
-scaling = "linear: at most 39T characters: one at-most22-command node per branch"
-execution = "poly n: worst 18n + 5 commands"
-workspace = "poly n: at most 34n + bl(L) + bl(n) + 13 bits: quotient guards retain two extra bits per completed one arm"
 
 [catalogue]
 sharing_exempt = "no names or jumps but loops: code runs once per place it is written"
@@ -104,8 +101,9 @@ exact = true
 arities = [1, 2, 3, 5, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.aprknia.generator:aprknia"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
 expression = "34n + bl(L) + bl(n) + 13"
@@ -113,8 +111,9 @@ exact = false
 arities = [1, 2, 3, 5, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.aprknia.generator:aprknia"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: quotient guards retain two extra bits per completed one arm" }
 
 [resource_evidence.scaling]
 expression = "39T"
@@ -122,5 +121,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.aprknia.generator:aprknia"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: one at-most22-command node per branch" }

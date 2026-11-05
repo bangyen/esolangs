@@ -5,9 +5,6 @@ admitted = 2026-11-01T16:02:12-05:00
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "reduced DAG with constant-controlled swaps pruned; parity shares complementary residuals by signed rails; every input has one ordered exponent embed"
-scaling = "linear: O(T/log T) shared nodes, O(log T) digits per node"
-execution = "linear: at most 2L + 1 commands: each four-fraction swap takes at most eight inspections, plus the final dump"
-workspace = "linear: at most 8L + bl(L) + 16 bits: prime rails or summed constant exponents, fraction cursor and direction"
 
 [catalogue]
 folding_ignored_local = "_diagram"
@@ -154,8 +151,9 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.refractran.generator:refractran"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: each four-fraction swap takes at most eight inspections, plus the final dump" }
 
 [resource_evidence.workspace]
 expression = "8L + bl(L) + 16"
@@ -163,5 +161,9 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.refractran.generator:refractran"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: prime rails or summed constant exponents, fraction cursor and direction" }
+
+[resource_evidence.scaling]
+qualitative = { growth = "linear", text = "O(T/log T) shared nodes, O(log T) digits per node" }

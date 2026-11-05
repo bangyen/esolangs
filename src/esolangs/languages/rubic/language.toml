@@ -8,9 +8,6 @@ admitted = 2026-10-15T02:43:43-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "the last literal prints its byte or stores it and prints 49-P before undoing; every subtree preserves the opening cube, expressions are checked on X/Y, equal halves read untested and constants fold"
-scaling = "linear: worst max(63,47T-44) characters: distinct maximal children, seeded by constant/NOT pairs"
-execution = "poly n: worst 16n + 5 commands: the negated last bit costs 19, earlier differing nodes add 16"
-workspace = "poly n: worst 3n²+15n+117+bl(n)+I bits: I=1 for n<3, else 0; n frames, n+4-bit positions"
 
 [generator_sizes]
 "00000001" = { commands = 40, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 41, "5" = 41, "6" = 40, "7" = 40 }, source_units = 197 }
@@ -116,8 +113,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.rubic.generator:rubic"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: the negated last bit costs 19, earlier differing nodes add 16" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.rubic.tests.formulas:workspace"
@@ -125,8 +123,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.rubic.generator:rubic"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: I=1 for n<3, else 0; n frames, n+4-bit positions", formula = "3n²+15n+117+bl(n)+I" }
 
 [resource_evidence.scaling]
 expression = "max(63,47T-44)"
@@ -134,5 +133,6 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.rubic.generator:rubic"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: distinct maximal children, seeded by constant/NOT pairs" }

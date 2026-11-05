@@ -8,9 +8,6 @@ admitted = 2026-10-20T08:45:53-04:00
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "n input frames consume once each; heads are named atoms or bounded literal pairs selected by native pattern equations"
-scaling = "linear: at most F+28 characters past n = 2: named-diagram ceiling plus selectors"
-execution = "poly n: worst n rewrites: one frame an input"
-workspace = "poly n: worst 32n bits through n=7, at most beyond: frames/head 16n each; halt dump excluded"
 
 [generator_sizes]
 "00000001" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 69 }
@@ -115,8 +112,9 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "rewrites"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.stisp.generator:stisp"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: one frame an input" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.stisp.proof_formulas:workspace"
@@ -124,8 +122,9 @@ exact = [1, 2, 3, 4, 5, 6, 7]
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.stisp.generator:stisp"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} through n=7, at most beyond: frames/head 16n each; halt dump excluded", formula = "32n" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.stisp.tests.formulas:_hybrid_chars"
@@ -133,5 +132,6 @@ exact = false
 arities = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 first = 3
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.stisp.generator:stisp"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: named-diagram ceiling plus selectors", formula = "F+28" }

@@ -11,9 +11,6 @@ admitted = 2021-05-18T21:49:00-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "the table is the prefix sum of its own steps, summed against a row counter that is live for one tick"
-scaling = "linear: at most the threshold build on 0 0 (1 0)^(T/2-1) characters"
-execution = "poly n: worst 2n + 2 commands, either build"
-workspace = "linear: at most Σ (8|name| + bl(peak)) bits over containers + 2bl(2n+2) + bl(EXIT): peak ≤ start + (2n+2)Σ⁺deltas"
 
 [generator_sizes]
 "00000001" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 296 }
@@ -151,8 +148,9 @@ exact = true
 arities = [1, 2, 3, 7]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.container.generator:container"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, either build", formula = "2n + 2" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.container.proof_formulas:workspace"
@@ -160,8 +158,9 @@ exact = false
 arities = [1, 2, 3, 7]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.container.generator:container"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} over containers + 2bl(2n+2) + bl(EXIT): peak ≤ start + (2n+2)Σ⁺deltas", formula = "Σ (8|name| + bl(peak))" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.container.tests.formulas:_threshold"
@@ -169,5 +168,6 @@ exact = false
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.container.generator:container"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}", formula = "the threshold build on 0 0 (1 0)^(T/2-1)" }

@@ -8,9 +8,6 @@ admitted = 2020-07-13T15:19:36-04:00
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "head/tail discards leave the indexed entry in the deque"
-scaling = "linear: at most B characters: the shared tree's token bound"
-execution = "poly n: worst 7n + 8 commands past n = 2: prelude, load 2n, four a level, leaf n + 6"
-workspace = "poly n: worst n + 1 + bl(U) bits past n = 2: n deque bits, a register bit, the cursor"
 definitions = ["U = 4n + 25 + Σ_{d<n-1} (2c_d + 2min(c_d, 2c_d - c_{d+1})), c_d = min(2^d, 2^(2^(n-d)) - 2)"]
 
 [generator_sizes]
@@ -122,8 +119,9 @@ exact = true
 arities = [5, 6]
 first = 3
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bitdeque.generator:bitdeque"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: prelude, load 2n, four a level, leaf n + 6" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.bitdeque.proof_formulas:workspace"
@@ -131,8 +129,9 @@ exact = true
 arities = [3, 4, 5, 6]
 first = 3
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bitdeque.generator:bitdeque"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: n deque bits, a register bit, the cursor", formula = "n + 1 + bl(U)" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.bitdeque.tests.formulas:_bound"
@@ -140,5 +139,6 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bitdeque.generator:bitdeque"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the shared tree's token bound", formula = "B" }

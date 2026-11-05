@@ -8,9 +8,6 @@ admitted = 2026-08-12T18:39:04-04:00
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "one stage per input doubles the queued markers and adds the bit (Horner), and the count selects one of `2**n` constant-size cascade stages"
-scaling = "linear: worst A cells: the least-area cascade or fold, T - 1 leaves"
-execution = "linear: at most 11T + 32n + 92 commands: Horner doubling 8 a marker, a row 1, fold corridors"
-workspace = "linear: worst T + 11 + bl(T+6n+8) bits: a queue of T + 6 bits, the row, the column"
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 80, "1" = 81, "2" = 90, "3" = 91, "4" = 108, "5" = 109, "6" = 118 }, commands_by_row_nulls = [7], source_units = 168 }
@@ -111,8 +108,9 @@ exact = false
 arities = [1, 7]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.arrowqueue.generator:arrowqueue"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: Horner doubling 8 a marker, a row 1, fold corridors" }
 
 [resource_evidence.workspace]
 expression = "T + 11 + bl(T+6n+8)"
@@ -120,8 +118,9 @@ exact = true
 arities = [1, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.arrowqueue.generator:arrowqueue"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: a queue of T + 6 bits, the row, the column" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.arrowqueue.tests.formulas:_cells"
@@ -129,5 +128,6 @@ exact = true
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "cells"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.arrowqueue.generator:arrowqueue"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the least-area cascade or fold, T - 1 leaves", formula = "A" }

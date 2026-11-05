@@ -8,9 +8,6 @@ admitted = 2026-09-08T19:52:09-04:00
 [proof_status]
 labels = ["minterms"]
 qualification = "empty/full blocks fold, singleton blocks inline their conjunction, and other prefixes reuse one flag per height; the scan has no nested branch"
-scaling = "linear: at most 40T + 18n + 120 characters: rarer-answer scan"
-execution = "linear: worst 7T + 2n - 9 commands past n = 1"
-workspace = "poly n: at most 290n + n*bl(n) + 424 bits: scopes and at most n pending conjunction nodes"
 
 [catalogue]
 folding_constant_local = "essential_inputs"  # no kept input: read, then print the constant
@@ -89,8 +86,9 @@ exact = true
 arities = [2, 3, 5]
 first = 2
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.dinac.generator:dinac"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}" }
 
 [resource_evidence.workspace]
 expression = "290n + n*bl(n) + 424"
@@ -98,8 +96,9 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.dinac.generator:dinac"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: scopes and at most n pending conjunction nodes" }
 
 [resource_evidence.scaling]
 expression = "40T + 18n + 120"
@@ -107,5 +106,6 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.dinac.generator:dinac"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: rarer-answer scan" }

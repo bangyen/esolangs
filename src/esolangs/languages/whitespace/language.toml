@@ -7,10 +7,7 @@ backlinks = 58
 [proof_status]
 labels = ["linear lookup"]
 qualification = "inputs build 2**index; dividing one packed literal exposes its answer bit"
-scaling = "linear: worst S characters: one literal and shared step"
 definitions = ["S = 65 at n=1; otherwise T+4n+70"]
-execution = "poly n: worst 16 at n=1, otherwise 12n+7 commands: calls never nest"
-workspace = "linear: worst 14 at n=1, otherwise 5T-3+bl(n+17)+bl(n+2)+bl(2n-1) bits: stack, sparse heap and cursors"
 
 [catalogue]
 folding_constant = "a constant table prints its bit; any other is one literal, with no subtable to fold"
@@ -148,8 +145,9 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.whitespace.generator:whitespace"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: calls never nest", formula = "16 at n=1, otherwise 12n+7" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.whitespace.proof_formulas:workspace"
@@ -157,8 +155,9 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.whitespace.generator:whitespace"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: stack, sparse heap and cursors", formula = "14 at n=1, otherwise 5T-3+bl(n+17)+bl(n+2)+bl(2n-1)" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.whitespace.tests.formulas:_chars"
@@ -166,5 +165,6 @@ exact = true
 arities = [1, 2, 3, 5, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.whitespace.generator:whitespace"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one literal and shared step", formula = "S" }

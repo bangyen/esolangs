@@ -394,7 +394,15 @@ def _generator_gaps(lang: Language) -> list[Gap]:
 
 def _ledger_gaps(name: str) -> list[Gap]:
     """List the ledger row and the formula tests its stated bounds need."""
-    rows, _ = _proof_status_load()
+    try:
+        rows, _ = _proof_status_load()
+    except ValueError as error:
+        return [
+            Gap(
+                f"src/esolangs/languages/{_slug(name)}/language.toml",
+                f"complete resource evidence before rendering proof status: {error}",
+            )
+        ]
     row = next((item for item in rows if item.generator == name), None)
     toml = f"src/esolangs/languages/{_slug(name)}/language.toml"
     if row is None:
@@ -567,8 +575,8 @@ def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str
     """
     import esolangs
 
-    execution = importlib.import_module("tests.proofs.execution")
-    tables, measure = execution.tables, execution.measure
+    measurement = importlib.import_module("tests.proofs.measurement")
+    tables, measure = measurement.tables, measurement.measure
     rows = []
     for n in arities:
         worst = {t: measure(name, t, written=True) for t in tables(name, n)}
@@ -595,7 +603,11 @@ def size_anchors(name: str) -> list[str]:
     if backend is None:
         return []
     lines = []
-    for anchor in source_anchors(name):
+    try:
+        anchors = source_anchors(name)
+    except (KeyError, FileNotFoundError):
+        return []
+    for anchor in anchors:
         program = esolangs.generate(name, anchor.witness.table())
         got = (
             len(program)

@@ -7,9 +7,6 @@ backlinks = 91
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "weighted zero padding advances the cyclic rule pointer to the indexed answer; the next empty rule deletes it; AND/NOR use a two-bit marker and a single one continuation"
-scaling = "linear: worst 3T + 2n + 1 characters, weighted padding"
-execution = "linear: worst E steps: indexed marker and at most one named continuation"
-workspace = "linear: worst W bits: queue, production pointer and output latch"
 definitions = ["E = T+n+2 below n=3, otherwise T+n+3", "W = 8T+9+bl(T+n) at n=1, otherwise 8T+17+bl(T+n)"]
 
 [generator_sizes]
@@ -109,8 +106,9 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "steps"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.cyclic_tag.generator:cyclic_tag"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: indexed marker and at most one named continuation", formula = "E" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.cyclic_tag.proof_formulas:workspace"
@@ -118,8 +116,9 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.cyclic_tag.generator:cyclic_tag"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: queue, production pointer and output latch", formula = "W" }
 
 [resource_evidence.scaling]
 expression = "3T + 2n + 1"
@@ -127,5 +126,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.cyclic_tag.generator:cyclic_tag"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, weighted padding" }

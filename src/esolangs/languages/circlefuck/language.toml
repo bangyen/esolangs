@@ -12,9 +12,6 @@ bf_derivative = true
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the tape is the program, so the table is its tail past the `@` that stops the run, entry 0 abutting the index digits at the ring's end; `}` deletes the cell under the pointer and slides the digits down into it, so counting the index out against one `}` apiece leaves the entry it names under the pointer"
-scaling = "linear: worst N characters: the table, batched clamped reads, digit-cell walks"
-execution = "linear: worst E commands to n=7: indexed deletion and clamped reads"
-workspace = "linear: worst B + bl(L-1) + bl(h) + bl(n) + 1 bits: tape and cursors"
 definitions = ["E = (2n+13)T+68n+232+2C from n=3, otherwise (2n+13)T+94n+89+2S; C=source[n+1], S=sum(source[1:n+1]); source=parsed bytes", "B = sum of initial tape-byte bit widths; h = halt @ offset"]
 
 [generator_sizes]
@@ -156,8 +153,9 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.circlefuck.generator:circlefuck"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} to n=7: indexed deletion and clamped reads", formula = "E" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.circlefuck.proof_formulas:workspace"
@@ -165,8 +163,9 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.circlefuck.generator:circlefuck"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: tape and cursors", formula = "B + bl(L-1) + bl(h) + bl(n) + 1" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.circlefuck.tests.formulas:_chars"
@@ -174,5 +173,6 @@ exact = true
 arities = [1, 2, 3, 5, 8, 9]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.circlefuck.generator:circlefuck"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the table, batched clamped reads, digit-cell walks", formula = "N" }

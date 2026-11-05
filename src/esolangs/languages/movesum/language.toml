@@ -8,9 +8,6 @@ admitted = 2026-08-15T23:15:46-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "constants read and reset n inputs, then print and halt in 2n + 3 commands; otherwise Horner-reads V = 44T + v, then each rung sums and preserves the counter, prints, and copies V into the sum slot; that copy is a second no-op exactly at the selected row"
-scaling = "linear: 4T + 6n + 4 commands, 32 characters a row"
-execution = "linear: worst 4T + 6n + 4 commands"
-workspace = "poly n: at most 7n + 72 bits"
 
 [catalogue]
 folding_ignored = "the Horner read takes every input; an ignored one still doubles the rung count"
@@ -100,8 +97,9 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.movesum.generator:movesum"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
 expression = "7n + 72"
@@ -109,5 +107,9 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.movesum.generator:movesum"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[resource_evidence.scaling]
+qualitative = { growth = "linear", text = "4T + 6n + 4 commands, 32 characters a row" }

@@ -7,9 +7,6 @@ backlinks = 65
 [proof_status]
 labels = ["finite lookup"]
 qualification = "triple stacks from four essential inputs; smaller lookups, literal products, majority counts"
-scaling = "linear: worst F codels for n = 2..7, then at most F"
-execution = "linear: worst F steps for n = 2..7, then at most F: triples or small projections"
-workspace = "linear: worst F bits for n = 2..7, then at most F: stack and cursor"
 definitions = []
 
 [generator_sizes]
@@ -155,8 +152,9 @@ exact = [3, 4, 5, 6, 7]
 arities = [2, 3, 4, 5, 6, 7, 8]
 first = 2
 unit = "steps"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.piet.generator:piet"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 2..7, then at most F: triples or small projections", formula = "F" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.piet.tests.formulas:_written"
@@ -164,8 +162,9 @@ exact = [3, 4, 5, 6, 7]
 arities = [2, 3, 4, 5, 6, 7, 8]
 first = 2
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.piet.generator:piet"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 2..7, then at most F: stack and cursor", formula = "F" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.piet.tests.formulas:_codels"
@@ -173,5 +172,6 @@ exact = [3, 4, 5, 6, 7]
 arities = [2, 3, 4, 5, 6, 7, 8]
 first = 2
 unit = "codels"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.piet.generator:piet"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 2..7, then at most F", formula = "F" }

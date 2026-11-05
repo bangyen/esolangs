@@ -7,15 +7,17 @@ import re
 import pytest
 
 from esolangs.registry import BY_BOOLEAN
-from tests.proofs._ledger import (
+from scripts.docs.resource_description import (
     EXECUTION_CLASSES,
+    SCALING_CLASSES,
+    WORKSPACE_CLASSES,
+)
+from tests.proofs._ledger import (
     FORMULA_CLAUSE_WORDS,
     LINEAR_CLAUSE_WORDS,
     NOT_A_LABEL,
     QUALIFIERS,
-    SCALING_CLASSES,
     SCHEME_LABELS,
-    WORKSPACE_CLASSES,
     Ledger,
     load,
 )
@@ -137,7 +139,7 @@ def test_every_row_carries_a_measured_cell(
         words = len(clause.split())
         limit = (
             FORMULA_CLAUSE_WORDS
-            if clause.startswith(("worst ", "at most "))
+            if getattr(row.resources, column).bounded
             else LINEAR_CLAUSE_WORDS
         )
         assert words <= limit, (

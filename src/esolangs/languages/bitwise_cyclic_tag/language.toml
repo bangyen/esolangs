@@ -7,9 +7,6 @@ backlinks = 179
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "the table is the program, one seven-bit cell per two rows; each embedded bit above the lowest appends three walk zeros per unit of its pair index, the lowest two, and a cell consumes exactly three whichever of its row bits is a delete or an operand, so the zeros carry the program pointer to the indexed cell and the held-back sentinel arrives there to fire its first or second row; the trailing `00` consumes the answer it just appended, without which a 1 would cascade into the cells below"
-scaling = "linear: worst 13T/2+2n+3 characters: seven per two-row cell, reads six a unit"
-execution = "linear: worst 19T/4 + n + 2 commands past n = 2: input segments, then the walk"
-workspace = "linear: worst 12T + 16 + bl(13T/2+n) + bl(3T/2+n+2) bits: a data queue of 3T/2 + 1 bits"
 
 [generator_sizes]
 "00000001" = { commands = 36, commands_by_row = { "0" = 19, "1" = 23, "2" = 24, "3" = 28, "4" = 29, "5" = 33, "6" = 35, "7" = 36 }, source_units = 61 }
@@ -110,8 +107,9 @@ exact = true
 arities = [3, 5]
 first = 3
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bitwise_cyclic_tag.generator:bitwise_cyclic_tag"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: input segments, then the walk" }
 
 [resource_evidence.workspace]
 expression = "12T + 16 + bl(13T/2+n) + bl(3T/2+n+2)"
@@ -119,8 +117,9 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bitwise_cyclic_tag.generator:bitwise_cyclic_tag"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: a data queue of 3T/2 + 1 bits" }
 
 [resource_evidence.scaling]
 expression = "13T/2+2n+3"
@@ -128,5 +127,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bitwise_cyclic_tag.generator:bitwise_cyclic_tag"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: seven per two-row cell, reads six a unit" }

@@ -11,9 +11,6 @@ sharing_exempt = "clockwise turns and a cell test only, no jump: a box runs wher
 [proof_status]
 labels = ["tree"]
 qualification = "nested boxes test one input cell each with a splitter that also merges, since the tested cell is unchanged; a constant subtable is one leaf; two leaf children share the splitter row; a final identity cofactor prints its unchanged input cell"
-scaling = "linear: nested boxes, odd inner levels side by side"
-execution = "linear: worst 34·2^(n/2)+7n-40 even, 44·2^((n-1)/2)+7n-38 odd, n≥4; n=1..3: 19,40,69 commands"
-workspace = "poly n: at most 2bl(L) + 2n + 3bl(2n + 4) + 6 bits"
 
 [ablations]
 audited = "2026-10-29"
@@ -97,8 +94,9 @@ exact = true
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.balik.generator:balik"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}", formula = "34·2^(n/2)+7n-40 even, 44·2^((n-1)/2)+7n-38 odd, n≥4; n=1..3: 19,40,69" }
 
 [resource_evidence.workspace]
 expression = "2bl(L) + 2n + 3bl(2n + 4) + 6"
@@ -106,5 +104,9 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.balik.generator:balik"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[resource_evidence.scaling]
+qualitative = { growth = "linear", text = "nested boxes, odd inner levels side by side" }

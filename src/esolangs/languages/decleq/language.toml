@@ -8,9 +8,6 @@ admitted = 2026-08-14T08:52:07-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "zero edges enter fixed print gadgets directly; admitted symmetric thresholds use fall-through chains"
-scaling = "linear: at most B characters: six cells per distinct subtree"
-execution = "poly n: worst 50n + 95 commands past n = 1: 47 passes, n - 2 copy jumps"
-workspace = "linear: worst M + 5n + bl(C) + bl(n) + 5 bits: memory, pointer and input cursor"
 definitions = ["M = bits of the program's cells", "C = cell count"]
 
 [generator_sizes]
@@ -126,8 +123,9 @@ exact = true
 arities = [2, 3, 6]
 first = 2
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.decleq.generator:decleq"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: 47 passes, n - 2 copy jumps" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.decleq.proof_formulas:workspace"
@@ -135,8 +133,9 @@ exact = true
 arities = [1, 2, 3, 4]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.decleq.generator:decleq"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: memory, pointer and input cursor", formula = "M + 5n + bl(C) + bl(n) + 5" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.decleq.tests.formulas:_chars"
@@ -144,5 +143,6 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.decleq.generator:decleq"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: six cells per distinct subtree", formula = "B" }

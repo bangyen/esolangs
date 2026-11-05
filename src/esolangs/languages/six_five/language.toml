@@ -8,9 +8,6 @@ admitted = 2026-08-14T00:27:50-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "shared trees within the label budget, positional or guarded walks otherwise; AND has one shared zero exit"
-scaling = "linear, time n log: at most N characters: two raced orders over canonical subtree IDs"
-execution = "linear: at most L + 6T + 3n commands: the walk's home loop reruns 3 commands a cell; other routes loop-free"
-workspace = "linear: worst 2T + 6n + 6 + bl(n) + bl(L) bits past n = 6: a tape of 2T cells"
 
 [generator_sizes]
 "00000001" = { commands = 26, commands_by_row = { "0" = 17, "1" = 23, "2" = 17, "3" = 28, "4" = 17, "5" = 23, "6" = 17, "7" = 26 }, source_units = 41 }
@@ -143,8 +140,9 @@ exact = false
 arities = [3, 7]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.six_five.generator:six_five"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the walk's home loop reruns 3 commands a cell; other routes loop-free" }
 
 [resource_evidence.workspace]
 expression = "2T + 6n + 6 + bl(n) + bl(L)"
@@ -152,8 +150,9 @@ exact = true
 arities = [8]
 first = 7
 unit = "bits"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.six_five.generator:six_five"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: a tape of 2T cells" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.six_five.tests.formulas:_chars"
@@ -161,5 +160,6 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.execution:tables"
+witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.six_five.generator:six_five"
+description = { growth = "linear, time n log", claim = "at most", template = "{claim} {formula} {unit}: two raced orders over canonical subtree IDs", formula = "N" }
