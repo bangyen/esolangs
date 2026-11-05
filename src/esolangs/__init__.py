@@ -94,6 +94,7 @@ from esolangs.runtime._input import InputSource, check_input
 from esolangs.runtime._isolated import check_limits
 from esolangs.runtime._isolated import run_isolated as _run_isolated
 from esolangs.runtime._program import Program, RunnerProgram
+from esolangs.runtime._result import ExecutionResult
 from esolangs.runtime._source import (
     ProgramSource,
     _FileSource,
@@ -114,6 +115,7 @@ from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 from esolangs.tagged import _Tagged, _Template
 from esolangs.tagged import source_adapter as _source_adapter
+from esolangs.vm import _capture_result
 
 #: From the installed distribution (a hand-kept copy said 0.1.0 at 0.2.0);
 #: the fallback covers an uninstalled tree.  Read on first access, not
@@ -710,7 +712,7 @@ def _check_program(
     return program
 
 
-def _run_bounded(
+def _run_bounded_result(
     language: str,
     program: ProgramSource,
     stdin: InputSource = "",
@@ -719,8 +721,8 @@ def _run_bounded(
     settings: DialectSettings | None = None,
     timeout: float | None = None,
     scale: int | None = None,
-) -> str:
-    """Execute a program cooperatively, returning output only on halt.
+) -> ExecutionResult:
+    """Execute cooperatively, returning a result only after completed halt.
 
     Supply at least one bound. Limits raise :class:`ExecutionTimeoutError`
     with ``partial_output``. Works on Windows and worker threads; loading
@@ -746,7 +748,7 @@ def _run_bounded(
         error.partial_output = debugger.output
         error.bound = "timeout" if reason == "timeout" else "max_steps"
         raise error
-    return debugger.output
+    return _capture_result(debugger.vm)
 
 
 def run(
@@ -853,7 +855,7 @@ def run(
                     "timeout to bound the run"
                 ),
             )
-        return _run_bounded(
+        return _run_bounded_result(
             language,
             program,
             stdin,
@@ -861,7 +863,7 @@ def run(
             timeout=timeout,
             scale=scale,
             settings=settings,
-        )
+        ).output
     # Before ``_run``, so every ValueError from the run is the
     # interpreter's.  The message names both routes out for a worker
     # thread.  Not a silent fallback to stepping: two paths for one

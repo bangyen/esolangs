@@ -98,8 +98,9 @@ from esolangs.runtime._execution import (
     prepare_call,
 )
 from esolangs.runtime._input import InputSource
-from esolangs.runtime._lifecycle import Completion
+from esolangs.runtime._lifecycle import Completion, CompletionReport
 from esolangs.runtime._program import Program
+from esolangs.runtime._result import ExecutionResult
 from esolangs.runtime._source import ProgramSource, check_scale_for
 from esolangs.runtime._traits import trait, traits
 from esolangs.runtime._validate import check_whole
@@ -283,6 +284,16 @@ class _DelegatingVM:
     def output(self) -> str:
         return self._io.getvalue()
 
+    def _result(self, report: CompletionReport) -> ExecutionResult:
+        """Capture public output with this VM's owned input counters."""
+        return ExecutionResult(
+            self.output,
+            self._io.position(),
+            self._io.reads,
+            self._io.past_end,
+            report,
+        )
+
     @property
     def halted(self) -> bool:
         return self._machine.halted
@@ -369,6 +380,19 @@ class _DelegatingVM:
     @property
     def eof_is_a_value(self) -> bool:
         return trait(self._machine, "eof_is_a_value")
+
+
+def _capture_result(vm: VM) -> ExecutionResult:
+    """Capture a finalized, halted VM without taking another step."""
+    if not vm.halted:
+        raise ArgumentError("execution result requires a halted VM")
+    report = CompletionReport(
+        Completion.POST_HALT if vm.dumps_on_the_post_halt_step else Completion.HALTED
+    )
+    if isinstance(vm, _DelegatingVM):
+        # Use owned code; unrelated instance attributes remain caller-owned.
+        return _DelegatingVM._result(vm, report)  # noqa: SLF001
+    return ExecutionResult(vm.output, None, None, None, report)
 
 
 @cache

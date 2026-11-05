@@ -107,3 +107,10 @@ def test_native_completion_preserves_the_periodic_evidence():
     assert report.cycle.repeat_pass > report.cycle.first_pass
     assert io.getvalue() == "@"
     assert run("P", ScriptedIO()) is None
+
+
+def test_a_step_bound_does_not_claim_periodic_completion():
+    with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
+        esolangs._run_bounded_result("A Painter Ant", "P", max_steps=3)
+    assert caught.value.bound == "max_steps"
+    assert caught.value.partial_output == ""
