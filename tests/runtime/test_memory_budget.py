@@ -130,4 +130,4 @@ def test_successful_worker_budget_retains_output_protocol(monkeypatch, capsys) -
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(request)))
     _worker()
     assert calls == [_BUDGET]
-    assert _decode(capsys.readouterr().out, expired=False) == "\x01"
+    assert _decode(capsys.readouterr().out, expired=False).output == "\x01"

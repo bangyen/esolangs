@@ -88,7 +88,7 @@ def test_cancellation_kills_and_reaps_child(monkeypatch) -> None:
         _isolated.subprocess, "Popen", lambda *_args, **_kwargs: Child()
     )
     with pytest.raises(KeyboardInterrupt):
-        _isolated.run_isolated(REFERENCE, "")
+        _isolated.run_isolated_result(REFERENCE, "")
     assert calls == ["communicate", "kill", "communicate"]
 
 
@@ -154,7 +154,7 @@ def test_capped_worker_splits_and_truncates_a_single_large_write(
         "max_output": 8193,
     }
     monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
-    monkeypatch.setattr(esolangs, "run", dump)
+    monkeypatch.setattr(esolangs, "_run_result", dump)
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
     _worker()
     messages = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
@@ -303,6 +303,7 @@ def test_process_creation_consumes_the_worker_deadline(
 def test_raster_transport_preserves_every_pixel(rows, monkeypatch) -> None:
     from esolangs.runtime import _isolated
     from esolangs.runtime._isolated import _raster_rows, _raster_transport
+    from esolangs.runtime._result import ExecutionResult
 
     image = esolangs.Raster(rows)
     runs = _raster_transport(image)
@@ -310,7 +311,9 @@ def test_raster_transport_preserves_every_pixel(rows, monkeypatch) -> None:
     monkeypatch.setattr(
         _isolated,
         "_launch",
-        lambda request, *_args, **_kwargs: json.dumps(json.loads(request)["program"]),
+        lambda request, *_args, **_kwargs: ExecutionResult(
+            json.dumps(json.loads(request)["program"]), None, None, None
+        ),
     )
     language = one(source_kind="raster", boolean_generator=True)[0]
     wire = esolangs.run(language, image, isolated=True)

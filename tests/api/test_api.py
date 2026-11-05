@@ -257,13 +257,15 @@ def test_unsupported_execution_options_are_refused(options) -> None:
 
 
 def test_isolated_seed_is_forwarded(monkeypatch) -> None:
+    from esolangs.runtime._result import ExecutionResult
+
     seen = []
 
     def execute(language, program, stdin, timeout, **kwargs):
         seen.append((language, program, stdin, timeout, kwargs))
-        return "result"
+        return ExecutionResult("result", 0, 0, 0)
 
-    monkeypatch.setattr(esolangs, "_run_isolated", execute)
+    monkeypatch.setattr(esolangs, "_run_isolated_result", execute)
     assert esolangs.run(REFERENCE, "+.", isolated=True, seed=7) == "result"
     ((language, program, stdin, timeout, kwargs),) = seen
     assert (language, program, stdin, timeout) == (REFERENCE, "+.", "", 30.0)
@@ -285,7 +287,7 @@ def test_isolated_worker_requires_a_deadline() -> None:
     from esolangs.runtime import _isolated
 
     with pytest.raises(esolangs.ArgumentError, match="finite timeout"):
-        _isolated.run_isolated(REFERENCE, "+.", timeout=None)
+        _isolated.run_isolated_result(REFERENCE, "+.", timeout=None)
 
 
 def test_bound_language_runs_a_boolean_workflow() -> None:

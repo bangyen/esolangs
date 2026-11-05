@@ -92,7 +92,7 @@ from esolangs.runtime._execution import (
 )
 from esolangs.runtime._input import InputSource, check_input
 from esolangs.runtime._isolated import check_limits
-from esolangs.runtime._isolated import run_isolated as _run_isolated
+from esolangs.runtime._isolated import run_isolated_result as _run_isolated_result
 from esolangs.runtime._program import Program, RunnerProgram
 from esolangs.runtime._result import ExecutionResult
 from esolangs.runtime._source import (
@@ -819,6 +819,36 @@ def run(
         MissingDependencyError: The language needs an uninstalled extra
             (``esolangs[image]`` for PNG).
     """
+    return _run_result(
+        language,
+        program,
+        stdin=stdin,
+        timeout=timeout,
+        seed=seed,
+        isolated=isolated,
+        max_steps=max_steps,
+        scale=scale,
+        max_output=max_output,
+        max_memory=max_memory,
+        settings=settings,
+    ).output
+
+
+def _run_result(
+    language: str,
+    program: ProgramSource,
+    *,
+    stdin: InputSource = "",
+    timeout: float | None = None,
+    seed: int | None = None,
+    isolated: bool = False,
+    max_steps: int | None = None,
+    scale: int | None = None,
+    max_output: int | None = None,
+    max_memory: int | None = None,
+    settings: DialectSettings | None = None,
+) -> ExecutionResult:
+    """Execute through one route, retaining its result metadata."""
     settings = effective_settings(language, program, settings)
     dialect_options(language, settings)  # validate before any route
     check_scale_for(language, scale)
@@ -835,7 +865,7 @@ def run(
         deadline = _ISOLATED_TIMEOUT if timeout is None else timeout
         # Every option defaults to None, so passing them unconditionally
         # matches the old per-combination cascade exactly.
-        return _run_isolated(
+        return _run_isolated_result(
             language,
             program,
             stdin,
@@ -863,7 +893,7 @@ def run(
             timeout=timeout,
             scale=scale,
             settings=settings,
-        ).output
+        )
     # Before ``_run``, so every ValueError from the run is the
     # interpreter's.  The message names both routes out for a worker
     # thread.  Not a silent fallback to stepping: two paths for one
@@ -895,7 +925,7 @@ def run(
         io_obj,
         timeout,
         report_required=entrypoint is not None,
-    ).output
+    )
 
 
 def _run[T](

@@ -22,6 +22,8 @@ from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry import resolve
 from esolangs.runtime._input import InputSource, read_input
 from esolangs.runtime._program import Program
+from esolangs.runtime._result import ExecutionResult
+from esolangs.runtime._result_wire import decode_result, encode_result
 from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._validate import check_timeout, check_whole
 from esolangs.runtime.source_hints import with_hint
@@ -66,7 +68,7 @@ def _raster_rows(runs: _RasterRuns) -> Rows:
     )
 
 
-def _decode(text: str, *, expired: bool) -> str:
+def _decode(text: str, *, expired: bool) -> str | ExecutionResult:
     error: exceptions.EsolangError
     output: list[str] = []
     result: dict[str, Any] | None = None
@@ -109,6 +111,15 @@ def _decode(text: str, *, expired: bool) -> str:
         if "notes" in result:
             error.__notes__ = list(result["notes"])
         raise error
+    if "execution" in result:
+        try:
+            return decode_result(result["result"], result["execution"])
+        except (TypeError, ValueError, KeyError) as cause:
+            error = exceptions.InterpreterLimitError(
+                "invalid isolated execution result"
+            )
+            error.partial_output = partial
+            raise error from cause
     return cast("str", result["result"])
 
 
@@ -158,7 +169,7 @@ def _limit_memory(max_memory: int) -> None:
     resource.setrlimit(resource.RLIMIT_AS, (ceiling, hard))
 
 
-def run_isolated(
+def run_isolated_result(
     language: str,
     program: ProgramSource,
     stdin: InputSource = "",
@@ -169,8 +180,8 @@ def run_isolated(
     max_output: int | None = None,
     max_memory: int | None = None,
     settings: DialectSettings | None = None,
-) -> str:
-    """Return output from a subprocess; the deadline includes loading and startup.
+) -> ExecutionResult:
+    """Return a result from a subprocess; the deadline includes loading and startup.
 
     Works on Windows and worker threads. Errors retain their public class,
     notes and output; timeout kills and reaps the child.
@@ -241,7 +252,14 @@ def run_isolated(
     if isinstance(request, BaseException):
         raise request
     with _timeout_named(timeout):
-        return _launch(request, remaining, max_output=max_output)
+        result = _launch(request, remaining, max_output=max_output)
+    if not isinstance(result, ExecutionResult):
+        error = exceptions.InterpreterLimitError(
+            "isolated worker omitted execution metadata"
+        )
+        error.partial_output = result
+        raise error
+    return result
 
 
 @contextmanager
@@ -256,7 +274,9 @@ def _timeout_named(timeout: float) -> Iterator[None]:
         raise
 
 
-def _launch(request: str, timeout: float, *, max_output: int | None = None) -> str:
+def _launch(
+    request: str, timeout: float, *, max_output: int | None = None
+) -> str | ExecutionResult:
     """Run one JSON request, killing and reaping on deadline."""
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join(sys.path)
@@ -295,7 +315,9 @@ def _launch(request: str, timeout: float, *, max_output: int | None = None) -> s
     return _decode(output, expired=expired)
 
 
-def _bounded_output(child: subprocess.Popen[str], request: str, timeout: float) -> str:
+def _bounded_output(
+    child: subprocess.Popen[str], request: str, timeout: float
+) -> str | ExecutionResult:
     """Read bounded worker records; kill and reap on an output limit or deadline."""
     records: Queue[str | BaseException | None] = Queue(maxsize=16)
     stopped = Event()
@@ -407,7 +429,12 @@ def termination_isolated(
         }
     )
     with _timeout_named(timeout):
-        return _launch(request, timeout, max_output=max_output)
+        result = _launch(request, timeout, max_output=max_output)
+    if not isinstance(result, str):
+        raise exceptions.InterpreterLimitError(
+            "termination worker returned an execution result"
+        )
+    return result
 
 
 def _exit_with_parent() -> None:
@@ -516,7 +543,7 @@ def _worker() -> None:
                 settings=settings,
             )
         else:
-            output = esolangs.run(
+            result = esolangs._run_result(  # noqa: SLF001 - same result route as public run
                 request["language"],
                 program,
                 stdin=request["stdin"],
@@ -556,7 +583,11 @@ def _worker() -> None:
             }
         )
     else:
-        send({"result": output})
+        send(
+            {"result": output}
+            if "termination" in request
+            else {"result": result.output, "execution": encode_result(result)}
+        )
 
 
 if __name__ == "__main__":
