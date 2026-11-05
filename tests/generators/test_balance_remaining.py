@@ -1,7 +1,6 @@
 """Analytic balance rules match all supported layouts and execute every row."""
 
 import random
-from inspect import signature
 
 import pytest
 
@@ -9,7 +8,7 @@ import esolangs
 from esolangs.generation import wrap as _wrap
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score, wrap_chars, wrap_program
-from esolangs.registry import LANGUAGES, SourceKind
+from esolangs.registry import LANGUAGES, SourceKind, render_template
 from tests.support.evaluation import _evaluate
 from tests.support.exact_token_width import exact_token_width
 from tests.support.witness_tables import witnesses
@@ -18,39 +17,32 @@ from tests.support.witness_tables import witnesses
 TOLERANCE = 1.05
 
 
+def _assert_token_fit(tokens, separator, **options):
+    width = balanced_token_width(tokens, separator, **options)
+    exact = exact_token_width(tokens, separator, **options)
+    assert (
+        balance_score(_wrap._join_tokens(tokens, width, separator))[0]
+        <= TOLERANCE * balance_score(_wrap._join_tokens(tokens, exact, separator))[0]
+    )
+    return width
+
+
 @pytest.mark.parametrize(("minimum", "maximum"), [(1, 5), (2, 9), (6, 15)])
 def test_token_fit_lattice_respects_width_regimes(minimum, maximum) -> None:
-    from esolangs.generation.wrap import _join_tokens
-
     rng = random.Random(1013)
     for _ in range(100):
         tokens = ["x" * rng.randrange(1, 12) for _ in range(rng.randrange(1, 30))]
-        width = balanced_token_width(tokens, " ", minimum=minimum, maximum=maximum)
+        width = _assert_token_fit(tokens, " ", minimum=minimum, maximum=maximum)
         assert minimum <= width <= maximum
-        exact = exact_token_width(tokens, " ", minimum=minimum, maximum=maximum)
-        assert (
-            balance_score(_join_tokens(tokens, width, " "))[0]
-            <= TOLERANCE * balance_score(_join_tokens(tokens, exact, " "))[0]
-        )
 
 
 @pytest.mark.parametrize("separator", ["", " "])
 def test_long_token_dominates_packed_row_count(separator) -> None:
-    from esolangs.generation.wrap import _join_tokens
-
     tokens = ["x" * 80, *(["x", "xx"] * 80)]
-    width = balanced_token_width(tokens, separator, minimum=80)
-    assert width >= 80
-    exact = exact_token_width(tokens, separator, minimum=80)
-    assert (
-        balance_score(_join_tokens(tokens, width, separator))[0]
-        <= TOLERANCE * balance_score(_join_tokens(tokens, exact, separator))[0]
-    )
+    assert _assert_token_fit(tokens, separator, minimum=80) >= 80
 
 
 def test_trimmed_row_ends_keep_the_width_lattice() -> None:
-    from esolangs.generation.wrap import _join_tokens
-
     tokens = [
         "xxxxx   ",
         "xxxxxxxxxxxxx ",
@@ -73,7 +65,8 @@ def test_trimmed_row_ends_keep_the_width_lattice() -> None:
     def score(width):
         return balance_score(
             "\n".join(
-                row.rstrip() for row in _join_tokens(tokens, width, " ").splitlines()
+                row.rstrip()
+                for row in _wrap._join_tokens(tokens, width, " ").splitlines()
             )
         )
 
@@ -82,50 +75,34 @@ def test_trimmed_row_ends_keep_the_width_lattice() -> None:
     assert score(width)[0] <= TOLERANCE * min(score(w)[0] for w in range(13, 41))
 
 
-@pytest.mark.parametrize(
-    "language",
-    [
-        n
-        for n, lang in LANGUAGES.items()
-        if lang.backend is not None and lang.backend.wrap is _wrap.wrap_grid
-    ],
-)
-@pytest.mark.parametrize("table", ["0110", "10010110"])
-def test_aligned_balanced_programs_compute_the_table(language, table) -> None:
-    balanced = esolangs.generate(language, table, balance=True)
-    default = esolangs.generate(language, table)
-    optimum = min(
-        [default]
-        + [esolangs.generate(language, table, width=width) for width in range(1, 129)],
-        key=balance_score,
-    )
-    assert balance_score(balanced)[0] <= TOLERANCE * balance_score(optimum)[0]
-    assert _evaluate(language, balanced, inputs=len(table).bit_length() - 1) == table
+def _width_layouts(language, table, default, widths):
+    """Yield every requested width, reusing width-independent emission."""
+    lang = LANGUAGES[language]
+    native = _wrap.takes_width(lang.backend.generate)
+    inputs = len(table).bit_length() - 1
+    yield default
+    for width in widths:
+        if native:
+            yield esolangs.generate(language, table, width=width)
+        elif lang.parameterized:
+            yield render_template(lang.id, default, inputs, width)[0]
+        else:
+            yield wrap_program(default, lang.id, width)
 
 
-def _regime_tables():
-    # XOR, majority and one wide irregular table; the primitive fit oracles
-    # cover the exhaustive geometry.
-    return ["0110", witnesses(5)[-1]]
-
-
-def _balances_whole_tokens(wrapper: object) -> bool:
-    """Whether ``balance_program`` fits ``wrapper``'s tokens, not characters."""
-    if any(
-        lang.backend is not None
-        and lang.backend.wrap is wrapper
-        and lang.backend.wrap_balance
-        for lang in LANGUAGES.values()
-    ):
-        return True
-    return isinstance(wrapper, _wrap.TokenWrapper) or wrapper in (
-        _wrap.wrap_space_delimited,
-        _wrap.wrap_grid,
-    )
+# XOR and one wide irregular table; primitive fit oracles exhaust geometry.
+_REGIME_TABLES = ("0110", witnesses(5)[-1])
+_GRID_TABLES = ("0110", "10010110")
 
 
 def _balanced_languages() -> list[str]:
     """Text languages whose balance is more than a character reflow."""
+    token_wrappers = {
+        id(lang.backend.wrap)
+        for lang in LANGUAGES.values()
+        if lang.backend is not None and lang.backend.wrap_balance
+    }
+    token_wrappers.update(map(id, (_wrap.wrap_space_delimited, _wrap.wrap_grid)))
     return sorted(
         name
         for name, lang in LANGUAGES.items()
@@ -133,48 +110,54 @@ def _balanced_languages() -> list[str]:
         and lang.runtime.source_kind is SourceKind.TEXT
         and (
             lang.backend.balance is not None
-            or _balances_whole_tokens(lang.backend.wrap)
+            or isinstance(lang.backend.wrap, _wrap.TokenWrapper)
+            or id(lang.backend.wrap) in token_wrappers
             or (lang.backend.wrap is wrap_chars and lang.parameterized)
         )
         and not lang.certification.slow_width_sweep
     )
 
 
-@pytest.mark.medium
-@pytest.mark.parametrize("language", _balanced_languages())
-@pytest.mark.parametrize("table", _regime_tables())
+def _balance_cases():
+    cases = {
+        (name, table): pytest.mark.medium
+        for name in _balanced_languages()
+        for table in _REGIME_TABLES
+    }
+    cases.update(
+        ((name, table), ())
+        for name, lang in LANGUAGES.items()
+        if lang.backend is not None and lang.backend.wrap is _wrap.wrap_grid
+        for table in _GRID_TABLES
+    )
+    return [pytest.param(*case, marks=mark) for case, mark in sorted(cases.items())]
+
+
+@pytest.mark.parametrize(("language", "table"), _balance_cases())
 def test_balance_reaches_the_supported_minimum(language, table) -> None:
     default = esolangs.generate(language, table)
     balanced = esolangs.generate(language, table, balance=True)
     widest = max(map(len, default.split("\n")))
-    lang = LANGUAGES[language]
-    # Rebuilding character-only layouts at every width exceeded the
-    # five-second medium band; their source only needs reflowing.
-    reflow = (
-        lang.backend.wrap is wrap_chars
-        and not lang.parameterized
-        and "width" not in signature(lang.backend.generate).parameters
+    # Grid cases subsume the former aligned sweep, including every width to 128.
+    limit = max(65, widest + 1) if table in _REGIME_TABLES else 0
+    if LANGUAGES[language].backend.wrap is _wrap.wrap_grid and table in _GRID_TABLES:
+        limit = max(limit, 129)
+    optimum = min(
+        map(
+            balance_score,
+            set(_width_layouts(language, table, default, range(1, limit))),
+        )
     )
-    layouts = [default] + [
-        wrap_program(default, lang.id, width)
-        if reflow
-        else esolangs.generate(language, table, width=width)
-        for width in range(1, max(65, widest + 1))
-    ]
-    optimum = min(layouts, key=balance_score)
     # Contract relaxed by the user (2026-10-16): balance may be 5% worse in side.
-    assert balance_score(balanced)[0] <= 1.05 * balance_score(optimum)[0]
+    assert balance_score(balanced)[0] <= 1.05 * optimum[0]
     assert _evaluate(language, balanced, inputs=len(table).bit_length() - 1) == table
 
 
 def test_native_width_generators_have_balance_rules() -> None:
-    from esolangs.generation.wrap import takes_width
-    from esolangs.registry import LANGUAGES
-
     assert not [
         name
         for name, language in LANGUAGES.items()
         if language.backend is not None
-        and takes_width(language.backend.generate)
+        and _wrap.takes_width(language.backend.generate)
         and language.backend.balance is None
     ]
