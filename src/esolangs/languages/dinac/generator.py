@@ -28,6 +28,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["dinac"]
 
@@ -120,11 +121,13 @@ def _scan(truth_table: str, mark: str, reads: list[str]) -> str:
 
 LANGUAGE = Language(
     "DINAC",
-    "dinac",
-    category="other",
+    RuntimeSpec(
+        "dinac",
+        category="other",
+        eof="reading past the input yields \\0 / 00, the value the cat example needs",
+    ),
     boolean=dinac,
     shape=Shape.LOOKUP,
     contract=BooleanContract(input_shape="char_stream"),
-    eof="reading past the input yields \\0 / 00, the value the cat example needs",
     no_wrap="each line is one statement and indentation is the block structure",
 )

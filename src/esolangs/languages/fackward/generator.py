@@ -20,6 +20,7 @@ from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.wrap import TokenWrapper
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 
 def _node(zero: str, one: str) -> str:
@@ -69,11 +70,9 @@ _wrap = TokenWrapper(r"\d+|[\s\S]")
 
 LANGUAGE = Language(
     "Fackward",
-    "fackward",
-    category="stack_based",
+    RuntimeSpec("fackward", category="stack_based", eof="a read at EOF halts the run"),
     boolean=fackward,
     contract=BooleanContract(input_shape="char_stream"),
-    eof="a read at EOF halts the run",
     # Whitespace only separates tokens, so a newline between two is harmless.
     wrap=_wrap,
 )

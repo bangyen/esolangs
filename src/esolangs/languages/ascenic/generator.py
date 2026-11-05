@@ -44,6 +44,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.languages.ascenic.proof_formulas import workspace
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 _PRINT, _INPUT, _PUSH, _ADD, _SUB, _MUL, _DIV, _MOD = 1, 2, 3, 4, 5, 6, 7, 8
 _POP = 10
@@ -185,10 +186,8 @@ def ascenic(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Ascenic",
-    "ascenic",
-    category="stack_based",
+    RuntimeSpec("ascenic", category="stack_based", random=True),
     boolean=ascenic,
-    random=True,
     no_wrap="a line's length is its opcode and argument",
     proof_workspace=(workspace, True, (3, 4, 5, 6, 7)),
 )

@@ -41,6 +41,7 @@ from esolangs.languages.b_tapemark.interpreter import (
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 #: The stage, row by row, with its run of ``|`` left out.  The two ``*``
 #: copy a ``\`` and a ``%`` onto the blank grid beside the pointer, ``-``
@@ -478,17 +479,19 @@ def _balance(table: str, default: str, *, swap_marker: str = "new") -> str:
 
 LANGUAGE = Language(
     "B-tapemark",
-    "b_tapemark",
-    category="grid_based",
+    RuntimeSpec(
+        "b_tapemark",
+        category="grid_based",
+        dialect=_dialect,
+        dialect_values={"swap_marker": SWAP_MARKERS},
+        empty_program="B-tapemark program needs exactly one start marker",
+    ),
     boolean=b_tapemark,
-    dialect=_dialect,
-    dialect_values={"swap_marker": SWAP_MARKERS},
     # Not a tree: the table copied onto the grid, one mark per row.
     shape=Shape.LOOKUP,
     contract=BooleanContract(
         input_shape="char_stream",
     ),
     balance=_balance,
-    empty_program="B-tapemark program needs exactly one start marker",
     grid=True,
 )

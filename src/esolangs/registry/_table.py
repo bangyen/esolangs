@@ -9,15 +9,22 @@ listed here.
 from __future__ import annotations
 
 from esolangs.languages.generators import _LANGUAGES
-from esolangs.registry._language import Generator, Language, SourceKind
+from esolangs.registry._language import Generator, Language
+from esolangs.runtime._definition import RuntimeSpec, SourceKind
 
 __all__ = ["LANGUAGES", "Generator", "Language", "SourceKind"]
 
 # Interpreter-only entries qualify through the fame route.
 _INTERPRETER_ONLY = (
-    Language("HQ9+", "hq9", category="register_based", id="hq9"),
-    Language("Nope.", "nope", category="other"),
-    Language("Deadfish", "deadfish", category="register_based"),
+    Language("HQ9+", RuntimeSpec("hq9", category="register_based"), id="hq9"),
+    Language(
+        "Nope.",
+        RuntimeSpec("nope", category="other"),
+    ),
+    Language(
+        "Deadfish",
+        RuntimeSpec("deadfish", category="register_based"),
+    ),
 )
 
 

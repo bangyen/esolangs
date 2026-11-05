@@ -27,6 +27,7 @@ from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 PAIR = ("0", "1")
 
@@ -155,8 +156,11 @@ def _balance(_table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "REFRACTRAN",
-    "refractran",
-    category="register_based",
+    RuntimeSpec(
+        "refractran",
+        category="register_based",
+        empty_program="REFRACTRAN needs an initial integer",
+    ),
     boolean=refractran,
     contract=BooleanContract(
         answer_mode="dump",
@@ -166,7 +170,6 @@ LANGUAGE = Language(
     ),
     wrap=wrap_space_delimited,
     balance=_balance,
-    empty_program="REFRACTRAN needs an initial integer",
     template=TemplateSpec(pair=PAIR),
     example=Example(expected_compared=False),
 )

@@ -46,6 +46,7 @@ from esolangs.generation.wrap import balance_score, wrap_space_delimited
 from esolangs.languages.crement.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["crement"]
 
@@ -282,8 +283,7 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
 
 LANGUAGE = Language(
     "Crement",
-    "crement",
-    category="program_based",
+    RuntimeSpec("crement", category="program_based"),
     boolean=crement,
     same_layout=_same_layout,
     contract=BooleanContract(

@@ -35,6 +35,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
+from esolangs.runtime._definition import RuntimeSpec
 
 _MAX_SOURCE = 256 * 1024 * 1024
 _LIMITS = TextLimits(32 * 1024 * 1024, _MAX_SOURCE, 256 * 1024)
@@ -88,11 +89,11 @@ def _zeros(brainfuck: str) -> int:
 
 LANGUAGE = Language(
     "Unary",
-    "unary",
-    category="tape_based",
+    RuntimeSpec(
+        "unary", category="tape_based", compressed_source=True, eof="stores zero"
+    ),
     boolean=unary,
     generator_max_inputs=9,
-    compressed_source=True,
     benchmark_tables=("00", "01", "10", "11", "0001"),
     generator_restrictions=(
         "raw export 32 Mi characters; generation 256 Mi characters; "
@@ -106,6 +107,5 @@ LANGUAGE = Language(
         note="Bytes 0/255 encode inputs; halt means 0, a fixed cycle means 1.",
     ),
     wrap=wrap_chars,
-    eof="stores zero",
     example=Example(expected="", expected_compared=False, slow_build=True),
 )

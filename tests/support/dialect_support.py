@@ -24,7 +24,7 @@ def foreign_settings() -> DialectSettings:
 def integer_setting() -> str:
     """Return a registered integer option, or skip when none remain."""
     for language in LANGUAGES.values():
-        for key, choices in (language.dialect_values or {}).items():
+        for key, choices in (language.runtime.dialect_values or {}).items():
             if type(choices[0]) is int:
                 return key
     pytest.skip("no registered integer dialect choice")

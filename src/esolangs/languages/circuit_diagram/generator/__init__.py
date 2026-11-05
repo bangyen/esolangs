@@ -64,6 +64,7 @@ from esolangs.languages.circuit_diagram.generator.layout import (
 from esolangs.languages.circuit_diagram.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
+from esolangs.runtime._definition import RuntimeSpec
 
 # Gate characters used by muxes and the two self-fed constant forms.
 _GateGlyph = Literal["a", "o", "A", "O", "x", "X"]
@@ -792,8 +793,12 @@ def _balance(table: str, default: Any, **options: Any) -> Any:
 
 LANGUAGE = Language(
     "Circuit Diagram",
-    "circuit_diagram",
-    category="grid_based",
+    RuntimeSpec(
+        "circuit_diagram",
+        category="grid_based",
+        split=True,
+        eof="resolves its inputs while laying the grid",
+    ),
     layout_switch=(7, 8),
     example=Example(slow_build=True),
     # The H-layout is not asymptotic below n=8, so it has no room for a
@@ -803,13 +808,11 @@ LANGUAGE = Language(
     scaling_rungs=(8, 9),
     boolean=circuit_diagram,
     documented_sizes=(52_057, 106_751, 2.05),
-    split=True,
     contract=BooleanContract(
         input_shape="char_stream",
         ignores_whitespace=True,
     ),
     balance=_balance,
-    eof="resolves its inputs while laying the grid",
     proof_workspace=(workspace, False, (3, 6)),
     grid=True,
 )

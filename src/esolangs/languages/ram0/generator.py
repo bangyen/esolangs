@@ -30,6 +30,7 @@ from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
 from esolangs.languages.ram0.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 #: A fixed Z precedes each slot; the one-command pair selects zero or one.
 #: RAM0 has no input command, so each input run is a fixed-length ``Z``,
@@ -255,8 +256,7 @@ def _balance(_table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "RAM0",
-    "ram0",
-    category="register_based",
+    RuntimeSpec("ram0", category="register_based"),
     boolean=ram0,
     same_layout=same_token_layout,
     contract=BooleanContract(

@@ -31,6 +31,7 @@ from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.befunge.proof_formulas import execution, workspace
 from esolangs.registry._language import Example, Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 from esolangs.runtime.source_hints import with_hint
 
 #: ``6 * 8``: Befunge has no multi-digit literal, so 48 is built arithmetically.
@@ -364,18 +365,20 @@ def balance_befunge(truth_table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Befunge",
-    "befunge",
-    category="grid_based",
+    RuntimeSpec(
+        "befunge",
+        category="grid_based",
+        random=True,
+        split=True,
+        empty_program="Befunge program cannot be empty",
+    ),
     layout_switch=(2, 7, 8, 9),
-    random=True,
     generator_max_inputs=MAX_INPUTS,
     boolean=befunge,
     # Not a tree: reads a packed grid cell with ``g``.
     shape=Shape.LOOKUP,
-    split=True,
     balance=balance_befunge,
     no_wrap="a row is a grid row and the lookup table is indexed by column",
-    empty_program="Befunge program cannot be empty",
     # ``.`` writes the digit and a trailing space, so the committed
     # answer carries it and the sweep strips it.
     example=Example(expected="0 "),

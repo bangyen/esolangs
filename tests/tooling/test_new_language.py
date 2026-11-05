@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from esolangs.runtime._definition import RuntimeSpec
 from scripts import new_language
 
 

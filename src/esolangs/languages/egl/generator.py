@@ -23,6 +23,7 @@ from esolangs.generation.wrap import balance_score, balance_width
 from esolangs.languages.egl.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 
 def egl(truth_table: str, width: int | None = None) -> str:
@@ -107,8 +108,11 @@ def _balance(_table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "EGL",
-    "egl",
-    category="grid_based",
+    RuntimeSpec(
+        "egl",
+        category="grid_based",
+        empty_program="EGL program must begin with 'width,height:'",
+    ),
     boolean=egl,
     # Not a tree: one painted grid cell per entry, walked to by weighted guards.
     shape=Shape.LOOKUP,
@@ -116,7 +120,6 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     balance=_balance,
-    empty_program="EGL program must begin with 'width,height:'",
     proof_workspace=(workspace, True, (3, 5)),
     proof_execution=(execution, True, (1, 2, 3, 5)),
 )

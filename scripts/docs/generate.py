@@ -109,7 +109,9 @@ REPO_URL = "https://github.com/bangyen/esolangs"
 
 def render_package_count_section() -> str:
     """Render the total and source-shape counts in the README lead."""
-    text_count = sum(lang.source_kind is SourceKind.TEXT for lang in LANGUAGES.values())
+    text_count = sum(
+        lang.runtime.source_kind is SourceKind.TEXT for lang in LANGUAGES.values()
+    )
     return (
         f"Interpreters and Boolean generators for {len(LANGUAGES)} esoteric "
         f"languages: {text_count} text and "
@@ -141,9 +143,9 @@ def render_languages_section() -> str:
     out: list[str] = []
     groups: dict[str, list[str]] = {prefix: [] for prefix, _, _ in _README_HEADINGS}
     for name, lang in LANGUAGES.items():
-        if lang.interpreter is None:
+        if lang.runtime.interpreter is None:
             continue
-        category = lang.category
+        category = lang.runtime.category
         if category not in groups:
             raise ValueError(
                 f"{name}'s interpreter category {category!r} has no README "
@@ -358,7 +360,7 @@ def render_raster_section() -> str:
     raster = [
         name
         for name, lang in LANGUAGES.items()
-        if lang.source_kind is SourceKind.RASTER
+        if lang.runtime.source_kind is SourceKind.RASTER
     ]
     verb = "carries" if len(raster) == 1 else "carry"
     return "\n".join(

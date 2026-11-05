@@ -20,6 +20,7 @@ from esolangs.generation.wrap import wrap_grid
 from esolangs.languages.subleq.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Payload, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 
 def subleq(truth_table: str) -> str:
@@ -44,8 +45,7 @@ def _payload(state: Any) -> Payload:
 
 LANGUAGE = Language(
     "Subleq",
-    "subleq",
-    category="tape_based",
+    RuntimeSpec("subleq", category="tape_based"),
     payload=_payload,
     boolean=subleq,
     # Shared tree or packed lookup.

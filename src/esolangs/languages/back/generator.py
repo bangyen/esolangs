@@ -54,6 +54,7 @@ from esolangs.generation.wrap import balance_score
 from esolangs.languages.back.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 _Node = tuple[int, int]
 _Grid = dict[tuple[int, int], str]
@@ -566,10 +567,13 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Back",
-    "back",
-    category="tape_based",
+    RuntimeSpec(
+        "back",
+        category="tape_based",
+        split=True,
+        empty_program="Back program cannot be empty",
+    ),
     boolean=back,
-    split=True,
     contract=BooleanContract(
         answer_mode="dump",
         note="Back has no output instruction and dumps its tape at halt; "
@@ -577,7 +581,6 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="the beam path and embedded input occupy fixed grid coordinates",
-    empty_program="Back program cannot be empty",
     template=TemplateSpec(pair=PAIR),
     example=Example(expected="1 0 0"),
     proof_execution=(execution, True, (1, 2, 3, 4, 5, 6, 7, 8, 9)),

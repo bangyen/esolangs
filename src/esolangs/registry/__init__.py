@@ -49,9 +49,9 @@ BY_BOOLEAN: dict[str, Language] = {
 
 # Display name -> (interpreter module, split lines).
 RUNNERS: dict[str, tuple[str, bool]] = {
-    name: (lang.interpreter, lang.split)
+    name: (lang.runtime.interpreter, lang.runtime.split)
     for name, lang in LANGUAGES.items()
-    if lang.interpreter
+    if lang.runtime.interpreter
 }
 
 # Public workflows select by capability.
@@ -63,7 +63,7 @@ GENERATORS = {
 INTERPRETERS = {
     name: f"esolangs.languages.{lang.id}.interpreter"
     for name, lang in LANGUAGES.items()
-    if lang.interpreter is not None
+    if lang.runtime.interpreter is not None
 }
 
 

@@ -24,6 +24,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 from .proof_formulas import execution, workspace
 
@@ -86,12 +87,14 @@ def whitespace(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Whitespace",
-    "whitespace",
-    category="stack_based",
+    RuntimeSpec(
+        "whitespace",
+        category="stack_based",
+        empty_program="Whitespace program is empty",
+    ),
     boolean=whitespace,
     shape=Shape.REDUCING,
     proof_execution=(execution, True, (1, 2, 3, 5)),
     proof_workspace=(workspace, True, (1, 2, 3, 5)),
-    empty_program="Whitespace program is empty",
     no_wrap="a line feed is a token, so a break changes the command it splits",
 )

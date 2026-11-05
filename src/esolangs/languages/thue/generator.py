@@ -45,6 +45,7 @@ from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 #: Entries are ``a``/``b`` so a ``0``/``1`` input line is never mistaken for
 #: one; ``L``/``E`` are sentinels, ``M``/``R`` and the read ``0``/``1`` markers.
@@ -493,10 +494,16 @@ def balance_thue(truth_table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Thue",
-    "thue",
-    category="program_based",
+    RuntimeSpec(
+        "thue",
+        category="program_based",
+        random=True,
+        empty_program=(
+            "a Thue program needs a '::=' line with nothing but whitespace on "
+            "either side, to separate its rules from its starting state"
+        ),
+    ),
     reader_checked=True,
-    random=True,
     boolean=thue,
     # Not a tree: the table is the state, and each read halves it.
     shape=Shape.LOOKUP,
@@ -508,8 +515,4 @@ LANGUAGE = Language(
     ),
     balance=balance_thue,
     no_wrap="a newline ends a rule, and the state's own newlines are part of it",
-    empty_program=(
-        "a Thue program needs a '::=' line with nothing but whitespace on "
-        "either side, to separate its rules from its starting state"
-    ),
 )

@@ -34,6 +34,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import _bracket_literal
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["three_x"]
 
@@ -383,8 +384,7 @@ def _three_x_emit(
 
 LANGUAGE = Language(
     "3x",
-    "three_x",
-    category="stack_based",
+    RuntimeSpec("three_x", category="stack_based"),
     boolean=three_x,
     wrap=_bracket_literal,
 )

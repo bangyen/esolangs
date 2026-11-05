@@ -30,6 +30,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.nor_machine.proof_formulas import execution, workspace
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 
 class _Queue:
@@ -195,14 +196,16 @@ def _low_from_singleton(q: _Queue, value: str) -> str:
 
 LANGUAGE = Language(
     "NOR machine",
-    "nor_machine",
-    category="queue_based",
+    RuntimeSpec(
+        "nor_machine",
+        category="queue_based",
+        eof="every input is enqueued first, so a short input is a shorter queue",
+        empty_program="a program with no command loops forever",
+    ),
     boolean=nor_machine,
     proof_execution=(execution, False, (1, 2, 3, 5)),
     proof_workspace=(workspace, False, (1, 2, 3, 5)),
     # Not a tree: Horner's rule packs every row of the essential-input table.
     shape=Shape.LOOKUP,
     wrap=wrap_chars,
-    eof="every input is enqueued first, so a short input is a shorter queue",
-    empty_program="a program with no command loops forever",
 )

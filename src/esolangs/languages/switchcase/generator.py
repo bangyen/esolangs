@@ -25,6 +25,7 @@ from esolangs.generation.helpers import (
 from esolangs.languages.switchcase.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 
 def switchcase(truth_table: str) -> str:
@@ -92,8 +93,7 @@ def _diagram(n: int, essential: list[int], table: str) -> str:
 
 LANGUAGE = Language(
     "SwitchCase",
-    "switchcase",
-    category="variable_based",
+    RuntimeSpec("switchcase", category="variable_based"),
     boolean=switchcase,
     shape=Shape.TREE,
     contract=BooleanContract(input_shape="char_stream"),

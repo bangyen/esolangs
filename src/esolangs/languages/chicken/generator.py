@@ -29,6 +29,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 #: Opcodes, as chickens a line.
 _CHICKEN, _ADD, _SUB, _MUL, _CMP, _LOAD = 1, 2, 3, 4, 5, 6
@@ -92,8 +93,11 @@ def chicken(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Chicken",
-    "chicken",
-    category="stack_based",
+    RuntimeSpec(
+        "chicken",
+        category="stack_based",
+        eof="a short input is a shorter string; a missing bit is not 1, so reads 0",
+    ),
     boolean=chicken,
     shape=Shape.LOOKUP,
     contract=BooleanContract(
@@ -101,5 +105,4 @@ LANGUAGE = Language(
         note="Chicken's input is one string; input[i] is bit i",
     ),
     no_wrap="a line break is the instruction boundary and a blank line is a cell",
-    eof="a short input is a shorter string; a missing bit is not 1, so reads 0",
 )

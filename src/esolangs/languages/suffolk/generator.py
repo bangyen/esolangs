@@ -26,6 +26,7 @@ from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.suffolk.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 #: The cell plan.  Cost here is a cell's *index* -- every read spends one
 #: ``>`` per cell crossed -- so the countdown, which every sweep op reads,
@@ -261,8 +262,14 @@ def shared_dag(table: str, inputs: int) -> str | None:
 
 LANGUAGE = Language(
     "Suffolk",
-    "suffolk",
-    category="tape_based",
+    RuntimeSpec(
+        "suffolk",
+        category="tape_based",
+        # Reads until the input runs out and treats that as its stop, which is
+        # how its generated programs terminate at all.
+        eof="reads to exhaustion, so EOF is the halt",
+        empty_program="Suffolk program cannot be empty",
+    ),
     boolean=suffolk,
     # Both routes project to the essential inputs.
     shape=Shape.REDUCING,
@@ -270,10 +277,6 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
-    # Reads until the input runs out and treats that as its stop, which is
-    # how its generated programs terminate at all.
-    eof="reads to exhaustion, so EOF is the halt",
-    empty_program="Suffolk program cannot be empty",
     proof_execution=(execution, True, (3, 6)),
     proof_workspace=(workspace, False, (3, 5, 6)),
 )

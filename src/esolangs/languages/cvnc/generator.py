@@ -35,6 +35,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.cvnc.proof_formulas import execution, workspace
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["cvnc"]
 
@@ -403,14 +404,12 @@ def cvnc(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "CV(N)(C)",
-    "cvnc",
-    category="other",
+    RuntimeSpec("cvnc", category="other", empty_program="program is empty"),
     # The parentheses mark optional slots; the language is written as one word.
     id="cvnc",
     boolean=cvnc,
     # LF-only source-format deviation: discard breaks before parsing or addressing.
     wrap=wrap_chars,
-    empty_program="program is empty",
     proof_execution=(execution, False, (3, 5)),
     proof_workspace=(workspace, True, (4, 6)),
 )

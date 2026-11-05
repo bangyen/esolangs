@@ -32,6 +32,7 @@ from esolangs.generation.wrap import balance_score
 from esolangs.languages.minsky_swap.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["MINSKY_SWAP_PAIR", "minsky_swap", "minsky_swap_setters"]
 
@@ -223,8 +224,7 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
 
 LANGUAGE = Language(
     "Minsky Swap",
-    "minsky_swap",
-    category="register_based",
+    RuntimeSpec("minsky_swap", category="register_based"),
     boolean=minsky_swap,
     same_layout=_same_layout,
     # Not a tree: each input adds its weight; a ``~`` cascade picks one of two leaves.

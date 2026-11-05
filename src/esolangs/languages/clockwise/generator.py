@@ -34,6 +34,7 @@ from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 # The ring's own columns: 3 descends at the start, 2 climbs into the first
 # gadget, 0 climbs home.  Column 1 is the gap that keeps the three apart.
@@ -559,12 +560,15 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Clockwise",
-    "clockwise",
-    category="grid_based",
+    RuntimeSpec(
+        "clockwise",
+        category="grid_based",
+        split=True,
+        empty_program="Clockwise program cannot be empty",
+    ),
     boolean=clockwise,
     # Not a tree: a countdown stops on the entry's own column.
     shape=Shape.LOOKUP,
-    split=True,
     contract=BooleanContract(
         input_shape="char_stream_cyclic",
         note="Clockwise reads all its input bits in one go, so they go "
@@ -575,6 +579,5 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="a row is a ring row; the walk's turns sit at fixed cells",
-    empty_program="Clockwise program cannot be empty",
     grid=True,
 )

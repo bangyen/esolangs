@@ -39,6 +39,7 @@ from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.bfstack.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Payload, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 
 def _bfstack_encoder(weights: list[int], start: int = 1) -> str:
@@ -193,8 +194,7 @@ def _payload(state: Any) -> Payload:
 
 LANGUAGE = Language(
     "BFStack",
-    "bfstack",
-    category="stack_based",
+    RuntimeSpec("bfstack", category="stack_based"),
     payload=_payload,
     boolean=bfstack,
     # A sum, not a tree: a lookup over the essential inputs only.

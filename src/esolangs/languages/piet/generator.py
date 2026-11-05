@@ -43,7 +43,8 @@ from esolangs.generation.raster_lookup.balance import (
 from esolangs.generation.raster_lookup.packing import _raster_score, smallest
 from esolangs.raster import Raster
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, SourceKind
+from esolangs.registry._language import Example, Language
+from esolangs.runtime._definition import RuntimeSpec, SourceKind
 
 
 @cache
@@ -176,15 +177,17 @@ def piet(truth_table: str, width: int | None = None, *, scale: int = 1) -> Raste
 
 LANGUAGE = Language(
     "Piet",
-    "piet",
-    category="stack_based",
-    source_kind=SourceKind.RASTER,
+    RuntimeSpec(
+        "piet",
+        category="stack_based",
+        source_kind=SourceKind.RASTER,
+        eof="an exhausted input command is ignored, as the spec requires",
+    ),
     boolean=piet,
     contract=BooleanContract(
         note="the committed example is drawn at 80 pixels per codel; "
         "generate draws 1 unless --scale says otherwise"
     ),
     balance=_balance,
-    eof="an exhausted input command is ignored, as the spec requires",
     example=Example(scale=80),
 )

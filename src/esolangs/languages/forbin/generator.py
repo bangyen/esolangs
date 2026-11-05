@@ -46,6 +46,7 @@ from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
 from esolangs.languages.forbin.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 _FORBIN_ALPHABET = ascii_letters
 _FORBIN_RESERVED = {"for", "in", "main", "out", "return"}
@@ -336,8 +337,11 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Forbin",
-    "forbin",
-    category="variable_based",
+    RuntimeSpec(
+        "forbin",
+        category="variable_based",
+        empty_program="Forbin program has no main function",
+    ),
     boolean=forbin,
     # Not a tree: one painted call argument per entry, halved down to the first.
     shape=Shape.LOOKUP,
@@ -345,6 +349,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     balance=_balance,
-    empty_program="Forbin program has no main function",
     proof_workspace=(workspace, True, (3, 8)),
 )

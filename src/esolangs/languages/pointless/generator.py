@@ -28,6 +28,7 @@ from esolangs.generation.wrap import TokenWrapper
 from esolangs.languages.pointless.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 _OUT = 50  # cell 50 holds "0", cell 51 holds "1"
 _X = 52  # level d's character and bit cell is 52 + 2d, its flag 53 + 2d
@@ -179,8 +180,7 @@ _CALL = re.compile(r'"([^"]*)"')
 
 LANGUAGE = Language(
     "Pointless",
-    "pointless",
-    category="tape_based",
+    RuntimeSpec("pointless", category="tape_based"),
     boolean=pointless,
     proof_execution=(execution, True, (3, 6)),
     proof_workspace=(workspace, False, (1, 2, 3, 6)),

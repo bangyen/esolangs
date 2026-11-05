@@ -43,6 +43,7 @@ from esolangs.languages.sstack.generator._walk import _Hooks, _TreeWalk
 from esolangs.languages.sstack.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 _LEAF = {"0": ":c:", "1": ":b:"}
 
@@ -199,8 +200,7 @@ def _sstack_tree(table: str, shared: tuple[int, int] | None = None) -> tuple[str
 
 LANGUAGE = Language(
     "SStack",
-    "sstack",
-    category="stack_based",
+    RuntimeSpec("sstack", category="stack_based"),
     boolean=sstack,
     contract=BooleanContract(
         input_shape="char_stream",

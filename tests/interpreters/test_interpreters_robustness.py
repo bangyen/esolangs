@@ -16,7 +16,7 @@ _REJECTION_KINDS = (ProgramError, HaltError)
 def _check_empty_program(language: str) -> None:
     source = (
         esolangs.Raster((((255, 255, 255),),))
-        if LANGUAGES[language].source_kind is SourceKind.RASTER
+        if LANGUAGES[language].runtime.source_kind is SourceKind.RASTER
         else ""
     )
     isolated = os.name != "posix"
@@ -25,7 +25,7 @@ def _check_empty_program(language: str) -> None:
         "isolated": isolated,
         "max_output": 1024 if isolated else None,
     }
-    message = LANGUAGES[language].empty_program
+    message = LANGUAGES[language].runtime.empty_program
     if not message:
         try:
             esolangs.run(language, source, **options)
@@ -49,7 +49,7 @@ def test_empty_program_terminates(language: str) -> None:
 
 
 #: A language whose spec rejects an empty program, with the message it uses.
-_REJECTS = next(name for name, lang in LANGUAGES.items() if lang.empty_program)
+_REJECTS = next(name for name, lang in LANGUAGES.items() if lang.runtime.empty_program)
 
 
 @pytest.mark.parametrize("error", [TypeError, AttributeError, RuntimeError])
@@ -75,7 +75,7 @@ def test_wrong_rejection_message_fails(monkeypatch) -> None:
 
 def test_timeout_is_not_an_empty_source_rejection(monkeypatch) -> None:
     def timed_run(*_args, **_kwargs):
-        raise ExecutionTimeoutError(LANGUAGES[_REJECTS].empty_program)
+        raise ExecutionTimeoutError(LANGUAGES[_REJECTS].runtime.empty_program)
 
     monkeypatch.setattr(esolangs, "run", timed_run)
     with pytest.raises(AssertionError, match="ExecutionTimeoutError"):

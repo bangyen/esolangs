@@ -70,7 +70,9 @@ def _reads(entry: tuple, table: str) -> int:
         return 0
     io = ScriptedIO(esolangs.encode_inputs(lang.name, [0] * 8))
     source = (
-        program.splitlines() if lang.split and isinstance(program, str) else program
+        program.splitlines()
+        if lang.runtime.split and isinstance(program, str)
+        else program
     )
     module = importlib.import_module(INTERPRETERS[lang.name])
     machine_cls = module._Machine

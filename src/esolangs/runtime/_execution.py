@@ -176,7 +176,7 @@ def _value_error_hint(message: str, language: str | None) -> str:
 
 def _seed_refusal(name: str) -> ArgumentError:
     random_languages = ", ".join(
-        language for language, lang in sorted(LANGUAGES.items()) if lang.random
+        language for language, lang in sorted(LANGUAGES.items()) if lang.runtime.random
     )
     alternatives = (
         f"the languages that draw are {random_languages}"
@@ -194,7 +194,7 @@ def _seed_refusal(name: str) -> ArgumentError:
 
 def check_seed_for(name: str, seed: int | None) -> None:
     """Refuse a seed for a language that draws nothing, before any input."""
-    if seed is not None and not LANGUAGES[name].random:
+    if seed is not None and not LANGUAGES[name].runtime.random:
         raise _seed_refusal(name)
 
 
@@ -210,7 +210,7 @@ def prepare_call(
     """Prepare source shape and options for a runner or machine constructor."""
     code = (
         program.splitlines()
-        if LANGUAGES[name].split and isinstance(program, str)
+        if LANGUAGES[name].runtime.split and isinstance(program, str)
         else program
     )
     options: dict[str, Any] = {}

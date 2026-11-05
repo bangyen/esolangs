@@ -69,6 +69,7 @@ from esolangs.generation.wrap import balance_score
 from esolangs.languages.streetcode.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["streetcode"]
 
@@ -983,17 +984,19 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Streetcode",
-    "streetcode",
-    category="grid_based",
+    RuntimeSpec(
+        "streetcode",
+        category="grid_based",
+        split=True,
+        empty_program="Streetcode program cannot be empty",
+    ),
     layout_switch=(4, 5),
     slow_scaling=True,
     boolean=streetcode,
-    split=True,
     contract=BooleanContract(
         input_shape="char_stream",
     ),
     balance=_balance,
-    empty_program="Streetcode program cannot be empty",
     proof_execution=(execution, True, (6, 8)),
     proof_workspace=(workspace, False, (6, 7)),
     grid=True,

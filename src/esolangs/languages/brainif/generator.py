@@ -34,6 +34,7 @@ from esolangs.generation.helpers import (
 from esolangs.languages.brainif.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 
 def _resolve(lines: list[str], width: int | None = None) -> str:
@@ -676,10 +677,8 @@ def _balance(_table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "BrainIf",
-    "brainif",
-    category="tape_based",
+    RuntimeSpec("brainif", category="tape_based", split=True),
     boolean=brainif,
-    split=True,
     contract=BooleanContract(
         input_shape="char_stream",
     ),

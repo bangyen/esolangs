@@ -34,6 +34,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
+from esolangs.runtime._definition import RuntimeSpec
 
 #: Single-character names: no reserved word is one, and 53 cover every table
 #: a string can hold (n + 1 <= 53 up to 2**52 rows).
@@ -158,12 +159,14 @@ def _program(truth_table: str, n: int, mark: str, base: int) -> str:
 
 LANGUAGE = Language(
     "Basicfuck",
-    "basicfuck",
-    category="tape_based",
+    RuntimeSpec(
+        "basicfuck",
+        category="tape_based",
+        empty_program="missing directive or #allocate",
+        eof="`read` at EOF raises: the page's cat covers three EOF conventions",
+    ),
     boolean=basicfuck,
     contract=BooleanContract(input_shape="char_stream"),
     no_wrap="the directive and #allocate are lines one and two",
-    empty_program="missing directive or #allocate",
-    eof="`read` at EOF raises: the page's cat covers three EOF conventions",
     example=Example(expected="0"),
 )

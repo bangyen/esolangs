@@ -32,6 +32,7 @@ from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 #: ``I`` is the bit 1; ``N`` is 1 until a 1 bit calls it.
 _HEADER = "dI.fpzrzzzdN.fpzcbsrzzzdB.iiiiiiicitclN.pftprtzzdmain.ozozolI.olI.ozozoz"
@@ -146,8 +147,11 @@ def _shared_names(ids: list[list[int]], n: int) -> dict[tuple[int, int], str]:
 
 LANGUAGE = Language(
     "Object disoriented",
-    "object_disoriented",
-    category="other",
+    RuntimeSpec(
+        "object_disoriented",
+        category="other",
+        empty_program="Object disoriented program defines no 'main' class",
+    ),
     boolean=object_disoriented,
     contract=BooleanContract(
         input_shape="char_stream",
@@ -156,5 +160,4 @@ LANGUAGE = Language(
     ),
     # Whitespace is ignored everywhere, class names included.
     wrap=wrap_chars,
-    empty_program="Object disoriented program defines no 'main' class",
 )

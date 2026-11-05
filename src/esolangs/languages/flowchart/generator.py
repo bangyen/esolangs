@@ -41,6 +41,7 @@ from esolangs.generation.wrap import balance_score
 from esolangs.languages.flowchart.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 # Fewest table rows a subtree must span for the stacked layout to draw it once.
 _SHARE_ROWS = 8
@@ -981,18 +982,20 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Flowchart",
-    "flowchart",
-    category="grid_based",
+    RuntimeSpec(
+        "flowchart",
+        category="grid_based",
+        split=True,
+        eof="reads at input nodes, including the constant skip chain",
+        empty_program="Flowchart program has no '( )' start node",
+    ),
     boolean=flowchart,
     # Not a tree: one deque push per entry.
     shape=Shape.LOOKUP,
-    split=True,
     contract=BooleanContract(
         input_shape="char_stream",
     ),
     balance=_balance,
-    eof="reads at input nodes, including the constant skip chain",
-    empty_program="Flowchart program has no '( )' start node",
     proof_workspace=(workspace, True, (3, 4, 5)),
     grid=True,
 )

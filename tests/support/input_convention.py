@@ -8,7 +8,7 @@ def reading_languages() -> list[str]:
     from esolangs.generation.examples import BOOLEAN_EXAMPLES
     from esolangs.registry import LANGUAGES
 
-    eof = {lang.interpreter for lang in LANGUAGES.values() if lang.eof}
+    eof = {lang.runtime.interpreter for lang in LANGUAGES.values() if lang.runtime.eof}
     return sorted(
         name
         for name, example in BOOLEAN_EXAMPLES.items()

@@ -33,6 +33,7 @@ from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import wrap_space_delimited
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 _OPENING: tuple[str, ...] = ("r'", "d'")
 _TABLE: dict[str, tuple[str, ...]] = {
@@ -106,8 +107,7 @@ def rubic(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Rubic",
-    "rubic",
-    category="register_based",
+    RuntimeSpec("rubic", category="register_based"),
     boolean=rubic,
     contract=BooleanContract(input_shape="char_stream"),
     wrap=wrap_space_delimited,

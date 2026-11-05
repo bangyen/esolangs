@@ -14,7 +14,7 @@ from esolangs.runtime._validate import _argument_repr
 _CHOICES: dict[str, tuple[int | str, ...]] = {
     key: values
     for language in LANGUAGES.values()
-    for key, values in (language.dialect_values or {}).items()
+    for key, values in (language.runtime.dialect_values or {}).items()
 }
 
 
@@ -63,7 +63,7 @@ class DialectSettings:
         """
         name = resolve(language)
         values: dict[str, Any] = dict(self._items)
-        dialect = LANGUAGES[name].dialect
+        dialect = LANGUAGES[name].runtime.dialect
         if dialect is None:
             if values:
                 raise ArgumentError(f"{name} supports no dialect settings")
@@ -141,7 +141,7 @@ def dialect_choices(language: str) -> dict[str, DialectOption]:
     from esolangs.runtime._execution import interpreter_module
 
     name = resolve(language)
-    dialect = LANGUAGES[name].dialect
+    dialect = LANGUAGES[name].runtime.dialect
     if dialect is None:
         return {}
     keys = _dialect_keys(dialect)

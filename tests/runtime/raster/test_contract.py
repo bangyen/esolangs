@@ -16,7 +16,7 @@ from tests.support.reference import REFERENCE
 RASTER_LANGUAGES = [
     name
     for name, language in LANGUAGES.items()
-    if language.source_kind is SourceKind.RASTER
+    if language.runtime.source_kind is SourceKind.RASTER
 ]
 
 
@@ -260,9 +260,9 @@ def test_png_settings_retain_integer_choices() -> None:
     """Integers travel as hex; a settings tag needs its language (1.0 audit)."""
     key = integer_setting()
     owner, choices = next(
-        (n, lang.dialect_values[key])
+        (n, lang.runtime.dialect_values[key])
         for n, lang in LANGUAGES.items()
-        if key in (lang.dialect_values or {})
+        if key in (lang.runtime.dialect_values or {})
     )
     settings = esolangs.DialectSettings(**{key: choices[-1]})
     source = Raster((((1, 2, 3),),), language=owner, settings=settings)

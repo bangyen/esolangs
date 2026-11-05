@@ -28,6 +28,7 @@ from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.languages.nandypants.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 #: The answer byte (ASCII ``0`` / ``1``, low bit first) as ``\`` and ``^``
 #: after the pointer move onto the cell that holds 1; a starts at 1 and ends 0.
@@ -180,8 +181,7 @@ def nandypants(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Nandypants",
-    "nandypants",
-    category="tape_based",
+    RuntimeSpec("nandypants", category="tape_based"),
     boolean=nandypants,
     contract=BooleanContract(input_shape="char_stream"),
     no_wrap="a line break inside a label would split one number into two",

@@ -25,6 +25,7 @@ from esolangs.generation.wrap import TokenWrapper
 from esolangs.languages.bleh.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 #: a name or ``::``.
 #: a name.
@@ -94,14 +95,16 @@ def _name(node: int, level: int) -> str:
 
 LANGUAGE = Language(
     "Bleh",
-    "bleh",
-    category="other",
+    RuntimeSpec(
+        "bleh",
+        category="other",
+        eof="an exhausted io::next() is the empty bitstring",
+        underfed_raises=True,
+        empty_program="a Bleh program needs a main function",
+    ),
     boolean=bleh,
     contract=BooleanContract(input_shape="char_stream"),
     wrap=TokenWrapper(_TOKEN),
-    eof="an exhausted io::next() is the empty bitstring",
-    underfed_raises=True,
-    empty_program="a Bleh program needs a main function",
     proof_workspace=(workspace, False, (3, 4, 5, 6, 7)),
     proof_execution=(execution, True, (1, 2, 3, 6)),
 )

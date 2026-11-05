@@ -180,7 +180,7 @@ def _contract_fields(contract: BooleanContract) -> dict[str, Any]:
 def _contract_for(interpreter: str) -> BooleanContract:
     """Return the registered Boolean I/O contract for an interpreter."""
     for lang in LANGUAGES.values():
-        if lang.interpreter == interpreter:
+        if lang.runtime.interpreter == interpreter:
             return lang.contract
     raise LookupError(
         f"no registered language runs interpreter {interpreter!r}; the second "
@@ -275,32 +275,32 @@ def _register() -> None:
     # Everything an example needs is in its ``LANGUAGE``: the registry facts
     # ``_reader`` takes, backend bindings, and the committed invocation.
     for lang in LANGUAGES.values():
-        if lang.boolean is None or lang.interpreter is None:
+        if lang.boolean is None or lang.runtime.interpreter is None:
             continue
         spec = lang.example
         if lang.template is not None:
             example = _embedded(
                 cast(Callable[[str], str], lang.boolean),
-                lang.interpreter,
+                lang.runtime.interpreter,
                 table=spec.table,
                 bits=spec.bits,
                 setters=lang.template.bindings,
                 char=lang.template.char,
                 expected=spec.expected,
-                split=lang.split,
+                split=lang.runtime.split,
                 kwargs=spec.kwargs,
             )
         else:
             stdin = encode_inputs(lang.name, spec.bits, truth_table=spec.table)
             example = _reader(
                 lang.boolean,
-                lang.interpreter,
+                lang.runtime.interpreter,
                 table=spec.table,
                 inputs=(stdin,)
                 if lang.contract.input_shape == "char_stream"
                 else tuple(stdin.splitlines()),
                 expected=spec.expected,
-                split=lang.split,
+                split=lang.runtime.split,
                 kwargs=spec.kwargs,
             )
         stem = _stem(lang)

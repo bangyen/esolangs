@@ -40,6 +40,7 @@ from esolangs.generation.wrap import _join_tokens, _tokens, balance_score
 from esolangs.languages.slashes.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 #: Binary to unary, most significant bit first: the row as that many ``*``.
 _UNARY = "/b/a*//*a/a**//a//"
@@ -151,11 +152,9 @@ def _is_unfilled_template(code: str) -> bool:
 
 LANGUAGE = Language(
     "///",
-    "slashes",
-    category="program_based",
+    RuntimeSpec("slashes", category="program_based", path_like_source=True),
     id="slashes",
     aliases=("Slashalash",),
-    path_like_source=True,
     boolean=slashes,
     # Not a tree: an indexed table rewrite.
     shape=Shape.LOOKUP,

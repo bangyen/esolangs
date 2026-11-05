@@ -28,6 +28,7 @@ from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.cyclic_tag.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 #: One bit of the initial data-string, so an input's run is one TEMPLATE_CHAR.
 PAIR = ("0", "1")
@@ -69,8 +70,11 @@ def _program(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Cyclic tag",
-    "cyclic_tag",
-    category="queue_based",
+    RuntimeSpec(
+        "cyclic_tag",
+        category="queue_based",
+        empty_program="Cyclic tag requires productions,queue using bits and semicolons",
+    ),
     boolean=cyclic_tag,
     # A positional production walk, not a tree of callable residuals.
     shape=Shape.LOOKUP,
@@ -80,6 +84,5 @@ LANGUAGE = Language(
     wrap=wrap_chars,
     proof_execution=(execution, True, (1, 2, 3, 5)),
     proof_workspace=(workspace, True, (1, 2, 3, 5)),
-    empty_program="Cyclic tag requires productions,queue using bits and semicolons",
     template=TemplateSpec(pair=PAIR),
 )

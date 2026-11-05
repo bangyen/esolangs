@@ -55,8 +55,8 @@ def test_a_slug_drops_only_punctuation_the_language_has() -> None:
 
 def test_id_matches_the_interpreter_module() -> None:
     for name, lang in LANGUAGES.items():
-        if lang.interpreter:
-            assert lang.id == lang.interpreter.split(".")[-1], name
+        if lang.runtime.interpreter:
+            assert lang.id == lang.runtime.interpreter.split(".")[-1], name
 
 
 def test_id_matches_the_generator_function() -> None:

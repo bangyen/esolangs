@@ -25,6 +25,7 @@ from esolangs.generation.wrap import wrap_grid
 from esolangs.languages.s_bleq.proof_formulas import execution
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 #: Tables up to this many rows keep the shared tree; larger ones also try
 #: the packed decoder.
@@ -175,13 +176,15 @@ def _tree_min_chars(truth_table: str, n: int) -> int:
 
 LANGUAGE = Language(
     "S*bleq",
-    "s_bleq",
-    category="tape_based",
+    RuntimeSpec(
+        "s_bleq",
+        category="tape_based",
+        eof="a failed read leaves the cell alone and the program runs on",
+    ),
     boolean=s_bleq,
     contract=BooleanContract(
         input_shape="char_stream",
     ),
     wrap=wrap_grid,
-    eof="a failed read leaves the cell alone and the program runs on",
     proof_execution=(execution, True, (3, 4, 5, 6, 7, 8, 9)),
 )

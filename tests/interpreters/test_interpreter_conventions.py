@@ -70,7 +70,7 @@ def _module_files() -> list[pathlib.Path]:
     """Return every interpreter module, read off the tree."""
     paths = []
     for language in LANGUAGES.values():
-        if language.interpreter is None:
+        if language.runtime.interpreter is None:
             continue
         module = importlib.import_module(
             f"esolangs.languages.{language.id}.interpreter"
@@ -150,7 +150,7 @@ class TestTheSweepCanSee:
             .removesuffix("/__init__.py")
             .removesuffix(".py")
             for lang in LANGUAGES.values()
-            if lang.interpreter
+            if lang.runtime.interpreter
         }
         assert sorted(registered - walked) == []
 
@@ -343,7 +343,9 @@ def test_the_spec_check_passes_the_template_shape() -> None:
 def test_interpreter_docstrings_follow_the_template() -> None:
     """Every registered interpreter is walked and documents its behavior."""
     names = {
-        lang.interpreter: name for name, lang in LANGUAGES.items() if lang.interpreter
+        lang.runtime.interpreter: name
+        for name, lang in LANGUAGES.items()
+        if lang.runtime.interpreter
     }
     named_paths = {}
     for module, name in names.items():
@@ -392,9 +394,9 @@ def test_the_random_flag_matches_the_interpreter() -> None:
     drawing = {
         name
         for name, lang in LANGUAGES.items()
-        if lang.interpreter and _draws_at_random(lang.interpreter)
+        if lang.runtime.interpreter and _draws_at_random(lang.runtime.interpreter)
     }
-    flagged = {name for name, lang in LANGUAGES.items() if lang.random}
+    flagged = {name for name, lang in LANGUAGES.items() if lang.runtime.random}
     assert drawing  # the import scan fires, so an empty diff is not vacuous
     assert {
         "drawing but not random=True": sorted(drawing - flagged),

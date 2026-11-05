@@ -36,6 +36,7 @@ from esolangs.generation.wrap import wrap_space_delimited
 from esolangs.languages.codesick.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 # Non-bit ASCII words keep bit+marker tests unique without a # separator.
 _ALPHABET = "".join(
@@ -130,11 +131,13 @@ def codesick(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Codesick",
-    "codesick",
-    category="other",
+    RuntimeSpec(
+        "codesick",
+        category="other",
+        eof="the whole input is read once to replace every `in`; no read meets EOF",
+    ),
     boolean=codesick,
     contract=BooleanContract(input_shape="char_stream"),
-    eof="the whole input is read once to replace every `in`; no read meets EOF",
     # An argument holds no whitespace, so break only between arguments.
     wrap=wrap_space_delimited,
     proof_workspace=(workspace, False, (3, 4, 5, 6, 7)),

@@ -156,7 +156,7 @@ def test_a_generator_language_needs_no_hand_sample() -> None:
 
 def test_sources_names_the_interpreter_and_generator() -> None:
     for name, lang in LANGUAGES.items():
-        if lang.interpreter is None or lang.boolean is None:
+        if lang.runtime.interpreter is None or lang.boolean is None:
             continue
         found = new_language.sources(name)
         interpreter = f"src/esolangs/languages/{lang.id}/interpreter"

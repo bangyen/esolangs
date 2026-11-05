@@ -21,6 +21,7 @@ from esolangs.languages.taglate.proof_formulas import execution, workspace
 from esolangs.languages.taglate.wrapping import _taglate, same_layout
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 
 def _half_select(pairs: int, ahead: int, n: int) -> str:
@@ -212,12 +213,10 @@ def balance_taglate(_table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Taglate",
-    "taglate",
+    RuntimeSpec("taglate", category="queue_based", split=True),
     proof_execution=(execution, True, (3, 4, 5)),
     proof_workspace=(workspace, True, (3, 4, 5)),
-    category="queue_based",
     boolean=taglate,
-    split=True,
     contract=BooleanContract(input_shape="char_stream"),
     # Both concatenate before tokenizing (Taglate after the queue seed; A
     # Painter Ant drops whitespace), so no break can land inside a command.

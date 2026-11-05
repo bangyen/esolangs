@@ -31,6 +31,7 @@ from esolangs.generation.wrap import balance_score
 from esolangs.languages.super_snusp.proof_formulas import commands
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["super_snusp"]
 
@@ -261,19 +262,21 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Super SNUSP",
-    "super_snusp",
-    category="grid_based",
-    random=True,
+    RuntimeSpec(
+        "super_snusp",
+        category="grid_based",
+        random=True,
+        split=True,
+        empty_program="Super SNUSP program cannot be empty",
+    ),
     boolean=super_snusp,
     # A sum, not a tree: a lookup over the essential inputs only.
     shape=Shape.REDUCING,
-    split=True,
     contract=BooleanContract(
         input_shape="char_stream",
     ),
     balance=_balance,
     no_wrap="a row is a grid row; a break moves code, it does not reflow",
-    empty_program="Super SNUSP program cannot be empty",
     grid=True,
     proof_execution=(commands, True, (1, 2, 3, 5, 6)),
 )

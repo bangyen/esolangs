@@ -91,6 +91,7 @@ Decisions:
 """
 
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 from esolangs.generation.helpers import _validate_truth_table
 
 
@@ -100,18 +101,19 @@ def {slug}(truth_table: str) -> str:
     raise NotImplementedError("{name} generator")
 
 
-# The registry entry.  Add split=True if run() takes one string per source
-# line, contract=BooleanContract(...) if the programs do not read one 0/1
-# line per input (docs/CONTRIBUTING.md#the-boolean-io-contract), and
+# RuntimeSpec owns split=True if run() takes source lines, eof="..." for an
+# EOF value, empty_program="..." for an empty-source error, and random=True
+# for random instructions. Language owns contract=BooleanContract(...) for
+# input other than one 0/1 line per input (CONTRIBUTING's Boolean I/O contract),
 # wrap=wrap_chars (esolangs.generation.wrap) if a newline anywhere is harmless,
-# else no_wrap="<why a break changes the program>"; eof="..." if an
-# exhausted read has a spec value, empty_program="..." if "" is rejected,
-# random=True if an instruction draws at random (run(seed=...) fixes it);
+# else no_wrap="<why a break changes the program>";
 # a generator taking a width needs balance=, picking its squarest regime;
 # template=TemplateSpec(pair=PAIR) for embedded inputs, and
 # example=Example(expected=...) when the 0,1 row's output is not a bare "0" (a
 # trailing newline, a dump).
-LANGUAGE = Language("{name}", "{slug}", category="{category}", boolean={slug})
+LANGUAGE = Language(
+    "{name}", RuntimeSpec("{slug}", category="{category}"), boolean={slug}
+)
 '''
 
 _GENERATOR_TEST = '''"""Tests for the {name} Boolean generator."""
@@ -227,16 +229,18 @@ def _unregistered(name: str, slug: str) -> list[Gap]:
         return [
             Gap(
                 "src/esolangs/registry/_table.py",
-                f'add Language("{name}", "{slug}") to _INTERPRETER_ONLY; add '
-                "split=True only if run() takes list[str], one string per line, "
-                "and random=True if an instruction draws at random",
+                f'add Language("{name}", RuntimeSpec("{slug}")) '
+                "to _INTERPRETER_ONLY; add "
+                "split=True inside RuntimeSpec only if run() takes list[str], "
+                "one string per line, and random=True for random instructions",
             )
         ]
     return [
         Gap(
             str(generator.relative_to(ROOT)),
-            f'end it with LANGUAGE = Language("{name}", "{slug}", '
-            f"boolean={slug}); add split=True only if run() takes list[str], "
+            f'end it with LANGUAGE = Language("{name}", RuntimeSpec("{slug}"), '
+            f"boolean={slug}); add split=True inside RuntimeSpec only if "
+            "run() takes list[str], "
             "one string per source line, and contract=BooleanContract(...) if "
             "its programs do not read one 0/1 line per input "
             "(docs/CONTRIBUTING.md#the-boolean-io-contract)",
@@ -422,7 +426,7 @@ def check(name: str) -> list[Gap]:
     lang = LANGUAGES.get(name)
     if lang is None:
         return _unregistered(name, canonical_id(name))
-    gaps = _common_gaps(name, lang.interpreter or "")
+    gaps = _common_gaps(name, lang.runtime.interpreter or "")
     if lang.boolean is not None:
         gaps += _generator_gaps(lang)
     return gaps
@@ -535,7 +539,11 @@ def sources(name: str) -> list[str]:
     from esolangs.registry import LANGUAGES
 
     lang = LANGUAGES[name]
-    modules = [f"esolangs.languages.{lang.id}.interpreter"] if lang.interpreter else []
+    modules = (
+        [f"esolangs.languages.{lang.id}.interpreter"]
+        if lang.runtime.interpreter
+        else []
+    )
     if lang.boolean is not None:
         modules.append(lang.boolean.__module__)
     found = []

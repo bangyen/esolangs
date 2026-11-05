@@ -37,6 +37,7 @@ from esolangs.generation.shared_flag import flag_tree_body, shared_flag_tree
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["bf_tree", "brainfuck"]
 
@@ -174,8 +175,7 @@ def _tree_for(truth_table: str, perm: tuple[int, ...], tail: str) -> str:
 
 LANGUAGE = Language(
     "brainfuck",
-    "brainfuck",
-    category="tape_based",
+    RuntimeSpec("brainfuck", category="tape_based"),
     boolean=brainfuck,
     contract=BooleanContract(
         input_shape="char_stream",

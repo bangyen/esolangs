@@ -31,6 +31,7 @@ from esolangs.generation.wrap import _join_tokens, balance_score
 from esolangs.languages.intercal.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 TEMPLATE_CHAR = "@"
 _VARIABLE_MAX = 65535  # the largest INTERCAL variable number
@@ -466,9 +467,12 @@ def _same_layout(template: str, _plain: str, layout: Callable[[int], Any]) -> bo
 
 LANGUAGE = Language(
     "INTERCAL",
-    "intercal",
-    category="variable_based",
-    random=True,
+    RuntimeSpec(
+        "intercal",
+        category="variable_based",
+        random=True,
+        empty_program="INTERCAL program is insufficiently or excessively polite (E099)",
+    ),
     boolean=intercal,
     same_layout=_same_layout,
     contract=BooleanContract(
@@ -477,7 +481,6 @@ LANGUAGE = Language(
         note="INTERCAL READ OUT prints a lone overbar for zero and I for one",
     ),
     balance=balance_intercal,
-    empty_program="INTERCAL program is insufficiently or excessively polite (E099)",
     template=TemplateSpec(pair=PAIR, char=TEMPLATE_CHAR),
     example=Example(expected="_\n\n"),
     proof_execution=(execution, True, (3, 4, 5, 6, 7, 8)),

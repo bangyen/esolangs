@@ -8,7 +8,7 @@ from esolangs.registry import BY_BOOLEAN
 
 def _embedding() -> dict[str, BooleanExample]:
     """The embedding examples, keyed by the registry display name."""
-    names = {lang.interpreter: lang.name for lang in BY_BOOLEAN.values()}
+    names = {lang.runtime.interpreter: lang.name for lang in BY_BOOLEAN.values()}
     return {
         names[example.interpreter]: example
         for example in BOOLEAN_EXAMPLES.values()

@@ -36,6 +36,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import _six_five
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["six_five"]
 
@@ -578,8 +579,7 @@ def _six_five_const(value: int) -> str:
 
 LANGUAGE = Language(
     "6-5",
-    "six_five",
-    category="tape_based",
+    RuntimeSpec("six_five", category="tape_based"),
     boolean=six_five,
     contract=BooleanContract(
         input_shape="char_stream",

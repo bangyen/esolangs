@@ -23,7 +23,9 @@ class TestNativeInputConsumption:
             eof_is_a_value=True, input_shape="char_stream", parameterized=False
         )
         # A language that refuses instead is ``test_debug``'s exception.
-        for name in [n for n in carry_on if not LANGUAGES[n].underfed_raises][:3]:
+        for name in [n for n in carry_on if not LANGUAGES[n].runtime.underfed_raises][
+            :3
+        ]:
             program = esolangs.generate(name, "10010110")
             short = esolangs.encode_inputs(name, [1, 0])
             output = esolangs.run(name, program, stdin=short, timeout=10)

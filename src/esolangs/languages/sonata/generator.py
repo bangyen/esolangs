@@ -35,6 +35,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 #: The index rules, then the set-up rules around the table.
 # After setup, a remaining bit matches the index rules; otherwise a nonempty
@@ -106,8 +107,11 @@ def _program(n: int, essential: list[int], table: str, index: str) -> str:
 
 LANGUAGE = Language(
     "Sonata",
-    "sonata",
-    category="program_based",
+    RuntimeSpec(
+        "sonata",
+        category="program_based",
+        eof="the input is the initial string, so an empty input is the empty string",
+    ),
     boolean=sonata,
     # Not a tree: the table is a literal the row index strips.
     shape=Shape.LOOKUP,
@@ -119,6 +123,5 @@ LANGUAGE = Language(
         "one, = and the answer",
     ),
     no_wrap="a newline ends a rule, and a rule cannot span two lines",
-    eof="the input is the initial string, so an empty input is the empty string",
     example=Example(expected="=0"),
 )

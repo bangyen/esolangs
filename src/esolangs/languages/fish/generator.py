@@ -39,6 +39,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 
 def fish(truth_table: str, width: int | None = None) -> str:
@@ -301,19 +302,21 @@ def balance_fish(truth_table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Fish",
-    "fish",
-    category="grid_based",
-    random=True,
+    RuntimeSpec(
+        "fish",
+        category="grid_based",
+        random=True,
+        split=True,
+        eof="an exhausted 'i' is the spec's -1",
+        empty_program="Fish program cannot be empty",
+    ),
     boolean=fish,
     # Not a tree: an indexed table read.
     shape=Shape.LOOKUP,
-    split=True,
     contract=BooleanContract(
         input_shape="char_stream",
     ),
     balance=balance_fish,
     no_wrap="a row is a codebox row and the lookup table is indexed by column",
-    eof="an exhausted 'i' is the spec's -1",
-    empty_program="Fish program cannot be empty",
     grid=True,
 )

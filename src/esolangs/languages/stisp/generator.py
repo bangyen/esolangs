@@ -35,6 +35,7 @@ from esolangs.generation.wrap import TokenWrapper
 from esolangs.languages.stisp.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 #: Each input is one atom, ``0`` or ``1``, inside its frame.
 PAIR = ("0", "1")
@@ -98,8 +99,11 @@ def stisp(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Stisp",
-    "stisp",
-    category="other",
+    RuntimeSpec(
+        "stisp",
+        category="other",
+        empty_program="a Stisp program needs a stack expression",
+    ),
     boolean=stisp,
     contract=BooleanContract(
         answer_mode="dump",
@@ -107,7 +111,6 @@ LANGUAGE = Language(
         "in the template, and the result printed at halt is the answer atom",
     ),
     wrap=TokenWrapper(_TOKEN),
-    empty_program="a Stisp program needs a stack expression",
     template=TemplateSpec(pair=PAIR),
     proof_workspace=(workspace, False, (3, 4, 5, 6, 7)),
 )

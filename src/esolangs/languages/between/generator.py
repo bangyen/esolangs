@@ -28,6 +28,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 
 def _diagram(ids: list[list[int]]) -> tuple[int, dict[int, tuple[int, int, int]]]:
@@ -134,8 +135,7 @@ def between(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Between",
-    "between",
-    category="register_based",
+    RuntimeSpec("between", category="register_based"),
     boolean=between,
     no_wrap="each line is one instruction and a break splits it",
 )

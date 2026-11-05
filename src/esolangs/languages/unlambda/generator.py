@@ -30,6 +30,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import _unlambda
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 #: ``@`` reads a character and applies its argument -- the promise of everything
 #: after the read -- to ``i``, or to ``v`` at end of input.
@@ -129,14 +130,16 @@ def unlambda(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Unlambda",
-    "unlambda",
-    category="other",
+    RuntimeSpec(
+        "unlambda",
+        category="other",
+        eof="an exhausted '@' hands its argument v, the spec's branch",
+        empty_program="an Unlambda program cannot be empty",
+    ),
     reader_checked=True,
     boolean=unlambda,
     contract=BooleanContract(
         input_shape="char_stream",
     ),
     wrap=_unlambda,
-    eof="an exhausted '@' hands its argument v, the spec's branch",
-    empty_program="an Unlambda program cannot be empty",
 )

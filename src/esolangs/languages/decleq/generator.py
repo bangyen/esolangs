@@ -29,6 +29,7 @@ from esolangs.generation.wrap import wrap_grid
 from esolangs.languages.decleq.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["decleq"]
 
@@ -229,8 +230,7 @@ class _OwnerBuilder(_CodeBuilder):
 
 LANGUAGE = Language(
     "Decleq",
-    "decleq",
-    category="register_based",
+    RuntimeSpec("decleq", category="register_based"),
     boolean=decleq,
     contract=BooleanContract(
         input_shape="char_stream",

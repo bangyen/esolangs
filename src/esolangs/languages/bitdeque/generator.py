@@ -39,6 +39,7 @@ from esolangs.generation.wrap import _join_tokens
 from esolangs.languages.bitdeque.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["BITDEQUE_PAIR", "bitdeque", "bitdeque_setters"]
 
@@ -270,8 +271,7 @@ def _bitdeque_tokens(program: str) -> list[str]:
 
 LANGUAGE = Language(
     "Bitdeque",
-    "bitdeque",
-    category="queue_based",
+    RuntimeSpec("bitdeque", category="queue_based"),
     boolean=bitdeque,
     same_layout=_same_layout,
     contract=BooleanContract(

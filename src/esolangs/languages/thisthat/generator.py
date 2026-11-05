@@ -34,6 +34,7 @@ from esolangs.generation.wrap import balance_score
 from esolangs.languages.thisthat.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 _STEP = {"E": (1, 0), "W": (-1, 0), "N": (0, -1), "S": (0, 1)}
 _OPPOSITE = {"E": "W", "W": "E", "N": "S", "S": "N"}
@@ -843,11 +844,15 @@ def shared_tree(table: str) -> tuple[str, int] | None:
 
 LANGUAGE = Language(
     "thisthat",
-    "thisthat",
-    category="grid_based",
-    random=True,
+    RuntimeSpec(
+        "thisthat",
+        category="grid_based",
+        random=True,
+        split=True,
+        eof="an exhausted '◇' sends the spec's empty transfer",
+        empty_program="thisthat needs at least one start node",
+    ),
     boolean=thisthat,
-    split=True,
     contract=BooleanContract(
         input_shape="char_stream",
         ignores_whitespace=True,
@@ -855,8 +860,6 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="the H-tree's nodes and wires occupy fixed grid coordinates",
-    eof="an exhausted '◇' sends the spec's empty transfer",
-    empty_program="thisthat needs at least one start node",
     proof_execution=(execution, False, (3, 4)),
     proof_workspace=(workspace, False, (3, 5)),
     grid=True,

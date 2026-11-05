@@ -32,6 +32,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.one_i.proof_formulas import execution, workspace
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 _CONSTANT = ("iic+", "ici*")
 
@@ -140,8 +141,7 @@ def _parity_reader(t: str, used: list[int], n: int) -> str | None:
 
 LANGUAGE = Language(
     "1 + i",
-    "one_i",
-    category="stack_based",
+    RuntimeSpec("one_i", category="stack_based"),
     boolean=one_i,
     wrap=wrap_chars,
     proof_execution=(execution, True, (1, 2, 3, 5, 6)),

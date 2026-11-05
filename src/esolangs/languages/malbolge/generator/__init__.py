@@ -37,6 +37,7 @@ from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.malbolge.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 from esolangs.runtime.source_hints import with_hint
 
 from .constant import _constant_program
@@ -84,8 +85,11 @@ def malbolge(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Malbolge",
-    "malbolge",
-    category="program_based",
+    RuntimeSpec(
+        "malbolge",
+        category="program_based",
+        eof="an exhausted read is the value 59048, not an error",
+    ),
     # Every source loads into the fixed store, so every program -- this
     # generator's or any other -- is bounded by a constant.
     size_bound=lambda _n: 59_049,
@@ -103,7 +107,6 @@ LANGUAGE = Language(
     ),
     # Loader whitespace is discarded before assigning memory addresses.
     wrap=wrap_chars,
-    eof="an exhausted read is the value 59048, not an error",
     proof_execution=(execution, True, (2, 3, 6)),
     proof_workspace=(workspace, False, (2, 3)),
 )

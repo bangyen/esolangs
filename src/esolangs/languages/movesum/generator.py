@@ -24,6 +24,7 @@ Decisions:
 
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.registry._language import Example, Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 #: Cells: 0 sum/test, 1/2/3/4 addends (4 stays 0), 5 V,
 #: 8 one, 9 counter seed, 10 the input.
@@ -54,13 +55,15 @@ def movesum(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Movesum",
-    "movesum",
-    category="tape_based",
+    RuntimeSpec(
+        "movesum",
+        category="tape_based",
+        eof="a read at EOF is 0",
+        empty_program="Movesum program is empty",
+    ),
     boolean=movesum,
     # Not a tree: one rung per row, whatever the table says.
     shape=Shape.LOOKUP,
-    eof="a read at EOF is 0",
-    empty_program="Movesum program is empty",
     example=Example(expected="0 0"),
     no_wrap="each line is one instruction and a break splits it",
 )

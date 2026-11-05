@@ -39,6 +39,7 @@ from esolangs.languages.fractran.interpreter.index import SMALL_BASE
 from esolangs.languages.fractran.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 #: How each input is set: the exponent of its prime in the starting value.
 #: One digit wide, so the run is one :data:`TEMPLATE_CHAR`.
@@ -211,8 +212,11 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
 
 LANGUAGE = Language(
     "FRACTRAN",
-    "fractran",
-    category="register_based",
+    RuntimeSpec(
+        "fractran",
+        category="register_based",
+        empty_program="a FRACTRAN program needs a starting value",
+    ),
     boolean=fractran,
     same_layout=_same_layout,
     contract=BooleanContract(
@@ -226,7 +230,6 @@ LANGUAGE = Language(
     # change a number.
     wrap=wrap_space_delimited,
     balance=_balance,
-    empty_program="a FRACTRAN program needs a starting value",
     template=TemplateSpec(pair=PAIR),
     example=Example(expected="1"),
     proof_execution=(execution, True, (3, 5)),

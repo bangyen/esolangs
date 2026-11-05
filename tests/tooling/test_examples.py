@@ -31,9 +31,9 @@ BASE_DIR = Path(__file__).parents[2]
 # examples are keyed by their filesystem stem.  The interpreter module is
 # shared metadata and uniquely identifies the registered display name.
 VM_LANGUAGE = {
-    lang.interpreter: lang.name
+    lang.runtime.interpreter: lang.name
     for lang in LANGUAGES.values()
-    if lang.interpreter is not None
+    if lang.runtime.interpreter is not None
 }
 
 

@@ -30,6 +30,7 @@ from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.hot.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 #: ``R_i`` with ``{}`` for ``R_(i+1)``.
 _READ = "S(KK)(S(K(S(0K)))(S(KK)(S(KK)(S(K(S(0K)))(S(K(S(0K)))(S(KK)(S(K({})))))))))"
@@ -96,13 +97,15 @@ def hot(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Hot",
-    "hot",
-    category="other",
+    RuntimeSpec(
+        "hot",
+        category="other",
+        eof="the stream past the input string is 0 bits",
+        empty_program="a Hot program needs at least one combinator",
+    ),
     boolean=hot,
     contract=BooleanContract(input_shape="char_stream"),
     wrap=wrap_chars,
     proof_execution=(execution, True, (1, 2, 3, 6)),
     proof_workspace=(workspace, True, (2, 3, 6)),
-    eof="the stream past the input string is 0 bits",
-    empty_program="a Hot program needs at least one combinator",
 )

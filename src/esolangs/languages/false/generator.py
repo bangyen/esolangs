@@ -40,6 +40,7 @@ from esolangs.generation.wrap import (
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 #: ``'0`` and ``'1`` differ in their low bit, so ``1&`` is the bit and ``?``
 #: takes any nonzero flag; ``$`` leaves a copy under it for the ``0`` test.
@@ -547,8 +548,9 @@ def _balance(_table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "FALSE",
-    "false",
-    category="stack_based",
+    RuntimeSpec(
+        "false", category="stack_based", eof="an exhausted '^' is the spec's -1"
+    ),
     reader_checked=True,
     boolean=false,
     contract=BooleanContract(
@@ -557,5 +559,4 @@ LANGUAGE = Language(
     # ``'x`` and ``.x``/``?x`` take the character after them.
     wrap=_false,
     balance=_balance,
-    eof="an exhausted '^' is the spec's -1",
 )

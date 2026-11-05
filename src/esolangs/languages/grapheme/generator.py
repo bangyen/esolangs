@@ -21,6 +21,7 @@ from esolangs.languages.grapheme.interpreter import (
 from esolangs.languages.grapheme.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 from esolangs.runtime.memory import format_integer
 
 #: Int-mode digits: ``Z`` is 0 and ``A``-``Y`` are 1 to 25, so the one value
@@ -150,11 +151,13 @@ def _program(
 
 LANGUAGE = Language(
     "Grapheme",
-    "grapheme",
-    category="stack_based",
+    RuntimeSpec(
+        "grapheme",
+        category="stack_based",
+        dialect=GraphemeDialect,
+        dialect_values={"integer_conversion": INTEGER_CONVERSIONS},
+    ),
     boolean=grapheme,
-    dialect=GraphemeDialect,
-    dialect_values={"integer_conversion": INTEGER_CONVERSIONS},
     # Each input line is normalized with ord(line[0]) - 65 and then zero is
     # mapped to 1; the second step is what makes 'A' a 1 -- ord('A') - 65 is
     # 0, so the subtraction alone says the opposite.

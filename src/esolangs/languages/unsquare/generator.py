@@ -27,6 +27,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 
 def _run(entry: str, count: int) -> str:
@@ -104,8 +105,7 @@ def unsquare(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Unsquare",
-    "unsquare",
-    category="stack_based",
+    RuntimeSpec("unsquare", category="stack_based"),
     boolean=unsquare,
     contract=BooleanContract(
         input_shape="char_stream",

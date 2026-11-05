@@ -41,6 +41,7 @@ from esolangs.generation.wrap import (
 )
 from esolangs.languages.dimensional.proof_formulas import workspace
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["dimensional"]
 
@@ -231,8 +232,7 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Dimensional",
-    "dimensional",
-    category="tape_based",
+    RuntimeSpec("dimensional", category="tape_based"),
     boolean=dimensional,
     # Not a tree: one painted cell per entry along dimension 1.
     shape=Shape.LOOKUP,

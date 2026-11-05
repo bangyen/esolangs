@@ -21,6 +21,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 #: Each leaf outputs its bit and halts.
 _LEAF = {"0": "KK", "1": "SK"}
@@ -58,10 +59,12 @@ def kiss(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Kiss",
-    "kiss",
-    category="other",
+    RuntimeSpec(
+        "kiss",
+        category="other",
+        empty_program="a Kiss program needs at least one combinator",
+    ),
     boolean=kiss,
     contract=BooleanContract(input_shape="char_stream"),
     wrap=wrap_chars,
-    empty_program="a Kiss program needs at least one combinator",
 )

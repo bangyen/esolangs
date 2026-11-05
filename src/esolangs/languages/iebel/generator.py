@@ -22,6 +22,7 @@ Decisions:
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 #: Register 1 holds '1' (49), register 3 holds '0' (48).
 _SETUP = ["1 49 0", "3 48 0"]
@@ -103,8 +104,7 @@ def iebel(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "IEBEL",
-    "iebel",
-    category="register_based",
+    RuntimeSpec("iebel", category="register_based"),
     boolean=iebel,
     contract=BooleanContract(input_shape="char_stream"),
     no_wrap="each line is one instruction; a break splits its fields",

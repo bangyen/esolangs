@@ -32,6 +32,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.languages.balik.proof_formulas import execution
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 
 @dataclass
@@ -151,8 +152,7 @@ def balik(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Balik",
-    "balik",
-    category="grid_based",
+    RuntimeSpec("balik", category="grid_based"),
     boolean=balik,
     shape=Shape.TREE,
     no_wrap="a newline adds a grid row and moves every vertical path",

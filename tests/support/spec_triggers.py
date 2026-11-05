@@ -10,7 +10,7 @@ from tests.support.cases import cases
 
 def _interpreted() -> list[str]:
     """Return every language with an interpreter, sorted."""
-    return sorted(name for name, lang in LANGUAGES.items() if lang.interpreter)
+    return sorted(name for name, lang in LANGUAGES.items() if lang.runtime.interpreter)
 
 
 def triggers_of(name: str) -> dict[str, object]:

@@ -46,6 +46,7 @@ from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _RUN, balance_score, wrap_chars, wrap_program
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 # Each input cell is fresh; zero needs no clear and one needs one flip.
 PAIR = ("x>>>", "*>>>")
@@ -842,8 +843,7 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
 
 LANGUAGE = Language(
     "Smallfuck",
-    "smallfuck",
-    category="tape_based",
+    RuntimeSpec("smallfuck", category="tape_based"),
     boolean=smallfuck,
     same_layout=_same_layout,
     contract=BooleanContract(

@@ -211,7 +211,11 @@ def test_citation_matching_covers_a_compound() -> None:
 
 def _own(lang: Language) -> tuple[set[str], tuple[str, ...]]:
     """Return a language's spellings and the path prefixes it owns."""
-    modules = [f"esolangs.languages.{lang.id}.interpreter"] if lang.interpreter else []
+    modules = (
+        [f"esolangs.languages.{lang.id}.interpreter"]
+        if lang.runtime.interpreter
+        else []
+    )
     if lang.boolean is not None:
         modules.append(lang.boolean.__module__.removesuffix(".__init__"))
     canonical = [m for m in modules if m.startswith("esolangs.languages.")]

@@ -28,6 +28,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["bit_tilde"]
 
@@ -182,8 +183,7 @@ def _block_lookup(used: list[int], table: str, n: int) -> str:
 
 LANGUAGE = Language(
     "bit~",
-    "bit_tilde",
-    category="tape_based",
+    RuntimeSpec("bit_tilde", category="tape_based"),
     boolean=bit_tilde,
     # Not a tree: planted entries a Horner jump addresses.
     shape=Shape.LOOKUP,

@@ -41,6 +41,7 @@ from esolangs.generation.helpers import (
 from esolangs.languages.laserfuck.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["laserfuck"]
 
@@ -881,11 +882,8 @@ def balance_laserfuck(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "LaserFuck",
-    "laserfuck",
-    category="grid_based",
-    random=True,
+    RuntimeSpec("laserfuck", category="grid_based", random=True, split=True),
     boolean=laserfuck,
-    split=True,
     contract=BooleanContract(
         answer_mode="dump",
         note="the initial heading is random by spec, so the example pins "

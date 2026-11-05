@@ -38,6 +38,7 @@ from esolangs.generation.shared_flag import FlagDialect, flag_tree_body
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 
 def _command_budget(n: int) -> int:
@@ -119,10 +120,8 @@ def qrain(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Qrain",
-    "qrain",
-    category="queue_based",
+    RuntimeSpec("qrain", category="queue_based", eof="EOF supplies byte 0"),
     boolean=qrain,
     contract=BooleanContract(input_shape="char_stream"),
     wrap=wrap_chars,
-    eof="EOF supplies byte 0",
 )

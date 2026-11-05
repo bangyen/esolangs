@@ -28,6 +28,7 @@ from esolangs.generation.wrap import wrap_grid
 from esolangs.languages.addsubjump.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 #: The ``d`` operand of every instruction: cell 7, the last word of the
 #: first data block, which nothing writes, so ``*d > 0`` never holds and the
@@ -418,8 +419,7 @@ def _addsubjump_ordered(
 
 LANGUAGE = Language(
     "AddSubJump",
-    "addsubjump",
-    category="register_based",
+    RuntimeSpec("addsubjump", category="register_based"),
     boolean=addsubjump,
     contract=BooleanContract(
         input_shape="char_stream",

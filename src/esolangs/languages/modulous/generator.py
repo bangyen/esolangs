@@ -36,6 +36,7 @@ from esolangs.generation.wrap import (
 )
 from esolangs.languages.modulous.proof_formulas import execution, workspace
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 # Characters around the table in its literal push: ``[PSH STR "`` opens it
 # (10 chars) and ``"]`` closes the literal (2 chars).
@@ -197,9 +198,7 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Modulous",
-    "modulous",
-    category="stack_based",
-    random=True,
+    RuntimeSpec("modulous", category="stack_based", random=True),
     boolean=modulous,
     proof_execution=(execution, True, (1, 2, 3, 5)),
     proof_workspace=(workspace, True, (2, 3, 4, 6)),

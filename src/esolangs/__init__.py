@@ -270,7 +270,7 @@ def _generate_artifact(
     check_scale(scale)
     check_flag(balance, "balance")
     if scale != 1:
-        if LANGUAGES[resolve(language)].source_kind is not SourceKind.RASTER:
+        if LANGUAGES[resolve(language)].runtime.source_kind is not SourceKind.RASTER:
             raise with_hint(
                 ArgumentError("scale is only supported for raster generators"),
                 "omit scale for text languages; apply it only to raster source",
@@ -316,7 +316,7 @@ def _generate_artifact(
         raise
     except ValueError as error:
         raise ArgumentError(str(error)) from error
-    if lang.source_kind is SourceKind.RASTER:
+    if lang.runtime.source_kind is SourceKind.RASTER:
         if not isinstance(generated, Raster):  # pragma: no cover - registry invariant
             raise ProgramError(f"{resolved}'s generator did not return a Raster")
         # Tagged the way a text program is ``_Tagged``: a raster fed to a
@@ -633,7 +633,7 @@ def _check_runnable(language: str, program: Program) -> None:
             f"program must be a string of source or a Raster, got "
             f"{type(program).__name__}"
         )
-    if not LANGUAGES[name].path_like_source and _looks_like_a_path(program):
+    if not LANGUAGES[name].runtime.path_like_source and _looks_like_a_path(program):
         raise ProgramError(
             f"program looks like a path, not source: {program!r}. "
             f"Read the file first, or pass pathlib.Path({program!r}); "

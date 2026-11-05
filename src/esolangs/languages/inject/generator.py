@@ -43,6 +43,7 @@ from esolangs.generation.wrap import balance_score
 from esolangs.languages.inject.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["inject"]
 
@@ -306,16 +307,18 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Inject",
-    "inject",
-    category="program_based",
+    RuntimeSpec(
+        "inject",
+        category="program_based",
+        # The wiki cat's only clean exit is a ``readto`` that gets no line.
+        eof="an exhausted readto empties the block",
+    ),
     boolean=inject,
     contract=BooleanContract(
         note="send terminates each line, so the answer ends in a newline",
     ),
     balance=_balance,
     no_wrap="blocks and executable commands are delimited by source lines",
-    # The wiki cat's only clean exit is a ``readto`` that gets no line.
-    eof="an exhausted readto empties the block",
     # ``send`` terminates every line it writes, so the answer arrives
     # with a newline after it -- there is no other output command.
     example=Example(expected="0\n"),

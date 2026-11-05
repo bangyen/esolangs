@@ -125,7 +125,7 @@ def _balanced_languages() -> list[str]:
         name
         for name, lang in LANGUAGES.items()
         if lang.boolean is not None
-        and lang.source_kind is SourceKind.TEXT
+        and lang.runtime.source_kind is SourceKind.TEXT
         and (
             lang.balance is not None
             or _balances_whole_tokens(lang.wrap)

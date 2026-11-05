@@ -27,6 +27,7 @@ from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
+from esolangs.runtime._definition import RuntimeSpec
 
 
 def caballo(truth_table: str) -> str:
@@ -79,8 +80,12 @@ def _tree(truth_table: str, n: int) -> str:
 
 LANGUAGE = Language(
     "Caballo",
-    "caballo",
-    category="stack_based",
+    RuntimeSpec(
+        "caballo",
+        category="stack_based",
+        random=True,
+        eof="the whole input is read once as the initial stack; no read meets EOF",
+    ),
     boolean=caballo,
     contract=BooleanContract(
         answer_mode="dump",
@@ -90,7 +95,5 @@ LANGUAGE = Language(
         "top, and prints the surviving stack: [1] for one, [] for zero",
     ),
     wrap=wrap_chars,
-    random=True,
-    eof="the whole input is read once as the initial stack; no read meets EOF",
     example=Example(expected="[]"),
 )

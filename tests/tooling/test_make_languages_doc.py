@@ -128,9 +128,15 @@ def test_an_unheaded_category_names_where_to_add_it() -> None:
     """A new category fails with the fix, not a ``KeyError``."""
     module = load_script()
     language = next(
-        lang for lang in module.LANGUAGES.values() if lang.interpreter is not None
+        lang
+        for lang in module.LANGUAGES.values()
+        if lang.runtime.interpreter is not None
     )
-    module.LANGUAGES = {language.name: replace(language, category="new_category")}
+    module.LANGUAGES = {
+        language.name: replace(
+            language, runtime=replace(language.runtime, category="new_category")
+        )
+    }
     with pytest.raises(ValueError, match="_README_HEADINGS"):
         module.render_languages_section()
 
@@ -152,7 +158,7 @@ def test_language_listing_covers_every_interpreter() -> None:
     module = load_script()
     rendered = module.render_languages_section()
     for name, language in module.LANGUAGES.items():
-        if language.interpreter is not None:
+        if language.runtime.interpreter is not None:
             assert f"- [{name}]" in rendered
     for path in re.findall(r"/blob/main/([^)]*)", rendered):
         assert (REPO_ROOT / path).is_file()
@@ -165,7 +171,10 @@ def test_language_listing_only_lists_available_interpreters(
     monkeypatch.setitem(
         module.LANGUAGES,
         REFERENCE,
-        replace(module.LANGUAGES[REFERENCE], interpreter=None),
+        replace(
+            module.LANGUAGES[REFERENCE],
+            runtime=replace(module.LANGUAGES[REFERENCE].runtime, interpreter=None),
+        ),
     )
     rendered = module.render_languages_section()
     assert f"- [{REFERENCE}]" not in rendered
@@ -219,7 +228,7 @@ def test_missing_canonical_interpreter_does_not_link_to_an_old_path(tmp_path) ->
     module = load_script()
     module.ROOT = tmp_path
     language = next(iter(module.LANGUAGES.values()))
-    old = tmp_path / "src/esolangs/runtime" / f"{language.interpreter}.py"
+    old = tmp_path / "src/esolangs/runtime" / f"{language.runtime.interpreter}.py"
     old.parent.mkdir(parents=True)
     old.write_text("owned")
     with pytest.raises(FileNotFoundError, match="no canonical interpreter"):

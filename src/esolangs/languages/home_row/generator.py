@@ -33,6 +33,7 @@ from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.home_row.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["HOME_ROW_PAIR", "home_row"]
 
@@ -115,8 +116,7 @@ def _program(truth_table: str, *, negated: bool = False) -> str:
 
 LANGUAGE = Language(
     "Home Row",
-    "home_row",
-    category="tape_based",
+    RuntimeSpec("home_row", category="tape_based"),
     boolean=home_row,
     # A sum, not a tree: a lookup over the essential inputs only.
     shape=Shape.REDUCING,

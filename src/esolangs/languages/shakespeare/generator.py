@@ -32,6 +32,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import wrap_space_delimited
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 #: Bits packed by one sentence; bounds the parser's nesting.
 _CHUNK = 64
@@ -161,10 +162,12 @@ def shakespeare(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Shakespeare",
-    "shakespeare",
-    category="stack_based",
+    RuntimeSpec(
+        "shakespeare",
+        category="stack_based",
+        empty_program="Shakespeare line 1: empty play",
+    ),
     boolean=shakespeare,
     shape=Shape.LOOKUP,
     wrap=wrap_space_delimited,
-    empty_program="Shakespeare line 1: empty play",
 )

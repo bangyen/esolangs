@@ -29,6 +29,7 @@ from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 #: ``11*`` pushes 2, 0, 1, 1, 0.  Its top 0 is a read selector (``_SKIP``);
 #: ``!!!`` leaves 2, 0 so ``~*`` after the read is byte mod 2, the bit.
@@ -86,8 +87,7 @@ def aprknia(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Aprknia",
-    "aprknia",
-    category="stack_based",
+    RuntimeSpec("aprknia", category="stack_based"),
     boolean=aprknia,
     contract=BooleanContract(input_shape="char_stream"),
     wrap=wrap_chars,

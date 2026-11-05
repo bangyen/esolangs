@@ -52,6 +52,7 @@ from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.boolfuck.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 type _Kind = Literal["and", "xor"]
 type _Normal = tuple[_Kind | None, int, bool, bool, int | None]
@@ -440,14 +441,12 @@ def _boolfuck_tree(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Boolfuck",
-    "boolfuck",
-    category="tape_based",
+    RuntimeSpec("boolfuck", category="tape_based", eof="EOF supplies zero bits"),
     boolean=boolfuck,
     contract=BooleanContract(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
-    eof="EOF supplies zero bits",
     # Four to eight reach the AND/XOR gates (docs/proofs/boolfuck-gates.md).
     proof_workspace=(workspace, False, (3, 4, 6, 7, 8)),
 )

@@ -58,11 +58,11 @@ def test_every_dialect_declares_its_values() -> None:
     """A language's ``dialect`` and ``dialect_values`` name the same settings."""
     for name, language in LANGUAGES.items():
         settings = (
-            set(inspect.signature(language.dialect).parameters)
-            if language.dialect is not None
+            set(inspect.signature(language.runtime.dialect).parameters)
+            if language.runtime.dialect is not None
             else set()
         )
-        assert set(language.dialect_values or {}) == settings, name
+        assert set(language.runtime.dialect_values or {}) == settings, name
 
 
 @pytest.mark.parametrize(

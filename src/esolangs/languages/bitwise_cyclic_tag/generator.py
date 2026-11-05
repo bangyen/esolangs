@@ -27,6 +27,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 #: One bit of the initial data-string, so an input's run is one TEMPLATE_CHAR.
 PAIR = ("0", "1")
@@ -63,8 +64,7 @@ def _program(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Bitwise Cyclic Tag",
-    "bitwise_cyclic_tag",
-    category="queue_based",
+    RuntimeSpec("bitwise_cyclic_tag", category="queue_based"),
     boolean=bitwise_cyclic_tag,
     # A positional walk, not a tree of callable residuals.
     shape=Shape.LOOKUP,

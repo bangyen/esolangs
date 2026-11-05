@@ -17,6 +17,7 @@ Decisions:
 
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 from esolangs.runtime._digits import digit_limit_for
 
 
@@ -70,14 +71,16 @@ def hq9_with_headers(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "HQ9+ with headers",
-    "hq9_with_headers",
-    category="other",
+    RuntimeSpec(
+        "hq9_with_headers",
+        category="other",
+        eof="a read at EOF yields 0",
+        empty_program=(
+            "HQ9+ with headers: line 1: the source must start with '==== HEADER ===='"
+        ),
+    ),
     boolean=hq9_with_headers,
     # Not a tree: the table is one decimal literal the reads divide down.
     shape=Shape.LOOKUP,
-    eof="a read at EOF yields 0",
-    empty_program=(
-        "HQ9+ with headers: line 1: the source must start with '==== HEADER ===='"
-    ),
     no_wrap="a line break ends a header line; only a trailing \\ joins two",
 )

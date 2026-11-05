@@ -49,6 +49,7 @@ from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.helpers import _parity_bias, _validate_truth_table, subtree_ids
 from esolangs.languages.interprogck8.proof_formulas import workspace
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 from esolangs.runtime.source_hints import with_hint
 
 #: The rung.  ``DownAccLines`` jumps to ``ip + 1 + acc``.
@@ -239,14 +240,11 @@ def interprogck8(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Interprogck8",
-    "interprogck8",
-    category="register_based",
+    RuntimeSpec("interprogck8", category="register_based", split=True, random=True),
     generator_restrictions=(
         f"at most {_MAX_INPUTS} inputs, past any table that fits in memory"
     ),
     boolean=interprogck8,
-    split=True,
-    random=True,
     no_wrap="a newline adds a line and moves every DownAccLines landing",
     proof_workspace=(workspace, True, (3, 4, 5, 6)),
 )

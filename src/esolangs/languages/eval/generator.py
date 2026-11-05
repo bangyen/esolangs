@@ -27,6 +27,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import _quote_literal
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 # ``~`` swaps the active stack, ``*`` reverses it, ``=`` pops it onto the
 # other.  Moving values across reverses them (tests/eval_support.py).
@@ -136,8 +137,7 @@ def _eval_ordered(truth_table: str, ops: str) -> str:
 
 LANGUAGE = Language(
     "Eval",
-    "eval",
-    category="stack_based",
+    RuntimeSpec("eval", category="stack_based"),
     boolean=eval,
     contract=BooleanContract(),
     # Print through a literal that must not be broken.

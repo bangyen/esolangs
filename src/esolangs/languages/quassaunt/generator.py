@@ -28,6 +28,7 @@ from esolangs.generation.wrap import wrap_space_delimited
 from esolangs.languages.quassaunt.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 
 class _Node(NamedTuple):
@@ -180,8 +181,7 @@ def _balance(_table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Quassaunt",
-    "quassaunt",
-    category="stack_based",
+    RuntimeSpec("quassaunt", category="stack_based"),
     boolean=quassaunt,
     contract=BooleanContract(input_shape="char_stream"),
     # Whitespace separates words and a word holds none, so break only there.

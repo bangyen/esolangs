@@ -37,6 +37,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.collatz_multiverse.proof_formulas import execution, workspace
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["balance_collatz_multiverse", "collatz_multiverse"]
 
@@ -511,8 +512,7 @@ def _cm_constants(
 
 LANGUAGE = Language(
     "Collatz Multiverse",
-    "collatz_multiverse",
-    category="register_based",
+    RuntimeSpec("collatz_multiverse", category="register_based"),
     boolean=collatz_multiverse,
     balance=balance_collatz_multiverse,
     no_wrap="each line is one complete register assignment",

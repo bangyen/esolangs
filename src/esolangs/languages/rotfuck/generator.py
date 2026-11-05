@@ -51,6 +51,7 @@ from esolangs.languages.rotfuck.interpreter import (
 from esolangs.languages.rotfuck.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["rotfuck"]
 
@@ -445,11 +446,13 @@ def _dialect(rotation: str = "backward") -> None:
 
 LANGUAGE = Language(
     "ROTfuck",
-    "rotfuck",
-    category="tape_based",
+    RuntimeSpec(
+        "rotfuck",
+        category="tape_based",
+        dialect=_dialect,
+        dialect_values={"rotation": ROTATIONS},
+    ),
     boolean=rotfuck,
-    dialect=_dialect,
-    dialect_values={"rotation": ROTATIONS},
     # A sum, not a tree: a lookup over the essential inputs only.
     shape=Shape.REDUCING,
     contract=BooleanContract(

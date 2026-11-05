@@ -45,7 +45,11 @@ def test_raster_interpreter_owns_loading_and_scale_support(
     monkeypatch.setitem(
         LANGUAGES,
         "Piet",
-        replace(LANGUAGES["Piet"], source_kind=SourceKind.TEXT, boolean=None),
+        replace(
+            LANGUAGES["Piet"],
+            runtime=replace(LANGUAGES["Piet"].runtime, source_kind=SourceKind.TEXT),
+            boolean=None,
+        ),
     )
     assert esolangs.run("Piet", program.to_png(), stdin="1", scale=2) == "1"
     assert esolangs.run("Piet", program, stdin="1", scale=2, max_steps=100) == "1"

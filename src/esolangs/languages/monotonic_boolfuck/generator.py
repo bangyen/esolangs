@@ -25,6 +25,7 @@ from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 #: Read onto ``p``, then consume the byte's other seven bits on a set bit.
 _READ = ">1<,>,,,,,,,<"
@@ -72,10 +73,10 @@ def monotonic_boolfuck(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Monotonic Boolfuck",
-    "monotonic_boolfuck",
-    category="tape_based",
+    RuntimeSpec(
+        "monotonic_boolfuck", category="tape_based", eof="EOF supplies zero bits"
+    ),
     boolean=monotonic_boolfuck,
     contract=BooleanContract(input_shape="char_stream"),
     wrap=wrap_chars,
-    eof="EOF supplies zero bits",
 )

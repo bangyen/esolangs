@@ -29,7 +29,8 @@ _PILOTS = [
 ] + [
     (language, "01")
     for language in one_where(
-        lambda info: LANGUAGES[info["name"]].compressed_source, boolean_generator=True
+        lambda info: LANGUAGES[info["name"]].runtime.compressed_source,
+        boolean_generator=True,
     )
 ]
 

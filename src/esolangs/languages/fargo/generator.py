@@ -50,6 +50,7 @@ from esolangs.generation.wrap import balance_score
 from esolangs.languages.fargo.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["fargo"]
 
@@ -451,8 +452,9 @@ def anf_coefficients(truth_table: str) -> list[int]:
 
 LANGUAGE = Language(
     "Fargo",
-    "fargo",
-    category="other",
+    RuntimeSpec(
+        "fargo", category="other", eof="the interpreter reads before the program starts"
+    ),
     boolean=fargo,
     contract=BooleanContract(
         input_shape="row_index",
@@ -461,7 +463,6 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="each physical line is one command; expressions have no continuation",
-    eof="the interpreter reads before the program starts",
     # Fargo reads one *number* before the program starts, not a bit per
     # line, and ``@ k`` indexes that number's bits.  The boolean
     # convention is therefore to feed the row index: the inputs

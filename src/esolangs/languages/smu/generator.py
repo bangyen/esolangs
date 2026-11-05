@@ -43,6 +43,7 @@ from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.smu.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 #: ``k`` drops a run's bit and outputs nothing; ``n`` is a node less its
 #: halves, ``m`` a pad; ``z``/``o`` print ``'0'`` (0x30), ``'1'`` (0x31) low bit first.
@@ -124,8 +125,12 @@ def smu(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Smu",
-    "smu",
-    category="stack_based",
+    RuntimeSpec(
+        "smu",
+        category="stack_based",
+        # Every run pushes its input bit, and the spec's EOF bit is ``=``.
+        eof="an exhausted read pushes the spec's '=' bit",
+    ),
     boolean=smu,
     contract=BooleanContract(
         input_shape="char_stream",
@@ -133,7 +138,5 @@ LANGUAGE = Language(
         "packs its output bits into bytes the same way",
     ),
     wrap=wrap_chars,
-    # Every run pushes its input bit, and the spec's EOF bit is ``=``.
-    eof="an exhausted read pushes the spec's '=' bit",
     proof_workspace=(workspace, True, (2, 4)),
 )

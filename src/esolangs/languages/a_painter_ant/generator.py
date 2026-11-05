@@ -41,6 +41,7 @@ from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.a_painter_ant.proof_formulas import execution
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["a_painter_ant"]
 
@@ -152,8 +153,7 @@ def _westward_flipped(table: str, weights: list[int], *, invert: bool) -> str:
 
 LANGUAGE = Language(
     "A Painter Ant",
-    "a_painter_ant",
-    category="grid_based",
+    RuntimeSpec("a_painter_ant", category="grid_based"),
     boolean=a_painter_ant,
     # Not a tree: one corridor cell per row, walked by the inputs' weights.
     shape=Shape.LOOKUP,

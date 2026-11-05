@@ -23,7 +23,7 @@ _TEXT = [
     lang
     for lang in LANGUAGES.values()
     if lang.boolean
-    and lang.source_kind is SourceKind.TEXT
+    and lang.runtime.source_kind is SourceKind.TEXT
     and esolangs.describe(lang.name)["answer_mode"] == "output"
 ]
 # One of each route: the shared character balancer, a grid wrapper with no

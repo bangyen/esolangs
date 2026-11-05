@@ -36,6 +36,7 @@ from esolangs.generation.wrap import balance_score
 from esolangs.languages.container.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 #: The names Container gives its own meaning, which a generated container
 #: may not take.  The names draw from a mixed-case alphabet and so reach
@@ -648,18 +649,20 @@ def balance_container(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Container",
-    "container",
-    category="variable_based",
+    RuntimeSpec(
+        "container",
+        category="variable_based",
+        split=True,
+        # Wiki: the empty container sets IN "with EOF returning 0".
+        eof="an exhausted read sets IN to the spec's 0",
+    ),
     boolean=container,
-    split=True,
     contract=BooleanContract(
         note="Container prints the answer; module.run returns the EXIT code.",
         input_shape="char_stream",
     ),
     balance=balance_container,
     no_wrap="each line declares a container or one of its rules",
-    # Wiki: the empty container sets IN "with EOF returning 0".
-    eof="an exhausted read sets IN to the spec's 0",
     proof_execution=(execution, True, (3, 7)),
     proof_workspace=(workspace, False, (3, 7)),
 )

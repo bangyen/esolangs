@@ -55,6 +55,7 @@ from esolangs.languages.packlang.wrapping import (
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["packlang"]
 
@@ -379,11 +380,15 @@ def _dialect(literal_policy: str = "decimal") -> None:
 
 LANGUAGE = Language(
     "Packlang",
-    "packlang",
-    category="variable_based",
+    RuntimeSpec(
+        "packlang",
+        category="variable_based",
+        dialect=_dialect,
+        dialect_values={"literal_policy": LITERAL_POLICIES},
+        eof="an exhausted charGet is newline byte 10",
+        empty_program="empty program",
+    ),
     boolean=packlang,
-    dialect=_dialect,
-    dialect_values={"literal_policy": LITERAL_POLICIES},
     # Not a tree: one painted array cell per differing row, read by index.
     shape=Shape.LOOKUP,
     contract=BooleanContract(
@@ -396,8 +401,6 @@ LANGUAGE = Language(
     wrap_multiline=True,
     same_layout=same_ignoring_whitespace,
     balance=balance_packlang,
-    eof="an exhausted charGet is newline byte 10",
-    empty_program="empty program",
     proof_execution=(execution, False, (3, 7)),
     proof_workspace=(workspace, False, (3, 5)),
 )

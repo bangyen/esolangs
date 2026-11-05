@@ -495,7 +495,8 @@ def test_the_closed_string_sets_match_their_sources() -> None:
     from typing import get_args
 
     from esolangs.registry import _contracts, _describe
-    from esolangs.registry._language import Shape, SourceKind
+    from esolangs.registry._language import Shape
+    from esolangs.runtime._definition import SourceKind
     from esolangs.vm import IpShape
 
     def labels(alias: object) -> set[str]:

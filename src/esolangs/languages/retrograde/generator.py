@@ -20,6 +20,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 PAIR = ("\\", "*")
 
@@ -124,8 +125,7 @@ def retrograde(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Retrograde",
-    "retrograde",
-    category="tape_based",
+    RuntimeSpec("retrograde", category="tape_based"),
     boolean=retrograde,
     wrap=wrap_chars,
     contract=BooleanContract(

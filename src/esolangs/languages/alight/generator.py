@@ -38,6 +38,7 @@ from esolangs.languages.alight.interpreter._dialect import (
 from esolangs.languages.alight.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["alight"]
 
@@ -572,24 +573,26 @@ def _balance_projected(
 
 LANGUAGE = Language(
     "Alight",
-    "alight",
-    category="grid_based",
+    RuntimeSpec(
+        "alight",
+        category="grid_based",
+        dialect=_dialect,
+        dialect_values={
+            "expression_syntax": EXPRESSION_SYNTAXES,
+            "list_update": LIST_UPDATES,
+        },
+        split=True,
+        eof="it raises its own error before the read is reached",
+        underfed_raises=True,
+        empty_program="empty program",
+    ),
     boolean=alight,
-    dialect=_dialect,
-    dialect_values={
-        "expression_syntax": EXPRESSION_SYNTAXES,
-        "list_update": LIST_UPDATES,
-    },
     # Not a tree: a Horner row index into a string literal.
     shape=Shape.LOOKUP,
-    split=True,
     contract=BooleanContract(
         input_shape="char_stream",
     ),
     balance=balance_alight,
     no_wrap="a command is a word walked cell by cell; a row end cuts it",
-    eof="it raises its own error before the read is reached",
-    underfed_raises=True,
-    empty_program="empty program",
     proof_workspace=(workspace, True, (3, 5)),
 )

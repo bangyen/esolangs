@@ -48,6 +48,7 @@ from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import wrap_tokens
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 # A zero duplicates the returned bit, giving both selectors five characters.
 PAIR = ("(!^:)", "(~!^)")
@@ -199,8 +200,7 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
 
 LANGUAGE = Language(
     "Underload",
-    "underload",
-    category="stack_based",
+    RuntimeSpec("underload", category="stack_based"),
     boolean=underload,
     same_layout=_same_layout,
     contract=BooleanContract(),

@@ -42,6 +42,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, TemplateSpec
+from esolangs.runtime._definition import RuntimeSpec
 
 #: Each input's cell: ``~`` pushes a down heading, ``.`` nothing.
 PAIR = (".", "~")
@@ -311,10 +312,8 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "ArrowQueue",
-    "arrowqueue",
-    category="grid_based",
+    RuntimeSpec("arrowqueue", category="grid_based", split=True),
     boolean=arrowqueue,
-    split=True,
     contract=BooleanContract(
         answer_mode="termination",
         answer_values=("halts", "diverges"),

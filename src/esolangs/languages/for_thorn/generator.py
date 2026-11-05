@@ -28,6 +28,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 
 def _forth_const(value: int) -> str:
@@ -124,8 +125,7 @@ def _forth_ordered(truth_table: str, reads: str, *, share: bool = False) -> str:
 
 LANGUAGE = Language(
     "Forþ",
-    "for_thorn",
-    category="stack_based",
+    RuntimeSpec("for_thorn", category="stack_based"),
     boolean=for_thorn,
     wrap=wrap_chars,
 )

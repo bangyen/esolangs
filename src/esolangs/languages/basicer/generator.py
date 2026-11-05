@@ -20,6 +20,7 @@ Decisions:
 from esolangs.generation.helpers import subtree_ids
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
+from esolangs.runtime._definition import RuntimeSpec
 
 
 def basicer(truth_table: str) -> str:
@@ -52,8 +53,7 @@ def basicer(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "BASICER",
-    "basicer",
-    category="program_based",
+    RuntimeSpec("basicer", category="program_based"),
     boolean=basicer,
     contract=BooleanContract(alphabet=("1", "2")),
     example=Example(expected="0\n"),

@@ -7,7 +7,7 @@ module keeps declarations independent of example generation.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
@@ -15,6 +15,7 @@ from typing import Any
 from esolangs.generation.helpers import TEMPLATE_CHAR, Setters, check_setters
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._slug import canonical_id
+from esolangs.runtime._definition import RuntimeSpec, SourceKind
 from esolangs.runtime._program import Program
 
 # ``generator(truth_table)`` returns a program computing it; the few that lay
@@ -22,13 +23,6 @@ from esolangs.runtime._program import Program
 Generator = Callable[..., Program]
 ProofFormula = tuple[Callable[[int, str], float], bool, tuple[int, ...]]
 Payload = tuple[tuple[int, ...], tuple[int, ...], int, int]
-
-
-class SourceKind(StrEnum):
-    """The representation an interpreter consumes."""
-
-    TEXT = "text"
-    RASTER = "raster"
 
 
 class Shape(StrEnum):
@@ -89,19 +83,13 @@ class Language:
 
     # Identity.  ``id`` defaults to :func:`canonical_id` of the name.
     name: str
-    interpreter: str | None = None
+    runtime: RuntimeSpec = field(default_factory=RuntimeSpec)
     id: str = ""
     #: Other names :func:`~esolangs.registry.resolve` accepts.
     aliases: tuple[str, ...] = ()
-    # Source: ``split`` passes ``run()`` one string per line.
-    split: bool = False
-    #: Source that looks like a file path is still source.
-    path_like_source: bool = False
-    source_kind: SourceKind = SourceKind.TEXT
     #: The source is a 2D grid, judged by area (rows times the longest row):
     #: the default build races by area and Scaling states ``cells``.
     grid: bool = False
-    compressed_source: bool = False
     # The Boolean generator, its limits, and how its programs read inputs
     # and give the answer (default: a 0/1 line per input, the bit printed).
     boolean: Generator | None = None
@@ -112,10 +100,6 @@ class Language:
     #: Why its ``GeneratorCapError`` stays internal; limitations.md's sizes.
     internal_cap: str = ""
     documented_sizes: tuple[int, int, float] | None = None
-    #: Validates ``DialectSettings``: one defaulted keyword per setting.
-    dialect: Callable[..., Any] | None = None
-    #: Valid values per dialect setting, for the ``describe`` schema.
-    dialect_values: Mapping[str, tuple[int | str, ...]] | None = None
     contract: BooleanContract = field(default_factory=BooleanContract)
     #: ``wrap(program, width)``: a meaning-preserving reflow, if one exists.
     wrap: Callable[[str, int], str] | None = None
@@ -129,14 +113,6 @@ class Language:
     same_layout: Callable[[str, str, Callable[[int], Any]], bool] | None = None
     #: ``balance(table, default)``: the squarest layout a reflow cannot find.
     balance: Callable[..., Any] | None = None
-    #: Some instruction draws at random (``run(seed=...)`` fixes it).
-    random: bool = False
-    #: What an exhausted read does instead of raising ``EOFError``.
-    eof: str = ""
-    #: An underfed program raises its own error rather than read past EOF.
-    underfed_raises: bool = False
-    #: The error an empty program raises, when the spec rejects one.
-    empty_program: str = ""
     #: The committed example, where the default AND reader does not fit.
     example: Example = field(default_factory=Example)
     # Growth checks: linear rungs, a size ceiling, a layout switch's arities.
@@ -155,7 +131,6 @@ class Language:
     reader_checked: bool = False
     payload: Callable[[Any], Payload] | None = None
     fuzz_max_digits: int | None = None
-    category: str = "other"
 
     def __post_init__(self) -> None:
         """Fill the id from the name when none is given."""
@@ -167,9 +142,9 @@ class Language:
     @property
     def source_suffix(self) -> str:
         """Return the file suffix this language's source is saved under."""
-        if self.source_kind is SourceKind.RASTER:
+        if self.runtime.source_kind is SourceKind.RASTER:
             return ".png"
-        return ".txt.gz" if self.compressed_source else ".txt"
+        return ".txt.gz" if self.runtime.compressed_source else ".txt"
 
     @property
     def parameterized(self) -> bool:

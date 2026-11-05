@@ -20,6 +20,7 @@ from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.nq.interpreter import GUARD_BINDINGS, guard_dialect
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
+from esolangs.runtime._definition import RuntimeSpec
 
 
 def nq(truth_table: str, *, guard_binding: str = "opcode") -> str:
@@ -63,12 +64,14 @@ def nq(truth_table: str, *, guard_binding: str = "opcode") -> str:
 
 LANGUAGE = Language(
     "NQ",
-    "nq",
-    category="queue_based",
+    RuntimeSpec(
+        "nq",
+        category="queue_based",
+        dialect=guard_dialect,
+        dialect_values={"guard_binding": GUARD_BINDINGS},
+    ),
     boolean=nq,
     wrap=wrap_chars,
-    dialect=guard_dialect,
-    dialect_values={"guard_binding": GUARD_BINDINGS},
     contract=BooleanContract(
         input_shape="char_stream",
         answer_pattern="([ #])",

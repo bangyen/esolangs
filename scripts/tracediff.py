@@ -429,7 +429,7 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as exc:
         parser.error(str(exc))
     ignored = frozenset(filter(None, args.ignore_views.split(",")))
-    split = LANGUAGES[name].split
+    split = LANGUAGES[name].runtime.split
     new = importlib.import_module(INTERPRETERS[name])
     programs = corpus(name, args.random)
     path, prefix = _source_path(INTERPRETERS[name], args.old)

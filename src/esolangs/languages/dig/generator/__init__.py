@@ -61,6 +61,7 @@ from esolangs.languages.dig.generator._leaf import (
 from esolangs.languages.dig.generator._shared import _dig_indexed_shared
 from esolangs.languages.dig.proof_formulas import execution, workspace
 from esolangs.registry._language import Language
+from esolangs.runtime._definition import RuntimeSpec
 
 # Dig blocks for one level of the decision tree.  ``$`` takes its count
 # from the digit beside it and looks up, right, down, left for one, so the
@@ -588,12 +589,14 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Dig",
-    "dig",
-    category="grid_based",
+    RuntimeSpec(
+        "dig",
+        category="grid_based",
+        split=True,
+        empty_program="Dig program cannot be empty",
+    ),
     boolean=dig,
-    split=True,
     balance=_balance,
-    empty_program="Dig program cannot be empty",
     proof_execution=(execution, False, (7, 8, 9, 10, 11, 12)),
     proof_workspace=(workspace, True, (5,)),
     grid=True,

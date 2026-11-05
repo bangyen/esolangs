@@ -38,6 +38,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
+from esolangs.runtime._definition import RuntimeSpec
 
 #: Input variable names in harness order; a variable is bound by being
 #: named on an executed line, so these must be codepoint-ascending
@@ -601,8 +602,7 @@ def balance_apl(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Algebraic Programming Language",
-    "algebraic_programming_language",
-    category="variable_based",
+    RuntimeSpec("algebraic_programming_language", category="variable_based"),
     boolean=algebraic_programming_language,
     contract=BooleanContract(
         note="an executed line prints its result, so the answer ends in a newline",

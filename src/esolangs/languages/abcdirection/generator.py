@@ -67,6 +67,7 @@ from esolangs.generation.wrap import balance_score
 from esolangs.languages.abcdirection.proof_formulas import execution
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 RIGHT, DOWN, LEFT, UP = range(4)
 _STEPS = ((1, 0), (0, 1), (-1, 0), (0, -1))
@@ -497,14 +498,16 @@ def abcdirection(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "ABCDirection",
-    "abcdirection",
-    category="grid_based",
+    RuntimeSpec(
+        "abcdirection",
+        category="grid_based",
+        eof="EOF supplies zero bits",
+        empty_program="program must contain a line with DDDDDD",
+    ),
     boolean=abcdirection,
     shape=Shape.REDUCING,
     balance=_balance,
     contract=BooleanContract(input_shape="char_stream"),
-    eof="EOF supplies zero bits",
-    empty_program="program must contain a line with DDDDDD",
     no_wrap="a newline adds a grid row and moves every vertical path",
     proof_execution=(execution, True, (3, 7)),
     grid=True,

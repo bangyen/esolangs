@@ -65,6 +65,7 @@ from esolangs.languages.slow_acv_mammalian.wrapping import (
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 __all__ = ["slow_acv_mammalian"]
 
@@ -848,15 +849,17 @@ def _constant_read(bit: str, inputs: int) -> str:
 
 LANGUAGE = Language(
     "SLOW ACV MAMMALIAN",
-    "slow_acv_mammalian",
-    category="tape_based",
+    RuntimeSpec(
+        "slow_acv_mammalian",
+        category="tape_based",
+        dialect=MammalianModuli,
+        dialect_values={
+            "cell_modulus": MODULI,
+            "io_modulus": MODULI,
+            "leapfrog_resume": LEAPFROG_RESUMES,
+        },
+    ),
     boolean=slow_acv_mammalian,
-    dialect=MammalianModuli,
-    dialect_values={
-        "cell_modulus": MODULI,
-        "io_modulus": MODULI,
-        "leapfrog_resume": LEAPFROG_RESUMES,
-    },
     # Not a tree: a branch-free chain into a flat leaf table.
     shape=Shape.LOOKUP,
     contract=BooleanContract(

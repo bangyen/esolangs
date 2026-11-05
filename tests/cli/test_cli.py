@@ -16,7 +16,7 @@ from tests.support.pick import first
 from tests.support.reference import REFERENCE
 
 _RASTER = first(source_kind="raster", boolean_generator=True)
-_GZIP = next(n for n, lang in LANGUAGES.items() if lang.compressed_source)
+_GZIP = next(n for n, lang in LANGUAGES.items() if lang.runtime.compressed_source)
 
 RASTER = first(source_kind="raster", boolean_generator=True)
 TEMPLATED = first(parameterized=True)

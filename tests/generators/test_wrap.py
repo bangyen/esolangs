@@ -92,7 +92,7 @@ WRAPPED = sorted(
     name
     for name, lang in LANGUAGES.items()
     if lang.boolean
-    and lang.interpreter
+    and lang.runtime.interpreter
     and lang.wrap is not None
     and lang.id in EXAMPLE_BY_ID
 )

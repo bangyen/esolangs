@@ -31,6 +31,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import TokenWrapper, balance_program, balance_score
 from esolangs.registry._language import Language, Shape
+from esolangs.runtime._definition import RuntimeSpec
 
 #: A string, ``'`` and its character, or a digit run is one unit: a break
 #: inside pushes a newline or splits a number.
@@ -109,11 +110,13 @@ def _pack(table: str) -> str:
 
 LANGUAGE = Language(
     "Freestajlo",
-    "freestajlo",
-    category="stack_based",
+    RuntimeSpec(
+        "freestajlo",
+        category="stack_based",
+        eof="an exhausted ',' is the spec's -1, an exhausted ';' its 0",
+    ),
     boolean=freestajlo,
     shape=Shape.LOOKUP,
     wrap=TokenWrapper(_UNIT),
     balance=_balance,
-    eof="an exhausted ',' is the spec's -1, an exhausted ';' its 0",
 )
