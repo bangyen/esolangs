@@ -16,6 +16,7 @@ from __future__ import annotations
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import Completion, CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import match_brackets
 from esolangs.runtime.io import IO
 
@@ -46,6 +47,9 @@ def _advance(
     elif (command == "[" and tape[ptr] == 0) or (command == "]" and tape[ptr] != 0):
         ind = brackets[ind]
     return (ind + (ind < len(code)), ptr, tape, dumped), None
+
+
+_WORKSPACE_MODEL = WorkspaceModel("smallfuck-v1", ("instruction", "pointer", "tape"))
 
 
 class _Machine:
@@ -79,6 +83,12 @@ class _Machine:
     @property
     def memory(self) -> list[int]:
         return list(self.state[2])
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.state[0], pointer=self.state[1], tape=self.state[2]
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         ind, ptr, tape, _dumped = self.state

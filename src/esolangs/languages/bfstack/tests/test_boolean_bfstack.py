@@ -181,13 +181,13 @@ def _check_identities() -> None:
                     bits = f"{row:0{n}b}"
                     io = ScriptedIO(bits + "Q")
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         if program[machine.ind] == ".":
                             assert io.reads == n
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                         assert steps < 100
                     assert io.getvalue() == bits[selected]
@@ -207,13 +207,13 @@ def _check_identities() -> None:
         for row in (0, 1, 255, 256, 511):
             io = ScriptedIO(f"{row:09b}" + "Q")
             machine = _Machine(program, io)
-            written = WrittenState(machine.snapshot())
+            written = WrittenState(machine.workspace_snapshot())
             steps = 0
             while not machine.halted:
                 if program[machine.ind] == ".":
                     assert io.reads == 9
                 machine.step()
-                written.sample(machine.snapshot())
+                written.sample(machine.workspace_snapshot())
                 steps += 1
                 assert steps <= execution(9, program)
             assert io.getvalue() == table[row]
@@ -239,11 +239,11 @@ def _check_constants() -> None:
                     )
                     io = ReadFirstIO(stdin + "7", expected=n)
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                         assert steps < 1000
                     assert io.getvalue() == bit

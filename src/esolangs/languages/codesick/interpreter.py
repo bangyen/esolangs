@@ -43,6 +43,7 @@ from collections.abc import Mapping
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 # Keep an escaped quote from backtracking into the closing delimiter.
@@ -137,6 +138,11 @@ def _advance(
     return tuple(written.items()), out, label
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "codesick-v1", ("instruction", "variables", "input_cursor")
+)
+
+
 class _Machine:
     """The shell around :func:`_advance`: memory, labels, input and output."""
 
@@ -166,6 +172,14 @@ class _Machine:
     def ip(self) -> int:
         """The current instruction's source offset; the code's length once halted."""
         return self.end if self.pc is None else self.offsets[self.pc]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.pc,
+            variables=frozenset(self.memory.items()),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

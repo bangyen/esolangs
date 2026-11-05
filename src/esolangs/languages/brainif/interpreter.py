@@ -28,6 +28,7 @@ from __future__ import annotations
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.persistent import (
@@ -152,6 +153,11 @@ def _advance(state: _State, line: _Line, byte: int | None = None) -> _State:
     return (ind + 1, ptr, cells)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "brainif-v1", ("cells", "instruction", "pointer", "input_cursor")
+)
+
+
 class _Machine:
     """A BrainIf run: one immutable ``_State``, rebound per step.
 
@@ -216,6 +222,15 @@ class _Machine:
     def memory(self) -> list[int]:
         """The addressable cells."""
         return list(flatten(self.state[2]))
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            cells=self.cells,
+            instruction=self.ind,
+            pointer=self.ptr,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

@@ -86,11 +86,11 @@ def _check_constants() -> None:
                     )
                     io = ReadFirstIO(stdin + "7", expected=n)
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                         assert steps <= n + 1
                     assert io.getvalue() == bit
@@ -139,11 +139,11 @@ def _check_io_targets() -> None:
     row = ((1 << n) // n - 1) * n + n - 1
     io = ScriptedIO(f"{row:0{n}b}")
     machine = _Machine(program, io)
-    written = WrittenState(machine.snapshot())
+    written = WrittenState(machine.workspace_snapshot())
     steps = 0
     while not machine.halted:
         machine.step()
-        written.sample(machine.snapshot())
+        written.sample(machine.workspace_snapshot())
         steps += 1
         assert steps <= 8 * (1 << n) + (7 * n + 5) * ((1 << n) // n - 1) + 23 * n - 8
     assert io.getvalue() == table[row]

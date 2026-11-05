@@ -226,12 +226,12 @@ def _check_packed_leaves() -> None:
         for row in range(8):
             io = ScriptedIO(f"{row:03b}7")
             machine = _Machine(program.splitlines(), io)
-            written = WrittenState(machine.snapshot())
+            written = WrittenState(machine.workspace_snapshot())
             steps = 0
             while not machine.halted:
                 assert io.getvalue() == ""
                 machine.step()
-                written.sample(machine.snapshot())
+                written.sample(machine.workspace_snapshot())
                 steps += 1
             assert io.getvalue() == table[row]
             assert io.reads == 3
@@ -262,12 +262,12 @@ def _check_resource_layouts() -> None:
             row = (1 << n) - 4 if n >= 2 else 0
             io = ScriptedIO(f"{row:0{n}b}!")
             machine = _Machine(program.splitlines(), io)
-            written = WrittenState(machine.snapshot())
+            written = WrittenState(machine.workspace_snapshot())
             steps = 0
             bound = execution(n, program)
             while not machine.halted:
                 machine.step()
-                written.sample(machine.snapshot())
+                written.sample(machine.workspace_snapshot())
                 steps += 1
                 assert steps <= bound
             assert io.getvalue() == table[row]

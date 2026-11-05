@@ -64,9 +64,18 @@ class SnapshotContract:
     def test_snapshot_changes_after_a_step(self) -> None:
         """Stepping the machine moves it to a state that compares different."""
         machine = type(self).machine(self.stepping_program)
-        before = machine.snapshot()
+        cycle = machine.snapshot
+        before = cycle()
+        capture = getattr(machine, "workspace_snapshot", None)
+        if capture is not None:
+            saved = capture()
+            retained = {saved}
+            machine.snapshot = lambda: ()
         machine.step()
-        assert machine.snapshot() != before
+        assert cycle() != before
+        if capture is not None:
+            assert saved in retained
+            assert capture().model == saved.model
 
 
 class InputCursorContract:
@@ -101,6 +110,10 @@ class InputCursorContract:
             machine.step()
         assert machine.snapshot() != before
         assert machine.io.position() == self.position_after_read
+        if hasattr(machine, "workspace_snapshot"):
+            snapshot = machine.workspace_snapshot()
+            cursor = snapshot.model.components.index("input_cursor")
+            assert snapshot.parts[cursor] == machine.io.progress()
 
 
 class CycleContract:

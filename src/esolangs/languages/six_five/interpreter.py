@@ -32,6 +32,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 #: The largest value ``A`` can print.  Outputting a cell outside the valid
@@ -149,6 +150,11 @@ def _advance(
     return (ind + 1, cell, tape)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "six-five-v1", ("accumulator", "tape", "instruction", "input_cursor")
+)
+
+
 class _Machine:
     """Per-run 6-5 state: the tokens, cell, tape, and cursor."""
 
@@ -214,6 +220,15 @@ class _Machine:
     def memory(self) -> list[int]:
         """The addressable cells."""
         return list(self.state[2])
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            accumulator=self.cell,
+            tape=self.tape,
+            instruction=self.ind,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

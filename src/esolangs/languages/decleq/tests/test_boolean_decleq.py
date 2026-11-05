@@ -149,11 +149,11 @@ def test_constants_reuse_scratch_and_print_after_every_read() -> None:
                     stdin = esolangs.encode_inputs("Decleq", row_bits(row, n))
                     io = ReadFirstIO(stdin + "Q", expected=n)
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                         assert steps <= n + 2
                     assert steps == n + 2
@@ -207,7 +207,7 @@ def _check_gadgets_and_owner_families() -> None:
         for row in (0, (1 << n) // 3, (1 << n) - 1):
             io = ScriptedIO(f"{row:0{n}b}Q")
             machine = _Machine(program, io)
-            written = WrittenState(machine.snapshot())
+            written = WrittenState(machine.workspace_snapshot())
             while not machine.halted:
                 if machine.pc in (3, 9):
                     memory = machine.state[1]
@@ -215,7 +215,7 @@ def _check_gadgets_and_owner_families() -> None:
                     assert memory[15:17] == (48, 49)
                     assert io.reads == n
                 machine.step()
-                written.sample(machine.snapshot())
+                written.sample(machine.workspace_snapshot())
             assert written.bits == workspace(n, program)
             assert io.getvalue() == table[row]
             assert io.past_end == 0

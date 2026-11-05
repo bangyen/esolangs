@@ -15,6 +15,7 @@ from esolangs.languages.smallfuck.generator import (
 )
 from esolangs.languages.smallfuck.interpreter import run
 from esolangs.registry import LANGUAGES
+from esolangs.vm import _capture_workspace
 from tests.support.generator_support import measure_run, multiple_tables, run_filled
 from tests.support.witness_tables import dense, witnesses
 
@@ -194,7 +195,7 @@ def test_multiple_residuals_preserve_bands_and_native_bounds(
         commands, written = measure_run(machine, limit=limit)
         assert machine.halted
         machine.step()
-        written.sample(machine.snapshot())
+        written.sample(_capture_workspace(machine))
         commands += 1
         assert machine.output == table[row]
         assert commands <= limit
@@ -281,7 +282,7 @@ def test_all_two_input_complement_pairs_and_ignored_prefixes(swap_suffix, half) 
         commands, written = measure_run(machine, limit=limit)
         assert machine.halted
         machine.step()
-        written.sample(machine.snapshot())
+        written.sample(_capture_workspace(machine))
         commands += 1
         assert machine.output == table[row]
         assert commands <= limit

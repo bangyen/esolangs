@@ -24,6 +24,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -106,6 +107,11 @@ def _advance(
     return _State(ind + 1, stk, lst)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "bfstack-v1", ("data_stack", "loop_stack", "instruction", "input_cursor")
+)
+
+
 class _Machine:
     """A BFStack run: one immutable ``_State``, rebound per step."""
 
@@ -155,6 +161,15 @@ class _Machine:
         # It is a fresh one every time now, so a caller can no longer write
         # into a running machine -- the state's own tuple is unreachable.
         return list(self.state.stk)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            data_stack=self.state.stk,
+            loop_stack=self.state.lst,
+            instruction=self.state.ind,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

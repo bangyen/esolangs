@@ -33,6 +33,7 @@ from functools import lru_cache
 from esolangs.exceptions import HaltError
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import HALTED_REPORT, CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import unmatched
 from esolangs.runtime.io import IO
 
@@ -193,6 +194,11 @@ def _consumed(state: _State, tok: str) -> _State:
     return (queue[min(_POPS.get(tok, 0), len(queue)) :], ind)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "taglate-v1", ("queue", "instruction", "input_cursor")
+)
+
+
 class _Machine:
     """Per-run Taglate state: the queue, the token list, and the cursor.
 
@@ -223,6 +229,12 @@ class _Machine:
     def memory(self) -> list[int]:
         """The addressable cells."""
         return list(self.queue)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            queue=self.queue, instruction=self.ind, input_cursor=self.io.progress()
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

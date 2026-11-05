@@ -34,6 +34,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime._validate import check_address
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
@@ -104,6 +105,11 @@ def _advance(state: _State, byte: int | None = None) -> _State:
     return (c if value <= 0 else pc + 3, memory)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "decleq-v1", ("memory", "instruction", "input_cursor")
+)
+
+
 class _Machine:
     """A Decleq run: one immutable ``_State``, rebound per step."""
 
@@ -141,6 +147,14 @@ class _Machine:
         """The addressable cells."""
         # A list; the VM copies it.
         return list(self.state[1])
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            memory=self.state[1],
+            instruction=self.state[0],
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

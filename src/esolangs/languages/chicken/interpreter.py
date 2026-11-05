@@ -66,6 +66,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime._validate import check_address
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
@@ -206,6 +207,11 @@ def _parse(code: str) -> list[int]:
     return counts
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "chicken-v1", ("instruction", "cells", "input_cursor")
+)
+
+
 class _Machine:
     """The array, the instruction pointer, and the printed answer."""
 
@@ -232,6 +238,15 @@ class _Machine:
     def stack(self) -> list[_Value]:
         """The working stack above the code, top last."""
         return list(self.cells)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of cycle grouping."""
+        # The array reference stores no bits, but differs from undefined (None).
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.pointer,
+            cells=tuple(() if value is SELF else value for value in self.cells),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         return (self.pointer, tuple(self.cells), self.io.progress())

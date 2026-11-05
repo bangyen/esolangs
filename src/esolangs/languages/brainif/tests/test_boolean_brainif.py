@@ -300,11 +300,11 @@ def _check_or_zero_entries() -> None:
         for row in (0, 1, (1 << n) // 3, (1 << n) - 1):
             io = ReadFirstIO(f"{row:0{n}b}Q", expected=n)
             machine = _Machine(program.split("\n"), io)
-            written = WrittenState(machine.snapshot())
+            written = WrittenState(machine.workspace_snapshot())
             steps = 0
             while not machine.halted:
                 machine.step()
-                written.sample(machine.snapshot())
+                written.sample(machine.workspace_snapshot())
                 steps += 1
                 assert steps <= 4 * n + 50
             assert io.getvalue() == table[row]
