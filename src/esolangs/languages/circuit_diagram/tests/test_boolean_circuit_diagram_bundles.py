@@ -213,7 +213,7 @@ def _check_outer_gate_budget(monkeypatch) -> None:
     table = dense(11)
     model = bundled_class_bank_candidate(table)
     assert model is not None
-    _execute(table, model.render(), (0, len(table) - 1))
+    # test_bundled_roots_execute_original_ports runs these rows at n=11.
     # Include every outer carry OR when testing the T+n gate ceiling.
     extra = len(table) + 11 - count(model) + 1
     assert extra > 0
