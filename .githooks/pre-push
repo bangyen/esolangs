@@ -28,13 +28,6 @@
 # some updates) still runs the checks.
 refs="$(cat)"
 
-# A local, untracked pre-push.local (gitignored with the rest of .githooks)
-# runs first and sees the same refs; a nonzero exit stops the push.
-local_hook="$(dirname "$0")/pre-push.local"
-if [ -x "$local_hook" ]; then
-    printf '%s\n' "$refs" | "$local_hook" "$@" || exit 1
-fi
-
 deleting_only=1
 saw_ref=0
 

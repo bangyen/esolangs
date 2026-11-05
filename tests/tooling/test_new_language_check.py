@@ -5,7 +5,6 @@ import importlib
 import inspect
 import io
 import subprocess
-import tomllib
 from pathlib import Path
 
 import pytest
@@ -109,73 +108,23 @@ def test_start_on_a_terminal_asks_for_the_category(
     assert made == ["tape_based"]
 
 
-_FILL = (
-    "FILL: at most <formula in n, T, L> commands"
-    "  # more points (--max-n) fit more terms"
-)
-
-
-@pytest.mark.parametrize(
-    ("values", "cell"),
-    [
-        ([15, 20, 25], "poly n: worst 5n commands"),
-        ([4, 5, 6], "poly n: worst n + 1 commands"),
-        ([7, 7, 7], "poly n: worst 7 commands"),
-        ([1, 4, 7], "poly n: worst 3n - 8 commands"),
-        # The walkthrough's hand-derived workspace: bl(n) is 2, 3, 3, 3 over
-        # 3..6, a free value at n = 3, so it takes n = 8 to confirm.
-        ([4, 5, 5, 5], _FILL),
-        ([4, 5, 5, 5, 5, 6], "poly n: worst bl(n) + 2 commands"),
-        (
-            [4 * 2**n + 79 * n + 22 for n in range(3, 7)],
-            "linear: worst 4T + 79n + 22 commands",
-        ),
-        ([n * n - n for n in range(3, 7)], "poly n: worst n^2 - n commands"),
-        # Two unknowns fit any two points; three need a fourth to confirm.
-        ([10, 15], _FILL),
-        ([10, 15, 21], _FILL),
-        ([3, 1, 4, 1], _FILL),
-    ],
-)
-def test_bounds_fits_the_simplest_exact_formula(values: list[int], cell: str) -> None:
-    # n = 1 and 2 sit off the fit: the formula tests start at n = 3.
-    rows = [(1, 999), (2, 0), *zip(range(3, 9), values, strict=False)]
-    assert new_language._fit(rows, "commands") == cell
-
-
-def _measured(monkeypatch: pytest.MonkeyPatch, *, ledger: bool) -> None:
-    rows, other = new_language._proof_status_load()
-    if not ledger:
-        rows = [row for row in rows if row.generator != _LONGEST]
-    monkeypatch.setattr(new_language, "_proof_status_load", lambda: (rows, other))
+def test_bounds_reports_measurements_and_witnesses(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     monkeypatch.setattr(
         new_language,
         "bounds",
         lambda _, ns: [(n, 5 * n + 28, 3**n, 2, "01", "10") for n in ns],
     )
+    monkeypatch.setattr(new_language, "size_anchors", lambda _: ["anchor control"])
     assert new_language.main(["bounds", _LONGEST]) == 0
-
-
-def test_bounds_drafts_a_section_that_parses(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    _measured(monkeypatch, ledger=False)
     out = capsys.readouterr().out
-    section = tomllib.loads(out[out.index("[proof_status]") :])["proof_status"]
-    assert section["execution"] == "poly n: worst 5n + 28 commands"
-    # 3**n fits no combination of the terms: left for the author.
-    assert section["workspace"].startswith("FILL")
-    assert "tree" in section["labels"][0]
-
-
-def test_bounds_on_a_ledger_row_prints_only_what_it_fits(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    _measured(monkeypatch, ledger=True)
-    out = capsys.readouterr().out
+    assert "witness tables (steps, bits)" in out
+    for n in range(1, 7):
+        assert f"{n:<2} {5 * n + 28:>9}  {3**n:>9}  {2:>9}  01 10" in out
+    assert "anchor control" in out
     assert "[proof_status]" not in out
-    assert "FILL" not in out
-    assert 'execution = "poly n: worst 5n + 28 commands"' in out
+    assert "execution =" not in out
 
 
 def test_bounds_on_a_stub_says_to_implement_it(

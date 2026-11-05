@@ -127,19 +127,12 @@ check-language name:
 finish-language name:
     {{PYTHON}} scripts/new_language.py finish "$@"
 
-# worst steps and bits per arity, and a [proof_status] section to paste
+# measured worst steps and bits per arity, with witnesses
 [group('languages')]
 [no-exit-message]
 [positional-arguments]
 bounds name *args:
     {{PYTHON}} scripts/new_language.py bounds "$@"
-
-# delete a language everywhere check looks, then list prose mentions left
-[group('languages')]
-[no-exit-message]
-[positional-arguments]
-remove-language name:
-    {{PYTHON}} scripts/new_language.py remove "$@"
 
 # regenerate the generated README and docs sections
 [group('languages')]

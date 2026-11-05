@@ -274,7 +274,7 @@ steps; bound each piece's upside before choosing it.
    Bound potentially looping programs with `max_steps=10_000` or `timeout=5`.
 3. `just benchmark "Name" TABLE` records source units and commands, not wall
    time (`--json` for details). `just bounds "Name"` prints worst steps and
-   written bits, witnesses and a pasteable `[proof_status]`. “Worst” must be
+   written bits and witnesses. “Worst” must be
    exact; otherwise say “at most”.
 4. `just finish-language "Name"` regenerates examples, docs and size baseline,
    runs the whole-tree `--full` gate, then CI-only checks. Quick tests alone
@@ -290,14 +290,12 @@ must not key facts by language name; use `Language` metadata or local tests.
 prose comparisons that state another language's facts.
 
 Comment cohorts may declare `# language-owners: ["Name", "Other"]`; removing
-any owner removes the contiguous block. Keep shared invariants outside it.
+an owner requires deleting the contiguous block. Keep shared invariants outside it.
 Language-specific Markdown uses canonical-name bullets and indented continuations.
 
-`just remove-language "Name"` deletes integration and owned tests (including
-uncommitted files), prunes unused helpers and per-language shared-generator /
-`wrap.py` code, removes fixtures, timings and prose, and regenerates. It lists
-remaining name/alias, quoted-id and dotted-module mentions with their needed
-edits. Brainfuck is the shared reference language and cannot be removed.
+Remove a language manually: delete its package, owned tests and fixtures,
+then remove references and unused helpers. Regenerate examples and docs and
+run `just test-full`. Brainfuck is the shared reference language and must stay.
 
 ### The Boolean I/O contract
 

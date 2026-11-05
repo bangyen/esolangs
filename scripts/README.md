@@ -9,7 +9,7 @@ checks, which `just test` runs for you.
 | --- | --- | --- |
 | `doctor` | `doctor.py` | name what the setup lacks, with the fix; runs without `just` |
 | `test`, `test-quick`, `test-mid`, `test-full`, ... | `verify/gate.py` | run the local gate; `--list` names its steps |
-| `new-language`, `check-language`, `bounds`, `finish-language`, `remove-language` | `new_language.py` | add or remove a language; `bounds` measures worst cases and drafts the ledger row |
+| `new-language`, `check-language`, `bounds`, `finish-language` | `new_language.py` | add and check a language; `bounds` measures worst cases and witnesses |
 | `docs`, `examples` | `docs/generate.py` | regenerate generated doc sections and committed examples |
 | `benchmark` | `benchmark.py` | measure one generated program: size, steps, answers |
 | `sizes` | `checks/check_generator_sizes.py` | hold every generator to its committed size baseline |
@@ -26,7 +26,7 @@ CI-only: `ci/release.py` (normalize and smoke a release, print its notes),
 
 Not run directly:
 
-- `verify/`, `docs/`, `removal/` -- the packages behind the commands above.
+- `verify/`, `docs/` -- the packages behind the commands above.
 - `_benchmark_worker.py` -- the subprocess `benchmark.py` supervises.
 - `baselines/` -- triaged results `deadcode` and `mutants` compare against:
   `deadcode --update` rewrites its baseline; add swept packages to

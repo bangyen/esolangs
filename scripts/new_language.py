@@ -3,7 +3,6 @@
     python scripts/new_language.py start "Name" --category tape_based
     python scripts/new_language.py check "Name"     # what is still missing
     python scripts/new_language.py finish "Name"    # regenerate, then verify
-    python scripts/new_language.py remove "Name"    # the inverse of all three
     python scripts/new_language.py bounds "Name"    # worst steps/bits per n
 
 ``start`` writes the interpreter, generator and test stubs.  ``check`` lists
@@ -11,11 +10,9 @@ every integration point the language still lacks, with the file and entry
 to add; ``tests/tooling/test_new_language.py`` runs it over the registry,
 so the list cannot drift from what the suite enforces.  Once the list is
 empty it runs the seconds-long tests ``finish`` would otherwise fail late.
-``bounds`` measures what the proof ledger's cells state and drafts them.
+``bounds`` measures resource maxima and their witnesses.
 ``finish`` regenerates every committed artifact and runs the full
 ``verify/gate.py`` gate.
-``remove`` deletes what ``check`` asks for, regenerates, and lists the
-mentions left in prose for a hand edit.
 """
 
 from __future__ import annotations
@@ -27,9 +24,7 @@ import os
 import shlex
 import subprocess
 import sys
-from collections.abc import Callable
 from dataclasses import dataclass
-from fractions import Fraction
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -37,8 +32,7 @@ if TYPE_CHECKING:
     from esolangs.registry import Language
 
 ROOT = Path(__file__).parents[1]
-# ``remove``'s half lives beside this file, imported as a sibling whether
-# this runs as a script or is imported as ``scripts.new_language``.
+# Support direct execution and imports of the development tools.
 sys.path.insert(0, str(ROOT))
 if str(Path(__file__).parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).parent))
@@ -46,7 +40,6 @@ from docs.catalogue import load as _catalogue_load  # noqa: E402
 from docs.curation import FAME_BACKLINKS  # noqa: E402
 from docs.curation import fragment_row as _curation_fragment  # noqa: E402
 from docs.proof_status import load as _proof_status_load  # noqa: E402
-from removal import language as removal  # noqa: E402
 
 CATEGORIES = (
     "grid_based",
@@ -603,98 +596,6 @@ def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str
     return rows
 
 
-#: Terms a fitted cell may combine, as the ledger's notation spells them.
-_TERMS: dict[str, Callable[[int], int]] = {
-    "T": lambda n: 2**n,
-    "n^2": lambda n: n * n,
-    "n": lambda n: n,
-    "bl(n)": int.bit_length,
-}
-#: Fewest terms first, so the simplest exact formula wins.
-_BASES = (
-    ("n",),
-    ("bl(n)",),
-    ("T",),
-    ("T", "n"),
-    ("n", "bl(n)"),
-    ("T", "bl(n)"),
-    ("n^2", "n"),
-    ("T", "n", "bl(n)"),
-)
-
-
-def _solve(rows: list[list[Fraction]], *, spare: bool = True) -> list[Fraction] | None:
-    """Return the unique exact solution of the augmented ``rows``, or None.
-
-    With ``spare``, None too when no row is left over to confirm it: k + 1
-    unknowns fit any k + 1 points, so an exact fit is evidence only past that.
-    """
-    unknowns = len(rows[0]) - 1
-    rows = [row[:] for row in rows]
-    for col in range(unknowns):
-        pivot = next((r for r in range(col, len(rows)) if rows[r][col]), None)
-        if pivot is None:
-            return None
-        rows[col], rows[pivot] = rows[pivot], rows[col]
-        rows[col] = [x / rows[col][col] for x in rows[col]]
-        for r, row in enumerate(rows):
-            if r != col and row[col]:
-                rows[r] = [
-                    x - row[col] * y for x, y in zip(row, rows[col], strict=True)
-                ]
-    if (spare and len(rows) == unknowns) or any(row[-1] for row in rows[unknowns:]):
-        return None
-    return [row[-1] for row in rows[:unknowns]]
-
-
-def _spelled(terms: tuple[str, ...], coefficients: list[int]) -> str:
-    """Return ``3T + n - 2`` for ``(T, n)`` and ``[3, 1, -2]``."""
-    parts: list[str] = []
-    for term, c in zip((*terms, ""), coefficients, strict=True):
-        if not c:
-            continue
-        magnitude = f"{'' if abs(c) == 1 and term else abs(c)}{term}"
-        sign = "-" if c < 0 else "+"
-        parts.append(f"{sign} {magnitude}" if parts else f"{'-' * (c < 0)}{magnitude}")
-    return " ".join(parts) or "0"
-
-
-def _fit(values: list[tuple[int, int]], unit: str) -> str:
-    """Return the simplest exact ``worst`` cell through ``values``, else FILL.
-
-    Integer combinations of ``_TERMS`` plus a constant, from n = 3 (where
-    the formula tests start), each confirmed by a point it was not solved
-    from and re-read through the tests' own parser.
-    """
-    parse = importlib.import_module("tests.proofs._formula").parse
-    values = [(n, v) for n, v in values if n >= 3]
-    for terms in _BASES:
-        rows = [
-            [Fraction(_TERMS[t](n)) for t in terms] + [Fraction(1), Fraction(v)]
-            for n, v in values
-        ]
-        solution = _solve(rows)
-        # Determined without n = 3 too: over 3..6 bl(n) is 2, 3, 3, 3, a
-        # free value at n = 3, and its 5 such fits on the ledger all missed
-        # n = 7; the 47 that survive this held.
-        if (
-            solution is None
-            or _solve(rows[1:], spare=False) is None
-            or any(c.denominator != 1 for c in solution)
-        ):
-            continue
-        coefficients = [int(c) for c in solution]
-        clause = f"worst {_spelled(terms, coefficients)} {unit}"
-        formula = parse(clause)[0]
-        if all(formula(n, "") == v for n, v in values):
-            grows = "T" in terms and coefficients[terms.index("T")]
-            return f"{'linear' if grows else 'poly n'}: {clause}"
-    return (
-        f"FILL: at most <formula in n, T, L> {unit}"
-        "  # more points (--max-n) fit more terms"
-    )
-
-
 def size_anchors(name: str) -> list[str]:
     """Return one line per ``Size:`` anchor in the generator's docstring.
 
@@ -726,7 +627,7 @@ def size_anchors(name: str) -> list[str]:
 
 
 def _print_bounds(name: str, max_n: int) -> None:
-    """Print the worst cases per arity and the ledger cells they support."""
+    """Print measured resource maxima, witnesses and size anchors."""
     # Steps feed the ledger's Execution cell, bits its Workspace cell
     # (peak written state); chars/row stays flat for an O(T) generator.
     rows = bounds(name, range(1, max_n + 1))
@@ -741,30 +642,6 @@ def _print_bounds(name: str, max_n: int) -> None:
     )
     if anchors := size_anchors(name):
         print("docstring Size: anchors", *anchors, sep="\n")
-    cells = [
-        f'execution = "{_fit([(r[0], r[1]) for r in rows], "commands")}"'
-        "  # or steps, rewrites: the interpreter's unit",
-        f'workspace = "{_fit([(r[0], r[2]) for r in rows], "bits")}"',
-    ]
-    rows_, _ = _proof_status_load()
-    if any(row.generator == name for row in rows_):
-        print("\n".join(cell for cell in cells if "FILL" not in cell))
-        return
-    ledger = importlib.import_module("tests.proofs._ledger")
-    labels = sorted(ledger.SCHEME_LABELS.values())
-    scaling = sorted(ledger.SCALING_CLASSES)
-    print(
-        f"\n# append to src/esolangs/languages/{_slug(name)}/language.toml and "
-        "replace each FILL;\n# docs/proofs/index.md defines the labels under "
-        '"Proof schemes" and the ledger rows show the style',
-        "[proof_status]",
-        f'labels = ["FILL: {", ".join(labels)}"]  # plus "cap" or "exception"',
-        'qualification = "FILL: how the program computes the table, one sentence"',
-        f'scaling = "FILL: {" | ".join(scaling)}: in at most '
-        f'{ledger.LINEAR_CLAUSE_WORDS} words"',
-        *cells,
-        sep="\n",
-    )
 
 
 def finish(name: str) -> int:
@@ -874,7 +751,7 @@ def _regenerate() -> bool:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Dispatch ``start``, ``check``, ``finish`` or ``remove``."""
+    """Dispatch ``start``, ``check``, ``finish`` or ``bounds``."""
     argv = list(sys.argv[1:] if argv is None else argv)
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -888,18 +765,17 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="no generator: only for a famous language whose spec precludes one",
     )
-    for command in ("check", "finish", "remove"):
+    for command in ("check", "finish"):
         sub.add_parser(command).add_argument("name")
     measure = sub.add_parser("bounds", help="worst steps and bits per arity")
     measure.add_argument("name")
     measure.add_argument("--max-n", type=int, default=6)
     args = parser.parse_args(argv)
-    if args.command in {"check", "finish", "bounds", "remove"}:
+    if args.command in {"check", "finish", "bounds"}:
         # A new LANGUAGE is registered by the export this writes, but
         # docs.generate imports the package first, so its registry predates
         # the export: rerun on the new one.  The first check after `start`
-        # otherwise asked for the LANGUAGE the stub already had, and `remove`
-        # of a stub never checked raised KeyError.
+        # otherwise asked for the LANGUAGE the stub already had.
         sys.path.insert(0, str(ROOT / "scripts"))
         from docs.generate import update_exports
 
@@ -908,8 +784,6 @@ def main(argv: list[str] | None = None) -> int:
         try:
             args.name = _registered_name(args.name)
         except ValueError as exc:
-            if args.command == "remove":
-                parser.error(str(exc))
             parser.error(f"{exc}; a new one starts with: just new-language")
     if args.command == "bounds":
         try:
@@ -940,16 +814,6 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "finish":
         return finish(args.name)
-    if args.command == "remove":
-        try:
-            leftover = removal.remove(args.name)
-        except ValueError as exc:
-            parser.error(str(exc))
-        except KeyError:
-            parser.error(f"{args.name} is not registered; nothing to remove")
-        print(f"removed {args.name}; {len(leftover)} mention(s) to review")
-        print("\n".join(leftover))
-        return 0
     args.category = args.category or _ask_category()
     if args.category is None:
         parser.error(f"--category is one of:\n{_category_menu()}")

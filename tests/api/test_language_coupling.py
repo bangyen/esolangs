@@ -3,7 +3,7 @@
 A language should be removable by deleting its files.  Each mention of it
 elsewhere -- a string equal to its name or id, an import of its modules, an
 attribute named after them, a docstring or comment that cites it as an
-example -- is coupling that ``remove`` has to chase.  None is left, so none may
+example -- is coupling that manual removal has to chase.  None is left, so none may
 come back: a per-language fact belongs on the language's ``LANGUAGE`` or in
 its own test file.
 """
@@ -25,8 +25,8 @@ from tests.support.reference import REFERENCE
 ROOT = Path(__file__).resolve().parents[2]
 #: The language shared tests use as their example: naming it is not coupling.
 TREES = ("src/", "tests/", "scripts/")
-#: Files ``new_language.py remove`` edits, or its own test, which names
-#: languages as examples.  The coupling guard does not count them.
+#: Existing shared fixtures and integration tests that name languages.
+#: The coupling guard does not count them.
 MANAGED = frozenset(
     {
         "src/esolangs/registry/_table.py",
