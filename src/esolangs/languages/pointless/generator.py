@@ -17,8 +17,8 @@ at each call (:func:`_inlined`).
 Size:
     O(T) size and build time, 26n + 309 steps at most; n=10 parity: 1,060
     chars, n=8 constant zero: 156 chars; n=10 random 1847: 6,253 chars
-    (8,558 declaring every function;
-    26% less over five random tables at n=10, 11% at n=3, no added steps).
+    (8,423 declaring every current function; historical five-table savings
+    26% at n=10, 11% at n=3, no added steps).
 """
 
 import re
