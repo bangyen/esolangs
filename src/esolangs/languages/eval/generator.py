@@ -106,12 +106,6 @@ def _eval_dual(table: str, used: list[int], n: int) -> str:
     return "".join(out)
 
 
-def _eval_ordered(truth_table: str, ops: str) -> str:
-    """Emit one input order's linear lookup; see :func:`eval`."""
-    n = _validate_truth_table(truth_table)
-    return _ordered(truth_table, ops, n, essential_inputs(truth_table, n))
-
-
 def _ordered(truth_table: str, ops: str, n: int, used: list[int]) -> str:
     """Render a validated table with its already known essential inputs."""
     reduced = read_at(truth_table, used, n)

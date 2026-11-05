@@ -62,8 +62,8 @@ def suffolk(truth_table: str) -> str:
     return lookup if shared is None or len(shared) >= len(lookup) else shared
 
 
-def _suffolk_lookup(truth_table: str) -> str:
-    """Build Suffolk by one countdown sweep over the table's steps.
+def _lookup(truth_table: str, n: int) -> str:
+    """Render one countdown sweep for a validated truth table.
 
     ``!`` is the only write and computes ``max(0, cell + 1 - acc)``, a
     clamped subtraction.  This candidate counts table steps.  Cell 0 counts
@@ -74,11 +74,6 @@ def _suffolk_lookup(truth_table: str) -> str:
     between two steps the table is constant.  The top input splits the table
     in half and each half gets its own pair of counters, halving the sweep.
     """
-    return _lookup(truth_table, _validate_truth_table(truth_table))
-
-
-def _lookup(truth_table: str, n: int) -> str:
-    """Render the countdown sweep for a validated table."""
     if len(set(truth_table)) == 1:
         # Reads clamp cell zero to zero; reuse it for the ASCII answer.
         return ",!" * n + "!" * (_ASCII_ONE + int(truth_table[0])) + "<."

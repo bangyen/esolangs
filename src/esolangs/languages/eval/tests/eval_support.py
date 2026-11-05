@@ -3,11 +3,19 @@
 from functools import cache
 from math import factorial
 
+from esolangs.generation.helpers import _validate_truth_table, essential_inputs
 from esolangs.languages.eval.generator import (
     _EVAL_READ_STACK,
     _EVAL_TREE_STACK,
-    _eval_ordered,
+    _ordered,
 )
+
+
+def _eval_ordered(truth_table: str, ops: str) -> str:
+    """Emit one input order's linear lookup; see :func:`eval`."""
+    n = _validate_truth_table(truth_table)
+    return _ordered(truth_table, ops, n, essential_inputs(truth_table, n))
+
 
 # Longest op string worth building.  Costs run to roughly 3 characters per
 # displaced input, and an arrangement that expensive has already lost to the
@@ -157,8 +165,3 @@ def _eval_stack_programs(n: int) -> dict[tuple[int, ...], str]:
                 if len(reached) == everything:
                     break
     return reached
-
-
-def _eval_cost(truth_table: str, ops: str) -> int:
-    """Return :func:`_eval_ordered`'s exact rendered length without emitting it."""
-    return len(_eval_ordered(truth_table, ops))

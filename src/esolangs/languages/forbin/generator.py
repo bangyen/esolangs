@@ -128,12 +128,6 @@ def forbin(truth_table: str, width: int | None = None) -> str:
     )
 
 
-def _build(truth_table: str, width: int | None, bits: int) -> str:
-    """Build the program whose shift register addresses ``bits`` inputs."""
-    weights, table = input_weights(truth_table, _validate_truth_table(truth_table))
-    return _build_projected(weights, table, width, bits)
-
-
 def _build_projected(
     weights: list[int], table: str, width: int | None, bits: int
 ) -> str:

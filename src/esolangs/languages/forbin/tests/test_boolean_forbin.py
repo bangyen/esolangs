@@ -11,6 +11,8 @@ import pytest
 import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.languages import generators as boolean
+from esolangs.languages.forbin.generator import _BLOCK_WIDTHS, _Names
+from esolangs.languages.forbin.tests.forbin_support import _build
 from tests.generators.boolean_runners import _runner
 from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import witnesses
@@ -84,8 +86,6 @@ class TestForbinBoolean:
 
     def test_constant_spans_fold_above_the_block(self) -> None:
         """A constant span of blocks calls a printer instead of painting."""
-        from esolangs.languages.forbin.generator import _BLOCK_WIDTHS, _build, _Names
-
         block_bits = max(_BLOCK_WIDTHS)
         arity = block_bits + 2
         wide = 2**arity
@@ -101,8 +101,6 @@ class TestForbinBoolean:
 
     def test_block_width_is_raced_and_never_grows(self) -> None:
         """Parity at n=8 takes a narrower block than seven; no width is longer."""
-        from esolangs.languages.forbin.generator import _BLOCK_WIDTHS, _build
-
         parity = "".join(str(i.bit_count() & 1) for i in range(256))
         program = boolean.forbin(parity)
         sizes = {b: len(_build(parity, None, b)) for b in _BLOCK_WIDTHS}
@@ -120,8 +118,6 @@ class TestForbinBoolean:
 
     def test_a_repeated_block_is_painted_once(self) -> None:
         """Blocks a b b a share one function per distinct block."""
-        from esolangs.languages.forbin.generator import _BLOCK_WIDTHS, _build
-
         block_bits = max(_BLOCK_WIDTHS)
         rng = random.Random(7)
         a, b = (
@@ -139,8 +135,6 @@ class TestForbinBoolean:
     )
     def test_nested_repeats_share_once(self, layout: str, size: int) -> None:
         """A repeated subtree costs one function; its insides are not repeats."""
-        from esolangs.languages.forbin.generator import _BLOCK_WIDTHS, _build
-
         block_bits = max(_BLOCK_WIDTHS)
         rng = random.Random(3)
         blocks = {

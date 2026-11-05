@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs.languages import generators as boolean
-from esolangs.languages.suffolk.generator import _suffolk_lookup
+from esolangs.languages.suffolk.tests.lookup_support import _suffolk_lookup
 from tests.generators.boolean_runners import _runner
 from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import row_bits
