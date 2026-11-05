@@ -845,3 +845,22 @@ def _check_complemented_projection_inverts_a_bare_input_rail() -> None:
 
     model = _circuit_diagram_model("01", None, invert=True)
     pool._execute("10", model.render(), (0, 1))
+
+
+@pytest.mark.parametrize("width", [1, 2, 3, 4])
+def test_below_gate_floor_does_not_repeat_the_banded_build(monkeypatch, width) -> None:
+    from esolangs.languages.circuit_diagram import generator
+    from tests.support.evaluation import _evaluate
+
+    build = generator._circuit_diagram_at
+    limits = []
+
+    def observe(table: str, limit: int | None) -> str:
+        limits.append(limit)
+        return build(table, limit)
+
+    monkeypatch.setattr(generator, "_circuit_diagram_at", observe)
+    table = "00010111"
+    program = generator.circuit_diagram(table, width)
+    assert limits == [None, width]
+    assert _evaluate("Circuit Diagram", program, inputs=3) == table

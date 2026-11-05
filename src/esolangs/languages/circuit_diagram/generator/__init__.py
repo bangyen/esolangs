@@ -88,6 +88,7 @@ _COMPLEMENT = str.maketrans("01", "10")
 # Columns the output dash and colon add past the final gate group, so
 # banding rebuilds this much narrower when the first attempt is too wide.
 _OUTPUT_GLYPH_COLUMNS = 2
+_NARROW_GATE_STRIDE = 4
 
 
 class _Builder:
@@ -104,7 +105,7 @@ class _Builder:
         """Start an empty build."""
         # Input junction, gate, output junction, then one clear column:
         # different signals' junctions must remain two cells apart.
-        self.gate_stride = 4 if narrow else 3 * _COL_STEP
+        self.gate_stride = _NARROW_GATE_STRIDE if narrow else 3 * _COL_STEP
         self.layout = _Layout()
         self.next_column = 1
         self.next_row = 0
@@ -771,8 +772,10 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     banded = _circuit_diagram_at(truth_table, width)
     if grid_width(banded) <= width:
         return banded
-    # The output dash and colon extend beyond the final gate group.
-    banded = _circuit_diagram_at(truth_table, max(1, width - _OUTPUT_GLYPH_COLUMNS))
+    # Below five, next_column >= 1 makes every narrow room test identical.
+    # Larger limits must leave room for the output dash and colon too.
+    if width > _NARROW_GATE_STRIDE:
+        banded = _circuit_diagram_at(truth_table, max(1, width - _OUTPUT_GLYPH_COLUMNS))
     from esolangs.languages.circuit_diagram.generator.balance import (
         affine_circuit,  # circular
     )

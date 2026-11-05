@@ -300,7 +300,7 @@ def _definition_program(expression: str, n: int) -> str:
 
 
 def _packed_program(expression: str, n: int, width: int, *, share: bool = True) -> str:
-    """Return definitions that inline unshared nodes up to ``width`` columns.
+    """Return definitions with width-guided inlining of unshared nodes.
 
     Children first, a node is named when sharing it is shorter or when
     inlining it would widen its parent's line past ``width``; the widest

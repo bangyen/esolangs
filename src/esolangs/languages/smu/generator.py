@@ -55,7 +55,7 @@ _MACROS = _SKIP + _NODE + _PAD + "".join(_LEAVES)
 _DELIMS = {"X": "X)(X", "Y": "Y)nY", "W": "W)mW"}
 
 
-#: Macro names end in a letter, any but the five above; digits extend them.
+#: Macro names end in one of 44 unreserved letters; digits extend them.
 _LETTERS = "".join(c for c in ascii_letters if c not in "knmzoXYW")
 
 

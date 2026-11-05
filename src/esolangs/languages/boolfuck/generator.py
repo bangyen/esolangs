@@ -15,7 +15,8 @@ two-input cofactors normalize to shared AND/XOR gates; input flips and output
 bias distinguish their functions without extra flags.  Affine tables stream
 through two data cells, toggling the accumulator once per selected bit.
 Symmetric tables stream their bytes into a unary count track and decide
-from the count alone.  R prints as bit 0 of the answer byte; bits 1..3
+from the count alone, printing from cell 1 before the high bits from cell 0.
+Tree R prints as bit 0 of the answer byte; bits 1..3
 print from a cleared flag cell, 4..5 after flipping it, 6..7 cleared
 again: ``'0'``/``'1'`` in exactly 8 prints.
 

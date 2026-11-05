@@ -9,12 +9,14 @@ def _chars(n: int, _: str) -> int:
     used twice stay inline, 3 < 4).  From n = 12 it is the price before
     the delimiter macros, an upper bound only (witness 4,252 at n = 12, 42,528
     at n = 16, against 6,263 and 59,326): the old constants no longer fit
-    and the exact worst case is open.  Before them, from n = 12 the 256
+    and the exact worst case is open. The historical derivation assumed 47
+    names before delimiter
+    macros (the current allocator has 44). From n = 12 the 256
     eight-bit subtables are each named, one-letter names going to the most
-    used; exact to n = 15.  From n = 16 (32 uses, above the
+    used; then exact to n = 15.  From n = 16 (32 uses, above the
     4-bit tables' 31) the 8-bit tables outrank the lower macros: 47 get
     one-letter names, the rest and every 4- and 2-bit macro two letters, so
-    5T/8 + 465T/2048 + 3486, exact at n = 16 only.  Past n = 16 that price
+    5T/8 + 465T/2048 + 3486, then exact at n = 16 only.  Past n = 16 that price
     charges every subtable once per distinct parent; a level n - 4 pair
     repeated twice under a three-letter name fails the macro test
     ((2 - 1) * 9 <= (2 + 2) * 3) and is written out at both places, so its
@@ -30,7 +32,7 @@ def _chars(n: int, _: str) -> int:
         return 5 * (1 << (n - 3)) + 465 * (1 << (n - 11)) + 3486
     if n > 11:
         uses = 1 << (n - 11)  # parents of each eight-bit subtable
-        # Names go by use: the 4-bit tables (31 uses) first; the 2-bit tables
+        # Historical 47-name pricing: the 4-bit tables (31 uses) first; the 2-bit tables
         # (7) are one-letter only while uses < 7, else the 8-bit tables take
         # the remaining 27 or 31 one-letter names.
         short, tail = (27, 1) if uses < 7 else (31, 2)

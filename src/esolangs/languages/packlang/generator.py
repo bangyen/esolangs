@@ -5,8 +5,8 @@ rather than branched.  Inputs above the block index are read into a block
 number; each block paints the array inside the ``If`` that selects it; the
 answer prints ``48 ^ t`` at the counted index.  A row costs one ``INCR t(k);``
 (writes count, so nothing is shorter) with ``k`` an offset inside the block,
-so digits stop growing past one block.  A block holding more ones than zeros
-is filled by a loop and its zeros punched out; an all-zero block paints
+so digits stop growing past one block. Filling and punching out zeros is
+a candidate when the surplus of ones pays the fixed loop cost; an all-zero block paints
 nothing; a block equal to an earlier one is aliased to it (:func:`_blocks`
 shrinks the block until repeats align).  Each input doubles the register read
 so far into its partner two counts at a time and adds its bit, so the two

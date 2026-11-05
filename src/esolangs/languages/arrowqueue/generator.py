@@ -285,7 +285,7 @@ def _render_strips(strips: list[list[_Block]]) -> str:
 
 
 def _folds(table: str) -> list[str]:
-    """Folds at four heights around where the strips' width meets twice the height.
+    """Folds at distinct heights around where the strips' width meets twice the height.
 
     A fold is ``F`` lines (``6n + 7 +`` one a table entry) cut into strips of
     ``h - 3`` rows, each about 6 columns wide: ``2h = 6F / (h - 3)``, so
@@ -295,9 +295,8 @@ def _folds(table: str) -> list[str]:
     n = _validate_truth_table(table)
     lines = 6 * n + 7 + len(table)
     centre = (3 + isqrt(9 + 12 * lines)) // 2
-    folds = (
-        _folded(table, max(10, height)) for height in range(centre - 1, centre + 3)
-    )
+    heights = dict.fromkeys(max(10, height) for height in range(centre - 1, centre + 3))
+    folds = (_folded(table, height) for height in heights)
     return [fold for fold in folds if fold is not None]
 
 

@@ -120,19 +120,29 @@ def forbin(truth_table: str, width: int | None = None) -> str:
         # The default needs return to keep its two-step bound; narrow out falls off.
         narrow = program.replace("return(out ", "out ").removesuffix(")}") + ";}"
         return _wrapped(narrow, width)
-    widths = dict.fromkeys(min(n, bits) for bits in _BLOCK_WIDTHS)
-    return min((_build(truth_table, width, bits) for bits in widths), key=len)
+    weights, table = input_weights(truth_table, n)
+    retained = len(table).bit_length() - 1
+    widths = dict.fromkeys(min(retained, bits) for bits in _BLOCK_WIDTHS)
+    return min(
+        (_build_projected(weights, table, width, bits) for bits in widths), key=len
+    )
 
 
 def _build(truth_table: str, width: int | None, bits: int) -> str:
     """Build the program whose shift register addresses ``bits`` inputs."""
+    weights, table = input_weights(truth_table, _validate_truth_table(truth_table))
+    return _build_projected(weights, table, width, bits)
+
+
+def _build_projected(
+    weights: list[int], table: str, width: int | None, bits: int
+) -> str:
+    """Build one register size, reusing the projection across the race."""
     if width is not None:
-        natural = _build(truth_table, None, bits)
+        natural = _build_projected(weights, table, None, bits)
         if grid_width(natural) <= width:
             return natural
-    # The tree is built over the essential inputs; an ignored input is still
-    # read, but its kept bit drops into the scratch name with the other seven.
-    weights, table = input_weights(truth_table, _validate_truth_table(truth_table))
+    # Ignored inputs are read into scratch; only retained bits enter the tree.
     n = len(table).bit_length() - 1
     low = min(n, bits)
     high = n - low

@@ -104,3 +104,6 @@ contract = "interpreter.py"
 tests = [
     "src/esolangs/languages/arrowqueue/tests/oracle_checks.py::check_raw_arrowqueue",
 ]
+
+[ablations.reused_construction_20261104]
+verdict = "Clamp and deduplicate the four proposed fold heights before construction. The two-input case builds10 and11 once rather than10 three times. Candidate order and emitted programs remain unchanged; no proof bound, pin or Size anchor changes."

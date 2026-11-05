@@ -126,3 +126,6 @@ tests = [
     "src/esolangs/languages/forbin/tests/test_forbin.py::TestForbinAncestorHangDetection",
     "src/esolangs/languages/forbin/tests/test_forbin.py::TestOutputOrdering",
 ]
+
+[ablations.reused_construction_20261104]
+verdict = "Project essential inputs once per public block-size race and reuse the projection for both natural and narrow spellings. Clamp candidate block sizes to the retained arity before deduplication. The legacy private _build wrapper still validates arbitrary direct calls. No emitted program, numerical bound, pin or Size anchor changes."

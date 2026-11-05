@@ -131,3 +131,22 @@ def test_fold_heights_stay_near_the_swept_optimum() -> None:
             swept += min(balance_score(f)[0] for f in every if f is not None)
             got += min(balance_score(f)[0] for f in _folds(table))
     assert swept <= got <= 1.05 * swept
+
+
+def test_clamped_fold_heights_are_built_once(monkeypatch) -> None:
+    from esolangs.languages.arrowqueue import generator
+    from tests.support.evaluation import _evaluate
+
+    build = generator._folded
+    heights = []
+
+    def observe(table: str, height: int):
+        heights.append(height)
+        return build(table, height)
+
+    monkeypatch.setattr(generator, "_folded", observe)
+    folds = generator._folds("0110")
+    assert heights == [10, 11]
+    assert folds
+    for program in folds:
+        assert _evaluate("ArrowQueue", program, inputs=2) == "0110"

@@ -280,3 +280,22 @@ def test_constants_read_whole_bytes_then_print_inline() -> None:
         sum(len(esolangs.generate("Forbin", format(v, "08b"))) for v in range(256))
         == 46690
     )
+
+
+@pytest.mark.parametrize("width", [None, 1, 10000])
+def test_block_race_projects_ignored_inputs_once(monkeypatch, width) -> None:
+    from esolangs.languages.forbin import generator
+    from tests.support.evaluation import _evaluate
+
+    project = generator.input_weights
+    calls = []
+
+    def observe(table: str, n: int):
+        calls.append(n)
+        return project(table, n)
+
+    monkeypatch.setattr(generator, "input_weights", observe)
+    table = "01" * 128
+    program = generator.forbin(table, width)
+    assert calls == [8]
+    assert _evaluate("Forbin", program, inputs=8) == table

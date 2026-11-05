@@ -163,3 +163,6 @@ tests = [
     "src/esolangs/languages/circuit_diagram/tests/test_circuit_diagram.py::TestPrimeTester::test_exact_output_matches_trial_division",
     "src/esolangs/languages/circuit_diagram/tests/test_circuit_diagram.py::TestPrimeTester::test_missing_input_bits_read_as_zero",
 ]
+
+[ablations.reused_construction_20261104]
+verdict = "Reuse the first narrow banded build below the five-column gate floor. With next_column>=1 and narrow stride4, limits1..4 make identical room decisions; free-column reuse is also limit-independent. Larger widths still reserve the output dash and colon through the second build. No emitted program, numerical bound, pin or Size anchor changes."

@@ -2,10 +2,11 @@
 
 Plain lookup normalizes ASCII bits with ``68*-`` and folds them into a row
 (``$2*+``). Packed lookup instead folds raw ASCII from -48, leaving row-48;
-coordinate offsets restore the address. ``g`` reads and ``n`` prints. For n=2:
+coordinate offsets restore the address. ``g`` reads and ``n`` prints.
+For table 0010 at n=2 and width=80:
 
     0i68*-$2*+i68*-$2*+1g68*-n;
-    0110
+    0010
 
 Narrow widths fold the table into a block of columns, which the fish reaches
 by snaking down.  A parity table needs no table at all, and another symmetric

@@ -6,7 +6,7 @@ trampoline.  The shared-residual tree in input order races the packed decoder
 over essential inputs, which indexes ``m``-bit cells; the shorter ships.
 
 Size:
-    Packed is O(T) cells over O(T/log T) words; n=4 parity: 614 chars,
+    Packed uses O(T/log T) integer cells and O(T) characters; n=4 parity: 614 chars,
     n=10 random 1847: 1,272 chars, n=10 and: 1,076 chars.
     Constants: 4n+6 cells, n+1 commands; n=8: 101 chars.
 

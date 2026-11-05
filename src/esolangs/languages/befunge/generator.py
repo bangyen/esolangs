@@ -125,7 +125,7 @@ def _rows(header: str, table: str, step: int) -> list[str]:
 
 
 def befunge(truth_table: str, width: int | None = None) -> str:
-    """Return a Befunge grid computing ``truth_table``, at most ``width`` wide."""
+    """Return a Befunge grid; narrow requests use the layout's column floor."""
     n = _validate_truth_table(truth_table)
     _check_cap(n)
     if len(set(truth_table)) == 1:
@@ -222,7 +222,7 @@ def _wins(candidate: str, incumbent: str) -> bool:
 
 
 def _plain_befunge(table: str, reads: str, width: int | None) -> str:
-    """Return the one-cell-per-entry grid, at most ``width`` wide."""
+    """Return the one-cell-per-entry grid, respecting its column floor."""
     count = len(table)
     if width is None:
         # The default build lays the table at the grid's width: at the
