@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
@@ -53,14 +53,7 @@ class TemplateSpec:
         return self.setters(template, inputs)
 
 
-class _Unset:
-    pass
-
-
-_UNSET = _Unset()
-
-
-@dataclass(frozen=True, init=False)
+@dataclass(frozen=True)
 class BooleanBackend:
     """Generator, accepted tables, input binding and source layout rules."""
 
@@ -83,35 +76,6 @@ class BooleanBackend:
     same_layout: Callable[[str, str, Callable[[int], Any]], bool] | None = None
     #: ``balance(table, default)``: the squarest layout a reflow cannot find.
     balance: Callable[..., Any] | None = None
-
-    def __init__(
-        self,
-        entrypoint: Generator | _Unset | None = _UNSET,
-        template: TemplateSpec | None = None,
-        max_inputs: int | None = None,
-        restrictions: str = "",
-        shape: Shape = Shape.TREE,
-        grid: bool = False,  # noqa: FBT001, FBT002
-        wrap: Callable[[str, int], str] | None = None,
-        wrap_multiline: bool = False,  # noqa: FBT001, FBT002
-        wrap_balance: Callable[[str], str] | None = None,
-        no_wrap: str = "",
-        same_layout: Callable[[str, str, Callable[[int], Any]], bool] | None = None,
-        balance: Callable[..., Any] | None = None,
-        *,
-        generate: Generator | _Unset | None = _UNSET,
-    ) -> None:
-        """Accept the legacy alias, including ``replace(backend, generate=...)``."""
-        # Keep the former dataclass positional arguments, including its flags.
-        # replace() supplies the old entrypoint too; the explicit alias wins.
-        selected = entrypoint if isinstance(generate, _Unset) else generate
-        if isinstance(selected, _Unset):
-            raise TypeError("a Boolean backend requires a generator argument")
-        values = locals()
-        for field in fields(BooleanBackend):
-            value = selected if field.name == "entrypoint" else values[field.name]
-            object.__setattr__(self, field.name, value)
-        self.__post_init__()
 
     @property
     def generator_name(self) -> str:

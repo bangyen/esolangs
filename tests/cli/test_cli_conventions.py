@@ -31,7 +31,7 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
             "Template Choice",
             RuntimeSpec("template_choice"),
             backend=BooleanBackend(
-                generate=build, template=TemplateSpec(pair=("0", "1"))
+                entrypoint=build, template=TemplateSpec(pair=("0", "1"))
             ),
         ),
         "Dialect Choice": Language(

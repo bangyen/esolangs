@@ -60,7 +60,7 @@ for lang in pilots:
     assert inspect.getsourcefile(generate) == module.__file__
     assert (tuple(inspect.signature(generate).parameters)
             == backend.entrypoint.parameters)
-    assert replace(backend, generate=generate).generate is generate
+    assert replace(backend, entrypoint=generate).generate is generate
     assert registry.LANGUAGES[lang.name].backend.generate is generate
 sample = next(lang for lang in pilots if not lang.parameterized
               and lang.backend.max_inputs is None

@@ -1,6 +1,6 @@
 """Boolean backend absence and field ownership are explicit."""
 
-from dataclasses import fields
+from dataclasses import fields, replace
 
 import pytest
 
@@ -23,11 +23,6 @@ def test_backend_fields_have_one_owner():
     )
 
 
-def test_a_present_backend_requires_a_generator():
-    with pytest.raises(ValueError, match="callable generator"):
-        BooleanBackend(entrypoint=None)
-
-
 @pytest.mark.parametrize(
     "language", [name for name, lang in LANGUAGES.items() if lang.backend is None]
 )
@@ -41,21 +36,17 @@ def test_interpreter_only_contract_adapters_remain_available(language):
         esolangs.encode_inputs(language, [1])
 
 
-@pytest.mark.parametrize("keyword", ["generate", "entrypoint"])
-def test_constructor_and_replacement_accept_both_generator_names(keyword):
-    from dataclasses import replace
-
-    backend = BooleanBackend(**{keyword: str}, max_inputs=3, no_wrap="one line")
-    assert backend.generate is str
-    changed = replace(backend, **{keyword: repr})
-    assert changed.generate is repr
+def test_backend_constructor_and_replacement_use_only_entrypoint():
+    backend = BooleanBackend(str, max_inputs=3, no_wrap="one line")
+    changed = replace(backend, entrypoint=repr)
+    assert (backend.generate, changed.generate) == (str, repr)
     assert (changed.max_inputs, changed.no_wrap) == (3, "one line")
+    for values in ({}, {"generate": str}):
+        with pytest.raises(TypeError):
+            BooleanBackend(**values)
+    with pytest.raises(TypeError):
+        replace(backend, generate=repr)
     with pytest.raises(ValueError, match="callable generator"):
-        BooleanBackend(**{keyword: None})
+        BooleanBackend(entrypoint=None)
     with pytest.raises(ValueError, match="callable generator"):
-        replace(backend, **{keyword: None})
-
-
-def test_backend_still_requires_a_generator():
-    with pytest.raises(TypeError, match="generator argument"):
-        BooleanBackend()
+        replace(backend, entrypoint=None)

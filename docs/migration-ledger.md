@@ -21,7 +21,7 @@ Owners are workstreams, not individual contributors.
 | `_recover_template` and plain-string binding inference | Artifact API | Legacy instantiation callers | Declared template bindings |
 | Tagged-source `load_program` | Persistence | CLI, scripts and saved-program callers | Canonical artifact loading |
 | Temporary `esolangs.compat` API | Artifact API | Callers moved there by the in-flight defaults migration | Canonical API; delete the facade after migration |
-| `BooleanBackend(generate=...)` constructor alias | Registry | Descriptors, tests and `replace` calls | Canonical entrypoint field |
+| `BooleanBackend(generate=...)` constructor alias | Registry | Retired; callers use `entrypoint`; negative constructor/replacement checks in `tests/api/test_boolean_backend.py` | Canonical entrypoint field |
 | `registry.GENERATORS` | Registry | Generator lookup consumers | Descriptor/backend entrypoints |
 | `languages.generators` facade | Registry | Scripts and generic/owned tests | Artifact API or direct owned generator imports |
 | Unused generator-module descriptor re-exports | Registry | Legacy metadata consumers | Independent descriptors; retain constants actually used by emitters |
