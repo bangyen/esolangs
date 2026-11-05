@@ -122,7 +122,8 @@ require a versioned cutover and caller migration; moving adapters into
    re-exports after their consumers migrate. Preserve lazy implementation loading.
    Done when repository callers, docs, tests and installed-package checks use only
    the supported imports and constructors.
-8. **Compatibility-removal acceptance:** keep a finite inventory of every adapter,
+8. **Compatibility-removal acceptance:** maintain the [retirement inventory](migration-ledger.md)
+   and [language/backend rows](migration-status.csv). Record every adapter,
    its owner, consumers, replacement and removal release, plus a per-language/backend
    rollout ledger. Close a migration only after all affected rows are migrated
    and its adapters are deleted, including any temporary `esolangs.compat`.
