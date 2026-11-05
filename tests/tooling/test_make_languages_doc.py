@@ -266,3 +266,24 @@ def test_discovery_ignores_noncanonical_declarations(tmp_path) -> None:
     (package / "helper.py").write_text(source)
     (language / "interpreter.py").write_text(source)
     assert declared(tmp_path) == [("esolangs.languages.fixture.generator", "fixture")]
+
+
+def test_exports_discover_independent_descriptors(tmp_path):
+    from scripts.docs.generate import declared, render
+
+    package = tmp_path / "src/esolangs/languages/fixture"
+    package.mkdir(parents=True)
+    descriptor = package / "definition.py"
+    source = (
+        "LANGUAGE = Language('Fixture', backend=DeferredBackend("
+        "generate=GeneratorReference('esolangs.languages.fixture.generator', "
+        "'fixture')))\n"
+    )
+    descriptor.write_text(source)
+    assert declared(tmp_path) == [("esolangs.languages.fixture.definition", "fixture")]
+    exports = render(tmp_path)
+    assert "from esolangs.languages.fixture.definition import LANGUAGE" in exports
+    assert '"fixture": "esolangs.languages.fixture.generator"' in exports
+    descriptor.write_text(source.replace("fixture.generator", "fixture.unrelated"))
+    with pytest.raises(ValueError, match="generator reference"):
+        declared(tmp_path)

@@ -1,5 +1,8 @@
 """Boolean generators exported from their language implementations."""
 
+from importlib import import_module
+from typing import TYPE_CHECKING, Any
+
 # BEGIN GENERATED EXPORTS: python scripts/docs/generate.py docs
 from esolangs.languages.a_painter_ant.generator import (
     LANGUAGE as _A_PAINTER_ANT_LANGUAGE,
@@ -35,8 +38,7 @@ from esolangs.languages.basicfuck.generator import LANGUAGE as _BASICFUCK_LANGUA
 from esolangs.languages.basicfuck.generator import basicfuck
 from esolangs.languages.befunge.generator import LANGUAGE as _BEFUNGE_LANGUAGE
 from esolangs.languages.befunge.generator import befunge
-from esolangs.languages.between.generator import LANGUAGE as _BETWEEN_LANGUAGE
-from esolangs.languages.between.generator import between
+from esolangs.languages.between.definition import LANGUAGE as _BETWEEN_LANGUAGE
 from esolangs.languages.bfstack.generator import LANGUAGE as _BFSTACK_LANGUAGE
 from esolangs.languages.bfstack.generator import bfstack
 from esolangs.languages.bit_tilde.generator import LANGUAGE as _BIT_TILDE_LANGUAGE
@@ -258,6 +260,9 @@ from esolangs.languages.what.generator import what
 from esolangs.languages.whitespace.generator import LANGUAGE as _WHITESPACE_LANGUAGE
 from esolangs.languages.whitespace.generator import whitespace
 
+if TYPE_CHECKING:
+    from esolangs.languages.between.generator import between as between
+
 _LANGUAGES = (
     _A_PAINTER_ANT_LANGUAGE,
     _ABCDIRECTION_LANGUAGE,
@@ -374,6 +379,10 @@ _LANGUAGES = (
     _WHAT_LANGUAGE,
     _WHITESPACE_LANGUAGE,
 )
+
+_DEFERRED = {
+    "between": "esolangs.languages.between.generator",
+}
 
 __all__ = [
     "a_painter_ant",
@@ -492,3 +501,18 @@ __all__ = [
     "whitespace",
 ]
 # END GENERATED EXPORTS
+
+
+def __getattr__(name: str) -> Any:
+    """Load deferred exports only when their function is requested."""
+    module = _DEFERRED.get(name)
+    if module is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    generate = getattr(import_module(module), name)
+    globals()[name] = generate
+    return generate
+
+
+def __dir__() -> list[str]:
+    """Include deferred names before their implementations have loaded."""
+    return sorted(set(globals()) | set(__all__))

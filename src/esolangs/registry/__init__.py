@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import difflib
+import re
 import unicodedata
 from collections import Counter
 from functools import cache
+from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 from esolangs.exceptions import TemplateError, UnknownLanguageError
@@ -42,7 +44,7 @@ __all__ = [
 # sweep skip sixteen boolean generators silently, which is how one
 # language's input count survived; one map leaves no wrong pick.
 BY_BOOLEAN: dict[str, Language] = {
-    lang.backend.generate.__name__: lang
+    lang.backend.generator_name: lang
     for lang in LANGUAGES.values()
     if lang.backend is not None
 }
@@ -54,12 +56,30 @@ RUNNERS: dict[str, tuple[str, bool]] = {
     if lang.runtime.interpreter
 }
 
+
 # Public workflows select by capability.
-GENERATORS = {
-    name: lang.backend.generate
-    for name, lang in LANGUAGES.items()
-    if lang.backend is not None
-}
+if TYPE_CHECKING:
+    GENERATORS: dict[str, Generator]
+
+
+def __getattr__(name: str) -> dict[str, Generator]:
+    """Build the compatibility function index only when explicitly requested."""
+    if name != "GENERATORS":
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    generators = {
+        name: lang.backend.generate
+        for name, lang in LANGUAGES.items()
+        if lang.backend is not None
+    }
+    globals()[name] = generators
+    return generators
+
+
+def __dir__() -> list[str]:
+    """Keep the deferred compatibility index visible to introspection."""
+    return sorted(set(globals()) | {"GENERATORS"})
+
+
 INTERPRETERS = {
     name: f"esolangs.languages.{lang.id}.interpreter"
     for name, lang in LANGUAGES.items()
@@ -69,20 +89,17 @@ INTERPRETERS = {
 
 @cache
 def example_stems() -> dict[str, str]:
-    """Return canonical id -> the example filename stem, per language.
-
-    Stems are dash-separated display names, internal references are canonical
-    IDs, and a few match neither by hand.  The map derives from the example
-    table :meth:`~esolangs.generation.examples.BooleanExample.build` uses, so
-    a mismatch is a missing key, not a silently empty example list (which once
-    left a fifth of the registry reporting none).  The import is deferred
-    because ``examples`` imports this module.
-    """
-    from esolangs.generation import examples as _examples
-
-    return {
-        example.language: stem for stem, example in _examples.BOOLEAN_EXAMPLES.items()
-    }
+    """Return example stems from declarations without importing example builders."""
+    stems = {}
+    for lang in LANGUAGES.values():
+        if lang.backend is None or lang.runtime.interpreter is None:
+            continue
+        # Windows rejects punctuation such as `?`; slash names also need ids.
+        stem = lang.name.lower().replace(" ", "-")
+        stems[lang.id] = (
+            lang.id.replace("_", "-") if re.search(r'[/*()+<>:"\\|?]', stem) else stem
+        )
+    return stems
 
 
 def _reads_inputs(language_id: str) -> TemplateError:

@@ -465,10 +465,11 @@ LINE_LIMIT = 88
 
 
 def declared(root: pathlib.Path = ROOT) -> list[tuple[str, str]]:
-    """Return canonical module and function names for declared generators."""
+    """Return declaration modules and generator export names."""
     found = []
     languages = root / "src/esolangs/languages"
     paths = (
+        *languages.glob("*/definition.py"),
         *languages.glob("*/generator.py"),
         *languages.glob("*/generator/__init__.py"),
     )
@@ -489,13 +490,27 @@ def declared(root: pathlib.Path = ROOT) -> list[tuple[str, str]]:
                 for kw in statement.value.keywords
                 if kw.arg == "backend" and isinstance(kw.value, ast.Call)
             )
-            generator = next(
-                kw.value.id
-                for kw in backend.keywords
-                if kw.arg == "generate" and isinstance(kw.value, ast.Name)
-            )
             parts = path.relative_to(root / "src").with_suffix("").parts
             module = ".".join(parts[:-1] if path.name == "__init__.py" else parts)
+            generate = next(kw.value for kw in backend.keywords if kw.arg == "generate")
+            if isinstance(generate, ast.Name):
+                generator = generate.id
+            elif (
+                path.name == "definition.py"
+                and isinstance(generate, ast.Call)
+                and isinstance(generate.func, ast.Name)
+                and generate.func.id == "GeneratorReference"
+                and not generate.keywords
+                and len(generate.args) == 2
+                and isinstance(generate.args[0], ast.Constant)
+                and generate.args[0].value
+                == module.removesuffix(".definition") + ".generator"
+                and isinstance(generate.args[1], ast.Constant)
+                and isinstance(generate.args[1].value, str)
+            ):
+                generator = generate.args[1].value
+            else:
+                raise ValueError(f"{path}: unsupported generator reference")
             found.append((module, generator))
     return sorted(found)
 
@@ -506,7 +521,10 @@ def render(root: pathlib.Path = ROOT) -> str:
     lines = []
     for m, g in pairs:
         # language-owners: ["Eval"]
-        for name, alias in (("LANGUAGE", f"_{g.upper()}_LANGUAGE"), (g, "")):
+        exports = [("LANGUAGE", f"_{g.upper()}_LANGUAGE")]
+        if not m.endswith(".definition"):
+            exports.append((g, ""))
+        for name, alias in exports:
             comment = (
                 "  # noqa: A004 - the language's name"
                 if hasattr(builtins, name)
@@ -518,11 +536,26 @@ def render(root: pathlib.Path = ROOT) -> str:
                 lines.append(f"from {m} import (\n    {item},{comment}\n)")
             else:
                 lines.append(line + comment)
+    deferred_imports = [
+        f"    from {m.removesuffix('.definition')}.generator import {g} as {g}"
+        for m, g in pairs
+        if m.endswith(".definition")
+    ]
+    if deferred_imports:
+        lines.extend(["", "if TYPE_CHECKING:", *deferred_imports])
     imports = "\n".join(lines)
     names = sorted(g for _, g in pairs)
     listed = "\n".join(f'    "{name}",' for name in names)
     declarations = "\n".join(f"    _{g.upper()}_LANGUAGE," for _, g in pairs)
-    return f"{imports}\n\n_LANGUAGES = (\n{declarations}\n)\n\n__all__ = [\n{listed}\n]"
+    deferred = "\n".join(
+        f'    "{g}": "{m.removesuffix(".definition")}.generator",'
+        for m, g in pairs
+        if m.endswith(".definition")
+    )
+    return (
+        f"{imports}\n\n_LANGUAGES = (\n{declarations}\n)\n\n"
+        f"_DEFERRED = {{\n{deferred}\n}}\n\n__all__ = [\n{listed}\n]"
+    )
 
 
 def update_exports(

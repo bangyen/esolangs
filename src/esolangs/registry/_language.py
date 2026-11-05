@@ -1,8 +1,7 @@
 """The metadata a language declares about itself.
 
-A generator module ends with ``LANGUAGE = Language(...)``; the registry
-collects those, so a new language is registered where it is written.  This
-module keeps declarations independent of example generation.
+Declarations may live in generator modules or independent descriptors.
+Descriptors retain metadata while loading implementations on demand.
 """
 
 from __future__ import annotations

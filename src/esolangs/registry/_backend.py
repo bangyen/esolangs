@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
+from importlib import import_module
+from typing import Any, cast
 
 from esolangs.generation.helpers import TEMPLATE_CHAR, Setters, check_setters
 from esolangs.runtime._program import Program
@@ -78,7 +79,50 @@ class BooleanBackend:
 
     def __post_init__(self) -> None:
         """Require a generator and consistent wrapping declarations."""
-        if not callable(self.generate):
+        if not callable(object.__getattribute__(self, "generate")):
             raise ValueError("a Boolean backend requires a callable generator")
         if self.wrap is not None and self.no_wrap:
             raise ValueError("wrap and no_wrap exclude each other")
+
+    @property
+    def generator_name(self) -> str:
+        """Return the export name without loading a deferred implementation."""
+        generate = object.__getattribute__(self, "generate")
+        return (
+            generate.name
+            if isinstance(generate, GeneratorReference)
+            else generate.__name__
+        )
+
+
+@dataclass(frozen=True)
+class GeneratorReference:
+    """An import target that remains callable during backend validation."""
+
+    module: str
+    name: str
+
+    def load(self) -> Generator:
+        """Return the real function, preserving identity and source inspection."""
+        generate = getattr(import_module(self.module), self.name)
+        if not callable(generate):
+            raise TypeError(f"{self.module}.{self.name} is not a callable generator")
+        return cast(Generator, generate)
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Program:
+        """Load and call the implementation."""
+        return self.load()(*args, **kwargs)
+
+
+@dataclass(frozen=True)
+class DeferredBackend(BooleanBackend):
+    """Keep metadata eager while resolving the generator on attribute access."""
+
+    width_aware: bool = False
+
+    def __getattribute__(self, name: str) -> Any:
+        """Expose a real function so existing introspection and replacement work."""
+        value = super().__getattribute__(name)
+        if name == "generate" and isinstance(value, GeneratorReference):
+            return value.load()
+        return value

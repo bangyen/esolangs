@@ -14,7 +14,6 @@ bytes are a placeholder (``expected_compared`` is false).
 Template bindings come from the backend declaration, shared with runtime.
 """
 
-import re
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from typing import Any, cast
@@ -28,7 +27,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 from esolangs.raster import Raster
-from esolangs.registry import LANGUAGES, Language, canonical_id, resolve
+from esolangs.registry import LANGUAGES, Language, canonical_id, example_stems, resolve
 from esolangs.registry._contracts import (
     CHAR_STREAMS,
     AnswerMode,
@@ -261,13 +260,8 @@ BOOLEAN_EXAMPLES: dict[str, BooleanExample] = {}
 
 
 def _stem(lang: Language) -> str:
-    """Return the language's example stem: its dashed lowercase name.
-
-    A name a filename would garble uses its id, as does one Windows refuses:
-    ``what!?.txt`` failed every Windows checkout.
-    """
-    stem = lang.name.lower().replace(" ", "-")
-    return lang.id.replace("_", "-") if re.search(r'[/*()+<>:"\\|?]', stem) else stem
+    """Return the stem shared with catalog metadata."""
+    return example_stems()[lang.id]
 
 
 def _register() -> None:
