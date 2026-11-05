@@ -26,10 +26,10 @@ import re
 from collections import Counter
 from collections.abc import Iterable
 
+from esolangs.generation.algebraic import affine_form
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
-    affine_form,
     essential_inputs,
     grid_width,
     read_at,

@@ -23,9 +23,9 @@ Size:
     Constants: sum(d[k]*(k+1)) + 2 + 2b chars, d the base-seven digits of n.
 """
 
+from esolangs.generation.algebraic import affine_form
 from esolangs.generation.helpers import (
     _validate_truth_table,
-    affine_form,
     in_input_order,
 )
 from esolangs.generation.shared_block import (

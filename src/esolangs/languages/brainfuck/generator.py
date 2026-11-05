@@ -26,10 +26,10 @@ Decisions:
     commands overrun the pinned budget, so it is not built.
 """
 
+from esolangs.generation.algebraic import affine_form
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
-    affine_form,
     in_input_order,
     move_text,
 )

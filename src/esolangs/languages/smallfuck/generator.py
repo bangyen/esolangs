@@ -24,10 +24,10 @@ from functools import partial
 from itertools import pairwise
 from typing import Any
 
+from esolangs.generation.algebraic import affine_form
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
-    affine_form,
     constant_span_test,
     in_input_order,
     mark_runs,

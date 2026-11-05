@@ -38,9 +38,9 @@ Decisions:
 
 from typing import Literal
 
+from esolangs.generation.algebraic import affine_form
 from esolangs.generation.helpers import (
     _validate_truth_table,
-    affine_form,
     constant_span_test,
     input_weights,
     move_text,

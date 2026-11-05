@@ -19,9 +19,9 @@ Size:
 
 from itertools import pairwise
 
+from esolangs.generation.algebraic import affine_form
 from esolangs.generation.helpers import (
     _validate_truth_table,
-    affine_form,
     essential_inputs,
     read_at,
 )

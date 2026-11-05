@@ -2,6 +2,7 @@
 
 from math import isqrt
 
+from esolangs.generation.algebraic import affine_form
 from esolangs.generation.helpers import _validate_truth_table, grid_width
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
@@ -58,23 +59,14 @@ def parity_circuit(table: str, *, folded: bool) -> str | None:
 
 
 def affine_circuit(table: str, width: int) -> str | None:
-    """Return a direct XOR chain if binary-carry parity verifies the table."""
+    """Return a direct XOR chain for a verified affine table."""
     n = _validate_truth_table(table)
-    constant = int(table[0])
-    coefficients = [constant ^ int(table[1 << bit]) for bit in range(n)]
-    parity = constant
-    for row, value in enumerate(table):
-        if parity != int(value):
-            return None
-        # All binary carries together flip fewer than 2T bits.
-        carry = row
-        bit = 0
-        while carry & 1:
-            parity ^= coefficients[bit]
-            carry >>= 1
-            bit += 1
-        if bit < n:
-            parity ^= coefficients[bit]
+    form = affine_form(table, n)
+    if form is None:
+        return None
+    constant = form.bias
+    # The layout selects rails least-significant input first.
+    coefficients = form.coefficients[::-1]
     if n >= 2 and all(coefficients):
         return parity_circuit(table, folded=width < _XOR2_FLAT_WIDTH or n >= 3)
     builder = _Builder(narrow=True)

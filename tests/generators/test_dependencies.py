@@ -4,6 +4,7 @@ import random
 from itertools import product
 
 from esolangs.generation import helpers
+from esolangs.generation.algebraic import AffineForm, affine_form
 from tests.support.witness_tables import witnesses
 
 
@@ -18,6 +19,8 @@ def _oracle(table: str, n: int) -> list[int]:
 
 
 def test_dependencies_exhaustive() -> None:
+    assert helpers.AffineForm is AffineForm
+    assert helpers.affine_form is affine_form
     for n in range(1, 5):
         forms = {
             "".join(
