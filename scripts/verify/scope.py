@@ -136,7 +136,8 @@ def widens_to_everything(changed: list[str]) -> str | None:
     ):
         return "shared interpreter machinery changed"
     if any(
-        f.endswith(SHARED_TOOLING) or f.startswith(("scripts/verify/", "checks/"))
+        f.endswith(SHARED_TOOLING)
+        or f.startswith(("scripts/verify/", "checks/", ".github/actions/"))
         for f in changed
     ):
         return "verification tooling changed"
@@ -148,6 +149,7 @@ TOOLING_INTEGRATIONS = {
         ("test_combining_shards_retains_every_branch",),
         (
             ".github/workflows/",
+            ".github/actions/",
             "scripts/ci/shard.py",
         ),
     ),

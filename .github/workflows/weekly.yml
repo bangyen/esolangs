@@ -49,23 +49,10 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
-      with:
-        version: "0.13.0"
-
-    - name: Set up Python ${{ matrix.python-version }}
-      if: matrix.python-version != '3.15'
-      uses: actions/setup-python@v7
+    - name: Set up Python
+      uses: ./.github/actions/setup
       with:
         python-version: ${{ matrix.python-version }}
-    # GitHub's runtime catalog lacks 3.15.0; uv 0.13.0 provides the final release.
-    - name: Set up Python 3.15 with uv
-      if: matrix.python-version == '3.15'
-      run: uv python install 3.15.0
-
-    - name: Install dependencies
-      run: uv sync --group dev --python ${{ matrix.python-version }}
 
     # The whole suite, not `-m slow`: running the band alone would leave the
     # fast tests unexercised at these interpreters for a week, and they are
@@ -102,7 +89,7 @@ jobs:
   # machine- and load-dependent, and a threshold loose enough not to flake on
   # a shared runner is loose enough to miss the regression it is there for.
   # So it is recorded, not gated.  One job, one interpreter, best-of-five:
-  # the artifact is the trend, and `just benchmark` is how a suspicion gets
+  # the raw artifact is the evidence, and `just benchmark` is how a suspicion gets
   # checked by hand afterwards.  The exact half of the same sweep -- emitted
   # size and step count -- is gated per-PR by CI's generator size baseline instead.
   timings:
@@ -116,23 +103,10 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
-
     - name: Set up Python
-      uses: actions/setup-python@v7
+      uses: ./.github/actions/setup
       with:
         python-version: "3.14"
-
-    - name: Install dependencies
-      run: uv sync --group dev --python 3.14
-
-    - name: Restore timing history
-      uses: actions/cache@v6
-      with:
-        path: .generator-timing-history.json
-        key: generator-timings-${{ runner.os }}-${{ runner.arch }}-py314-${{ github.run_id }}-${{ github.run_attempt }}
-        restore-keys: generator-timings-${{ runner.os }}-${{ runner.arch }}-py314-
 
     # `--timings` writes the full sweep; the run still fails if the exact
     # fields drifted, which on `main` would mean the gate was bypassed.
@@ -141,19 +115,12 @@ jobs:
         uv run python checks/check_generator_sizes.py
         --repeat 5 --timings generator-timings.json
 
-    - name: Compare generator timing history
-      run: |
-        uv run python scripts/ci/generator_timings.py generator-timings.json --history .generator-timing-history.json --report generator-timing-report.md
-        cat generator-timing-report.md >> "$GITHUB_STEP_SUMMARY"
-
     - name: Upload the timings
       if: ${{ always() && !cancelled() }}
       uses: actions/upload-artifact@v7
       with:
         name: generator-timings
-        path: |
-          generator-timings.json
-          generator-timing-report.md
+        path: generator-timings.json
         retention-days: 90
 
     - name: Retain worker and verification logs
@@ -174,14 +141,10 @@ jobs:
     - uses: actions/checkout@v7
       with:
         persist-credentials: false
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
     - name: Set up Python
-      uses: actions/setup-python@v7
+      uses: ./.github/actions/setup
       with:
         python-version: "3.12"
-    - name: Install dependencies
-      run: uv sync --group dev --python 3.12
 
     # A generator route that was replaced keeps its own tests green; three
     # sat unread for months.  Reports any generation/ name, or any private name
@@ -222,14 +185,10 @@ jobs:
     - uses: actions/checkout@v7
       with:
         persist-credentials: false
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
     - name: Set up Python
-      uses: actions/setup-python@v7
+      uses: ./.github/actions/setup
       with:
         python-version: "3.14"
-    - name: Install dependencies
-      run: uv sync --group dev --python 3.14
     # The same collection scripts/deadcode.py runs itself -- `-m ""`,
     # the whole suite, `-n 4`, branch coverage -- partitioned by node
     # id.  scripts/ci/shard.py is the partitioner every sharded job in
@@ -289,14 +248,10 @@ jobs:
     - uses: actions/checkout@v7
       with:
         persist-credentials: false
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
     - name: Set up Python
-      uses: actions/setup-python@v7
+      uses: ./.github/actions/setup
       with:
         python-version: "3.14"
-    - name: Install dependencies
-      run: uv sync --group dev --python 3.14
     - uses: actions/download-artifact@v8
       with:
         pattern: deadcode-coverage-*

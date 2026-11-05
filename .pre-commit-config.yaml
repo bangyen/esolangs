@@ -48,7 +48,8 @@ repos:
         name: actionlint
         entry: uv run --frozen actionlint
         language: system
-        files: ^\.github/workflows/[^/]+\.ya?ml$
+        files: ^\.github/(workflows/[^/]+\.ya?ml|actions/[^/]+/action\.ya?ml)$
+        pass_filenames: false
 
   - repo: local
     hooks:

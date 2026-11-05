@@ -1,0 +1,28 @@
+name: Set up Python
+description: Install Python and optionally sync development dependencies.
+inputs:
+  python-version:
+    description: Python version for this job.
+    required: true
+  sync:
+    description: Install the development dependency group.
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v7
+      with:
+        version: "0.13.0"
+    - uses: actions/setup-python@v7
+      if: inputs.python-version != '3.15'
+      with:
+        python-version: ${{ inputs.python-version }}
+    # setup-python's runtime catalog lacks 3.15.0; uv provides the final release.
+    - if: inputs.python-version == '3.15'
+      shell: bash
+      run: uv python install 3.15.0
+    - if: inputs.sync == 'true'
+      shell: bash
+      env:
+        PYTHON_VERSION: ${{ inputs.python-version }}
+      run: uv sync --group dev --python "$PYTHON_VERSION"

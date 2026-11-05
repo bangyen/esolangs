@@ -39,20 +39,10 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
-
     - name: Set up Python
-      uses: actions/setup-python@v7
+      uses: ./.github/actions/setup
       with:
         python-version: "3.12"
-
-    # `--python` explicitly, though this job also sets up 3.12 above: the
-    # repo now commits a `.python-version` pin, and a bare `uv sync` prefers
-    # it -- which would quietly move this job to whatever dev is on.  The
-    # lint job holds the floor `requires-python` promises, so it says so.
-    - name: Install dependencies
-      run: uv sync --group dev --python 3.12
 
     - name: Run pre-commit
       run: uv run pre-commit run --all-files
@@ -126,23 +116,10 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
-      with:
-        version: "0.13.0"
-
-    - name: Set up Python ${{ matrix.python-version }}
-      if: matrix.python-version != '3.15'
-      uses: actions/setup-python@v7
+    - name: Set up Python
+      uses: ./.github/actions/setup
       with:
         python-version: ${{ matrix.python-version }}
-    # GitHub's runtime catalog lacks 3.15.0; uv 0.13.0 provides the final release.
-    - name: Set up Python 3.15 with uv
-      if: matrix.python-version == '3.15'
-      run: uv python install 3.15.0
-
-    - name: Install dependencies
-      run: uv sync --group dev --python ${{ matrix.python-version }}
 
     - name: Test with pytest (shard ${{ matrix.shard }} of 2)
       run: uv run python scripts/ci/shard.py shard --marker "not slow and not weekly" --shard ${{ matrix.shard }} --shards 2 --manifest notes/ci/test.shard.json -- -n auto -p scripts.ci.shard --duration-output notes/ci/test-durations.json
@@ -184,12 +161,10 @@ jobs:
     - uses: actions/checkout@v7
       with:
         persist-credentials: false
-    - uses: astral-sh/setup-uv@v7
-    - uses: actions/setup-python@v7
+    - name: Set up Python
+      uses: ./.github/actions/setup
       with:
         python-version: "3.14"
-    - name: Install dependencies
-      run: uv sync --group dev --python 3.14
     # Run 37966422522 spent 226s in coverage pytest. Partition the same band;
     # retain branch data from both shards before applying either coverage gate.
     - name: Test one coverage shard
@@ -241,12 +216,10 @@ jobs:
       with:
         persist-credentials: false
         fetch-depth: 0
-    - uses: astral-sh/setup-uv@v7
-    - uses: actions/setup-python@v7
+    - name: Set up Python
+      uses: ./.github/actions/setup
       with:
         python-version: "3.14"
-    - name: Install dependencies
-      run: uv sync --group dev --python 3.14
     - uses: actions/download-artifact@v8
       with:
         pattern: coverage-*
@@ -286,18 +259,10 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
-
-    - name: Set up Python 3.14
-      uses: actions/setup-python@v7
+    - name: Set up Python
+      uses: ./.github/actions/setup
       with:
         python-version: "3.14"
-
-    # Explicit, like every other sync here: with `.python-version`
-    # committed, a bare `uv sync` would follow the pin.
-    - name: Install dependencies
-      run: uv sync --group dev --python 3.14
 
     - name: Test one slow shard
       run: uv run python scripts/ci/shard.py shard --marker "slow and not weekly" --durations snapshot.json --shard ${{ matrix.shard }} --shards 4 --manifest notes/ci/slow.shard.json -- -n auto -p scripts.ci.shard --duration-output notes/ci/test-durations.json
@@ -341,17 +306,11 @@ jobs:
     - uses: actions/checkout@v7
       with:
         persist-credentials: false
-    - uses: astral-sh/setup-uv@v7
-      with:
-        version: "0.13.0"
-    - uses: actions/setup-python@v7
-      if: matrix.python-version != '3.15'
+    - name: Set up Python
+      uses: ./.github/actions/setup
       with:
         python-version: ${{ matrix.python-version }}
-    # GitHub's runtime catalog lacks 3.15.0; uv 0.13.0 provides the final release.
-    - name: Set up Python 3.15 with uv
-      if: matrix.python-version == '3.15'
-      run: uv python install 3.15.0
+        sync: "false"
     - name: Build and install the wheel without extras
       run: |
         uv build --python ${{ matrix.python-version }}
@@ -384,19 +343,10 @@ jobs:
     - uses: actions/checkout@v7
       with:
         persist-credentials: false
-    - uses: astral-sh/setup-uv@v7
-      with:
-        version: "0.13.0"
-    - uses: actions/setup-python@v7
-      if: matrix.python-version != '3.15'
+    - name: Set up Python
+      uses: ./.github/actions/setup
       with:
         python-version: ${{ matrix.python-version }}
-    # GitHub's runtime catalog lacks 3.15.0; uv 0.13.0 provides the final release.
-    - name: Set up Python 3.15 with uv
-      if: matrix.python-version == '3.15'
-      run: uv python install 3.15.0
-    - name: Install test dependencies
-      run: uv sync --group dev --python ${{ matrix.python-version }}
     - name: Exercise paths, deadlines, output limits and worker cleanup
       run: >
         uv run pytest -q -o addopts=""
@@ -441,18 +391,10 @@ jobs:
     - uses: actions/checkout@v7
       with:
         persist-credentials: false
-    - uses: astral-sh/setup-uv@v7
-      with:
-        version: "0.13.0"
-    - uses: actions/setup-python@v7
-      if: matrix.python != '3.15'
+    - name: Set up Python
+      uses: ./.github/actions/setup
       with:
         python-version: ${{ matrix.python }}
-    - name: Set up Python 3.15 with uv
-      if: matrix.python == '3.15'
-      run: uv python install 3.15.0
-    - name: Install dependencies
-      run: uv sync --group dev --python ${{ matrix.python }}
     - uses: actions/download-artifact@v8
       with:
         pattern: ${{ matrix.pattern }}

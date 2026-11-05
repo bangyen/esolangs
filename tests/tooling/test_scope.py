@@ -70,6 +70,7 @@ class TestWidensToEverything:
             "scripts/verify/gate.py",
             "scripts/verify/scope.py",
             "scripts/verify/process.py",
+            ".github/actions/setup/action.yml",
             "scripts/verify/failures.py",
             "checks/new_check.py",
             "uv.lock",

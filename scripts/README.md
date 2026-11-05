@@ -19,10 +19,7 @@ checks, which `just test` runs for you.
 | `mutants` | `mutants.py` | seed generator mutants; survivors are untested behaviour |
 | `refresh-ci-timings` | `ci/shard.py` | merge CI timing artifacts |
 
-`python scripts/ci/generator_timings.py generator-timings.json --history
-.generator-timing-history.json --report generator-timing-report.md` compares
-successful sweeps within one environment and corpus. Weekly CI publishes the
-report; two successive increases of at least 20% are marked persistent.
+Weekly CI retains raw generator timing artifacts for manual comparison.
 
 CI-only: `ci/release.py` (normalize and smoke a release, print its notes),
 `ci/shard.py` (test sharding).

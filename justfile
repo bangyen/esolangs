@@ -22,7 +22,6 @@ help:
     @echo "  just test-mid     Fast + medium tests"
     @echo "  just test         Required checks before committing (branch-scoped)"
     @echo "  just test-full    Whole-tree checks, including slow tests, before release"
-    @echo "  just test-full-parallel  The same gate on every core (idle machine only)"
     @echo ""
     @echo 'New language: just new-language "Name" --category <one it lists>'
     @echo 'Then: just check-language "Name" and just bounds "Name";'
@@ -66,18 +65,6 @@ test *args:
 test-full *args:
     {{PYTHON}} scripts/verify/gate.py --full "$@"
 
-# The release gate is deliberate, not the inner loop, so it may take the box:
-# on a quiet machine the committed measurement (pyproject.toml's worker note)
-# is 85.6s at `-n auto` against 126.9s at four.  Not the default because >4
-# workers starve the fast band's subprocess tests past their starved ceiling
-# when the box is also loaded -- see the test-quick note.
-[group('test')]
-[doc('test-full on every core; idle machine only')]
-[no-exit-message]
-[positional-arguments]
-test-full-parallel *args:
-    PYTEST_ADDOPTS="-n auto" {{PYTHON}} scripts/verify/gate.py --full "$@"
-
 # inner loop: pre-commit + pytest, fast band only, quiet by default.
 # Four workers, the pytest config's default: this box also runs sessions in
 # parallel, and at eight workers the subprocess-heavy fast tests starve past
@@ -118,13 +105,6 @@ test-py *args:
 [positional-arguments]
 test-one +nodes:
     {{PYTHON}} -m pytest -q -n 0 -m "" "$@"
-
-# lint + dead definitions
-[group('test')]
-[no-exit-message]
-[positional-arguments]
-test-lint *args:
-    {{PYTHON}} scripts/verify/gate.py --only pre-commit,"dead definitions" "$@"
 
 # create interpreter, generator and test stubs; asks the category unless --category
 [group('languages')]

@@ -3,12 +3,10 @@
 from types import SimpleNamespace
 
 from conftest import pytest_terminal_summary
-from scripts.ci.generator_timings import compare
 
 
 def test_evidence_reports(tmp_path, monkeypatch):
     _contract_summary_counts_outcomes_and_reasons()
-    _persistent_timing_regressions_rank_before_candidates()
     _failed_collection_removes_partial_coverage(tmp_path, monkeypatch)
 
 
@@ -38,18 +36,6 @@ def _contract_summary_counts_outcomes_and_reasons():
     assert "1 passed, 1 skipped, 1 xfailed" in lines
     assert "1: resource cap" in lines
     assert "1: open bound" in lines
-
-
-def _persistent_timing_regressions_rank_before_candidates():
-    import json
-
-    a, b = (json.dumps([name, "01"]) for name in ("candidate", "persistent"))
-
-    def run(first, second):
-        return {"environment": {}, "controls": {}, "timings": {a: first, b: second}}
-
-    report, _ = compare(run(200, 130), [run(100, 100), run(100, 130)])
-    assert report.index("persistent `01`") < report.index("candidate `01`")
 
 
 def _failed_collection_removes_partial_coverage(tmp_path, monkeypatch):
