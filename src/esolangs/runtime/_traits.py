@@ -1,5 +1,6 @@
 """Driving trait defaults shared by interpreter wrappers and runners."""
 
+from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._lifecycle import Completion, completion
 
 _DEFAULTS = {
@@ -10,8 +11,16 @@ _DEFAULTS = {
 }
 
 
-def trait(machine: object, name: str) -> bool:
+def trait(
+    machine: object, name: str, capabilities: MachineCapabilities | None = None
+) -> bool:
     """Read a driving trait from a machine class or instance."""
+    if capabilities is not None:
+        if name == "dumps_on_the_post_halt_step":
+            return capabilities.completion is Completion.POST_HALT
+        if name == "steppable_to_answer":
+            return capabilities.completion is not Completion.PERIODIC
+        return bool(getattr(capabilities, name))
     if name == "dumps_on_the_post_halt_step":
         return completion(machine) is Completion.POST_HALT
     if name == "steppable_to_answer":
@@ -19,6 +28,8 @@ def trait(machine: object, name: str) -> bool:
     return bool(getattr(machine, name, _DEFAULTS[name]))
 
 
-def traits(machine: object) -> dict[str, bool]:
+def traits(
+    machine: object, capabilities: MachineCapabilities | None = None
+) -> dict[str, bool]:
     """Return the driving traits with their shared defaults."""
-    return {name: trait(machine, name) for name in _DEFAULTS}
+    return {name: trait(machine, name, capabilities) for name in _DEFAULTS}

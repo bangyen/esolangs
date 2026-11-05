@@ -42,14 +42,20 @@ def _read_view(machine: object, name: str) -> str | None:
     return _abbreviate(value)
 
 
-def machine_views(machine: object) -> tuple[tuple[str, str], ...]:
-    """Return the readable public properties unique to ``machine``."""
+def machine_views(
+    machine: object, names: tuple[str, ...] | None = None
+) -> tuple[tuple[str, str], ...]:
+    """Render declared attributes, or discover legacy public properties."""
+    if names is None:
+        names = tuple(
+            name
+            for name, attribute in sorted(vars(type(machine)).items())
+            if not name.startswith("_")
+            and name not in _NOT_A_VIEW
+            and isinstance(attribute, property)
+        )
     found = []
-    for name, attribute in sorted(vars(type(machine)).items()):
-        if name.startswith("_") or name in _NOT_A_VIEW:
-            continue
-        if not isinstance(attribute, property):
-            continue
+    for name in names:
         text = _read_view(machine, name)
         if text is not None:
             found.append((name, text))

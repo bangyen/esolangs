@@ -16,9 +16,16 @@ Errors:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from functools import partial
+from typing import Any
+
+from esolangs.languages.cyclic_tag.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
-from esolangs.runtime._lifecycle import Completion, CompletionReport
+from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -52,10 +59,6 @@ def _advance(read: int, program: tuple[str, ...], bit: str) -> tuple[int, str]:
     return read + 1, program[read % len(program)] if bit == "1" else ""
 
 
-# Completion has no per-program data; reuse the immutable report.
-_COMPLETED = CompletionReport(Completion.POST_HALT)
-
-
 class _Machine:
     """An append-only queue and a count of the bits deleted from its front.
 
@@ -63,7 +66,7 @@ class _Machine:
     production and names the last deleted bit: it is the whole control state.
     """
 
-    completion = _COMPLETED.kind
+    completion = CAPABILITIES.completion
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
@@ -114,11 +117,21 @@ class _Machine:
             self.printed = True
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh source-step machines; Cyclic tag has no runtime options."""
+    if not isinstance(source, str):
+        raise TypeError("Cyclic tag machines require text source")
+    if options:
+        raise TypeError("Cyclic tag machines accept no runtime options")
+    return partial(_Machine, source)
+
+
 def _execute(code: str, io: IO) -> CompletionReport:
     """Return completion after printing the last deleted bit."""
     machine = _Machine(code, io)
-    drive(machine)
-    return _COMPLETED
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO) -> None:

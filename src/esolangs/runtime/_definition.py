@@ -5,7 +5,10 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from esolangs.runtime._capabilities import MachineCapabilities
 
 
 class SourceKind(StrEnum):
@@ -45,6 +48,9 @@ class RuntimeSpec:
     machine_preparation: str | None = None
     #: Explicit defaults avoid loading or inspecting the machine for dialect metadata.
     dialect_defaults: Mapping[str, int | str] | None = None
+
+    #: Explicit machine traits and optional debug surface; legacy discovery if absent.
+    capabilities: MachineCapabilities | None = None
 
     def __post_init__(self) -> None:
         """Require declared defaults to cover exactly the dialect's choices."""

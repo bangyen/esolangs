@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Cyclic tag."""
 
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.cyclic_tag.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -15,6 +16,8 @@ LANGUAGE = Language(
     RuntimeSpec(
         "cyclic_tag",
         completion_entrypoint="_execute",
+        machine_preparation="prepare_machine",
+        capabilities=CAPABILITIES,
         category="queue_based",
         empty_program="Cyclic tag requires productions,queue using bits and semicolons",
     ),

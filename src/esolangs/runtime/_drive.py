@@ -58,11 +58,12 @@ def finalize(
             machine.step()
 
 
-def drive(machine: Machine) -> CompletionReport:
+def drive(machine: Machine, *, policy: Completion | None = None) -> CompletionReport:
     """Run to halt, including a language's declared final output step."""
     while not machine.halted:
         machine.step()
-    policy = completion(machine)
+    if policy is None:
+        policy = completion(machine)
     finalize(machine, policy=policy)
     return POST_HALT_REPORT if policy is Completion.POST_HALT else HALTED_REPORT
 

@@ -146,6 +146,12 @@ def run_prepared(
                 "completion runner returned no completion report",
                 hint="check the declared completion entry point",
             )
+        capabilities = LANGUAGES[name].runtime.capabilities
+        if capabilities is not None and value.kind is not capabilities.completion:
+            raise InterpreterLimitError(
+                "completion report disagrees with declared policy",
+                hint="check the descriptor and native completion runner",
+            )
     return ExecutionResult(
         io_obj.getvalue(),
         io_obj.position(),

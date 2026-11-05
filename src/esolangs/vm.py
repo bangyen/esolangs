@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from collections.abc import Hashable
 from functools import cache
-from typing import Literal, Protocol, cast, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 
 from esolangs._cycles import (
     _AffineMachine as _AffineMachine,
@@ -90,6 +90,7 @@ from esolangs._cycles import (
 )
 from esolangs.exceptions import ArgumentError, InterpreterLimitError
 from esolangs.registry import LANGUAGES, resolve
+from esolangs.runtime._capabilities import IpShape as IpShape
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._drive import finalize
 from esolangs.runtime._execution import (
@@ -132,10 +133,6 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
         else Completion.HALTED,
     )
     return vm.output
-
-
-#: What :attr:`VM.ip_shape` returns.
-type IpShape = Literal["offset", "grid", "line", "opaque"]
 
 
 @runtime_checkable
@@ -269,6 +266,7 @@ class _DelegatingVM:
     ) -> None:
         self.language = language
         self._io = ScriptedIO(stdin)
+        self._capabilities = LANGUAGES[language].runtime.capabilities
         module = interpreter_module(language)
         code, options = prepare_call(
             language,
@@ -338,9 +336,19 @@ class _DelegatingVM:
     # with no stack or no addressable cells says nothing, and one whose
     # position is a plain ``ind`` need not repeat it as ``ip``.
 
+    def _view(self, name: str, default: object) -> Any:
+        """Read an explicit debug attribute, retaining legacy conventional names."""
+        if self._capabilities is None:
+            return getattr(self._machine, name, default)
+        debug = self._capabilities.debug
+        attribute = getattr(debug, name) if debug is not None else None
+        return getattr(self._machine, attribute) if attribute is not None else default
+
     @property
     def ip(self) -> int | tuple[int, ...] | None:
         """The current code position: ``ip``, else ``ind``, else ``None``."""
+        if self._capabilities is not None:
+            return cast("int | tuple[int, ...] | None", self._view("ip", None))
         machine = self._machine
         return getattr(machine, "ip", getattr(machine, "ind", None))
 
@@ -352,47 +360,54 @@ class _DelegatingVM:
         Crement's instructions, B-tapemark's grids): they leaked through as
         ``list[int]``, and ``break_on_cell`` could not name a value.
         """
-        cells = list(getattr(self._machine, "memory", ()))
+        cells = list(self._view("memory", ()))
         if all(type(cell) is int for cell in cells):
             return cells
         return []
 
     @property
     def ptr(self) -> int | None:
-        value = getattr(self._machine, "ptr", None)
+        value = self._view("ptr", None)
         return value if isinstance(value, int) and not isinstance(value, bool) else None
 
     @property
     def stack(self) -> list[object]:
         """The stack, or empty where the language has none."""
-        return list(getattr(self._machine, "stack", ()))
+        return list(self._view("stack", ()))
 
-    # Traits come off the machine by ``getattr``; the interpreter declares
-    # exceptions to the common shape, which supplies the defaults.
+    # Declared capabilities take precedence over legacy machine conventions.
 
     @property
     def self_halts(self) -> bool:
-        return trait(self._machine, "self_halts")
+        return trait(self._machine, "self_halts", self._capabilities)
 
     @property
     def ip_shape(self) -> IpShape:
+        if self._capabilities is not None:
+            debug = self._capabilities.debug
+            return debug.ip_shape if debug is not None else "offset"
         return cast(IpShape, getattr(self._machine, "ip_shape", "offset"))
 
     @property
     def views(self) -> tuple[tuple[str, str], ...]:
+        if self._capabilities is not None:
+            debug = self._capabilities.debug
+            return machine_views(
+                self._machine, debug.views if debug is not None else ()
+            )
         return machine_views(self._machine)
 
     @property
     def dumps_on_the_post_halt_step(self) -> bool:
-        return trait(self._machine, "dumps_on_the_post_halt_step")
+        return trait(self._machine, "dumps_on_the_post_halt_step", self._capabilities)
 
     @property
     def steppable_to_answer(self) -> bool:
-        return trait(self._machine, "steppable_to_answer")
+        return trait(self._machine, "steppable_to_answer", self._capabilities)
 
     @property
     def eof_is_a_value(self) -> bool:
-        return trait(self._machine, "eof_is_a_value")
+        return trait(self._machine, "eof_is_a_value", self._capabilities)
 
 
 def _capture_result(vm: VM) -> ExecutionResult:
@@ -434,7 +449,11 @@ def machine_traits(language: str) -> dict[str, bool]:
 
     Read off the state *class*, so :func:`esolangs.describe` needs no program.
     """
-    state = interpreter_module(resolve(language))._Machine  # noqa: SLF001 - traits need no instance
+    name = resolve(language)
+    capabilities = LANGUAGES[name].runtime.capabilities
+    if capabilities is not None:
+        return traits(None, capabilities)
+    state = interpreter_module(name)._Machine  # noqa: SLF001 - traits need no instance
     return traits(state)
 
 
