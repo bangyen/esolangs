@@ -26,17 +26,21 @@ def assert_every_row(
         assert esolangs.read_answer(language, got) == table[row], (table, row)
 
 
-def assert_native_rows(language, table, program, run, *, sentinel="7", token=False):
+def assert_native_rows(
+    language, table, program, run, *, sentinel="7", token=False, count_whitespace=False
+):
     """Check native answers, read-before-write ordering and the following record."""
     n = len(table).bit_length() - 1
     for row, expected in enumerate(table):
         stdin = esolangs.encode_inputs(language, row_bits(row, n))
-        io = ReadFirstIO(stdin + sentinel, expected=len(stdin.rstrip()) if token else n)
+        io = ReadFirstIO(
+            stdin + sentinel, expected=len(stdin.rstrip()) if count_whitespace else n
+        )
         run(program, io)
         got = io.getvalue()
         assert io.past_end == 0
         if token:
-            assert io.input_token() == sentinel
+            assert io.input_token() == sentinel.strip()
         else:
             assert io.input_char() == ord(sentinel)
         assert esolangs.read_answer(language, got) == expected, (table, row)

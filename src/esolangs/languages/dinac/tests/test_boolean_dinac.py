@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import assert_native_rows
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -16,19 +17,8 @@ def test_every_row_prints_its_answer(table: str) -> None:
         _check_constants()
     from esolangs.languages.dinac.interpreter import run
 
-    n = len(table).bit_length() - 1
-
     program = esolangs.generate("DINAC", table)
-    for row in range(len(table)):
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        stdin = esolangs.encode_inputs("DINAC", bits)
-        io = ReadFirstIO(stdin + "Q", expected=n)
-        run(program, io)
-        got = io.getvalue()
-        assert io.past_end == 0
-        assert io.input_char() == ord("Q")
-        # The answer as the contract reads it, not the raw output.
-        assert esolangs.read_answer("DINAC", got) == table[row], (table, row)
+    assert_native_rows("DINAC", table, program, run, sentinel="Q")
 
 
 @pytest.mark.parametrize(

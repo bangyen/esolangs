@@ -21,7 +21,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
         assert len(program.splitlines()) == 3
     from esolangs.languages.balik.interpreter import run
 
-    assert_native_rows("Balik", table, program, run, token=True)
+    assert_native_rows("Balik", table, program, run, token=True, count_whitespace=True)
 
 
 def _check_constants() -> None:
