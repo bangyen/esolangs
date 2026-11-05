@@ -8,7 +8,8 @@ to a leaf that adds its entry to ``OUT`` at tick ``2n`` (see
 container and one gate dip adds the binary weights to a row counter, so
 ``OUT`` is a prefix sum with one line per step in the table
 (:func:`_container_threshold`, halting in ``2n + 2`` ticks).  Balanced output
-adds a third route, :func:`_container_blocks`, with ``O(sqrt T)`` lines.
+adds a third route, :func:`_container_blocks`, with ``O(sqrt T)`` lines
+and ``2n + 2S + 2`` ticks for its ``S``-row blocks.
 
 Size:
     Tree up to 2**n lines in the worst case, threshold one line per table
@@ -37,8 +38,8 @@ from esolangs.languages.container.descriptor import LANGUAGE as LANGUAGE
 
 #: The names Container gives its own meaning, which a generated container
 #: may not take.  The names draw from a mixed-case alphabet and so reach
-#: ``T`` at index 45 and ``IN`` at 754 -- both inside the name count of a
-#: wide table, so the collision is live rather than defensive.
+#: ``T`` at index 45 and ``IN`` at 1859 -- both inside the name count of a
+#: large tree, so the collision is live rather than defensive.
 _RESERVED = frozenset({"EXIT", "IN", "OUT", "PRINT", "T"})
 
 
@@ -617,7 +618,7 @@ def _container_blocks(table: str) -> str:
         f"1 {word}>={thr}",
         f"-2 T<={end - 1}",
         f"-2 T>={end + 1}",
-        "OUT=48:",
+        f"OUT={_ASCII_ZERO}:",
         f"1 {fin}>=1",
         "PRINT:",
         f"1 T>={end + 1}",

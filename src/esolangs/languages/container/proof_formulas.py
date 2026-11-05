@@ -2,7 +2,7 @@
 
 
 def execution(n: int, program: str) -> int:
-    """The stated execution bound, evaluated for n and the program."""
+    """Return the default tree/threshold execution bound, excluding balanced blocks."""
     return 2 * n if program.startswith("T=") else 2 * n + 2
 
 

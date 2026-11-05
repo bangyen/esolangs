@@ -88,7 +88,7 @@ first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.container.generator:container"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, either build", formula = "2n + 2" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, default tree/threshold builds", formula = "2n + 2" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.container.proof_formulas:workspace"
