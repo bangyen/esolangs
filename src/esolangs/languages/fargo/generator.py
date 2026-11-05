@@ -201,14 +201,18 @@ def _arm_expression(
 
 def _expression(truth_table: str, n: int) -> str:
     """Return the shorter of the arm expression and the complement's, negated."""
+    return _expression_program(truth_table, n)[0]
+
+
+def _expression_program(truth_table: str, n: int) -> tuple[str, str]:
+    """Return the chosen expression and the packed program used to price it."""
     at = tuple(range(n))
     plain = _arm_expression(truth_table, anf_coefficients(truth_table), n, at)
     flip = truth_table.translate(str.maketrans("01", "10"))
     negated = "^ 1 " + _arm_expression(flip, anf_coefficients(flip), n, at)
     return min(
-        plain,
-        negated,
-        key=lambda e: len(_packed_program(e, n, len(f"% 0 {e}\n$\n"))),
+        ((e, _packed_program(e, n, len(f"% 0 {e}\n$\n"))) for e in (plain, negated)),
+        key=lambda pair: len(pair[1]),
     )
 
 
@@ -374,12 +378,11 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     if truth_table.count(truth_table[0]) == len(truth_table):
         # Loading still reads input; the output number starts at zero.
         return "$" if truth_table[0] == "0" else "% 0 1\n$"
-    expression = _expression(truth_table, n)
+    expression, packed = _expression_program(truth_table, n)
     compact = f"% 0 {expression}\n$\n"
     # Naming only the nodes sharing shortens (``[ablations.profitability_packing]``);
     # it is never longer than the inline or the one-node-per-line form, so
     # without a width it is the whole race (``[ablations.default_race]``).
-    packed = _packed_program(expression, n, len(compact))
     if width is None:
         return packed
     shared = _definition_program(expression, n)
