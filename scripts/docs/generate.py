@@ -204,22 +204,6 @@ def render_boolean_count_section() -> str:
     )
 
 
-def render_contributor_tools_section() -> str:
-    """Render the generator directory after checking it against the registry."""
-    root = ROOT / "src" / "esolangs"
-    for language in LANGUAGES.values():
-        if language.boolean is None:
-            continue
-        source = pathlib.Path(language.boolean.__code__.co_filename).resolve()
-        colocated = root / "languages" / language.id / "generator"
-        if not (
-            source.is_relative_to(colocated.resolve())
-            or source == colocated.with_suffix(".py").resolve()
-        ):
-            raise ValueError(f"{language.name}'s generator is outside {colocated}")
-    return "| `src/esolangs/generation/` | shared generator helpers |"
-
-
 def _reads_stdin() -> list[str]:
     """Return the languages that take their inputs on stdin, sorted."""
     names = esolangs.list_languages()
@@ -425,13 +409,6 @@ def update_limitations(root: pathlib.Path = ROOT) -> bool:
     return _write_if_changed(path, text)
 
 
-def update_contributing(root: pathlib.Path = ROOT) -> None:
-    """Validate the registry-derived generator location in contributor docs."""
-    path = root / "docs" / "CONTRIBUTING.md"
-    if render_contributor_tools_section() not in path.read_text():
-        raise ValueError(f"{path} does not name the registry's generator directory")
-
-
 def update_language_request(root: pathlib.Path = ROOT) -> bool:
     """Rewrite the issue template's registry language count."""
     path = root / ".github" / "ISSUE_TEMPLATE" / "language_request.yml"
@@ -499,8 +476,6 @@ def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
         "updated the generated paragraphs of docs/limitations.md",
         changed=update_limitations(output_root),
     )
-    update_contributing(output_root)
-    print("validated the registry facts in docs/CONTRIBUTING.md")
     report(
         "updated the generated facts of the language request template",
         changed=update_language_request(output_root),

@@ -16,7 +16,6 @@ SCRIPT = REPO_ROOT / "scripts" / "docs" / "generate.py"
 README = REPO_ROOT / "README.md"
 USAGE_DOC = REPO_ROOT / "docs" / "usage.md"
 LIMITATIONS = REPO_ROOT / "docs" / "limitations.md"
-CONTRIBUTING = REPO_ROOT / "docs" / "CONTRIBUTING.md"
 LANGUAGE_REQUEST = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "language_request.yml"
 
 
@@ -45,47 +44,25 @@ def test_readme_counts_match_the_registry() -> None:
 
 
 def test_contributor_facts_match_the_registry() -> None:
-    """The generator home is validated and the language count is generated."""
+    """The issue template uses the registry language count."""
     module = load_script()
-    assert module.render_contributor_tools_section() in CONTRIBUTING.read_text()
-    module.update_contributing()
     assert (
         f"What it adds that the current {len(module.LANGUAGES)} do not"
         in LANGUAGE_REQUEST.read_text()
     )
 
 
-def test_a_generator_outside_tools_is_rejected() -> None:
-    """The contributor path must describe every registry generator."""
+def test_generators_live_in_their_language_packages() -> None:
     module = load_script()
-
-    def elsewhere() -> str:
-        return ""
-
-    language = next(iter(module.LANGUAGES.values()))
-    module.LANGUAGES = {language.name: replace(language, boolean=elsewhere)}
-    with pytest.raises(ValueError, match="generator is outside"):
-        module.render_contributor_tools_section()
-
-
-def test_a_language_without_a_generator_is_ignored() -> None:
-    """Only registry entries that claim a generator constrain its home."""
-    module = load_script()
-    language = next(iter(module.LANGUAGES.values()))
-    module.LANGUAGES = {language.name: replace(language, boolean=None)}
-    assert module.render_contributor_tools_section().endswith(
-        "| shared generator helpers |"
-    )
-
-
-def test_an_incorrect_contributor_path_is_rejected(tmp_path: Path) -> None:
-    module = load_script()
-    path = tmp_path / "docs" / "CONTRIBUTING.md"
-    path.parent.mkdir()
-    path.write_text("| `src/esolangs/generation/boolean/` | generators |\n")
-    module.render_contributor_tools_section = lambda: "correct row"
-    with pytest.raises(ValueError, match="does not name"):
-        module.update_contributing(tmp_path)
+    for language in module.LANGUAGES.values():
+        if language.boolean is None:
+            continue
+        source = Path(language.boolean.__code__.co_filename).resolve()
+        home = REPO_ROOT / "src/esolangs/languages" / language.id / "generator"
+        assert (
+            source.is_relative_to(home.resolve())
+            or source == home.with_suffix(".py").resolve()
+        ), language.name
 
 
 def test_the_issue_template_must_contain_one_count(tmp_path: Path) -> None:
@@ -111,7 +88,7 @@ def test_main_updates_all_registry_derived_docs(
     capsys: pytest.CaptureFixture[str],
     tmp_path: Path,
 ) -> None:
-    """The public generator command includes both contributor surfaces."""
+    """The public generator command updates each generated document."""
     module = load_script()
     called = []
     # The stubs report a change, as a stale artifact would: docs_main only
@@ -119,7 +96,6 @@ def test_main_updates_all_registry_derived_docs(
     module.update_readme = lambda _root: called.append("readme") or True
     module.update_usage = lambda _root: called.append("usage") or True
     module.update_limitations = lambda _root: called.append("limitations") or True
-    module.update_contributing = lambda _root: called.append("contributing")
     module.update_language_request = lambda _root: called.append("request") or True
     for relative in (
         "docs/proofs/index.md",
@@ -133,7 +109,7 @@ def test_main_updates_all_registry_derived_docs(
     out = capsys.readouterr().out
     stale = f"docs are stale; run uv run python scripts/docs/generate.py docs\n{out}"
     assert status == 0, stale
-    assert called == ["readme", "usage", "limitations", "contributing", "request"]
+    assert called == ["readme", "usage", "limitations", "request"]
     assert "language request template" in out
     # The real exports and proof tables were copied in sync, so they earn
     # no "updated" line -- only the summary counts them.

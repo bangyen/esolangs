@@ -15,7 +15,7 @@ checks, which `just test` runs for you.
 | `tracediff` | `tracediff.py` | prove an interpreter refactor changes no step |
 | `gendiff` | `gendiff.py` | prove a generator refactor changes no byte |
 | `deadcode` | `deadcode.py` | list generator code no test reaches; name a language to scan one |
-| `mutants` | `mutants.py` | seed generator mutants; survivors are untested behaviour |
+| `mutants PACKAGES --out FILE` | `mutants.py` | seed generator mutants; survivors are untested behaviour |
 | `refresh-ci-timings` | `ci/shard.py` | merge CI timing artifacts |
 
 Weekly CI retains raw generator timing artifacts for manual comparison.

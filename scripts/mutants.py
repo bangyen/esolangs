@@ -1,6 +1,6 @@
 """Seeded token mutants of a generator, run against its tests.
 
-``sweep`` takes package directories (``abcdirection``), prices one baseline
+Takes package directories (``abcdirection``), prices one baseline
 run each, then applies ``--per-language`` seeded mutants one at a time:
 operator swaps (``+``/``-``, ``<``/``<=``, ``and``/``or``, ...) and integer
 constants plus one, in generator source only.  Each runs the package's tests
@@ -342,16 +342,14 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Parse the subcommand and run it."""
+    """Parse packages and run their mutation sweep."""
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    commands = parser.add_subparsers(dest="command", required=True)
-    run = commands.add_parser("sweep", help="run seeded mutants of packages")
-    run.add_argument("packages", nargs="+")
-    run.add_argument("--out", type=Path, required=True)
-    run.add_argument("--per-language", type=int, default=30)
-    run.add_argument("--budget", type=float, default=2 * 3600, help="seconds")
+    parser.add_argument("packages", nargs="+")
+    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--per-language", type=int, default=30)
+    parser.add_argument("--budget", type=float, default=2 * 3600, help="seconds")
     args = parser.parse_args(argv)
     if not _in_worktree():
         parser.error("mutants edit source in place: run a sweep in a git worktree")

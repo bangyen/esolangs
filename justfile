@@ -206,13 +206,3 @@ refresh-ci-timings *args:
 proofs:
     {{PYTHON}} -m pytest tests/proofs -q
     {{PYTHON}} -m tests.proofs.deep all
-
-# clean generated files
-[group('maintenance')]
-clean:
-    #!/usr/bin/env bash
-    find . \( -path ./.venv -o -path ./.claude \) -prune -o \( -name "__pycache__" -o -name "*.egg-info" \) -type d -print0 \
-        | xargs -0 rm -rf
-    find . \( -path ./.venv -o -path ./.claude \) -prune -o -name "*.pyc" -type f -delete
-    rm -rf build dist .coverage coverage.xml .mypy_cache .ruff_cache .pytest_cache
-    find src tests -mindepth 1 -type d -empty -delete
