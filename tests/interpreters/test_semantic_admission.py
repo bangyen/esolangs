@@ -10,6 +10,25 @@ from scripts.docs import semantic
 from scripts.docs.fragments import section
 
 
+def _check_trace_diagnostics(tmp_path, monkeypatch):
+    path = tmp_path / "test_trace_control.py"
+    path.write_text(
+        "import pytest\n"
+        "from esolangs.languages.brainfuck.interpreter import run\n"
+        "from esolangs.runtime.io import ScriptedIO\n"
+        "def test_control():\n"
+        "    with pytest.raises(AssertionError):\n"
+        "        assert [(0,) * 20] * 64 == [(0,) * 19 + (1,)] * 64\n"
+        "    io = ScriptedIO('')\n"
+        "    run('.', io)\n"
+        "    assert io.getvalue() == '\\x00'\n"
+    )
+    record = semantic.Evidence("examples", "interpreter.py", (f"{path}::test_control",))
+    with monkeypatch.context() as patch:
+        patch.setattr(semantic, "load", lambda _: record)
+        assert semantic.verify("brainfuck", tmp_path / "probe") == (1, 1)
+
+
 @pytest.mark.medium
 @pytest.mark.parametrize("name", LANGUAGES)
 def test_semantic_evidence(name, tmp_path, monkeypatch):
@@ -17,6 +36,7 @@ def test_semantic_evidence(name, tmp_path, monkeypatch):
     assert passed
     assert caught
     if name == next(iter(LANGUAGES)):
+        _check_trace_diagnostics(tmp_path, monkeypatch)
         record = semantic.load(name)
         path = (
             semantic.ROOT
