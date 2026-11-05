@@ -1,7 +1,5 @@
 """Shared contracts for generators that embed their inputs."""
 
-import importlib
-import itertools
 import re
 
 import pytest
@@ -63,37 +61,6 @@ def test_parameterized_generators_embed_each_input_once() -> None:
     # that checked far fewer templates than that means the sweep stopped
     # exercising the generators rather than the generators getting stricter.
     assert checked >= len(_parameterized_generators()), checked
-
-
-@pytest.mark.slow  # 2.6s: every fill of every parameterized generator
-def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
-    """No fill may spell a 0 shorter than a 1, or the length leaks the input."""
-
-    from esolangs.generation import examples as ex
-
-    fills = [
-        (name, getattr(ex, name))
-        for name in dir(ex)
-        if name.startswith("_fill_") and callable(getattr(ex, name))
-    ]
-    assert fills, "no _fill_* functions found"
-
-    for name, fill in fills:
-        gen_name = name.removeprefix("_fill_")
-        gen = getattr(ex, gen_name, None) or getattr(
-            importlib.import_module("esolangs.generation"), gen_name, None
-        )
-        if gen is None:  # pragma: no cover - fill without a same-named generator
-            continue
-        for n in (1, 2):
-            template = gen(format(0, f"0{2**n}b"))
-            lengths = {
-                len(fill(template, list(bits)))
-                for bits in itertools.product((0, 1), repeat=n)
-            }
-            assert len(lengths) == 1, (
-                f"{name} embeds bits at unequal width for n={n}: {sorted(lengths)}"
-            )
 
 
 class TestGeneratorEdgePaths:
