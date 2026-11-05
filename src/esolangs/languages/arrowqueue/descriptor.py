@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for ArrowQueue."""
 
+from esolangs.languages.arrowqueue.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -11,7 +12,14 @@ PAIR = (".", "~")
 
 LANGUAGE = Language(
     "ArrowQueue",
-    RuntimeSpec("arrowqueue", category="grid_based", split=True),
+    RuntimeSpec(
+        "arrowqueue",
+        category="grid_based",
+        split=True,
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+    ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.arrowqueue.generator",

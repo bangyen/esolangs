@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for RAM0."""
 
 from esolangs.generation.wrap import wrap_space_delimited
+from esolangs.languages.ram0.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -12,7 +13,13 @@ PAIR = ("Z", "A")
 
 LANGUAGE = Language(
     "RAM0",
-    RuntimeSpec("ram0", category="register_based"),
+    RuntimeSpec(
+        "ram0",
+        category="register_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+    ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.ram0.generator", "ram0", ("truth_table", "width")

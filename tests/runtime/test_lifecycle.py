@@ -1,12 +1,26 @@
 """Completion preserves halt boundaries and requires periodic evidence."""
 
+import json
+import subprocess
+import sys
+from types import SimpleNamespace
+
 import pytest
 
+import esolangs
+from esolangs import vm
+from esolangs.debugger import make_debugger
 from esolangs.exceptions import ExecutionTimeoutError
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._drive import drive, drive_periodic, finalize
 from esolangs.runtime._execution import interpreter_module
-from esolangs.runtime._lifecycle import BoundaryCycle, Completion, completion
+from esolangs.runtime._lifecycle import (
+    HALTED_REPORT,
+    BoundaryCycle,
+    Completion,
+    completion,
+)
+from tests.support.samples import SAMPLES
 
 
 class _Periodic:
@@ -123,3 +137,94 @@ def test_interpreter_completion_has_one_declaration(name):
     assert isinstance(completion(machine), Completion)
     assert "dumps_on_the_post_halt_step" not in vars(machine)
     assert "steppable_to_answer" not in vars(machine)
+
+
+@pytest.mark.medium
+def test_declared_post_halt_factories_and_routes(monkeypatch):
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            """
+import sys
+from esolangs.registry import LANGUAGES
+from esolangs.runtime._lifecycle import Completion
+from esolangs.vm import machine_traits, make_vm
+selected = [lang for lang in LANGUAGES.values()
+            if lang.runtime.capabilities is not None
+            and lang.runtime.capabilities.completion is Completion.POST_HALT]
+modules = {f'esolangs.languages.{lang.id}.interpreter' for lang in selected}
+assert selected and not modules.intersection(sys.modules)
+for lang in selected:
+    assert machine_traits(lang.name)['dumps_on_the_post_halt_step']
+assert not modules.intersection(sys.modules)
+import json
+samples = json.loads(sys.argv[1])
+for lang in selected:
+    code, stdin = samples[lang.name]
+    make_vm(lang.name, code, stdin=stdin)
+assert modules <= sys.modules.keys(), 'loading control did not fire'
+""",
+            json.dumps(
+                {
+                    name: SAMPLES[name]
+                    for name, lang in LANGUAGES.items()
+                    if lang.runtime.capabilities is not None
+                    and lang.runtime.capabilities.completion is Completion.POST_HALT
+                }
+            ),
+        ],
+        check=True,
+        timeout=10,
+    )
+    for name, language in LANGUAGES.items():
+        caps = language.runtime.capabilities
+        if caps is None or caps.completion is not Completion.POST_HALT:
+            continue
+        source, stdin = SAMPLES[name]
+        seed = language.runtime.reproducible_seed if language.runtime.random else None
+        native = esolangs.run(name, source, stdin=stdin, seed=seed)
+        assert (
+            esolangs.run(name, source, stdin=stdin, seed=seed, isolated=True) == native
+        )
+        module = interpreter_module(name)
+        with monkeypatch.context() as control:
+            control.setattr(module._Machine, "completion", Completion.HALTED)
+            control.setattr(
+                module._Machine,
+                "incidental_view",
+                property(lambda _self: 99),
+                raising=False,
+            )
+            preparation = language.runtime.machine_preparation
+            declared = SimpleNamespace(**{preparation: getattr(module, preparation)})
+            control.setattr(
+                vm, "interpreter_module", lambda _name, proxy=declared: proxy
+            )
+            debug = make_debugger(name, source, stdin=stdin, seed=seed)
+            for _ in range(1000):
+                if debug.halted:
+                    break
+                debug.step()
+            else:
+                raise AssertionError(f"{name}: sample exceeded the source-step budget")
+            assert debug.output == ""
+            assert debug.result.completion is None
+            steps = debug.result.steps
+            assert "incidental_view" not in dict(debug.views)
+            debug.step()
+            result, snapshot = debug.result, debug.snapshot()
+            assert result == native._replace(steps=steps)
+            debug.step()
+            assert debug.result == result
+            assert debug.snapshot() == snapshot
+            assert debug.run(max_steps=0) == "halted"
+            assert debug.result == result
+            assert esolangs.run(name, source, stdin=stdin, seed=seed) == native
+            control.setattr(
+                module,
+                language.runtime.completion_entrypoint,
+                lambda *_args, **_options: HALTED_REPORT,
+            )
+            with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):
+                esolangs.run(name, source, stdin=stdin, seed=seed)

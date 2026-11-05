@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Minsky Swap."""
 
+from esolangs.languages.minsky_swap.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -8,7 +9,13 @@ from esolangs.runtime._definition import RuntimeSpec
 
 LANGUAGE = Language(
     "Minsky Swap",
-    RuntimeSpec("minsky_swap", category="register_based"),
+    RuntimeSpec(
+        "minsky_swap",
+        category="register_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+    ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.minsky_swap.generator",

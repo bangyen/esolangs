@@ -14,11 +14,16 @@ Decisions:
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from functools import partial
+from typing import Any
 
+from esolangs.languages.arrowqueue.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
-from esolangs.runtime._lifecycle import Completion, CompletionReport
+from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime.io import IO
 
 # (d_row, d_col) per heading, in the clockwise order right, down, left, up.
@@ -73,7 +78,7 @@ class _Machine:
 
     #: The queue is dumped on the step *after* the halt; a caller who stops
     #: at ``halted`` holds no output.
-    completion = Completion.POST_HALT
+    completion = CAPABILITIES.completion
 
     def __init__(self, code: list[str], io: IO | None = None) -> None:
         """Pad ``code`` to a rectangle and reset the machine to the corner.
@@ -160,6 +165,17 @@ class _Machine:
         self.state = _advance(self.state, self.grid, self.width)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh machines after shared source and option preparation."""
+    if not isinstance(source, list):
+        raise TypeError("arrowqueue machines require source lines")
+    if options:
+        raise TypeError("arrowqueue machines accept no runtime options")
+    return partial(_Machine, source, **options)
+
+
 def _execute(code: list[str], io: IO) -> CompletionReport:
     """Run an ArrowQueue program and print the queue when it halts.
 
@@ -170,7 +186,7 @@ def _execute(code: list[str], io: IO) -> CompletionReport:
     The dump is :meth:`_Machine.step`'s post-halt step.
     """
     machine = _Machine(code, io)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(code: list[str], io: IO) -> None:

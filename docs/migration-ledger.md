@@ -57,3 +57,9 @@ storage-policy or catalog-wide acceptance requirements.
 All seven dialect schemas now declare choices and defaults. Runtime metadata
 queries and validation no longer inspect signatures or constructors. The other
 110 languages have no dialect settings; generator option inference remains open.
+
+All ten post-halt interpreters now declare preparation and completion/debug
+capabilities, alongside Brainfuck, NQ and Whitespace. The post-halt batch checks
+pending dumps, repeated finalization, source-step counts, native/isolated results,
+fault detection and lazy trait queries. Periodic completion, retirement and
+installed-package acceptance remain open.

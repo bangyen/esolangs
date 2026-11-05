@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for LaserFuck."""
 
+from esolangs.languages.laserfuck.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -15,6 +16,9 @@ LANGUAGE = Language(
         split=True,
         # Seed 2 draws heading 0 (up), matching this language's examples.
         reproducible_seed=2,
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
     ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(

@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Bitwise Cyclic Tag."""
 
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.bitwise_cyclic_tag.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -12,7 +13,13 @@ PAIR = ("0", "1")
 
 LANGUAGE = Language(
     "Bitwise Cyclic Tag",
-    RuntimeSpec("bitwise_cyclic_tag", category="queue_based"),
+    RuntimeSpec(
+        "bitwise_cyclic_tag",
+        category="queue_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+    ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.bitwise_cyclic_tag.generator",

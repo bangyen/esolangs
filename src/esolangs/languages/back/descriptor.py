@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Back."""
 
+from esolangs.languages.back.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -16,6 +17,9 @@ LANGUAGE = Language(
         category="tape_based",
         split=True,
         empty_program="Back program cannot be empty",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
     ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(

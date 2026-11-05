@@ -28,11 +28,16 @@ Decisions:
       Unicode character code.
 """
 
-from typing import cast
+from collections.abc import Mapping
+from functools import partial
+from typing import Any, cast
 
+from esolangs.languages.laserfuck.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
-from esolangs.runtime._lifecycle import Completion, CompletionReport
+from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime.io import IO
 from esolangs.runtime.persistent import (
     Chunked,
@@ -205,7 +210,7 @@ class _Machine:
     #: adapter used to replicate it and drifted: its copy fired on ``not
     #: lsrs`` where ``run`` fires on ``halted``, so a program stopped by a
     #: second start marker printed under one and not the other.
-    completion = Completion.POST_HALT
+    completion = CAPABILITIES.completion
 
     def __init__(
         self,
@@ -464,6 +469,15 @@ class _Machine:
             self.io.print_num(val)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh machines after shared source and option preparation."""
+    if not isinstance(source, list):
+        raise TypeError("laserfuck machines require source lines")
+    return partial(_Machine, source, **options)
+
+
 def _execute(
     code: list[str], io: IO, rng: Randomness | None = None
 ) -> CompletionReport:
@@ -474,7 +488,7 @@ def _execute(
     signature as the other drawing interpreters.
     """
     machine = _Machine(code, io, rng)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:

@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Stisp."""
 
 from esolangs.generation.wrap import TokenWrapper
+from esolangs.languages.stisp.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -19,6 +20,9 @@ LANGUAGE = Language(
         "stisp",
         category="other",
         empty_program="a Stisp program needs a stack expression",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
     ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(

@@ -43,12 +43,18 @@ Decisions:
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
+from functools import partial
+from typing import Any
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.stisp.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
-from esolangs.runtime._lifecycle import Completion, CompletionReport
+from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -373,7 +379,7 @@ def _advance(
 class _Machine:
     """The equations, the head, and the frames left."""
 
-    completion = Completion.POST_HALT
+    completion = CAPABILITIES.completion
     #: The state is an expression and a frame stack; ``ip`` is the depth.
     ip_shape = "opaque"
 
@@ -422,9 +428,20 @@ class _Machine:
             self.rendered = True
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh machines after shared source and option preparation."""
+    if not isinstance(source, str):
+        raise TypeError("stisp machines require text source")
+    if options:
+        raise TypeError("stisp machines accept no runtime options")
+    return partial(_Machine, source, **options)
+
+
 def _execute(code: str, io: IO) -> CompletionReport:
     """Run a Stisp program and print its result."""
-    return drive(_Machine(code, io))
+    return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO) -> None:

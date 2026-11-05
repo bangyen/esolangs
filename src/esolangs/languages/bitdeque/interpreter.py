@@ -21,12 +21,17 @@ Decisions:
 from __future__ import annotations
 
 import re
-from typing import NamedTuple
+from collections.abc import Mapping
+from functools import partial
+from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.bitdeque.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
-from esolangs.runtime._lifecycle import Completion, CompletionReport
+from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
@@ -107,7 +112,7 @@ class _Machine:
     #: ends its loop with one more ``step()``, so a caller who stops at
     #: ``halted`` has driven the program correctly and still holds none of
     #: its output.
-    completion = Completion.POST_HALT
+    completion = CAPABILITIES.completion
 
     def __init__(self, code: str, io: IO) -> None:
         """Tokenize ``code`` and reset the register, deque, and cursor."""
@@ -183,10 +188,21 @@ class _Machine:
         self.io.print_str(" ".join(map(str, self.state.deq)))
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh machines after shared source and option preparation."""
+    if not isinstance(source, str):
+        raise TypeError("bitdeque machines require text source")
+    if options:
+        raise TypeError("bitdeque machines accept no runtime options")
+    return partial(_Machine, source, **options)
+
+
 def _execute(code: str, io: IO) -> CompletionReport:
     """Run a Bitdeque program and print the deque at the end."""
     machine = _Machine(code, io)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO) -> None:

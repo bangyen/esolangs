@@ -9,18 +9,18 @@ AddSubJump,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallbac
 Algebraic Programming Language,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Alight,yes,legacy-discovery,declared,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Aprknia,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,aprknia-v1,pending-backend-audit,pending-acceptance-audit,open
-ArrowQueue,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+ArrowQueue,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Ascenic,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,ascenic-v1,pending-backend-audit,pending-acceptance-audit,open
 B-tapemark,yes,legacy-discovery,declared,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-Back,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+Back,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Balik,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 BASICER,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,basicer-v1,pending-backend-audit,pending-acceptance-audit,open
 Basicfuck,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,basicfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Befunge,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Between,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 BFStack,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,bfstack-v1,pending-backend-audit,pending-acceptance-audit,open
-Bitdeque,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-Bitwise Cyclic Tag,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+Bitdeque,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+Bitwise Cyclic Tag,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 bit~,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Bleh,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Blindfolded Arithmetic,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
@@ -66,11 +66,11 @@ Inject,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,p
 INTERCAL,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Interprogck8,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Kiss,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-LaserFuck,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+LaserFuck,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Line,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 lol waht i cant edit talk pages,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,lol-waht-i-cant-edit-talk-pages-v1,pending-backend-audit,pending-acceptance-audit,open
 Malbolge,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-Minsky Swap,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+Minsky Swap,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Modulous,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Monotonic Boolfuck,yes,legacy-discovery,not-applicable,legacy-discovery,inherited-adapter,monotonic-boolfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Movesum,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
@@ -88,7 +88,7 @@ Pointless,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback
 Qoibl,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Qrain,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Quassaunt,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-RAM0,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+RAM0,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 REFRACTRAN,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Retrograde,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 ROTfuck,yes,legacy-discovery,declared,legacy-discovery,owned-adapter,rotfuck-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -97,11 +97,11 @@ S*bleq,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,p
 SendStuff,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Shakespeare,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 SLOW ACV MAMMALIAN,yes,legacy-discovery,declared,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-Smallfuck,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,smallfuck-v1,pending-backend-audit,pending-acceptance-audit,open
+Smallfuck,yes,declared,not-applicable,declared,owned-adapter,smallfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Smu,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Sonata,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 SStack,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,sstack-v1,pending-backend-audit,pending-acceptance-audit,open
-Stisp,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+Stisp,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Streetcode,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Subleq,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,subleq-v1,pending-backend-audit,pending-acceptance-audit,open
 Suffolk,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
