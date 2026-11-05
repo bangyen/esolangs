@@ -72,20 +72,11 @@ checks remain. Language-specific compatibility decisions stay in the
 interpreter contracts. Brainfuck now projects a versioned workspace model;
 cycle snapshots and Python backing storage retain separate contracts.
 
-Remaining migrations, in priority order. Migrate incrementally; retain existing
-contracts and gates. Price pilots before execution; refactors require corpus
-diffs and timings, and emitted-program changes follow the optimization gate.
-
-1. **Boolean construction representations:** organize existing analyses into
-   decision diagrams, algebraic forms and lookup structures, with bounded
-   analysis and target-owned emission. Pilot one family across two backends;
-   retain specialized constructions. Adopt only with byte-identical corpus
-   output and generation timings preserving the growth bound.
-2. **Evidence and verification policy:** extend structured evidence to render
-   documented claims without parsing prescribed prose. Evaluate runtime budgets
-   and demonstrated fault detection as replacements for test-line/count ratios;
-   retain current budgets during evaluation. Done when claims remain executable
-   and a priced pilot preserves independent oracles and mutation detection.
+Public artifacts, independent lazy descriptors and shared execution results
+are integrated. Decision analyses serve four backends; affine forms and
+weighted lookups retain specialized emitters. Resource claims render from
+structured evidence. The cost/fault pilot retained the current verification
+budgets. Further migrations retain corpus, timing and growth gates.
 
 ## Engineering
 

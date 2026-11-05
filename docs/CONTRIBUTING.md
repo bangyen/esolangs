@@ -45,13 +45,17 @@ extend a shallow clone with `git fetch --unshallow`.
 The gate checks generated docs, pre-commit, mypy, pytest, dead definitions,
 size baselines, deep proofs and exception leaks. Out-of-scope steps stay in
 CI; `test-full` runs them locally. Delete unused helpers or move test-only
-helpers under `tests/`. Tests enforce a 1,200-line file cap and require each
-language's tests to be smaller than its source.
+helpers under `tests/`. Tests enforce a 1,200-line file cap, repository
+test/source line budgets and fewer than 10,000 non-contract cases.
 
 Tests have CPU-time bands: fast (default, 1 s), medium (5 s), slow and weekly.
 Exceeding the band fails. Rerun suite duration failures alone: rotating
 failures can be machine load; a test still over budget alone needs speeding
 up or the appropriate band. CI scales the ceilings.
+
+The Brainfuck/Boolfuck/Subleq cost/fault pilot (0.80–1.08 s/cohort) retained
+independent oracles and rejected inert checks. Keep the line/count budgets:
+one injected output-fault class is insufficient replacement evidence.
 
 Make focused commits with short imperative subjects. CI checks wheels on
 Linux, macOS and Windows, including examples, CLI I/O, PNG execution and
@@ -195,6 +199,10 @@ ignored inputs (`essential_inputs`, `read_at`), constant subtrees
 ship at any saving unless inapplicable or larger on average for their target
 at the largest measured arity; cite that measurement. Minimal spelling
 (no redundant grouping or trailing no-op) also needs no percentage gate.
+
+Shared analyses return decision layers/DAGs (`generation/decision.py`), affine
+forms and weighted lookups (`generation/helpers.py`). Analysis stays O(T);
+target emitters own reads, labels, layout and candidate selection.
 
 Size counts characters. Packed literals may carry at most 8 bits per
 character or grid cell; code points above U+00FF merely hide wider UTF-8.
