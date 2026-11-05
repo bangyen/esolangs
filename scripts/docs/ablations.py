@@ -8,6 +8,7 @@ import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
+from functools import cache
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, cast
@@ -128,20 +129,25 @@ def _retirement(value: Any, verdict: str) -> Retirement | None:
     )
 
 
+@cache
+def _archive_text(root: Path, reference: str) -> str:
+    """Cache immutable Git text, never caller-owned parsed mappings."""
+    return subprocess.run(
+        ["git", "show", reference],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=10,
+    ).stdout
+
+
 def _archive_source(language: str, group: str, archive_revision: str) -> dict[str, Any]:
     """Read the pinned audit payload, refusing absent or unstructured history."""
     path = Path("src/esolangs/languages") / LANGUAGES[language].id / "language.toml"
     reference = f"{archive_revision}:{path.as_posix()}"
     try:
-        result = subprocess.run(
-            ["git", "show", reference],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=10,
-        )
-        old = tomllib.loads(result.stdout)[group]
+        old = tomllib.loads(_archive_text(ROOT, reference))[group]
     except (subprocess.SubprocessError, KeyError, tomllib.TOMLDecodeError) as error:
         raise AuditError(f"cannot read archived audit source {reference}") from error
     if (

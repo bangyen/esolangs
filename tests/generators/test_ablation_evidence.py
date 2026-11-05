@@ -71,6 +71,16 @@ def _controls(tmp_path, monkeypatch):
         for k, v in data.items()
     }
     assert ablations.parse_audits(REFERENCE, "ablations", data) == archive
+    detached = ablations._archive_source(
+        REFERENCE, "ablations", archive.archive_revision
+    )
+    detached[key]["verdict"] = "mutated caller-owned mapping"
+    assert (
+        ablations._archive_source(REFERENCE, "ablations", archive.archive_revision)[
+            key
+        ]["verdict"]
+        == archive.records[key].verdict
+    )
     missing = copy.deepcopy(compact)
     missing["missing_control"] = {"kind": "archive_ref"}
     with pytest.raises(ablation_replay.AuditError, match="missing archived"):
