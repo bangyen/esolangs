@@ -721,6 +721,7 @@ def _run_bounded_result(
     settings: DialectSettings | None = None,
     timeout: float | None = None,
     scale: int | None = None,
+    seed: int | None = None,
 ) -> ExecutionResult:
     """Execute cooperatively, returning a result only after completed halt.
 
@@ -731,7 +732,7 @@ def _run_bounded_result(
     check_whole(max_steps, "max_steps")
     check_timeout(timeout)
     debugger = make_debugger(
-        language, program, stdin=stdin, scale=scale, settings=settings
+        language, program, stdin=stdin, scale=scale, settings=settings, seed=seed
     )
     try:
         reason = debugger.run(max_steps=max_steps, timeout=timeout)
@@ -784,10 +785,11 @@ def run(
             (``describe(language)["random"]``); the rest refuse it.
         isolated: Run in a subprocess whose deadline covers startup and
             loading (``timeout``, or 30 seconds when None); works on Windows
-            and in worker threads.  Excludes ``max_steps``.
+            and in worker threads. Can combine with ``max_steps``.
         max_steps: Cooperative stepping bound, for text and raster programs;
             ``timeout`` then excludes loading and cannot interrupt a single
-            step.  Excludes ``seed``.
+            step. With isolation, the worker also enforces its wall-clock
+            deadline.
         scale: Raster scale factor; detected when None.
         max_output: Isolated output cap in Unicode characters (zero allowed);
             the prefix is kept.
@@ -799,9 +801,8 @@ def run(
 
     Raises:
         UnknownLanguageError: ``language`` is not registered.
-        ArgumentError: An option is invalid or combined with one it excludes
-            (``isolated`` with ``max_steps``, ``seed`` for a deterministic
-            language).
+        ArgumentError: An option is invalid or inapplicable
+            (for example, ``seed`` for a deterministic language).
         ProgramNotFoundError: ``program`` is a Path that does not exist.
         ProgramError: The program does not load (base of the above).
         TemplateError: ``program`` is an unfilled template; see
@@ -856,12 +857,9 @@ def _run_result(
     check_timeout(timeout)
     check_flag(isolated, "isolated")
     check_limits(max_output, max_memory, isolated=isolated)
+    if max_steps is not None:
+        check_whole(max_steps, "max_steps")
     if isolated:
-        if max_steps is not None:
-            raise with_hint(
-                ArgumentError("isolated and max_steps are mutually exclusive"),
-                "use isolation with timeout, or use max_steps without isolation",
-            )
         deadline = _ISOLATED_TIMEOUT if timeout is None else timeout
         # Every option defaults to None, so passing them unconditionally
         # matches the old per-combination cascade exactly.
@@ -875,16 +873,9 @@ def _run_result(
             max_output=max_output,
             max_memory=max_memory,
             settings=settings,
+            max_steps=max_steps,
         )
     if max_steps is not None:
-        if seed is not None:
-            raise with_hint(
-                ArgumentError("seed is unsupported with max_steps"),
-                (
-                    "omit max_steps for seeded execution and use "
-                    "timeout to bound the run"
-                ),
-            )
         return _run_bounded_result(
             language,
             program,
@@ -893,6 +884,7 @@ def _run_result(
             timeout=timeout,
             scale=scale,
             settings=settings,
+            seed=seed,
         )
     # Before ``_run``, so every ValueError from the run is the
     # interpreter's.  The message names both routes out for a worker

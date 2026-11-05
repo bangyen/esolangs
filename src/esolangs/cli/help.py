@@ -60,7 +60,7 @@ commands:
                                 (--width wraps it; --bits fills a template)
   Caller-supplied (you supply the program):
     run [--timeout S] [--isolated] [--max-output N] [--max-memory BYTES]
-        [--seed N] [--scale N] [--settings JSON]
+        [--max-steps N] [--seed N] [--scale N] [--settings JSON]
         [--set KEY=VALUE] <language> <file>
                                 run a program through its interpreter
   Contract adapters (your data in, checked data out):
@@ -83,7 +83,7 @@ short for --settings.  A truth table is 2^n bits, most significant first; its le
 sets the input count (0110 is two-input XOR).
 
 exit codes: 0 success, 1 the program broke, 2 the ask was wrong, 70 internal
-error (a bug in esolangs), 120 stdout closed early, 124 the timeout ran out,
+error (a bug in esolangs), 120 stdout closed early, 124 time/step budget exhausted,
 130 interrupted.
 
 examples:
@@ -214,7 +214,7 @@ examples:
 {_DIALECT_EXAMPLES}
 """,
     "run": """usage: esolangs run [--timeout S] [--isolated] [--max-output N]
-                    [--max-memory BYTES] [--seed N]
+                    [--max-memory BYTES] [--max-steps N] [--seed N]
                     [--scale N] [--settings JSON] [--set KEY=VALUE]
                     <language> <program-file>
 
@@ -233,13 +233,14 @@ printed before a failure is written too, then the error on stderr.
 
 exit codes: 0 ran, 1 the program broke while running, 2 the ask was wrong
 (unknown language, malformed program, unreadable file), 70 internal error (a
-bug in esolangs), 120 stdout closed early, 124 the timeout ran out,
+bug in esolangs), 120 stdout closed early, 124 time/step budget exhausted,
 130 interrupted.
 
 options:
   --isolated         run in a subprocess; portable deadline, default 30 seconds.
   --max-output N     cap isolated output in Unicode characters (including zero).
   --max-memory BYTES cap Linux worker address space; requires --isolated.
+  --max-steps N      bound commands cooperatively; combines with isolation and seed.
   --timeout SECONDS  stop the run after this long rather than hanging.
                      Unbounded by default.
   --scale N          override detected raster scale; 1 preserves native pixels.

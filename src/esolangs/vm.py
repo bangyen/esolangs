@@ -93,6 +93,7 @@ from esolangs.registry import resolve
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._drive import finalize
 from esolangs.runtime._execution import (
+    check_seed_for,
     interpreter_errors,
     interpreter_module,
     prepare_call,
@@ -103,7 +104,7 @@ from esolangs.runtime._program import Program
 from esolangs.runtime._result import ExecutionResult
 from esolangs.runtime._source import ProgramSource, check_scale_for
 from esolangs.runtime._traits import trait, traits
-from esolangs.runtime._validate import check_whole
+from esolangs.runtime._validate import check_seed, check_whole
 from esolangs.runtime._vm_views import machine_views
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
@@ -262,6 +263,7 @@ class _DelegatingVM:
         *,
         scale: int | None = None,
         settings: DialectSettings | None = None,
+        seed: int | None = None,
     ) -> None:
         self.language = language
         self._io = ScriptedIO(stdin)
@@ -269,7 +271,9 @@ class _DelegatingVM:
         code, options = prepare_call(
             language,
             program,
-            ExecutionContext(scale=scale, reproducible=True, settings=settings),
+            ExecutionContext(
+                scale=scale, seed=seed, reproducible=True, settings=settings
+            ),
         )
         # A machine with a cached ``_for_run`` (static topology compiled once
         # per source) skips re-validating the program on every VM.
@@ -437,6 +441,7 @@ def make_vm(
     stdin: InputSource = "",
     scale: int | None = None,
     settings: DialectSettings | None = None,
+    seed: int | None = None,
 ) -> VM:
     """Return a step-and-inspect wrapper around ``language``'s interpreter.
 
@@ -446,11 +451,14 @@ def make_vm(
     :class:`UnknownLanguageError`. Text and raster use the same step interface. The
     program and ``stdin`` are checked as :func:`esolangs.run` checks them (an
     unfilled template otherwise runs to a confident ``'0'``), as are ``scale``
-    and ``settings``; the checked value is what reaches the interpreter.
+    and ``settings``. A seed overrides reproducible stepping's language default;
+    the checked value is what reaches the interpreter.
     """
     from esolangs import _check_program
 
     name = resolve(language)
+    check_seed(seed)
+    check_seed_for(name, seed)
     settings = effective_settings(name, program, settings)
     dialect_options(name, settings)
     source = _check_program(name, program, stdin)
@@ -461,4 +469,6 @@ def make_vm(
         "limit allows while loading this program",
         language=name,
     ):
-        return _DelegatingVM(name, source, stdin, scale=scale, settings=settings)
+        return _DelegatingVM(
+            name, source, stdin, scale=scale, settings=settings, seed=seed
+        )

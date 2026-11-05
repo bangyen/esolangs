@@ -399,6 +399,7 @@ def make_debugger(
     stdin: InputSource = "",
     scale: int | None = None,
     settings: DialectSettings | None = None,
+    seed: int | None = None,
 ) -> Debugger:
     """Return a :class:`Debugger` over a fresh :class:`VM` for ``language``.
 
@@ -407,9 +408,11 @@ def make_debugger(
     :class:`~esolangs.exceptions.ProgramError`, and on a language that
     reads its whole input while the machine is built -- an underfed stdin
     raises :class:`~esolangs.exceptions.InputExhaustedError` here rather
-    than at :meth:`Debugger.run`.  ``scale`` and ``settings`` are checked
+    than at :meth:`Debugger.run`.  ``scale``, ``seed`` and ``settings`` are checked
     as :func:`esolangs.run` checks them.
     """
     return Debugger(
-        make_vm(language, program, stdin=stdin, scale=scale, settings=settings)
+        make_vm(
+            language, program, stdin=stdin, scale=scale, settings=settings, seed=seed
+        )
     )

@@ -118,6 +118,8 @@ def _decode(text: str, *, expired: bool) -> _WorkerResult:
         error.partial_output = partial
         if "notes" in result:
             error.__notes__ = list(result["notes"])
+        if isinstance(error, exceptions.ExecutionTimeoutError) and "bound" in result:
+            error.bound = result["bound"]
         raise error
     try:
         if "termination" in result:
@@ -191,6 +193,7 @@ def run_isolated_result(
     max_output: int | None = None,
     max_memory: int | None = None,
     settings: DialectSettings | None = None,
+    max_steps: int | None = None,
 ) -> ExecutionResult:
     """Return a result from a subprocess; the deadline includes loading and startup.
 
@@ -201,6 +204,8 @@ def run_isolated_result(
     import esolangs
 
     check_limits(max_output, max_memory, isolated=True)
+    if max_steps is not None:
+        check_whole(max_steps, "max_steps")
     check_timeout(timeout)
     if timeout is None:
         raise with_hint(
@@ -243,6 +248,8 @@ def run_isolated_result(
                         if max_output is not None
                         else None,
                         "integer_max_output": max_output is not None,
+                        "max_steps": hex(max_steps) if max_steps is not None else None,
+                        "integer_max_steps": max_steps is not None,
                     }
                 )
             )
@@ -285,7 +292,8 @@ def _timeout_named(timeout: float) -> Iterator[None]:
     except exceptions.ExecutionTimeoutError as error:
         # It said "isolated execution exceeded its deadline", a second
         # wording of one error for the same ``timeout=``.
-        error.args = (f"execution exceeded the {timeout}-second timeout",)
+        if error.bound == "timeout":
+            error.args = (f"execution exceeded the {timeout}-second timeout",)
         raise
 
 
@@ -531,6 +539,8 @@ def _serve_request() -> None:
     request = json.load(sys.stdin)
     if request.get("integer_max_output", False):
         request["max_output"] = int(request["max_output"], 16)
+    if request.get("integer_max_steps", False):
+        request["max_steps"] = int(request["max_steps"], 16)
     # Release a small reserve before reporting allocation failure under RLIMIT_AS.
     reserve = bytearray(65_536)
     try:
@@ -576,6 +586,7 @@ def _serve_request() -> None:
                 else request["seed"],
                 scale=request.get("scale"),
                 settings=settings,
+                max_steps=request.get("max_steps"),
             )
         try:
             message = {"result": result.output, "execution": encode_result(result)}
@@ -610,6 +621,11 @@ def _serve_request() -> None:
                 "error": type(error).__name__,
                 "args": args,
                 "notes": getattr(error, "__notes__", []),
+                **(
+                    {"bound": error.bound}
+                    if isinstance(error, exceptions.ExecutionTimeoutError)
+                    else {}
+                ),
                 "output_limit": isinstance(error, exceptions.InterpreterLimitError)
                 and str(error) == _OUTPUT_LIMIT,
             }

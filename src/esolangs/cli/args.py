@@ -55,6 +55,7 @@ _VALUE_OPTIONS = {
     "--timeout",
     "--max-output",
     "--max-memory",
+    "--max-steps",
     "--seed",
     "--source-kind",
     "--answer-mode",

@@ -55,6 +55,7 @@ def _run(rest: list[str]) -> None:
         "--scale",
         "--max-output",
         "--max-memory",
+        "--max-steps",
         "--settings",
     }
     rest, options = _pop_options(rest, value_options)
@@ -64,6 +65,12 @@ def _run(rest: list[str]) -> None:
     # "missing <program-file>", sending the reader to look at the one
     # argument that was not the problem.
     timeout = _timeout_of(options)
+    max_steps = None
+    if "--max-steps" in options:
+        max_steps = _integer(
+            options["--max-steps"], "--max-steps", kind="a non-negative integer"
+        )
+        _nonnegative(max_steps, "--max-steps", options["--max-steps"])
     rest, flags = _pop_flags(rest, {"--isolated"})
     isolated = "--isolated" in flags
     if isolated and timeout is None:
@@ -114,7 +121,11 @@ def _run(rest: list[str]) -> None:
     program = _read_program(path, timeout, language=language)
     stdin = _read_stdin(timeout, _stdin_hint(facts))
     try:
-        with _unbounded_notice("run") if timeout is None else nullcontext():
+        with (
+            _unbounded_notice("run")
+            if timeout is None and max_steps is None
+            else nullcontext()
+        ):
             output = run(
                 language,
                 program,
@@ -125,6 +136,7 @@ def _run(rest: list[str]) -> None:
                 isolated=isolated,
                 max_output=max_output,
                 max_memory=max_memory,
+                max_steps=max_steps,
                 settings=settings,
             )
     except TemplateError as exc:

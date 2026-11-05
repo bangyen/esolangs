@@ -244,18 +244,6 @@ def test_isolated_execution_loads_a_path_in_worker_thread(tmp_path) -> None:
         assert result.result(timeout=5) == "\x02"
 
 
-@pytest.mark.parametrize(
-    "options",
-    [
-        {"isolated": True, "max_steps": 2},
-        {"max_steps": 2, "seed": 1},
-    ],
-)
-def test_unsupported_execution_options_are_refused(options) -> None:
-    with pytest.raises(esolangs.ArgumentError):
-        esolangs.run(REFERENCE, "+.", **options)
-
-
 def test_isolated_seed_is_forwarded(monkeypatch) -> None:
     from esolangs.runtime._result import ExecutionResult
 

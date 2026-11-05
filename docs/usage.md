@@ -31,6 +31,7 @@ Options, each explained in full by its command's `--help`:
 | `--isolated` | run | run in a subprocess, 30 seconds by default |
 | `--max-output N` | run | cap isolated output in characters |
 | `--max-memory BYTES` | run | cap an isolated worker's address space (Linux) |
+| `--max-steps N` | run | bound commands cooperatively, with optional isolation |
 | `--seed N` | run | fix a random language's draws |
 | `--details` | list | add the marker column |
 | `--json` | list, describe | print JSON |
@@ -320,6 +321,7 @@ threads. A timeout kills and reaps the child; errors retain their class and
 | Bound | Python | CLI | Notes |
 | --- | --- | --- | --- |
 | Time | `timeout` | `--timeout` | `--isolated` defaults to 30 seconds |
+| Commands | `max_steps` | `--max-steps` | combines with time, isolation and seed |
 | Memory | `max_memory=BYTES` | `run --isolated --max-memory BYTES` | Linux only, needs `isolated=True`; other platforms refuse it |
 | Output | `max_output` | `--max-output` | needs `isolated=True`; counts Unicode characters |
 
@@ -352,11 +354,10 @@ returns output on halt. When either bound expires it raises
 
 - `max_steps` selects cooperative stepping. It steps all languages on
   Windows and worker threads.
-- Deadlines are checked between steps, so loading and an individual step
-  cannot be interrupted.
+- Without isolation, deadlines are checked between steps; loading and an
+  individual step cannot be interrupted.
 - Text and image-based languages share the VM and debugger.
-- `isolated` and `max_steps` are mutually exclusive, and stepping does not
-  support `seed`.
+- Command bounds combine with isolation, output/memory caps and seeds.
 - A language whose `describe()["steppable_to_answer"]` is false (A Painter
   Ant) answers only through `run` without `max_steps`; stepped, it never
   halts.

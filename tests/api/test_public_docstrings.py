@@ -186,7 +186,7 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     (
         "run",
         x.ArgumentError,
-        lambda: esolangs.run(R, "", isolated=True, max_steps=5),
+        lambda: esolangs.run(R, "", max_steps=-1),
         None,
     ),
     ("run", x.ArgumentError, lambda: esolangs.run(R, "", seed=1), None),

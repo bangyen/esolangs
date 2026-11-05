@@ -75,3 +75,56 @@ def test_befunge_refusal_is_an_explicit_totality_exception() -> None:
     with pytest.raises(esolangs.GeneratorCapError, match="at most thirteen inputs"):
         esolangs.generate("Befunge", "01" * 8192)
     assert "exception" in load().by_name()["Befunge"].labels
+
+
+@pytest.mark.medium
+def test_seeded_steps_debuggers_and_combined_worker_budgets_agree(tmp_path):
+    from esolangs.debugger import make_debugger
+    from esolangs.vm import complete_vm, make_vm
+    from tests.support.cli_support import run_cli
+
+    source = "?.@\n. @\n@ @"
+    observed = {}
+    for seed in range(8):
+        native = esolangs.run("Befunge", source, seed=seed)
+        machine = make_vm("Befunge", source, seed=seed)
+        debugger = make_debugger("Befunge", source, seed=seed)
+        complete_vm(machine)
+        assert debugger.run(max_steps=100) == "halted"
+        assert machine.output == debugger.output == native
+        assert machine.snapshot() == debugger.snapshot()
+        assert esolangs.run("Befunge", source, seed=seed, max_steps=100) == native
+        observed.setdefault(native, seed)
+    assert len(observed) > 1  # Positive control: the program actually drew.
+
+    path = tmp_path / "draw.bf"
+    path.write_text(source)
+    for output, seed in observed.items():
+        assert (
+            esolangs.run(
+                "Befunge",
+                source,
+                seed=seed,
+                isolated=True,
+                timeout=5,
+                max_steps=100,
+                max_output=len(output),
+            )
+            == output
+        )
+        shell = run_cli(
+            "run",
+            "--isolated",
+            "--timeout",
+            "5",
+            "--seed",
+            str(seed),
+            "--max-steps",
+            "100",
+            "--max-output",
+            str(len(output)),
+            "Befunge",
+            str(path),
+        )
+        assert shell.returncode == 0, shell.stderr
+        assert shell.stdout == output

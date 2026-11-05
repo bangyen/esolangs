@@ -19,7 +19,16 @@ def test_cli_budget_runs(tmp_path, capsys) -> None:
     path = tmp_path / "source.bf"
     path.write_text("+.")
     output, _ = call_both(
-        ["run", "--isolated", "--max-memory", str(_BUDGET), REFERENCE, str(path)],
+        [
+            "run",
+            "--isolated",
+            "--max-memory",
+            str(_BUDGET),
+            "--max-steps",
+            "2",
+            REFERENCE,
+            str(path),
+        ],
         capsys,
     )
     assert output == "\x01"
@@ -126,6 +135,7 @@ def test_successful_worker_budget_retains_output_protocol(monkeypatch, capsys) -
         "stdin": "",
         "seed": None,
         "max_memory": _BUDGET,
+        "max_steps": 2,
     }
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(request)))
     _worker()
