@@ -138,7 +138,7 @@ def _preset_family(table: str, n: int) -> bool:
     symmetric = symmetric_weights(table, n)
     if symmetric is None:
         return False
-    changes = [a != b for a, b in pairwise(symmetric[1])]
+    changes = [a != b for a, b in pairwise(symmetric.table)]
     return all(changes) or sum(changes) == 1
 
 

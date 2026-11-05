@@ -63,9 +63,9 @@ def modulous(truth_table: str, width: int | None = None) -> str:
     # pushed zero is the counter; an ignored input is read and popped, and the
     # table is indexed by the rest.
     projected = input_weights(truth_table, n)
-    if not any(projected[0]) or n == 1:
+    if not any(projected.weights) or n == 1:
         # [ablations.constant_table_audit_20261101]: scalar paths need no table.
-        if not any(projected[0]):
+        if not any(projected.weights):
             program = (
                 "[INP INT][POP]" * n
                 + f"[PSH INT {_ASCII_ZERO + int(truth_table[0])}][PRT STR][END]"
@@ -88,7 +88,7 @@ def modulous(truth_table: str, width: int | None = None) -> str:
         return _lookup(*symmetric, width)
     # Counter-free direct tails are faster through four essential inputs;
     # pairing starts where the weighted reader otherwise needs its walk.
-    if sum(weight > 0 for weight in projected[0]) <= 4:
+    if sum(weight > 0 for weight in projected.weights) <= 4:
         return _lookup(*projected, width)
     return _pair_lookup(*projected, width)
 

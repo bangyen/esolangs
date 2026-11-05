@@ -65,7 +65,7 @@ def freestajlo(truth_table: str) -> str:
         counts = [";#" for _ in range(n)]
         for k, i in enumerate(used):
             counts[i] = ";+" if k else ";"
-        forms.append(f'"{symmetric[1]}"' + "".join(counts) + "&.")
+        forms.append(f'"{symmetric.table}"' + "".join(counts) + "&.")
     return min(forms, key=len)
 
 

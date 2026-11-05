@@ -68,7 +68,7 @@ def affine_stream(table: str) -> str | None:
     form = affine_form(table, n)
     if form is None:
         return None
-    bias, coefficients = form
+    bias, coefficients = form.bias, form.coefficients
     # Selected bytes cost at most 17 commands, ignored ones 10, plus at
     # most 19 for bias/printing: 17*n+19 fits the existing bound for n>=2.
     # Cells -1/0/1 use at most four address bits; machine/cursor state

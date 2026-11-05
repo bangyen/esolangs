@@ -82,7 +82,7 @@ def _affine_stream(table: str) -> str | None:
     form = affine_form(table, n)
     if form is None:
         return None
-    bias, coefficients = form
+    bias, coefficients = form.bias, form.coefficients
     # Input, accumulator, scratch occupy cells 0, 1, 2. Each selected read
     # costs at most 66 commands; a trailing ignored read must leave a bit
     # rather than ASCII beside the final ASCII output to retain workspace.

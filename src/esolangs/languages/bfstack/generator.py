@@ -148,7 +148,7 @@ def bfstack(truth_table: str) -> str:
     if len(set(truth_table)) == 1:
         return _constant_leaf(n, truth_table[0])[:-1]
     symmetric = symmetric_weights(truth_table, n)
-    if symmetric is None or len(symmetric[1]) > 255:
+    if symmetric is None or len(symmetric.table) > 255:
         return _bfstack_plain(truth_table)
     return _bfstack_small(truth_table, n, symmetric)
 

@@ -78,7 +78,7 @@ def sonata(truth_table: str) -> str:
     if symmetric is not None:
         # A symmetric table counts its ones over m + 1 entries, never longer
         # than the doubling build ([ablations.symmetric_count]).
-        return _program(n, essential, symmetric[1], _COUNT)
+        return _program(n, essential, symmetric.table, _COUNT)
     if len(essential) >= _PAIR_FROM:
         return _pair_program(n, essential, table)
     return _program(n, essential, table, _DOUBLE)

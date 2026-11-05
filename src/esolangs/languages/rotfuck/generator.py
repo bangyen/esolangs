@@ -400,7 +400,7 @@ def _program(truth_table: str, *, rotation: str = "backward") -> str:
     # At one input the lookup already is the sum reader.
     lookups = [(table, _select(n, used, _groups(len(used), raw=raw), raw=raw), n == 1)]
     if (symmetric := symmetric_weights(truth_table, n)) is not None:
-        lookups.append((symmetric[1], _count(n, used, raw=raw), len(used) == n))
+        lookups.append((symmetric.table, _count(n, used, raw=raw), len(used) == n))
     texts = []
     for entries, select, multiply in lookups:
         out = _Builder(cycle)

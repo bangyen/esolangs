@@ -86,9 +86,9 @@ def painfuck(truth_table: str) -> str:
         return _zero_chain(n, disjunction=first == "0")
     tree = in_input_order(truth_table, _painfuck_ordered)
     form = affine_form(truth_table, _validate_truth_table(truth_table))
-    if form is None or not any(form[1]):
+    if form is None or not any(form.coefficients):
         return tree
-    return min(tree, _parity_sum(*form), key=len)
+    return min(tree, _parity_sum(form.bias, form.coefficients), key=len)
 
 
 def _zero_chain(n: int, *, disjunction: bool) -> str:
@@ -114,7 +114,7 @@ def _constant(n: int, bit: int) -> str:
     return _encode("".join(reversed(reads)) + "z" + "ps" * bit + "o")
 
 
-def _parity_sum(bias: int, coefficients: list[int]) -> str:
+def _parity_sum(bias: int, coefficients: tuple[int, ...]) -> str:
     """Sum the counted bits, two cells a step, and print the sum mod 2.
 
     Each read lands two right of the running sum, which ``asrpsllb`` moves

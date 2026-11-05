@@ -6,6 +6,7 @@ and the generators take no ``n`` parameter.
 
 from collections.abc import Callable, Sequence
 from itertools import pairwise
+from typing import NamedTuple
 
 from esolangs.exceptions import TruthTableError
 from esolangs.runtime.source_hints import with_hint
@@ -488,7 +489,18 @@ def read_at(truth_table: str, inputs: tuple[int, ...] | list[int], n: int) -> st
     )
 
 
-def input_weights(truth_table: str, n: int) -> tuple[list[int], str]:
+class WeightedLookup(NamedTuple):
+    """Index ``table`` by the sum of weights for set inputs, first input first.
+
+    Zero-weight inputs still belong to the reader; projection never licenses
+    skipping their reads. Weights remain lists for existing emitter contracts.
+    """
+
+    weights: list[int]
+    table: str
+
+
+def input_weights(truth_table: str, n: int) -> WeightedLookup:
     """Each input's row weight in the table read at its essential inputs.
 
     An ignored input weighs 0, so a positional embed spends nothing on it:
@@ -498,10 +510,10 @@ def input_weights(truth_table: str, n: int) -> tuple[list[int], str]:
     weights = [0] * n
     for rank, i in enumerate(essential):
         weights[i] = 1 << (len(essential) - 1 - rank)
-    return weights, read_at(truth_table, essential, n)
+    return WeightedLookup(weights, read_at(truth_table, essential, n))
 
 
-def symmetric_weights(truth_table: str, n: int) -> tuple[list[int], str] | None:
+def symmetric_weights(truth_table: str, n: int) -> WeightedLookup | None:
     """Weight 1 per essential input and the table by popcount, if it is symmetric.
 
     A table that depends only on how many essential inputs are 1 (parity,
@@ -516,7 +528,9 @@ def symmetric_weights(truth_table: str, n: int) -> tuple[list[int], str] | None:
         if by_count.setdefault(row.bit_count(), entry) != entry:
             return None
     weights = [int(i in essential) for i in range(n)]
-    return weights, "".join(by_count[k] for k in range(len(essential) + 1))
+    return WeightedLookup(
+        weights, "".join(by_count[k] for k in range(len(essential) + 1))
+    )
 
 
 def stored_inputs(truth_table: str, perm: tuple[int, ...]) -> set[int]:
@@ -540,19 +554,26 @@ def in_input_order(
     return build(truth_table, tuple(range(n)))
 
 
-def affine_form(table: str, n: int) -> tuple[int, list[int]] | None:
-    """Return ``(bias, coefficients)`` when ``table`` is an XOR of inputs, else None.
+class AffineForm(NamedTuple):
+    """XOR ``bias`` with selected inputs, coefficients in input order."""
+
+    bias: int
+    coefficients: tuple[int, ...]
+
+
+def affine_form(table: str, n: int) -> AffineForm | None:
+    """Return the affine form of ``table``, or None, checking every row in O(T).
 
     Coefficients are per input, first input first; checked against every row.
     """
     bias = int(table[0])
-    coefficients = [int(table[1 << (n - i - 1)]) ^ bias for i in range(n)]
+    coefficients = tuple(int(table[1 << (n - i - 1)]) ^ bias for i in range(n))
     expected = [bias]
     for coefficient in reversed(coefficients):
         expected += [value ^ coefficient for value in expected]
     if any(str(value) != bit for value, bit in zip(expected, table, strict=True)):
         return None
-    return bias, coefficients
+    return AffineForm(bias, coefficients)
 
 
 def move_text(start: int, target: int, right: str, left: str) -> str:

@@ -69,21 +69,13 @@ the standing budget. Preserve public behavior through adapters; incompatible
 API changes need a major release. Follow the refactor and optimization gates
 in [Contributing](CONTRIBUTING.md).
 
-1. **Explicit Boolean representations.** Inventory existing subtree, affine
-   and lookup analysis; extract representations only where multiple backends
-   need them. Pilot one family at a time with ordered input reads, constant
-   folding and residual sharing. Keep emission and layout language-owned.
-   Completion: byte-identical programs, unchanged input consumption, proved
-   O(T) construction and emitted size, and timings at three arities without
-   growth-rate regression. Retire replaced helpers; size changes qualify
-   separately.
-2. **Structured evidence.** Pilot validated `language.toml` schemas for
+1. **Structured evidence.** Pilot validated `language.toml` schemas for
    witnesses, seeds, units, bounds, exactness and construction paths. Validate
    source anchors, resource formulas and ablations against execution before
    generating their documentation. Completion: claims retain their witnesses
    and gates, figures match measurements, and prose parsing can be removed
    without losing checks. Preserve open and upper-bound verdicts.
-3. **Independent semantic checks.** Extend the Engineering oracles below into
+2. **Independent semantic checks.** Extend the Engineering oracles below into
    language admission. Derive each bounded oracle from the spec independently
    of production helpers and generator structure; record ambiguities first.
    Check raw programs, errors, input consumption, state and termination with

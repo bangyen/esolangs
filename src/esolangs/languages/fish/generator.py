@@ -64,8 +64,10 @@ def fish(truth_table: str, width: int | None = None) -> str:
         if symmetric is not None:
             # A symmetric table adds its bits and indexes m + 1 entries
             # ([ablations.symmetric_count]).
-            counts = "".join("i68*-+" if weight else "i~" for weight in symmetric[0])
-            plain = "0" + counts + "1g68*-n;\n" + symmetric[1]
+            counts = "".join(
+                "i68*-+" if weight else "i~" for weight in symmetric.weights
+            )
+            plain = "0" + counts + "1g68*-n;\n" + symmetric.table
         # Area decides; packing can cost more text at low arities.
         return min(packed, plain, key=grid_rank)
     if max(len(header), len(truth_table)) <= width:

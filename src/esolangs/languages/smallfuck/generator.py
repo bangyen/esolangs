@@ -130,8 +130,8 @@ def smallfuck(truth_table: str, width: int | None = None) -> str:
     if n >= 3 and truth_table == "1" * len(truth_table):
         # Cell 2 is outside the input walk: set it before walking away.
         natural = ">>*<<" + TEMPLATE_CHAR * len(PAIR[0]) * n
-    if (form := affine_form(truth_table, n)) is not None and any(form[1]):
-        natural = min(natural, _xor_chain(n, *form), key=len)
+    if (form := affine_form(truth_table, n)) is not None and any(form.coefficients):
+        natural = min(natural, _xor_chain(n, form.bias, form.coefficients), key=len)
     if width is None or width <= 0:
         return natural
     if width < len(PAIR[0]):
@@ -142,7 +142,7 @@ def smallfuck(truth_table: str, width: int | None = None) -> str:
     return unmark(wrap_program(marked, "smallfuck", width), TEMPLATE_CHAR, n)
 
 
-def _xor_chain(n: int, bias: int, coefficients: list[int]) -> str:
+def _xor_chain(n: int, bias: int, coefficients: tuple[int, ...]) -> str:
     """Fold each counted input cell down into the next, ending in cell 2.
 
     ``[*...*...]`` clears a set cell and flips the one below, so the chain

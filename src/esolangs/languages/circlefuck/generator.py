@@ -105,7 +105,7 @@ def _program(truth_table: str) -> str:
     prog.append("0" * cells)
     plain = "".join(prog)
     symmetric = symmetric_weights(truth_table, n)
-    if symmetric is None or len(symmetric[1]) > 1 << _DIGIT_BITS:
+    if symmetric is None or len(symmetric.table) > 1 << _DIGIT_BITS:
         return plain
     return min(plain, _counted(n, *symmetric), key=len)
 

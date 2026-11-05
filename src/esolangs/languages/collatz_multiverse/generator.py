@@ -373,9 +373,9 @@ def _cm_chunk(table: str) -> int:
 def _cm_affine_program(table: str, n: int) -> str | None:
     """Stream XOR through two registers, using only positive coefficients."""
     form = affine_form(table, n)
-    if form is None or not any(form[1]):
+    if form is None or not any(form.coefficients):
         return None
-    bias, coefficients = form
+    bias, coefficients = form.bias, form.coefficients
     lines = _cm_constants({_ASCII_ZERO})
     if bias:
         lines.append("a=z x+k1,NOT PRINT.")

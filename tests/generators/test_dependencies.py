@@ -1,6 +1,7 @@
 """Exact dependency detection, including late witnesses and fallback."""
 
 import random
+from itertools import product
 
 from esolangs.generation import helpers
 from tests.support.witness_tables import witnesses
@@ -18,8 +19,48 @@ def _oracle(table: str, n: int) -> list[int]:
 
 def test_dependencies_exhaustive() -> None:
     for n in range(1, 5):
-        for table in witnesses(n):
-            assert helpers.essential_inputs(table, n) == _oracle(table, n)
+        forms = {
+            "".join(
+                str(
+                    bias
+                    ^ (sum(c * b for c, b in zip(coefficients, row, strict=True)) % 2)
+                )
+                for row in product((0, 1), repeat=n)
+            ): helpers.AffineForm(bias, coefficients)
+            for bias in (0, 1)
+            for coefficients in product((0, 1), repeat=n)
+        }
+        tables = list(forms) + witnesses(n)
+        if n <= 3:
+            tables += ["".join(bits) for bits in product("01", repeat=1 << n)]
+        for table in tables:
+            dependencies = _oracle(table, n)
+            assert helpers.essential_inputs(table, n) == dependencies
+            assert helpers.affine_form(table, n) == forms.get(table)
+            lookup = helpers.input_weights(table, n)
+            assert isinstance(lookup, helpers.WeightedLookup)
+            for row, bit in zip(product((0, 1), repeat=n), table, strict=True):
+                assert (
+                    lookup.table[
+                        sum(w * b for w, b in zip(lookup.weights, row, strict=True))
+                    ]
+                    == bit
+                )
+            symmetric = helpers.symmetric_weights(table, n)
+            counts: dict[int, set[str]] = {}
+            for row, bit in zip(product((0, 1), repeat=n), table, strict=True):
+                counts.setdefault(sum(row[i] for i in dependencies), set()).add(bit)
+            expected = len(dependencies) >= 2 and all(
+                len(v) == 1 for v in counts.values()
+            )
+            assert (symmetric is not None) == expected
+            if symmetric is not None:
+                assert isinstance(symmetric, helpers.WeightedLookup)
+                for row, bit in zip(product((0, 1), repeat=n), table, strict=True):
+                    index = sum(
+                        w * b for w, b in zip(symmetric.weights, row, strict=True)
+                    )
+                    assert symmetric.table[index] == bit
 
 
 def test_dependencies_late_witnesses_and_ignored_inputs() -> None:

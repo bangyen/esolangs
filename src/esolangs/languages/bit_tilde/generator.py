@@ -73,7 +73,7 @@ def _program(truth_table: str) -> str:
     lookup = _lookup(truth_table, n)
     if (form := affine_form(truth_table, n)) is None:
         return lookup
-    return min(lookup, _xor_window(*form), key=len)
+    return min(lookup, _xor_window(form.bias, form.coefficients), key=len)
 
 
 def _plant(cells: list[int]) -> str:
@@ -81,7 +81,7 @@ def _plant(cells: list[int]) -> str:
     return "".join(">" * (b - a) + "~" for a, b in pairwise([0, *cells]))
 
 
-def _xor_window(bias: int, coefficients: list[int]) -> str:
+def _xor_window(bias: int, coefficients: tuple[int, ...]) -> str:
     """XOR every counted input into one window and fix it up to ASCII.
 
     k digits XOR to ``0011000b`` for odd k and ``0000000b`` for even, so an
