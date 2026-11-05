@@ -115,3 +115,6 @@ contract = "interpreter.py"
 tests = [
     "src/esolangs/languages/underload/tests/oracle_checks.py::check_raw_underload",
 ]
+
+[ablations.narrow_selector_contract_20261104]
+verdict = "correctness repair: one-character !/* setters replace padded space/~ and the padded four-character pair. ()(~)$(!)* drops or concatenates the optional tilde, then appends ! to build ! or ~!. All widths below5 use this builder; no input padding remains. All12720 n1..3 variant rows pass; 276 default templates are byte-identical, with all8 pins and3 Size anchors unchanged. Default proofs/scopes and balanced example remain unchanged. Width1 XOR123->115chars; exhaustive n3 narrow total43620->40572. Width4 now constructs selectors instead of embedding the illegal padded pair. Both preserve the three-column floor and template provenance."

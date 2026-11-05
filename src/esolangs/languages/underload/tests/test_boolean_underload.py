@@ -107,12 +107,17 @@ def test_repeated_subtrees_are_carried_and_no_table_grows() -> None:
             assert verify_generated("Underload", table), table
 
 
-@pytest.mark.parametrize("width", [1, 3, 4, 5, 13, 40, 80])
+@pytest.mark.parametrize("width", [1, 2, 3, 4, 5, 13, 40, 80])
 def test_short_selectors_keep_public_provenance_and_uniform_width(width: int) -> None:
     table = "0110"
     template = str(esolangs.generate("Underload", table, width=width))
     setters = underload_setters(template, 2)
     assert len(set(setters)) == 1
+    assert all(
+        not char.isspace() for pair in setters for value in pair for char in value
+    )
+    if width < 5:
+        assert setters == (("!", "*"),) * 2
     for row, expected in enumerate(table):
         filled = esolangs.instantiate(
             "Underload", template, [row // 2, row % 2], truth_table=table
@@ -135,8 +140,8 @@ def test_short_selectors_keep_public_provenance_and_uniform_width(width: int) ->
 def test_short_selector_floor_and_actual_narrow_corpus() -> None:
     template = underload("0110", 1)
     assert max(map(len, template.splitlines())) == 3
-    assert len(template) == 123
-    assert sum(len(underload(format(value, "08b"), 1)) for value in range(256)) == 43620
+    assert len(template) == 115
+    assert sum(len(underload(format(value, "08b"), 1)) for value in range(256)) == 40572
 
 
 def test_layout_provenance_does_not_ignore_output_literal_newlines() -> None:
@@ -155,11 +160,10 @@ def test_short_selectors_execute_larger_carried_trees(n: int) -> None:
                 assert _run(table, row, width) == table[row]
 
 
-def underload_plain(truth_table: str, *, short: bool = False) -> str:
+def underload_plain(truth_table: str) -> str:
     """Return the unshared promise tree, each leaf printing its own bit."""
     from esolangs.generation.helpers import reflected_table
     from esolangs.languages.underload.generator import (
-        _SHORT_PAIR,
         PAIR,
         TEMPLATE_CHAR,
     )
@@ -172,11 +176,9 @@ def underload_plain(truth_table: str, *, short: bool = False) -> str:
         if constant(lo, hi):
             return "!" * (n - level) + f"({reflected[lo]})S"
         mid = (lo + hi) // 2
-        return f"({tree(level + 1, lo, mid)})~({tree(level + 1, mid, hi)})~^" + (
-            "^" if short else ""
-        )
+        return f"({tree(level + 1, lo, mid)})~({tree(level + 1, mid, hi)})~^"
 
-    slots = TEMPLATE_CHAR * (len((_SHORT_PAIR if short else PAIR)[0]) * n)
+    slots = TEMPLATE_CHAR * (len(PAIR[0]) * n)
     return slots + f"({tree(0, 0, len(reflected))})^"
 
 

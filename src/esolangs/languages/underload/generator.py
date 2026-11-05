@@ -11,8 +11,8 @@ and prints 1.  A node ``(A)~(B)~^`` tucks its halves under the input block
 on top, and the input's ``^`` keeps one and runs it: 0 drops ``B``, runs
 ``A`` and duplicates its answer; 1 swaps first.
 Both selectors have one width and the template one shape per table.  A leaf
-pushes its bit, ``(0)`` or ``(1)``. Named AND/OR and threshold-2 tails
-leave unused selectors below the answer instead of dropping them.
+pushes its bit, ``(0)`` or ``(1)``. Named AND/OR and threshold-2 tails,
+their duals and complements retain unused selectors beneath the answer.
 
 A repeated subtree ``X`` is pushed once as ``(X)`` at a node above its copies
 and *carried*: kept on top, with the next input block right below it.  A
@@ -50,8 +50,7 @@ from esolangs.languages.underload.descriptor import LANGUAGE as LANGUAGE
 
 # A zero duplicates the returned bit, giving both selectors five characters.
 PAIR = ("(!^:)", "(~!^)")
-_SHORT_PAIR = ("(!) ", "(~!)")
-_BIT_PAIR = (" ", "~")
+_BIT_PAIR = ("!", "*")
 
 #: How many levels below a node a carried subtree may sit; bounds the
 #: candidates per node (``repeated_near``) so the build visits O(T) nodes.
@@ -62,7 +61,7 @@ _PREFIX = "()!"
 
 def _token_pattern(slots: int) -> str:
     """Return the wrap pattern: ``slots`` slot run, inert prefix, literal, char."""
-    return rf"\${{{slots}}}|\(\)!|\([01]\)|."
+    return rf"{re.escape(TEMPLATE_CHAR)}{{{slots}}}|\(\)!|\([01]\)|."
 
 
 def _terminal_family(table: str, n: int) -> bool:
@@ -131,7 +130,7 @@ def _shared(truth_table: str, *, short: bool = False) -> str:
         return sorted(candidates, key=len)[:1]  # stable: the first shortest
 
     body = tree(0, diagram.ids[0][0], None).replace("\ue000", "")
-    slots = TEMPLATE_CHAR * (len((_SHORT_PAIR if short else PAIR)[0]) * n)
+    slots = TEMPLATE_CHAR * ((1 if short else len(PAIR[0])) * n)
     return slots + "(" + body + ")^S"
 
 
@@ -150,13 +149,11 @@ def underload(truth_table: str, width: int | None = None) -> str:
     # Only bit literals reach S; every other pushed string is executable code.
     if not short:
         return wrap_tokens(program, width, _token_pattern(len(PAIR[0])))
-    # The inert prefix distinguishes the four-character uniform setters.
-    program = _PREFIX + program
-    if width < 4:
-        n = _validate_truth_table(truth_table)
-        # Build both selector strings, then keep one with a single swap bit.
-        program = _PREFIX + "(!)(~)(!)*$!" * n + program[len(_PREFIX) + 4 * n :]
-    return wrap_tokens(program, width, _token_pattern(1 if width < 4 else 4))
+    # Dropping the optional tilde or concatenating it onto the empty string
+    # chooses ! or ~! after appending the final drop, without padding spaces.
+    selector = "()(~)" + TEMPLATE_CHAR + "(!)*"
+    program = _PREFIX + selector * n + program[n:]
+    return wrap_tokens(program, width, _token_pattern(1))
 
 
 def underload_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
@@ -164,10 +161,8 @@ def underload_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     clean = template.replace("\n", "")
     if clean.startswith(("(0)", "(1)")):
         pair = ("(0)", "(1)")
-    elif clean.startswith(_PREFIX + "(!)"):
+    elif clean.startswith(_PREFIX):
         pair = _BIT_PAIR
-    elif template.startswith(_PREFIX):
-        pair = _SHORT_PAIR
     else:
         pair = PAIR
     return (pair,) * n
