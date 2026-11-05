@@ -73,6 +73,7 @@ from esolangs.runtime._drive import drive
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -216,6 +217,12 @@ def _advance(
     return _frozen(successor, cp, cells, halted=done), output
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "streetcode-v1",
+    ("steering", "pointer", "cells", "input_cursor", "stopped", "input_reads"),
+)
+
+
 class _Machine:
     """Per-run Streetcode shell: the car, its heading, and the cell list.
 
@@ -335,6 +342,36 @@ class _Machine:
         are left alone: a test placing a car *and* setting up a merge wants both.
         """
         self._state = self._state._replace(row=row, col=col, heading=heading)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        s = self._state
+        latch = s.latches
+        value = latch.merge
+        merge = (
+            None
+            if value is None
+            else (
+                value.target_row,
+                value.target_col,
+                value.turn,
+                value.latched_heading,
+                value.crossing,
+            )
+        )
+        return _WORKSPACE_MODEL.capture(
+            steering=(
+                s.row,
+                s.col,
+                s.heading,
+                (merge, latch.merging_heading, latch.skip_hug),
+            ),
+            pointer=self.cp,
+            cells=frozenset(self.cells.items()),
+            input_cursor=self.io.progress(),
+            stopped=self._done,
+            input_reads=self._input_reads,
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.

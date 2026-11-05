@@ -115,6 +115,7 @@ from typing import Literal, assert_never
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -325,6 +326,21 @@ class _Run:
     used: int = 0
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "flowchart-v1",
+    (
+        "pointers",
+        "deques",
+        "input_cursor",
+        "input_reads",
+        "incoming",
+        "remaining",
+        "outgoing",
+        "used",
+    ),
+)
+
+
 class _Machine:
     r"""Per-run Flowchart shell: the grid, its pointers, and the deques.
 
@@ -512,6 +528,32 @@ class _Machine:
         return [
             v for key in sorted(self.deques) for v in self.deques[key] if v is not None
         ]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        pointers = tuple(
+            (
+                p.row,
+                p.col,
+                p.d,
+                p.reg,
+                p.deque,
+                p.done,
+                p.prev,
+                frozenset(p.memory._exits.items()),  # noqa: SLF001 - owned logical map
+            )
+            for p in self.pointers
+        )
+        return _WORKSPACE_MODEL.capture(
+            pointers=pointers,
+            deques=frozenset((k, tuple(v)) for k, v in self.deques.items() if v),
+            input_cursor=self.io.progress(),
+            input_reads=self._input_reads,
+            incoming=self._incoming,
+            remaining=self._remaining,
+            outgoing=self.state.outgoing,
+            used=self.state.used,
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

@@ -66,6 +66,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.randomness import Randomness, draw
@@ -402,6 +403,25 @@ def _thaw(state: _State) -> tuple[_Core, int]:
     )
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "fish-v1",
+    (
+        "x",
+        "y",
+        "dx",
+        "dy",
+        "cells",
+        "stacks",
+        "registers",
+        "quote",
+        "stopped",
+        "width",
+        "height",
+        "input_cursor",
+    ),
+)
+
+
 class _Machine:
     """Fish shell: one immutable :data:`_Core`, rebound per step."""
 
@@ -492,6 +512,24 @@ class _Machine:
     @property
     def stack(self) -> list[object]:
         return list(self.state[5][-1])
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        s = self.state
+        return _WORKSPACE_MODEL.capture(
+            x=s[0],
+            y=s[1],
+            dx=s[2],
+            dy=s[3],
+            cells=frozenset(s[4].items()),
+            stacks=tuple(tuple(stack) for stack in s[5]),
+            registers=tuple(s[6]),
+            quote=s[7],
+            stopped=s[8],
+            width=s[9],
+            height=s[10],
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> _State:
         """Return the complete internal state, hashable for cycle detection."""

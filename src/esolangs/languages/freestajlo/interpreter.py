@@ -65,6 +65,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import trunc_div
 from esolangs.runtime.source_hints import syntax_error
@@ -382,6 +383,21 @@ def _advance(
     return tuple.__new__(_State, (ip, stack, transfer, calls, funcs)), effect
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "freestajlo-v1",
+    (
+        "instruction",
+        "stack",
+        "transfer",
+        "calls",
+        "functions",
+        "index",
+        "other_stacks",
+        "input_cursor",
+    ),
+)
+
+
 class _Machine:
     """The compiled program, the current stack's state and the others."""
 
@@ -416,6 +432,35 @@ class _Machine:
             values.append(cells[0])
             cells = cells[1]
         return values[::-1]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+
+        def stack(value: _Stack) -> tuple[int, tuple[int, ...]]:
+            cells = []
+            rest = value[1]
+            while rest is not None:
+                cell, rest = rest
+                cells.append(cell)
+            return value[0], tuple(cells)
+
+        calls = []
+        rest = self.state.calls
+        while rest is not None:
+            call, rest = rest
+            calls.append(call)
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.state.ip,
+            stack=stack(self.state.stack),
+            transfer=stack(self.state.transfer),
+            calls=tuple(calls),
+            functions=tuple(self.state.funcs),
+            index=self.index,
+            other_stacks=frozenset(
+                (k, stack(v)) for k, v in self.others.items() if v[0]
+            ),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

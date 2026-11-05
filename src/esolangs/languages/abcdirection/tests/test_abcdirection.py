@@ -136,3 +136,39 @@ def test_input_characters_wrap_to_a_byte() -> None:
         return machine.memory, machine.writes
 
     assert tape("\u012c") == tape(",")
+
+
+def test_workspace_preserves_epoch_equality_without_counting_epoch_numbers():
+    from esolangs import encode_inputs, generate, read_answer
+
+    stale = False
+    for table in ("00", "01", "10", "11"):
+        source = generate("ABCDirection", table).source
+        for bit in (0, 1):
+            stdin = str(encode_inputs("ABCDirection", [bit], truth_table=table))
+            original = _Machine(source, ScriptedIO(stdin))
+            shifted = _Machine(source, ScriptedIO(stdin))
+            shifted.writes += 4096
+            anchor, epoch = shifted.tortoise
+            shifted.tortoise = (anchor, epoch + 4096)
+            for _ in range(2000):
+                observed = original.workspace_snapshot()
+                assert observed == shifted.workspace_snapshot()
+                valid = original.writes == original.tortoise[1]
+                assert (
+                    dict(zip(observed.model.components, observed.parts, strict=True))[
+                        "cycle_anchor"
+                    ][1]
+                    == valid
+                )
+                stale |= not valid
+                assert original.halted == shifted.halted
+                assert original.io.getvalue() == shifted.io.getvalue()
+                if original.halted:
+                    break
+                original.step()
+                shifted.step()
+            else:
+                pytest.fail("one-input epoch witness did not halt")
+            assert read_answer("ABCDirection", original.io.getvalue()) == table[bit]
+    assert stale

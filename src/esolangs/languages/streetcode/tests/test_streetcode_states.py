@@ -57,10 +57,12 @@ class TestStreetcodeStepMachine:
         ]
 
         snapshots = []
+        workspaces = []
         for state in states:
             machine = _Machine(code, IO())
             machine._state = state
             snapshots.append(machine.snapshot())
+            workspaces.append(machine.workspace_snapshot())
         # ...and the three fields that are not part of the drive state.
         for mutate in (
             lambda m: setattr(m, "cp", 5),
@@ -70,7 +72,9 @@ class TestStreetcodeStepMachine:
             machine = _Machine(code, IO())
             mutate(machine)
             snapshots.append(machine.snapshot())
+            workspaces.append(machine.workspace_snapshot())
 
+        assert len(set(workspaces)) == len(workspaces)
         assert len(set(snapshots)) == len(snapshots)
         assert all(hash(s) is not None for s in snapshots)
 

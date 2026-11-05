@@ -264,3 +264,19 @@ class TestDimensionalVM:
         assert vm.memory == [2]
         vm.step()
         assert vm.output == "\x02"
+
+
+def test_workspace_freezes_the_hierarchy_without_its_cycle_freezer(monkeypatch):
+    machine = Dimensional("=41$3>0$2=42", ScriptedIO())
+    while not machine.halted:
+        machine.step()
+    assert machine.tape.peek_value() == 66
+    saved = machine.workspace_snapshot()
+    retained = {saved}
+    monkeypatch.setattr(dim._Level, "freeze", lambda _self: ())
+    assert machine.workspace_snapshot() == saved
+    machine.tape.top.slots = dict(reversed(machine.tape.top.slots.items()))
+    assert machine.workspace_snapshot() == saved
+    machine.tape.set_value(67)
+    assert machine.workspace_snapshot() != saved
+    assert saved in retained

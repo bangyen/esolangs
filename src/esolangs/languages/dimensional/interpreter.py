@@ -60,6 +60,7 @@ from typing import cast, overload
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import unmatched
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
@@ -464,6 +465,12 @@ def _advance(
     return handler(_Context(ind, comment, axis, code, match, value, coord, port))
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "dimensional-v1",
+    ("instruction", "comment", "axis", "height", "hierarchy", "input_cursor"),
+)
+
+
 class _Machine:
     """One Dimensional run: the code position, comment mode, and tape.
 
@@ -492,6 +499,30 @@ class _Machine:
     def memory(self) -> list[int]:
         """The addressable cells."""
         return [self.tape.peek_value()]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+
+        def level(node: _Level) -> tuple[object, ...]:
+            return (
+                frozenset((axis, pos) for axis, pos in node.pos.items() if pos),
+                frozenset(
+                    (
+                        frozenset(coords),
+                        level(value) if isinstance(value, _Level) else value,
+                    )
+                    for coords, value in node.slots.items()
+                ),
+            )
+
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.ind,
+            comment=self.comment,
+            axis=self.tape.axis,
+            height=self.tape.top.level,
+            hierarchy=level(self.tape.top),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

@@ -57,6 +57,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -560,6 +561,11 @@ def _advance(
     return state, fx, step.output
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "grapheme-v1", ("stack", "variables", "frames", "input_cursor", "input_reads")
+)
+
+
 class _Machine:
     """Shared stack, variables, and call stack for a run."""
 
@@ -610,6 +616,19 @@ class _Machine:
         if self.frames:
             return tuple(f[1] for f in self.frames)
         return (self._top_length,)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            stack=tuple(self.stack),
+            variables=frozenset(self.vars.items()),
+            frames=tuple(
+                (code, pc, mode, buf, pending, repeat)
+                for code, pc, mode, buf, pending, repeat in self.frames
+            ),
+            input_cursor=self.io.progress(),
+            input_reads=self._input_reads,
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

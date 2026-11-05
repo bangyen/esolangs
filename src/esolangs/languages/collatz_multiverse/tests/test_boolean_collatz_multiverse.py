@@ -400,12 +400,12 @@ def _check_affine_stream() -> None:
                 for row, expected in enumerate(table):
                     io = ReadFirstIO(" ".join(f"{row:0{n}b}") + " Q", expected=n)
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     commands = 0
                     while not machine.halted:
                         machine.step()
                         commands += 1
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         assert commands <= expected_commands
                     assert commands == expected_commands
                     assert io.getvalue() == expected

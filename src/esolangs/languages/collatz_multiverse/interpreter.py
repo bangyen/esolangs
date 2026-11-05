@@ -41,6 +41,7 @@ from typing import cast
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -113,6 +114,11 @@ _LINE = re.compile(
 )
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "collatz-multiverse-v1", ("registers", "arrays", "instruction", "input_cursor")
+)
+
+
 class _Machine:
     """Per-run Collatz Multiverse state: registers, arrays, and the pointer."""
 
@@ -179,6 +185,15 @@ class _Machine:
         """The addressable cells."""
         # The registers are kept in name order, so this is already sorted.
         return [value for _name, value in self.state[1]]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            registers=frozenset(self.state[1]),
+            arrays=frozenset((name, frozenset(cells)) for name, cells in self.state[2]),
+            instruction=self.state[0],
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

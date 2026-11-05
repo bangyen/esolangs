@@ -28,6 +28,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -219,6 +220,11 @@ def _advance(
     return ((ind + 1) % size, ptr, False, edit)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "circlefuck-v1", ("cells", "instruction", "pointer", "input_cursor", "stopped")
+)
+
+
 class _Machine:
     """Per-run Circlefuck state: the tape (which is the program), and pointers.
 
@@ -284,6 +290,16 @@ class _Machine:
     def memory(self) -> list[int]:
         """The addressable cells."""
         return list(self._cells)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            cells=tuple(self._cells),
+            instruction=self._ind,
+            pointer=self._ptr,
+            input_cursor=self.io.progress(),
+            stopped=self._done,
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

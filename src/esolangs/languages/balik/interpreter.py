@@ -41,6 +41,7 @@ from esolangs.exceptions import ArgumentError, HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -80,6 +81,11 @@ def _advance(
     return (row + dr, col + dc, heading, pointer), cell, out
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "balik-v1", ("row", "column", "heading", "pointer", "tape", "input_cursor")
+)
+
+
 class _Machine:
     """The run state: position, heading, tape pointer and the tape."""
 
@@ -115,6 +121,17 @@ class _Machine:
     def memory(self) -> list[int]:
         """The tape cells visited so far."""
         return self.tape
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            row=self.state[0],
+            column=self.state[1],
+            heading=self.state[2],
+            pointer=self.state[3],
+            tape=tuple(self.tape),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

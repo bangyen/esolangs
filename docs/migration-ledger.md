@@ -74,7 +74,7 @@ acceptance audit after the active separation work lands. Storage policy needs
 its priced comparison and explicit decision. These remain open even where an
 implementation pilot already passed.
 
-Accounting now has sixty explicit or inherited semantic adapters; 57 language
+Accounting now has seventy-five explicit or inherited semantic adapters; 42 language
 rows still use snapshot accounting. Declarations do not close lifecycle,
 storage-policy or catalog-wide acceptance requirements.
 
@@ -117,3 +117,7 @@ Other cached and raster factories and retirement acceptance remain open.
 
 Streetcode declares cached geometry preparation with fresh per-run state and
 grid debug fields. The last `_for_run` discovery hook and VM fallback are removed.
+
+The grid/stack batch freezes mutable grids, hierarchical tapes, pointer memories
+and scoped stacks without cycle serializers or storage caches. ABCDirection's cycle
+model records write-epoch equality, preserving behavior under epoch renumbering.

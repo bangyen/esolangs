@@ -41,6 +41,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -294,6 +295,21 @@ def _advance(
     return _move_on(code, row, col, move, mole, num, size, done=done)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "dig-v1",
+    (
+        "row",
+        "column",
+        "direction",
+        "mole",
+        "number",
+        "grid",
+        "input_cursor",
+        "input_reads",
+    ),
+)
+
+
 class _Machine:
     """Per-run Dig state: the mole, its heading, and the underground counter.
 
@@ -347,6 +363,19 @@ class _Machine:
     def memory(self) -> list[int]:
         """The value the mole is carrying."""
         return [self.mole]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            row=self.row,
+            column=self.col,
+            direction=self.move,
+            mole=self.mole,
+            number=self.num,
+            grid=tuple(tuple(row) for row in self.code),
+            input_cursor=self.io.progress(),
+            input_reads=self._input_reads,
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.

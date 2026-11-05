@@ -49,6 +49,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 _COMMANDS = frozenset(
@@ -283,6 +284,11 @@ def _advance(
     return (run.stack, frames), tuple(effects), run.output
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "quassaunt-v1", ("stack", "frames", "globals", "locals", "input_cursor")
+)
+
+
 class _Machine:
     """The shell around :func:`_advance`: variables, input and output."""
 
@@ -319,6 +325,29 @@ class _Machine:
             values.append(node[0])
             node = node[1]
         return values[::-1]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        stack = []
+        rest = self.state[0]
+        while rest is not None:
+            value, rest = rest
+            stack.append(value)
+        frames = []
+        pending = self.state[1]
+        while pending is not None:
+            frame, pending = pending
+            words, pc, depth = frame
+            frames.append((tuple(words), pc, depth))
+        return _WORKSPACE_MODEL.capture(
+            stack=tuple(stack),
+            frames=tuple(frames),
+            globals=frozenset(self.globals.items()),
+            locals=frozenset(
+                (d, frozenset(v.items())) for d, v in self.locals.items() if v
+            ),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

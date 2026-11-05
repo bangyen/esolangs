@@ -31,6 +31,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 #: The largest value ``o`` can print as a character, and the surrogate range
@@ -119,6 +120,12 @@ def _advance(
     return (ind + 1, acc, stack, jumps)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "unsquare-v1",
+    ("instruction", "accumulator", "stack", "jumps", "input_cursor", "input_reads"),
+)
+
+
 class _Machine:
     """Per-run Unsquare state: the stack, jump stack, accumulator, cursor."""
 
@@ -178,6 +185,17 @@ class _Machine:
     def memory(self) -> list[int]:
         """The accumulator, the only cell this language addresses."""
         return [self.state[1]]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.state[0],
+            accumulator=self.state[1],
+            stack=self.state[2],
+            jumps=self.state[3],
+            input_cursor=self.io.progress(),
+            input_reads=self._input_reads,
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

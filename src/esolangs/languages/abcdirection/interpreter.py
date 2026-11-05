@@ -61,6 +61,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.bits import put_bit, take_bit
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
@@ -172,6 +173,23 @@ def _advance(
     return _State((x + dx) % width, (y + dy) % height, heading, cell), effect
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "abcdirection-v1",
+    (
+        "control",
+        "tape",
+        "queue",
+        "incoming",
+        "outgoing",
+        "input_cursor",
+        "cycle_anchor",
+        "cycle_power",
+        "cycle_length",
+        "stopped",
+    ),
+)
+
+
 class _Machine:
     """Per-run ABCDirection state: grid, tape, queue, I/O buffers, pointer."""
 
@@ -232,6 +250,27 @@ class _Machine:
             hi = max(self.ones, default=-1)
             self._view = (lo, tuple(int(i in self.ones) for i in range(lo, hi + 1)))
         return self._view
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        s = self.state
+        anchor, epoch = self.tortoise
+        # Only equality with the anchor's write epoch affects later cycle detection.
+        return _WORKSPACE_MODEL.capture(
+            control=(s.x, s.y, s.heading, s.cell),
+            tape=self._tape(),
+            queue=tuple(self.queue),
+            incoming=self.incoming,
+            outgoing=self.outgoing,
+            input_cursor=self.io.progress(),
+            cycle_anchor=(
+                (anchor.x, anchor.y, anchor.heading, anchor.cell),
+                self.writes == epoch,
+            ),
+            cycle_power=self.power,
+            cycle_length=self.length,
+            stopped=self._halted,
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

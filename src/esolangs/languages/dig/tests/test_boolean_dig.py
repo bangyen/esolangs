@@ -63,11 +63,11 @@ class TestDig:
                 for row, expected in enumerate(table):
                     io = ScriptedIO(" ".join(format(row, f"0{n}b")) + " Q")
                     machine = _Machine(program.splitlines(), io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted and steps <= execution(n, program):
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                     assert machine.halted
                     assert steps == execution(n, program)

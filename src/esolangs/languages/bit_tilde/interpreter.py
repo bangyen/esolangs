@@ -20,6 +20,7 @@ from __future__ import annotations
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import unmatched
 from esolangs.runtime.io import IO
 
@@ -102,6 +103,11 @@ def _advance(
     return (ind + 1, cell, tape)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "bit-tilde-v1", ("tape", "pointer", "instruction", "input_cursor")
+)
+
+
 class _Machine:
     """Per-run bit~ state: the bit pool, the pointer, and the cursor."""
 
@@ -140,6 +146,15 @@ class _Machine:
     def memory(self) -> list[int]:
         """The addressable cells."""
         return list(self.state[2])
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            tape=self.state[2],
+            pointer=self.state[1],
+            instruction=self.state[0],
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

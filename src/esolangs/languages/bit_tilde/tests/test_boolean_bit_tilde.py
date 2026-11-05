@@ -42,11 +42,11 @@ def test_every_constant_row_within_written_state_bound(bit: str) -> None:
                 stdin = esolangs.encode_inputs("bit~", list(map(int, f"{row:0{n}b}")))
                 io = ReadFirstIO(stdin + "Q", expected=n)
                 machine = _Machine("".join(program.split()), io)
-                written = WrittenState(machine.snapshot())
+                written = WrittenState(machine.workspace_snapshot())
                 steps = 0
                 while not machine.halted:
                     machine.step()
-                    written.sample(machine.snapshot())
+                    written.sample(machine.workspace_snapshot())
                     steps += 1
                     assert steps <= commands
                 assert steps == commands

@@ -534,3 +534,21 @@ def test_a_byte_finished_before_a_faulting_read_is_not_swallowed() -> None:
         _run_to_end(machine)
     assert io.events == [("read", ord("1")), ("print", 0xFF)]
     assert io.getvalue() == "\xff"
+
+
+def test_workspace_ignores_pointer_cycle_views_and_sorted_caches(monkeypatch):
+    from esolangs.languages.flowchart.interpreter import _Memory, _Pointer
+
+    machine = _Machine(CAT, ScriptedIO("A"))
+    for _ in range(24):
+        if machine.halted:
+            break
+        machine.step()
+    saved = machine.workspace_snapshot()
+
+    def unused(_self):
+        pytest.fail("workspace used a cycle projection")
+
+    monkeypatch.setattr(_Pointer, "state", unused)
+    monkeypatch.setattr(_Memory, "sorted_items", unused)
+    assert machine.workspace_snapshot() == saved

@@ -31,6 +31,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import syntax_error, with_hint
@@ -382,6 +383,22 @@ def _advance(
     ), outcome.effect
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "super-snusp-v1",
+    (
+        "row",
+        "column",
+        "heading",
+        "pointer",
+        "cells",
+        "values",
+        "digit",
+        "stopped",
+        "input_cursor",
+    ),
+)
+
+
 class _Machine:
     """Protocol shell holding one immutable Super SNUSP state value."""
 
@@ -428,6 +445,20 @@ class _Machine:
     @property
     def stack(self) -> list[object]:
         return list(self.state.values)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            row=self.state.cursor[0],
+            column=self.state.cursor[1],
+            heading=self.state.cursor[2],
+            pointer=self.state.tape[0],
+            cells=frozenset(self.state.tape[1]),
+            values=tuple(self.state.values),
+            digit=self.state.digit,
+            stopped=self.state.done,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         state = self.state
