@@ -31,6 +31,7 @@ from __future__ import annotations
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 #: Reset from exactly these two; a range check is the C comment's bug.
@@ -39,6 +40,10 @@ _TRAPS = (-1, 256)
 
 #: ``(ind, value, stopped)``: position, accumulator, whether ``h`` ran.
 type _State = tuple[int, int, bool]
+
+_WORKSPACE_MODEL = WorkspaceModel(
+    "deadfish-v1", ("source", "instruction", "accumulator", "stopped", "input_cursor")
+)
 
 
 def _advance(state: _State, code: str) -> tuple[_State, str | None]:
@@ -93,6 +98,17 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         return (self.code, *self.state, self.io.progress())
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture named semantic fields independently of cycle grouping."""
+        instruction, accumulator, stopped = self.state
+        return _WORKSPACE_MODEL.capture(
+            source=self.code,
+            instruction=instruction,
+            accumulator=accumulator,
+            stopped=stopped,
+            input_cursor=self.io.progress(),
+        )
 
     def step(self) -> None:
         if self.halted:

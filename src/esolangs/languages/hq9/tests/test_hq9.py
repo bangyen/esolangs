@@ -4,6 +4,7 @@ import pytest
 
 from esolangs.languages.hq9.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.interpreters.runner import run_program
 
 
@@ -23,8 +24,20 @@ def test_execution_order_and_silent_accumulator() -> None:
     check_raw_hq9()
     io = ScriptedIO("unused")
     machine = _Machine("h++qH", io)
+    measured = WrittenState(machine.workspace_snapshot())
+
+    def parts(current):
+        return (*current.state, current.io.progress())
+
+    legacy = WrittenState(parts(machine))
     while not machine.halted:
         machine.step()
+        captured = machine.workspace_snapshot()
+        assert captured.parts == parts(machine)
+        measured.sample(captured)
+        legacy.sample(parts(machine))
+        assert measured.bits == legacy.bits
+    assert measured.bits == 5
     assert io.getvalue() == "Hello, world!\nh++qHHello, world!\n"
     assert machine.memory == [2]
     assert io.position() == 0

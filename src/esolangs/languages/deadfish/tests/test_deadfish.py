@@ -2,6 +2,7 @@
 
 from esolangs.languages.deadfish.interpreter import _Machine, run
 from esolangs.runtime.io import IO, ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.interpreters.contract import SnapshotContract, StateViewContract
 from tests.interpreters.runner import run_program
 
@@ -28,13 +29,26 @@ class TestDeadfish:
         from esolangs.languages.deadfish.tests.oracle_checks import check_raw_deadfish
 
         check_raw_deadfish()
-        for program in ("", "i", _HELLO, "iissso", "h", "xyz"):
+
+        def parts(machine):
+            return (machine.code, *machine.state, machine.io.progress())
+
+        for program in ("", "i", _HELLO, "iissso", "h", "xyz", "iio"):
             machine = _Machine(program, ScriptedIO())
             steps = 0
+            measured = WrittenState(machine.workspace_snapshot())
+            legacy = WrittenState(parts(machine))
             while not machine.halted:
                 machine.step()
+                captured = machine.workspace_snapshot()
+                assert captured.parts == parts(machine)
+                measured.sample(captured)
+                legacy.sample(parts(machine))
+                assert measured.bits == legacy.bits
                 steps += 1
             assert steps <= len(program), program
+            if program in ("h", "iio"):
+                assert measured.bits == {"h": 1, "iio": 4}[program]
 
 
 def _machine(code: object) -> object:

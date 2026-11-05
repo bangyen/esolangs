@@ -15,9 +15,14 @@ Decisions:
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 type _State = tuple[int, int]
+
+_WORKSPACE_MODEL = WorkspaceModel(
+    "hq9-v1", ("instruction", "accumulator", "input_cursor")
+)
 
 
 def _bottles(count: int) -> str:
@@ -77,6 +82,15 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         return (*self.state, self.io.progress())
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture named semantic fields independently of cycle grouping."""
+        instruction, accumulator = self.state
+        return _WORKSPACE_MODEL.capture(
+            instruction=instruction,
+            accumulator=accumulator,
+            input_cursor=self.io.progress(),
+        )
 
     def step(self) -> None:
         if self.halted:

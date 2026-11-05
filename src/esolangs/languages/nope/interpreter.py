@@ -8,9 +8,12 @@ under the constant-language semantics.
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 type _State = bool
+
+_WORKSPACE_MODEL = WorkspaceModel("nope-v1", ("emitted", "input_cursor"))
 
 
 def _advance(state: _State) -> tuple[_State, str | None]:
@@ -34,6 +37,12 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         return (self.state, self.io.progress())
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture named semantic fields independently of cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            emitted=self.state, input_cursor=self.io.progress()
+        )
 
     def step(self) -> None:
         self.state, output = _advance(self.state)
