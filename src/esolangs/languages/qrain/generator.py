@@ -19,8 +19,8 @@ Constants drain later bytes into one scratch queue, print a literal low bit,
 then complete the answer from the first byte's fixed seven-bit tail.
 
 Size:
-    O(T): at most 19 characters a node, trips to R summing to 10T; the
-    shared form is kept when shorter; n=4 parity: 278 chars.
+    O(T): at most 19 characters a node, trips to R summing to 10T; shared
+    forms reuse level flags within the command budget; n=4 parity: 278 chars.
     Constants: n+10-2b characters and commands, b the answer.
 
 Decisions:
