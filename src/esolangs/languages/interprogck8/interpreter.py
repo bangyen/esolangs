@@ -68,6 +68,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
 
@@ -562,6 +563,19 @@ def _load_program(code: str) -> tuple[tuple[str, ...], tuple[_Instr, ...]]:
     return lines, tuple(map(_compile, lines))
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "interprogck8-v1",
+    (
+        "program",
+        "instruction",
+        "accumulator",
+        "captured_body",
+        "call_frames",
+        "input_cursor",
+    ),
+)
+
+
 class _Machine:
     """The run state: the program lines, accumulator, slot, and call stack."""
 
@@ -610,6 +624,17 @@ class _Machine:
     def stack(self) -> list[object]:
         """The call stack, one entry per open ``EXE``."""
         return [index for _body, index in self.state.frames]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of storage and cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            program=self.state.lines,
+            instruction=self.state.ip,
+            accumulator=self.state.acc,
+            captured_body=self.state.slot,
+            call_frames=self.state.frames,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete state, hashable, with the input cursor."""

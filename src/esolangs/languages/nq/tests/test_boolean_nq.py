@@ -80,11 +80,11 @@ def _check_constants() -> None:
                     for bits in ([0] * n, [1] * n):
                         io = ReadFirstIO("".join(map(str, bits)) + "7", expected=n)
                         machine = _Machine(source, io, guard_binding=binding)
-                        written = WrittenState(machine.snapshot())
+                        written = WrittenState(machine.workspace_snapshot())
                         for _ in range(n + 3):
                             assert not machine.halted
                             machine.step()
-                            written.sample(machine.snapshot())
+                            written.sample(machine.workspace_snapshot())
                         assert machine.halted
                         assert list(machine.queue) == [2 * int(bit), *bits]
                         assert io.getvalue() == ("#" if bit == "1" else " ")

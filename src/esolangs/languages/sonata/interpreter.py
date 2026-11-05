@@ -42,6 +42,7 @@ from dataclasses import dataclass
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -130,6 +131,9 @@ def _advance(rules: tuple[_Rule, ...], text: str) -> str | None:
     return None
 
 
+_WORKSPACE_MODEL = WorkspaceModel("sonata-v1", ("text", "stopped", "rendered"))
+
+
 class _Machine:
     """The rules, the string, and whether the run is over."""
 
@@ -148,6 +152,12 @@ class _Machine:
     def ip(self) -> tuple[int, ...]:
         """The string's length."""
         return (len(self.text),)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of storage and cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            text=self.text, stopped=self.halted, rendered=self.rendered
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

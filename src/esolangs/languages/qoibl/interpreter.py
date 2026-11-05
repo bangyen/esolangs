@@ -37,6 +37,7 @@ from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._fault import _Fault
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -467,6 +468,11 @@ def _advance(
     return new_state, tuple(out)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "qoibl-v1", ("instruction", "variables", "input_cursor")
+)
+
+
 class _Machine:
     """Per-run state for a Qoibl interpreter: variables and the code cursor."""
 
@@ -511,6 +517,14 @@ class _Machine:
     def memory(self) -> list[int]:
         """The 256 variables, unset ones reading as zero."""
         return [self.var.get(k, 0) for k in range(_VARIABLES)]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of storage and cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.ind,
+            variables=frozenset(self.var.items()),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

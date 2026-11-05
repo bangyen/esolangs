@@ -62,6 +62,7 @@ from esolangs.runtime._digits import digit_limit_for
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 _BEGIN = "==== HEADER ===="
@@ -399,6 +400,11 @@ def _advance(
     return (nxt, store), out
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "hq9-with-headers-v1", ("instruction", "cells", "input_cursor")
+)
+
+
 class _Machine:
     """The run state: op index and variable values."""
 
@@ -423,6 +429,14 @@ class _Machine:
     def memory(self) -> list[int]:
         """The variables in first-use order, unset ones as 0."""
         return [v or 0 for v in persistent.flatten(self.state[1])]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of storage and cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.state[0],
+            cells=persistent.flatten(self.state[1]),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

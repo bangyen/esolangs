@@ -59,11 +59,11 @@ def _check_large_packing_bounds() -> None:
     program = compat.generate("Shakespeare", table)
     io = ScriptedIO("1\n" * 10)
     machine = _Machine(program, io)
-    written = WrittenState(machine.snapshot())
+    written = WrittenState(machine.workspace_snapshot())
     steps = 0
     while not machine.halted:
         machine.step()
-        written.sample(machine.snapshot())
+        written.sample(machine.workspace_snapshot())
         steps += 1
         assert steps <= 42
     assert steps == 42

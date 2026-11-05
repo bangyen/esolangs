@@ -25,6 +25,7 @@ from esolangs.exceptions import InputExhaustedError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -100,6 +101,20 @@ def _advance(state: _State, code: Sequence[str]) -> tuple[_State, int | None]:
         byte = int("".join(out), 2)
         out = ()
     return (row, col, r, acc, out, inp), byte
+
+
+_WORKSPACE_MODEL = WorkspaceModel(
+    "clockwise-v1",
+    (
+        "row",
+        "column",
+        "direction",
+        "accumulator",
+        "output_bits",
+        "input_bits",
+        "input_cursor",
+    ),
+)
 
 
 class _Machine:
@@ -180,6 +195,18 @@ class _Machine:
     def memory(self) -> list[int]:
         """The addressable cells."""
         return [self.state[3]]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of storage and cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            row=self.state[0],
+            column=self.state[1],
+            direction=self.state[2],
+            accumulator=self.state[3],
+            output_bits=self.state[4],
+            input_bits=self.state[5],
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

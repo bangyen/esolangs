@@ -42,6 +42,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import match_brackets
 from esolangs.runtime.io import IO
 
@@ -65,6 +66,11 @@ def _advance(
     # Skip the Python constructor wrapper.
     # [interpreter_ablations.speedup_adoption_20261103]
     return tuple.__new__(_State, (pc + 1, ptr))
+
+
+_WORKSPACE_MODEL = WorkspaceModel(
+    "qrain-v1", ("control", "queues", "output_bits", "input_cursor")
+)
 
 
 class _Machine:
@@ -100,6 +106,15 @@ class _Machine:
             self.queues[i][0] if self.queues.get(i) else 0
             for i in range(min(cells), max(cells) + 1)
         ]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of storage and cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            control=(self.state.pc, self.state.ptr),
+            queues=frozenset((i, tuple(q)) for i, q in self.queues.items() if q),
+            output_bits=tuple(self.out),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         queues = tuple(sorted((i, tuple(q)) for i, q in self.queues.items() if q))

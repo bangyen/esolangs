@@ -45,11 +45,11 @@ def test_constants_consume_the_queue_then_print_once() -> None:
                     )
                     io = ReadFirstIO(stdin)
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted and steps < n + 10:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                     assert machine.halted
                     assert io.getvalue() == bit
@@ -94,11 +94,11 @@ def _check_single_accumulator_boundaries() -> None:
                         )
                     )
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                         assert steps <= len(commands)
                     assert io.getvalue() == table[row]

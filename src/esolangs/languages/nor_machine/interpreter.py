@@ -47,6 +47,7 @@ from esolangs.exceptions import ArgumentError, HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -88,6 +89,11 @@ def _parse_inputs(text: str) -> deque[int]:
     return queue
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "nor-machine-v1", ("instruction", "queue", "stopped", "input_cursor")
+)
+
+
 class _Machine:
     """The run state: the command index, the queue and the halt flag."""
 
@@ -119,6 +125,15 @@ class _Machine:
     @property
     def halted(self) -> bool:
         return self.done
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of storage and cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.ind,
+            queue=None if self.queue is None else tuple(self.queue),
+            stopped=self.done,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

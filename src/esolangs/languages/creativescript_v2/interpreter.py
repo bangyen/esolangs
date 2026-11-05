@@ -47,6 +47,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
@@ -156,6 +157,11 @@ def _advance(
     return (*state[:target], value, *state[target + 1 :]), None
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "creativescript-v2-v1", ("variables", "instruction", "input_cursor")
+)
+
+
 class _Machine:
     """The variables and the next command."""
 
@@ -178,6 +184,14 @@ class _Machine:
     def ip(self) -> int:
         """The source offset of the next command."""
         return self.offsets[min(self.cursor, len(self.offsets) - 1)]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of storage and cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            variables=tuple(self.state),
+            instruction=self.cursor,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         # The names are fixed by the program, so slots carry the run state.

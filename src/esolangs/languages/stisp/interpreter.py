@@ -55,6 +55,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -376,6 +377,9 @@ def _advance(
     return _substitute(eq.rhs, bound), rest
 
 
+_WORKSPACE_MODEL = WorkspaceModel("stisp-v1", ("expression", "frames", "rendered"))
+
+
 class _Machine:
     """The equations, the head, and the frames left."""
 
@@ -414,6 +418,17 @@ class _Machine:
     def stack(self) -> list[str]:
         """The head, then each frame's block name, first frame first."""
         return [_render(self.head), *self._blocks()]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of storage and cycle grouping."""
+        frames = []
+        rest = self.frames
+        while rest is not None:
+            frame, rest = rest
+            frames.append(frame)
+        return _WORKSPACE_MODEL.capture(
+            expression=self.head, frames=tuple(frames), rendered=self.rendered
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

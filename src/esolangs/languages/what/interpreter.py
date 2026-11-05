@@ -57,6 +57,7 @@ from esolangs.runtime import persistent
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 _CELLS = 256
@@ -272,6 +273,11 @@ def _advance(
     return (nxt, ptr, ints, strs), out
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "what-v1", ("instruction", "pointer", "integers", "strings", "input_cursor")
+)
+
+
 class _Machine:
     """The run state: token index, pointer and the two tapes."""
 
@@ -301,6 +307,16 @@ class _Machine:
     def memory(self) -> list[int]:
         """The integer tape."""
         return list(persistent.flatten(self.state[2]))
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of storage and cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.state[0],
+            pointer=self.state[1],
+            integers=persistent.flatten(self.state[2]),
+            strings=persistent.flatten(self.state[3]),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

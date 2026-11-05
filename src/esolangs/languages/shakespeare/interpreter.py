@@ -65,6 +65,7 @@ from esolangs.languages.shakespeare._syntax import Expr, Op, parse
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 #: A persistent stack: ``(top, rest)`` cells, ``None`` for empty.
@@ -261,6 +262,12 @@ def _advance(
     ), None
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "shakespeare-v1",
+    ("instruction", "values", "stacks", "stage", "condition", "input_cursor"),
+)
+
+
 class _Machine:
     """The operation list and the state."""
 
@@ -278,6 +285,25 @@ class _Machine:
     @property
     def ip(self) -> int:
         return self.state.pc
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of storage and cycle grouping."""
+        stacks = []
+        for stack in self.state.stacks:
+            rest = stack
+            values = []
+            while rest is not None:
+                value, rest = rest
+                values.append(value)
+            stacks.append(tuple(reversed(values)))
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.state.pc,
+            values=self.state.values,
+            stacks=tuple(stacks),
+            stage=self.state.stage,
+            condition=self.state.flag,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         s = self.state

@@ -26,6 +26,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -57,6 +58,11 @@ def _parse(code: str) -> tuple[tuple[str, ...], list[str], tuple[int, ...]]:
 def _advance(read: int, program: tuple[str, ...], bit: str) -> tuple[int, str]:
     """Delete the front bit; a 1 returns the production to append."""
     return read + 1, program[read % len(program)] if bit == "1" else ""
+
+
+_WORKSPACE_MODEL = WorkspaceModel(
+    "cyclic-tag-v1", ("head", "live_bits", "answer_latch", "input_cursor")
+)
 
 
 class _Machine:
@@ -100,6 +106,15 @@ class _Machine:
     @property
     def memory(self) -> list[int]:
         return [int(c) for c in self.live]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of storage and cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            head=self.head,
+            live_bits=self.live,
+            answer_latch=(self.answer, self.printed),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         # Deleted bits cannot affect a later step, except the answer.  It and
