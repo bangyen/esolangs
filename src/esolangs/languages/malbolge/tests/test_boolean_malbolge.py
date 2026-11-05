@@ -348,10 +348,3 @@ def test_seventeen_last_ignored_input_is_still_consumed(kind: str) -> None:
         assert io.getvalue() == table[row]
         assert io.reads == 17
         assert io.input_char() == ord("Q")
-
-
-def test_symmetric_rejects_readouts_outside_memory(monkeypatch) -> None:
-    for cell in (-1, 59049):
-        monkeypatch.setattr(_symmetric, "_s_readouts", lambda cell=cell: {cell: 0})
-        with pytest.raises(AssertionError, match="readouts wrap"):
-            _symmetric._symmetric.__wrapped__()

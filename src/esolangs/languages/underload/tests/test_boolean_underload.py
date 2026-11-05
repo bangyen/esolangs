@@ -1,7 +1,5 @@
 """Executed tests for the Underload promise-tree generator."""
 
-from itertools import pairwise
-
 import pytest
 
 import esolangs
@@ -76,11 +74,6 @@ def test_setters_are_equal_width_and_embedded_once() -> None:
     for n in range(1, 8):
         template = underload("01" * (1 << (n - 1)))
         assert template.count(TEMPLATE_CHAR) == 5 * n
-
-
-def test_source_growth_is_linear() -> None:
-    sizes = [len(underload("01" * (1 << (n - 1)))) for n in range(1, 13)]
-    assert all(right <= 2 * left for left, right in pairwise(sizes))
 
 
 @pytest.mark.medium

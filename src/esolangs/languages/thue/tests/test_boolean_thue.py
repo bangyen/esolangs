@@ -28,7 +28,7 @@ def test_short_tree_interns_constant_residuals() -> None:
         _execute("0" * 8, row, 1)
 
 
-def _execute(table: str, row: int, width: int) -> None:
+def _execute(table: str, row: int, width: int | None) -> None:
     n = len(table).bit_length() - 1
     io = ScriptedIO("\n".join(f"{row:0{n}b}"))
     machine = _Machine(generate("Thue", table, width=width), io, Seeded(row))
@@ -126,27 +126,12 @@ def test_thue_spells_the_table_once_and_its_rules_are_fixed() -> None:
 
 
 @pytest.mark.parametrize("table", _TABLES)
-def test_thue_never_leaves_the_draw_a_choice(table: str) -> None:
-    """Every state a generated program reaches offers exactly one rewrite."""
-    from esolangs.languages.thue.interpreter import _Machine, _matches
-
-    n = len(table).bit_length() - 1
-    program = boolean.thue(table)
-    for row in range(2**n):
-        stdin = "".join(f"{bit}\n" for bit in _bits(row, n))
-        machine = _Machine(program, ScriptedIO(stdin), Seeded(row))
-        while not machine.halted:
-            found = _matches(machine.state, machine.rules)
-            assert len(found) == 1, (table, row, machine.state[:60], found)
-            machine.step()
-
-
-@pytest.mark.parametrize("table", _TABLES)
 def test_thue_answers_the_same_under_every_draw(table: str) -> None:
     """Three seeds and the unseeded ``secrets`` draw agree, row by row."""
     n = len(table).bit_length() - 1
     program = boolean.thue(table)
     for row in range(2**n):
+        _execute(table, row, None)
         stdin = "".join(f"{bit}\n" for bit in _bits(row, n))
         answers = set()
         for rng in (Seeded(0), Seeded(1), Seeded(9), None):
