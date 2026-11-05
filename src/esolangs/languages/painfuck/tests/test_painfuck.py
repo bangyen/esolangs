@@ -478,9 +478,30 @@ def test_w_copies_the_right_neighbour_from_a_middle_cell() -> None:
         assert run_program("ioue", f"{value}\n") == str(value) + chr(value % 256)
 
 
-def test_v_and_y_as_the_last_command_end_the_program() -> None:
+@pytest.mark.parametrize("coin", [0, 1])
+@pytest.mark.parametrize(
+    ("commands", "owed"), [("y", 1), ("py", 1), ("cy", 7), ("ccy", 49), ("yy", 2)]
+)
+def test_trailing_y_consumes_only_its_owed_coins(
+    commands: str, owed: int, coin: int
+) -> None:
+    class BoundedCoin(_Coin):
+        draws = 0
+
+        def randbelow(self, upper: int) -> int:
+            self.draws += 1
+            assert self.draws <= owed, "trailing y requested another coin"
+            return super().randbelow(upper)
+
+    source = BoundedCoin(coin)
+    machine = Painfuck(_encode(commands), ScriptedIO(), source)
+    assert run_until_halt(machine, limit=2) is True
+    assert source.draws == (1 if commands == "yy" and coin else owed)
+    final = machine.snapshot()
+    machine.step()
+    assert machine.snapshot() == final
+    assert machine.io.getvalue() == ""
     assert run_program("pv") == ""
-    assert run_program("py") == ""
 
 
 @pytest.mark.parametrize("value", [0, 1, -1])

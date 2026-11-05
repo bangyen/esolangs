@@ -44,8 +44,8 @@ Errors:
 Decisions:
     * ``i`` reads one whitespace-delimited decimal token, leaving its
       delimiter; the spec leaves input framing open.
-    * A trailing ``y`` did not complete a step within 0.5 s with scripted
-      zero coins; the one-coin control halted. Its step boundary remains open.
+    * A trailing ``y`` consumes its owed coins and ends the step: there is
+      no next command to execute.
     * The tape is unbounded both ways: ``l`` at the leftmost cell grows it a
       zero cell on the left.  The wiki says nothing about the left edge, and
       cells left of the start are allowed.
@@ -450,9 +450,11 @@ def _do_y(step: _Step) -> _After | None:
     """
     owed = step.rep + 1
     step.rep = owed - sum(step.coins.take() for _ in range(owed))
-    if step.ind < step.n:
-        step.cmd = step.prog[step.ind]
-        step.ind += 1
+    if step.ind == step.n:
+        step.rep = 0
+        return _After.BREAK
+    step.cmd = step.prog[step.ind]
+    step.ind += 1
     return _After.BREAK if step.rep <= 0 else None
 
 

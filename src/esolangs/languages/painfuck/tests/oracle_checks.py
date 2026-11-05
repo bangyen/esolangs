@@ -157,8 +157,6 @@ class _Model:
             else:
                 execute = self.tape[self.pointer] == 0
             if self.pc == len(self.commands):
-                # A trailing zero-coin y is an explicitly open suspension.
-                assert command != "y" or self.coin
                 self.repeat = 1
                 return None
             command, self.pc = self.commands[self.pc], self.pc + 1
@@ -247,11 +245,13 @@ def check_raw_painfuck():
             "vype",
             "yvpe",
             "pv",
+            "y",
+            "py",
+            "yy",
         ),
         (0, 1),
     ):
         _check(_Machine, commands, coin=coin)
-    _check(_Machine, "py", coin=1)
     for code, stdin in product(
         ("ioe", "jue", "ijoue", "vie", "yje"),
         ("", "  -12 A", "bad\n", "λ\n", "0", "\n"),
