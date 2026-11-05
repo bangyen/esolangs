@@ -1,6 +1,6 @@
 # Migration completion ledger
 
-Declaration audit: `65b450e29`. [Language rows](migration-status.csv) cover all
+Declaration audit: `8df9d2347`. [Language rows](migration-status.csv) cover all
 117 languages and 114 Boolean backends. Declarations and inherited adapters
 are recorded separately; neither proves acceptance. Every completion row stays
 open until its trace, resource, installed-package and retirement evidence is
@@ -53,3 +53,7 @@ implementation pilot already passed.
 Accounting now has twenty explicit or inherited semantic adapters; 97 language
 rows still use snapshot accounting. Declarations do not close lifecycle,
 storage-policy or catalog-wide acceptance requirements.
+
+All seven dialect schemas now declare choices and defaults. Runtime metadata
+queries and validation no longer inspect signatures or constructors. The other
+110 languages have no dialect settings; generator option inference remains open.

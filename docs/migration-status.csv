@@ -7,11 +7,11 @@ A Painter Ant,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fall
 ABCDirection,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 AddSubJump,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Algebraic Programming Language,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-Alight,yes,legacy-discovery,signature-discovery,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+Alight,yes,legacy-discovery,declared,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Aprknia,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 ArrowQueue,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Ascenic,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-B-tapemark,yes,legacy-discovery,signature-discovery,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+B-tapemark,yes,legacy-discovery,declared,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Back,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Balik,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 BASICER,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,basicer-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -56,7 +56,7 @@ Forbin,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,p
 Forþ,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 FRACTRAN,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Freestajlo,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-Grapheme,yes,legacy-discovery,signature-discovery,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+Grapheme,yes,legacy-discovery,declared,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Home Row,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,home-row-v1,pending-backend-audit,pending-acceptance-audit,open
 Hot,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 HQ9+,no,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,hq9-v1,not-applicable,pending-acceptance-audit,open
@@ -79,7 +79,7 @@ Nope.,no,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,nope-v1,
 NOR machine,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 NQ,yes,declared,declared,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Object disoriented,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-Packlang,yes,legacy-discovery,signature-discovery,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+Packlang,yes,legacy-discovery,declared,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Painfuck,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Parenthesys,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Piet,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
@@ -91,12 +91,12 @@ Quassaunt,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback
 RAM0,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 REFRACTRAN,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Retrograde,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-ROTfuck,yes,legacy-discovery,signature-discovery,legacy-discovery,owned-adapter,rotfuck-v1,pending-backend-audit,pending-acceptance-audit,open
+ROTfuck,yes,legacy-discovery,declared,legacy-discovery,owned-adapter,rotfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Rubic,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 S*bleq,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 SendStuff,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Shakespeare,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-SLOW ACV MAMMALIAN,yes,legacy-discovery,signature-discovery,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+SLOW ACV MAMMALIAN,yes,legacy-discovery,declared,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Smallfuck,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,smallfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Smu,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Sonata,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
