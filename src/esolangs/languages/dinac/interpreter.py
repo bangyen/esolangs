@@ -63,6 +63,9 @@ Decisions:
       name.
     * The ban on null statements in a branch is not enforced: detecting
       them needs effect analysis and no example relies on it.
+    * Assigning ``$`` replaces the stored type too: a later typed assignment
+      or ``IN`` aborts. The spec implies a retained declared type; this
+      compatibility discrepancy remains open.
 """
 
 from __future__ import annotations

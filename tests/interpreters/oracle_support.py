@@ -37,6 +37,19 @@ def _error(error):
     return "syntax"
 
 
+def stable_halt(view):
+    """Wrap a view with the machine's post-halt snapshot-stability contract."""
+    snapshots = []
+
+    def state(machine):
+        if machine.halted:
+            snapshots.append(machine.snapshot())
+            assert snapshots[-1] == snapshots[0]
+        return view(machine)
+
+    return state
+
+
 def observed(factory, code, stdin, state, *, cap=64, post_halt=3):
     """Record state, halt, output and both input counters, including failed steps."""
     io = ScriptedIO(stdin)

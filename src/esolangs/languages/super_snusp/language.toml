@@ -142,7 +142,6 @@ contract = "interpreter.py"
 tests = [
     "src/esolangs/languages/super_snusp/tests/oracle_checks.py::check_raw_super_snusp",
     "src/esolangs/languages/super_snusp/tests/test_super_snusp.py::test_output",
-    "src/esolangs/languages/super_snusp/tests/test_super_snusp.py::test_core_linear_opcodes",
     "src/esolangs/languages/super_snusp/tests/test_super_snusp.py::test_decimal_io_and_output",
     "src/esolangs/languages/super_snusp/tests/test_super_snusp.py::test_invalid_stack_and_arithmetic_operations_raise_halt_error",
     "src/esolangs/languages/super_snusp/tests/test_super_snusp.py::test_char_input_writes_the_byte_it_read",

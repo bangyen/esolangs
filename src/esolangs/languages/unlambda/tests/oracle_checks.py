@@ -12,7 +12,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.unlambda.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import observed, overread, stable_halt, stalled
 
 
 class _ExitError(Exception):
@@ -116,11 +116,14 @@ def _check(factory, term, stdin="unused"):
         expected.cursor,
     )
     error, trace = observed(
-        factory, "# raw combinators\n" + _source(term), stdin, _view, cap=256
+        factory,
+        "# raw combinators\n" + _source(term),
+        stdin,
+        stable_halt(_view),
+        cap=256,
     )
     assert (error, trace[-1]) == (None, terminal), (term, stdin)
     assert trace[0] == ((None, None, True), False, "", 0, 0)
-    assert trace[-4:] == [trace[-1]] * 4
 
 
 def _app(function, *arguments):

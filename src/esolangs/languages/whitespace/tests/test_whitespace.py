@@ -1,7 +1,5 @@
 """Execution tests for the Whitespace interpreter."""
 
-from itertools import product
-
 import pytest
 
 from esolangs.exceptions import HaltError, InputExhaustedError, ProgramError
@@ -26,7 +24,7 @@ def number(value: int) -> str:
     return sign + digits + L
 
 
-DUP, SWAP, DISCARD = S + L + S, S + L + T, S + L + L
+SWAP, DISCARD = S + L + T, S + L + L
 ADD, SUB, MUL, DIV, MOD = (
     T + S + S + S,
     T + S + S + T,
@@ -36,7 +34,6 @@ ADD, SUB, MUL, DIV, MOD = (
 )
 STORE, RETRIEVE = T + T + S, T + T + T
 OUT_CHAR, OUT_NUM = T + L + S + S, T + L + S + T
-READ_CHAR, READ_NUM = T + L + T + S, T + L + T + T
 END = L + L + L
 
 
@@ -48,24 +45,8 @@ def slide(depth: int) -> str:
     return S + T + L + number(depth)
 
 
-def mark(label: str) -> str:
-    return L + S + S + label + L
-
-
-def call(label: str) -> str:
-    return L + S + T + label + L
-
-
 def jump(label: str) -> str:
     return L + S + L + label + L
-
-
-def jump_if_zero(label: str) -> str:
-    return L + T + S + label + L
-
-
-def jump_if_negative(label: str) -> str:
-    return L + T + T + label + L
 
 
 RETURN = L + T + L
@@ -73,101 +54,6 @@ RETURN = L + T + L
 
 def wrun(program: str, stdin: str = "") -> str:
     return run_program(run, program, stdin)
-
-
-def test_push_and_both_outputs() -> None:
-    assert wrun(push(65) + OUT_CHAR + END) == "A"
-    assert wrun(push(-3) + OUT_NUM + END) == "-3"
-
-
-def test_arithmetic_takes_the_first_pushed_as_left() -> None:
-    assert wrun(push(7) + push(2) + SUB + OUT_NUM + END) == "5"
-    assert wrun(push(6) + push(7) + MUL + OUT_NUM + END) == "42"
-    # -7 truncates toward zero: -3, with remainder -1.
-    assert wrun(push(-7) + push(2) + DIV + OUT_NUM + END) == "-3"
-    assert wrun(push(-7) + push(2) + MOD + OUT_NUM + END) == "-1"
-    assert wrun(push(4) + push(5) + ADD + OUT_NUM + END) == "9"
-
-    label = T + S
-    for address, a, b in product(
-        (-17, 2**32 + 17), (-257, -7, 0, 3, 256), (-11, -2, 1, 5)
-    ):
-        quotient = abs(a) // abs(b) * (-1 if (a < 0) != (b < 0) else 1)
-        for opcode, result in (
-            (ADD, a + b),
-            (SUB, a - b),
-            (MUL, a * b),
-            (DIV, quotient),
-            (MOD, a - b * quotient),
-        ):
-            # A call writes the result to the heap. The caller retrieves it
-            # after returning and prints both decimal and byte views.
-            source = (
-                push(address)
-                + call(label)
-                + push(address)
-                + RETRIEVE
-                + DUP
-                + OUT_NUM
-                + OUT_CHAR
-                + END
-                + mark(label)
-                + push(a)
-                + push(b)
-                + opcode
-                + STORE
-                + RETURN
-            )
-            assert wrun(source) == str(result) + chr(result % 256)
-
-
-def test_stack_manipulation() -> None:
-    assert wrun(push(3) + DUP + ADD + push(4) + ADD + OUT_NUM + END) == "10"
-    assert wrun(push(1) + push(2) + SWAP + OUT_NUM + push(0) + END) == "1"
-    assert wrun(push(9) + DISCARD + push(4) + OUT_NUM + END) == "4"
-    # copy the second item, then slide one, keeping the copied 7 on top.
-    assert wrun(push(7) + push(8) + copy(1) + slide(1) + OUT_NUM + END) == "7"
-
-
-def test_heap_store_and_retrieve() -> None:
-    program = (
-        push(0)
-        + READ_CHAR
-        + push(0)
-        + RETRIEVE
-        + OUT_CHAR
-        + push(1)
-        + push(42)
-        + STORE
-        + push(1)
-        + RETRIEVE
-        + OUT_NUM
-        + END
-    )
-    assert wrun(program, "Z\n") == "Z42"
-
-
-def test_flow_control_jumps_calls_and_returns() -> None:
-    label = S
-
-    def branch(value: int, op: str) -> str:
-        return wrun(push(value) + op(label) + push(66) + OUT_CHAR + mark(label) + END)
-
-    # an unconditional jump skips the output.
-    assert wrun(jump(label) + push(65) + OUT_CHAR + mark(label) + END) == ""
-    # jz branches on zero, jn on negative; the other value falls through.
-    assert branch(0, jump_if_zero) == ""
-    assert branch(1, jump_if_zero) == "B"
-    assert branch(-1, jump_if_negative) == ""
-    assert branch(1, jump_if_negative) == "B"
-    # call reaches the mark and returns to the caller's next command.
-    called = push(68) + call(label) + OUT_CHAR + END + mark(label) + RETURN
-    assert wrun(called) == "D"
-
-
-def test_read_number_stores_it() -> None:
-    program = push(0) + READ_NUM + push(0) + RETRIEVE + OUT_NUM + END
-    assert wrun(program, "12\n") == "12"
 
 
 def test_malformed_programs_are_rejected() -> None:
@@ -221,16 +107,6 @@ def test_advancing_a_done_state_is_a_no_op() -> None:
 def test_invalid_operations_halt(program: str, message: str) -> None:
     with pytest.raises(HaltError, match=message):
         run(program, IO())
-
-
-@pytest.mark.parametrize("stack", [(7,), (4, -2), (0, 1, 2)])
-def test_duplicate_adds_exactly_one_copy(stack: tuple[int, ...]) -> None:
-    state, effect = _advance((0, stack, (), (), False), [("dup", 0)], {})
-    assert state[1] == (*stack, stack[-1])
-    assert effect is None
-    restored, effect = _advance(state, [("dup", 0), ("discard", 0)], {})
-    assert restored[1] == stack
-    assert effect is None
 
 
 def test_the_wiki_cat_program_echoes_until_eof() -> None:

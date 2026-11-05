@@ -221,8 +221,42 @@ def check_raw_for_thorn():
         (",", "0,.[.]", "0,o[.]", ",,"), ("", "abc\n", "λ\r\nmore", "\n", "Ā")
     ):
         _check(_Machine, code, stdin)
-    for value in (0xD800, 0x10FFFF, 0x110000, -1):
+    for value in (0xD7FF, 0xD800, 0xDFFF, 0xE000, 0x10FFFF, 0x110000, -1):
         _check(_Machine, _number(value) + ".")
+    for code in (
+        "09/~.",
+        "65v..",
+        "0F7*0+F4*C+[.]",
+        "0[F.]5.",
+        "123o...",
+        "0G.",
+        "X5.",
+        "1;",
+        "1(5:).",
+        "1((5.))",
+        "1{3[:1-]A.}1;",
+        "1{/}1;",
+        "23+.",
+        "95-.",
+        "28*.",
+        "1{**.}FFF1;",
+        "1(F4*5+.)",
+        "0(F4*5+.)",
+        "123ccc...",
+        "12c",
+        "1{65.}1;",
+        "1{F4*5+.}1;",
+        "a5.",
+        "65a.",
+        "(5",
+        "[",
+        "1{.};",
+    ):
+        _check(_Machine, code)
+    for a, b, op in product((0, 1, 7, 15), (0, 2, 11, 15), "+-*"):
+        _check(_Machine, f"1{{{op}.}}{a:X}{b:X}1;{b:X}{a:X}1;")
+    for code, stdin in ((",..", "hi"), (",68*-.", "0"), (",.", "Ā"), ("F1+:*.", "")):
+        _check(_Machine, code, stdin)
     _check(_Machine, "")
 
     class WrongOutput(_Machine):

@@ -134,12 +134,6 @@ kind = "model"
 contract = "interpreter.py"
 tests = [
     "src/esolangs/languages/whitespace/tests/oracle_checks.py::check_raw_whitespace",
-    "src/esolangs/languages/whitespace/tests/test_whitespace.py::test_push_and_both_outputs",
-    "src/esolangs/languages/whitespace/tests/test_whitespace.py::test_arithmetic_takes_the_first_pushed_as_left",
-    "src/esolangs/languages/whitespace/tests/test_whitespace.py::test_stack_manipulation",
-    "src/esolangs/languages/whitespace/tests/test_whitespace.py::test_heap_store_and_retrieve",
-    "src/esolangs/languages/whitespace/tests/test_whitespace.py::test_flow_control_jumps_calls_and_returns",
-    "src/esolangs/languages/whitespace/tests/test_whitespace.py::test_read_number_stores_it",
     "src/esolangs/languages/whitespace/tests/test_whitespace.py::test_malformed_programs_are_rejected",
     "src/esolangs/languages/whitespace/tests/test_whitespace.py::test_a_read_with_no_input_halts",
 ]

@@ -26,6 +26,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
 )
 from tests.interpreters.cursorless_io import PositionlessIO
+from tests.interpreters.oracle_support import observed, stable_halt
 from tests.interpreters.runner import run_program
 from tests.support.fixtures import grid
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
@@ -80,25 +81,31 @@ class TestWikiExamples:
 class TestExpressions:
     """The expression language, pinned where the examples do not reach."""
 
-    def _value(self, expr: str, stdin: str = "") -> str:
-        return _run([f"begin;var v;set v {expr};out v;end;"], stdin)
+    def _value(self, expr: str, stdin: str = "", expected: int | None = None) -> str:
+        code = [f"begin;var v;set v {expr};out v;end;"]
+        if expected is not None:
+            error, trace = observed(
+                _Machine, code, stdin, stable_halt(lambda m: dict(m.vars)), cap=12
+            )
+            assert error is None
+            assert trace[-1] == ({"v": expected}, True, chr(expected), 0, 0)
+        return _run(code, stdin)
 
     def test_evaluation_is_left_to_right_without_precedence(self) -> None:
-        """``2+3*10`` is ``(2+3)*10``, not ``2+(3*10)``."""
-        assert self._value("2+3*10") == "2"
-        assert self._value("1*2+3*10") == "2"
-
+        """Independent bounded arithmetic model; variables, IO and halt included."""
         operations = {"+": add, "-": sub, "*": mul}
         for left, middle, right, first, second in product(
             (1, 4, 8), (1, 3), (2, 5), operations, operations
         ):
             result = operations[second](operations[first](left, middle), right)
             expression = f"{left}{first}{middle}{second}{right}+64"
-            assert self._value(expression) == chr(result + 64)
+            assert self._value(expression, expected=result + 64) == chr(result + 64)
 
         for numerator, divisor in product((1, 3, 7), (2, 3, 5)):
             expression = f"{numerator}/{divisor}*{divisor}+64"
-            assert self._value(expression) == chr(numerator + 64)
+            assert self._value(expression, expected=numerator + 64) == chr(
+                numerator + 64
+            )
 
     def test_character_and_string_literals(self) -> None:
         """``'c`` is a character's code and ``"str"`` a list of them."""

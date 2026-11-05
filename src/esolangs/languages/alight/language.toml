@@ -120,9 +120,10 @@ description = { growth = "linear", claim = "worst", template = "{claim} {formula
 
 [semantic_evidence]
 version = 1
-kind = "examples"
+kind = "model"
 contract = "interpreter/__init__.py"
 tests = [
+    "src/esolangs/languages/alight/tests/test_alight.py::TestExpressions::test_evaluation_is_left_to_right_without_precedence",
     "src/esolangs/languages/alight/tests/test_alight.py::TestWikiExamples",
     "src/esolangs/languages/alight/tests/test_alight.py::TestExpressions",
     "src/esolangs/languages/alight/tests/test_alight.py::TestErrors",

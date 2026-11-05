@@ -68,6 +68,9 @@ Decisions:
     * A function's value is its last evaluated expression statement (the
       trailing ``0;`` in every wiki example); a function that evaluates none
       returns 0.
+    * ``charGet`` stores Unicode code points whole (``λ`` is 955), even in
+      a byte counter; a later increment applies its named wrap. Input
+      encoding is unspecified; this compatibility choice remains open.
 """
 
 from collections.abc import Callable

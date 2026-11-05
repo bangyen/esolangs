@@ -12,7 +12,7 @@ from operator import add, mod, mul, sub, truediv
 import pytest
 
 from esolangs.languages.algebraic_programming_language.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import observed, overread, stable_halt, stalled
 
 _OPERATORS = {"+": add, "-": sub, "*": mul, "/": truediv, "%": mod, "**": pow}
 
@@ -107,11 +107,9 @@ def _view(machine):
 
 def _check(factory, lines, stdin="unused"):
     code = "\n".join(_source(expression) for expression in lines)
-    error, trace = observed(factory, code, stdin, _view, cap=128)
+    error, trace = observed(factory, code, stdin, stable_halt(_view), cap=128)
     assert (error, trace[-1]) == _model(lines, stdin), (code, stdin)
     assert trace[0] == ((0, (), False), not lines, "", 0, 0)
-    if trace[-1][1]:
-        assert trace[-4:] == [trace[-1]] * 4
 
 
 def check_raw_algebraic_programming_language():

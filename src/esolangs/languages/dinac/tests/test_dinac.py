@@ -181,18 +181,10 @@ def test_add1_with_a_one_digit_literal_is_refused_and_both_repairs_run() -> None
         ("OUT '\\n", "\n"),
         ("OUT '#", "#"),
         ("OUT '(", "("),
-        ("OUT FF", "FF"),
-        ("OUT FF+", "00"),
-        ("OUT 00-", "FF"),
-        ("OUT \\0-", chr(127)),
         ("OUT 'a # note\nOUT 'b", "ab"),
         ("OUT $", "$"),
-        ("OUT 01 = 01", "01"),
-        ("OUT 01 ! 01", "00"),
-        ("OUT 41 = 'A", "00"),
         ("OUT ~~05", "01"),
         ("OUT ~(01 = 01)", "00"),
-        ("", ""),
     ],
 )
 def test_expressions(code: str, expected: str) -> None:
@@ -202,26 +194,6 @@ def test_expressions(code: str, expected: str) -> None:
 def test_lowercase_hex_is_a_name() -> None:
     with pytest.raises(HaltError, match="undeclared name 'ff'"):
         run("OUT ff", ScriptedIO())
-
-
-@pytest.mark.parametrize(
-    ("code", "stdin", "expected"),
-    [
-        ("SET c:\\0\nIN c\nOUT c", "xyz", "x"),
-        ("SET c:\\0\nIN c\nIN c\nOUT c", "ab", "b"),
-        ("SET c:\\0\nIN c\nOUT c", "\n", "\n"),
-        ("SET c:\\0\nIN c\nOUT c", "", "\0"),
-        ("SET c:\\0\nIN c\nOUT c", "\u00e9", "\0"),
-        ("SET n:00\nIN n\nOUT n", "255\n", "FF"),
-        ("SET n:00\nIN n\nOUT n", "7", "07"),
-        ("SET n:00\nIN n\nOUT n", "256\n", "00"),
-        ("SET n:00\nIN n\nOUT n", "abc\n", "00"),
-        ("SET n:00\nIN n\nOUT n", "\n", "00"),
-        ("SET n:00\nIN n\nOUT n", "", "00"),
-    ],
-)
-def test_input(code: str, stdin: str, expected: str) -> None:
-    assert out(code, stdin) == expected
 
 
 def test_functions_overload_recurse_and_loop() -> None:

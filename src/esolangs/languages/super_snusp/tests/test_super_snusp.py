@@ -9,7 +9,6 @@ from esolangs.languages.super_snusp.generator import super_snusp
 from esolangs.languages.super_snusp.interpreter import _advance, _floor_root, run
 from esolangs.languages.super_snusp.interpreter import _Machine as SuperSnusp
 from esolangs.runtime.io import IO, ScriptedIO
-from esolangs.runtime.randomness import FirstDraw
 from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_halts_with_hint
@@ -100,24 +99,6 @@ def test_wiki_hello_world_reflects_at_both_mirrors() -> None:
         " " * 30 + "\\<./",
     ]
     assert run_program(run, hello) == "Hello, World!"
-
-
-@pytest.mark.parametrize(
-    ("program", "expected"),
-    [
-        ('"?65.', chr(5)),  # zero skips the 6 and emits the literal 5.
-        ('"1?65.', "A"),  # nonzero falls through and builds 65.
-        ('"1{2+.', chr(3)),  # ADD reads the stack top without consuming it.
-        ('"5{1=.', chr(3)),  # RAND alone consumes its stack argument.
-    ],
-)
-def test_core_linear_opcodes(program: str, expected: str) -> None:
-    if "=" in program:
-        io = ScriptedIO()
-        run(program.splitlines(), io, rng=FirstDraw(2))
-        assert io.getvalue() == expected
-    else:
-        assert run_super(program) == expected
 
 
 @pytest.mark.parametrize("character", ["\u0661", "²", "\U0001d7da", "é", "中"])

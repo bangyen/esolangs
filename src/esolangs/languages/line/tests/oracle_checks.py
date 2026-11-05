@@ -12,9 +12,10 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.languages.line.interpreter import _Machine
+from esolangs.languages.line.interpreter import _execute, _Machine
 from esolangs.raster import Raster
-from tests.interpreters.oracle_support import observed, overread, stalled
+from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.oracle_support import observed, overread, stable_halt, stalled
 
 
 def _read(stdin, cursor):
@@ -68,11 +69,19 @@ def _fixture(example):
 
 
 def _check(factory, example, stdin):
-    error, trace = observed(factory, _fixture(example), stdin, _view, cap=1000)
+    error, trace = observed(
+        factory, _fixture(example), stdin, stable_halt(_view), cap=1000
+    )
     assert (error, trace[-1]) == _model(example, stdin), (example, stdin)
     assert trace[0] == ((0, ()), False, "", 0, 0)
-    if trace[-1][1]:
-        assert trace[-4:] == [trace[-1]] * 4
+    if factory is _Machine and error in (None, "input"):
+        io = ScriptedIO(stdin)
+        if error:
+            with pytest.raises(EOFError):
+                _execute(_fixture(example), io)
+        else:
+            _execute(_fixture(example), io)
+            assert (io.getvalue(), io.position(), io.reads) == (*trace[-1][2:4], 2)
 
 
 def check_raw_line():

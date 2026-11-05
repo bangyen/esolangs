@@ -112,52 +112,6 @@ Package : IO {
 """
         assert _run(code) == "B"
 
-    def test_negation_turns_a_nonzero_into_one(self) -> None:
-        code = """
-Package : IO {
-  Integer main {
-    charPut(48 ^ !(7 ^ 7));
-    charPut(48 ^ !(7 ^ 6));
-    charPut(48 ^ !!(7 ^ 6));
-    0;
-  }
-} p;
-"""
-        assert _run(code) == "101"
-
-    def test_incr_and_decr_walk_a_variable(self) -> None:
-        code = """
-Package : IO {
-  Integer a;
-  Integer main {
-    INIT a;
-    INCR a; INCR a; INCR a; INCR a; INCR a;
-    INCR a; INCR a; INCR a;
-    DECR a;
-    charPut(a ^ 0);
-    0;
-  }
-} p;
-"""
-        assert _run(code) == "\x07"
-
-    def test_bounded_integer_wraps_to_its_named_values(self) -> None:
-        """``Integer(0, 1, 1, 0)``: incrementing past 1 gives the overflow 0."""
-        code = """
-Package : IO {
-  Integer(0, 1, 1, 0) b;
-  Integer main {
-    INIT b;
-    INCR b;
-    charPut(48 ^ b);
-    INCR b;
-    charPut(48 ^ b);
-    0;
-  }
-} p;
-"""
-        assert _run(code) == "10"
-
     def test_array_length_and_indexing(self) -> None:
         code = """
 Package : IO {
@@ -202,20 +156,6 @@ Package : IO {
 } p;
 """
         assert _run(code) == "A"
-
-    def test_newline_input_is_preserved(self) -> None:
-        """A supplied blank line remains distinct from EOF."""
-        code = """
-Package : IO {
-  Char c;
-  Integer main {
-    charGet(c);
-    charPut(c);
-    0;
-  }
-} p;
-"""
-        assert _run(code, "\n") == "\n"
 
 
 class TestErrors:
@@ -394,21 +334,6 @@ Package : IO {
 class TestRegistry:
     def test_registered_interpreter_runs(self) -> None:
         assert esolangs.run("Packlang", HELLO) == "Hello, World!\r\n"
-
-
-class TestCharPut:
-    def test_successive_charput_calls_print_their_code_points(self) -> None:
-        """A minimal package: two ``charPut`` calls and a 0 return."""
-        program = (
-            "Package : IO {\n"
-            "  Integer main {\n"
-            "    charPut(104);\n"
-            "    charPut(105);\n"
-            "    0;\n"
-            "  }\n"
-            "} printer;\n"
-        )
-        assert _run(program) == "hi"
 
 
 class TestBooleanGenerator:

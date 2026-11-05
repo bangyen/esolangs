@@ -127,6 +127,5 @@ kind = "model"
 contract = "interpreter.py"
 tests = [
     "src/esolangs/languages/for_thorn/tests/oracle_checks.py::check_raw_for_thorn",
-    "src/esolangs/languages/for_thorn/tests/test_for_thorn.py::TestForth",
     "src/esolangs/languages/for_thorn/tests/test_for_thorn.py::TestStepMachine",
 ]

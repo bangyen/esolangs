@@ -155,5 +155,4 @@ kind = "model"
 contract = "interpreter/__init__.py"
 tests = [
     "src/esolangs/languages/line/tests/oracle_checks.py::check_raw_line",
-    "src/esolangs/languages/line/tests/test_line.py::test_raw_arithmetic_fixtures",
 ]

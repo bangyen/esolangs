@@ -299,6 +299,32 @@ def check_raw_whitespace():
             [(None, False, "", 0, 0)],
         )
 
+    for address, a, b, op in product(
+        (-17, 2**32 + 17),
+        (-257, -7, 0, 3, 256),
+        (-11, -2, 1, 5),
+        ("add", "sub", "mul", "div", "mod"),
+    ):
+        _check(
+            _Machine,
+            (
+                ("push", address),
+                ("call", "01"),
+                ("push", address),
+                ("retrieve",),
+                ("dup",),
+                ("out_num",),
+                ("out_char",),
+                ("end",),
+                ("mark", "01"),
+                ("push", a),
+                ("push", b),
+                (op,),
+                ("store",),
+                ("return",),
+            ),
+        )
+
     class WrongPrint(_Machine):
         def __init__(self, code, io):
             write = io.print_num

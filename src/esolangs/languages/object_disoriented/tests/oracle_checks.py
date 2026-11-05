@@ -11,7 +11,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.object_disoriented.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import observed, overread, stable_halt, stalled
 
 
 def _expression(value, zero):
@@ -79,11 +79,9 @@ def _view(machine):
 def _check(factory, operations, stdin="unused", *, zero="z"):
     assert len(operations) <= 32
     code = _source(operations, zero)
-    error, trace = observed(factory, code, stdin, _view, cap=512)
+    error, trace = observed(factory, code, stdin, stable_halt(_view), cap=512)
     assert (error, trace[-1]) == _model(operations, stdin), (code, stdin)
     assert trace[0] == (((), ()), False, "", 0, 0)
-    if trace[-1][1]:
-        assert trace[-4:] == [trace[-1]] * 4
 
 
 def check_raw_object_disoriented():
