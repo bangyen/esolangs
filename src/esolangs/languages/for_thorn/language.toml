@@ -152,3 +152,12 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.for_thorn.generator:for_thorn"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: scope counts per level, twins called", formula = "S" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/for_thorn/tests/test_for_thorn.py::TestForth",
+    "src/esolangs/languages/for_thorn/tests/test_for_thorn.py::TestStepMachine",
+]

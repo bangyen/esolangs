@@ -169,3 +169,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.ram0.generator:ram0"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: tokens per distinct subtable", formula = "C" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/ram0/tests/oracle_checks.py::check_raw_ram0",
+]

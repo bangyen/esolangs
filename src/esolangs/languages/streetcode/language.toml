@@ -262,3 +262,14 @@ unit = "cells"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.streetcode.generator:streetcode"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} from n = 2: tree, then the flat street", formula = "S" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter/__init__.py"
+tests = [
+    "src/esolangs/languages/streetcode/tests/test_streetcode.py::TestStreetcodeHalt",
+    "src/esolangs/languages/streetcode/tests/test_streetcode.py::TestStreetcodeIO",
+    "src/esolangs/languages/streetcode/tests/test_streetcode.py::TestStreetcodeCPBounds",
+    "src/esolangs/languages/streetcode/tests/test_streetcode.py::TestStreetcodeWikiExamples::test_infinite_loop_example_traces_its_17_cell_lap",
+]

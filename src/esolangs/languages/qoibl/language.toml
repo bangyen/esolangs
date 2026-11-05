@@ -175,3 +175,15 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.qoibl.generator:qoibl"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: T-1 bit literal, 35 an input" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/qoibl/tests/test_qoibl.py::test_program_prints",
+    "src/esolangs/languages/qoibl/tests/test_qoibl.py::TestQoiblBehaviour",
+    "src/esolangs/languages/qoibl/tests/test_qoibl.py::TestQoiblTokenizer",
+    "src/esolangs/languages/qoibl/tests/test_qoibl.py::TestQoiblParserGuards",
+    "src/esolangs/languages/qoibl/tests/test_qoibl.py::TestOutputOrdering",
+]

@@ -183,3 +183,18 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.false.generator:false"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: to n = 15" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/false/tests/test_false.py::test_arithmetic_prints_a_number",
+    "src/esolangs/languages/false/tests/test_false.py::test_comparison_is_minus_one_for_true",
+    "src/esolangs/languages/false/tests/test_false.py::test_the_stack_shufflers",
+    "src/esolangs/languages/false/tests/test_false.py::test_a_read_preserves_newline",
+    "src/esolangs/languages/false/tests/test_false.py::test_a_read_past_the_end_is_the_specs_minus_one",
+    "src/esolangs/languages/false/tests/test_false.py::test_a_malformed_program_is_refused",
+    "src/esolangs/languages/false/tests/test_false.py::test_a_finished_loop_has_consumed_its_flag",
+    "src/esolangs/languages/false/tests/test_false.py::test_advancing_a_finished_state_is_a_no_op",
+]

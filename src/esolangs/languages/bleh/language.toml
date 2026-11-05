@@ -170,3 +170,12 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bleh.generator:bleh"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n=3..23; at most beyond: actual alias read prices", formula = "F" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/bleh/tests/test_bleh.py::test_the_page_pattern_table",
+    "src/esolangs/languages/bleh/tests/test_bleh.py::test_a_forced_argument_is_read_once",
+]

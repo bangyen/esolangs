@@ -245,3 +245,15 @@ unit = "cells"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: H-tree pool caps it", formula = "F" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter/__init__.py"
+tests = [
+    "src/esolangs/languages/circuit_diagram/tests/test_circuit_diagram.py::TestGates",
+    "src/esolangs/languages/circuit_diagram/tests/test_circuit_diagram.py::TestMultiWire",
+    "src/esolangs/languages/circuit_diagram/tests/test_circuit_diagram.py::TestParseErrors",
+    "src/esolangs/languages/circuit_diagram/tests/test_circuit_diagram.py::TestPrimeTester::test_exact_output_matches_trial_division",
+    "src/esolangs/languages/circuit_diagram/tests/test_circuit_diagram.py::TestPrimeTester::test_missing_input_bits_read_as_zero",
+]

@@ -188,3 +188,17 @@ unit = "cells"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.super_snusp.generator:super_snusp"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one row", formula = "D+8n+19" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/super_snusp/tests/test_super_snusp.py::test_output",
+    "src/esolangs/languages/super_snusp/tests/test_super_snusp.py::test_core_linear_opcodes",
+    "src/esolangs/languages/super_snusp/tests/test_super_snusp.py::test_decimal_io_and_output",
+    "src/esolangs/languages/super_snusp/tests/test_super_snusp.py::test_invalid_stack_and_arithmetic_operations_raise_halt_error",
+    "src/esolangs/languages/super_snusp/tests/test_super_snusp.py::test_char_input_writes_the_byte_it_read",
+    "src/esolangs/languages/super_snusp/tests/test_super_snusp.py::test_empty_program_is_rejected",
+    "src/esolangs/languages/super_snusp/tests/test_super_snusp.py::test_advance_short_circuits_once_the_cursor_has_left_the_grid",
+]

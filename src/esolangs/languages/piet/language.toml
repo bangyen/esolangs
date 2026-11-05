@@ -194,3 +194,18 @@ unit = "codels"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.piet.generator:piet"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 2..7, then at most F", formula = "F" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/piet/tests/test_piet.py::test_push_and_output_number",
+    "src/esolangs/languages/piet/tests/test_piet.py::test_arithmetic_and_output",
+    "src/esolangs/languages/piet/tests/test_piet.py::test_enclosed_white_terminates",
+    "src/esolangs/languages/piet/tests/test_piet.py::test_input_character_and_output_character",
+    "src/esolangs/languages/piet/tests/test_piet.py::test_input_number_skips_whitespace_until_eof",
+    "src/esolangs/languages/piet/tests/test_piet.py::test_stack_commands",
+    "src/esolangs/languages/piet/tests/test_piet.py::test_invalid_and_exhausted_input_are_ignored",
+    "src/esolangs/languages/piet/tests/test_piet.py::test_numeric_and_character_commands_share_the_input_cursor",
+]

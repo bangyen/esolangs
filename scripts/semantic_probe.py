@@ -1,0 +1,101 @@
+"""Run declared raw-program checks in a fresh process, optionally injecting a fault."""
+
+from __future__ import annotations
+
+import contextlib
+import importlib
+import io
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from esolangs.registry import LANGUAGES
+from esolangs.runtime.io import IO
+
+
+class Results:
+    """Count executed assertions separately from collection and fixture failures."""
+
+    def __init__(self) -> None:
+        """Start all execution counters at zero."""
+        self.passed = self.assertions = self.other = self.calls = self.hits = 0
+
+    def pytest_runtest_makereport(self, item: Any, call: Any) -> None:
+        """Record call assertions without accepting setup or collection errors."""
+        del item
+        if call.when == "call":
+            self.calls += 1
+            if call.excinfo is None:
+                self.passed += 1
+            elif call.excinfo.errisinstance(AssertionError):
+                self.assertions += 1
+            else:
+                self.other += 1
+        elif call.excinfo is not None:
+            self.other += 1
+
+
+def inject(name: str, result: Results) -> None:
+    """Add an unwanted output byte at both native and stepped entry points."""
+    lang = LANGUAGES[name]
+    module = importlib.import_module(f"esolangs.languages.{lang.id}.interpreter")
+    factory = module._Machine  # noqa: SLF001 -- the injected fault belongs to the VM
+    original = factory.__init__
+
+    def corrupt(args: tuple[Any, ...], kwargs: dict[str, Any]) -> None:
+        for value in (*args, *kwargs.values()):
+            if isinstance(value, IO):
+                value.print_str("\x00")
+                result.hits += 1
+                return
+
+    def broken(self: Any, *args: Any, **kwargs: Any) -> None:
+        original(self, *args, **kwargs)
+        corrupt(args, kwargs)
+
+    factory.__init__ = broken
+    entry = lang.runtime.completion_entrypoint
+    execute = getattr(module, entry)
+
+    def native(*args: Any, **kwargs: Any) -> Any:
+        corrupt(args, kwargs)
+        return execute(*args, **kwargs)
+
+    setattr(module, entry, native)
+
+
+def main() -> None:
+    """Emit one machine-readable report; retain pytest diagnostics on failure."""
+    request = json.load(sys.stdin)
+    result = Results()
+    if request["fault"]:
+        inject(request["language"], result)
+    captured = io.StringIO()
+    with contextlib.redirect_stdout(captured), contextlib.redirect_stderr(captured):
+        status = pytest.main(
+            [
+                "-o",
+                "addopts=",
+                "-o",
+                "python_functions=test_* check_raw_*"
+                if request["kind"] == "model"
+                else "python_functions=test_*",
+                "-q",
+                "--tb=short",
+                *(["-x"] if request["fault"] else []),
+                *request["tests"],
+            ],
+            plugins=[result],
+        )
+    print(
+        json.dumps({"status": int(status), **vars(result), "log": captured.getvalue()})
+    )
+
+
+if __name__ == "__main__":
+    main()

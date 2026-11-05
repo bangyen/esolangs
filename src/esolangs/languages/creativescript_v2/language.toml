@@ -112,3 +112,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.creativescript_v2.generator:creativescript_v2"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: one literal" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/creativescript_v2/tests/oracle_checks.py::check_raw_creativescript_v2",
+]

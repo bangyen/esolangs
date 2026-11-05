@@ -165,3 +165,17 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.quassaunt.generator:quassaunt"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: bounded names and nodes", formula = "F" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/quassaunt/tests/test_quassaunt.py::test_the_hello_worlds_print_as_stated",
+    "src/esolangs/languages/quassaunt/tests/test_quassaunt.py::test_the_truth_machine_prints_0_once_or_1_forever",
+    "src/esolangs/languages/quassaunt/tests/test_quassaunt.py::test_set_operations_and_their_error_messages",
+    "src/esolangs/languages/quassaunt/tests/test_quassaunt.py::test_the_two_branches",
+    "src/esolangs/languages/quassaunt/tests/test_quassaunt.py::test_locals_belong_to_one_evaluation_and_globals_to_all",
+    "src/esolangs/languages/quassaunt/tests/test_quassaunt.py::test_invalid_operations_halt",
+    "src/esolangs/languages/quassaunt/tests/test_quassaunt.py::test_malformed_programs_are_refused",
+]

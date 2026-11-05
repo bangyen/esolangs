@@ -170,3 +170,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/a_painter_ant/tests/oracle_checks.py::check_raw_a_painter_ant",
+]

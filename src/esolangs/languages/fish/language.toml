@@ -172,3 +172,16 @@ unit = "cells"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.fish.generator:fish"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} from n=2: exact-address packing or plain", formula = "F" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/fish/tests/test_fish.py::test_literals_arithmetic_comparison_and_output",
+    "src/esolangs/languages/fish/tests/test_fish.py::test_input_returns_minus_one_at_eof",
+    "src/esolangs/languages/fish/tests/test_fish.py::test_stack_stack_register_and_rotations",
+    "src/esolangs/languages/fish/tests/test_fish.py::test_get_put_and_negative_storage",
+    "src/esolangs/languages/fish/tests/test_fish.py::test_errors_are_fishy",
+    "src/esolangs/languages/fish/tests/test_fish.py::test_movement_mirrors_jump_and_trampolines",
+]

@@ -145,3 +145,14 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.alight.generator:alight"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one literal", formula = "T/2 + 16n + 61 + digits(48(T/2-1))" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter/__init__.py"
+tests = [
+    "src/esolangs/languages/alight/tests/test_alight.py::TestWikiExamples",
+    "src/esolangs/languages/alight/tests/test_alight.py::TestExpressions",
+    "src/esolangs/languages/alight/tests/test_alight.py::TestErrors",
+    "src/esolangs/languages/alight/tests/test_alight.py::TestSnapshot::test_snapshot_includes_the_input_cursor",
+]

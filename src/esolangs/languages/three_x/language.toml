@@ -210,3 +210,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.three_x.generator:three_x"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the plain tree under fixed keys", formula = "K" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/three_x/tests/oracle_checks.py::check_raw_three_x",
+]

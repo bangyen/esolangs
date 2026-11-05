@@ -160,3 +160,17 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.thue.generator:thue"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: T/2 + 223 once pairs pack" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/thue/tests/test_thue.py::test_a_rule_prints_and_deletes_its_match",
+    "src/esolangs/languages/thue/tests/test_thue.py::test_every_occurrence_is_a_candidate_including_overlapping_ones",
+    "src/esolangs/languages/thue/tests/test_thue.py::test_input_is_substituted_by_the_triple_colon",
+    "src/esolangs/languages/thue/tests/test_thue.py::test_a_read_past_the_end_is_eof",
+    "src/esolangs/languages/thue/tests/test_thue.py::test_a_malformed_program_is_refused",
+    "src/esolangs/languages/thue/tests/test_thue.py::test_a_program_with_no_rules_halts_at_once",
+    "src/esolangs/languages/thue/tests/test_thue.py::test_the_pointer_names_the_rule_and_its_offset",
+]

@@ -174,3 +174,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.sstack.generator:sstack"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: 21 a node, 3 a leaf, 12 prologue" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/sstack/tests/oracle_checks.py::check_raw_sstack",
+]

@@ -279,6 +279,13 @@ steps; bound each piece's upside before choosing it.
    formulas. Registry tests enforce the same checklist. It also runs local
    tests, the committed example, generator shape, ledger word/fold checks
    and formulas, and lists regenerated files.
+   `[semantic_evidence]` names owned pytest nodes and their interpreter contract.
+   Derive expectations independently of production helpers and generators;
+   retain unresolved readings in the contract’s Decisions. Admission runs
+   clean and faulted copies in fresh processes, requiring executed assertions
+   to detect an injected output byte (60 s total). Use `kind = "model"` for
+   independent models; `"examples"` records bounded literal/arithmetic checks
+   while model coverage remains open. Purity and snapshot gates still apply.
    Optional published examples belong in `tests/cases.toml` as `[[examples]]`
    with stated output (schema: `tests/interpreters/test_published_programs.py`).
    Bound potentially looping programs with `max_steps=10_000` or `timeout=5`.

@@ -224,3 +224,15 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.fargo.generator:fargo"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: inline Davio form", formula = "F" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/fargo/tests/test_fargo.py::TestBuiltins",
+    "src/esolangs/languages/fargo/tests/test_fargo.py::TestSyntax",
+    "src/esolangs/languages/fargo/tests/test_fargo.py::TestErrors",
+    "src/esolangs/languages/fargo/tests/test_fargo.py::TestInput",
+    "src/esolangs/languages/fargo/tests/test_fargo.py::TestWikiExamples::test_truth_machine_on_one_loops",
+]

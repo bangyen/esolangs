@@ -226,7 +226,3 @@ class TestTheSpecIsReachable:
         # The spec renders Sphinx roles, so the headline paragraph is what
         # both share verbatim.
         assert spec.split("\n\n")[0] == doc.split("\n\n")[0]
-
-    from .oracle_checks import check_raw_unsquare
-
-    check_raw_unsquare()

@@ -191,3 +191,16 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.intercal.generator:intercal"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: unshared-select envelope plus bounded spilling", formula = "F" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter/__init__.py"
+tests = [
+    "src/esolangs/languages/intercal/tests/test_intercal.py::test_calculate_mingle_select_unary_and_output",
+    "src/esolangs/languages/intercal/tests/test_intercal.py::test_written_number_words_are_read",
+    "src/esolangs/languages/intercal/tests/test_intercal.py::test_next_and_resume_return",
+    "src/esolangs/languages/intercal/tests/test_intercal.py::test_invalid_statements_raise",
+    "src/esolangs/languages/intercal/tests/test_intercal.py::test_turing_tape_input_stores_differences_and_eof_as_256",
+    "src/esolangs/languages/intercal/tests/test_intercal.py::test_manual_unary_examples",
+]

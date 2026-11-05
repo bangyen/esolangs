@@ -214,3 +214,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.brainfuck.generator:brainfuck"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the plain tree", formula = "35T/2 + 55n + 25" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/brainfuck/tests/test_semantic_oracle.py::test_raw_programs_match_independent_oracle",
+]

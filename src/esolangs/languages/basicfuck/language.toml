@@ -131,3 +131,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.basicfuck.generator:basicfuck"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the plain tree" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/basicfuck/tests/oracle_checks.py::check_raw_basicfuck",
+]

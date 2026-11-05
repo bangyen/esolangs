@@ -155,3 +155,16 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.object_disoriented.generator:object_disoriented"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} to n = 8, at most min(24T+56, S)", formula = "D" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/object_disoriented/tests/test_object_disoriented.py::test_cat_echoes_until_input_runs_out",
+    "src/esolangs/languages/object_disoriented/tests/test_object_disoriented.py::test_hello_world_repaired_pops_its_stack_last_in_first",
+    "src/esolangs/languages/object_disoriented/tests/test_object_disoriented.py::test_bits_pack_most_significant_first",
+    "src/esolangs/languages/object_disoriented/tests/test_object_disoriented.py::test_an_input_one_calls_its_parameter_and_a_zero_does_not",
+    "src/esolangs/languages/object_disoriented/tests/test_object_disoriented.py::test_a_write_to_s_lands_when_the_function_returns",
+    "src/esolangs/languages/object_disoriented/tests/test_object_disoriented.py::test_malformed_programs_are_refused",
+]

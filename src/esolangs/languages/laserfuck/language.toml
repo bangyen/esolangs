@@ -243,3 +243,14 @@ unit = "cells"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.laserfuck.generator:laserfuck"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: a tree to n = 6, then three rows", formula = "N" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/laserfuck/tests/test_laserfuck.py::test_output",
+    "src/esolangs/languages/laserfuck/tests/test_laserfuck.py::TestLaserFuck",
+    "src/esolangs/languages/laserfuck/tests/test_laserfuck.py::TestUncoveredSteering",
+    "src/esolangs/languages/laserfuck/tests/test_laserfuck.py::test_the_wiki_cat_prints_the_nul_it_stopped_on",
+]

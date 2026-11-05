@@ -178,3 +178,14 @@ unit = "cells"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.flowchart.generator:flowchart"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: two rows", formula = "20T+16·2^⌊n/2⌋+12·2^⌈n/2⌉+72n+14" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/flowchart/tests/test_flowchart.py::TestTruthMachine",
+    "src/esolangs/languages/flowchart/tests/test_flowchart.py::TestCat",
+    "src/esolangs/languages/flowchart/tests/test_flowchart.py::TestNodes",
+    "src/esolangs/languages/flowchart/tests/test_flowchart.py::TestParsing::test_empty_program_is_rejected",
+]

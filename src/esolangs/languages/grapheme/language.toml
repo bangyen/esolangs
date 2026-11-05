@@ -144,3 +144,15 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.grapheme.generator:grapheme"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} from n=2", formula = "17n + 15 + digits(2^T)" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/grapheme/tests/test_grapheme.py::test_prints",
+    "src/esolangs/languages/grapheme/tests/test_grapheme.py::test_refuses",
+    "src/esolangs/languages/grapheme/tests/test_grapheme.py::TestIO",
+    "src/esolangs/languages/grapheme/tests/test_grapheme.py::TestStepMachine",
+    "src/esolangs/languages/grapheme/tests/test_grapheme.py::TestEdgeCases::test_the_last_command_leaves_the_machine_halted",
+]

@@ -70,8 +70,10 @@ the standing budget. Preserve public behavior through adapters; incompatible
 API changes need a major release. Follow the refactor and optimization gates
 in [Contributing](CONTRIBUTING.md).
 
-1. **Independent semantic checks.** Extend the Engineering oracles below into
-   language admission. Derive each bounded oracle from the spec independently
+1. **Independent semantic checks.** Admission executes bounded checks and a
+   live output fault for all 117 languages. Independent models cover 75;
+   expand the 42 records still marked `kind = "examples"`. Derive each
+   bounded model from the spec independently
    of production helpers and generator structure; record ambiguities first.
    Check raw programs, errors, input consumption, state and termination with
    positive controls and mutants. Completion per language: known faults are
@@ -85,7 +87,7 @@ Next experiments; budgets are wall time, not permission for an unpriced search.
 
 | Work | Next experiment | Success criterion | Budget |
 | --- | --- | --- | --- |
-| Independent semantics | Extend bounded raw-program oracles beyond Brainfuck, Boolfuck, Smallfuck, Subleq, BFStack, Underload, Befunge and Decleq | Match output, state, input cursor, halt and errors; include positive controls | 60 s per language check |
+| Independent semantics | Expand the language-owned semantic records still marked `examples` into bounded independent models | Match output, state, input cursor, halt and errors; include positive controls | 60 s per language check |
 | Mutation audits | Rank stale generators; price each baseline before sweeping | Triage every survivor before updating its swept revision | 60 s baseline; 240 s per initial batch |
 | Unreached code | Triage new gaps from the weekly scan; the current baseline records invariant-backed unreachable arms | Executed witness, invariant, or byte-identical removal; confirm scoped gaps against whole-tree coverage before updating the baseline | 60 s per scoped scan; price whole-tree coverage separately |
 | Timing regressions | Inspect weekly environment-matched timing report | Reproduce persistent increases locally before changing code | Existing weekly sweep; no extra generation runs |

@@ -187,3 +187,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.malbolge.generator:malbolge"
 description = { growth = "measured", claim = "worst", template = "{claim} {formula} {unit} to n = 13, 19683 at 14, 52480 at 15, then 59049: the 3^10-cell store whole", formula = "13340" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/malbolge/tests/test_malbolge.py::test_a_known_program_prints_its_greeting",
+]

@@ -177,3 +177,14 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.freestajlo.generator:freestajlo"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/freestajlo/tests/test_freestajlo.py::test_arithmetic_and_stack_commands",
+    "src/esolangs/languages/freestajlo/tests/test_freestajlo.py::test_stacks_are_separate_and_the_transfer_stack_carries_values",
+    "src/esolangs/languages/freestajlo/tests/test_freestajlo.py::test_a_function_runs_where_it_is_named",
+    "src/esolangs/languages/freestajlo/tests/test_freestajlo.py::test_signed_quotient_and_remainder",
+]

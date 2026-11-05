@@ -157,3 +157,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.ascenic.generator:ascenic"
 description = { growth = "lower bound", claim = "worst", template = "{claim} {formula} {unit} from n = 2: generated Θ(T**2), N the size of the alternating table with its first pair flipped ([summary](#ascenic-bound))", formula = "N" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/ascenic/tests/oracle_checks.py::check_raw_ascenic",
+]

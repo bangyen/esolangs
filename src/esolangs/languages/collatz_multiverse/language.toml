@@ -220,3 +220,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: a line per cell", formula = "N" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/collatz_multiverse/tests/oracle_checks.py::check_raw_collatz_multiverse",
+]

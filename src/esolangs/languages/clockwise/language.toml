@@ -191,3 +191,11 @@ unit = "cells"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.clockwise.generator:clockwise"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}", formula = "25T + 40n + 20" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/clockwise/tests/oracle_checks.py::check_raw_clockwise",
+]

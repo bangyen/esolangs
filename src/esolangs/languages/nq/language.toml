@@ -173,3 +173,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.nq.generator:nq"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/nq/tests/oracle_checks.py::check_raw_nq",
+]

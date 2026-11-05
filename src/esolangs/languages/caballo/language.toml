@@ -166,3 +166,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.caballo.generator:caballo"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: parity" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/caballo/tests/oracle_checks.py::check_raw_caballo",
+]

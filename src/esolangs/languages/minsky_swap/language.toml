@@ -192,3 +192,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.minsky_swap.generator:minsky_swap"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} through n=5; at most beyond", formula = "N" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/minsky_swap/tests/oracle_checks.py::check_raw_minsky",
+]

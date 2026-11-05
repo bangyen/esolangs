@@ -182,3 +182,18 @@ unit = "cells"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.thisthat.generator:thisthat"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: H-tree `O(sqrt(T))` sides", formula = "N" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/thisthat/tests/test_thisthat.py::test_a_tick_prints_before_it_reads",
+    "src/esolangs/languages/thisthat/tests/test_thisthat.py::test_a_tick_keeps_output_when_a_later_read_hits_eof",
+    "src/esolangs/languages/thisthat/tests/test_thisthat.py::test_output",
+    "src/esolangs/languages/thisthat/tests/test_thisthat.py::test_loader_push_pop_and_horizontal_route",
+    "src/esolangs/languages/thisthat/tests/test_thisthat.py::test_invalid_programs_abort",
+    "src/esolangs/languages/thisthat/tests/test_thisthat.py::test_multiple_starts_halt_everything",
+    "src/esolangs/languages/thisthat/tests/test_thisthat.py::test_pause_holds_a_pointer_for_one_cycle",
+    "src/esolangs/languages/thisthat/tests/test_thisthat.py::test_specification_truth_machine",
+]

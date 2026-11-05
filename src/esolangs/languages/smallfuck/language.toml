@@ -190,3 +190,12 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.smallfuck.generator:smallfuck"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: coefficient recurrence plus a 20n+100 tail", formula = "Q" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/smallfuck/tests/test_smallfuck.py::test_bounded_programs_match_the_oracle",
+    "src/esolangs/languages/smallfuck/tests/test_smallfuck.py::test_oracle_controls",
+]

@@ -160,3 +160,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.eval.generator:eval"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n={previous}: Gray-indexed table halves", formula = "S" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/eval/tests/oracle_checks.py::check_raw_eval",
+]

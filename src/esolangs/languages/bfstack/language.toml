@@ -189,3 +189,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bfstack.generator:bfstack"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: zero-row walk telescopes to T", formula = "N" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/bfstack/tests/oracle_checks.py::check_raw_bfstack",
+]

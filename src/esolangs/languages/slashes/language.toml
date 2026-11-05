@@ -160,3 +160,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.slashes.generator:slashes"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: 5T/2+n+83 from n=4; 76/95/107 below", formula = "F" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/slashes/tests/oracle_checks.py::check_raw_slashes",
+]

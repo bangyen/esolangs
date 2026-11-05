@@ -200,3 +200,11 @@ unit = "pixels"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.line.generator:line"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} from n=6: projected tree envelope", formula = "F" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter/__init__.py"
+tests = [
+    "src/esolangs/languages/line/tests/test_line.py::test_raw_arithmetic_fixtures",
+]

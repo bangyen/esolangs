@@ -187,3 +187,14 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.algebraic_programming_language.generator:algebraic_programming_language"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: 10T + 4n + 6, n = 2..14", formula = "F" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter/__init__.py"
+tests = [
+    "src/esolangs/languages/algebraic_programming_language/tests/test_algebraic_programming_language.py::test_output",
+    "src/esolangs/languages/algebraic_programming_language/tests/test_algebraic_programming_language.py::TestErrors",
+    "src/esolangs/languages/algebraic_programming_language/tests/test_algebraic_programming_language.py::TestFrameBookkeeping::test_only_executed_lines_read_input",
+    "src/esolangs/languages/algebraic_programming_language/tests/test_algebraic_programming_language.py::TestCoveragePaths::test_memory_reports_the_bound_variables",
+]

@@ -140,3 +140,16 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.shakespeare.generator:shakespeare"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/shakespeare/tests/test_shakespeare.py::test_hello_world_prints_hello_world",
+    "src/esolangs/languages/shakespeare/tests/test_shakespeare.py::test_truth_machine_halts_on_zero_and_repeats_one",
+    "src/esolangs/languages/shakespeare/tests/test_shakespeare.py::test_values_and_operations",
+    "src/esolangs/languages/shakespeare/tests/test_shakespeare.py::test_stacks_remember_onto_the_listener_and_recall_into_it",
+    "src/esolangs/languages/shakespeare/tests/test_shakespeare.py::test_character_input_stores_the_code_and_number_input_a_token",
+    "src/esolangs/languages/shakespeare/tests/test_shakespeare.py::test_a_third_character_on_stage_halts",
+]

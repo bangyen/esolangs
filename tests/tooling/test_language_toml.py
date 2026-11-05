@@ -18,6 +18,7 @@ KNOWN = {
     "resource_evidence",  # scripts/docs/resource_evidence.py
     "proof_status",  # scripts/docs/proof_status.py
     "schemes",  # tests/proofs/_schemes.py
+    "semantic_evidence",  # scripts/docs/semantic.py
 }
 
 PACKAGES = Path(__file__).resolve().parents[2] / "src/esolangs/languages"

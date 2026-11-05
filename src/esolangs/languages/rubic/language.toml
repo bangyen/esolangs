@@ -151,3 +151,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.rubic.generator:rubic"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: distinct maximal children, seeded by constant/NOT pairs" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/rubic/tests/oracle_checks.py::check_raw_rubic",
+]

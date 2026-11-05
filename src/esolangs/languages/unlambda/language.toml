@@ -153,3 +153,17 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.unlambda.generator:unlambda"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: 315-character halves" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/unlambda/tests/test_unlambda.py::test_output",
+    "src/esolangs/languages/unlambda/tests/test_unlambda.py::test_the_combinators",
+    "src/esolangs/languages/unlambda/tests/test_unlambda.py::test_a_read_and_a_test_on_the_character",
+    "src/esolangs/languages/unlambda/tests/test_unlambda.py::test_a_read_at_end_of_input_takes_the_spec_branch",
+    "src/esolangs/languages/unlambda/tests/test_unlambda.py::test_a_malformed_program_is_refused",
+    "src/esolangs/languages/unlambda/tests/test_unlambda.py::test_the_continuation_is_the_stack_the_vm_shows",
+    "src/esolangs/languages/unlambda/tests/test_unlambda.py::test_e_ends_the_run_before_a_pending_print",
+]

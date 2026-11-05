@@ -155,3 +155,16 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.cvnc.generator:cvnc"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: pair 12, node 5, prologue 18" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/cvnc/tests/test_cvnc.py::TestWikiExamples",
+    "src/esolangs/languages/cvnc/tests/test_cvnc.py::TestFricatives",
+    "src/esolangs/languages/cvnc/tests/test_cvnc.py::TestVowels",
+    "src/esolangs/languages/cvnc/tests/test_cvnc.py::TestDeque",
+    "src/esolangs/languages/cvnc/tests/test_cvnc.py::TestControlFlow",
+    "src/esolangs/languages/cvnc/tests/test_cvnc.py::TestMachine",
+]

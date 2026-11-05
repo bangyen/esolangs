@@ -444,6 +444,17 @@ def check(name: str) -> list[Gap]:
     if lang is None:
         return _unregistered(name, canonical_id(name))
     gaps = _common_gaps(name, lang.runtime.interpreter or "")
+    from docs.semantic import load as semantic_evidence
+
+    try:
+        semantic_evidence(name)
+    except (ValueError, FileNotFoundError) as error:
+        gaps.append(
+            Gap(
+                f"src/esolangs/languages/{lang.id}/language.toml",
+                f"record bounded independent semantic checks: {error}",
+            )
+        )
     if lang.backend is not None:
         gaps += _generator_gaps(lang)
     return gaps
@@ -475,6 +486,7 @@ def quick_tests(name: str) -> list[str]:
     ]
     nodes += [
         f"tests/generators/test_ablation_evidence.py::test_audit_evidence[{name}]",
+        f"tests/interpreters/test_semantic_admission.py::test_semantic_evidence[{name}]",
         "tests/interpreters/test_interpreter_conventions.py"
         "::test_interpreter_docstrings_follow_the_template",
         "tests/interpreters/test_interpreters_robustness.py"

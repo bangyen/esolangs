@@ -162,3 +162,17 @@ description = { growth = "poly n", claim = "worst", template = "{claim} {formula
 
 [resource_evidence.scaling]
 qualitative = { growth = "linear", text = "worst C = Σ_{d<n} min(2^d,2^2^(n-d)-2^2^(n-d-1)) states, O(log T) digits" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter/__init__.py"
+tests = [
+    "src/esolangs/languages/fractran/tests/test_fractran.py::test_the_two_fraction_adder",
+    "src/esolangs/languages/fractran/tests/test_fractran.py::test_a_value_no_fraction_divides_is_printed_at_once",
+    "src/esolangs/languages/fractran/tests/test_fractran.py::test_the_first_matching_fraction_wins",
+    "src/esolangs/languages/fractran/tests/test_fractran.py::test_primegame_passes_through_the_primes",
+    "src/esolangs/languages/fractran/tests/test_fractran.py::test_a_malformed_program_is_refused",
+    "src/esolangs/languages/fractran/tests/test_fractran.py::test_the_pointer_is_the_offset_of_the_fraction_about_to_fire",
+    "src/esolangs/languages/fractran/tests/test_fractran.py::test_the_final_print_is_its_own_step",
+]

@@ -195,3 +195,12 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.dimensional.generator:dimensional"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: two per entry" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/dimensional/tests/test_dimensional.py::TestDimensional",
+    "src/esolangs/languages/dimensional/tests/test_dimensional.py::test_dimensional_looping_run_is_detected_as_a_cycle",
+]

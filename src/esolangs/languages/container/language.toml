@@ -192,3 +192,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.container.generator:container"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}", formula = "the threshold build on 0 0 (1 0)^(T/2-1)" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/container/tests/oracle_checks.py::check_raw_container",
+]

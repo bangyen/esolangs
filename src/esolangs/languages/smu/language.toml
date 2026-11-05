@@ -186,3 +186,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.smu.generator:smu"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} to n = 16, 6T+86 after", formula = "C" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/smu/tests/oracle_checks.py::check_raw_smu",
+]

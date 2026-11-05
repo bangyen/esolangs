@@ -102,3 +102,11 @@ unit = "lines"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.basicer.generator:basicer"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: one menu per diagram node" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/basicer/tests/oracle_checks.py::check_raw_basicer",
+]

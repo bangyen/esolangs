@@ -158,3 +158,11 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bitdeque.generator:bitdeque"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the shared tree's token bound", formula = "B" }
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/bitdeque/tests/oracle_checks.py::check_raw_bitdeque",
+]

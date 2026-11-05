@@ -187,3 +187,17 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.sendstuff.generator:sendstuff"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: one definition a distinct subtable, longest ids", formula = "C" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/sendstuff/tests/test_sendstuff.py::test_hello_world_prints_as_stated",
+    "src/esolangs/languages/sendstuff/tests/test_sendstuff.py::test_cat_echoes_any_character_until_eof",
+    "src/esolangs/languages/sendstuff/tests/test_sendstuff.py::test_each_command_sends_its_results",
+    "src/esolangs/languages/sendstuff/tests/test_sendstuff.py::test_input_number_reads_decimals_and_sends_nothing_at_eof",
+    "src/esolangs/languages/sendstuff/tests/test_sendstuff.py::test_output_past_the_last_code_point_halts",
+    "src/esolangs/languages/sendstuff/tests/test_sendstuff.py::test_malformed_programs_are_refused",
+    "src/esolangs/languages/sendstuff/tests/test_sendstuff.py::test_a_cycle_through_single_sends_revisits_its_state",
+]

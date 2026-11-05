@@ -186,3 +186,16 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.one_i.generator:one_i"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: six a node" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/one_i/tests/test_one_i.py::test_wiki_examples",
+    "src/esolangs/languages/one_i/tests/test_one_i.py::test_wiki_truth_machine_loops_on_one",
+    "src/esolangs/languages/one_i/tests/test_one_i.py::test_question_mark_peeks_and_takes_the_top_on_nonzero",
+    "src/esolangs/languages/one_i/tests/test_one_i.py::test_bytes_and_eof",
+    "src/esolangs/languages/one_i/tests/test_one_i.py::test_errors_halt",
+    "src/esolangs/languages/one_i/tests/test_one_i.py::test_malformed_programs_raise",
+]

@@ -16,3 +16,11 @@ workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: constant transition tuples. 103 programs, 103 halt cleanly; no structural trace differences, control differs on 103. Step throughput at longest 10/20/40 workload breadths: +0.42%/+0.58%/+0.46%. No production change or global performance conclusion; adoption needs broader validation."
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/nope/tests/oracle_checks.py::check_raw_nope",
+]

@@ -211,3 +211,16 @@ unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.forbin.generator:forbin"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}, n = 2..134: two an entry, distinct blocks", formula = "N" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter/__init__.py"
+tests = [
+    "src/esolangs/languages/forbin/tests/test_forbin.py::test_output",
+    "src/esolangs/languages/forbin/tests/test_forbin.py::test_rejected",
+    "src/esolangs/languages/forbin/tests/test_forbin.py::test_in_running_out_raises_eof",
+    "src/esolangs/languages/forbin/tests/test_forbin.py::TestStepMachine",
+    "src/esolangs/languages/forbin/tests/test_forbin.py::TestForbinAncestorHangDetection",
+    "src/esolangs/languages/forbin/tests/test_forbin.py::TestOutputOrdering",
+]

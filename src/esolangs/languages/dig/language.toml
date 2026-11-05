@@ -254,3 +254,14 @@ unit = "cells"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.dig.generator:dig"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: the dense table", formula = "A" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/dig/tests/test_dig.py::test_prints",
+    "src/esolangs/languages/dig/tests/test_dig.py::TestDigInput",
+    "src/esolangs/languages/dig/tests/test_dig.py::TestDigEdgeCases",
+    "src/esolangs/languages/dig/tests/test_dig.py::TestStepMachine",
+]

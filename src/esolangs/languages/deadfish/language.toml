@@ -24,3 +24,11 @@ workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "3009 native corpus programs; two finite instruction profiles at 32/128/512 units"
 verdict = "kept: direct arithmetic dispatch. 3009 paired native traces, 3009 clean halts, no differences; changed-site mutant differs on 1990. Complete-run savings 5.56–7.38%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+
+[semantic_evidence]
+version = 1
+kind = "model"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/deadfish/tests/oracle_checks.py::check_raw_deadfish",
+]
