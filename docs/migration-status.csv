@@ -24,7 +24,7 @@ Bitwise Cyclic Tag,yes,declared,not-applicable,declared,owned-adapter,bitwise-cy
 bit~,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Bleh,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Blindfolded Arithmetic,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,blindfolded-arithmetic-v1,pending-backend-audit,pending-acceptance-audit,open
-Boolfuck,yes,legacy-discovery,not-applicable,legacy-discovery,inherited-adapter,boolfuck-v1,pending-backend-audit,pending-acceptance-audit,open
+Boolfuck,yes,declared,not-applicable,declared,inherited-adapter,boolfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 brainfuck,yes,declared,not-applicable,declared,owned-adapter,brainfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 BrainIf,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,brainif-v1,pending-backend-audit,pending-acceptance-audit,open
 Caballo,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
@@ -72,7 +72,7 @@ lol waht i cant edit talk pages,yes,legacy-discovery,not-applicable,legacy-disco
 Malbolge,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Minsky Swap,yes,declared,not-applicable,declared,owned-adapter,minsky-swap-v1,pending-backend-audit,pending-acceptance-audit,open
 Modulous,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-Monotonic Boolfuck,yes,legacy-discovery,not-applicable,legacy-discovery,inherited-adapter,monotonic-boolfuck-v1,pending-backend-audit,pending-acceptance-audit,open
+Monotonic Boolfuck,yes,declared,not-applicable,declared,inherited-adapter,monotonic-boolfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Movesum,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,movesum-v1,pending-backend-audit,pending-acceptance-audit,open
 Nandypants,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,nandypants-v1,pending-backend-audit,pending-acceptance-audit,open
 Nope.,no,declared,not-applicable,declared,owned-adapter,nope-v1,not-applicable,pending-acceptance-audit,open

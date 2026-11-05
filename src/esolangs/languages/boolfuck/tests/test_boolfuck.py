@@ -70,3 +70,9 @@ def test_oracle_controls(code, output) -> None:
     result = agrees(_Machine, oracle, code, "\x81")
     assert result.output == output if output else isinstance(result, ValueError)
     assert not agrees(_Machine, oracle, "+[]", "").halted  # a cap is not a halt
+
+
+def test_declared_byte_lifecycle() -> None:
+    from tests.support.bit_lifecycle import check_byte_lifecycle
+
+    check_byte_lifecycle("Boolfuck", "+")

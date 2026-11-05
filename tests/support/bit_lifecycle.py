@@ -1,0 +1,46 @@
+"""Buffered byte boundaries for declared bit-tape machines."""
+
+import esolangs
+from esolangs.debugger import make_debugger
+from esolangs.runtime._lifecycle import Completion
+
+
+def check_byte_lifecycle(name: str, set_command: str) -> None:
+    """Check full bytes, final padding and idle completion through public routes."""
+    for bits in range(1, 10):
+        source = set_command + ";" * bits + " "
+        debug = make_debugger(name, source)
+        for _ in range(bits + 1):
+            debug.step()
+        assert not debug.halted
+        assert debug.result.completion is None
+        assert debug.result.steps == bits + 1
+        assert debug.result.output == ("\xff" if bits >= 8 else "")
+        debug.step()
+        expected = ("\xff" if bits >= 8 else "") + (
+            chr((1 << (bits % 8)) - 1) if bits % 8 else ""
+        )
+        result, snapshot = debug.result, debug.snapshot()
+        assert result.output == expected
+        assert result.completion is not None
+        assert result.completion.kind is Completion.HALTED
+        assert result.steps == bits + 2
+        native = esolangs.run(name, source)
+        assert result == native._replace(steps=result.steps)
+        assert esolangs.run(name, source, isolated=True) == native
+        debug.step()
+        assert debug.run(max_steps=0) == "halted"
+        assert (debug.result, debug.snapshot()) == (result, snapshot)
+    retained = set_command == "1"
+    cases = [
+        (set_command + ",;", "", chr(int(retained)), 0, 0, 1),
+        (",;" * 9, "\x80", "\x80" + chr(int(retained)), 1, 1, 1),
+        (",;", "Ā", "\0", 1, 1, 0),
+    ]
+    for source, stdin, output, position, reads, past_end in cases:
+        native = esolangs.run(name, source, stdin=stdin)
+        assert native[:4] == (output, position, reads, past_end)
+        debug = make_debugger(name, source, stdin=stdin)
+        assert debug.run(max_steps=100) == "halted"
+        assert debug.result == native._replace(steps=debug.result.steps)
+        assert esolangs.run(name, source, stdin=stdin, isolated=True) == native

@@ -71,3 +71,9 @@ def test_nodes_diverge_by_pointer_not_by_flag() -> None:
     assert ignored.count("[") == 2  # one node
     assert out(monotonic_boolfuck("0101"), "11") == "1"  # ignores the first input
     assert out(monotonic_boolfuck("0101"), "10") == "0"
+
+
+def test_declared_byte_lifecycle() -> None:
+    from tests.support.bit_lifecycle import check_byte_lifecycle
+
+    check_byte_lifecycle("Monotonic Boolfuck", "1")

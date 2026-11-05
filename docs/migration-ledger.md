@@ -90,3 +90,7 @@ The logical-store batch declares fifteen further models, flattening persistent
 RAM and continuation spines and freezing unordered stores. Bitwise Cyclic Tag
 counts live data and its answer, excluding the deleted-prefix storage cursor.
 Read-only source tables and shell-only dump guards are excluded.
+
+Boolfuck and Monotonic Boolfuck declare inherited bit-tape factories and debug
+fields. Buffered byte flushing and monotonic reads stay unchanged; Unary’s
+compressed source preparation remains open.
