@@ -47,7 +47,9 @@ rejects their return. Source adapters in `esolangs.compat` remain open.
 
 Benchmarks retain artifacts through generation, binding and execution. Source
 size and hashes read `.source`; caller checks fence off the temporary facade
-for all 114 backends. Other source-returning callers remain open.
+for all 114 backends. Release checks, audit replay, documentation and scaffolding
+also use artifacts; replay loads preserve explicit bindings. Other source-returning
+callers remain open.
 
 Accounting and analysis rows require owned witnesses, not just a declared hook
 or a recognized helper name. Certification needs an installed-package/lazy-import

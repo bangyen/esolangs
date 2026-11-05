@@ -6,7 +6,6 @@ import json
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._isolated import _decode, termination_result_isolated
 from esolangs.runtime._lifecycle import BoundaryCycle
@@ -19,9 +18,9 @@ from tests.support.reference import REFERENCE
 
 def _request(name, bit):
     lang = LANGUAGES[name]
-    template = compat.generate(name, "01")
+    template = esolangs.generate(name, "01")
     source = (
-        compat.instantiate(name, template, [bit]) if lang.parameterized else template
+        esolangs.instantiate(name, template, [bit]) if lang.parameterized else template
     )
     stdin = "" if lang.parameterized else esolangs.encode_inputs(name, [bit])
     return source, stdin
@@ -35,7 +34,9 @@ def test_actual_termination_workers_retain_every_halt_and_cycle():
         for bit in (0, 1):
             source, stdin = _request(name, bit)
             native = _termination_result(name, source, stdin, None)
-            worker = termination_result_isolated(name, source, stdin, 5)
+            worker = termination_result_isolated(
+                name, source.source, stdin, 5, settings=source.settings
+            )
             assert worker == native
             assert worker.observation.completion is None
             assert worker.decision.halts is (bit == 0)
@@ -63,7 +64,9 @@ def test_actual_branch_workers_retain_the_complete_graph():
             continue  # Unforkable input or draw-dependent halting remains undecided.
         if native.decision.branches is None:
             continue
-        worker = termination_result_isolated(name, source, stdin, 5)
+        worker = termination_result_isolated(
+            name, source.source, stdin, 5, settings=source.settings
+        )
         assert worker == native
         assert worker.decision.branches.states_examined > 0
         model = make_vm(name, source, stdin=stdin)._machine

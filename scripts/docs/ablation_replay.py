@@ -17,12 +17,12 @@ from pathlib import Path
 from typing import Any
 
 import esolangs
-from esolangs import _run, _run_result
+from esolangs import _run
+from esolangs.artifacts import Artifact
 from esolangs.generation.helpers import grid_area
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES
 from esolangs.results import ExecutionResult
-from esolangs.runtime._program import Program
 from esolangs.runtime._source import text_source
 from esolangs.runtime._termination import _termination_result
 from esolangs.runtime.io import ScriptedIO
@@ -238,7 +238,7 @@ def _baseline(
     deadline: float,
     *,
     balanced: bool,
-) -> Program:
+) -> Artifact:
     """Acquire and generate from the baseline within the same replay deadline."""
     archive = subprocess.run(
         ["git", "archive", revision(record.baseline), "src"],
@@ -266,13 +266,15 @@ def _baseline(
         check=True,
         timeout=_remaining(deadline),
     )
-    return esolangs.compat.load_program(language, generated.stdout)
+    return esolangs.load_artifact(language, generated.stdout)
 
 
-def _source_size(program: Program, unit: str) -> int:
+def _source_size(artifact: Artifact, unit: str) -> int:
     """Measure emitted characters or rectangular cell/codel area at scale one."""
+    program = artifact.source
     if isinstance(program, Raster):
-        if program.scale != 1:
+        assert isinstance(artifact, esolangs.ProgramArtifact)
+        if artifact.scale != 1:
             raise AuditError("audit raster scale differs from explicit scale one")
         return len(program.rows) * max(map(len, program.rows))
     if unit == "chars":
@@ -282,7 +284,7 @@ def _source_size(program: Program, unit: str) -> int:
 
 def _observe(
     language: str,
-    program: Program,
+    program: Artifact,
     bits: list[int],
     table: str,
     record: ReplayRecord,
@@ -291,9 +293,9 @@ def _observe(
     """Run a row, retaining input counters and sound termination evidence."""
     lang = LANGUAGES[language]
     if lang.parameterized:
-        if not isinstance(program, str):
-            raise AuditError("input bindings require a text template")
-        program, stdin = esolangs.compat.instantiate(language, program, bits), ""
+        if not isinstance(program, esolangs.TemplateArtifact):
+            raise AuditError("input bindings require a TemplateArtifact")
+        program, stdin = esolangs.instantiate(language, program, bits), ""
     else:
         stdin = esolangs.encode_inputs(language, bits, truth_table=table)
     bound = min(5.0, _remaining(deadline))
@@ -306,7 +308,7 @@ def _observe(
             )
         )
     else:
-        result = _run_result(
+        result = esolangs.run(
             language, program, stdin=stdin, timeout=bound, seed=record.seed
         )
         answer = esolangs.read_answer(language, result.output)
@@ -359,7 +361,7 @@ def verify_replay(language: str, record: ReplayRecord, scratch: Path) -> None:
                         balanced=balanced,
                     )
             candidate = _run(
-                lambda *_args, balanced=balanced: esolangs.compat.generate(
+                lambda *_args, balanced=balanced: esolangs.generate(
                     language, table, balance=balanced
                 ),
                 "",

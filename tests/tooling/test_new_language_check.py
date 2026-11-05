@@ -9,7 +9,6 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.registry import LANGUAGES
 from scripts import new_language
 from tests.support import samples
@@ -138,7 +137,7 @@ def test_bounds_flags_a_stale_size_anchor(monkeypatch: pytest.MonkeyPatch) -> No
     name = first(boolean_generator=True, parameterized=False, answer_mode="output")
     from docs import evidence
 
-    size = len(str(compat.generate(name, "0110")))
+    size = len(esolangs.generate(name, "0110").source)
     anchor = dataclasses.replace(
         evidence.source_anchors(name)[0],
         witness=evidence.TableWitness(2, "parity"),
@@ -146,9 +145,17 @@ def test_bounds_flags_a_stale_size_anchor(monkeypatch: pytest.MonkeyPatch) -> No
         unit="chars",
     )
     monkeypatch.setattr(evidence, "source_anchors", lambda _: (anchor,))
-    assert new_language.size_anchors(name) == [
-        f"  n=2 parity: {size + 1:,} chars  STALE: emits {size:,}"
-    ]
+    with monkeypatch.context() as guard:
+
+        def forbidden(*_args, **_kwargs):
+            raise AssertionError("size anchor reached a source facade")
+
+        guard.setattr(esolangs.compat, "generate", forbidden)
+        with pytest.raises(AssertionError, match="source facade"):
+            esolangs.compat.generate(name, "01")
+        assert new_language.size_anchors(name) == [
+            f"  n=2 parity: {size + 1:,} chars  STALE: emits {size:,}"
+        ]
     load_module = importlib.import_module
 
     def without_formula_records(module, *args, **kwargs):

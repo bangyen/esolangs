@@ -4,6 +4,7 @@ from functools import partial
 
 import esolangs
 from esolangs._cycles import _halt_or_cycle_result
+from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.exceptions import EsolangError, InterpreterLimitError
 from esolangs.results import ExecutionResult
 from esolangs.runtime._program import Program
@@ -18,7 +19,7 @@ from esolangs.vm import _capture_observation, make_vm
 
 def _termination_result(
     name: str,
-    source: Program,
+    source: Program | Artifact,
     stdin: str,
     bound: float | None,
     *,
@@ -37,7 +38,12 @@ def _termination_result(
             error.partial_output = machine.output
             raise
 
-    verdict = esolangs._run(_drive, source, ScriptedIO(""), bound)  # noqa: SLF001
+    argument = (
+        source.source
+        if isinstance(source, (ProgramArtifact, TemplateArtifact))
+        else source
+    )
+    verdict = esolangs._run(_drive, argument, ScriptedIO(""), bound)  # noqa: SLF001
     try:
         return checked_termination(verdict)
     except ValueError as error:

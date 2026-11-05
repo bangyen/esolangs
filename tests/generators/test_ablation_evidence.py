@@ -11,7 +11,6 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.generation.helpers import grid_area
 from esolangs.registry import LANGUAGES
 from scripts.docs import ablation_replay, ablations
@@ -44,6 +43,13 @@ def _cases():
 
 @pytest.mark.parametrize("language", list(_cases()))
 def test_audit_evidence(language: str, tmp_path: Path, monkeypatch) -> None:
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("audit replay reached a source facade")
+
+    for name in ("generate", "instantiate", "load_program"):
+        monkeypatch.setattr(esolangs.compat, name, forbidden)
+    with pytest.raises(AssertionError, match="source facade"):
+        esolangs.compat.generate(language, "01")
     for group in ablations.GROUPS:
         audit = ablations.load(language, group)
         if group == "ablations" and LANGUAGES[language].backend is not None:
@@ -147,8 +153,8 @@ def _controls(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="source anchor"):
         ablations.parse_audits(REFERENCE, "ablations", retired)
     revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
-    source = compat.generate(REFERENCE, "0110")
-    balanced = compat.generate(REFERENCE, "0110", balance=True)
+    source = esolangs.generate(REFERENCE, "0110").source
+    balanced = esolangs.generate(REFERENCE, "0110", balance=True).source
     generate = LANGUAGES[REFERENCE].backend.generate
     raw = {
         "kind": "replay",
@@ -221,7 +227,7 @@ def _controls(tmp_path, monkeypatch):
 def _pilot(language, tmp_path):
     lang = LANGUAGES[language]
     generate = lang.backend.generate
-    candidate = compat.generate(language, "01")
+    candidate = esolangs.generate(language, "01")
     unit = (
         "codels"
         if lang.runtime.source_kind == "raster"
@@ -251,7 +257,8 @@ def _pilot(language, tmp_path):
     )
 
 
-def _units(program, unit):
+def _units(artifact, unit):
+    program = artifact.source
     if isinstance(program, esolangs.Raster):
         return len(program.rows) * len(program.rows[0])
     if unit == "chars":

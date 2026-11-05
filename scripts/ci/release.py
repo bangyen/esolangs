@@ -125,9 +125,15 @@ def _generator(name: str, *, image_extra: bool) -> None:
 
     controls = load_certification(LANGUAGES[resolve(name)]).benchmark_tables
     table = next((t for t in controls if "0" in t and "1" in t), "0110")
-    generated = esolangs.compat.generate(name, table)
-    if image_extra and isinstance(generated, esolangs.Raster):
-        generated = esolangs.Raster.from_png(generated.to_png())
+    generated = esolangs.generate(name, table)
+    if image_extra and isinstance(generated.source, esolangs.Raster):
+        assert isinstance(generated, esolangs.ProgramArtifact)
+        generated = esolangs.ProgramArtifact(
+            esolangs.Raster.from_png(generated.source.to_png()),
+            generated.language,
+            generated.settings,
+            generated.scale,
+        )
     assert (
         _evaluate(name, generated, timeout=None, inputs=len(table).bit_length() - 1)
         == table
@@ -310,7 +316,9 @@ def _smoke_rasters(*, image_extra: bool) -> None:
         2,
     )
     for language in rasters:
-        raster = esolangs.compat.generate(language, "0110")
+        program = esolangs.generate(language, "0110")
+        assert isinstance(program, esolangs.ProgramArtifact)
+        raster = program.source
         assert isinstance(raster, esolangs.Raster)
         if image_extra:
             decoded = esolangs.Raster.from_png(raster.to_png())
@@ -323,10 +331,13 @@ def _smoke_rasters(*, image_extra: bool) -> None:
                     "PNG I/O ran without its image extra",
                 )
                 assert "esolangs[image]" in str(refusal)
+        artifact = esolangs.ProgramArtifact(
+            decoded, program.language, program.settings, program.scale
+        )
         for row in range(4):
             bits = [row >> 1, row & 1]
             output = esolangs.run(
-                language, decoded, stdin=esolangs.encode_inputs(language, bits)
+                language, artifact, stdin=esolangs.encode_inputs(language, bits)
             ).output
             assert esolangs.read_answer(language, output) == "0110"[row]
 
@@ -341,7 +352,7 @@ def _smoke_deadlines() -> None:
         assert (
             _evaluate(
                 "brainfuck",
-                esolangs.compat.generate("brainfuck", "0110"),
+                esolangs.generate("brainfuck", "0110"),
                 timeout=1,
                 inputs=2,
             )
@@ -366,7 +377,7 @@ def _smoke_deadlines() -> None:
                 pool.submit(
                     _evaluate,
                     language,
-                    esolangs.compat.generate(language, "0110"),
+                    esolangs.generate(language, "0110"),
                     inputs=2,
                     isolated=True,
                 ).result(timeout=30)
@@ -379,7 +390,7 @@ def _smoke_deadlines() -> None:
         assert (
             _evaluate(
                 language,
-                esolangs.compat.generate(language, "01"),
+                esolangs.generate(language, "01"),
                 inputs=1,
                 isolated=True,
             )
@@ -394,7 +405,7 @@ def _smoke_deadlines() -> None:
         assert (
             _evaluate(
                 language,
-                esolangs.compat.generate(language, "01"),
+                esolangs.generate(language, "01"),
                 timeout=None,
                 inputs=1,
             )

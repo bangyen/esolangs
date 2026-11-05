@@ -85,9 +85,18 @@ def test_main_updates_all_registry_derived_docs(
     assert "2 generated artifacts already up to date" in out
 
 
-def test_the_writers_rewrite_the_committed_sections(tmp_path: Path) -> None:
+def test_the_writers_rewrite_the_committed_sections(
+    tmp_path: Path, monkeypatch
+) -> None:
     """The ``update_*`` writers splice the marked blocks, as generate.py does."""
     module = load_script()
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("documentation reached a source facade")
+
+    monkeypatch.setattr(module.esolangs.compat, "generate", forbidden)
+    with pytest.raises(AssertionError, match="source facade"):
+        module.esolangs.compat.generate(REFERENCE, "01")
     (tmp_path / "docs").mkdir()
     readme = README.read_text()
     usage = USAGE_DOC.read_text()

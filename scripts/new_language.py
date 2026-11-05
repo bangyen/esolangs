@@ -135,7 +135,7 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     n = len(table).bit_length() - 1
-    program = esolangs.compat.generate("{name}", table)
+    program = esolangs.generate("{name}", table)
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("{name}", bits)
@@ -576,9 +576,11 @@ def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str
 
     Over the tables the formula tests use, so a stated bound that matches
     these is one they accept, and the tables are the witnesses a ``worst``
-    bound needs.  Size is characters per table row: flat for an O(T)
+    bound needs. Size is characters or raster pixels per table row: flat for an O(T)
     generator, growing for one that is not.
     """
+    from source_units import source_units
+
     import esolangs
 
     measurement = importlib.import_module("tests.proofs.measurement")
@@ -586,7 +588,9 @@ def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str
     rows = []
     for n in arities:
         worst = {t: measure(name, t, written=True) for t in tables(name, n)}
-        size = max(len(str(esolangs.compat.generate(name, t))) for t in tables(name, n))
+        size = max(
+            source_units(esolangs.generate(name, t).source) for t in tables(name, n)
+        )
         steps = max(worst, key=lambda t: worst[t][0])
         bits = max(worst, key=lambda t: worst[t][1])
         # Mean program size per row: ``size`` covers 2**n rows.
@@ -614,7 +618,7 @@ def size_anchors(name: str) -> list[str]:
     except (KeyError, FileNotFoundError):
         return []
     for anchor in anchors:
-        program = esolangs.compat.generate(name, anchor.witness.table())
+        program = esolangs.generate(name, anchor.witness.table()).source
         got = (
             len(program)
             if isinstance(program, (str, esolangs.CompressedText))
@@ -627,10 +631,13 @@ def size_anchors(name: str) -> list[str]:
 
 def _print_bounds(name: str, max_n: int) -> None:
     """Print measured resource maxima, witnesses and size anchors."""
+    import esolangs
+
     # Steps feed the ledger's Execution cell, bits its Workspace cell
     # (peak written state); chars/row stays flat for an O(T) generator.
     rows = bounds(name, range(1, max_n + 1))
-    print("n  Execution  Workspace  chars/row  witness tables (steps, bits)")
+    units = "pixels" if esolangs.describe(name)["source_kind"] == "raster" else "chars"
+    print(f"n  Execution  Workspace  {units}/row  witness tables (steps, bits)")
     for n, steps, bits, per_row, by_steps, by_bits in rows:
         print(f"{n:<2} {steps:>9}  {bits:>9}  {per_row:>9}  {by_steps} {by_bits}")
     print('"worst" must equal these columns from n = 3; otherwise write "at most"')

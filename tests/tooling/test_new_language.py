@@ -44,6 +44,7 @@ def test_scaffold_creates_source_generator_and_tests() -> None:
     assert new_language.PLACEHOLDER in stub
     assert "def tiny_lang(truth_table: str) -> str:" in generator.read_text()
     assert "LANGUAGE" not in generator.read_text()
+    assert "compat" not in generator_test.read_text()
 
 
 @pytest.mark.usefixtures("root")
