@@ -190,6 +190,24 @@ class TestDiceLiterals:
 
 
 class TestCommands:
+    def test_accumulator_loads_wrap_at_byte_boundaries(self) -> None:
+        for value in (0, 254, 255, 256, 257, 258, 337, 340, 511, 512, 955):
+            literal = ":" * (value // 2) + "." * (value % 2)
+            inputs = [("u", chr(value) + "\n")]
+            if value:
+                inputs += [("$py", literal + "\n"), (f"[{literal} {literal}]", "")]
+            for source, data in inputs:
+                io = ScriptedIO(data)
+                machine = _Machine(source, io, FirstDraw(0))
+                machine.step()
+                assert machine.state.acc == value % 256
+                assert io.position() == len(data)
+                before = machine.snapshot()
+                machine.step()
+                assert machine.snapshot() == before
+                assert go(source + "\ndiv", data) == chr(value % 256)
+                assert go(f"<\n{source}\n>\nEXE\ndiv", data) == chr(value % 256)
+
     def test_values_reads_each_argument_by_its_own_kind(self) -> None:
         """A nested ``$py`` parses pips; a nested ``u`` takes a byte.
 
@@ -315,14 +333,14 @@ class TestBranchingSearch:
     """``[a b]`` and ``~`` draw, so a hang proof must hold over every draw."""
 
     def test_a_draw_forks_into_every_outcome(self) -> None:
-        """``[. :]`` rolls 1 or 2, so its line has two successor states."""
-        machine = _Machine("[. :]\ndiv", ScriptedIO(""))
-        start = machine.branching_snapshot()
-        assert not machine.branching_halted(start)
-        successors = machine.branching_successors(start, 100)
-        assert successors is not None
-        # Distinct only in the accumulator: 1 and 2 pips.
-        assert {s[2] for s in successors} == {1, 2}
+        """Every distinct byte result is reachable, including wrapped ranges."""
+        for low, high in ((1, 2), (254, 258), (256, 258), (1, 513)):
+            machine = _Machine(f"[{_dice(low)} {_dice(high)}]\ndiv", ScriptedIO(""))
+            start = machine.branching_snapshot()
+            assert not machine.branching_halted(start)
+            successors = machine.branching_successors(start, 100)
+            assert successors is not None
+            assert {s[2] for s in successors} == {v % 256 for v in range(low, high + 1)}
 
     def test_tilde_has_one_outcome_the_state_can_see(self) -> None:
         """``~``'s ten draws differ only in output, which is left out."""

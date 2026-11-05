@@ -53,9 +53,9 @@ Decisions:
     * ``[a b]`` and ``~`` draw through :mod:`esolangs.runtime.randomness`, so
       a caller can pin them; ``developer`` prints a fixed string rather than
       this file.
-    * Reads retain values above 255 until arithmetic wraps them: ``u`` of
-      ``λ`` stores 955, ``$py`` of 129 colons stores 258. The wiki's byte
-      accumulator disagrees; this compatibility discrepancy remains open.
+    * Accumulator writes wrap modulo 256 (Memory, wiki rev 72769), including
+      input and random results. Nested comparison and range arguments keep
+      their full values: those expressions do not write the accumulator.
 """
 
 from __future__ import annotations
@@ -135,10 +135,13 @@ def _advance_cursor(state: _State, acc: int | None = None) -> _State:
 
     Popping eagerly keeps a tail-recursive function at constant stack
     depth; otherwise no state repeats and a loop cannot be proved.  ``acc``
-    replaces the accumulator in the same step.
+    replaces the accumulator modulo 256 in the same step; argument values
+    are left untouched.
     """
     if acc is None:
         acc = state.acc
+    else:
+        acc %= 256
     if state.frames:
         body, index = state.frames[-1]
         frames = (*state.frames[:-1], (body, index + 1))
@@ -530,8 +533,8 @@ def _branch_state(state: object) -> _State:
 def _draw_range(line: str) -> int:
     """How many distinct outcomes ``line`` has: 1 unless it draws.
 
-    ``~`` has ten (it prints on one of them).  ``[a b]`` spans at most the
-    accumulator's 256 values, which is the widest a bound can be.
+    ``~`` has ten (it prints on one). A range stores at most 256 byte values;
+    its first 256 pinned offsets cover every wrapped result.
     """
     if line == "~":
         return 10

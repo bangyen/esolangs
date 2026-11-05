@@ -55,7 +55,7 @@ def _basic(command, acc, port):
     if command in ("NnNn", "nNnN", "Empty_"):
         return {"NnNn": 0, "nNnN": 65, "Empty_": 32}[command], ""
     if command in ("u", "$py"):
-        return _argument(command, acc, port), ""
+        return _argument(command, acc, port) % 256, ""
     if command == "div":
         return acc, chr(acc)
     if command == "$ay":
@@ -186,6 +186,17 @@ def check_raw_interprogck8():
         ("u", "$py"), ("", "\n", "A\nB", "λ", ":::.", "bad", ":" * 129, ":\r\n.")
     ):
         _check(_Machine, (command, "$ay", "div", command), stdin)
+    for value in (255, 256, 258, 337, 340, 955):
+        literal = ":" * (value // 2) + "." * (value % 2)
+        for command, data in (("u", chr(value)), ("$py", literal)):
+            _check(
+                _Machine, (f"{{values/={command}/={literal}/={literal}}}", "div"), data
+            )
+            _check(
+                _Machine, (command, "DownAccLines", *["X"] * (value % 256), "div"), data
+            )
+            call = "IFT" if value % 256 == 84 else "IFQ"
+            _check(_Machine, ("<", "div", ">", command, call), data)
     for left, middle, right in product(("", ".", ":", "u", "$py"), repeat=3):
         _check(
             _Machine,
