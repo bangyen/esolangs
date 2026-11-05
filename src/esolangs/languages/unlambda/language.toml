@@ -24,33 +24,36 @@ definitions = ["P = the program's leaves, each k and s counted twice", "S = the 
 
 
 [ablations]
-audited = "2026-10-19"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-19" }
 
 [ablations.subtree_binding]
+kind = "archive"
 saving = 21.9
 arity = 12
 verdict = "kept: canonical, exempt. A repeated subtree within _REACH levels is bound once and referenced by i inside the nodes built around it. Deleting every binding candidate costs +21.84% at n=8, +21.68% at n=10 and +21.85% at n=12 on random tables, and on structured classes at n=12: parity +336.44%, majority +280.35%, threshold-3 +144.07%"
 
 [ablations.halves_agree_fold]
+kind = "archive"
 saving = 13.9
 arity = 12
 verdict = "kept: canonical, exempt. A node whose halves agree reads and runs the one half; it is also the projection's realization (no separate projection step). Deleting the collapse costs +13.47 / +13.91 / +13.89% on random tables at n=8/10/12 and +131.63% on one-ignored tables at n=10; 0.00% on parity, majority and threshold-3, whose halves never agree"
 
 [ablations.binding_race]
+kind = "archive"
 saving = 1.9
 arity = 12
 verdict = "kept: bound races every repeated subtree within reach and keeps the shortest binding. Taking the first candidate instead costs +1.84 / +1.83 / +1.87% on random tables at n=8/10/12, but +51.64 / +50.26 / +70.04% on majority and +24.70 / +16.45 / +14.93% on threshold-3. The race takes a min over a superset, so it cannot lose. Its comment figures reproduce under the share-of-the-first-candidate reading (majority 34.1 / 33.4% at n=8/10 against the claimed 33-34%)"
 
 [ablations.leaf_pair]
+kind = "archive"
 saving = 10.0
 arity = 8
 verdict = "kept 2026-10-30 (named-function clause, as Nandypants read_ladder): a last-level node over leaves 0 and 1 is the echo `|``si`kv (13 chars with the read, against ~31); over 1 and 0 it is ``s``?0i``s.1e.0 (print 1 and exit on a 0 read, else print 0; the exit is safe because that read is the last). 200 seeded random tables (Random(1000n+s)): chars fall 10.13% at n=7 (408,679 -> 367,266), 9.98% at n=8 (820,997 -> 739,058), 9.92% at n=9; parity 21.04 / 20.81 / 20.36%, majority 9.63 / 10.13 / 9.16%, threshold-3 9.21 / 8.59 / 7.69%, and/or 4.64 / 3.83 / 3.22% (a fixed 16 chars) at n=7 / 8 / 9; 0 of 600 random tables grew. Executed through esolangs.run: every row of every table at n<=3 (2,120 rows), of the five named functions and of 50 random tables at n=7 and n=8; the wrong-table control (or program against the and table) fails on 6 rows. The scaling bound 169T/8 - 21 still holds but is no longer reached: the exhaustive worst is now 62 / 136 / 284 chars at n = 2 / 3 / 4 (37T/2 - 12 there only: annealing tops out at 552 at n = 5 against 580, and finds 1129 at n = 6), so its 315-character-halves witness is stale; a tight bound is open"
 
-[audits]
-plain_rewrite = 2026-10-29
-trick_prototype = 2026-11-02
-
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 39.3
 seed = 0
@@ -58,6 +61,7 @@ tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witness
 verdict = "kept: root-only constant promise chain. Each @ forces the next delayed read; the last read flag applies the literal printer, and outer success flags finish as identities. Nested leaves retain their old absorbing value. L=4n+2 chars; E=14n+2 machine steps. Written bits are 16n+17+max(16n+3,8n+8+sum(bl(i),i=1..n+1))+bl(n): task peak 16n+8, continuation peak at depth 2 or n+1, character/done/input 9+bl(n). The depth term matters at n=512: 7170 executed steps, 16440 bits, component peaks 8200/8221/8/1/10; a small-arity linear extrapolation would miss 26 bits. That diagnostic raised only the Python snapshot-counter recursion limit, not language semantics. Native formulas also execute at 22 arities through n=128 without truth-table allocation. n=7 50 -> 30 chars; n=8 56 -> 34 (39.3%), 145 -> 114 steps, 494 -> 280 written bits; n=12 80 -> 50 chars. Both evaluation arities exceed the declining gate. n=3 corpus 28115 -> 28091 chars. Owned checks preserve following input, output after every read, and the full continuation-depth bound. Each language passed 5656 paired old/new row executions; 270 nonconstant defaults through n=3 stay byte-identical. Both constants n=1..12 execute default, width=1 and balanced. Separate 1120-run native probes per language include every row through n=8. All 24 balanced scores per language match or improve, with 72 old balanced row executions per language as controls; all 24 benchmark size/command pins across the batch stay unchanged. No new collected cases."
 
 [ablations.tail_pair_table_20261102]
+kind = "archive"
 seed = "Random(1000*n+s).getrandbits(2**n), s=0..199"
 arity = 8
 saving = 0.0
@@ -65,6 +69,7 @@ tables = "200 fixed generic tables each n=7,8; every table/row n<=3, ten sampled
 verdict = "rejected as supplied: offline shortest-first enumeration and a frozen16-case table violate named-construction policy; no search launched. A bounded compositional Shannon/leaf-pair control preserves constant and agreeing-half folds, invokes the penultimate-tail rule653 times in the native sweep, and produces identical source:367126/741318 chars atn7/8, n3 total28091. Its16 unit expressions execute64 rows; replacing AND by OR causes wrong rows, proving the probe fires. This is no impossibility or optimality claim about other compositional tails. No whole-old-program min or searched constants ship."
 
 [ablations.single_test_split_20261102]
+kind = "archive"
 seed = "same fixed Random(1000*n+s) corpus"
 arity = 8
 saving = -0.84
@@ -72,13 +77,24 @@ tables = "same fixed200 each n=7,8; exhaustive small, sampled4..6, parity/majori
 verdict = "rejected: shortest-template enumeration is inadmissible; no search launched. Literal named sketch S(S I(K dZ))(K dO), substituted only when no share is bound, grows source367126/741318 ->370063/747576 (0.80/0.84%) and is wrong. Two-input AND0001 rows10/11 print nothing and consume1/2 inputs. The v arm absorbs the delayed O rather than selecting it. Across the8904-run small/unit sweep947 rows fail; existing two-test reference and compositional tail controls have zero failures. No universal one-test impossibility is claimed."
 
 [ablations.print_first_leaf_20261102]
+kind = "archive"
 seed = "same fixed Random(1000*n+s) corpus"
 arity = 8
 saving = 11.07
 tables = "same fixed200 each n=7,8; exhaustive small and sampled4..6; five named functions at7/8"
 verdict = "rejected for input/output order: literal @ chains evaluate their printing argument before reading. Two unread inputs cost8 instead20 chars, print0 after0 reads, then consume2; proper delayed leaf prints after2. In full table00000001,row000, literal leaf prints0 after1/3 reads though final consumption is3. Apparent source367126/741318 ->327071/659278 (10.91/11.07%), n3 total24395 instead28091, does not qualify. Native sweep finds1066 early-output rows; judge/named control adds35. Root constants remain unchanged. No production source/proof/pin/anchor/example changes."
 
+[audits]
+plain_rewrite = 2026-10-29
+trick_prototype = 2026-11-02
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 1.3132
 workload = "constructor plus step; no snapshots timed"
 seed = 0
@@ -86,11 +102,12 @@ tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-ste
 verdict = "prototype only: slotted immutable dataclasses. 255 programs, 151 halt cleanly; no structural trace differences, control differs on 156. Step throughput at longest 10/20/40 workload breadths: +1.63%/+1.53%/+1.31%. No production change or global performance conclusion; adoption needs broader validation."
 
 [interpreter_ablations.speedup_adoption_20261103]
-price = 1.1500
+kind = "archive"
+price = 1.15
 workload = "complete run; parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
-verdict = "kept: slotted immutable dataclasses; 5203 paired native traces, 2253 clean halts, zero differences; changed-site control detected on 2258. Complete-run wall savings 1.15\u20132.53%, including parsing and final I/O. Snapshot fields and grouping preserved."
+verdict = "kept: slotted immutable dataclasses; 5203 paired native traces, 2253 clean halts, zero differences; changed-site control detected on 2258. Complete-run wall savings 1.15–2.53%, including parsing and final I/O. Snapshot fields and grouping preserved."
 
 [evidence]
 version = 1

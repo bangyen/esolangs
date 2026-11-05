@@ -6,15 +6,15 @@ from pathlib import Path
 #: Each section's reader; a misspelled section is otherwise silently ignored
 #: (an ``[audit]`` date would be ignored by the audit reader).
 KNOWN = {
-    "ablations",  # scripts/docs/generate.py
+    "ablations",  # scripts/docs/ablations.py
     "audits",  # scripts/docs/audits.py
     "balance_growth",  # tests/generators/test_balance_growth.py
     "catalogue",  # scripts/docs/catalogue.py
     "curation",  # scripts/docs/curation.py
     "deep_arities",  # tests/proofs/deep
-    "evidence",  # scripts/evidence.py
+    "evidence",  # scripts/docs/evidence.py
     "generator_sizes",  # checks/generator_sizes.py
-    "interpreter_ablations",  # a record: interpreter audit verdicts
+    "interpreter_ablations",  # scripts/docs/ablations.py
     "resource_evidence",  # scripts/docs/resource_evidence.py
     "proof_status",  # scripts/docs/proof_status.py
     "schemes",  # tests/proofs/_schemes.py

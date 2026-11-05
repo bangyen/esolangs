@@ -21,29 +21,30 @@ definitions = ["P = Σ_{k<n} min(2^k, 4^s - 2^s), s = 2^(n-k-1), the shared node
 "11111110" = { commands = 5, commands_by_row = { "7" = 5 }, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6], source_units = 62 }
 
 [ablations]
-audited = "2026-10-19"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-19" }
 
 [ablations.subtree_sharing]
+kind = "archive"
 saving = 70.0
 arity = 12
 verdict = "kept: canonical, exempt. A subtree equal to one already emitted at its level is named by its first line, not re-emitted; a parent patches its own tester's targets on every entry, so naming is sound. With the halves-agree skip kept, removing the naming costs 52.1% at n=8 rising to 61.7% at n=10 and 70.0% at n=12 on random tables, 97.6% / 99.3% on parity at n=10/12; removing both costs 57.4% / 66.1% / 73.5%"
 
 [ablations.halves_agree_skip]
+kind = "archive"
 saving = 2.3
 arity = 12
 verdict = "kept: canonical family, exempt. A node whose halves agree is skipped: the parent names the surviving child directly and no tester test is spent. With sharing kept, 4.6% at n=8 declining to 3.4% at n=10 and 2.3% at n=12 on random tables; 0.0% on parity, AND, OR, majority and constant tables, whose agreeing nodes sit over constant spans"
 
 [ablations.decisions_figures]
+kind = "archive"
 saving = 0.0
 arity = 5
 verdict = "recorded: the module docstring's Decisions sharing figures do not reproduce. The n=3 endpoint (37,862 chars over all 256 tables) is exact, but no flag combination of the current emitter gives the 39,156 start (fold kept 39,702, sharing only 39,742, neither 43,596); at n=5 neither endpoint matches the fleet's 200-table five-input sample (shipped 84,600, fold kept 113,858, against the recorded 83,070 / 114,791). See the stale-figures entry F19"
 
-[audits]
-trick_prototype = 2026-11-02
-blind_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-29
-
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 53.4
 seed = 0
@@ -51,26 +52,41 @@ tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witness
 verdict = "kept: canonical whole-constant folding. Keep every uniform PAIR slot unreachable behind one control instruction: jump to the end for zero, or to itself for one. This removes the unused testers and the other two header instructions. n+1 instructions; one step halts or repeats the initial state. Workspace is zero for one; zero uses 11n+10+2bl(n+1) bits because the snapshot groups the read-only program with its changed cursor. n=8 zero/one 133/133 -> 62/62 chars; n=12 189/189 -> 91/90. n=3 default corpus 37120 -> 37050 chars; area 36312 -> 36252. n=2 corpus 1330 -> 1274. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources and every embedded slot or stream read; stream output follows all reads and leaves a sentinel unread."
 
 [ablations.trick_prototype_20261102_preset_named]
+kind = "archive"
 arity = 8
 saving = 29.8869
 verdict = "kept for parity, thresholds and their complements over essential inputs. Initialize each tester to its first node and name an unchanged node by that tester directly; other nodes patch only differing targets. No modal search, table race or reordered input slots. Every threshold and complement at n=7/8 executes all rows; worst saving 502->341 chars (32.07%) and 619->434 (29.89%). Parity 435->272 (37.47%) and 501->314 (37.33%). AND/OR and complements 283->122 and322->137; actual direct chain programs through n=80 execute controls and match public templates through12. Their savings approach75% from below, with no finite global maximum. Named templates use uniform data-only setters; generic PAIR and constants stay unchanged. Global source maximum becomes5 lines at n=1,13 at n=2; higher generic maxima remain. Execution bounds concern halting rows; divergent programs repeat the canonical loop, not a finite runtime."
 
 [ablations.trick_prototype_20261102_preset_generic]
+kind = "archive"
 arity = 8
 saving = 14.2212
 verdict = "rejected generic extension: 200 seeded tables per arity, seed184700+n. Old/dual-preset/direct-alias chars n=7:235529/199604/189154; n=8:405658/359896/347966. Even aliasing gives19.69% then14.22%, below the declining20% bar. Zero-only pilot saves7.92%/5.74%. Actual generated programs execute small exhaustive rows and four rows per judge table; both halt and loop controls fire. Finite cycle-detection latency is not an execution-gate claim."
 
 [ablations.trick_prototype_20261102_reference_weighted_layout]
+kind = "archive"
 arity = 8
 saving = 0.4438
 verdict = "rejected: actual emitted source over20 seeded tables n=7:23192->23170; n=8:40555->40375. Savings0.095%/0.444% fail the size bar; same executed instructions. Small exhaustive and four judge rows per table execute against baseline."
 
 [ablations.trick_prototype_20261102_root_falls_into_tester]
+kind = "archive"
 arity = 8
 saving = -0.0296
 verdict = "rejected tested layout: put root patches before tester0 and move halt/loop past the testers. Only eligible when root tests input0; leading ignored inputs retain baseline rather than rotate input slots. Actual n=7 source23192->23072 (0.517%); n=8 40555->40567 (growth). Larger leaf operands offset two removed jumps. Exhaustive small rows and four rows per20 judge tables execute; no fallback race ships."
 
+[audits]
+trick_prototype = 2026-11-02
+blind_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-29
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 0.1664
 workload = "constructor plus step; no snapshots timed"
 seed = 0
@@ -78,11 +94,12 @@ tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-ste
 verdict = "prototype only: direct frozen instruction construction. 445 programs, 74 halt cleanly; no structural trace differences, control differs on 145. Step throughput at longest 10/20/40 workload breadths: +0.17%/+0.47%/+0.37%. No production change or global performance conclusion; adoption needs broader validation."
 
 [interpreter_ablations.speedup_adoption_20261103]
+kind = "archive"
 price = 2.0467
 workload = "complete run; parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n; complete timings only for zero-result halting rows; bounded traces also include deliberate loops"
-verdict = "kept: direct frozen instruction construction; 5193 paired native traces, 1124 clean halts, zero differences; changed-site control detected on 2193. Complete-run wall savings 2.05\u20135.04%, including parsing and final I/O. Snapshot fields and grouping preserved."
+verdict = "kept: direct frozen instruction construction; 5193 paired native traces, 1124 clean halts, zero differences; changed-site control detected on 2193. Complete-run wall savings 2.05–5.04%, including parsing and final I/O. Snapshot fields and grouping preserved."
 
 [evidence]
 version = 1

@@ -23,30 +23,30 @@ qualification = "the table is a tree of Church pairs, equal halves folded to `K`
 sharing_exempt = "no names: binding a repeated subtree by abstraction adds S and K to every pair above it"
 
 [ablations]
-audited = "2026-11-02"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-11-02" }
 
 [ablations.equal_halves_fold]
+kind = "archive"
 saving = 49.3
 arity = 12
 verdict = "kept: canonical, exempt. Equal halves emit K half instead of the pair node; this one fold is also the constant fold and the ignored-input drop, whose halves agree at that level. Removing it costs +46.72% at n=10 and +49.31% at n=12 on random tables (second seed set +46.65 / +48.98%) and at n=10/12: constants +2011.70 / +6855.07%, AND and OR +1520.11 / +5063.13%, three ignored inputs +482.61 / +608.06%, half-constant +181.35 / +204.40%, sparse +145.28 / +158.96%; parity 0.00% (no equal halves above the leaves). The plain build (this fold and the identity leaf both removed) costs +62.69 / +66.12% on random tables"
 
 [ablations.identity_leaf]
+kind = "archive"
 saving = 14.2
 arity = 12
 verdict = "kept: the (hi, lo) == (1, 0) leaf is spelled 0K instead of the pair node. Spelling the pair node instead costs +13.46% at n=10 and +14.24% at n=12 on random tables, +24.48 / +25.48% on parity, whose bottom pairs are all the identity or its mirror, and +22.34 / +23.50% on majority"
 
 [ablations.minimal_grouping]
+kind = "archive"
 saving = 8.2
 arity = 12
 verdict = "kept: spelling, not a trick (plain-rewrite audit 2026-10-29): a leaf argument goes bare instead of parenthesized, the minimal way to write an application. Grouping every argument costs +7.74% at n=10 and +8.15% at n=12 on random tables, +8.45 / +9.06% on one-ignored tables; the share is arity-stable, not a fixed amount"
 
-[audits]
-trick_prototype = 2026-11-02
-docstring_reimplementation = 2026-10-30
-blind_reimplementation = 2026-10-27
-plain_rewrite = 2026-10-29
-
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 95.1
 seed = "both constant values"
@@ -54,6 +54,7 @@ tables = "both constants n=1..12; every table and row n<=3; six structured/rando
 verdict = "kept: canonical constants. A0 consumes and discards one virtual stream bit; two pairs per physical input consume its marker and value, followed by DCC or DDC for the opening bit, answer and closing zero. Both constants use 4n+3 characters and rewrites, and 32n+27+bl(n) written bits. At n=7 chars 635 -> 31; n=8 711 -> 35; n=12 1015 -> 51. All 270 nonconstant programs through n=3 are byte-identical; n=3 corpus chars 98898 -> 98266. Default, width=1 and balanced constants n=1..12 execute; every optimized balance score improves or matches its old counterpart. Sentinel regressions also check the pending payload is cleared and exact rewrite counts."
 
 [ablations.bottom_pair_search]
+kind = "archive"
 arity = 8
 saving = 3.9
 seed = "random.Random(seed + n*1000 + s), seed in (184700,987100), s < 200"
@@ -61,6 +62,7 @@ tables = "200 random tables per seed at n=7,8; first seed also n=10,12; all tabl
 verdict = "rejected 2026-11-02: the raw rule freezes a searched 16-function dictionary, violating the no-search construction rule. No term enumeration or searched production data. Its two supplied closed terms do work: SSK is AND, S(0K)(0K) is OR. Applying only those named identities saves 3.34/3.92% at n=7/8 (378427 -> 365776 / 652490 -> 626931 chars); second seed 3.39/3.67%, below either gate. First-seed n=10/12 saves 4.44/4.65%. Exactly n=3 source 98266 -> 97274 chars and 293432 -> 292792 rewrites (0.22%), no larger table or slower row, below the 5% execution gate. No optimum claim: the complete searched proposal was rejected on construction, not measured as if the two supplied terms were optimal for all sixteen functions. Each of four controls passed 4932 native generated-program rows; separate old/named subtree controls passed all 4224 direct two/three-bit applications without A or F before closing C. A wrong AND-to-OR mutant fails 2/4 rows."
 
 [ablations.three_bit_subtree_search]
+kind = "archive"
 arity = 8
 saving = 0.0
 seed = "random.Random(seed + n*1000 + s), seed in (184700,987100), s < 200"
@@ -68,6 +70,7 @@ tables = "same corpus as bottom_pair_search; all 256 three-input functions and t
 verdict = "rejected 2026-11-02: the raw rule searches candidate compositions and freezes 256 winners, both forbidden. Enumeration through 13 characters was not launched; no searched terms were supplied to execute. The constructive control is the named AND/OR rule at the bottom followed by the existing recursive Church-pair rule; on all 256 three-input functions it has zero incremental saving beyond bottom_pair_search, hence the same 3.34/3.92% first-seed n=7/8 saving. This is a control, not an optimal-search bound. Every direct three-bit application executes with its expected bit and closing C, and no A/F before halt. No generator change or old-program minimum fallback. The baseline recursive slicing and concatenation copied Theta(T log T) characters on dense tables; the majority repair now uses canonical IDs and append-only emission in O(T)."
 
 [ablations.reader_stage_reabstraction]
+kind = "archive"
 arity = 8
 saving = 0.0
 seed = "random.Random(seed + n*1000 + s), seed in (184700,987100), s < 200"
@@ -75,13 +78,26 @@ tables = "same generated-program corpus as bottom_pair_search; standalone closin
 verdict = "rejected 2026-11-02: deterministic eta-aware bracket abstraction of the documented lambdas reproduces _READ and _ANSWER byte-for-byte (73 chars per reader, 102 answer), so source and execution savings are zero. The compiler's eta rule has a positive control. Replacing a constant K with 1 cannot save characters and adds a rewrite. The concrete halt shortcut removing the final c from t d c c shortens the answer to 69 chars but fails all 16 native rows tested: table 01 input 0 prints 01 instead of 0 and reaches extra F before closing C. Optimizing search is forbidden; no claim that arbitrary alternate reader terms are exhausted. All existing proof bounds, pins and Size anchors remain unchanged; sampled old/named programs also pass 48 native workspace-envelope checks."
 
 [ablations.majority_pair_rule]
+kind = "archive"
 arity = 16
 saving = 27.2
 seed = "strict majority, 2*ones > n; generic controls use both raw-proposal seed sets"
 tables = "strict majority n=2..16; all tables/rows n=1..3; twelve witnesses/all rows n=4..6; 800 generic random programs at n=7,8 byte-compared; eight unchanged size pins/all rows"
 verdict = "kept 2026-11-02: search-free named-family repair of bottom_pair_search. Only strict majority uses AND=SSK (lambda xy.xyx) and OR=S(0K)(0K) (lambda xy.xxy) for two-bit residuals. Generic AND/OR replacement fails admission, so other families remain byte-identical. Majority n=7/8 source 1633 -> 1313 / 2574 -> 1999 chars (19.60/22.34%); peak measured n=14 101494 -> 73642 (27.44%), n=16 382778 -> 278531 (27.23%). With h=floor(n/2)+1 and out-of-range binomials zero, old tree length L=17*C(n+1,h)-14*C(n-1,h-1)+3*(C(n,h+1)+C(n,h-2))-18; total adds 73n+104. Exact saving is 19*C(n-2,h-2)+13*C(n-2,h-1). Relative to C(n,floor(n/2)), L tends to 33 and saving to 8, so the limiting saving is 8/33 (24.24%), not zero. Every measured size matches these derived counts and executes n=2..16, including every row at n=7,8. Exactly n=3 source 98266 -> 98234 chars, 293432 -> 293412 rewrites; only strict-majority tables change. Local four-row AND/OR controls use 6..9 rewrites instead of 9..11 and at most 82 snapshot bits instead of 122, without A or F. Thus the existing execution/workspace envelopes stay bounds; unchanged non-majority witnesses still attain them and all original proof arities stay. Eight committed pins are unchanged and executed. The required build repair replaces recursive character copying with O(T) subtree IDs and append-only emission; linear-only gendiff finds zero differences in 632 programs, zero errors, 0.11 -> 0.10 seconds. Direct dense generation medians at n=8/12/16 are 0.086/1.386/22.026 ms old versus 0.122/1.928/30.828 ms append-only: a roughly 40% constant-factor cost for the O(T) build. The whole-constant path and input protocol remain unchanged; no old-program minimum fallback."
 
+[audits]
+trick_prototype = 2026-11-02
+docstring_reimplementation = 2026-10-30
+blind_reimplementation = 2026-10-27
+plain_rewrite = 2026-10-29
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 3.3873
 workload = "constructor plus step; no snapshots timed"
 seed = 0
@@ -89,11 +105,12 @@ tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-ste
 verdict = "prototype only: reuse head arity. 249 programs, 185 halt cleanly; no structural trace differences, control differs on 182. Step throughput at longest 10/20/40 workload breadths: +3.52%/+3.79%/+3.39%. No production change or global performance conclusion; adoption needs broader validation."
 
 [interpreter_ablations.speedup_adoption_20261103]
+kind = "archive"
 price = 2.4199
 workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: reuse head arity. 5197 paired native traces, 3165 clean halts, no differences; changed-site mutant differs on 3014. Complete-run savings 2.42\u20134.37%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+verdict = "kept: reuse head arity. 5197 paired native traces, 3165 clean halts, no differences; changed-site mutant differs on 3014. Complete-run savings 2.42–4.37%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
 
 [evidence]
 version = 1

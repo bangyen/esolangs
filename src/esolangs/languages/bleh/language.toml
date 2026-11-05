@@ -21,9 +21,12 @@ definitions = ["H = 64n+1+Σ_{0<a<n} bl(a)", "w = max(ceil((n+1)/5),1+digits10(n
 "11111110" = { commands = 35, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 32, "5" = 32, "6" = 34, "7" = 35 }, source_units = 150 }
 
 [ablations]
-audited = "2026-10-21"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-21" }
 
 [ablations.subtree_sharing]
+kind = "archive"
 saving = 74.2
 arity = 12
 seed = "random.Random(184700 + n)"
@@ -31,6 +34,7 @@ tables = 200
 verdict = "kept: canonical, exempt; one function per reduced-diagram node against one per tree position: 57.9% on random tables at n=8 rising to 74.2% at n=12, 70.8-83.6% one-ignored, 87.2-98.6% on parity/majority/and; 0.0% on constants, which the skip carries. Plain-rewrite audit: no bespoke tricks"
 
 [ablations.halves_agree_skip]
+kind = "archive"
 saving = 4.8
 arity = 12
 seed = "random.Random(184700 + n)"
@@ -38,27 +42,23 @@ tables = 200
 verdict = "kept: canonical, exempt; a node whose halves agree reads its input as a statement and goes on (also how a constant above the last input reads the rest) instead of matching both bits to one child: 10.1% on random tables at n=8 declining to 4.8% at n=12, 9.9-16.9% one-ignored, 39.7-40.8% on constants, 13.4-14.2% on parity/majority/and; never larger"
 
 [ablations.letter_names]
+kind = "archive"
 saving = 14.7
 arity = 8
 seed = "random.Random(184700 + n)"
 tables = 200
 verdict = "kept: a rule, not a search; functions named by id in letters (the leaf-most ids are the most called, so the shortest) and io imported as `a`, against `f<id>` and `io`: 14.7% on random tables at n=8 (15.3% at n=7, 15.2% at n=9, 16.1% at n=10 on 100, 16.9% at n=12 on 20), 14.1% parity, 12.8% majority, 12.4% threshold 3, 7.3% and/or; the alias alone is 4.3%, the names alone 10.3%. Text, no balance route"
 
-[audits]
-trick_prototype = 2026-11-02
-docstring_reimplementation = 2026-10-30
-blind_reimplementation = 2026-10-27
-plain_rewrite = 2026-10-29
-
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 21.2
 seed = "both constant values; witnesses(n) at n=4..6"
 tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
 verdict = "historical keeper, superseded by short aliases and flat blocks on 2026-11-02; the whole-constant shortcut remains. Inline main and group at most two forced reads per named function, with the final read and print together. A flat block was rejected: at n=2 its 483 written bits exceeded the unchanged 437-bit workspace envelope. The bounded blocks use 371 bits there and 373 at n=8, within the original generic bound. Exactly 3n+3 floor(n/2)+6 commands. At n=7 both bits 177 -> 135 chars; n=8 198 -> 156; n=12 286 -> 218. Public constants at n=19,20,21 and direct construction probes at n=100,104,1000 also execute within the existing workspace envelope. n=3 corpus 49938 -> 49898 chars; all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 are byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts; all 24 old balanced constant scores improve or match. Owned regressions enforce all reads before output, preserve a sentinel and check resource bounds."
 
-
 [ablations.trick_prototype_20261102_read_alias]
+kind = "archive"
 arity = 8
 saving = 29.113963584121926
 seed = "random.Random(184700+n).choice"
@@ -66,29 +66,44 @@ tables = 200
 verdict = "kept: a nullary function named 2 aliases a::next; 2 is a legal non-bit word, disjoint from generated names. Each nine-character read becomes three characters, with thirteen helper characters. Generic n=7/8 totals 297998->214960 (27.8653%) and 512304->363152 (29.1140%). Savings grow at8: twenty native-checked tables per9..18 peak31.6148% at14, decline through18 to30.4018%; use the20% declining gate, with no arity cutoff. Each read adds two VM transitions; generic execution bound8n+5->10n+5. Cached-parse native timing medians, twenty tables/all rows, three repeats: n7 .2847->.3473s (+22.0%), n8 .6287->.7826s (+24.5%); eleven-repeat generation medians .001896->.002071s and .003621->.003847s. Short calls allocate no additional heap cell; the written-state ceiling explicitly accounts for identifier width, control and continuation. Native n7/8 peaks771/839->702/771 bits. Source grows on six small tables in the selected corpus; no whole-old-program fallback. Every small table/row plus200 generic7/8 tables/all rows and named families pass;80744 selected-program runs,1512 independent fresh-parser controls, exact ordered reads, output only after all reads, sentinel7 untouched. A doubled-read alias breaks the consumption control. Construction and source remain O(T)."
 
 [ablations.trick_prototype_20261102_flat_constants]
+kind = "archive"
 arity = 8
 saving = 50.64102564102564
 verdict = "kept: canonical constant spelling enabled by the short-call AST. One flat block forces n reads then prints; exactly4n+45 chars,5n+6 steps and16n+256+max(1,bl(n-1))+bl(n) peak written bits, below the generic ceiling. Both answers at8:156->77 chars,42->46 steps,373->391 bits. This trades the old chunked constant's logarithmic workspace for linear workspace within the unchanged declared poly-n class; it is not a runtime optimization. Both bits native-checked n1..12,19/20/21,100/104/1000, with large n probing the direct constructor rather than allocating a truth table. n1000 uses4045 chars,5006 steps,16276 bits. N3 corpus49898->43988 chars and53744->65984 steps with alias+flat constants. Wrapped/balanced public constants preserve all reads before print and the following sentinel."
 
 [ablations.trick_prototype_20261102_wildcard_one]
+kind = "archive"
 arity = 8
 saving = 5.704035104156901
 verdict = "rejected: wildcard second branch saves5.6598%/5.7040% on200 generic7/8 tables, below10%, and violates the exhausted-input contract: table01 with EOF prints1 instead of raising HaltError. Requiring a nonempty value with [_,..] restores HaltError but grows8.4897%/8.5561%; best signed named-family saving is negative. All valid binary pilot rows pass for raw and guarded variants, with independent fresh-parser controls. The EOF failure is a live control, not a claim of equivalence on arbitrary input."
 
 [ablations.trick_prototype_20261102_identity_passthrough]
+kind = "archive"
 arity = 8
 saving = 0.5075111652456332
 verdict = "rejected: a last-level identity leaf binds x and prints x. Raw savings1.2752%/0.7417% on200 generic7/8 tables; EOF halts with empty output instead of HaltError on table01. Pattern x[_,..] restores the underfed contract and saves0.8725%/0.5075%, declining far below20%. Signed parity, every threshold and projection families give at most7.3034%/6.5990%, below10%. Each pilot variant has4040 correct binary native runs and1512 fresh-parser controls; an additional96328 controls cover signed named families/all rows, both constant constructors and timing. No wildcard or identity rule ships; independent failed rules are not bundled into alias savings."
 
-
 [ablations.workspace_exact_restoration_20261103]
+kind = "archive"
 verdict = "proof-only precision restoration of the checked exact rungs dropped by161a7cd63. Through n7 the width bound is at most2, so C=128 and K=105. A full forced-thunk path stores n eight-character ASCII bitstrings: H=64n+1+sum bl(a), addresses1..n-1 plus address0. Literal print control is _Eval(_Call(io.print,_Bits(eightbits)),emptyenv),128bits; its print argument frame is40+64+1=105bits. Fresh/input cursors both attain bl(n). The nonsymmetric single-zero-at-T-2 witness on all-one input attains300/367/433/501/568/635/702bits atn1..7 under the repository prehalt metric. Current ceiling already bounds other routes; exactness beyond7 is not asserted because independent identifier-width maxima have not been proved jointly attainable there. Source/emitter, numeric workspace ceiling, pins, examples and old source witnesses unchanged; new owned workspace witness is appended separately."
 
-
 [ablations.source_exact_restoration_20261103]
+kind = "archive"
 verdict = "proof-only actual repricing restores checked exact source arities3..23 dropped by161a7cd63. Main/header costs32+root-name+4; branching definitions name+11, equal/constant definitions name+9; branch references name+4, equal references name+2, constant names unchanged. Original maximal diagram profiles and forced-cover/parent/pair losses apply with these actual prices. The old F+13-6n ceiling used only a minimum n static read sites and was not an exact new maximum. Superseded minimum-read adjustment is removed; the original source witnesses are repriced, not replaced by a source race. No emitter, runtime state, pins or example changes."
 
+[audits]
+trick_prototype = 2026-11-02
+docstring_reimplementation = 2026-10-30
+blind_reimplementation = 2026-10-27
+plain_rewrite = 2026-10-29
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 1.6988
 workload = "constructor plus step; no snapshots timed"
 seed = 0
@@ -96,11 +111,12 @@ tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-ste
 verdict = "prototype only: construct immutable named tuples through tuple.__new__. 250 programs, 148 halt cleanly; no structural trace differences, control differs on 150. Step throughput at longest 10/20/40 workload breadths: +2.88%/+2.21%/+1.70%. No production change or global performance conclusion; adoption needs broader validation."
 
 [interpreter_ablations.speedup_adoption_20261103]
+kind = "archive"
 price = 0.3935
 workload = "complete run; parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity at n=3/5/7, up to four asymmetric rows, runtime seed 1847+n"
-verdict = "kept: construct immutable named tuples through tuple.__new__; 5198 paired native traces, 2196 clean halts, zero differences; changed-site control detected on 2198. Complete-run wall savings 0.39\u20131.19%, including parsing and final I/O. Snapshot fields and grouping preserved."
+verdict = "kept: construct immutable named tuples through tuple.__new__; 5198 paired native traces, 2196 clean halts, zero differences; changed-site control detected on 2198. Complete-run wall savings 0.39–1.19%, including parsing and final I/O. Snapshot fields and grouping preserved."
 
 [evidence]
 version = 1

@@ -22,9 +22,12 @@ definitions = ["R = Σ_{i<n}(13q_i+min(r_i,3+digits10(r_i))), (q_i,r_i)=divmod(2
 
 
 [ablations]
-audited = "2026-10-19"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-19" }
 
 [ablations.subtree_sharing]
+kind = "archive"
 saving = 25.8
 arity = 4
 seed = "random.Random(1000 + n)"
@@ -32,6 +35,7 @@ tables = 30
 verdict = "kept: canonical, exempt. In the tree regime (n<=4) a subtree repeated at its level is written once, at its last occurrence, and each earlier one skips to it. Exhaustive at n=4 (all 65,536 tables): 25.8% of the unshared build's total, shipped longer on no table. The Decisions' -27.1% is the per-table mean of (shipped - unshared) / shipped, 27.14% measured. Plain-rewrite 2026-10-28, deleting it (every changed program ran): exhaustive n=3 14.1%, n=4 25.8% (never longer on any table); per class at n=4 on 30 tables each: random 27.1, two-block 23.6, half-constant 13.8, dense 6.0, mid-ignored 3.6, parity 52.1, majority 34.3, or/and 9.2, constants 0 (nothing to share)"
 
 [ablations.halves_agree_passover]
+kind = "archive"
 saving = 4.9
 arity = 4
 seed = "random.Random(1000 + n)"
@@ -39,6 +43,7 @@ tables = 30
 verdict = "kept: canonical, exempt. A tree node whose halves are the same subtree is passed over for its zero half. Exhaustive at n=4: totals 19,643,240 shipped vs 20,648,450 without, 4.9% of the ablated build. Plain-rewrite 2026-10-28, deleting it: exhaustive n=3 4.1%, never longer; per class at n=4 on 30 tables each: mid-ignored 25.5 (an ignored input is exactly a node whose halves agree), random 5.1, two-block 4.6, half-constant 1.6, dense / parity / majority / or / and / constants 0.0 (size-neutral there: no changed bytes)"
 
 [ablations.essential_projection]
+kind = "archive"
 saving = 70.8
 arity = 12
 seed = "random.Random(1000 + n)"
@@ -46,6 +51,7 @@ tables = 30
 verdict = "kept: canonical, exempt. In the halving regime (n>=5) an ignored input weighs 0 -- read, never tested -- and the table is embedded projected. 0.0% on random tables, where the projection is the identity; with one ignored input 41.8% at n=10 and 47.1% at n=12, with two 63.4% / 70.8%. A constant table is 180 chars shipped vs 3,809 unprojected at n=10. Plain-rewrite 2026-10-28, deleting it, 30 tables per class: mid-ignored (inputs 1 and n//2) 40.4 / 39.7 / 44.1 / 50.5 / 57.4 / 63.4 / 70.8% at n=5 / 6 / 7 / 8 / 9 / 10 / 12, rising; constants 78.0% at n=5 up to 98.4% at n=12; random, parity, majority, or/and, two-block and half-constant 0.0% at every n=5..12 (no changed bytes); dense 29.3 / 11.6 / 2.8 / 0.0% at n=5 / 6 / 7 / 8.. (a chance ignored input only)"
 
 [ablations.regime_crossover]
+kind = "archive"
 saving = 22.7
 arity = 6
 seed = "random.Random(77 + n)"
@@ -53,13 +59,16 @@ tables = 200
 verdict = "kept on random tables: the tree builds n<=4 and the halving lookup builds above. Ordered-tree vs halving totals on 200 seeded random tables: ratio 0.836 at n=4 (tree wins), 1.009 at n=5, 1.227 at n=6 (halving wins by 22.7% of its build) -- the shipped split sits at the measured crossover. The Decisions' 1.04x at n=5 measures 1.009x on this corpus; the corpus behind 1.04 is unstated. Plain-rewrite 2026-10-28: the tree saves 16.1% of the halving total on 200 random tables at n=4 (26.9% at n=3), so it clears the bar at its cap; but the cap is set by random tables alone. On 30-table classes the tree stays far smaller than halving past n=4: or/and halving is 3.6x the tree at n=8 (parity 2.4x, majority 1.95x), two-block 1.95x, dense 1.57x, half-constant 1.40x at n=5 but halving 2.4% smaller at n=8, mid-ignored 1.29x at n=5 but halving 18% smaller at n=8; on random tables the tree is 1.51x / 1.72x halving at n=7 / 8. Left as is: extending the cap is a new race, not a retirement. Two constant tables at n=4 are 3.3% shorter under halving"
 
 [ablations.name_ordering]
+kind = "archive"
 saving = 0.0
 arity = 12
 seed = "random.Random(1000 + n)"
 tables = 30
 verdict = "removed 2026-10-28 (plain-rewrite audit): _Names gave deeper inputs the shortest names because they occur in more guards. Deleting it, i.e. restoring the old reversed() order (positive control: bytes differ on every random table, so the patch bites): 0.00% total size exhaustively at n=3 (47,720 chars) and n=4 (19,643,240 chars, all 65,536 tables, none shorter) and on every class at n=5..12 (30 tables per class, six arities). No default-path build needs more than 52 distinct labels, so every label is one character and the order cannot bind. Names now go out in input order; balanced area (max(rows, cols) squared) within 5% across the retiring commit on parity, majority, and, or, thr2, their complements and 10 random tables at n=7, 8, 10"
+retirement = { verb = "removed", date = 2026-10-28, balanced = [579, 587] }
 
 [ablations.balance_banded]
+kind = "archive"
 saving = 21.7
 arity = 14
 seed = "random.Random(1000 + n)"
@@ -67,33 +76,31 @@ tables = 20
 verdict = "kept: balance hook races the banded lookup against the default by rendered area (balance_score(p)[0]**2), so it can never grow. Plain-rewrite 2026-10-28: 18.1% of the area on 200 random tables at n=4 (5.2% at n=3), and none at n=5..10, where the banded program is 29.6% larger by area at n=5, 375% at n=8, 2.0% at n=10; it wins again from n=11, 10.6% / 16.9% / 20.1% / 21.7% at n=11 / 12 / 13 / 14 on 20 random tables (the same on parity, two-block, half-constant; mid-ignored from n=13 at 9.5% / 16.4%; constants never), still rising at n=14. The docstring's 'never elsewhere' was stale. The width= path (inject(table, width)) is a wrapping feature, not a size trick, and is not judged here"
 
 [ablations.balance_square_chunk]
+kind = "archive"
 saving = 98.6
 arity = 12
 seed = "random.Random(4242 + 1000 * n + s).getrandbits(1 << n)"
 tables = 20
 verdict = "kept: re-audit 2026-10-30, balanced area (balance_score(p)[0]**2) of the balance hook with vs without the square-chunk candidate (default, narrow banded only); 20 random tables n=7..10 (s=0..19), 6 at n=11, 12, plus parity, majority, and, or, nand, nor and three thresholds per n=7..12.  Saving 0.0 / 30.1 / 70.9 / 91.5 / 95.4 / 98.6% at n=7 / 8 / 9 / 10 / 11 / 12, identical on every table and named function (area depends only on the essential-input count); n=12 191,844 vs 13,942,756.  Exponent n=10 to 12 0.56 vs 1.87.  Executed with a wrong-table positive control (93,568 rows, 154 controls).  The default build is untouched: square=True is reached only from the balance hook"
+
 [ablations.counted_repetition]
+kind = "archive"
 saving = 65.0
 arity = 14
 seed = 20261031
 tables = "20 random per n=7/8, five n=10, three n=12, one n=14; and/or/parity/majority separately"
 verdict = "kept: spell a half-length h as .{h} when shorter than h literal dots, in every halving path. The spec explicitly permits optional regex features (https://esolangs.org/wiki/Inject, checked 2026-10-31); Python re already supports counted repetition. Repeat counts above 2^31 split into concatenated safe chunks; a synthetic 2^32-length pattern compiles, while the unsplit control raises OverflowError. No interpreter change. Random default source n=7 908->706 (22.247%), n=8 1363->917 (32.722%), n=10 3809->1851 (51.405%), n=12 13167->5093 (61.320%), n=14 50173->17551 (65.019%); named functions identical at each n, balanced area unchanged on these functions. Two copies of each half-pattern shrink from 2(T-1) to 2R characters, R=sum of the chunked half-pattern widths, so the saving approaches about two-thirds and generation/size stay O(T). Default command count is unchanged; written program workspace drops exactly eight bits per removed character, giving the revised exact bound. Executed 14074 old/new/default/narrow/balanced/control rows, all n<=3 tables and sampled n=4..6 including constants/ignored inputs; named n=7/8 all rows and larger boundary rows, equal answers/reads/steps, no increased workspace. Wrong-offset control .{32}->.{31} fails. n=3 default total unchanged at 47720 chars."
 
-[audits]
-blind_reimplementation = 2026-10-30
-docstring_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-28
-trick_prototype = 2026-11-02
-
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 38.7
 seed = "both constant values; witnesses(n) at n=4..6"
 tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
 verdict = "kept: canonical whole constants. Read every input into one scratch block a, send the literal block z, then pass only labels and literal data. Both bits use 9n+20 chars and n+7 commands. Workspace is 64n+144+bl(n+7)+bl(2n)+bl(n)+sum(bl(n+k),k=1,3,4,6), including rewritten text, spans and both read cursors. At n=8 150 -> 92 chars; n=12 210 -> 128. n=3 corpus 47720 -> 47658 chars. Generic envelopes and all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs per language through n=3 stay byte-identical. All 24 old balanced constant scores per language improve or match. Both constants n=1..12 execute in default, width=1 and balanced layouts; owned regressions verify consumption and exact native resources, with sentinel preservation for stream readers."
 
-
 [ablations.guarded_truncate_20261102]
+kind = "archive"
 arity = 8
 saving = 10.5
 seed = "random.Random(1000*n+i).getrandbits(1<<n)"
@@ -101,6 +108,7 @@ tables = "20 random per n7/8; and/or/parity/majority/threshold-third; exhaustive
 verdict = "near miss, not shipped: after the guarded prefix deletion, unconditional(P).+ replacement keeps the first half on zero and matches nothing on one. The halving/banded tail drops its unused o block; tree data retains it. Actual chars14120/18340 ->12420/16420 (12.040/10.469%); every named full-essential table has the same size. Savings tend zero: removed labels/tests cost O(n log n), while both builds keep the same table and two copies of each half pattern. Fails20% declining. All-one native worst9n+7 commands vs9n+10 is below25% reduction; default n3 tree is unchanged. No production paths/state added."
 
 [ablations.skip_over_suffix_20261102]
+kind = "archive"
 arity = 8
 saving = 5.2
 seed = "random.Random(1000*n+i).getrandbits(1<<n)"
@@ -108,13 +116,26 @@ tables = "same fixed20 and named n7/8 corpus; forced halving exhaustive n<=3 and
 verdict = "near miss, not shipped: overlapping A/B blocks let one prefix delete jump past the suffix delete, replacing the second equality test with skip and dropping unused o. Native interleaved spans and all output controls pass. Actual chars14120/18340 ->13260/17380 (6.091/5.234%), tending zero and below20%. Worst all-one commands8n+7 vs9n+10, native47/55/63/71 at n5/6/7/8; reduction is less than25% for every n>=1. No old-program race, source path or state retained."
 
 [ablations.final_level_send_20261102]
+kind = "archive"
 arity = 8
 saving = 0.7
 seed = "random.Random(1000*n+i).getrandbits(1<<n)"
 tables = "same fixed20 random and named n7/8 corpus; four no-send rows; exhaustive/sampled native controls"
 verdict = "rejected literal output-fold premise: inject rewrites text and does not print. Removing send t gives no output on four native n5 rows after all five reads, while the matching retained-send programs pass. The valid listed h1 regex refinement retaining send saves only6 chars:14120/18340 ->14000/18220 (0.850/0.654%), tending zero; worst9n+10 commands unchanged. Across four variants8624 public executions and8552 forced-private halving runs pass, with2156 wrong-output controls; all public n3 sources47658 and commands51336 remain identical. Width1, balanced and both banded variants add724 controls; off-by-one prefix mutant fails four rows. Native W5 old3471 bits, truncation2989, overlap3209, final3425, all within unchanged old3471 envelope. Generator, exact proof scopes, pins, anchors and example remain unchanged."
 
+[audits]
+blind_reimplementation = 2026-10-30
+docstring_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-28
+trick_prototype = 2026-11-02
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = -1.2592
 workload = "constructor plus step; no snapshots timed"
 seed = 0

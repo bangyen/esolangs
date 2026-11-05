@@ -39,6 +39,9 @@ are subcommands of `scripts/new_language.py`.
 | `just test-py` | pytest, including weekly probes when selected; also scheduled in CI |
 | `just examples` / `just docs` | regenerate committed examples / generated documentation |
 
+Audit archives and replays pin earlier commits. Use a full Git checkout;
+extend a shallow clone with `git fetch --unshallow`.
+
 The gate checks generated docs, pre-commit, mypy, pytest, dead definitions,
 size baselines, deep proofs and exception leaks. Out-of-scope steps stay in
 CI; `test-full` runs them locally. Delete unused helpers or move test-only
@@ -104,7 +107,12 @@ section and skip absent files or sections.
 | --- | --- | --- |
 | Gates | `proof_status`, `evidence`, `resource_evidence`, `generator_sizes`, `catalogue`, `schemes`, `deep_arities` | claims consumed by checks; wrong data fails |
 | Reference | `curation` | census facts; no gate |
-| Record | `ablations`, `interpreter_ablations` | reproducible audit verdicts; new entries include `seed` and `tables`; source cites `[ablations.<key>]` rather than duplicating figures (tested) |
+| Record | `ablations`, `interpreter_ablations` | pinned historical records or measured replays; source cites `[ablations.<key>]` rather than duplicating figures (tested) |
+
+Generator audits use `kind = "measurement"` for a first witness or `"replay"`
+for a pinned baseline comparison. Declare rows, seed, units, scale and budget;
+retirements also measure balanced output. Historical `"archive"` payloads retain
+their original context and revision.
 
 `Language` records names, interpreter, source shape, optional generator and
 typed I/O contract. `resolve` normalizes names; `RUNNERS` selects whole-source

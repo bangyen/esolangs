@@ -23,39 +23,42 @@ qualification = "the table read at its essential inputs is one integer built by 
 folding_constant_local = "read_at"  # one projected table bit, no lookup round
 
 [ablations]
-audited = "2026-10-19"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-19" }
 
 [ablations.projection]
+kind = "archive"
 saving = 93.9
 arity = 12
 verdict = "kept: canonical, exempt. The table integer is built from the table read at the essential inputs only, and an ignored input's bit is divided out of the row unused. Building the integer from the full table and dividing by every input instead costs +82.54% at n=10 and +93.87% at n=12 on one-ignored tables, +215.37 / +267.04% on two-ignored tables, and 0.00% on random tables"
 
 [ablations.register_reuse]
+kind = "archive"
 saving = 0.6
 arity = 12
 verdict = "historical removal (retirement candidate 34, before 2026-11-02): the divisor 2 was rebuilt into c at every lookup round; the two flag that kept it across rounds until an essential input's divisor computation overwrote it is gone. The audit measured rebuilding at +1.58% at n=10 and +0.57% at n=12 on tables ignoring the three low inputs, +0.65 / +0.21% on two-low-ignored and scattered-ignored tables, 0.00% on random tables: one fixed 6-char instruction per firing, declining everywhere. See RETIREMENT-CANDIDATES entry 34"
 
 [ablations.complement_table]
+kind = "archive"
 saving = 97.6
 arity = 12
 verdict = "kept: the table integer is built from whichever of the table and its complement has fewer set bits (one instruction each), the complement's low bit negated by one closing `i=a-i` (6 chars). 0.98-1.65% on random tables at n=7..8 (20 seeded), parity and and 0.00%, majority 0.0-2.1%; or 66.8% / 78.5% / 92.3% / 97.6% at n=7 / 8 / 10 / 12 (2,585 -> 557 chars at n=8, 8,849 -> 677 at n=10), nand 50.0% / 58.6% / 69.2% / 73.2%, popcount>=2 54.4% / 66.2% / 80.0% / 85.2% (share rising with n); nor was already cheap (and was still 1,061 chars at n=8, its single set bit being the top one, which costs Horner digits, not bits; now 551, see mirror_lookup). Measured 2026-10-28 chars, every program executed (n<=3 exhaustive, 150-300 samples at n=4..5, named tables to n=10)"
 
 [ablations.mirror_lookup]
+kind = "archive"
 saving = 75.3
 arity = 10
 verdict = "kept: the table integer is also built from the reversed table (and its complement) and the lookup divides by Q - bit*(Q-1) (`c=e-c` for `c=c+a`, same length), reading every input negated; the shortest of the four is emitted. and/nand 33.9% / 48.1% / 62.5% / 75.3% at n=7 / 8 / 9 / 10 (1,061 -> 551 chars at n=8, 2,717 -> 671 at n=10), majority 0.5% / 4.1% / 0.2% / 2.5%, random 0.08% / 0.17% at n=7 / 8 (20 seeded); or, nor, parity, thresholds unchanged. Measured 2026-10-28 chars, every program executed (n<=3 exhaustive, 20-40 random + named at n=4..8)"
 
 [ablations.signed_digits]
+kind = "archive"
 saving = 17.1
 arity = 10
 verdict = "kept: each octal digit of the table integer is added as v or as v - 8 carrying one up (terms +-1, +-2, +-4, +-8, at most two a digit, the registers already hold them), a two-state pass choosing the fewer terms; the unsigned build is the carry-free path, so no table grows. Random 9.3% / 12.3% / 14.9% / 17.1% at n=7 / 8 / 9 / 10 (200 / 200 / 40 / 40 seeded; share rising with n), majority 20.9% / 18.6% / 32.1% / 27.6%, thresholds 0.3-1.4%, parity, and, or 0.00% (parity digits are already two-term). Measured 2026-10-30 chars, every program executed (n<=3 exhaustive, 300 random at n=4, 8-40 random + named at n=5..8, named rows sampled at n=9..10)"
 
-[audits]
-trick_prototype = 2026-11-02
-blind_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-29
-
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 85.1
 seed = 0
@@ -63,6 +66,7 @@ tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witness
 verdict = "kept: canonical fixed-output spelling. i=i-i or i=i/i sets zero or one from the positive input, then i=i/a divides by the untouched zero register to halt and print. Exactly 11 chars and two commands; written workspace at most n+8 bits. n=8 zero/one 71/77 -> 11/11 chars, 12/13 -> 2 commands, 24 -> 16 written bits. Same sizes at n=7 and n=12; n=3 corpus 66110 -> 65984 chars. Input is consumed before execution. Each language passed 5656 paired old/new row executions; 270 nonconstant programs through n=3 remain byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts; a separate 1120-run probe includes every row through n=8. All 24 balanced scores improve or match; all eight benchmark size/command pins remain unchanged."
 
 [ablations.digit_register_search_trick]
+kind = "archive"
 arity = 8
 saving = 7.3
 seed = 7000
@@ -70,6 +74,7 @@ tables = "200 Random(1000n+i).choices tables per n=7/8; exhaustive n<=3; five sa
 verdict = "rejected generically 2026-11-02: diagnostic radices8/16/32 with digit registers1,3,8 /1,3,6 /1,4,11 give chars197716->188098 (4.86%) /312520->289558 (7.35%), below10%. No old-program fallback was used: all three explicit setups and shortest-term diagnostics execute, but275 sampled tables grow; n3 chars65984->69734 and commands88320->93320. A searched family axis and frozen shortest-term table do not ship. The parity-only direct radix16 repair is judged separately against the admitted alternating baseline."
 
 [ablations.msb_shift_first_trick]
+kind = "archive"
 arity = 8
 saving = 1.5
 seed = 7000
@@ -77,6 +82,7 @@ tables = "same fixed200 generic corpus per n=7/8 and native small/sample corpus"
 verdict = "rejected 2026-11-02: declining chars197716->194116 (1.82%) /312520->307720 (1.54%), below20%; n3 chars65984->68708 and commands88320->91952, so execution admission fails too. All physical bits must be reduced, including leading ignored inputs (0101,row2 catches skipping them); an ignored bit costs three modulo instructions plus a halve. No old-program min fallback. Peak memory is not claimed within the old bound: input still holds the shift when the tail copies the table."
 
 [ablations.alternating_counter_rounds_trick]
+kind = "archive"
 arity = 8
 saving = 6.4
 seed = 7000
@@ -86,13 +92,25 @@ n3_commands = 75152
 verdict = "kept 2026-11-02 by execution admission: n3 source65984->56108 (-14.97%), commands88320->75152 (-14.91%), no larger table or slower row. Generic size197716->180118 (8.90%) /312520->292498 (6.40%) is declining and independently fails20%. Keep c=2, e=Q-1; quotient/counter alternate i/d, bit=X-2floor(X/2), divisor1+bit*e (mirror:e-bit*e+1), and e*(e+2)=Q^2-1. Ignored rounds divide the current counter once; only essential rounds swap registers. Every divisor is positive until the final deliberate zero divide; i still receives the low table bit and consumes one positive row-number input. A retained final divisor Q implies b was divided by Q; otherwise the retained value is1, so the even-copy overlap stays within2T+6 register bits. No extra clear is needed. If leading inputs are ignored, their remaining counter fits the full-table versus projected-table slack. Generic table construction remains byte-identical: two signed-carry states now use backpointers instead of quadratic prefix copying, restoring O(T) construction. The unsigned table path bounds its code by floor(T/2)+ceil(T/3)+3 instructions (a flipped minority saves its extra correction); unmirrored lookup costs at most8n+6, yielding the new E/source caps. Its instruction-pointer bound has the same bit width at E and E-3 for n>=3 (finite n3..9; thereafter the bound lies strictly between T/2 and T). Old source/E arities1/2/3/5 and W3/5 retained with tighter caps; the derived nonparity witness 1+parity[1:] retains n5 exact maxima after the named parity repair. 10784 raw-variant native rows plus40416 forced mirror/flip and named rows and3200 judge rows passed; IO consumes exactly one token, leaves a second unread, halts at the last instruction, and prints the exact bit. Wrong bit subtraction and wrong Q-1 squaring controls fail. Some individual memory peaks grow (AND3:21->28 bits), within unchanged leading2T workspace bound; no memory-reduction claim."
 
 [ablations.parity_radix16_trick]
+kind = "archive"
 arity = 8
 saving = 17.5
 seed = 0
 tables = "full-input parity and negation, n=3..10,12,14,16; compared with alternating-counter baseline"
 verdict = "kept 2026-11-02: no-search repair of raw digit-register proposal, parity and negation only. Existing O(T) parity recognizer selects from n=4, the genuine crossover: n3 grows239->245 chars, n4 parity ties323 and negation329->323. Each four-bit group is0110 or1001, hence reversed hex6 or9; fixed registers1,3,6,16 emit +6 or +(6+3), no signed-term or family search. Exactly5T/8+8n+12 commands and15T/4+48n+71 chars. Independent parity savings1031->887 (13.97%) /1715->1415 (17.49%) at fixed n7/8; n9/10/12/14/16 3047->2423 /5651->4391 /21107->16007 /82643->62183 /328499->246599, tending to25%. Negation has the same new sizes (alternating baseline can be six chars longer). Limit proof: Thue-Morse consists of16-bit parity blocks or complements. For all eight triples (48bits,16 octal digits), all four entry/exit signed-carry costs are24 terms, and unsigned cost is24; leftover boundary is O(1). Thus old signed octal cost5T/6+O(1), new5T/8+O(1), lookup O(n): limiting source saving25%. Executable finite recurrence and1048 native public rows through n16 check both polarities, exact emitted counts and the genuine low-arity loss. Same O(T) source/build and global bounds; all old proof arities retained. No race against old whole programs, arbitrary upper cap or searched/frozen parity code. All eight pins, Size anchors and balanced example updated and executed."
 
+[audits]
+trick_prototype = 2026-11-02
+blind_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-29
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = -0.5293
 workload = "constructor plus step; no snapshots timed"
 seed = 0

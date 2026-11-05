@@ -26,36 +26,36 @@ evidence = "docs/limitations.md#unary"
 "11" = { commands_by_row = {}, commands_by_row_nulls = [0, 1], source_units = 6903 }
 
 [ablations]
-audited = "2026-11-02"
-# 2026-10-29 plain-rewrite audit: no trick retired. Buildable tables under the 256 Mi cap: n=1 4/4, n=2 7/16
-# (0000 1111 0011 0101 1010 1100 0001), n=3 8/256, n=4 10/65,536; the plain tree builds none at n>=2 (every
-# one passes the cap), so no random or named-function sample at n>=3 can price a trick by size.
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-11-02" }
 
 [ablations.constant_fold]
+kind = "archive"
 saving = 7212.0
 arity = 1
 verdict = "kept: canonical, exempt. A constant table reads its inputs and halts, or sets one cell and loops. Routing constants through the general tree path costs +7,211.99% at n=1 (13 to 434,231 and 53,431 to 3,473,591 zeros), and at n=2..5 the removal builds no constant table at all: the tree path's zero count passes the 256 Mi generation cap. The fold is what makes constants generatable"
 
 [ablations.single_input_form]
+kind = "archive"
 saving = 0.0
 arity = 2
 verdict = "kept: a table one input decides is spelled as reads up to that input, a skip to read the rest, an optional complement and the loop. Its price is buildability, not size: at n=1 the identity is spelled identically by the AND form (887 zeros either way) while the negation (6,839 zeros) is unbuildable without the form, and at n=2 all four single-input tables (7,031 to 3,429,047 zeros) and at n=4/5 the single-input tables are unbuildable without it"
 
 [ablations.and_form]
+kind = "archive"
 saving = 0.0
 arity = 2
 verdict = "kept: the all-but-one-zero table is spelled as nested guards around one loop. At n=2 it is 27,452,351 zeros shipped and unbuildable through the general tree path, whose zero count passes the cap; at n=3 the shipped form itself is over the cap, so n=2 is the largest arity where the form runs"
 
-[audits]
-trick_prototype = 2026-11-02
-plain_rewrite = 2026-10-29
-
 [ablations.constant_one_decrement]
+kind = "archive"
 arity = 6
 tables = "constant one at n=1..6, zero/255/alternating input bytes"
 verdict = "kept: canonical constant output. Decrement maps either final input byte, 0 or 255, to a nonzero byte, so -[] replaces >+[] after n reads. Actual zero counts at n=1..5 fall 53431 -> 6903, 446647 -> 56055, 3592375 -> 449271, 28758199 -> 3594999, 230084791 -> 28760823. At n=6 the old form exceeds the cap; the new form emits 230087415 characters within the existing budgets. All 18 generated-source executions prove a repeated state after exactly n reads. Constant zero and every nonconstant decoded construction are unchanged; generic command/workspace envelopes remain unchanged. The nine-command proof corpus now includes constant one at n=6."
 
 [ablations.low_digit_mirror]
+kind = "archive"
 saving = 0.0
 arity = 8
 seed = "random.Random(184700+n), sequential choice('01')"
@@ -63,6 +63,7 @@ tables = "all tables/rows n<=3; 20 random per n=4..6; 200 random per n=7,8; all 
 verdict = "rejected 2026-11-02: every generated decoded program with a move already has > as its first move, so reflection changes the earliest differing octal digit from 0 to 1 and strictly increases the zero count; programs without moves tie. No mirror improves any measured table. Actual encoded +/- substitution controls also fail: ,+[] halts on 255 instead of constant one, while ,-[] loops on 255 instead of negating it. Swapping only the general tree movement alphabet without reflecting its read layout returns wrong answers. Generic n=7/8 admits 0/200 programs before and after reflection, with minimum decoded lengths 1272/2663 against this construction's nine-command budget; there is no fabricated source percentage on refused tables. Decoded native controls cover all 2120 rows n<=3 and 1840 larger sample rows, preserving answers and ordered reads. Positive reflected spelling <,[]→>,[] shrinks and computes the same function, so the zero result is not an unfired probe. Actual emitted gzip sources were decoded by the Unary interpreter for all 45 admitted tables (4/7/8/10/8/4/2/1/1 at n=1..9), then run on every row: 1796 rows, all correct and input-complete. Expanded source totals 2817634169 zero characters streamed once for validation; no giant plain source was materialized. All source/pins/bounds remain unchanged."
 
 [ablations.trailing_read_elision]
+kind = "archive"
 saving = 0.0
 arity = 8
 seed = "random.Random(184700+n), sequential choice('01')"
@@ -70,6 +71,7 @@ tables = "all tables/rows n<=3; 20 random per n=4..6; 200 random per n=7,8; expl
 verdict = "rejected 2026-11-02: unread inputs violate the ordered fixed-frame contract even when the termination answer is right; EOF storing zero does not waive consumption. Native encoded constant zero with one zero character halts after 0/1 reads; elided projection 0011 emits 887 zeros but halts its zero row after 1/2 reads. The constants/projection elision prototype fails consumption on 4/16/48 rows at n=1/2/3, while every baseline row consumes n. Generic fixed n=7/8 remains 0/200 admitted. A deliberately negated actually encoded identity returns the wrong termination answer and is detected. No production change."
 
 [ablations.single_cell_guard_tree]
+kind = "archive"
 saving = 0.0
 arity = 8
 seed = "random.Random(184700+n), sequential choice('01')"
@@ -77,13 +79,24 @@ tables = "all tables/rows n<=3; 20 random per n=4..6; 200 random per n=7,8; actu
 verdict = "rejected 2026-11-02: the compact one-cell AND body ,[,[]] emits 453567 zeros instead of the shipped 27452351, but a first zero halts after only 1/2 reads. A direct nested true-guard/false-fallthrough tree with clear-on-zero and force-loop-on-one leaves returns 713 wrong answers and consumes the wrong input count on 980 of 2048 three-input rows: a halting true child clears its parent guard and falls into the false branch. The n=4..6 samples add 80 wrong answers and 111 bad read counts over 240 rows; all 400 generic lazy sources at n=7/8 exceed the cap. These are native decoded-body controls using Unary's own step/EOF semantics; out-of-cap bodies are not claimed as emitted Unary programs. Actual encoded guard and input-elision failures are separate controls. Restoring the existing input-complete flag-tree construction preserves semantics but admits none of the fixed generic n=7/8 tables. No production one-cell rule or cap-window workaround retained."
 
 [ablations.unrolled_read_bound_audit]
+kind = "archive"
 saving = 0.0
 arity = 255
 seed = "closed byte-counter construction; no search"
 tables = "actual encoded program on 255 zero bytes, 255 bytes255, and alternating bytes; sentinel after each"
 verdict = "corrected 2026-11-02: reading n inputs does not force n source commands in Unary generally. The seven-command decoded program -[>,<-] emits 3082847 zero characters and natively halts after exactly 255 reads and 1277 steps on all three controls, leaving the following sentinel untouched. Decrement initializes a byte counter to255; each iteration reads only the adjacent cell and decrements the independent counter, proving the count for every input vector. The max-inputs=9 guard, its behavior and all generated programs remain unchanged, but the module, comment and guard now state that this is the current unrolled construction's restriction. The language-wide worst-source counting bound is a separate claim; no generator expansion or unsupported universal read bound is inferred."
 
+[audits]
+trick_prototype = 2026-11-02
+plain_rewrite = 2026-10-29
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 1.1688
 workload = "constructor plus step; no snapshots timed"
 seed = 0

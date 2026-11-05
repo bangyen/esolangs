@@ -18,7 +18,8 @@ import pytest
 import esolangs
 from esolangs import exceptions
 from esolangs.registry import LANGUAGES
-from scripts.evidence import source_anchors
+from scripts.docs.ablations import load as load_ablations
+from scripts.docs.evidence import source_anchors
 from scripts.new_language import _GENERATOR, PLACEHOLDER
 from tests.generators.generator_sections import (
     PUBLIC_ERRORS,
@@ -257,17 +258,14 @@ def test_an_ablation_saving_is_said_once() -> None:
     repeats = {}
     for name in _generated():
         root = _LANGUAGES_DIR / LANGUAGES[name].id
-        table = tomllib.loads((root / "language.toml").read_text())
-        verdicts = {
-            key: entry.get("verdict", "")
-            for key, entry in table.get("ablations", {}).items()
-            if isinstance(entry, dict)
-        }
+        audit = load_ablations(name)
+        assert audit is not None
+        verdicts = {key: entry.verdict for key, entry in audit.records.items()}
         sources = {
             path.relative_to(root).as_posix(): path.read_text() for path in _files(name)
         }
         # A figure that matches a verdict but measures something else.
-        distinct = set(table.get("ablations", {}).get("unrelated", []))
+        distinct = set(audit.unrelated)
         if found := [
             f
             for f in _ablation_repeats(verdicts, sources)
@@ -278,37 +276,6 @@ def test_an_ablation_saving_is_said_once() -> None:
         "cite [ablations.<key>] at each path:line instead of restating its "
         f"saving ('key?' is a citation of an unknown key) -- {repeats}"
     )
-
-
-def test_a_retirement_records_its_balanced_area() -> None:
-    """A trick retired from 2026-10-28 on cites its balanced area too.
-
-    LaserFuck's sized leaf was retired on default sizes and restored: the
-    balanced route used it (17-21% of area at n=10..12).
-    """
-    missing = {}
-    for name in _generated():
-        root = _LANGUAGES_DIR / LANGUAGES[name].id
-        table = tomllib.loads((root / "language.toml").read_text())
-        for key, entry in table.get("ablations", {}).items():
-            verdict = entry.get("verdict", "") if isinstance(entry, dict) else ""
-            dated = re.match(r"(?:retired|removed) (\d{4}-\d\d-\d\d)", verdict)
-            if dated and dated[1] >= "2026-10-28" and "balanced" not in verdict:
-                missing.setdefault(name, []).append(key)
-    assert missing == {}, f"state the balanced area in each retirement -- {missing}"
-
-
-def test_every_generator_has_an_audit_record() -> None:
-    """A dated ``[ablations]`` record; Bleh, Freestajlo and Stisp shipped without."""
-    missing = [
-        name
-        for name in _generated()
-        if "audited"
-        not in tomllib.loads(
-            (_LANGUAGES_DIR / LANGUAGES[name].id / "language.toml").read_text()
-        ).get("ablations", {})
-    ]
-    assert missing == []
 
 
 def _size(program: esolangs.Program) -> tuple[int, str]:
@@ -356,7 +323,7 @@ def test_the_named_tables_are_the_functions_they_name() -> None:
     assert anchors("A.\n\nSize:\n    n=2 parity: 4 pixels") == [
         (2, "parity", 4, "pixels")
     ]
-    from scripts.evidence import parse_anchors
+    from scripts.docs.evidence import parse_anchors
     from tests.support.reference import REFERENCE
 
     language = LANGUAGES[REFERENCE]

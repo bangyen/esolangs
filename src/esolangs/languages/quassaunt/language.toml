@@ -21,19 +21,24 @@ definitions = ["N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables", "G =
 "11111110" = { commands = 293, commands_by_row = { "0" = 279, "1" = 279, "2" = 279, "3" = 279, "4" = 286, "5" = 286, "6" = 293, "7" = 293 }, source_units = 970 }
 
 [ablations]
-audited = "2026-11-02"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-11-02" }
 
 [ablations.subtree_sharing]
+kind = "archive"
 saving = 483.1
 arity = 12
 verdict = "kept: canonical, exempt. Every distinct subtable is stored once under its id and evaluated by name. Storing every tree position under its own name instead costs +237.05% at n=8, +339.87% at n=10 and +483.14% at n=12 on random tables, and +23,604.68% on parity at n=12; only +2.80% on constant tables, where the chain collapse still descends a single path"
 
 [ablations.halves_agree_fold]
+kind = "archive"
 saving = 0.9
 arity = 12
 verdict = "kept: canonical, exempt. A node whose halves agree (or whose subtable is constant) takes a chain body that reads the input and evaluates the one child; it is also how an ignored input is absorbed, there being no separate projection step. Deleting the collapse costs +3.32 / +1.71 / +0.92% on random tables at n=8/10/12, but +45.91 / +46.74 / +47.31% on constant tables and +9.25 / +8.24 / +7.41% on majority"
 
 [ablations.disjoint_branch]
+kind = "archive"
 saving = 18.5
 arity = 8
 seed = "random.Random(1000 * n + s)"
@@ -41,23 +46,21 @@ tables = 20
 verdict = "kept: a branch pushes the two children's names, {c} and a stored {1} and tests with %%Ifdisjoint, then obtains the chosen code once, where it pushed both bodies and {2, c} for %%Ifpropersubset. Reverting costs +21.5% / +22.7% / +23.4% chars on random tables at n=7/8/9 (204,251 / 344,281 / 596,346 against 168,131 / 280,529 / 483,138) and the saving is 10-18% on parity, and, or, majority, threshold-2 at n=8 (3,418 / 2,915 / 5,523 / 4,219 against 2,800 / 2,605 / 4,685 / 3,645). Every n<=9 row of parity, and, or, majority, threshold-2, constants and 3 random tables executes and matches its table, a wrong table fails; balanced area -3.4..34.7% on random n=3..9, named -3.4..21.5% at n=8."
 
 [ablations.balance_cut]
+kind = "archive"
 saving = 0.0
 arity = 8
 seed = "random.Random(100 + n)"
 tables = 20
 verdict = "retired as a race, kept as a rule for compact programs (2026-10-29 baseline). The balance route raced whole-word layout against bodies cut into %%Concatenate pieces at six limits (16..96), min by rendered side: balanced area (side^2, generic wrap as baseline) 88.5 / 79.4 / 69.0 / 52.9 / 13.8 / 5.3 / 3.4% on random n=3..9, then 43.0 / 0.0 / 33.0% at n=10..12 (an artifact of the generic width choice, 472 against an ideal 326 at n=10, not of the cut); at n=8 11 of 20 tables gained, chars +8.3-18%. On 200 random tables (seed 4100 + n, rows times longest row) the race saves 15.5% at n=7 and 2.7% at n=8, the rule 10.4% and 0.0%; at 20 tables n=9 -3.0%, n=10 23.1%, n=11 0.0%. Fails 10% on random at n=8; named functions (parity, and, or, majority, thr2, complements) gain 35-89% at n=3..10. Replaced by one cut at 64 when isqrt(2 * len) < the longest word (a compact program, which a node body pins at 180 wide), else whole-word: random area saving 87.6 / 79.4 / 69.0 / 50.4 / 1.2 / 0 / 0 / 0% at n=3..10, named 35-88% at n=3..10 (within 5% of the race but n=3 random +8%, n=6 random +5%); random n>=8 now generic. Default programs byte-identical (only the balance hook changed); 552 default+balanced builds n<=3 execute, 65 balanced n=4..8 random+named execute, control fails."
 
-[audits]
-trick_prototype = 2026-11-02
-blind_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-29
-
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 12
 tables = "both constants at n=1..12, every row through n=3 and four rows thereafter"
 verdict = "kept: canonical constant output, percentage gate exempt. Read all inputs then print the literal without definitions or evaluated chains: 12n+20 characters, n+2 commands, and exactly 96n+161+bl(n+1)+bl(n) written bits. At n=8, characters 1272 -> 116, commands 150 -> 10, sampled written peaks 17948 -> 937 bits; warm generation medians 34.83/34.46 -> 2.21/2.17 us for zero/one. At n=12, characters 1858 -> 164, commands 218 -> 14, peaks 26029 -> 1321 bits. Both versions passed 200 executions; all 270 nonconstant programs through n=3 are byte-identical. Sentinel regressions pin n=8 size and every required read. The workspace formula handles direct constant frames separately; generic envelopes and existing size pins remain unchanged."
 
 [ablations.stack_reservoir_fillers]
+kind = "archive"
 arity = 8
 saving = 5.0
 seed = "random.Random(1000*n), sequential choice('01')"
@@ -65,6 +68,7 @@ tables = "200 random tables per n=7,8; all tables/rows n=1..3; sampled random/na
 verdict = "rejected alone 2026-11-02: n=7/8 source 1688993 -> 1594641 / 2802994 -> 2661788 chars (5.59/5.04%), below both size bars. Exactly n=3 commands 193280 -> 186816 (3.34% fewer), below the 5% execution bar; source 289876 -> 269316, no table larger or row slower. Kept only in the jointly qualifying word_economy construction. Two empty strings per input suffice: a branch consumes two and a chain one; every path reads all n inputs."
 
 [ablations.dense_global_names]
+kind = "archive"
 arity = 8
 saving = 2.9
 seed = "random.Random(1000*n), sequential choice('01')"
@@ -72,6 +76,7 @@ tables = "same corpus as stack_reservoir_fillers; alphabet/name and full native 
 verdict = "rejected alone 2026-11-02: source 1688993 -> 1641717 / 2802994 -> 2720508 chars at n=7/8 (2.80/2.94%); n=3 commands unchanged, source 289876 -> 283772. Reservoir plus dense names still saves only 8.39/7.98%, below admission. Kept jointly in word_economy. The 89 printable ASCII characters exclude ?[]_W: no code separator, bracket ambiguity, helper collision or reserved [Whitespace]. Bijective names are nonempty; [] is the separate {1} global, allowed by the bracketed-global rule. Stable frequency order includes each definition and every reference; the extra batch key adds one uniform occurrence, preserving that order. No name search or frozen table."
 
 [ablations.batched_store_loop]
+kind = "archive"
 arity = 8
 saving = 12.1
 seed = "random.Random(1000*n), sequential choice('01')"
@@ -79,6 +84,7 @@ tables = "same corpus as stack_reservoir_fillers; native dictionary equality on 
 verdict = "rejected alone 2026-11-02: n=7/8 source 1688993 -> 1499256 / 2802994 -> 2464631 (11.23/12.07%), a finite benefit below the declining 20% bar. The uncompressed duplicated key costs Theta(D log D), eventually exceeding the O(D) fixed-store-word saving, so this cannot be called sustained. No arity cap or old-program race. Exactly n=3 source 289876 -> 300538, 254 tables grow; commands 193280 -> 627216. Kept jointly in word_economy: dense keys make the duplicate affordable. Each real name/body/key triple is stored once; an empty dummy key chooses the root after the last triple. All 270 small nonconstant dictionaries match the unbatched reservoir+dense build exactly after removing only helper [_s] and dummy [_x]."
 
 [ablations.word_economy]
+kind = "archive"
 arity = 8
 saving = 20.6
 seed = "random.Random(1000*n), sequential choice('01')"
@@ -86,9 +92,21 @@ tables = "200 random tables per n=7,8, all 76800 rows; 20 random tables each n=9
 verdict = "kept 2026-11-02 for source only: the reservoir, dense names and fixed store loop jointly save 20.159/20.608% at n=7/8 (1688993 -> 1348509 / 2802994 -> 2225358 chars), clearing even the declining bar. The measured extension curve is nonmonotone: n=9/10/12/14/16 saves 20.371/20.270/20.275/20.521/20.624%; no global peak claim. If old weighted name cost is A and own-name cost O, every reachable definition is referenced, so O<=A/2. Adding one test key and encoding with base89 costs at most 1.5*ln(10)/ln(89)*A+O(D); fixed words are O(D), while distinct old names force A=Omega(D log D). Thus limiting saving is bounded below by 23.05285%, not zero. Stable frequency sorting costs O(D log D)=O(T), canonical residual construction O(T), and names emit their digits once; no search or fallback. Startup 15+2n+3D words plus 23(D+1) storer words and 13B+6C+2 path words gives exact E=40+15n+26D-7C, B+C=n; D<=N+1 yields 26N+15n+66, attained by native n=3/6 witnesses. Costs are explicit: n=3 source 289876 -> 272196 but six tables grow; n=1/2 totals 836 -> 1112 / 9582 -> 10270 and every nonconstant table grows. n=3 commands 193280 -> 620752 (3.212x); full n=7/8 totals 9458720 -> 37904672 / 27959050 -> 119593666 (old totals analytically derived and validated natively). Generic sampled workspace peaks summed over three tables rise 346609 -> 433599 / 590932 -> 744285 bits at n=7/8, about 25-26%. Warm generation n=8/12/16 takes 0.131/1.387/18.688 -> 0.235/2.429/30.564 ms; native all-row table runs n=4/6/8 take 2.663/22.613/199.149 -> 7.754/77.615/761.142 ms. This is neither an execution nor memory optimization. The workspace formula counts raw cut frames and reconstructed payloads separately; every standalone Concatenate adds two execution steps. Original proof arities remain, all eight pins updated, and the balanced example executes. Full 76800-row prototype run passed in 195.24 seconds; public output matches that frozen prototype byte-for-byte. Balanced grid_area, without stripping trailing lines, falls 2141087 -> 1882202 / 2873246 -> 2532395 on the fixed 200-table n=7/8 corpora (12.09/11.86%); no table grows. Across 70 named/complement builds at n=3,4,6,7,8,10,12, eight areas grow, at most 6.83%, while the largest reduction is 48%; native old/new balanced witnesses execute. Wrong-leaf and wrong-sentinel controls are detected on 4/8 and 8/8 rows; [] uses the ordinary global-name rule."
 
 [ablations.proof_ceiling_review_20261103]
+kind = "archive"
 verdict = "reviewed: node_cap times 170+4u bounds all emitted node kinds; frequency-ranked base89 names have width at most u, and startup/fillers cost below 400+u+6n. Triple fragments need at most 134+4u, leaving deliberate slack. Scaling stays linear in T; all source arities and the at-most flag remain. Admission uses measured emitted source. The optimized global maximum is unproved."
 
+[audits]
+trick_prototype = 2026-11-02
+blind_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-29
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = -0.3235
 workload = "constructor plus step; no snapshots timed"
 seed = 0

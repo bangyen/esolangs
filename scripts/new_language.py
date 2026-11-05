@@ -329,8 +329,9 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
 
 def _generator_gaps(lang: Language) -> list[Gap]:
     """List the steps a language with a Boolean generator needs."""
+    from docs.ablations import parse_audits
+    from docs.evidence import parse_anchors
     from docs.fragments import section
-    from evidence import parse_anchors
 
     from esolangs.generation.wrap import takes_width
     from esolangs.languages import generators
@@ -348,6 +349,15 @@ def _generator_gaps(lang: Language) -> list[Gap]:
     except (ValueError, FileNotFoundError) as error:
         gaps.append(
             Gap(str(metadata.relative_to(ROOT)), f"record source evidence: {error}")
+        )
+    try:
+        parse_audits(lang.name, "ablations", section(metadata, "ablations") or {})
+    except (ValueError, FileNotFoundError) as error:
+        gaps.append(
+            Gap(
+                str(metadata.relative_to(ROOT)),
+                f"record measured audit evidence: {error}",
+            )
         )
     if source.exists() and PLACEHOLDER in source.read_text(encoding="utf-8"):
         gaps.append(Gap(source_rel, "write the docstring"))
@@ -464,6 +474,7 @@ def quick_tests(name: str) -> list[str]:
         )
     ]
     nodes += [
+        f"tests/generators/test_ablation_evidence.py::test_audit_evidence[{name}]",
         "tests/interpreters/test_interpreter_conventions.py"
         "::test_interpreter_docstrings_follow_the_template",
         "tests/interpreters/test_interpreters_robustness.py"
@@ -594,7 +605,7 @@ def size_anchors(name: str) -> list[str]:
     Each is re-measured as ``test_the_size_anchor_is_what_generate_emits``
     does; Sonata's and SwitchCase's went stale twice while being built.
     """
-    from evidence import source_anchors
+    from docs.evidence import source_anchors
 
     import esolangs
     from esolangs.registry import LANGUAGES

@@ -32,77 +32,19 @@ folding_constant_local = "_program"  # read into an executed cell and print the 
 folds_without_tree = true
 
 [interpreter_ablations]
-audited = "2026-10-18"
-benchmark = "interp-audit-2026-10-18/tracediff-n3"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
 
 [interpreter_ablations.parsed_cache]
+kind = "archive"
 price = 1.9
 workload = "run"
 verdict = "removed 2026-10-20 (interpreter candidate I-8): +1.9% run with overlapping spreads in the audit, unmeasurable"
-
-[ablations]
-audited = "2026-10-19"
-
-[ablations.constant_fold]
-saving = 3118.8
-arity = 12
-verdict = "kept: canonical, exempt, and load-bearing. A constant table reads its inputs and prints the literal after the @, n + 4 chars. The strict removal has no buildable plain route: the general path indexes places[0] of an empty list when no input is essential. Priced against the nearest buildable route, constants as a two-entry lookup on input 0: +2,992.9% at n=10 and +3,118.8% at n=12 (14 to 433 and 16 to 515 chars)"
-
-[ablations.projection]
-saving = 72.8
-arity = 12
-verdict = "kept: canonical, exempt. The tape tail is the table read at the essential inputs only, and the base-128 index folds only those bits. Emitting the full table and folding every input instead costs +44.04% at n=10 and +72.76% at n=12 on one-ignored tables, +85.62 / +172.24% on two-ignored tables, and 0.00% on random tables"
-
-[ablations.symmetric_count]
-saving = 44.9
-arity = 8
-seed = "named symmetric tables"
-tables = 7
-verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 adds each banked bit into one index digit and deletes that many of n + 1 entries, raced by length against the base-128 Horner index. Parity, majority, and, or, at-least-2 and exactly-1 all 6.0% at n=4, 13.5% at n=6, 21.5% at n=7, 44.9% at n=8, 65.6% at n=10, 85.2% at n=12; a symmetric table with an ignored input 19.9% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
-
-[audits]
-trick_prototype = 2026-11-02
-blind_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-22
-
-[ablations.constant_table_audit_20261101]
-arity = 8
-saving = 0.0
-seed = 0
-tables = "both constants, n=1..12"
-verdict = "retained: read n characters into spent code at cell zero, then wrap to the literal answer and halt. Chars n+4, commands n+3: n=8 12 chars, 11 commands, 86 written bits; n=7 11 chars, n=12 16. Removing @ leaves both answer candidates running after 64 measured steps with extra output 0.<,, or 1.<,,; keep the halt. This rejects that candidate, not a universal optimum. n=3 corpus chars 43488 unchanged. Executed 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Owned raw IO/template checks preserve exact input use, following records and no EOF probe."
-
-[ablations.trick_prototype_20261102_shared_offset_read]
-arity = 3
-saving = 29.1771
-verdict = "kept by execution gate with the mandatory clamp: read raw bytes in1..n, subtract48 with one shared six-pass counter, then slide each clamped bit into its cleared left neighbor. This frees the scratch cell for the next input while restoring the old0..n-1 bank and pointer n. Source22n+17 instead of40n; only spent code is overwritten. Keep the old reader below n=3 because measured batch startup loses25..30 commands at n=1 and5..15 at n=2, not because of an arbitrary size cap. Every small program below3 remains byte-identical. Across every three-input table/row: commands1821184->1289816 (29.18%), no slower row or larger table; source43488->34090. Raw generic size savings on20 seeded tables n=7 are10040->7860 (21.71%), n=8 16560->14020 (15.34%), failing the declining size bar; execution is the admission basis. Both old candidates lose the same18n-17 chars, preserving plain/counted selection. Exact old reader86n+12ones+2S, batch65n+7ones+143+2C; S=sum source codes1..n, C=source code n+1. For n>=4 S>=43n,C<=93 proves every bit row faster; n=3 saves254+5ones commands. New worst E through7 is(2n+13)T+68n+232+2C. Source cap subtracts18n-17 from the old bound. Owned regressions enforce read-first output, no EOF probe and a preserved following token; underfed/invalid bytes still clamp inside the table. Constant fast path unchanged."
-
-[ablations.trick_prototype_20261102_dropped_clamp]
-arity = 8
-saving = 25.6039
-verdict = "rejected: shared normalization without clamping saves36.65%/25.60% at n=7/8 and executes valid bit rows, but violates the existing underfed/out-of-alphabet guarantee. For table01101001, input1-newline halts with no bit output; empty input and xyz/999 do not halt within100000 steps. Old and safe clamped controls halt and print1 on those cases. The accepted reader retains its clamp; no EOF or byte-convention exception."
-
-[ablations.trick_prototype_20261102_eight_bit_digit]
-arity = 8
-saving = 17.6329
-verdict = "rejected: keep base128 beyond essential width8, but use one full-byte index at width8. Actual old/new small programs and judge programs execute; n=7 is byte-identical (no gain), n=8 generic chars16560->13640 (17.63%). It cannot meet either size bar at both fixed arities and changes no three-input execution. Do not bundle it with the admitted reader to conceal zero n=7 saving."
-
-[ablations.trick_prototype_20261102_horner_on_read]
-arity = 8
-saving = 0.0000
-verdict = "rejected tested construction: after each read, fold the preceding group accumulator into the current essential bit, leaving ignored inputs untouched; retain base128 digit groups and final index transfer. Every small row and four rows per20 random tables at n=7/8 execute, but the extra walks grow source: n=3 43488->44328, n=7 10040->10280 (2.39%), n=8 16560->16800 (1.45%). A larger table also fails the execution gate. No old-candidate fallback added."
-
-[ablations.trick_prototype_20261102_workspace_accounting]
-arity = 8
-saving = 0.0000
-verdict = "corrected: the old written-state expression omitted multi-digit code and used original T for the program cursor even on projected/count tables. A real eight-input generic baseline uses5102 bits against its old5095 cap; nine inputs6975 vs6968. Count initial parsed source-byte widths B and the actual halt offset h: W=B+bl(L-1)+bl(h)+bl(n)+1 on valid bit inputs. The initial tape is the peak; bank bits lose room before index digits grow, deletions only shrink it. An incremental tracker follows actual interpreter edits and agrees with official WrittenState on all eight rows of an old/new three-input control. Boundary rows at n=8/9 attain the new exact expression: new programs4297/6055 bits. Native workspace checks3/5 pass; source/code/data/input cursors and halt flag are all included."
-
-[ablations.trick_prototype_20261102_execution_wrapping]
-arity = 3
-saving = 0.0
-verdict = "corrected: source-code terms must index parsed cells, not the wrapped string. The actual width-one program for00110110,row111 uses712 commands while the raw-string offset formula gives678. Native execution now parses source first; owned regressions check actual commands and written state on plain, width-one and balanced programs. Wrapping changes neither tape nor bounds."
+retirement = { verb = "removed", date = 2026-10-20 }
 
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 0.1651
 workload = "constructor plus step; no snapshots timed"
 seed = 0
@@ -110,11 +52,86 @@ tables = "pilot: exhaustive n<=2 plus 300 seeded mutations and examples; 400-ste
 verdict = "prototype only: byte wrap bit mask. 452 programs, 86 halt cleanly; no structural trace differences, control differs on 411. Step throughput at longest 10/20/40 workload breadths: +0.67%/+0.17%/+0.75%. No production change or global performance conclusion; adoption needs broader validation."
 
 [interpreter_ablations.bitmask_runtime_recheck]
+kind = "archive"
 price = -0.2248
 workload = "complete public run, parsing and final output included"
 seed = 1847
 tables = "random/parity at n=3/5/7; seed 1847+n; four asymmetric rows; five interleaved pairs at 0.2s per lap"
 verdict = "not adopted: byte masks remain mixed on complete runs (-0.22% at n=3 random; other minimum-lap savings 0.29–0.69%). Longer laps do not establish a consistent gain. The earlier expanded native timeout is not counted as a passing audit; production is unchanged."
+
+[ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-19" }
+
+[ablations.constant_fold]
+kind = "archive"
+saving = 3118.8
+arity = 12
+verdict = "kept: canonical, exempt, and load-bearing. A constant table reads its inputs and prints the literal after the @, n + 4 chars. The strict removal has no buildable plain route: the general path indexes places[0] of an empty list when no input is essential. Priced against the nearest buildable route, constants as a two-entry lookup on input 0: +2,992.9% at n=10 and +3,118.8% at n=12 (14 to 433 and 16 to 515 chars)"
+
+[ablations.projection]
+kind = "archive"
+saving = 72.8
+arity = 12
+verdict = "kept: canonical, exempt. The tape tail is the table read at the essential inputs only, and the base-128 index folds only those bits. Emitting the full table and folding every input instead costs +44.04% at n=10 and +72.76% at n=12 on one-ignored tables, +85.62 / +172.24% on two-ignored tables, and 0.00% on random tables"
+
+[ablations.symmetric_count]
+kind = "archive"
+saving = 44.9
+arity = 8
+seed = "named symmetric tables"
+tables = 7
+verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 adds each banked bit into one index digit and deletes that many of n + 1 entries, raced by length against the base-128 Horner index. Parity, majority, and, or, at-least-2 and exactly-1 all 6.0% at n=4, 13.5% at n=6, 21.5% at n=7, 44.9% at n=8, 65.6% at n=10, 85.2% at n=12; a symmetric table with an ignored input 19.9% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
+
+[ablations.constant_table_audit_20261101]
+kind = "archive"
+arity = 8
+saving = 0.0
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "retained: read n characters into spent code at cell zero, then wrap to the literal answer and halt. Chars n+4, commands n+3: n=8 12 chars, 11 commands, 86 written bits; n=7 11 chars, n=12 16. Removing @ leaves both answer candidates running after 64 measured steps with extra output 0.<,, or 1.<,,; keep the halt. This rejects that candidate, not a universal optimum. n=3 corpus chars 43488 unchanged. Executed 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Owned raw IO/template checks preserve exact input use, following records and no EOF probe."
+
+[ablations.trick_prototype_20261102_shared_offset_read]
+kind = "archive"
+arity = 3
+saving = 29.1771
+verdict = "kept by execution gate with the mandatory clamp: read raw bytes in1..n, subtract48 with one shared six-pass counter, then slide each clamped bit into its cleared left neighbor. This frees the scratch cell for the next input while restoring the old0..n-1 bank and pointer n. Source22n+17 instead of40n; only spent code is overwritten. Keep the old reader below n=3 because measured batch startup loses25..30 commands at n=1 and5..15 at n=2, not because of an arbitrary size cap. Every small program below3 remains byte-identical. Across every three-input table/row: commands1821184->1289816 (29.18%), no slower row or larger table; source43488->34090. Raw generic size savings on20 seeded tables n=7 are10040->7860 (21.71%), n=8 16560->14020 (15.34%), failing the declining size bar; execution is the admission basis. Both old candidates lose the same18n-17 chars, preserving plain/counted selection. Exact old reader86n+12ones+2S, batch65n+7ones+143+2C; S=sum source codes1..n, C=source code n+1. For n>=4 S>=43n,C<=93 proves every bit row faster; n=3 saves254+5ones commands. New worst E through7 is(2n+13)T+68n+232+2C. Source cap subtracts18n-17 from the old bound. Owned regressions enforce read-first output, no EOF probe and a preserved following token; underfed/invalid bytes still clamp inside the table. Constant fast path unchanged."
+
+[ablations.trick_prototype_20261102_dropped_clamp]
+kind = "archive"
+arity = 8
+saving = 25.6039
+verdict = "rejected: shared normalization without clamping saves36.65%/25.60% at n=7/8 and executes valid bit rows, but violates the existing underfed/out-of-alphabet guarantee. For table01101001, input1-newline halts with no bit output; empty input and xyz/999 do not halt within100000 steps. Old and safe clamped controls halt and print1 on those cases. The accepted reader retains its clamp; no EOF or byte-convention exception."
+
+[ablations.trick_prototype_20261102_eight_bit_digit]
+kind = "archive"
+arity = 8
+saving = 17.6329
+verdict = "rejected: keep base128 beyond essential width8, but use one full-byte index at width8. Actual old/new small programs and judge programs execute; n=7 is byte-identical (no gain), n=8 generic chars16560->13640 (17.63%). It cannot meet either size bar at both fixed arities and changes no three-input execution. Do not bundle it with the admitted reader to conceal zero n=7 saving."
+
+[ablations.trick_prototype_20261102_horner_on_read]
+kind = "archive"
+arity = 8
+saving = 0.0
+verdict = "rejected tested construction: after each read, fold the preceding group accumulator into the current essential bit, leaving ignored inputs untouched; retain base128 digit groups and final index transfer. Every small row and four rows per20 random tables at n=7/8 execute, but the extra walks grow source: n=3 43488->44328, n=7 10040->10280 (2.39%), n=8 16560->16800 (1.45%). A larger table also fails the execution gate. No old-candidate fallback added."
+
+[ablations.trick_prototype_20261102_workspace_accounting]
+kind = "archive"
+arity = 8
+saving = 0.0
+verdict = "corrected: the old written-state expression omitted multi-digit code and used original T for the program cursor even on projected/count tables. A real eight-input generic baseline uses5102 bits against its old5095 cap; nine inputs6975 vs6968. Count initial parsed source-byte widths B and the actual halt offset h: W=B+bl(L-1)+bl(h)+bl(n)+1 on valid bit inputs. The initial tape is the peak; bank bits lose room before index digits grow, deletions only shrink it. An incremental tracker follows actual interpreter edits and agrees with official WrittenState on all eight rows of an old/new three-input control. Boundary rows at n=8/9 attain the new exact expression: new programs4297/6055 bits. Native workspace checks3/5 pass; source/code/data/input cursors and halt flag are all included."
+
+[ablations.trick_prototype_20261102_execution_wrapping]
+kind = "archive"
+arity = 3
+saving = 0.0
+verdict = "corrected: source-code terms must index parsed cells, not the wrapped string. The actual width-one program for00110110,row111 uses712 commands while the raw-string offset formula gives678. Native execution now parses source first; owned regressions check actual commands and written state on plain, width-one and balanced programs. Wrapping changes neither tape nor bounds."
+
+[audits]
+trick_prototype = 2026-11-02
+blind_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-22
 
 [evidence]
 version = 1

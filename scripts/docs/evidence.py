@@ -11,7 +11,7 @@ from typing import Any
 
 from esolangs.registry import LANGUAGES
 
-PACKAGES = Path(__file__).resolve().parents[1] / "src/esolangs/languages"
+PACKAGES = Path(__file__).resolve().parents[2] / "src/esolangs/languages"
 _RULES = frozenset({"parity", "and", "or", "majority", "zero", "random"})
 _UNITS = frozenset({"chars", "codels", "pixels"})
 

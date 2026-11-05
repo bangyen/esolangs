@@ -25,24 +25,30 @@ folding_constant_local = "_emit_lookup"  # projected literal table
 
 
 [ablations]
-audited = "2026-10-19"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-19" }
 
 [ablations.input_projection]
+kind = "archive"
 saving = 42.7
 arity = 12
 verdict = "kept: canonical, exempt. Ignored inputs are dropped by input_weights and the decimal literal is built over the essential inputs only; an ignored input is read into cell 1 and left for the next read or the literal's first digit to overwrite. 0.00% on random tables at n=8/10/12; with one ignored input 21.6% at n=8 rising to 32.7% at n=10 and 42.7% at n=12, with two ignored 35.4% / 50.5% / 64.5%, and on constant tables 73.6% / 75.5% / 76.8% (10 tables each, seed 1)"
 
 [ablations.two_input_short_forms]
+kind = "archive"
 saving = 19.7
 arity = 2
 verdict = "kept; historical before stack reuse: five fixed short forms at n=2 reuse 48 to decode each input and encode the answer, keeping the literal at the bottom of the stack. Over all 16 two-input tables they save 19.7% (668 against 832 chars), and 72 against 236 chars on the five tables themselves; both recorded figures reproduce exactly. The forms fire only at n=2 and cost nothing at any other arity"
 
 [ablations.plain_build]
+kind = "archive"
 saving = 42.7
 arity = 12
 verdict = "recorded: the plain build is the projection removed plus the lookup at n=2 (42.7% at n=12 on the one-ignored corpus, 0.00% on random tables). The decimal literal itself -- the table as its binary integer written in base ten, 0.30103 digits an entry -- is the construction; the folded and vertical layouts are width paths chosen by the balance hook, not the default sized path, and the balance hook chunks the literal (decimal_literal)"
 
 [ablations.decimal_literal]
+kind = "archive"
 saving = 63.6
 arity = 9
 seed = "random.Random(1)"
@@ -50,18 +56,15 @@ tables = 40
 verdict = "kept; historical pre-2026-11-02 figures: the table is written as one decimal integer in cell 1 (a digit run is cell * 10 + digit) instead of one * per entry plus one ) per rarer entry. Total chars against the former build: random 44.0% n=7, 54.7% n=8, 63.6% n=9 (20 tables); parity 44.4 / 55.2 / 64.0%, majority 45.8 / 53.0 / 64.9%, and 32.0 / 42.0 / 51.0%, or 45.4 / 59.6 / 72.7%, threshold-2 40.2 / 51.7 / 62.2%; balanced area (chunked-literal balance, below) random 29.8% n=7, 35.8% n=8, 37.8% n=9, parity 26.5 / 36.0 / 38.8%, and 28.4 / 40.1 / 57.8%, or 40.8 / 58.4 / 69.8%; the balanced area is ~T**0.70 from n=10 to 12 (T**2.00 with the whole literal: a fold cannot split a digit run, so every fold was 0.3T wide). The balance hook rewrites the literal as Horner chunks, acc = (acc << bits) + chunk, in cell 1 with the shift in cell 2 and chunks of side/2, side/4, side/8 digits, min over the plain layout; the flat program is unchanged A rule, not a race: the literal is int(reversed table, 2) in base ten. Executed through esolangs.run: all 276 tables at n<=3, random tables n=4..7 on the flat, balanced and folded layouts, named functions at n=7..9, random tables at n=10/12/14 (n=14 is past str's 4,300-digit limit); a wrong-table control fails"
 
 [ablations.polarity_rule]
+kind = "archive"
 saving = 59.2
 arity = 10
 seed = "random.Random(1)"
 tables = 20
 verdict = "kept; historical pre-2026-11-02 figures: write the integer or its complement, whichever has fewer digits, encoding with 49 ^ bit for the complement against 48 + bit. Random tables fail the bar (chars 0.7% n=3, 0.1% n=8..10 over 20-40 tables; balanced area 0.1-0.3%), but the rule clears it on named functions: or 30.7% chars, 50.0% area at n=8 and 59.2% / 74.1% at n=10; threshold-2 15.5% / 28.2% n=8, 29.6% / 32.7% n=10; majority 2.0% / 6.2% n=8; parity, and, nand, nor and the complement of majority 0.00%. Never larger; no race, one count. Plain-rewrite audit 2026-10-29: no other bespoke trick (input_projection, two_input_short_forms recorded above; folds are balance layouts); n<=3 exhaustive and n<=7 random and named tables executed on both builds (340 tables), control fails"
 
-[audits]
-trick_prototype = 2026-11-02
-blind_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-29
-
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 73.9
 seed = 0
@@ -69,6 +72,7 @@ tables = "both constants, n=1..12"
 verdict = "kept: canonical constant folding, exempt. Native constants read n bytes into one cell, then overwrite it with 48/49 and print. Default area and commands n+4: n=7 43->11 cells (74.4%), n=8 46->12 (73.9%), n=12 58->16; n=8 workspace 35->17 bits. Removed the superseded n=2 zero short form. n=3 corpus area 19712->19664. Executed 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Default, width=1 and balanced constants execute through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged; global resource caps unchanged. Owned read-first checks cover both constant answers and following-record preservation (whole-stream loading for Codesick)."
 
 [ablations.stacked_two_horner]
+kind = "archive"
 arity = 8
 saving = 34.83
 seed = "random.Random(1847+n), successive getrandbits(1<<n)"
@@ -76,6 +80,7 @@ tables = "200 per fixed n=7/8; all tables/rows through3; named/ignored/layout co
 verdict = "kept by the 20% declining source gate: fixed 200 n=7/8 old38474/49954 ->23274/32554 chars (39.51/34.83%). Push 2 once and reset cell0 with a new digit0; each essential *>,%{<+$ doubles the row, maps ASCII48/49 mod 2 to0/1, pushes/adds/pops that bit and preserves2. Ignored >,< reads leave it intact. Remove the later duplicate2 push; the row/table tail and chunk writer balance their temporary values above the persistent2. Exact standalone lookup D+8m+3(n-m)+22 vs old D+19m+3(n-m)+21, so every changed table saves 11m-1 chars; constants and four fixed two-input forms stay unchanged. Full-input generic curve peaks aroundn5 and falls through16 toward0, with actual emitted old/new programs and native endpoints. No favorable cap, source race, search or wider literal. Balanced area51986/77672 ->35652/57940; all layouts and ignored-input controls execute correctly."
 
 [ablations.deferred_ascii_offset]
+kind = "archive"
 arity = 8
 saving = 0.0
 seed = "random.Random(1847+n), successive getrandbits(1<<n)"
@@ -83,6 +88,7 @@ tables = "200 per fixed n=7/8; all tables/rows through3; named/ignored/layout co
 verdict = "rejected as alternative to the independently admitted persistent2/modulo rule: fixed 200 n=7/8 chars23674/32954,400 more than23274/32554 at each arity (+2 per table). Raw ASCII Horner yields48(2^m-1)+row; subtracting that exact K once is correct, including projected m1/2, but its decimal constant outweighs one saved opcode/input at the fixed window. Standalone vs old it would save38.47/34.03%, but it replaces the same reader and is worse than the stronger admitted baseline. No second reader or favorable later window ships. All small variant rows execute; wider temporary integers are included in diagnostics."
 
 [ablations.stacked_ascii_zero]
+kind = "archive"
 arity = 3
 saving = 6.35
 seed = "random.Random(1847+n), successive getrandbits(1<<n)"
@@ -90,13 +96,25 @@ tables = "200 per fixed n=7/8; all tables/rows through3; named/ignored/layout co
 verdict = "kept independently by the 5% default execution gate after stacked2: all 256 three-input tables/eight rows source 11998->11236,commands 95984->89888 (6.35%), zero larger tables/slower rows. Hoist ASCII48/49 beneath2, then after row-pop/mod 2/pop2 the encoder directly adds/XORs it. Exactly 3 fewer default lookup cells/commands; constants and short forms unchanged. Standalone against old source 19664->19156 and E 157312->153248 gives only 2.58%, rejected alone. No bundle is priced against the old padded baseline. Marginal source fixed7/8 23274/32554->22674/31954 (2.58/1.84%), below size admission; execution admission is the route used. Disclosed marginal balanced-area increase35652/57940->36070/59235 (1.17/2.24%); total balanced area still falls from old51986/77672. Written workspace rises 6 bits versus stacked2 at the same program-counter width (2 above old). Default lookup worst S=E=D+8n+19, actual D=digits(2^(T-1)); the old rounded logarithm is retained only as a docstring upper bound. Old source arities1/2/3/5 and E5/6 retained; E1/2/3 added. New exact flat W=T+2n+14+bl(L)+bl(n) from n=5 retains old5 and adds6: tape peak T+n+2, stack n+8, pointer2,digit/halt2,PC and input. Memory is one snapshot component; ASCII input temporaries do not coexist with the maximal table literal. Every protected stack ends with exactly the chosen48/49. Native 14600 variant/judge rows plus 8796 layout/extended rows and 864 written-state runs pass; Wmax5/6=66/100. Wrong encoder/radix mutants fail. Read-time checks require all n input characters before output and preserve following Q. All 8 pins/Size anchors/actual balanced example updated and executed; no new collected language cases."
 
 [ablations.two_input_short_stack_reprice]
+kind = "archive"
 arity = 2
 saving = 15.12
 seed = "random.Random(1847+n), successive getrandbits(1<<n)"
 tables = "200 per fixed n=7/8; all tables/rows through3; named/ignored/layout controls4..16"
 verdict = "retained after stack reuse: the existing four short forms remain byte-identical. At n2 all 16 public sources total 421 vs 496 without them (15.12% smaller). The earlier five-form/668-versus832 figures above are historical; no searched form or new table is added."
 
+[audits]
+trick_prototype = 2026-11-02
+blind_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-29
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 17.3817
 workload = "constructor plus step; no snapshots timed"
 seed = 0
@@ -104,11 +122,12 @@ tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-ste
 verdict = "prototype only: construct immutable named tuples through tuple.__new__. 249 programs, 224 halt cleanly; no structural trace differences, control differs on 249. Step throughput at longest 10/20/40 workload breadths: +18.57%/+17.38%/+17.48%. No production change or global performance conclusion; adoption needs broader validation."
 
 [interpreter_ablations.speedup_adoption_20261103]
+kind = "archive"
 price = 9.0689
 workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: construct immutable named tuples through tuple.__new__. 5197 paired native traces, 4450 clean halts, no differences; changed-site mutant differs on 5189. Complete-run savings 9.07\u201310.31%, including source parsing and output. Only full positional records bypass the wrapper; keyword-defined defaults remain centralized. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+verdict = "kept: construct immutable named tuples through tuple.__new__. 5197 paired native traces, 4450 clean halts, no differences; changed-site mutant differs on 5189. Complete-run savings 9.07–10.31%, including source parsing and output. Only full positional records bypass the wrapper; keyword-defined defaults remain centralized. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
 
 [evidence]
 version = 1

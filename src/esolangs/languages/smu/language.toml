@@ -21,14 +21,18 @@ definitions = ["E = 93T - 80, the macro-expanded program with no constant subtre
 "11111110" = { commands = 164, commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 164, "7" = 164 }, source_units = 119 }
 
 [ablations]
-audited = "2026-10-29"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-29" }
 
 [ablations.constant_fold]
+kind = "archive"
 saving = -5.8
 arity = 12
 verdict = "removed (retirement candidate 33): a constant span no longer folds to a leaf wrapped in one pad per skipped level; constant spans descend the pad chain instead, so a recurring constant subtree is one shared subtree that can be defined as a macro. The folded leaf had no children, so it could never be defined as a macro, and its text was embedded whole at every parent. The audit measured the descent smaller: -8.75% at n=10 and -5.78% at n=12 on random tables, -8.79% on majority at n=12, 0.00% on parity and constant tables. See RETIREMENT-CANDIDATES entry 33"
 
 [ablations.delimiter_macros]
+kind = "archive"
 saving = 40.4
 arity = 12
 seed = 4242
@@ -36,16 +40,19 @@ tables = 20
 verdict = "kept: ``X`` = ``)(``, ``Y`` = ``)n``, ``W`` = ``)m`` each defined only past 4 uses (4 characters), a node ``(aXbY`` 5 characters and a pad ``(aW`` 3 instead of 7 and 4. Executed: all 2**n rows of 20 random tables at n=7,8 and five named functions at n=7, correct; a flipped-row table fails. Measured 2026-10-30, 20 random tables an n (seed 4242 + n) against the generator without them: chars -19.5% / -23.1% / -26.2% / -28.8% at n=7/8/9/12 (deleting them costs +40.4% at n=12) (8,133 -> 6,545; 12,411 -> 9,546; 19,620 -> 14,489; 110,875 -> 78,943 at n=12), balanced area -19.4 / -22.8 / -25.8%. Named functions at n=7 / n=9: parity -8.8 / -10.8%, and -6.4 / -9.2%, or the same, majority -11.2 / -14.9%, threshold-3 -11.3 / -14.0%; the saving is per node, so it grows with n on random tables while the n=3 total over all 256 tables falls 0.5% (32,322 -> 32,174). The 'worst' ledger clause is exact only at n = 3, 5, 9, 10, 11 now (see formulas.py); n = 7 and 12..16 are 'at most' (old constants, exact worst case open)"
 
 [ablations.halves_agree_pad]
+kind = "archive"
 saving = 1.1
 arity = 12
 verdict = "kept: canonical, exempt. A node whose halves agree is a pad of its one half; it is also how an ignored input is absorbed, there being no separate projection step. Deleting the collapse costs +1.29% at n=10 and +1.07% at n=12 on random tables, +2.87 / +0.99% on one-ignored tables"
 
 [ablations.macro_sharing]
+kind = "archive"
 saving = 225.5
 arity = 12
 verdict = "kept: canonical, exempt. A multiply-used subtree is defined once as a macro and named at each use, shortest names to the most-used. Deleting every macro costs +164.46% at n=10 and +225.48% at n=12 on random tables, +8,289.80% on parity at n=12"
 
 [ablations.profitability_test]
+kind = "archive"
 saving = 1.6
 arity = 12
 seed = 4242
@@ -53,19 +60,15 @@ tables = 20
 verdict = "kept: canonical, exempt -- the guard that keeps subtree sharing from lengthening the program (a macro only when (uses-1)*len(text) > (uses+2)*len(name)); without it sharing costs +0.00% at n=3..10, +1.65% at n=11, +1.59% at n=12 (+2.09% by balanced area), +0.54% at n=13, <=0.03% at n=14..16 on random tables (seed 4242, 20 an n; re-measured +1.60% at n=11 on 200 tables, seed 77), majority +1.9% at n=16, and the docstring's never-longer-than-the-plain-tree guarantee would fail"
 
 [ablations.macro_naming_by_use]
+kind = "archive"
 saving = 1.0
 arity = 12
 seed = 4242
 tables = 20
 verdict = "kept: proof machinery, below the size bar. Naming by use fixes which macros take the 47 one-letter names, which makes the n=12..16 worst case an exact closed form (tests/formulas.py _chars, witness _smu_worst); in discovery order the table picks them, and hill-climbing finds 6,717 chars at n=12 against the exact 6,267 with no closed form found (2026-10-30). Size alone fails: re-audit 2026-10-30, 20 random tables an n (seed 4242 + 1000n + i), vs naming in discovery order: 0.00% chars and balanced area at n=7..10, +0.75% (balanced +1.01%) at n=11, +1.01% (+0.47%) at n=12, +0.80 / +0.84 / +0.69 / +0.81% chars at n=13..16; 0.00% on parity, majority, and, or, nand, nor and two thresholds at n=7..12. The earlier +11.5% at n=11 / +9.8% at n=12 did not reproduce. Executed: all 2**n rows of 20 tables each at n=7,8, both builds, correct; a flipped-row table fails"
 
-[audits]
-blind_reimplementation = 2026-10-30
-docstring_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-29
-trick_prototype = 2026-11-02
-
 [ablations.delimiter_digrams]
+kind = "archive"
 arity = 8
 saving = 9.24
 seed = "random.Random(4242+n), successive choice('01')"
@@ -73,6 +76,7 @@ tables = "200 per fixed n=7,8; five named families separately; two-table curves 
 verdict = "rejected: six fixed pairs YX/YY/WX/WY/YW/((, reserved V/U/T/S/R/Q, structural-body-only substitution and recomputed sharing profitability. No definition-boundary substitution, search or old-output minimum. Random chars 65679 -> 62009 and 95191 -> 86395 (5.588%/9.240%); after independently kept terminal spelling 64879 -> 61209 and 94391 -> 85595 (5.657%/9.319%), still failing fixed n=7. Named savings at n=7/8 are at most 1.19%. Two-table curve saves 12.79/15.28/20.75/16.59/18.85% at n=9/10/12/14/16: observed peak at 12, later rebound below it, no global peak or shifted judging range claimed. Added six names, a profitability pass and a second render are not retained."
 
 [ablations.bare_constant_leaf]
+kind = "archive"
 arity = 8
 saving = 4.23
 seed = "random.Random(4242+n), successive choice('01')"
@@ -80,6 +84,7 @@ tables = "same fixed corpus; native constant contract controls at n=1,7"
 verdict = "invalid: raw bare leaves save 5.311%/4.234% at n=7/8 but skip the required pad/read chain. A seven-input constant prints correctly after reading only one byte; a one-input constant loses the existing EOF probe. Both controls execute in five steps with one successful read and no EOF probe, versus the unchanged full-input contract. Correct output does not admit either violation; no bare-leaf production path."
 
 [ablations.fused_node_delimiters]
+kind = "archive"
 arity = 8
 saving = 3.78
 seed = "random.Random(4242+n), successive choice('01')"
@@ -87,6 +92,7 @@ tables = "same fixed corpus; five named families at n=7,8"
 verdict = "rejected independently of the terminal spelling: factor the common node/pad tail into s, omit n/m aliases where Y/W carries their bodies, and retain the existing constant-root spelling where tail factoring loses. Expanded programs remain identical. Chars 65679 -> 62088 and 95191 -> 91591 (5.468%/3.782%); after terminal spelling 64879 -> 61288 and 94391 -> 90791 (5.535%/3.814%). Named maximum AND/OR 11.25%/10.65%, declining toward zero; fixed prelude savings fail the 20% declining bar. Reserving s eventually costs more names: the two-table n=16 sample grows 0.052%. No tail macro, naming state or alternate construction is retained."
 
 [ablations.terminal_leaf_target]
+kind = "archive"
 arity = 8
 saving = 0.84
 seed = "same fixed corpus"
@@ -94,13 +100,26 @@ tables = "all tables/rows n<=3; seeded n=4..6; both constants n=1..12; generic r
 verdict = "kept as minimal terminal spelling, independent of failed fusion: only leaf (())= becomes ()=; skip targets remain nonempty because another program follows. The empty-name store is dead at halt, with both operands explicit. It adds one dead dictionary entry, necessary for the shortest assignment target, and no construction path/helper/cache. Generic component peaks for E=93T-80 are code E, stack E-78 and variables E-75 bytes; W=24E-1214+bl(E)+bl(n), exact scopes 2/4 retained. Constant E=84n+13, W=2688n-1158+8[n=1]+bl(E)+bl(n); the extra eight bits at n=1 honestly count the terminal entry. Native W=1546 at n=1 constants, 4228/9606 at n=2/4 constants, 5805/32592 at n=2/4 parity. Every nonconstant source loses four chars, constants two; sharing choices and all original source/exactness rungs remain unchanged apart from C-4. n=3 corpus 32096 -> 31076, five-input sample 36687 -> 35887. All eight source pins lose four chars; every row-command pin remains executed and unchanged. Three Size anchors and owned example refreshed. Production 2168 paired native row groups preserve outputs, steps, successful reads and the existing single EOF probe; with a following QR the same Q byte is consumed and R remains. Owned helper checks default/width1/balance, terminal-only mutation, all 8n+1 runs, resources and records without adding a collected case. Uniform probes pass 2186 groups plus forced digram and wrong-table 8/8 controls; native curve endpoints complete through n=16 (source 0.30 CPU-s, native 7.12 CPU-s, stopping further extension after the last arity exceeded its estimate)."
 
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 33.6
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: canonical whole-constant spelling. Retain only skip/pad and the chosen answer macros; remove the unused node and opposite leaf definitions. Source is 57+3n chars through n=4, 61+2n thereafter; expanded execution stays identical at 55n+5 commands. Native workspace is 2688n-1094+bl(84n+15)+bl(n), including n=1 where the generic bound is out of scope. n=8 116 -> 77 chars; n=12 124 -> 85. n=3 corpus 32174 -> 32096 chars; five-input sample stays 36687. A last-bit terminal prototype reduced commands by 13 and avoided the next-bit probe, but violated the same-read-count contract across tables and left the exact execution ledger unattained: rejected. Existing single EOF probe retained. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions verify exact resources, read-before-output and one EOF probe. No new collected cases."
 
+[audits]
+blind_reimplementation = 2026-10-30
+docstring_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-29
+trick_prototype = 2026-11-02
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = -0.558
 workload = "constructor plus step; no snapshots timed"
 seed = 0

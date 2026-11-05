@@ -5,7 +5,7 @@ The shape is the ``_GENERATOR`` stub in ``scripts/new_language.py``.
 
 import re
 
-from scripts.evidence import TableWitness
+from scripts.docs.evidence import TableWitness
 from tests.interpreters.spec_sections import section
 
 #: The sections, in the order a docstring gives them; ``Size:`` is required.

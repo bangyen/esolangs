@@ -29,57 +29,62 @@ definitions = ["F = Σ over exit-memory cells of 4 + bl(column), plus deque keys
 folds_without_tree = true
 
 [ablations]
-audited = "2026-10-19"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-19" }
 
 [ablations.run_compression]
+kind = "archive"
 saving = 14.2
 arity = 12
 verdict = "kept: clears on random tables (13.9% at n=10, 14.2% at n=12; chars 12.3% at n=12); share proportional to the entry count; 0.0% on alternating tables, where no run exists"
 
 [ablations.essential_drop]
+kind = "archive"
 saving = 93.8
 arity = 10
 verdict = "kept: canonical, exempt from the bar; saving on its ignored-input class at k=n/2 (48.2% at k=n-1); 0.0% on random tables"
 
 [ablations.constant_skip_chain]
+kind = "archive"
 saving = 99.5
 arity = 12
 verdict = "kept: canonical, exempt; the deque's constant fold, saving on the constant class (66.5% at n=2, rising monotonically)"
 
 [ablations.constant_fold_tree]
+kind = "archive"
 saving = 63.6
 arity = 8
 verdict = "kept: canonical, exempt; saving on the constant-span class, flat painter (52.6% stacked); 28.7% on random tables"
 
 [ablations.stacked_subtree_sharing]
+kind = "archive"
 saving = 46.4
 arity = 10
 verdict = "kept: canonical, exempt; saving on the mosaic class (33.3% at n=9); negative on random tables, where the race's both-metrics test rejects the shared build"
 
 [ablations.deque_pairs]
+kind = "archive"
 saving = 39.6
 arity = 12
 verdict = "kept: clears on random tables (seed 4242: 21.6% at n=7, 28.0% at n=8, 32.1% at n=9, 35.8% at n=10, 37.8% at n=11, 39.6% at n=12) and on named functions (n=7/8/9/10 parity 20.8/26.9/30.7/34.2%, and/or 24.1/31.8/36.8/41.4%, majority 22.5/29.6/34.1/38.4%, threshold 3 22.9/30.5/35.7/40.5%); the share rises with n, rails and `[ >` falling from T/2 to sqrt(T) deques; balanced area unchanged (the default never wins)"
 
 [ablations.banded_balance]
+kind = "archive"
 saving = 79.3
 arity = 10
 verdict = "kept: balanced area on seed 4242 (25 tables an n, random plus parity/and/or/majority/nor; 9 at n=11/12) falls 27.8% at n=7, 54.1% at n=8, 70.2% at n=9, 79.3% at n=10, 62.0% at n=11, 64.8% at n=12, no table grows at n=1..12 and n<=6 is unchanged; area per table row stays ~1.3-1.7k from n=7 to n=12 where the flat tree's grows from 2.2k to 53k, its leaf row (4.6 columns a leaf) having set the width. Default build byte-identical"
 
-[audits]
-trick_prototype = 2026-11-02
-blind_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-22
-
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 0.0
 seed = "both constant values; witnesses(n) at n=4..6"
 tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
 verdict = "retained: the existing constant path has no deque or selector. It reads 8(n-1)+1 low-bit-first nodes, consuming each whole input byte before setting and printing the literal byte. Default source 32n+29 chars; n=8 285 chars and 70 commands, n=12 413 and 102. No new construction accepted; the n=3 corpus remains 91806 chars and 110958 cells; all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 are byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts within their resource bounds."
 
-
 [ablations.free_merge_preload_prototype]
+kind = "archive"
 saving = 7.8447
 arity = 8
 seed = "random.Random(4242), restarted at each arity; sequential choice('01')"
@@ -87,6 +92,7 @@ tables = "200 fixed generic tables each n=7/8; all276 small tables/allrows,10 sa
 verdict = "rejected 2026-11-02: raw DP has Theta(T*2^deep) states across the deques (Theta(T^(3/2)) at current depth), violating O(T)/no-search. Executable linear refinement drains both current-bit runs, then toggles, preserving each end's order and carrying R across cursor steps. Actual grid_area579640 ->539728 /1028568 ->947880 at fixed7/8 (6.8857/7.8447%), below10%. Parity and negation each3070 ->2774 /5486 ->4894 (9.6417/10.7911%), so fixed7 fails; majority3.5529/3.4203%, and/or0%, thresholds2/3 below2.5%. Stronger depth1 repair makes its first even push prepend (equivalent on the empty deque), permitting free pair merge; simply swapping the original two top pushes is invalid. Stronger exhaustive n3 cells110958 ->109166, chars91806 ->90910, commands95648 ->93856 (1.8735%), no larger table or slower row, below5%. The exact new worst-command bound is3T/2+2D+K+9n+3 versus old2T+2D+K+9n+1 (D=2^(n-k),K=2^k), attained by derived all-essential witnesses. Reduction(T/2-2)/old is strictly below25% at every finite n (17.6136/19.9052% at7/8), limit25% from below, so no25% alternative. Guarded original-depth variant and all larger selected layouts execute9600 rows with2372 full deque snapshots before first pop equal to baseline; stronger repair4240 rows/2092 snapshots pass. No production merge/search/state added."
 
 [ablations.shared_answer_tail_prototype]
+kind = "archive"
 saving = 0.0
 arity = 8
 seed = "random.Random(4242), restarted per arity"
@@ -94,13 +100,25 @@ tables = "200 generic source tables each7/8; exhaustive allsmall and ignored-tra
 verdict = "not shipped 2026-11-02: identical _ANSWER continuation is eligible for canonical repeated-tail sharing, but the actual two-row canvas loses no area or characters: fixed200 totals579640/1028568 cells and first20 totals36632/60568 chars remain ties. Removed upper answer nodes become leading blanks because the lower answer fixes width. A valid join must use top-left corner┌ (raw westbound┐ cannot be entered), and must retain trailing ignored reads BEFORE each pop; moving reads after it overwrites the answer register (native0011,row01 returns1 instead of0). Repaired shared tail executes all small/ignored controls and leaves node commands unchanged. Native W on existing worst controls rises1237 ->1256 /2040 ->2059 /3445 ->3464 at3/4/5 (+19bits) due the join/lower-row path. No measured source/execution benefit justifies a new path and larger written state, so retain the current layout; this is not a percentage rejection of canonical sharing. Generator/proofs/pins unchanged."
 
 [ablations.command_metric_depth_prototype]
+kind = "archive"
 saving = 0.0
 arity = 8
 seed = "random.Random(4242), restarted per arity; sequential choice('01')"
 tables = "200 fixed generic tables each7/8; forced depths at3/4/6/7/8 and allsmall selected-layout executions"
 verdict = "rejected 2026-11-02: standalone three-depth area race changes nothing (0%,579640/1028568 cells). Depth-dependent area is16*2^(m-k)+12*2^k; existing ceil(m/2) already minimises it for unchanged preload order. After the unadmitted merge, combined area539728/947792 versus539728/947880 (0%/0.0093% marginal), so it cannot hitchhike. Ten forced alternative-depth programs change and all60 boundary-row executions pass; pop exponents are nonnegative for1<=k<=m. Input read order and output controls pass. Command worst variable2*2^(m-k)+2^k is also minimised by existing depth (even m has a tie); no25% bound reduction. At n3 a depth change can save at most one command per row against at least30 read/answer nodes, so no5% execution route even before enforcing no source growth. No production depth race/candidate/fallback state added."
 
+[audits]
+trick_prototype = 2026-11-02
+blind_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-22
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 1.2735
 workload = "constructor plus step; no snapshots timed"
 seed = 0

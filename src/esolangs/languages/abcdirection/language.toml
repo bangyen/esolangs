@@ -24,39 +24,24 @@ definitions = ["d = (n + 3) mod 5, the rows the read block drops"]
 folding_constant_local = "_layout"  # no essential input: one table cell, no select gadget
 
 [ablations]
-audited = "2026-10-19"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-19" }
 
 [ablations.essential_projection]
+kind = "archive"
 saving = 46.9
 arity = 10
 verdict = "kept: canonical, exempt; projecting the table onto its essential inputs earns 35.7% with one ignored input at n=8 and 46.9% at n=10 (position-independent: lead, mid and trailing totals identical), 65.7% / 87.5% with half the inputs ignored, 51.3% / 70.4% with two scattered, and 78.6% / 92.4% on constants, which collapse to one cell through it; 0.0% on random tables, where it has nothing to act on"
 
 [ablations.split_runs]
+kind = "archive"
 saving = 85.7
 arity = 10
 verdict = "kept: balanced area on seed 4242 (25 tables an n, random plus parity/and/or/majority/nor) falls 3.5% at n=5, 62.3% at n=8, 85.7% at n=10, 96.7% at n=12, no table grows at n=1..12; uncut, the first gadget's T/2 run set the floor width and area grew as T^2/4. Default build byte-identical. Cap 2*sqrt(T): sqrt(T) grew n=3..5 by up to 20%"
 
-[interpreter_ablations]
-audited = "2026-10-18"
-benchmark = "interp-audit-2026-10-18/tracediff-n3"
-
-[interpreter_ablations.repeat_key]
-price = 8.1
-workload = "traced"
-verdict = "candidate: real but under the bar; carries the write-bump invariant the cycle detector depends on"
-
-[interpreter_ablations.view_cache]
-price = 59.4
-workload = "traced"
-verdict = "kept: snapshot per step is O(1) once the table is written"
-
-[audits]
-trick_prototype = 2026-11-02
-blind_reimplementation = 2026-10-30
-docstring_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-28
-
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 37.3
 seed = "both constant values"
@@ -64,26 +49,53 @@ tables = "both constants n=1..12; every table and row n<=3; six structured/rando
 verdict = "kept for wholly constant tables: two input bits per tooth, with no enqueue, in both flat and helix layouts. Unlike general tooth packing, the read block is the scaling term for constants: area saving is 33.5% at n=7 (805 -> 535 cells), 37.3% at n=8 (885 -> 555), and 39.0% at n=12 (1205 -> 735); both constant values share these sizes. Meets the 20% declining gate at the same n=7/8 arities; no arity cap. Nonconstant packing stays retired. Default, width=1 and balanced constants n=1..12 execute; sentinel regressions check complete input bytes and read-before-output at n=1,3,7,8,12. All 270 nonconstant programs through n=3 are byte-identical; n=3 totals 159344 -> 159084 chars and 158320 -> 158060 cells. Existing worst-case formula witnesses and benchmark pins remain unchanged."
 
 [ablations.trick_prototype_20261102_pair_discarded_reads]
+kind = "archive"
 arity = 3
 saving = 13.6767
 verdict = "kept by execution gate: pair consecutive reads only when the first is discarded, so every enqueued bit is last in its tooth. Across every row of every three-input table, commands1040016->897776 (13.68%), no slower row or larger table; n=3 area158060->132660 cells, source159084->133684 chars. Twenty Random(184700+n) tables per fixed n=7/8: area34800->29200 (16.09%) and52635->46635 (11.40%); declining size alone fails20%, no artificial cap. Constants remain byte-identical. The narrower proposed junk-only variant also executes but commands937888 (9.82%), area savings11.49%/8.36%; the uniform stronger pair rule removes more teeth, without a candidate race. Nonconstant reads use4n+1 teeth; seven fixed commands per tooth. Update exact AND worst bounds with d=(n+3)mod5: cells10T+45n+50+10ceil(d/3)+5max(0,8n+35-T), commands5T+69n+157+d+6ceil(d/3)+max(0,8n+35-T). AND row0 attains both through n=13. Old workspace cap remains safe. Owned IO checks preserve whole bytes, read-first output and following byte. Keep two named balance widths: the analytic width now also fits one complete read lap and two largest band atoms. Without those packing floors n=7/8 hit width cliffs. With them, exhaustive balanced n=3 area234776->166368, twenty seeded n=7 47808->40608 and n=8 70520->60480, no larger table or worse side; every small row and four judged rows per table execute. Extend the swept-width oracle through n=8."
 
 [ablations.trick_prototype_20261102_four_row_band]
+kind = "archive"
 arity = 8
 saving = 0.0
 verdict = "rejected as supplied: lowering height5->4, write4->3 and base3->2 produces actual layout collisions on constants00, projection01, XOR0110 and majority00010111; unchanged baseline executes every row. Isolated two-read tooth draws on five rows but collides A/A at(17,1) on four: the proposed unchanged constant tooth does not fit. Replacing the select arrival path and keeping a separate constant layout would require a new complete emitter; no valid four-row construction is established here, and no universal impossibility is claimed. Invariants remain enforced."
 
 [ablations.trick_prototype_20261102_folded_runs_with_split_write]
+kind = "archive"
 arity = 8
 saving = 0.0
 verdict = "not retained: the proposal admits it has no full mechanism for shortening the CD write chain. Price its concrete band/print relocation component optimistically by removing the entire band at zero cost, keeping measured write/read paths: on20 seeded tables n=7 area34800->32085 at best(7.80%), n=8 52635->52635(0%). All20 n=7 cases fire, a positive control for n=8 zero effect. Baseline programs execute four rows per table. The write chain already determines n=8 width. This is a bound on band-only savings, not a proof against a future complete write packing construction; no guessed layout ships."
 
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
+
+[interpreter_ablations.repeat_key]
+kind = "archive"
+price = 8.1
+workload = "traced"
+verdict = "candidate: real but under the bar; carries the write-bump invariant the cycle detector depends on"
+
+[interpreter_ablations.view_cache]
+kind = "archive"
+price = 59.4
+workload = "traced"
+verdict = "kept: snapshot per step is O(1) once the table is written"
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = -1.1765
 workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "all n<=3 generated tables/rows where supported, examples and 300 seeded mutations; 400-step cap"
 verdict = "prototype only: bit mask heading wrap. 2493 programs, 269 halt cleanly; no structural trace differences, control differs on 2193. Step throughput at longest 10/20/40 workload breadths: +0.06%/+0.05%/-1.18%. No production change or global performance conclusion; adoption needs broader validation."
+
+[audits]
+trick_prototype = 2026-11-02
+blind_reimplementation = 2026-10-30
+docstring_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-28
 
 [evidence]
 version = 1

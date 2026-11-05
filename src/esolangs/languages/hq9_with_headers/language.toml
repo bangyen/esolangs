@@ -27,14 +27,12 @@ folds_without_tree = true
 "11111110" = { commands = 20, commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 21, "5" = 21, "6" = 21, "7" = 20 }, source_units = 333 }
 
 [ablations]
-audited = "2026-10-29"
-
-[audits]
-trick_prototype = 2026-11-01
-blind_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-29
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-29" }
 
 [ablations.direct_constant_output_round_two]
+kind = "archive"
 saving = 57.5472
 arity = 8
 source = "https://esolangs.org/w/index.php?title=HQ9%2B_with_headers&oldid=129344#Examples"
@@ -43,13 +41,25 @@ tables = "all n<=3; 20 random plus parity/majority/and/or/zero/one per n=4..8"
 verdict = "kept: canonical constant folding. Replace the read arithmetic by one read and the parity lookup by direct output, using the wiki examples' explicit p() STARTUP. At n=8, zero 347 -> 180 characters and one 424 -> 180; commands n+2 instead of up to 4n+9. Nonconstant programs and existing size/command pins stay byte-identical. n=3 totals 85138 -> 84802 characters, 41984 -> 41736 commands; no table slower. 7530 baseline/raced/raw output checks pass, exhaustive n<=3 and sampled n=4..8, including constant tables; 406 independently generated wrong-table controls reject the original answer. All inputs remain consumed, with a sentinel regression. At n=8 one, sampled worst commands 41 -> 10 and written-state peak 783 -> 10 bits; zero peak 274 -> 10. Nonconstant programs retain the exact worst execution/workspace bounds"
 
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 0.0
 seed = "both constant values; witnesses(n) at n=4..6"
 tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
 verdict = "retained: the existing constant header keeps only one numeric read per input and a literal print, with the required flow, semantics, startup and checksum sections. At n=8 both bits remain 180 chars; n=12 195; exactly n+2 commands. No new construction accepted. All 276 default programs through n=3 stay byte-identical; n=3 corpus 84802 chars. All eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions. All 270 nonconstant programs per language through n=3 remain byte-identical; Bitdeque and Forbin also retain all 540 nonconstant narrow/balanced programs each. All 24 old balanced constant scores per changed language improve or match. Both constants n=1..12 execute in default, width=1 and balanced layouts; owned regressions cover complete input consumption and resource bounds, with sentinel preservation for stream readers."
 
+[audits]
+trick_prototype = 2026-11-01
+blind_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-29
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 3.1646
 workload = "constructor plus step; no snapshots timed"
 seed = 0
@@ -57,11 +67,12 @@ tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-ste
 verdict = "prototype only: direct frozen record reconstruction. 245 programs, 145 halt cleanly; no structural trace differences, control differs on 121. Step throughput at longest 10/20/40 workload breadths: +3.67%/+3.16%/+4.73%. No production change or global performance conclusion; adoption needs broader validation."
 
 [interpreter_ablations.speedup_adoption_20261103]
+kind = "archive"
 price = 2.4029
 workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: direct frozen record reconstruction. 5193 paired native traces, 2193 clean halts, no differences; changed-site mutant differs on 2153. Complete-run savings 2.40\u20133.28%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+verdict = "kept: direct frozen record reconstruction. 5193 paired native traces, 2193 clean halts, no differences; changed-site mutant differs on 2153. Complete-run savings 2.40–3.28%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
 
 [evidence]
 version = 1

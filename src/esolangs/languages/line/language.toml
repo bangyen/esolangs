@@ -29,57 +29,47 @@ evidence = "docs/proofs/line-sharing.md"
 
 
 [ablations]
-audited = "2026-10-19"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-19" }
 
 [ablations.small_tree_layout]
+kind = "archive"
 saving = 51.3
 arity = 5
 verdict = "kept: clears at its n<=5 cap on random tables (55.3% at n=4)"
 
 [ablations.level_skip]
+kind = "archive"
 saving = -19.9
 arity = 10
 verdict = "removed at n>=6 (retirement candidate #3, executed 2026-10-20): kept through n<=5, where it earns 20.0-35.1% through the small-tree layout; from n=6 the tested tree replaces it (-12.2% at n=6, -17.9% at n=8, -19.9% at n=10 on random tables); its command saving was a fixed ~1.45/row, 4.9% at n=6 declining to 2.9% at n=10, under the execution bar, and the worst row is 5n with or without it"
 
 [ablations.projected_loader]
+kind = "archive"
 saving = 30.7
 arity = 10
 verdict = "kept: canonical, exempt; saving on its core class (28.8% at n=7), 37.3% on constant tables at n=10, 3.9% on the one-ignored-input corpus at n=10 and declining there"
 
 [ablations.streaming_fold]
+kind = "archive"
 saving = 99.1
 arity = 12
 verdict = "kept: clears on its named-function class (parity at n=12; 58.8-99.1% across parity/and/or/majority/threshold2 at n=12, growing with n); 0.0% on random tables at n>=8"
 
 [ablations.residual_sharing]
+kind = "archive"
 saving = 9.9
 arity = 12
 verdict = "kept: canonical, exempt; no independent price -- _residual_ids merging is the tree's state graph, the skip's agreement test and the folds' join structure at once, so the figure is the joint de-merged measure on tiled tables (6.9% at n=8; 0.2-3.9% on random tables at n>=6)"
 
 [ablations.balance]
+kind = "archive"
 saving = 0.0
 verdict = "kept: feasibility -- the balance entry point chooses orientation for squareness; no default-path effect"
 
-[interpreter_ablations]
-audited = "2026-10-18"
-benchmark = "interp-audit-2026-10-18/tracediff-n3"
-
-[interpreter_ablations.grey_rows_cache]
-price = 119.3
-workload = "run"
-verdict = "kept: id-keyed row/pixel caches; documented ~4x was one n=8 case, corpus says 2.2x"
-
-[interpreter_ablations.compiled_cache]
-price = 94.8
-workload = "run"
-verdict = "kept"
-
-[audits]
-blind_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-22
-trick_prototype = 2026-11-02
-
 [ablations.tree_orientation_prototype]
+kind = "archive"
 saving = 4.6552
 arity = 8
 seed = "random.Random(1847+n)"
@@ -87,12 +77,13 @@ tables = "20 random plus parity/majority/and/or per n=7,8; representative n=3 ex
 verdict = "Not shipped: reversed test order saves 19.88% at n=7 but 4.66% at n=8 on 20 random tables; explicit level skipping saves 6.12% then 0.00%. Neither saves on parity/majority/and/or at either arity. Each passes 70 output checks, with actual rendered pixels measured at unit=20. Declining savings fail the 20% bar; no execution-saving claim."
 
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 12
 tables = "both constants at n=1..12"
 verdict = "No new optimization: the existing projected loader reads all inputs, moves to a fresh zeroed cell and prints the constant. Printing first would save area but violates the read-before-output contract, so that prototype is withdrawn. At n=8 zero/one area remains 97600/132000 pixels at unit=20; at n=12, 136000/180000. PNG and sentinel regressions cover the retained read-first path."
 
-
 [ablations.terminal_level_collapse]
+kind = "archive"
 saving = -100.6481
 arity = 8
 seed = "random.Random(1847+n), successive getrandbits(2**n)"
@@ -100,6 +91,7 @@ tables = "200 random per n=7,8; native random/and/or/parity/majority n=4..8"
 verdict = "Rejected: bottom identity/constant residuals become one-stem leaves. Emitted unit-20 area grows 13.7086% at n=7 (2596315200→2952234000 pixels), 100.6481% at n=8 (3227955200→6476830000). Collapsing terminal tests expands the measured extents. Native PNGs pass, but n=8 still reaches 40 commands and a fresh cell 8. No source retained."
 
 [ablations.default_path_compact_race]
+kind = "archive"
 saving = 4.4852
 arity = 8
 seed = "random.Random(1847+n), successive getrandbits(2**n)"
@@ -107,6 +99,7 @@ tables = "200 random per n=7,8; native random/and/or/parity/majority n=4..8"
 verdict = "Rejected: tree_extents already defaults compact=True,tight=True, matching rendering. The four forward/reverse, tested/skipped candidates save 23.4264% at n=7 (2596315200→1988090800 pixels), 4.4852% at n=8 (3227955200→3083176400): below both size bars at n=8. Named controls tie existing folds. Native PNGs pass; no source retained."
 
 [ablations.inline_level_reads]
+kind = "archive"
 saving = -48.5328
 arity = 8
 seed = "random.Random(1847+n), successive getrandbits(2**n)"
@@ -114,14 +107,38 @@ tables = "200 random per n=7,8, three per n=9,10; native small tables and random
 verdict = "Kept by the 25% proved-command-bound route: projected inline reads replace both large fallback trees. Small n<=5 and legacy balanced layouts are unchanged; balance also admits a better default raster. The default bound falls 5n→3n+4 for n>=6 (26.7% at n=6, tending to 40%); the inline tree alone uses 3n+2. Emitted unit-20 random area n=7 2596315200→2377265600 pixels (8.4369% smaller), n=8 3227955200→4794571200 (48.5328% larger). Three-table follow-ups cost 21.90% area at n=9 and 54.86% at n=10; four native rows pass per first table. Generic n=8 native maximum 40→26 commands; parity reaches 27 under the 28 bound. Old projected tail-ignored trees reach 38, so they are replaced, not raced. All reads precede output in physical order; workspace coefficients are unchanged. Balanced feasibility layouts retain 5n: OR n=8 keeps its 900×1880 layout rather than the default 260×5200."
 
 [ablations.proof_ceiling_review_20261103]
+kind = "archive"
 verdict = "reviewed: globally consistent gaps give a source ceiling of 6,283,200/12,756,800 pixels at n=6/7 (unit 20). Independent leaf choices and a potentially smaller complete fold prevent an attainment claim. Scaling stays linear in T; all source arities and the at-most flag remain. All 768 rows of eight rendered/extracted programs pass."
 
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
+
+[interpreter_ablations.grey_rows_cache]
+kind = "archive"
+price = 119.3
+workload = "run"
+verdict = "kept: id-keyed row/pixel caches; documented ~4x was one n=8 case, corpus says 2.2x"
+
+[interpreter_ablations.compiled_cache]
+kind = "archive"
+price = 94.8
+workload = "run"
+verdict = "kept"
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = -16.8671
 workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap"
 verdict = "prototype only: slotted machine storage. 244 programs, 144 halt cleanly; no structural trace differences, control differs on 144. Step throughput at longest 10/20/40 workload breadths: -0.11%/+0.16%/-16.87%. No production change or global performance conclusion; adoption needs broader validation."
+
+[audits]
+blind_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-22
+trick_prototype = 2026-11-02
 
 [evidence]
 version = 1

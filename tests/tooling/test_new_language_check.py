@@ -135,7 +135,7 @@ def test_quick_tests_spell_ids_as_pytest_does() -> None:
 def test_bounds_flags_a_stale_size_anchor(monkeypatch: pytest.MonkeyPatch) -> None:
     """Positive control: an anchor one char off is named with the real size."""
     name = first(boolean_generator=True, parameterized=False, answer_mode="output")
-    import evidence
+    from docs import evidence
 
     size = len(str(esolangs.generate(name, "0110")))
     anchor = dataclasses.replace(

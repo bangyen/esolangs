@@ -20,15 +20,12 @@ qualification = "the diagram branches on every essential input with DEC; an equa
 "11111110" = { commands = 23, commands_by_row = { "0" = 24, "1" = 24, "2" = 24, "3" = 24, "4" = 25, "5" = 25, "6" = 26, "7" = 23 }, source_units = 299 }
 
 [ablations]
-audited = "2026-10-29"
-
-[audits]
-trick_prototype = 2026-11-01
-blind_reimplementation = 2026-10-30
-docstring_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-29
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-29" }
 
 [ablations.reverse_diagram_round_two]
+kind = "archive"
 saving = 0.8215
 arity = 8
 seed = "random.Random(2847+n)"
@@ -36,13 +33,26 @@ tables = "all n<=3; 20 random plus named per n=4..8"
 verdict = "Reverse decision-test order after reading registers in input order, with the projected truth table permuted to match. Random n=7: 19139 -> 18991 characters (0.77%); n=8: 30189 -> 29941 (0.82%). Named parity/majority/and/or unchanged. n=3: 77051 -> 76093 characters; 48656 -> 48400 commands, ten tables slower. Neither shipping gate passes. Not shipped. 7440 correct baseline/raced/raw output checks, exhaustive tables n<=3 and sampled rows of 20 random plus parity/majority/and/or per n=4..8; 396 independently generated complemented-program controls rejected. 113 raced programs change."
 
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 9.6
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: canonical fixed-output spelling. Read every input into r1, leave fresh answer r2 at zero, optionally increment it, then print. The unused clear disappears without dropping its required operands elsewhere. Exactly 9n+8+9b chars and n+1+b commands, b the answer. Written bits at most 15+max(2,bl(n+b))+bl(2n-1), attained by a row containing a one; all-zero zero-answer runs leave the register component read-only. n=8 zero/one 89/98 -> 80/89 chars; n=12 125/134 -> 116/125. n=3 corpus 77051 -> 77033 chars. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts; CARP owned checks reach its n=14 cap. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources, every read before output and an unread following record. Existing tests expanded without new cases."
 
+[audits]
+trick_prototype = 2026-11-01
+blind_reimplementation = 2026-10-30
+docstring_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-29
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 0.0153
 workload = "constructor plus step; no snapshots timed"
 seed = 0

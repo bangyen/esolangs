@@ -23,29 +23,36 @@ definitions = ["W = bl(n)+6n+2b+1 constant, bl(n)+5n+6+2b(S+2n+2) expression, bl
 "11111110" = { commands = 27, commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27, "4" = 27, "5" = 27, "6" = 27, "7" = 27 }, source_units = 27 }
 
 [ablations]
-audited = "2026-10-19"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-19" }
 
 [ablations.subtree_sharing]
+kind = "archive"
 saving = 55.8
 arity = 12
 verdict = "kept: canonical, exempt. A repeated half is stored once in a variable and fetched as x; wherever it repeats, under a gain test (k uses save k * len(text) against len(text) + 4; 26 variables, deepest first). Removing the stores costs 43.0% at n=8 rising to 53.5% at n=10 and 55.8% at n=12 on random tables, 96.8% / 99.0% on parity at n=10/12, 91.1% / 96.4% on majority"
 
 [ablations.halves_agree_fold]
+kind = "archive"
 saving = 1.9
 arity = 12
 verdict = "kept: canonical family, exempt. A node whose halves agree drops its bit with ^% and runs the half bare. 2.5% at n=8 declining to 1.9% at n=12 on random tables, 3.0% / 1.9% with one ignored input; 0.0% on parity, AND, OR and majority, whose agreeing tests sit over constant spans the tree already folds to leaves"
 
 [ablations.root_drain]
+kind = "archive"
 saving = 46.2
 arity = 12
 verdict = "kept: a leaf reached from the root through folds only reads the remaining inputs with bare ^ before printing instead of ^%, so a constant table costs n+2 instead of 2n+2 (44.4% / 45.5% / 46.2% at n=8/10/12, two constant tables). 0.00% on every other corpus: the drain fires only when a root fold chain ends at a leaf, i.e. constant tables"
 
 [ablations.expression_form]
+kind = "archive"
 saving = 30.4
 arity = 12
 verdict = "kept, landed 2026-10-21: a second build raced per table against the diagram -- the essential inputs are stored, the rest drained, and a Boolean formula built by memoized Shannon decomposition is evaluated whole and printed masked to the bit (1&.). Removing it costs 33.3% / 33.4% at n=10 and 30.4% / 30.4% at n=12 on random tables (seeds 184700 / 777000), 35.8% / 31.8% on structured+named; every random table wins at both arities and no table grows. Priced from the superoptimizer pilot's FALSE review: the miner's finds were hypotheses until this construction priced them"
 
 [ablations.expression_complement]
+kind = "archive"
 saving = 18.6
 arity = 10
 seed = "random.Random(1000 * n + i).getrandbits(1 << n), i < 20; named parity, majority, and, or, nand, nor, thresholds >= 2, 3, n-1 and their negations"
@@ -53,6 +60,7 @@ tables = 20
 verdict = "kept for the negated-threshold family (named-function rule): the formula is built for the complement and closed with ~, whose low bit is the complement's. NAND/NOR 18.1 / 18.3 / 18.5 / 18.6% fewer chars at n=7/8/9/10 (n=8 82 -> 67; balanced area 0.0 / 26.5 / 13.8 / 12.9%), negated >=2 and >=n-1 thresholds 22.4 / 23.7 / 24.7 / 23.5% (n=8 241 -> 184; area 19.0 / 17.4 / 22.6 / 21.0%); parity, majority, AND, OR, >=2, >=3 and their other negations unchanged. Random tables: 0.41% / 0.41% chars, 0.39% / 0.29% area at n=7/8 (6115 -> 6090, 11195 -> 11149), 4 / 7 of 20 tables win -- under the bar there"
 
 [ablations.expression_xor_collapse]
+kind = "archive"
 saving = 13.3
 arity = 8
 seed = "random.Random(1000 * n + i).getrandbits(1 << n), i < 20; named as expression_complement"
@@ -60,17 +68,15 @@ tables = 20
 verdict = "kept: complementary halves collapse to a sum's parity (+b&, 5 chars) instead of a mux. 13.7% / 13.3% chars (11.8% / 12.7% area) at n=7/8 on random tables; parity 65.7 / 66.1 / 66.4 / 66.7% at n=7/8/9/10 (70 vs 204 at n=7)"
 
 [ablations.low_bit_complemented_leaves]
+kind = "archive"
 saving = 3.158
 arity = 11
 seed = 1847
 tables = "all n=1..3; four random n=4..6; 20 random n=7,8; four n=9; two n=10,11; parity/majority/and/or/threshold-3 n=7..10"
 verdict = "rejected: a negated formula leaf uses x;~ (3 chars) instead of 1x;- (4); all combines preserve the low bit and the final 1& normalizes. Upside one character per negated literal. Random emitted characters: n=7 6,372 -> 6,189 (2.872%), n=8 11,968 -> 11,612 (2.975%), n=9 4,495 -> 4,350 (3.226%), n=10 4,472 -> 4,338 (2.996%), n=11 9,026 -> 8,741 (3.158%); under 10%. Balanced area (balance_score squared) saves 0.367% / 2.815% / 1.031% / 4.358% / 3.098%, also under the bar. Named functions unchanged in text and area at n=7..10. Executed both builds on all 2,568 rows of 288 tables through n=6, and four rows per larger measured table: exact output, all inputs consumed, no EOF reads, bounded steps. n=3 total 7,995 -> 7,841 chars. Positive control 0010: 20 -> 19 chars, ^1&a:^1&b:1b;-a;&1&. -> ^1&a:^1&b:b;~a;&1&.; deleting ~ fails output. No generator change"
 
-[audits]
-trick_prototype = 2026-11-02
-plain_rewrite = 2026-10-28
-
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 0.0
 seed = 0
@@ -78,13 +84,15 @@ tables = "both constants, n=1..12"
 verdict = "retained: already canonical read-then-literal paths. Bare ^ reads retain each ASCII bit, then a numeric literal and dot print the answer. Chars and commands n+2: n=7 9, n=8 10 with 61 written bits, n=12 14. Removing the literal prints ASCII codes 49 or 48 on the opposite-valued witnesses, not the requested digit. Native read-first controls pass. n=3 corpus chars 7995 unchanged. These controls reject the stripped candidates, not every possible construction. 1120 native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores and eight benchmark size/command pins unchanged. Global resource caps unchanged. Extend existing raw IO/template cases to verify exact reads, following records and no EOF probe without adding cases."
 
 [ablations.literal_lookup_build_trick_20261102]
-saving = 53.7350
+kind = "archive"
+saving = 53.735
 arity = 8
 seed = "random.Random(1000*n+s).getrandbits(1<<n)"
 tables = "20 fixed random per n=7/8; all tables/rows n=1..3; five random plus ignored-middle n=4..6; named n=7/8; one fixed random per n=9..14"
 verdict = "kept 2026-11-02: one added direct 32-bit packet lookup candidate, no search/frozen table or copied old generator. Fixed 7/8 source versus the stronger conditional-mux/shared-formula route5061->2859 (43.51%) and9154->4235 (53.74%); versus original6322/11669,54.78%/63.71%. Both clear even20%; no200 escalation. Full 15360 paired stronger-baseline/lookup row executions pass. Their command totals288892->237152 and813352->560192. New state is the packet list, standard subtree IDs and one append-only output buffer; IDs are necessary to drop equal selector halves without quadratic span scans. No uniform-span table or recursive ancestor-text cache remains; constant roots skip the unused stored-input builds. Existing diagram/formula candidates protect constants, alphabet failure and structured source classes: parity n=8/n=10 is80/100 chars versus packet216/622. Stored-input routes stop only at the real 26-letter limit. The emitted marginal curve grows60.28/63.44/67.25/67.52/67.69/68.23% at n=9..14; conservative uniform-table whole-route grammar bounds give a 17.40% positive bulk floor and at least 14.69% mean saving at each n=14..26, without giant builds. This is a lower bound, not an exact measured peak; outside the alphabet domain the existing diagram remains. Pointwise packet upper17T/32+5n+44 from five essential inputs, with separately aligned shorter packets. Generic row0 written bits rise40->75 at n=7 and46->75 at n=8. Final warm three-build median old/public seconds n=8 .14890/.06519, n=10 1.04786/.46583, n=12 3.75867/1.76663 after eager-text removal. These pilots describe this corpus, not a universal timing guarantee."
 
 [ablations.conditional_mux_trick_20261102]
+kind = "archive"
 saving = 11.3164
 arity = 3
 seed = "exhaustive n=3; random.Random(1000*n+s).getrandbits(1<<n) at fixed7/8"
@@ -92,6 +100,7 @@ tables = "all 256 three-input tables and 2048 rows;20 fixed random per n=7/8; al
 verdict = "kept by execution admission2026-11-02: replaces the existing ten-character parity mux with six-character A x;[%B]?; adds no candidate or persistent state. The superseded mux spelling is removed. Against the final literal+canonical-sharing baseline without this replacement, exhaustive n=3 source7995->7523 and commands63960->56722 (11.32%); zero larger tables and zero slower rows. Literal alone wins no n=3 table, so this marginal does not inherit packet savings. Inside packet lookup the same conditional selects full integers, not merely low bits. Generic marginal source after packet admission is0% at fixed7/8; the separate exhaustive execution gate admits it. False flags retain A, true flags drop A and evaluate B; lambda nesting and read-before-output controls pass. Existing source and command numeric caps/scopes remain unchanged."
 
 [ablations.formula_subtree_sharing_trick_20261102]
+kind = "archive"
 saving = 0.0
 arity = 8
 seed = "random.Random(1000*n+s).getrandbits(1<<n); named thresholds"
@@ -99,12 +108,23 @@ tables = "20 fixed random per n=7/8; all small/sample4..6; threshold2/3/majority
 verdict = "kept as canonical repeated-subtree sharing2026-11-02: CONTRIBUTING explicitly lists repeated subtrees and limitations Sharing repeated subtables applies the canonical piece. Keys are exact chosen truth residuals plus ordered remaining positions, not arbitrary text or a reordered family. Original-formula generic source6322/11669 is unchanged at fixed7/8; named n=8 >=3 source310->254 and majority338->298 before the new mux/packet changes provide firing controls. Added state is the chosen DAG, free-name map and current expanded source counts; these are needed to charge actual reused bodies after earlier extraction. A second fixed root-multiplicity map supplies constant-time runtime increments. Each admitted store must save source and stay within the inherited execution cap; rejected trials are O(1), at most 26 stores reprice the DAG. Removed the eager text cache and all-alternative materialization; no old/unshared-expression fallback candidate remains. Definitions are stored deepest first after all inputs, and free names exclude input variables. Bare a/b reference constants are unaffected by assigned values. New formula workspace accounts for nested conditional plus call frames; old W arities remain3/4/5/6/8/9."
 
 [ablations.literal_wrapping_correctness_20261102]
+kind = "archive"
 arity = 5
 seed = 0
 tables = "forced signed 32-bit packets default/balanced/width1; default and balanced 4384 WrittenState rows"
 verdict = "correctness repair2026-11-02: the existing shared FALSE token regex now preserves decimal runs as well as quoted single characters. The old character-only pattern split18290559 into 18/newline290559 on n=5 threshold>=3,row31, printing0 instead of1. One existing wrapper path is amended; no new wrapper, fallback or interpreter leniency is added. Multi-digit INT_MIN/sign-edge packets execute through balance and width1, whose width floor is the longest token. The unchanged committed example and all eight native pins were checked; commands uses the final row convention, not a row maximum. Diagram integer-length pricing and append-only emission are byte-identical to the old diagram on the public audit corpus and remove ancestor text state, making whole construction linear."
 
+[audits]
+trick_prototype = 2026-11-02
+plain_rewrite = 2026-10-28
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 0.0827
 workload = "constructor plus step; no snapshots timed"
 seed = 0

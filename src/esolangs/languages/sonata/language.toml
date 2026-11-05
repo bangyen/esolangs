@@ -10,9 +10,12 @@ labels = ["finite lookup"]
 qualification = "the essential input bits double a unary row index in one rewrite each, and each index unit strips one entry of the table read at them"
 
 [ablations]
-audited = "2026-11-02"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-11-02" }
 
 [ablations.essential_projection]
+kind = "archive"
 saving = 48.3
 arity = 12
 seed = "random.Random(184700 + n)"
@@ -20,6 +23,7 @@ tables = 200
 verdict = "kept: canonical, exempt; one projection rule keeping the essential bits against doubling for every input over the full table: 0.0% on random tables, 33.4-48.3% one-ignored at n=8-12, 69.7-97.0% on constants; never larger. Plain-rewrite audit: no other bespoke tricks; pairwise halving of the table instead is the collected rewriting construction, and one-rewrite doubling (_U_U) is what that construction cannot do"
 
 [ablations.symmetric_count]
+kind = "archive"
 saving = 64.5
 arity = 8
 seed = "named symmetric tables"
@@ -27,11 +31,60 @@ tables = 5
 verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 counts them, one u a 1, and appends m + 1 entries, a rule, not a race: the count build is never longer (byte-identical to the former length race on all 65,812 tables n<=4 and 168 tables n=5..10). Parity, majority, and, or and exactly-2 all 11.3% at n=4, 32.3% at n=6, 48.2% at n=7, 64.5% at n=8, 87.3% at n=10; a symmetric table with an ignored input 47.9% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
 
 [ablations.pair_table]
+kind = "archive"
 saving = 23.9
 arity = 8
 seed = "random.Random(184700 + n * 1000 + s), s < 200"
 tables = 200
 verdict = "kept: one char per row pair (0/1 for 00/11, a for 01 = the last bit, b for 10 = its negation), the last essential bit after the table, from m = 7 essential bits (m = 6: larger on 300 of 300). Random tables 11.3% at n=7, 23.9% at n=8; named symmetric tables 0.0% (they take the count build); one-ignored n=8 tables take it at m = 7. Never larger from m = 7. Executed: every row of 60 random n=7, 30 n=8, 3 n=9 tables, all 8 one-ignored n=8 shapes, and the named tables n=7..8; a wrong-table control fails. No balance (text)"
+
+[ablations.constant_table_audit_20261101]
+kind = "archive"
+arity = 8
+saving = 82.2
+seed = 0
+tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
+verdict = "kept: canonical whole-constant folding. One whole-string rule consumes n distinct s-vars; only n=2 needs two rules guarded by a literal first bit, preventing the two-character result =b from matching again. Wrong lengths stay unanswered. Exactly 2n+5 chars (16 at n=2), two commands, 8max(n,2)+2 written bits. n=8 118 -> 21 chars; n=12 126 -> 29. n=3 corpus 30508 -> 30314 chars, area 43358 -> 43070. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions verify exact resources and input/output framing."
+
+[ablations.setup_mvar_prefix]
+kind = "archive"
+arity = 8
+saving = 8.1
+seed = "random.Random(184700 + n * 1000 + s), s < 200"
+tables = "200 random tables per n=7,8; all tables/rows n=1..3; ten tables/all rows n=4..6; two random tables/all rows n=7,8; every one-ignored shape n=4,7,8; named families sampled n=3,7,8,10,12"
+verdict = "rejected 2026-11-02: n=7/8 source 45600 -> 41600 / 59200 -> 54400 chars (8.77/8.11%), declining below 20%; zero execution saving on the n=3 corpus. Projected programs stay byte-identical. The m-var setup also breaks documented wrong-length rejection: table 00110110 on 00 or 0000 answers =0, while the baseline leaves %00 or %0000 unanswered. Native wrong-pair-symbol control fails 64/128 rows. No generator change."
+
+[ablations.drop_input_marker]
+kind = "archive"
+arity = 8
+saving = 7.1
+seed = "random.Random(184700 + n * 1000 + s), s < 200"
+tables = "200 random tables per n=7,8; all tables/rows n=1..3; ten tables/all rows n=4..6; two random tables/all rows n=7,8; every one-ignored shape n=4,7,8; parity/and/majority four rows n=3,7,8,10,12"
+verdict = "kept 2026-11-02 for execution: exactly n=3 all 256 tables/2048 rows use 20112 -> 18080 commands (10.10% fewer), no slower row or larger table; source 30314 -> 24980 chars. Remove the once-only marker except at n=2, whose setup can match the two-character answer. After setup, remaining bits match the earlier index rules; with no bits, a nonempty index matches strip and an empty index matches a final rule. Setup therefore cannot reenter; its exact n s-vars cannot match the two-character result when n!=2. All four n=1 tables/eight rows execute; the two nonconstant programs also drop the marker. Wrong-length binary input has neither @ nor n characters, so no rule matches and it stays unanswered. Each changed nonconstant program loses 21 chars and one rewrite; n=7/8 totals 45600 -> 41400 / 59200 -> 55000 (9.21/7.09%), declining below the size bar. No sampled later-arity or named-family command/source regression. The workspace bound stays unchanged: the longest indexed string is unchanged. Each of four variants passed 7076 native rows with whole-stream input framing, plus 2112 forced quad rows; setup-hit controls observe exactly one setup for every nonconstant unmarked run."
+
+[ablations.quad_table]
+kind = "archive"
+arity = 8
+saving = -119.9
+seed = "random.Random(184700 + n * 1000 + s), s < 200"
+tables = "200 random tables per n=7,8; same native corpus as drop_input_marker; forced quad decoder over all two/three-input tables and rows"
+verdict = "rejected 2026-11-02: one char per quad plus explicit decoder costs 112947 / 130209 chars at n=7/8 versus pair baseline 45600 / 59200 (+147.69/+119.95%); every one of the 400 random programs grows. No old-program min fallback or shifted evaluation window. Below the existing pair threshold it is byte-identical, so it cannot qualify for n=3 execution savings. Forced decoder checks execute all 2112 rows of all two/three-input functions, including all sixteen quad patterns; no semantic failure. No generator change."
+
+[ablations.source_exactness_repair_20261103]
+kind = "archive"
+arity = 5
+saving = 0.0
+seed = 0
+tables = "parity with row1 flipped at n=2,3,5,6; identity at n=1; source formula corpus at every retained rung"
+verdict = "proof-only repair: restore exact source maxima at every old rung1/2/3/5. Full-support nonsymmetric doubling costs T+4n+101, minus21 marker characters when n!=2; identity attains n1 because symmetric_weights excludes fewer than two essential inputs. Parity with one weight-one entry flipped is full-support and nonsymmetric for n>=2, attaining the formula through6 before pair packing starts. Projected doubling costs2**m+2n+2m+80 plus21 at n2, never larger; symmetric counting and constants are shorter. Beyond6 the pair table is at most T/2+4n+115, below the retained ceiling. All110 witness rows execute correctly; maxima86/113/100/132/168. No new generator path/state or emitted byte changes. The raw marker deletion changed the exact maximum but did not require dropping these original exactness scopes."
+
+[ablations.trick_recheck_20261103_quad_execution]
+kind = "archive"
+arity = 8
+saving = 44.898
+seed = "Random(184700+n), successive getrandbits(1<<n)"
+tables = "20 full generic tables each n7/8, every row, three alternating old/new native batches"
+verdict = "rejected on actual runtime despite qualifying command savings: replace the admitted pair path by four-entry cofactor symbols and fixed Boolean decoding rules, deriving symbols rather than a frozen table. All full generic rows take floor(row/4)+n+1 rewrites versus floor(row/2)+n+2. Fixed7/8 command totals103680->60160 and376320->207360 (41.98/44.90% fewer), but source4140->11034 and5500->12552 chars. End-to-end native medians including normal rule parsing are .284592->.431206s at7 (+51.5%) and1.109985->1.126353s at8 (+1.47%). Parsing many decoder rules erases the walk saving; pre-parsed last-row pilots are faster but do not govern admission.46,080 timed native rows pass output/full-frame checks; all276 small programs remain byte-identical and4240 paired native rows pass,2048 lifted decoder rows cover all16 cofactors, and wrong-length/negative controls pass. This rejects the complete tested quad construction, not every packing design. Shipped generator, proof scopes, bounds, pins and example remain unchanged."
 
 [catalogue]
 folding_constant_local = "_RULES"  # no essential input: the setup rule leaves @#c
@@ -55,49 +108,13 @@ docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 blind_reimplementation = 2026-10-27
 
-[ablations.constant_table_audit_20261101]
-arity = 8
-saving = 82.2
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: canonical whole-constant folding. One whole-string rule consumes n distinct s-vars; only n=2 needs two rules guarded by a literal first bit, preventing the two-character result =b from matching again. Wrong lengths stay unanswered. Exactly 2n+5 chars (16 at n=2), two commands, 8max(n,2)+2 written bits. n=8 118 -> 21 chars; n=12 126 -> 29. n=3 corpus 30508 -> 30314 chars, area 43358 -> 43070. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions verify exact resources and input/output framing."
-
-[ablations.setup_mvar_prefix]
-arity = 8
-saving = 8.1
-seed = "random.Random(184700 + n * 1000 + s), s < 200"
-tables = "200 random tables per n=7,8; all tables/rows n=1..3; ten tables/all rows n=4..6; two random tables/all rows n=7,8; every one-ignored shape n=4,7,8; named families sampled n=3,7,8,10,12"
-verdict = "rejected 2026-11-02: n=7/8 source 45600 -> 41600 / 59200 -> 54400 chars (8.77/8.11%), declining below 20%; zero execution saving on the n=3 corpus. Projected programs stay byte-identical. The m-var setup also breaks documented wrong-length rejection: table 00110110 on 00 or 0000 answers =0, while the baseline leaves %00 or %0000 unanswered. Native wrong-pair-symbol control fails 64/128 rows. No generator change."
-
-[ablations.drop_input_marker]
-arity = 8
-saving = 7.1
-seed = "random.Random(184700 + n * 1000 + s), s < 200"
-tables = "200 random tables per n=7,8; all tables/rows n=1..3; ten tables/all rows n=4..6; two random tables/all rows n=7,8; every one-ignored shape n=4,7,8; parity/and/majority four rows n=3,7,8,10,12"
-verdict = "kept 2026-11-02 for execution: exactly n=3 all 256 tables/2048 rows use 20112 -> 18080 commands (10.10% fewer), no slower row or larger table; source 30314 -> 24980 chars. Remove the once-only marker except at n=2, whose setup can match the two-character answer. After setup, remaining bits match the earlier index rules; with no bits, a nonempty index matches strip and an empty index matches a final rule. Setup therefore cannot reenter; its exact n s-vars cannot match the two-character result when n!=2. All four n=1 tables/eight rows execute; the two nonconstant programs also drop the marker. Wrong-length binary input has neither @ nor n characters, so no rule matches and it stays unanswered. Each changed nonconstant program loses 21 chars and one rewrite; n=7/8 totals 45600 -> 41400 / 59200 -> 55000 (9.21/7.09%), declining below the size bar. No sampled later-arity or named-family command/source regression. The workspace bound stays unchanged: the longest indexed string is unchanged. Each of four variants passed 7076 native rows with whole-stream input framing, plus 2112 forced quad rows; setup-hit controls observe exactly one setup for every nonconstant unmarked run."
-
-[ablations.quad_table]
-arity = 8
-saving = -119.9
-seed = "random.Random(184700 + n * 1000 + s), s < 200"
-tables = "200 random tables per n=7,8; same native corpus as drop_input_marker; forced quad decoder over all two/three-input tables and rows"
-verdict = "rejected 2026-11-02: one char per quad plus explicit decoder costs 112947 / 130209 chars at n=7/8 versus pair baseline 45600 / 59200 (+147.69/+119.95%); every one of the 400 random programs grows. No old-program min fallback or shifted evaluation window. Below the existing pair threshold it is byte-identical, so it cannot qualify for n=3 execution savings. Forced decoder checks execute all 2112 rows of all two/three-input functions, including all sixteen quad patterns; no semantic failure. No generator change."
-
-[ablations.source_exactness_repair_20261103]
-arity = 5
-saving = 0.0
-seed = 0
-tables = "parity with row1 flipped at n=2,3,5,6; identity at n=1; source formula corpus at every retained rung"
-verdict = "proof-only repair: restore exact source maxima at every old rung1/2/3/5. Full-support nonsymmetric doubling costs T+4n+101, minus21 marker characters when n!=2; identity attains n1 because symmetric_weights excludes fewer than two essential inputs. Parity with one weight-one entry flipped is full-support and nonsymmetric for n>=2, attaining the formula through6 before pair packing starts. Projected doubling costs2**m+2n+2m+80 plus21 at n2, never larger; symmetric counting and constants are shorter. Beyond6 the pair table is at most T/2+4n+115, below the retained ceiling. All110 witness rows execute correctly; maxima86/113/100/132/168. No new generator path/state or emitted byte changes. The raw marker deletion changed the exact maximum but did not require dropping these original exactness scopes."
-
-[ablations.trick_recheck_20261103_quad_execution]
-arity = 8
-saving = 44.8980
-seed = "Random(184700+n), successive getrandbits(1<<n)"
-tables = "20 full generic tables each n7/8, every row, three alternating old/new native batches"
-verdict = "rejected on actual runtime despite qualifying command savings: replace the admitted pair path by four-entry cofactor symbols and fixed Boolean decoding rules, deriving symbols rather than a frozen table. All full generic rows take floor(row/4)+n+1 rewrites versus floor(row/2)+n+2. Fixed7/8 command totals103680->60160 and376320->207360 (41.98/44.90% fewer), but source4140->11034 and5500->12552 chars. End-to-end native medians including normal rule parsing are .284592->.431206s at7 (+51.5%) and1.109985->1.126353s at8 (+1.47%). Parsing many decoder rules erases the walk saving; pre-parsed last-row pilots are faster but do not govern admission.46,080 timed native rows pass output/full-frame checks; all276 small programs remain byte-identical and4240 paired native rows pass,2048 lifted decoder rows cover all16 cofactors, and wrong-length/negative controls pass. This rejects the complete tested quad construction, not every packing design. Shipped generator, proof scopes, bounds, pins and example remain unchanged."
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 3.2802
 workload = "constructor plus step; no snapshots timed"
 seed = 0
@@ -105,11 +122,12 @@ tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-ste
 verdict = "prototype only: predecode replacement capture indices. 248 programs, 148 halt cleanly; no structural trace differences, control differs on 121. Step throughput at longest 10/20/40 workload breadths: +3.70%/+3.63%/+3.28%. No production change or global performance conclusion; adoption needs broader validation."
 
 [interpreter_ablations.speedup_adoption_20261103]
+kind = "archive"
 price = 3.8813
 workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: predecode replacement capture indices. 5196 paired native traces, 2222 clean halts, no differences; changed-site mutant differs on 2153. Complete-run savings 3.88\u20134.80%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+verdict = "kept: predecode replacement capture indices. 5196 paired native traces, 2222 clean halts, no differences; changed-site mutant differs on 2153. Complete-run savings 3.88–4.80%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
 
 [evidence]
 version = 1

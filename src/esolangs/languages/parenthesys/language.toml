@@ -25,42 +25,54 @@ folding_ignored = "the string holds every row; an ignored input is still read in
 "11111110" = { commands = 20, commands_by_row = { "0" = 20, "1" = 20, "2" = 20, "3" = 20, "4" = 20, "5" = 20, "6" = 20, "7" = 20 }, source_units = 49 }
 
 [ablations]
-audited = "2026-10-29"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-29" }
 
 [ablations.string_guard]
+kind = "archive"
 saving = 0.0
 arity = 12
 verdict = "recorded: the `x` before the table keeps an all-digit table a string whatever a number's text would become; 1 char of a 2^n + 12n + 5 program, and without it `ind` reads a number. Correctness machinery"
 
 [ablations.packed_codes]
+kind = "archive"
 saving = 57.7
 arity = 8
 seed = "77+n"
 tables = 200
 verdict = "kept: from n=5 each table character holds eight rows as U+4E00 + v and a bit test (`ord`, `*` by 2^s, `% 256`, `gt 127`) reads one, against one character a row. Total characters on 200 seeded random tables fall 10.3% at n=5, 27.0% at n=6, 43.3% at n=7, 57.7% at n=8; parity, and, or, majority and threshold-3 the same, since the size depends only on n. Below n=5 it is larger (n=4: 72 against 69 on average, and 36 against 19 at n=1), so the plain string stays there. Every row of 200 random tables at n=5..7, 50 at n=8 and the five named functions at n=5..8 executed, exhaustive n<=3; a one-bit wrong table fails. a row count per character is a power of two (the bit position is a Horner read); 16 rows (plane 1, 20 tables) saves 61.1% at n=8 but needs all 65,536 codes, which include NFC-unstable and unassigned characters, while 8 fits U+4E00..4EFF"
 
-[audits]
-trick_prototype = 2026-11-01
-blind_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-29
-
 [ablations.constant_table_fold]
+kind = "archive"
 arity = 12
 tables = "both constants at n=1..12; every row through n=4, four rows thereafter"
 verdict = "kept: canonical constant fold, percentage gate exempt. Constants shrink 151 -> 11 characters at n=8 and 679 -> 15 at n=12; commands 56 -> 11 and 80 -> 15, sampled written-state peaks 395 -> 90 and 4244 -> 126 bits. Unprinted reads precede the literal output, retaining all inputs without constructing an index or table string. Both generators together passed 496 old/new executions; all nonconstant programs through n=3 are byte-identical. Sentinel tests cover both bits and three input patterns at every n=1..12. Existing generic worst-case bounds and eight size pins remain unchanged."
 
 [ablations.trick_prototype_20261101_decimal_group_reads]
+kind = "archive"
 arity = 8
 saving = 24.5033
 verdict = "kept: decimal abc modulo 8 is 4a+2b+c; ab modulo 8 is 2a+b. Group at most three input-order reads, joining full groups in radix eight, for both bit selector and column. Standalone programs check all eight three-bit groups, including leading zeros. 200 Random(77+n) tables at each fixed judge arity: n=7 chars 123->91 (26.02%), n=8 151->114 (24.50%), no growth. Ten-table diagnostics n=9..12: 24.62,17.71,12.90,9.43%; no arbitrary later cap. Both old/new variants run four rows per diagnostic table. Grouping moves the packing breakeven to n=4: 69->57 chars; a real n=3 constant-index packed program executes but costs 56 vs the retained scalar 49. All tables/rows n<=3 stay byte-identical; n=3 total12458. All small rows plus 16 named/random tables per n=4..6 pass 7824 paired runs and 324 wrong-table controls, including native resources. With q=floor((n-4)/3), r=n-3-3q, column chars G=20q+r+6[r>1], ops H=12q+r+4[r>1]. Packed size is T/8+54+G, exact execution25+H; n=10 parity/random271->223. Workspace cap stays valid, now covering packed n=4 too. Whole constants unchanged; reads precede output and preserve the next token."
 
 [ablations.trick_prototype_20261101_grouped_read_ablation]
+kind = "archive"
 arity = 8
 saving = 13.9073
 verdict = "diagnostic only: grouping selector alone saves 13.01%/10.60% at n=7/8; grouping column alone saves 13.01%/13.91%, and declines to 7.07% by n=12. Each misses the 20% declining gate. No alternative race or fallback ships: the admitted single grouped-reader construction is applied uniformly to both indices."
 
+[audits]
+trick_prototype = 2026-11-01
+blind_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-29
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = -0.0816
 workload = "constructor plus step; no snapshots timed"
 seed = 0

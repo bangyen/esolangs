@@ -20,59 +20,74 @@ qualification = "the halting goto squares once more whenever the program is not 
 "11111110" = { commands = 25, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 25, "5" = 25, "6" = 25, "7" = 25 }, source_units = 52 }
 
 [ablations]
-audited = "2026-10-19"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-19" }
 
 [ablations.subtree_sharing]
+kind = "archive"
 saving = 86.7
 arity = 10
 verdict = "kept: canonical sharing, exempt; a repeated subtree is entered by climbing to its first copy's syllable and jumping, where shorter. 17.5% / 19.6% on random tables at n=9/10 and rising, 82.4% / 86.7% on two-block 16-row tables, 96.1% / 98.4% on parity at n=10/12. Plain-rewrite audit 2026-10-27, deleting it (200 random tables per arity, seed 1000+n; 40 per class, 20 at n=9): +11.75 / +14.37 / +16.97% at n=7 / 8 / 9, rising; two-ignored +6.8 / +9.4 / +13.6%, mid-ignored +8.8 / +11.9 / +15.7%, half-constant +7.2 / +9.8 / +12.2%, parity +80.3 / +88.5 / +93.3%, OR 0.00% (size-neutral); 3 of 40 two-ignored tables at n=7 are smaller without it"
 
 [ablations.climb]
+kind = "archive"
 saving = 19.7
 arity = 10
 verdict = "kept: the accumulator reaches a jump target by a closed form (nearer square root, square, step the rest) instead of one increment per syllable; 17.6% / 19.7% on random tables at n=9/10, 75.4% on two-block tables at n=10, 70.8% / 70.4% on parity at n=10/12. Its price overlaps subtree sharing's: each is measured with the other in place. Plain-rewrite audit 2026-10-27, one increment per syllable instead (same corpora): +11.87 / +14.54 / +17.16% on random tables at n=7 / 8 / 9, rising; two-ignored +6.7 / +9.7 / +13.8%, mid-ignored +8.7 / +11.9 / +15.9%, half-constant +7.6 / +10.3 / +12.6%, parity +54.9 / +62.2 / +67.4%, OR 0.00% (size-neutral); no table grows"
 
 [ablations.spelling_dp]
+kind = "archive"
 saving = 18.9
 arity = 10
 verdict = "kept: commands are spelled as the fewest syllables by dynamic programming over the syllable options, against 19.8% / 18.9% on random tables at n=9/10 for a greedy first-option spelling, flat across arities, and 26.6% / 23.1% on parity at n=8/10. Plain-rewrite audit 2026-10-27, first-option spelling instead (same corpora): +17.22 / +17.07 / +17.99% on random tables at n=7 / 8 / 9, flat; every class 15.8-20.4%, parity 17.2 / 26.6 / 24.9%, OR 18.8 / 19.4 / 19.7%; no table grows"
 
 [ablations.constant_fold]
+kind = "archive"
 saving = 11.8
 arity = 10
 verdict = "kept: canonical, exempt; a constant subtree folds to one leaf but keeps its reads. 12.6% / 11.8% on random tables at n=9/10 (seed set 2: 12.6% / 11.9%), 21.7% / 13.1% on constant-half tables at n=8/10, 74.8% on constant tables at n=10, 48.4% / 56.8% on OR at n=10/12. Plain-rewrite audit 2026-10-27, folding only single rows (same corpora): +15.69 / +13.64 / +13.63% on random tables at n=7 / 8 / 9, half-constant +26.7 / +23.2 / +20.0%, OR +52.2 / +49.5 / +46.6%, parity 0.00% (size-neutral)"
 
 [ablations.essential_projection]
+kind = "archive"
 saving = 35.7
 arity = 10
 verdict = "kept: canonical, exempt; a tree over the essential inputs only competes with the full tree and the shorter body wins. 0.0% on random tables (no ignored inputs to project away), 37.6% on tables ignoring inputs 1 and 5 of 8, 35.7% / 36.2% on mid-ignored tables at n=10 across both seed sets, 30.8% with two ignored, 37.4% on 16-row tiled tables at n=10; 0.0% where the ignored input trails, which costs the full tree nothing either. Plain-rewrite audit 2026-10-27, the full tree only (same corpora): 0.00% on random and half-constant tables and parity/OR (size-neutral); +39.8 / +37.3 / +33.0% on two-ignored and +31.2 / +37.6 / +28.0% on mid-ignored tables at n=7 / 8 / 9; no table grows"
 
 [ablations.leaf_accumulator_reuse]
+kind = "archive"
 saving = 19.0
 arity = 8
 verdict = "kept for the parity family only: a leaf with no reads left reuses the accumulator's known value instead of flooring it. Re-audit 2026-10-30, always flooring (_leaf given None), default / balanced area, the delete cost: parity +20.3 / +18.3 / +18.8 / +19.2 / +13.6 / -6.5% default and +20.0 / +19.0 / +17.4 / +16.0 / +14.8 / 0.0% balanced at n=7 / 8 / 9 / 10 / 11 / 12, so it clears the 10% bar at n=7..8 on a named function but is a cliff at n=12 (default only). Every other named function (majority, and, or, nand, nor, thresholds at n/4 and 3n/4) -2.4..+4.5% default at n=7..12, and 0.0% balanced except majority 6.2 / 5.5 / 8.9% at n=9 / 10 / 12, and / nor 12.9% at n=8, nor 10.8% at n=10, thr 3n/4 5.1% at n=12 (isolated cells, no trend). Random tables (20 each, seed 4300 + 1000n + i, i < 20), default / balanced: +3.23 / +3.88% at n=7, +0.37 / +1.00% at n=8, +1.81 / +1.75% at n=9, +5.53 / +5.75% at n=10, the plain build smaller on 8 / 9 / 8 / 2 of 20 default tables: sub-bar and flat, so it keeps on parity alone. Executed on all rows: 20 random tables at n=7 and at n=8, both builds and both routes, and the 8 named functions at n=7 and n=8, every program equals its table; a table with its last bit flipped fails on each. Plain-rewrite audit 2026-10-27, deleting it: +4.25 / +4.18 / +3.76 / +1.79% on 200 random tables at n=5..8 (seed 4242), +1.71% at n=9, +4.73% at n=10, +4.07% at n=12, flat; deleting it loosens the scaling bound to 19T/2 + 13 (a pair spelled alone costs 14, not 12)"
 
-[audits]
-blind_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-27
-trick_prototype = 2026-11-02
-
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 54.5
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "kept: canonical constant folding and minimal spelling, exempt. Native constants read every line, floor the final bit to zero, increment for one, print numerically and fall off the end. Nested leaves retain the shared halt gadget. Default chars and commands floor(3n/2)+2+2b: n=7 30/32->12/14 (58.1%), n=8 32/34->14/16 (54.5%), n=12 38/40->20/22. n=8 commands 28/30->14/16, written workspace 26/27->9/10 bits. n=3 corpus chars 14893->14857. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged and global resource caps unchanged. Owned raw read-first checks verify exact read count and preserve the following input record."
 
-
 [ablations.tricks_20261102]
+kind = "archive"
 arity = 8
 saving = 5.2
 seed = "random.Random(1000+n)"
 tables = "20 random per n7/8; all tables/rows n<=3; three random per n4..6; and/or/parity/majority/threshold-third n7/8"
 verdict = "near misses, nothing shipped. One named next-square alignment rule pads recurring segment entries only when recurrence-count-weighted climb savings exceed padding: actual14122/28020 ->14115/26555 chars (0.050/5.228%). Recurrence count overstates emitted reentries after ancestor sharing, so its no-growth premise fails too. Raw printing landing gives14683/27900 (-3.973/0.428%); zero leaves enter syllable2 with accumulator2, whose existing increment raises it to3 before squaring: native n4 parity needs36 written bits, beyond preserved27. Read-led constant leaf suffix sharing gives14240/28052 (-0.836/-0.114%); segment flush overhead outweighs jumps on random tables. Bare tails are not merged because their entry accumulators differ. Even free whole-program toggles, measured only as nonproduction upper bounds, save2.223/5.739%, 0.531/1.417%, 0.269/0.753% respectively. No named family clears both fixed arities. All four programs execute on every row through n3 and boundary samples4..6:8624 executions and8624 wrong-output controls; n3 chars14857 ->14843/15699/14885, commands50038 ->50258/52705/50258. Alignment fires; a private repeated256-row constant-drain control fires seven suffix jumps and executes sampled rows. LF widths1/3/11 preserve sampled candidate outputs. No production path/state added; source, proofs, pins and example unchanged."
 
+[audits]
+blind_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-27
+trick_prototype = 2026-11-02
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = -0.3495
 workload = "constructor plus step; no snapshots timed"
 seed = 0

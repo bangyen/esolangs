@@ -23,27 +23,26 @@ sharing_exempt = "no names or jumps across lines: code runs once per place it is
 "11111110" = { commands = 117, commands_by_row = { "0" = 79, "1" = 79, "2" = 79, "3" = 79, "4" = 117, "5" = 117, "6" = 117, "7" = 117 }, source_units = 102 }
 
 [ablations]
-audited = "2026-10-29"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-29" }
 
 [ablations.constant_spans]
+kind = "archive"
 saving = 0.0
 arity = 10
 verdict = "kept: canonical. A constant span reads and drops its inputs, then prints once; the equal-halves fold already gives the same text, so 0.0% at n=8/10 on random and half-constant tables"
 
 [ablations.input_literal]
+kind = "archive"
 saving = 38.5
 arity = 8
 seed = "random.Random(4242)"
 tables = 25
 verdict = "kept: a span whose halves are opposite constants prints its first input's byte (,.) or 97 minus it, then reads the rest away, not a 27-command node and its leaves. Against a build with the same ,:- read-and-drop spelling: random n=8 38.5% (n=7 38.6%); n=8 parity 51.5%, majority 31.0%, threshold-3 27.0%, and 10.6%, or 10.2%. Every row run: n<=3 exhaustive, random to n=8, named, quarter-block tables; a wrong table fails"
 
-[audits]
-trick_prototype = 2026-11-02
-docstring_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-29
-blind_reimplementation = 2026-10-27
-
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 36.2
 seed = 0
@@ -51,21 +50,36 @@ tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witness
 verdict = "kept: root-only fixed output with a closed byte-retention budget. ASCII 0/1 costs six bits and is nonzero, so comma/empty braces discard a byte without leaving a flag; the root needs no zero residue for a caller. Keep k=min(n,max(0,floor((3n+10-bl(3n+10)-bl(n))/6))) initial bytes and discard the rest, then print. L=3n+13-2k+2b chars; E=4n-2k+15+4b steps. W<=6k+14+bl(3n+10)+bl(n)<=3n+24: retained bytes, ten literal-stack bits, one idle-stack bit, two bits for its pointer, turn, and code/input cursors. The published cap is unchanged. Retaining every byte is shorter but n=8 reaches 71 bits against 48 allowed; the budget keeps four and reaches 47. n=7 zero/one 42/44 -> 28/30 chars (32.6% combined); n=8 46/48 -> 29/31 (36.2%), 81/85 -> 39/43 steps, workspace 33 -> 47 bits within 48; n=12 62/64 -> 37/39 chars. The root keeps its unused bytes; all nested leaves retain their old zero-residue interface. n=3 corpus 25650 -> 25634 chars. Both evaluation arities exceed either numerical size bar. Extra native checks cover pointer boundaries at 24 arities through n=512 without truth-table allocation, including exact steps and preserved following input. Each language passed 5656 paired old/new row executions; all 270 nonconstant defaults through n=3 stay byte-identical. Both constants n=1..12 execute default, width=1 and balanced. Separate 1120-run native probes per language cover every row through n=8. All 24 balanced scores per language match or improve; all 24 benchmark size/command pins across the batch remain unchanged. Owned checks enforce all reads before output, no EOF probe and a preserved following record. No new collected cases."
 
 [ablations.trick_prototype_20261102_zero_plus]
+kind = "archive"
 arity = 8
 saving = 5.18
 verdict = "kept as minimal spelling: a generated zero residue immediately added to the existing flag is the identity x0+ = x. A linear output stack cancels adjacent 0+ on line one only, including newly adjacent pairs; line two remains0{0}. Digits are individual pushes, not decimal literals. No body is duplicated, reordered or replaced by an old-candidate race. Source upper bound remains valid. Runtime tightens from46n-17 to46n-21 for n>=2, still29 at n=1: every nonliteral descent cancels at least one leaf zero plus its parent add, removing four interleaved commands; root literals/constants are cheaper. Both parities reach the new bound at each n=2..8; all small-table maxima are29,71,117 at n=1,2,3. Each cancellation removes two line-one commands and their idle turns; the unchanged workspace proof already budgets every idle-stack/pointer phase. 164728 paired old/live executions cover every table/row through3,20 seeded plus constants/parities/thresholds per4..9,200 seeded plus7 named at7/8 (every row at both verdict arities). All outputs correct, every print after exactly n reads, no EOF probes, following7 preserved. All-small WrittenState samples stay within3n+24. All source lengths nonincreasing. n3 source25634->24034,steps195808->187744. Including7 named controls, n7 chars393818->373358 (5.1953%),n8 784420->743858 (5.1710%); this is the explicit minimal-spelling exemption, not a percentage exception. Twenty-table generation times n7/8/9 grow1.65/3.05/5.93ms ->3.21/6.30/12.57ms; no speed claim. Native wrong-table control fires."
 
 [ablations.trick_prototype_20261102_carried_zero_byte]
+kind = "archive"
 arity = 8
 saving = 25.78
 verdict = "rejected for the unchanged workspace invariant, despite correct sampled outputs and25.85%/25.78% source savings at7/8 on20 seeded Random(1000*n+k).choices tables. 2760 native executions:331 exceed3n+24 and14 tables grow. Smallest bound witness: table10,row0 consumes its one input and prints1, but WrittenState reaches29 bits against27 allowed. No old/new length race or loosened bound admitted. Root constants retain their existing budgeted construction."
 
 [ablations.trick_prototype_20261102_unread_tail]
+kind = "archive"
 arity = 8
 saving = 5.52
 verdict = "rejected for input consumption. 2760 native executions compute the right bit, but1338 print before all row inputs are consumed. Table0001,row00 prints0 after only one of two inputs; baseline consumes both and preserves the following7. Twenty-table n7/8 source saves5.61%/5.52%, also below the noncanonical percentage gate. Equal-halves reads and existing root constants are retained in the prototype; neither masks the leaf failure."
 
+[audits]
+trick_prototype = 2026-11-02
+docstring_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-29
+blind_reimplementation = 2026-10-27
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 5.2153
 workload = "constructor plus step; no snapshots timed"
 seed = 0
@@ -73,11 +87,12 @@ tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-ste
 verdict = "prototype only: construct immutable named tuples through tuple.__new__. 245 programs, 176 halt cleanly; no structural trace differences, control differs on 180. Step throughput at longest 10/20/40 workload breadths: +5.68%/+5.22%/+5.37%. No production change or global performance conclusion; adoption needs broader validation."
 
 [interpreter_ablations.speedup_adoption_20261103]
+kind = "archive"
 price = 3.6884
 workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: construct immutable named tuples through tuple.__new__. 5193 paired native traces, 3153 clean halts, no differences; changed-site mutant differs on 3261. Complete-run savings 3.69\u20134.61%, including source parsing and output. Only full positional records bypass the wrapper; keyword-defined defaults remain centralized. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+verdict = "kept: construct immutable named tuples through tuple.__new__. 5193 paired native traces, 3153 clean halts, no differences; changed-site mutant differs on 3261. Complete-run savings 3.69–4.61%, including source parsing and output. Only full positional records bypass the wrapper; keyword-defined defaults remain centralized. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
 
 [evidence]
 version = 1

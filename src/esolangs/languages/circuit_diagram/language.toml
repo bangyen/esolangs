@@ -47,83 +47,84 @@ folding_constant = "both constants are one self-fed gate"
 # joint removals were measured separately before landing.  Rows for
 # removed tricks stay as the record of why they left.
 [ablations]
-audited = "2026-10-18"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-18" }
 
 [ablations.column_recycling]
+kind = "archive"
 saving = 79.5
 arity = 8
 verdict = "kept 2026-10-30: area of the default build with column reuse patched out of _FreeColumns (no group ever reused), 20 tables a size from random.Random(1000 + 100n + j).getrandbits(2**n) plus parity, majority, and, or, nand, nor, thr2, thr3: reuse saves 70.4% / 79.4% of area on random tables at n=7 / 8 (still growing; min 66.3% / 77.7%), and on named functions 28.2% parity, 32.1% majority, 28.1% thr2, 37.3% thr3 at n=7 (17.2% mean of the eight at n=8, up to 41.5%; and / or / nand / nor 0.00%, a plain-rail chain reuses nothing). Balanced area is unchanged within 1.5% (the balanced route bands to a square and reclaims columns itself). 112 programs a size run on all 2^n inputs, a wrong table fails"
 
 [ablations.constant_folding]
+kind = "archive"
 saving = 53.1
 arity = 8
 verdict = "kept: canonical, exempt from the bar"
 
 [ablations.subtree_sharing]
+kind = "archive"
 saving = 73.4
 arity = 8
 verdict = "kept: canonical, exempt; on its repeated-subtree class, 8.0% on random tables"
 
 [ablations.projection_wire]
+kind = "archive"
 saving = 92.7
 arity = 8
 verdict = "kept: judged on its class; 0.0% on random tables. Re-priced 2026-10-28 (random + named bar): fires on none of 200 random tables per arity at n=7..12 and on none of parity, majority, and, or, threshold (all n essential), so 0.00% there; 92.7% on its class. Canonical, exempt: it is the ignored-input drop at its extreme -- essential_inputs leaves one input and read_at a literal, whose circuit is no gate, only the wire through the n ports every run still reads; the general build would draw the n^2 + 3n port grid (88 chars at n=8) for zero gates against the wire's 2n (16)"
 
 [ablations.competing_model_race]
+kind = "archive"
 saving = 2.1
 arity = 9
 verdict = "kept 2026-10-30: the race is the natural and complement folds against the pool / bundled candidates by (area, chars); without it (pool / bundled only) the area grows 31.6% / 41.8% / 84.3% / 61.4% on n=9 parity / majority / and / thr2, 29.0% / 34.0% on n=10 parity / majority, 25.5% / 51.2% on n=11 parity / majority, 20.6% on n=12 parity (parity 82,124 -> 56,153 at n=9, 129,816 -> 103,037 at n=12). At n <= 8 the pool candidate equals the natural fold (12 n=7 tables), so the race there adds only the complement fold (output_polarity) and the transposes (transpose_folds); the earlier 0.7% / 0.6% at n=7 / 8 priced only that remainder. Balanced area is equal at n=9, 10 except nand / nor (28,900 vs 9,604; the balanced route picks its own width). Every program run on all 2^n inputs (n=9, 10 named, default and balanced; n=11, 12 default)"
 
 [ablations.transpose_folds]
+kind = "archive"
 saving = 0.0
 arity = 9
 verdict = "retired 2026-10-30: the two block transposes (last three / four inputs first) saved 9.1% / 4.0% of default area on 20 random tables at n=7 / 8 (random.Random(1000 + 100n + j).getrandbits(2**n); 15 / 13 tables changed, max 28.8% / 17.8%) and 11.3% / 5.3% balanced (declining, below the 10% bar), and 0.00% on parity, majority, and, or, nand, nor, thr2, thr3 at n=7..10 (default and balanced). The constructed Margulis cofactor witness (test_named_orders_avoid_literal_expander_routing_within_existing_bounds) grew 4.9x / 7.9x / 16.1x at n=9 / 12 / 14 (10,114 -> 49,354, 91,312 -> 724,736, 443,276 -> 7,134,540 chars): a constant-factor cost under the pool / bank fallback cap, not a class change; constructed families keep nothing. Dense n=8 / 9 grow 136,120 / 298,272 -> 147,264 / 302,032 chars, the sparse 202-class n=15 table 3,961,697 -> 5,953,673 cells. n=7, 8 programs (56 each, default and balanced) and n=9, 10 named (16 each) run on all 2^n inputs, a wrong table fails"
+retirement = { verb = "retired", date = 2026-10-30, balanced = [254, 262] }
 
 [ablations.output_polarity]
+kind = "archive"
 saving = 68.4
 arity = 8
 verdict = "kept: one extra fixed-order candidate folds the complement table and negates the root gate for free (``A`` NAND, ``O`` NOR; a bare rail root takes ``~``). NAND / NOR cost 3.2x AND / OR from the complemented rails and mixed gates; the flipped build is area-equal to AND / OR (2,537 vs 8,025 at n=8). Area saved on NAND = NOR over n=7..12: 68.8 / 68.4 / 68.1 / 67.8 / 67.6 / 67.5% (a steady share, 6,045 -> 1,887 at n=7, 18,745 -> 6,097 at n=12); complemented thresholds 5.1-13.5% (n=7..12); AND, OR, parity, majority and thresholds 0.00%; 20 seeded random tables 0.00% at n=7 / 8, none grew; the balanced area of NAND / NOR also falls 16,900 -> 5,476 at n=7 and 22,500 -> 7,396 at n=8"
 
 [ablations.ignored_input_drop]
+kind = "archive"
 saving = 0.1
 arity = 8
 verdict = "kept: canonical, exempt; near-redundant -- the fold's equal-cofactor collapse does the work"
 
 [ablations.width_machinery]
+kind = "archive"
 saving = 0.0
 verdict = "kept: feasibility -- banding, narrow stride, affine chains; no default-path effect"
 
 [ablations.balance_machinery]
+kind = "archive"
 saving = 0.0
 verdict = "kept: the squareness contract, not a size optimization"
 
 [ablations.fenwick_allocation]
+kind = "archive"
 saving = 0.0
 verdict = "kept: performance only -- successor allocation for recycled columns, same columns handed out"
 
-[interpreter_ablations]
-audited = "2026-10-18"
-benchmark = "interp-audit-2026-10-18/tracediff-n3"
-
-[interpreter_ablations.compile_cache]
-price = 65.6
-workload = "run"
-verdict = "kept: also a memory bound -- retained text capped, so a 30M-char program's topology is never retained sixteenfold"
-
 [ablations.competing_model_floor]
+kind = "archive"
 saving = 12.1
 arity = 5
 seed = "random.Random(1000 + n)"
 tables = 25
 verdict = "kept 2026-10-20: the competing model (fixed-order folds, prefix H-layouts, shared banks, flat retained) now races from n=4, not n=8, against the claim that it could not beat the direct build below eight. On 25 tables a size (20 seeded random plus zeros, AND, parity, majority, one projection) it is never larger and saves 3.8% / 12.1% / 8.3% / 5.5% of chars at n=4/5/6/7 (13.1% on the random tables at n=5); on 10 tables a size from random.Random(n), 9.8% / 10.8% / 6.2% / 7.2%. It wins no n <= 3 table (0 of 632 corpus programs change), so the floor is 4. Programs stay inside the n <= 7 bounds (2n + 1 commands, 7T/2 + 2n - 5 bits): all n <= 3 tables and 13 a size at n=4..7, every row"
 
-[audits]
-trick_prototype = 2026-11-02
-blind_reimplementation = 2026-10-30
-docstring_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-30
-
 [ablations.reverse_mux_order_prototype]
+kind = "archive"
 saving = 2.2621
 arity = 8
 seed = "random.Random(1847+n)"
@@ -131,30 +132,50 @@ tables = "all tables n=1..3; 20 random plus and/or/parity/majority/threshold-thi
 verdict = "near miss, not shipped: reverse the mux fold over essential inputs, permute the table, preserve physical port read order, and offer both root polarities beside the shipped models. Random n=7/8: 1,451,328 -> 1,423,500 / 3,453,776 -> 3,375,648 cells (1.92% / 2.26%). and/or/parity/majority/threshold-third unchanged through n=10. Positive control: 150 corpus programs change. Exhaustive n=3 area 359,684 -> 291,540 cells; commands 11,464 -> 10,800 (5.79%), but one table slower, so the no-slower-table execution gate fails. 5,050 baseline/candidate output checks correct, exhaustive n<=3 and boundary rows of 20 random plus named tables through n=8, named through n=10; 2,525 complemented controls rejected. Prototype stays in ignored notes; generator, bounds and pins unchanged"
 
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 93.8
 seed = "both constant values"
 tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
 verdict = "kept: canonical native constant source after n isolated input-port dashes. Input loading precedes sources and generations; the program still reads every input before printing. Both constants use 2n+3 characters, 3(n+1) cells, exactly two generations, and n+2 written bits (discarded port/source events plus halt). Area n=7 357 -> 24 cells; n=8 437 -> 27; n=12 837 -> 39. The width floor is three. Native sources also win all 24 old balance scores at n=1..12; return the native default for constants instead of constructing unused H lattices (the n=12 regression otherwise took 2.92s). All 270 nonconstant programs through n=3 are byte-identical; n=3 corpus chars 183838 -> 183742, area 359684 -> 359474 cells. Default, width=1 and balanced constants n=1..12 execute, with sentinel and read-before-output regressions."
 
-
 [ablations.mux_function_block]
+kind = "archive"
 saving = 62.3043
 arity = 8
 verdict = "kept 2026-11-02: full muxes in complete natural/complement folds call one derived native M definition (330 chars,23 rows,width 31); its full area and characters participate in existing model ranks. Copied H atoms/forests retain the primitive basis, dimensions, selector needs, and pool F; this necessary class boundary preserves O(T) construction/source and every old proof rung. Fixed 200 Random(184700+n), sequential choice('01'), area 14955054 ->5799357 /34454122 ->12987713 (61.2214/62.3043%). Five tables each n=9/10/11/12 give 62.3231/61.6353/52.9616/23.2409%, observed peak followed by decline, fixed 7/8 both exceed stricter 20%. Native 346 public programs/10498 rows pass: all 276 tables through 3,10 sampled 4..6,20 full-allrow tables 7/8, selected balanced and both complementary roots; exact production/prototype bytes except intentional parity, old E/W/read-order/trailing-sentinel controls. Standalone n=3 source 183742 ->145854, outer generations 11448 ->9496; fixed header grows 72n=3 areas/36 character counts, no slower row, so admission is source at 7/8 rather than 5% execution; final M+parity totals 144382/9480. Exhaustive n=1 source stays 16; n=2 old/M/final totals 1656/1752/872, so the named ladder also removes the small-parity header growth. Atomic nested evaluation is materially slower in wall time: allrow medians at n=4/6/8 .000941/.017544/.239707 ->.002780/.070423/.949617 s, while outer steps 112/832/4352 ->96/512/2560. Warm 5-build medians at n=8/10/12 improve 11.567/130.938/597.067 ->7.670/114.154/538.244 ms. Fixed 20 balanced grid_area at 7/8 (all emitted rows, including definitions)1048720 ->440615 /2402840 ->946201."
 complexity = "One builder flag distinguishes self-contained atomic folds from copied primitive canvases; one layout prefix records the single required definition. Render, area and character ranks share that prefix. Full-node three-gate spelling and unused complemented-selector requests disappear from atomic folds; primitive emission remains only for the fixed definition and copied class basis. No search, table cache, new model race or old-whole-program minimum. Atomic CPU work is not an outer snapshot bit/generation claim. Three native tests intrinsically 7.65/8.06/8.10 s move to slow with all rows/arities retained and explicit precommit reruns."
 
 [ablations.davio_xor_fold_prototype]
+kind = "archive"
 saving = -30.6666
 arity = 8
 verdict = "generic rejected, named parity kept 2026-11-02: n=3 E 11448 ->15352 with 1872 slower rows and max 9>7, source 183742 ->181660 with 104 larger areas/118 larger character counts; free outer XOR is not synchronized because lo is an ancestor of its gated term. The executable generic repair uses a native outer XOR; fixed 20 Random(184700+n) areas 1486980 ->1852875 /3431392 ->4483684 (growth 24.6066/30.6666%), and three gates per level do not preserve 2n+1. Exhaustive 2120 small rows plus 120 boundary rows of 40 judge tables execute. For strict full parity/negation, every residual lo XOR hi=1, directly yielding an XOR ladder: after admitted M, n=7/8 area 9222 ->124 /12120 ->144 (98.6554/98.8119%). Old input-bus geometry is Omega(n^2), new area 20n-16 is O(n), so marginal saving tends 100%. n=2 flat area 18 beats folded 24; n=3 folded 44 beats flat 48: genuine geometric crossover, no source-min race. Existing affine width helper now emits this ladder for full parity; general nonparity affine support is retained. No independent DAG/race/state added. Native both polarities n=2..6 all rows, selected 7/8, wrong-bias mutants, balanced and old E/W controls pass."
 
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
+
+[interpreter_ablations.compile_cache]
+kind = "archive"
+price = 65.6
+workload = "run"
+verdict = "kept: also a memory bound -- retained text capped, so a 30M-char program's topology is never retained sixteenfold"
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = -0.7325
 workload = "constructor plus step; no snapshots timed"
 seed = 0
 tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-step cap; index keys verified against actual wiring identities, then canonicalized to positions; all snapshot fields unchanged"
 verdict = "prototype only: slotted machine storage. 245 programs, 154 halt cleanly; no structural trace differences, control differs on 245. Step throughput at longest 10/20/40 workload breadths: -0.73%/+0.17%/+1.48%. No production change or global performance conclusion; adoption needs broader validation."
+
+[audits]
+trick_prototype = 2026-11-02
+blind_reimplementation = 2026-10-30
+docstring_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-30
 
 [evidence]
 version = 1

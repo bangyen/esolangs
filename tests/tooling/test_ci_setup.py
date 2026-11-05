@@ -66,6 +66,21 @@ def test_local_setup_has_a_checkout_and_preserves_wheel_isolation():
                 if step.get("uses") != "./.github/actions/setup":
                     continue
                 seen += 1
+                commands = " ".join(str(s.get("run", "")) for s in job["steps"])
+                if any(
+                    trigger in commands
+                    for trigger in (
+                        "scripts/ci/shard.py shard",
+                        "scripts/verify/gate.py",
+                        "python -m pytest",
+                    )
+                ):
+                    checkout = next(
+                        s
+                        for s in job["steps"][:i]
+                        if s.get("uses", "").startswith("actions/checkout@")
+                    )
+                    assert checkout["with"]["fetch-depth"] == 0
                 assert any(
                     s.get("uses", "").startswith("actions/checkout@")
                     for s in job["steps"][:i]

@@ -16,14 +16,73 @@ labels = ["linear lookup"]
 qualification = "Horner builds the projected table above packed inputs in one accumulator; four NORs select each cofactor, whole right shifts consume its input, and large levels rebuild -2 only from the sole live accumulator"
 
 [ablations]
-audited = "2026-10-29"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-29" }
 
 [ablations.essential_inputs]
+kind = "archive"
 saving = 88.0
 arity = 10
 seed = 2026
 tables = "20 random and 20 with a random proper subset of inputs essential, n=8 and n=10"
 verdict = "kept: a table ignoring inputs packs only the essential-input table; 76.7% at n=8 and 88.0% at n=10 on those tables, 0.0% on random ones"
+
+[ablations.complement_runs]
+kind = "archive"
+saving = 46.7
+arity = 12
+seed = 0
+tables = "n=12 parity, all ones but the last row, and n=8 random"
+verdict = "kept: holding ~V through a run of 1s makes a 1 one shift, not a NOR, dup and inv; 46.7% on all ones but the last row and 10.0% on parity at n=12, about 12% on random tables at n=8; n=4 parity grows 775 to 783 chars; plain-rewrite audit 2026-10-29 against a per-1 OR with the stored 1: random 10.0% (n=7, 200 tables), 12.8% (n=8, 100), 15.1% (n=9) and 17.2% (n=10) in chars, 9.7/12.9/15.2/17.2% in balanced area; n=8 parity 8.3%, majority 12.7%, or 43.8%"
+
+[ablations.shared_rotations]
+kind = "archive"
+saving = 22.3
+arity = 12
+seed = 0
+tables = "n=12 parity, all ones but the last row, and n=8 random"
+verdict = "kept: each level's h - 1 smear shifts ride the h half-shifts on one pass round the queue, not a pass each; 22.3% on parity and 28.9% on all ones but the last row at n=12, about 17% on random tables at n=8; plain-rewrite audit 2026-10-29 against separate smear and half-shift passes: random 17.7% (n=7, 200 tables), 22.3% (n=8, 100), 26.1% (n=9) and 28.7% (n=10) in chars, 17.3/22.1/26.0/28.7% in balanced area; n=8 parity 21.4%, majority 23.8%, or 25.7%"
+
+[ablations.late_constants]
+kind = "archive"
+saving = 15.0
+arity = 9
+seed = 2026
+tables = "random n=7 (200), n=8 (100), n=9 (30); n=7..9 parity, and, or, majority, threshold 3"
+verdict = "kept: with every input essential the 1 and -2 are built from the packed integer after Horner, so the queue holds two values through the T shifts and the smear passes, not three or four; random 13.9% (n=7), 14.5% (n=8), 15.0% (n=9) in chars, 13.9/14.4/15.0% in balanced area; n=8 parity 15.4%, majority 12.9%, and/or 10.7%, threshold 12.0%; n=9 16.2/13.3/10.7/11.8%; share rises with n"
+
+[ablations.constant_table_audit_20261101]
+kind = "archive"
+arity = 8
+saving = 94.6
+seed = "both constant values; witnesses(n) at n=4..6"
+tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
+verdict = "kept: canonical whole constants. n-1 NORs collapse the preloaded queue, AAVV maps x to x NOR complement(x), zero, then V prints; AVLAVV instead builds one via complement, shift and NOR before printing. Exactly n+4+5bit chars/commands; workspace at most max(3n,9)+bl(L-1)+1+bl(2n), since values remain in {-2,-1,0,1} and normalization copies at most thrice. At n=8 zero/one 266/274 -> 12/17 chars; n=12 456/464 -> 16/21. All 24 balanced scores improve or match; generic envelopes and eight benchmark pins unchanged. n=3 corpus 99874 -> 99693 chars. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 are byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts within their resource bounds."
+
+[ablations.single_accumulator_20261102]
+kind = "archive"
+seed = 2026
+arity = 8
+saving = 17.33
+tables = "one supplied raw proposal; every table/row n=1..3, sampled n=4..6; 200 seeded generic tables each n=7,8"
+verdict = "kept coherent single-accumulator plus low rematerialization, judged against independently admitted four-NOR mux: 444592/746752 -> 375192/617352 chars at n=7/8 (15.61/17.33%); balanced area 448253/750967 -> 377649/621695. Rolling accumulator alone and raw low rebuild alone fail 10%; no per-table source race. Local h>=16 singleton factory costs 15 commands; constants and ordered whole-stream preload are unchanged. Four-NOR mux independently reduces exhaustive n=3 99693/797544 chars/commands to 84107/672856, no larger table or slower row; joint 83041/664328. Old late-constant/shared-rotation/run rules remain inside the new construction, not competing fallback programs. Source series 6T+8r+O(n^2), versus independent baseline 8T+8r+O(n^2): random limit 20%, all-essential limit at least 1/6. Twenty emitted tables per n=9/10/11/12/14 give 18.45/19.14/19.52/19.75/19.92%, with native boundary controls; no favorable arity cap. Existing numerical E/W caps retained; E also valid n=1. Native field/liveness assertions cover 2213 rows and 8728 checkpoints, plus wrong-low and omitted-shift mutants."
+
+[ablations.raw_low_rebuild_20261102]
+kind = "archive"
+seed = 2026
+arity = 8
+saving = 6.96
+tables = "200 generic tables each n=7,8; exhaustive small and sampled n=4..6; original four-copy and repaired three-copy factories"
+verdict = "rejected alone: literal h>=32 rebuild 475192/781752 -> 450392/727352 chars (5.22/6.96%), below sustained 10%; improved factory 449592/726152 also fails. Both fire on larger levels; 72 literal/repaired/joint native control rows pass. Rolling-only against the stronger four-NOR mux 444592/746752 -> 413192/688152 also fails alone. Joint h>=16 singleton rebuild is separately admitted above. Small n=1/2/3 old totals 251/2991/99693, four-NOR 209/2477/84107, joint 243/2623/83041; versus four-NOR, joint grows 2/14/6 tables by at most 17/19/19 chars. No source-min fallback hides this small-arity growth."
+
+[ablations.nor_mux_20261102]
+kind = "archive"
+seed = 2026
+arity = 3
+saving = 15.63
+tables = "every three-input table and all eight rows"
+verdict = "kept independently by execution gate: complementary negative arms NOR(NOR(v,M),NOR(upper,~M)) select the same bits with four NORs. 99693 -> 84107 chars, 797544 -> 672856 commands, no table grows or row slows. Fewer live aligned masks preserve the unchanged workspace cap when combined with the fused accumulator."
 
 [generator_sizes]
 "00000001" = { commands = 332, commands_by_row = { "0" = 332, "1" = 332, "2" = 332, "3" = 332, "4" = 332, "5" = 332, "6" = 332, "7" = 332 }, source_units = 332 }
@@ -35,61 +94,18 @@ verdict = "kept: a table ignoring inputs packs only the essential-input table; 7
 "1101001101101101" = { commands = 553, commands_by_row = { "0" = 553, "1" = 553, "2" = 553, "3" = 553, "4" = 553, "5" = 553, "6" = 553, "7" = 553, "8" = 553, "9" = 553, "10" = 553, "11" = 553, "12" = 553, "13" = 553, "14" = 553, "15" = 553 }, source_units = 553 }
 "11111110" = { commands = 332, commands_by_row = { "0" = 332, "1" = 332, "2" = 332, "3" = 332, "4" = 332, "5" = 332, "6" = 332, "7" = 332 }, source_units = 332 }
 
-[ablations.complement_runs]
-saving = 46.7
-arity = 12
-seed = 0
-tables = "n=12 parity, all ones but the last row, and n=8 random"
-verdict = "kept: holding ~V through a run of 1s makes a 1 one shift, not a NOR, dup and inv; 46.7% on all ones but the last row and 10.0% on parity at n=12, about 12% on random tables at n=8; n=4 parity grows 775 to 783 chars; plain-rewrite audit 2026-10-29 against a per-1 OR with the stored 1: random 10.0% (n=7, 200 tables), 12.8% (n=8, 100), 15.1% (n=9) and 17.2% (n=10) in chars, 9.7/12.9/15.2/17.2% in balanced area; n=8 parity 8.3%, majority 12.7%, or 43.8%"
-
-[ablations.shared_rotations]
-saving = 22.3
-arity = 12
-seed = 0
-tables = "n=12 parity, all ones but the last row, and n=8 random"
-verdict = "kept: each level's h - 1 smear shifts ride the h half-shifts on one pass round the queue, not a pass each; 22.3% on parity and 28.9% on all ones but the last row at n=12, about 17% on random tables at n=8; plain-rewrite audit 2026-10-29 against separate smear and half-shift passes: random 17.7% (n=7, 200 tables), 22.3% (n=8, 100), 26.1% (n=9) and 28.7% (n=10) in chars, 17.3/22.1/26.0/28.7% in balanced area; n=8 parity 21.4%, majority 23.8%, or 25.7%"
-
-[ablations.late_constants]
-saving = 15.0
-arity = 9
-seed = 2026
-tables = "random n=7 (200), n=8 (100), n=9 (30); n=7..9 parity, and, or, majority, threshold 3"
-verdict = "kept: with every input essential the 1 and -2 are built from the packed integer after Horner, so the queue holds two values through the T shifts and the smear passes, not three or four; random 13.9% (n=7), 14.5% (n=8), 15.0% (n=9) in chars, 13.9/14.4/15.0% in balanced area; n=8 parity 15.4%, majority 12.9%, and/or 10.7%, threshold 12.0%; n=9 16.2/13.3/10.7/11.8%; share rises with n"
-
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 trick_prototype = 2026-11-02
 
-[ablations.constant_table_audit_20261101]
-arity = 8
-saving = 94.6
-seed = "both constant values; witnesses(n) at n=4..6"
-tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
-verdict = "kept: canonical whole constants. n-1 NORs collapse the preloaded queue, AAVV maps x to x NOR complement(x), zero, then V prints; AVLAVV instead builds one via complement, shift and NOR before printing. Exactly n+4+5bit chars/commands; workspace at most max(3n,9)+bl(L-1)+1+bl(2n), since values remain in {-2,-1,0,1} and normalization copies at most thrice. At n=8 zero/one 266/274 -> 12/17 chars; n=12 456/464 -> 16/21. All 24 balanced scores improve or match; generic envelopes and eight benchmark pins unchanged. n=3 corpus 99874 -> 99693 chars. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 are byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts within their resource bounds."
-
-[ablations.single_accumulator_20261102]
-seed = 2026
-arity = 8
-saving = 17.33
-tables = "one supplied raw proposal; every table/row n=1..3, sampled n=4..6; 200 seeded generic tables each n=7,8"
-verdict = "kept coherent single-accumulator plus low rematerialization, judged against independently admitted four-NOR mux: 444592/746752 -> 375192/617352 chars at n=7/8 (15.61/17.33%); balanced area 448253/750967 -> 377649/621695. Rolling accumulator alone and raw low rebuild alone fail 10%; no per-table source race. Local h>=16 singleton factory costs 15 commands; constants and ordered whole-stream preload are unchanged. Four-NOR mux independently reduces exhaustive n=3 99693/797544 chars/commands to 84107/672856, no larger table or slower row; joint 83041/664328. Old late-constant/shared-rotation/run rules remain inside the new construction, not competing fallback programs. Source series 6T+8r+O(n^2), versus independent baseline 8T+8r+O(n^2): random limit 20%, all-essential limit at least 1/6. Twenty emitted tables per n=9/10/11/12/14 give 18.45/19.14/19.52/19.75/19.92%, with native boundary controls; no favorable arity cap. Existing numerical E/W caps retained; E also valid n=1. Native field/liveness assertions cover 2213 rows and 8728 checkpoints, plus wrong-low and omitted-shift mutants."
-
-[ablations.raw_low_rebuild_20261102]
-seed = 2026
-arity = 8
-saving = 6.96
-tables = "200 generic tables each n=7,8; exhaustive small and sampled n=4..6; original four-copy and repaired three-copy factories"
-verdict = "rejected alone: literal h>=32 rebuild 475192/781752 -> 450392/727352 chars (5.22/6.96%), below sustained 10%; improved factory 449592/726152 also fails. Both fire on larger levels; 72 literal/repaired/joint native control rows pass. Rolling-only against the stronger four-NOR mux 444592/746752 -> 413192/688152 also fails alone. Joint h>=16 singleton rebuild is separately admitted above. Small n=1/2/3 old totals 251/2991/99693, four-NOR 209/2477/84107, joint 243/2623/83041; versus four-NOR, joint grows 2/14/6 tables by at most 17/19/19 chars. No source-min fallback hides this small-arity growth."
-
-[ablations.nor_mux_20261102]
-seed = 2026
-arity = 3
-saving = 15.63
-tables = "every three-input table and all eight rows"
-verdict = "kept independently by execution gate: complementary negative arms NOR(NOR(v,M),NOR(upper,~M)) select the same bits with four NORs. 99693 -> 84107 chars, 797544 -> 672856 commands, no table grows or row slows. Fewer live aligned masks preserve the unchanged workspace cap when combined with the fused accumulator."
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = -0.3146
 workload = "constructor plus step; no snapshots timed"
 seed = 0

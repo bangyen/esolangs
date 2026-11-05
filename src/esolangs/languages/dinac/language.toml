@@ -23,21 +23,20 @@ folding_constant_local = "essential_inputs"  # no kept input: read, then print t
 "11111110" = { commands = 21, commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 21, "5" = 21, "6" = 21, "7" = 21 }, source_units = 261 }
 
 [ablations]
-audited = "2026-10-29"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-29" }
 
 [ablations.minority_polarity]
+kind = "archive"
 saving = 55.9
 arity = 12
 seed = 7
 tables = 20
 verdict = "kept: named functions move. The scan marks the rarer answer's rows and prints the complement when that is the 0-rows; a count rule picks the rarer side (ties scan the 1-rows) without building both: byte-identical to the former min race on 426 tables (n<=3 exhaustive, named and 20 random per n=4..8) and on the n=2..10 measurement set. Chars (balanced area = side^2 of the squarest layout) against the 1-row scan, n=7..12: and' and or 53.3% / 54.6% / 55.2% / 55.6% / 55.8% / 55.9% (area 69% / 72% / 73% / 74% / 75% / 75%); the 1/3 threshold 33.6% / 42.4% / 47.8% / 40.4% / 46.1% / 49.8% (area 48% / 59% / 66% / 58% / 65% / 69%) and its complement 0.0%; majority' 18.7% / 17.3% / 16.1% at n=8 / 10 / 12 (area 29% / 28% / 26%) and 0.0% at odd n (a tie), majority 0.0%; parity, parity', and', or' 0.0%. Random tables (20 each): 1.9% chars / 2.9% area at n=7 (4 of 20 change), 1.8% / 2.9% at n=8 (8 of 20). Worst case falls from 51T to 40T + 18n + 120 (parity-like tables). Re-measured 2026-10-29 (200 random tables at n=7,8, 20 at n=2..6,9,10), chars vs the 1-row scan: random 10.98% / 8.87% / 5.44% / 7.35% / 2.58% / 2.60% / 1.86% / 0.71% / 1.07% at n=2..10; and' and or 54.56% n=8, 55.24% n=9, 55.60% n=10; 1/3 threshold 42.37% / 47.82% / 40.40%; majority' 18.74% / 17.34% at n=8 / 10. Text language, area = chars. No other bespoke trick: the scan is the plain minterm construction, flag rewrites only on prefix change are the construction itself. Run: n<=3 exhaustive plus 8 rows of every changed priced table, 2,384 runs, 0 wrong"
 
-[audits]
-trick_prototype = 2026-11-01
-blind_reimplementation = 2026-10-29
-plain_rewrite = 2026-10-29
-
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 0.0
 seed = 0
@@ -45,21 +44,35 @@ tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witness
 verdict = "retained: the existing constant path declares one character variable, reads every input and prints a literal. L=5n+15 chars, E=n+3 steps, W=56+bl(n+2)+bl(n) written bits. A typed byte-counter loop executes correctly in 1120 candidate runs, plus explicit read-first/following-record controls at n=7/8. It costs 52 chars: 50 -> 52 at n=7, 55 -> 52 at n=8 (only 5.5%); n=8 steps 11 -> 37 and written bits 64 -> 116. It misses the fixed two-arity size gate and command alternative; no later-arity exception. No claim of a general lower bound. Current n=12 constants stay 75 chars; n=3 corpus stays 104426 chars. Each language passed 5656 paired old/new row executions; all 270 nonconstant defaults through n=3 stay byte-identical. Both constants n=1..12 execute default, width=1 and balanced. Separate 1120-run native probes per language cover every row through n=8. All 24 balanced scores per language match or improve; all 24 benchmark size/command pins across the batch remain unchanged. Owned checks enforce all reads before output, no EOF probe and a preserved following record. No new collected cases."
 
 [ablations.trick_prototype_20261101_sparse_subtree_flags]
+kind = "archive"
 arity = 8
 saving = 26.7874
 verdict = "kept: canonical constant-subtree folding. Skip empty marked blocks; fold a full block into a once; declare reusable height flags on first emitted use, so a skipped early block cannot leave a flag undeclared. 200 Random(7+n) tables per n=7,8: chars 945932->700920 (25.90%), 1859036->1361048 (26.79%). No table grows. Both polarities, empty initial blocks and whole constants execute."
 
 [ablations.trick_prototype_20261101_compact_emission_tokens]
+kind = "archive"
 arity = 8
 saving = 22.4935
 verdict = "kept: minimal spelling, exempt. Helpers and/or become n/o; omit optional spaces in call arguments and comparisons, retaining the required assignment separator and indentation. After block folding, chars 700920->549722 (21.57%) and 1361048->1054901 (22.49%) on the same 200-table n=7,8 corpus; no table grows. No parser or language change."
 
 [ablations.trick_prototype_20261101_inline_singleton_chain]
+kind = "archive"
 arity = 8
 saving = 12.623
 verdict = "kept: inline the remaining conjunction when a block has exactly one marked row; no search or candidate race. After folding and compact spelling: chars 549722->482162 (12.29%) and 1054901->921741 (12.62%) on 200 Random(7+n) tables per n=7,8, no table grows. Extension n=9..14: 12.65,12.75,12.85,12.84,12.92,12.91% (20 tables through n=12, five thereafter; each old/new program executed on row 0). Full n=7/8 census executes four rows of each variant, 6400 runs plus 400 wrong-table controls. Every table/row through n=3 and 16 named/random tables per n=4..6 pass, 7824 paired executions plus 324 wrong-table controls, with resource bounds. n=3 chars 104426->77660; n=4 parity 767->578. Worst commands 15T/2+2n-9->7T+2n-9 for n>=2, reached by parity: each singleton removes one flag statement without adding calls. Workspace increases: AND n=2 uses 671 bits vs the old 636-bit cap; n=7/8 uses 1867/2109 bits. New cap 290n+n*bl(n)+424 counts scopes plus at most n extra pending conjunction nodes. Each adds a call (40 bits) and a comparison (142+bl(slot)), at most 184+bl(n) bits with slot<=2n+1, above the old 106n+424 allowance. Size <=40T+18n+120 stays valid. Generation remains O(T): disjoint singleton spans pay at most their width for their conjunction. Owned checks enforce read-first IO and a following byte."
 
+[audits]
+trick_prototype = 2026-11-01
+blind_reimplementation = 2026-10-29
+plain_rewrite = 2026-10-29
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 0.1124
 workload = "constructor plus step; no snapshots timed"
 seed = 0

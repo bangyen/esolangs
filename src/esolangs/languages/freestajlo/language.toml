@@ -24,9 +24,12 @@ folding_constant_local = "freestajlo"  # one projected table entry, no index
 "11111110" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 13 }
 
 [ablations]
-audited = "2026-10-21"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-21" }
 
 [ablations.essential_projection]
+kind = "archive"
 saving = 49.5
 arity = 12
 seed = "random.Random(184700 + n)"
@@ -34,6 +37,7 @@ tables = 200
 verdict = "kept: canonical, exempt; the literal holds the table read at the essential inputs and an ignored input is read and dropped (;#): 45.0% with one ignored input at n=8 rising to 49.5% at n=12, 93.4-99.3% on constants, 0.0% where every input is essential. Plain-rewrite audit: no bespoke tricks"
 
 [ablations.constant_read]
+kind = "archive"
 saving = 99.3
 arity = 12
 seed = "random.Random(184700 + n)"
@@ -41,6 +45,7 @@ tables = 200
 verdict = "kept: canonical constant fold, exempt; a constant pushes 'c, drops every input and prints with no index, against the full literal indexed by every input: 93.4% at n=8, 97.8% at n=10, 99.3% at n=12; fires only on the two constant tables"
 
 [ablations.packed_literal]
+kind = "archive"
 saving = 81.9
 arity = 12
 seed = "random.Random(184700 + n)"
@@ -48,24 +53,21 @@ tables = 200
 verdict = "kept: six entries a printable character (codes 35-98, skipping the closing quote and DEL), raced by length against the plain literal: 15.1% on random tables at n=5, 56.1% at n=7, 67.5% at n=8, 78.4% at n=10, 81.9% at n=12, tending to 5/6; parity, majority and and at n=8 289 to 94 chars. Never fires through n=4 (exhaustive, no table changes); every random table at n=5..8 executed, 20 at n=9..10, 3 at n=12; plain-rewrite audit 2026-10-28, seed random.Random(1000n + k), 20 tables at n=7/8, every program run: 56.1/67.5% off the plain literal by length, 96.6/97.0% off by balanced area (squared side), parity, majority and, or, nand, nor, at-least-2/3 identical to random since size is table-independent; stays above the bar through n=10 (78.4% length, 97.2% balanced) -- kept"
 
 [ablations.split_literal]
+kind = "archive"
 saving = 97.7
 arity = 10
 verdict = "kept: balanced area on seed 4242 random tables (20 an n; 4 at n=11/12) falls 97.7% at n=10 and 99.6% at n=12; with parity/and/or/majority/nor mixed in (unchanged symmetric tables) 11.8% at n=6, 52.8% at n=7, 69.9% at n=8, 78.2% at n=10, 44.3% at n=12; no table grows at n=1..12; uncut, the one literal set the floor width and area grew as T^2. Cut into strings of sqrt(2 * len) entries, row i read at i + i // c. Default byte-identical; every balanced program n=1..12 executed, complement control 0 matches"
 
 [ablations.symmetric_count]
+kind = "archive"
 saving = 70.2
 arity = 8
 seed = "named symmetric tables"
 tables = 7
 verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 sums its reads (;+) and picks one of n + 1 literal entries, raced by length against the plain and packed literals. Against the packed literal: parity, majority, and, or, at-least-2 and exactly-1 all 51.5% at n=4, 59.3% at n=6, 63.8% at n=7, 70.2% at n=8, 85.2% at n=10, 94.7% at n=12; a symmetric table with an ignored input 62.0% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=12. plain-rewrite audit 2026-10-28, same tables, every program run: against the packed literal parity, majority, and, or, nand, nor and at-least-2/3 are 63.8/70.2% shorter at n=7/8 (82.6/94.0% by balanced area), 85.2% (99.4%) at n=10; 0.0% on 20 random tables at n=7/8 both ways -- kept for the named family. Replaces the family-D change-point compare (and/or only, 80-96% against the plain literal): the count covers and/or, every threshold and parity with one mechanism"
 
-[audits]
-docstring_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-28
-blind_reimplementation = 2026-10-27
-trick_prototype = 2026-11-02
-
 [ablations.horner_function]
+kind = "archive"
 arity = 8
 saving = 14.89
 seed = "random.Random(184700 + n)"
@@ -73,6 +75,7 @@ tables = "200 random per n=7,8; four per n=4..6,9..12; five named families separ
 verdict = "rejected: f{2*;+} saves 3n-10 chars on full-essential packed readers, 15.94%/14.89% at fixed n=7/8 (13800 -> 11600; 18800 -> 16000). Declining to zero, so it fails the 20% gate; peak n=7, 8.70% at n=10 and 3.47% at n=12. Adapting the count reader with f{;+} saves only 4.00%/7.14% on parity/majority/and/or/one-third threshold at n=7/8. The ignored-read g{;#} definition pays at six ignored inputs, not three; a native asymmetric control fires. Calls increase execution, not a command-bound win."
 
 [ablations.horner_loop]
+kind = "archive"
 arity = 8
 saving = 15.96
 seed = "random.Random(184700 + n)"
@@ -80,20 +83,34 @@ tables = "same fixed corpus as horner_function"
 verdict = "rejected: repaired tail ;k@{\\2*;+\\1-}# keeps accumulator below counter, drains reads in physical order and drops zero counter. At k=n-1 it costs 14 chars through n=10, saving 15.94%/15.96% at n=7/8 (13800 -> 11600; 18800 -> 15800), peaks at n=8 then falls to 13.48%/10.00%/4.00% at n=9/10/12 and tends to zero. Both fixed arities fail the 20% declining bar. The count-loop adaptation saves 4.00%/10.71% on the five named families at n=7/8; later growth cannot move the judging range. Ignored-input readers retain their nonuniform fragments. No production change."
 
 [ablations.unicode_word]
+kind = "archive"
 arity = 8
-saving = 26.60
+saving = 26.6
 seed = "random.Random(184700 + n)"
 tables = "same fixed corpus; forced astral literal and UTF-8 round trip"
 verdict = "rejected by the explicit eight-bits-per-character limit: supplementary literals encode 20 bits per code point. Measured little-endian words use 65536+int(group[::-1],2), retaining the six-bit form as a structural candidate. Char savings 14.49%/26.60% at n=7/8 (13800 -> 11800; 18800 -> 13800), 63.07% at n=12, limit 70%; native execution and UTF-8 round trip pass, which does not admit the encoding. All three probes together passed 2934 native row/control groups: exhaustive tables/rows n<=3, seeded n=4..8, balanced samples, all four larger measured programs per n=9..12, forced macro/loop/astral controls, read-first and preserved following record; wrong-fold mutant fails twice. n=3 remains 4938 chars. Only this audit record changes; proof scopes, generators, pins, Size anchors and example remain untouched."
 
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 47.4
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "kept: canonical constant folding, exempt. Read all n numeric inputs then print a numeric literal, without index setup or drops. Chars and commands n+2: n=7 17->9 chars (47.1%), n=8 19->10 (47.4%), n=12 27->14. n=8 commands 18->10; written workspace 19->22 bits because the read bits remain stacked, within unchanged caps. Raw reads remain exactly 2n characters on encoded bits including delimiters, all before output; following numeric record preserved. n=3 corpus chars 4946->4938. Executed 1120 candidate/native runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command records and global resource caps unchanged. Owned tests preserve exact input use; embedded Ant slots execute before the periodic-state dump with no port reads."
 
+[audits]
+docstring_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-28
+blind_reimplementation = 2026-10-27
+trick_prototype = 2026-11-02
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 4.3795
 workload = "constructor plus step; no snapshots timed"
 seed = 0
@@ -101,11 +118,12 @@ tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-ste
 verdict = "prototype only: construct immutable named tuples through tuple.__new__. 248 programs, 159 halt cleanly; no structural trace differences, control differs on 184. Step throughput at longest 10/20/40 workload breadths: +4.62%/+4.72%/+4.38%. No production change or global performance conclusion; adoption needs broader validation."
 
 [interpreter_ablations.speedup_adoption_20261103]
+kind = "archive"
 price = 6.3294
 workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: construct immutable named tuples through tuple.__new__. 5196 paired native traces, 2472 clean halts, no differences; changed-site mutant differs on 3341. Complete-run savings 6.33\u20137.43%, including source parsing and output. Only full positional records bypass the wrapper; keyword-defined defaults remain centralized. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+verdict = "kept: construct immutable named tuples through tuple.__new__. 5196 paired native traces, 2472 clean halts, no differences; changed-site mutant differs on 3341. Complete-run savings 6.33–7.43%, including source parsing and output. Only full positional records bypass the wrapper; keyword-defined defaults remain centralized. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
 
 [evidence]
 version = 1

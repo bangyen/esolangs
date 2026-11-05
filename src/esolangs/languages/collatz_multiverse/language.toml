@@ -28,42 +28,99 @@ folding_constant_local = "_cm_constant_program"  # reads followed by literal out
 folds_without_tree = true
 
 [ablations]
-audited = "2026-10-19"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-19" }
 
 [ablations.essential_projection]
+kind = "archive"
 saving = 32.3
 arity = 10
 verdict = "kept: canonical, exempt; building over the essential inputs earns 17.8% with one ignored input at n=8 and 32.3% at n=10, 52.0% / 71.5% with half ignored, 7.5% / 34.2% with two scattered. One negative cell, measured: a trailing ignored input at n=8 prices -26.7% (941,695 shipped against 743,375 full build over 200 tables), because the trailing input is a cell-select input and the unprojected chunk alphabet collapses to {0, 3, 12, 15}; at n=10 the same class is +10.1% and shipped never races the two builds"
 
 [ablations.constant_program]
+kind = "archive"
 saving = 94.6
 arity = 12
 verdict = "kept: canonical fold realization, exempt; a constant table read-and-print earns 73.8% at n=8, 85.9% at n=10 and 94.6% at n=12 against the plain cell build (numbered=False, the only plain build that takes the all-zero table: with codes on, _cm_codes' ranked list empties when 0 is the only distinct cell, and shipped never routes constants into the coded build)"
 
 [ablations.coded_cells]
+kind = "archive"
 saving = 0.2
 arity = 12
 verdict = "kept by the split decision on candidate #15: storing codes instead of values in the cells, with the decoder spanning the codes, prices 0.36% / 0.20% on random tables at n=11/12, 9.7% -> 3.2% on the few-distinct class it is built for, and declines through the bar on majority, and and or; parity holds 22.2% / 20.4%, the named-function case that keeps it. Inside the assignment, the top-code choice prices 0.27% / 0.16% on random tables. Re-priced 2026-10-28 (20 seeded tables, seed 1000n + i; chars / balanced area): without codes random +5.9% / +13.7% at n=7 and +1.1% / +0.8% at n=8, parity +44.1 / +38.3 / +34.4 / +32.2 / +31.1 / +30.6% chars at n=7..12 (+103.6% falling to +6.9% balanced), majority +42.7% falling to +5.2%, threshold >= n//3 +21.9% to +4.2%, and/nand +30.8% to +2.4%: clears 10% on parity at every arity, kept for that family. The empty-cell code-0 preference is removed: it priced -0.6% to -1.6% on every corpus, so code 0 now follows the frequency ranking among the cells that do not take the top code"
 
 [ablations.trailing_pad_drop]
+kind = "archive"
 saving = 0.21
 arity = 12
 verdict = "removed (retirement candidate #17): dropping a block's trailing pad lines saved a fixed ~74 chars a program at n=12, 3.15% at n=4 diluting to 0.36% / 0.21% at n=11/12 -- a fixed amount that tends to zero, not a genuine percentage"
 
 [ablations.referenced_constants]
+kind = "archive"
 saving = 47.7
 arity = 12
 verdict = "kept: building only the referenced constants (plus their plan chain) earns 23.4% on random tables at n=8, 33.2% at n=10 and 47.7% at n=12 (building every k1..k512 is the ablated cost), 52.2% on the few-distinct class and 50.1-61.5% on named functions at n=12. Re-priced 2026-10-28 (20 seeded tables, seed 1000n + i): building every constant up to the largest costs +35.2% / +30.4% chars and +68.9% / +59.3% balanced area on random tables at n=7/8, +55% to +160% chars on every named table at n=7..12"
 
 [ablations.complement_build]
+kind = "archive"
 saving = 63.8
 arity = 12
 verdict = "kept 2026-10-28: the complemented table is also built (printing 49 - bit) and the shorter kept, since an empty cell is a pad line. Without it: random +0.16% / 0.00% chars at n=7/8 and 0.0% balanced area; or +22.1 / +30.7 / +40.7 / +50.3 / +58.2 / +63.8% chars at n=7..12, threshold >= n//3 +14.0 / +23.3 / +22.2 / +35.6 / +48.4 / +43.1%, nand +3.3% falling to +0.3%, and, parity, nor, majority 0.0%. Clears 10% on or and the thresholds at every arity, kept for those families; balanced area 0.0% (the width sets the side)"
 
 [ablations.balance_candidates]
+kind = "archive"
 saving = 5.55
 arity = 8
 verdict = "kept 2026-10-28 by contract: the balance hook rebuilds the program at the default's own width and from the narrow builds, each in its original, compact, aliased and renamed spellings. Priced against balance = default on 20 seeded random tables (seed 1000n + i): 5.55% / 1.08% balanced area at n=7/8; named tables 0.0% except or and nor, 9.6% / 12.3% at n=7 then 54.4 / 37.0 / 23.1 / 13.7 / 7.8% at n=8..12, a share falling from its n=8 peak under the 10% bar. Alone, the narrow builds and the spellings each price 0.0% (the width-limited rebuild carries it). Fails the bar, but tests/generators/test_balance_remaining.py requires every native-width generator to balance within 5% of the best width layout and the default misses that on or/nor, so it stays; an invariant, not a size trick"
+
+[ablations.eight_row_cells]
+kind = "archive"
+saving = 22.01
+arity = 8
+seed = "random.Random(1847+n); final corpus random.Random(1847)"
+tables = "20 random per n=4..16; and/or/parity and complements n=1..16; exhaustive n<=3"
+verdict = "historical: parity and its complement are superseded by the positive affine stream (tricks_affine_20261102); eight-row cells remain for endpoint products, including complements, from seven essential inputs: eight-row cells halve the table while keeping at most two codes. n=8 and/or 2,938/2,947 -> 2,350/2,359 chars (20.0%), parity 3,380 -> 2,636 (22.0%); n=16 and/or 314,695/314,704 -> 159,052/159,061 (49.5%), parity 421,217 -> 212,378 (49.6%). Random eight-row builds lose 38.5% / 104.0% at n=7/8 and still lose 22.9% at n=14, so other families keep four-row cells. Final builds: 10,868 baseline/candidate/width-1/balanced executions correct, all rows through n=6, boundary rows thereafter; 5,344 complemented controls rejected. All 256 n=3 tables remain byte-identical (281,500 chars); 54 VM measurements at n=7/8/10/12/14/16 fit unchanged command and written-workspace bounds. The eight-row decoder has at most 16 lines, code <=8, fewer table cells and a constant closure contained in the old envelope"
+
+[ablations.constant_table_audit_20261101]
+kind = "archive"
+arity = 8
+saving = 49.5
+seed = "both constant values"
+tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
+verdict = "kept for whole constants: reuse one discard register, then build the ASCII byte with signed halving m=2b+d, b odd and -1<=d<=2, reusing one accumulator instead of copying each precursor. This is a derived rule, not a searched table. At n=7, chars 796/796 -> 389/409; n=8 835/835 -> 412/432; n=12 993/993 -> 504/524. Both n=7/8 clear 20% for declining savings. Default constants use 23n+228+20bit chars, n+10 commands and 132+bl(n+11)+bl(2n-1) written bits (141 at n=8). The line-number builder remains necessary for the 27-column floor; it also reuses its discard register. All 270 nonconstant programs through n=3 are byte-identical; n=3 corpus chars 281500 -> 280834. Default, width=1 and balanced constants n=1..12 execute; sentinels cover n=1,3,4,5,6,8,12, and all 256 helper byte values execute."
+
+[ablations.tricks_constants_20261102]
+kind = "archive"
+arity = 8
+saving = 5.0
+seed = "random.Random(1000*n+i)"
+tables = "all tables/rows n<=3; 20 random and named functions n7/8"
+verdict = "kept: canonical compact spelling and z-based copies first (n3 chars280834 ->240914, commands81120 unchanged). Capturing k1/k2 at their own first two line numbers replaces four bootstrap lines with two: n3 commands81120 ->77056 (5.010%), no table larger or slower. Independent after the affine stream,80424 ->76360 (5.053%), again none larger/slower. Two fixed bootstrap captures replace the old bootstrap, adding no construction choice or state. Full numbered constants reject: n3 source390072 and commands147104,2032 rows slower; direct-only hosting duplicates the compact baseline (240914/81120), so it is superseded by transitive hosting. Alias prefix rejects:241956 chars and85184 commands,2032 rows slower."
+
+[ablations.pad_constants]
+kind = "archive"
+arity = 3
+saving = 15.5
+seed = "random.Random(1000*n+i)"
+tables = "all tables/rows n<=3; 20 random and named functions n7/8"
+verdict = "kept after bootstrap and affine: host missing constants or their transitive plan parents in decoder/cell pads before first use, then omit satisfied chain lines and prune dead ancestor captures. n3 commands76360 ->64536 (15.485%), chars221722 ->194290; no table larger or slower. One pending closure set tracks initialization across the two existing phases, replacing eager constant emission; no parallel direct-only route. The narrow constant builder remains for its27-column floor. Prefix aliasing is disabled for numbered captures because shifting lines changes their values. Existing numerical E/W envelopes and proof rungs remain conservative."
+
+[ablations.tricks_affine_20261102]
+kind = "archive"
+arity = 8
+saving = 37.0
+seed = "both parity biases; exhaustive small tables"
+tables = "parity and complement n7/8/10; every table/row n<=3;6396 native rows"
+verdict = "kept positive affine stream: parity/complement chars1754/1754 ->1162/1182 at n7 (33.751/32.611%) and2240/2071 ->1285/1305 at n8 (42.634/36.987%); n10 4890/4730 ->1531/1551 (68.691/67.209%). Each selected bit applies the positive-coefficient XOR identity through two registers; ignored bits are read in place. This O(n) reader replaces the parity eight-row path rather than racing the packed source. Affine recognition uses the existing O(T) helper; constants retain their own reader. Commands n+5m+13+bias and workspace273+bl(n+5m+15)+bl(2n-1) fit preserved global envelopes for n>=3; old small proof scopes remain checked."
+
+[ablations.tricks_cost_20261102]
+kind = "archive"
+arity = 13
+saving = 0.0
+seed = "random.Random(1000*n+i)"
+tables = "three tables per n7/10/13, median of three builds each; three native rows n4/6/8"
+verdict = "generation overhead is measured, not a speed win: sums of three per-table median CPU times old ->final are0.608 ->1.248ms at n7,2.421 ->4.189ms at n10,16.120 ->26.475ms at n13; corresponding source totals14693 ->10934,38541 ->34188,212042 ->207387. Growth remains O(T); closure/pad scans add work without a search or cache. Native medians for three rows improve0.754 ->0.593ms,2.367 ->1.711ms,4.771 ->3.699ms at n4/6/8. Controls reject8 wrong constant rows,8 unsafe prefix rows,2 wrong read-order rows and4 missing XOR-half rows; direct-host positive executes. Small/price probes execute16960/1152 rows."
 
 [audits]
 blind_reimplementation = 2026-10-30
@@ -74,50 +131,13 @@ trick_prototype = 2026-11-02
 [balance_growth]
 wall = "a line is one assignment of identifiers only (interpreter.py _LINE fullmatch), so it carries O(log L) bits; T table bits need L >= c*T/log T lines, so the side 2*L gives area >= c*T**2/log**2 T (measured T**1.50 from n=10 to 12, 2026-10-29)"
 
-[ablations.eight_row_cells]
-saving = 22.01
-arity = 8
-seed = "random.Random(1847+n); final corpus random.Random(1847)"
-tables = "20 random per n=4..16; and/or/parity and complements n=1..16; exhaustive n<=3"
-verdict = "historical: parity and its complement are superseded by the positive affine stream (tricks_affine_20261102); eight-row cells remain for endpoint products, including complements, from seven essential inputs: eight-row cells halve the table while keeping at most two codes. n=8 and/or 2,938/2,947 -> 2,350/2,359 chars (20.0%), parity 3,380 -> 2,636 (22.0%); n=16 and/or 314,695/314,704 -> 159,052/159,061 (49.5%), parity 421,217 -> 212,378 (49.6%). Random eight-row builds lose 38.5% / 104.0% at n=7/8 and still lose 22.9% at n=14, so other families keep four-row cells. Final builds: 10,868 baseline/candidate/width-1/balanced executions correct, all rows through n=6, boundary rows thereafter; 5,344 complemented controls rejected. All 256 n=3 tables remain byte-identical (281,500 chars); 54 VM measurements at n=7/8/10/12/14/16 fit unchanged command and written-workspace bounds. The eight-row decoder has at most 16 lines, code <=8, fewer table cells and a constant closure contained in the old envelope"
-
-[ablations.constant_table_audit_20261101]
-arity = 8
-saving = 49.5
-seed = "both constant values"
-tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
-verdict = "kept for whole constants: reuse one discard register, then build the ASCII byte with signed halving m=2b+d, b odd and -1<=d<=2, reusing one accumulator instead of copying each precursor. This is a derived rule, not a searched table. At n=7, chars 796/796 -> 389/409; n=8 835/835 -> 412/432; n=12 993/993 -> 504/524. Both n=7/8 clear 20% for declining savings. Default constants use 23n+228+20bit chars, n+10 commands and 132+bl(n+11)+bl(2n-1) written bits (141 at n=8). The line-number builder remains necessary for the 27-column floor; it also reuses its discard register. All 270 nonconstant programs through n=3 are byte-identical; n=3 corpus chars 281500 -> 280834. Default, width=1 and balanced constants n=1..12 execute; sentinels cover n=1,3,4,5,6,8,12, and all 256 helper byte values execute."
-
-
-[ablations.tricks_constants_20261102]
-arity = 8
-saving = 5.0
-seed = "random.Random(1000*n+i)"
-tables = "all tables/rows n<=3; 20 random and named functions n7/8"
-verdict = "kept: canonical compact spelling and z-based copies first (n3 chars280834 ->240914, commands81120 unchanged). Capturing k1/k2 at their own first two line numbers replaces four bootstrap lines with two: n3 commands81120 ->77056 (5.010%), no table larger or slower. Independent after the affine stream,80424 ->76360 (5.053%), again none larger/slower. Two fixed bootstrap captures replace the old bootstrap, adding no construction choice or state. Full numbered constants reject: n3 source390072 and commands147104,2032 rows slower; direct-only hosting duplicates the compact baseline (240914/81120), so it is superseded by transitive hosting. Alias prefix rejects:241956 chars and85184 commands,2032 rows slower."
-
-[ablations.pad_constants]
-arity = 3
-saving = 15.5
-seed = "random.Random(1000*n+i)"
-tables = "all tables/rows n<=3; 20 random and named functions n7/8"
-verdict = "kept after bootstrap and affine: host missing constants or their transitive plan parents in decoder/cell pads before first use, then omit satisfied chain lines and prune dead ancestor captures. n3 commands76360 ->64536 (15.485%), chars221722 ->194290; no table larger or slower. One pending closure set tracks initialization across the two existing phases, replacing eager constant emission; no parallel direct-only route. The narrow constant builder remains for its27-column floor. Prefix aliasing is disabled for numbered captures because shifting lines changes their values. Existing numerical E/W envelopes and proof rungs remain conservative."
-
-[ablations.tricks_affine_20261102]
-arity = 8
-saving = 37.0
-seed = "both parity biases; exhaustive small tables"
-tables = "parity and complement n7/8/10; every table/row n<=3;6396 native rows"
-verdict = "kept positive affine stream: parity/complement chars1754/1754 ->1162/1182 at n7 (33.751/32.611%) and2240/2071 ->1285/1305 at n8 (42.634/36.987%); n10 4890/4730 ->1531/1551 (68.691/67.209%). Each selected bit applies the positive-coefficient XOR identity through two registers; ignored bits are read in place. This O(n) reader replaces the parity eight-row path rather than racing the packed source. Affine recognition uses the existing O(T) helper; constants retain their own reader. Commands n+5m+13+bias and workspace273+bl(n+5m+15)+bl(2n-1) fit preserved global envelopes for n>=3; old small proof scopes remain checked."
-
-[ablations.tricks_cost_20261102]
-arity = 13
-saving = 0.0
-seed = "random.Random(1000*n+i)"
-tables = "three tables per n7/10/13, median of three builds each; three native rows n4/6/8"
-verdict = "generation overhead is measured, not a speed win: sums of three per-table median CPU times old ->final are0.608 ->1.248ms at n7,2.421 ->4.189ms at n10,16.120 ->26.475ms at n13; corresponding source totals14693 ->10934,38541 ->34188,212042 ->207387. Growth remains O(T); closure/pad scans add work without a search or cache. Native medians for three rows improve0.754 ->0.593ms,2.367 ->1.711ms,4.771 ->3.699ms at n4/6/8. Controls reject8 wrong constant rows,8 unsafe prefix rows,2 wrong read-order rows and4 missing XOR-half rows; direct-host positive executes. Small/price probes execute16960/1152 rows."
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 19.5639
 workload = "constructor plus step; no snapshots timed"
 seed = 0
@@ -125,11 +145,12 @@ tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-ste
 verdict = "prototype only: binary insertion of sorted registers. 245 programs, 145 halt cleanly; no structural trace differences, control differs on 145. Step throughput at longest 10/20/40 workload breadths: +19.56%/+20.48%/+20.92%. No production change or global performance conclusion; adoption needs broader validation."
 
 [interpreter_ablations.speedup_adoption_20261103]
+kind = "archive"
 price = 18.2632
 workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: binary insertion of sorted registers. 5193 paired native traces, 2204 clean halts, no differences; changed-site mutant differs on 2193. Complete-run savings 18.26\u201321.92%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+verdict = "kept: binary insertion of sorted registers. 5193 paired native traces, 2204 clean halts, no differences; changed-site mutant differs on 2193. Complete-run savings 18.26–21.92%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
 
 [evidence]
 version = 1

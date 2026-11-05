@@ -24,19 +24,18 @@ folding_constant = "reads and resets n inputs, then prints the constant: 19n + 2
 "11111110" = { commands = 54, commands_by_row = { "0" = 26, "1" = 30, "2" = 34, "3" = 38, "4" = 42, "5" = 46, "6" = 50, "7" = 54 }, source_units = 464 }
 
 [ablations]
-audited = "2026-10-29"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-29" }
 
 [ablations.print_before_test]
+kind = "archive"
 saving = 17.3
 arity = 8
 verdict = "kept: 16.8% at n=7, 17.3% at n=8 on 200 random tables each, identical on parity, and, or, majority and threshold3 (size is table-independent); 6 -> 5 commands a rung, no step grows. Printing before the test lets cell 6, left holding V by the last rung, stand in for the scratch load, so the run halts on the print it names. Executed: every row of 3 random tables at n=7 and 8 and every table to n=3, output equal to the table prefix; a one-bit-wrong table fails. A loop-ful rotating register (table in the seed, one shift a row a pass) saved 29% / 37% at n=7 / 8 but runs T^2 commands, against the linear execution check, and was not built"
 
-[audits]
-trick_prototype = 2026-11-01
-blind_reimplementation = 2026-10-29
-plain_rewrite = 2026-10-29
-
 [ablations.shipped_cost_audit_20261101]
+kind = "archive"
 arity = 8
 seed = "random.Random(6100+n)"
 tables = "2 random plus parity/majority/and/or per n=3,5,7,8"
@@ -44,26 +43,41 @@ baseline = "9769362f7^"
 verdict = "measured with the interpreter/helpers at 567f2cb18. At n=8: characters 79656 -> 65856, sampled commands 13284 -> 11208, largest sampled written-state peak 121 -> 128 bits. Sum of seven-repeat cold generation medians: 248583 -> 215668 ns. All rows at n=3; rows 0,floor(T/3),T-1 otherwise. 204 correct executions, 24 wrong-table controls. Peaks and timings describe this corpus. The printed value remains live; its peak grows by seven bits. Current resource bounds pass where their stated domains apply"
 
 [ablations.constant_table_fold]
+kind = "archive"
 arity = 12
 tables = "both constants at n=1..12; every row through n=4, four rows thereafter"
 verdict = "kept: canonical constant fold, percentage gate exempt. Constants shrink 10976 -> 179 characters at n=8 and 168627 -> 255 at n=12; worst sampled commands 1332 -> 19 and 20556 -> 27, written-state peaks 128 -> 21 and 157 -> 22 bits. Resetting the input cell to 2 after each read prevents two equal reads from halting before the input ends. Both generators together passed 496 old/new executions; all nonconstant programs through n=3 are byte-identical. Sentinel tests cover both bits and three input patterns at every n=1..12. Existing generic worst-case bounds and eight size pins remain unchanged."
 
 [ablations.trick_prototype_20261101_sum_slot_test]
+kind = "archive"
 arity = 8
 saving = 21.0641
 verdict = "kept: each rung sums the next counter, copies it to cell 1, prints, then copies V into cell 0. The print is one no-op; the copy is a second iff counter=V. A mismatch overwrites only cell 0, recomputed next rung; move 0 1 always changes the increasing counter, breaking any isolated sum no-op. Remove the unused cell-6 seed. On 200 Random(6100+n) tables per n=7,8: chars 1134600->902800 (20.43%), 2195200->1732800 (21.06%), no growth; four rows per program compare the entire printed prefix. Every table/row n<=3 passes; n=3 total 137836->118024. Extension n=9,10,11,12,14,16: 21.45,21.67,21.80,21.87,21.93,21.94%, each old/new last row runs. Exact nonconstant lengths: old 41T+52n+3d+49, new 32T+52n+2d+46, d=digits(44T-1). Saving (9T+d+3)/(41T+52n+3d+49) approaches 9/41=21.951% from below, so the peak is asymptotic and there is no name cap hiding a later collapse. Worst execution 5T+6n+4->4T+6n+4; workspace <=7n+72 stays valid. Resource probes n=1..6 and owned read-first/preserved-token regression pass. n=4 parity 922->772 chars; constants unchanged."
 
 [ablations.trick_prototype_20261101_seed_counter_direct]
+kind = "archive"
 arity = 8
 saving = 0.0
 verdict = "not admitted: deleting all three post-Horner setup moves saves 27 chars (under 0.6% at n=7, declining) but is incorrect: table 0110 with input 01 prints only 0, versus shipped prefix 0 1. A correctly rescheduled header is not established; its proposed 20-25-character upside cannot reach the size gate. No header race or extra fallback."
 
 [ablations.trick_prototype_20261101_shared_print_cell_alias]
+kind = "archive"
 arity = 8
 saving = 0.0
 verdict = "rejected: move 5 4 corrupts a sum addend and the no-op test. On table 0110, input 00 prints 0 1 instead of 0; input 10 prints 0 1 instead of 0 1 1. The corrected sum-slot controls produce both expected prefixes. An earlier input-01 probe did not distinguish the mutant and was replaced by these firing counterexamples. No claimed operand lower bound."
 
+[audits]
+trick_prototype = 2026-11-01
+blind_reimplementation = 2026-10-29
+plain_rewrite = 2026-10-29
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 3.3722
 workload = "constructor plus step; no snapshots timed"
 seed = 0
@@ -71,11 +85,12 @@ tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-ste
 verdict = "prototype only: direct four-cell sum. 251 programs, 150 halt cleanly; no structural trace differences, control differs on 122. Step throughput at longest 10/20/40 workload breadths: +3.37%/+4.51%/+4.31%. No production change or global performance conclusion; adoption needs broader validation."
 
 [interpreter_ablations.speedup_adoption_20261103]
-price = 5.0310
+kind = "archive"
+price = 5.031
 workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: direct four-cell sum. 5199 paired native traces, 2198 clean halts, no differences; changed-site mutant differs on 2154. Complete-run savings 5.03\u20135.97%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+verdict = "kept: direct four-cell sum. 5199 paired native traces, 2198 clean halts, no differences; changed-site mutant differs on 2154. Complete-run savings 5.03–5.97%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
 
 [evidence]
 version = 1

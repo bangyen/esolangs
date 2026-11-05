@@ -4,7 +4,13 @@
 [curation]
 backlinks = 316
 
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 1.2181
 workload = "constructor plus step; no snapshots timed"
 seed = 0
@@ -12,8 +18,9 @@ tables = "all n<=3 generated tables/rows where supported, examples and 300 seede
 verdict = "prototype only: direct arithmetic dispatch. 309 programs, 309 halt cleanly; no structural trace differences, control differs on 209. Preliminary step throughput +1.22%. No production change or global performance conclusion; adoption needs broader validation."
 
 [interpreter_ablations.speedup_adoption_20261103]
-price = 5.5600
+kind = "archive"
+price = 5.56
 workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "3009 native corpus programs; two finite instruction profiles at 32/128/512 units"
-verdict = "kept: direct arithmetic dispatch. 3009 paired native traces, 3009 clean halts, no differences; changed-site mutant differs on 1990. Complete-run savings 5.56\u20137.38%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+verdict = "kept: direct arithmetic dispatch. 3009 paired native traces, 3009 clean halts, no differences; changed-site mutant differs on 1990. Complete-run savings 5.56–7.38%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."

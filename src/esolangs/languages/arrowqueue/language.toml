@@ -25,35 +25,36 @@ folding_constant_local = "_program"  # direct halt or circulating heading
 
 
 [ablations]
-audited = "2026-10-19"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-19" }
 
 [ablations.essential_projection]
+kind = "archive"
 saving = 72.4
 arity = 10
 verdict = "kept: canonical, exempt. An ignored input's stage is one inert setter row off the path and the cascade indexes the projected table alone. By area: 44.6% at n=8 and 48.2% at n=10 with one ignored input, 67.4% / 72.4% with two; 0.0% on random tables. The docstring's -46.8% / -70.5% at n=8 measures 44.6-45.0% / 67.4% on every construction tried; see the stale-figures list"
 
 [ablations.constant_tail_fold]
+kind = "archive"
 saving = 55.0
 arity = 10
 verdict = "kept: the cascade's trailing constant span is not drawn -- a 0 tail is dropped (running off the grid halts) and a 1 tail is one drained ring that pops the markers the dropped rows would. On random tables the tails are ~2 entries (1.59% at n=6 falling to 0.11% at n=10 by area); on its class at n=10 a constant last quarter saves 17.4% (0-suffix) / 29.5% (1-suffix) and a constant last half 38.1% / 55.0%. Re-priced 2026-10-28 (random + named bar), deleting the fold from the cascade and every strip, by area, 20 seeded random tables: 1.67% / 1.40% at n=7 / 8, 0.00% at n=9..12; named: or 75.0% / 83.8% / 89.7% / 93.9% / 96.5% / 98.1% at n=7..12, threshold >= n//3 36.7% / 41.6% / 21.9% / 23.7% / 24.0% / 11.6%, majority 7.6% falling to 0.9%, and 1.1% to 0.05%, parity 0.00%. Balanced area (side squared, same 20 tables, seed 1000n + i): +0.2% / +0.6% without it on random at n=7/8; named or 59.2% / 49.4%, nor 59.2% / 49.4%, threshold >= n//3 32.8% / 13.3%, majority 12.4% / 3.1% at n=7/8, or 10.8% and threshold 10.8% at n=10. Clears 10% on named functions at every arity, and is also the cascade's realization of the canonical constant fold (a constant aligned span is a constant tail of the Horner cascade; only a trailing run can be dropped without moving later indices): kept"
 
 [ablations.area_default]
+kind = "archive"
 saving = 27.6
 arity = 10
 verdict = "kept: the default is the smaller by area of the unfolded cascade and the four folds (ties keep the cascade; constants keep their direct build). Balanced route (re-priced 2026-10-28, 20 tables, seed 1000n + i): without the folds the balanced side squared grows 83x at n=7 and 175x at n=8 on random tables and 46x to 177x on and, parity and majority at n=7/8 (or and nor tie from n=11), so the folds are the balanced layout. Total area over 200 random tables: 11.2% at n=6, 13.0% at n=7, 18.5% at n=8, 27.6% at n=10. Execution grows past the cascade's 10T + 6n + 26: a folded run adds only corridor cells, none touching the queue. A strip's exit corridor is at most used + 20 cells (1 turn, 4 left, 2 + used up, 11 across, 2 down) and the blocks run as in the cascade, so the corridors add at most the lines T + 6n + 9 plus 20 a non-last strip. At most n + 1 such strips hold a stage or the middle (one block each at worst); the leaf-only ones hold at least cap - 1 of at most T + 1 lines, cap >= 7 the strip height less 3 and cap - 1 >= 8 from n=4. Steps are so at most 11T + 32n + 56 + 20(T + 2)/(cap - 1), which 12T + 32n + 92 covers at every n (tightest at n=5, cap 11; below T from n=8). Workspace: queue and heading bits are the cascade's, and row plus column bits are at most bl(area) + 1 <= bl(3T+6n+5) + 4, one more than the cascade's, hence T + 12"
 
 [ablations.constant_direct_path]
+kind = "archive"
 saving = 89.8
 arity = 10
 verdict = "kept: canonical, exempt. A constant table halts on an empty pop or circulates one right heading instead of cascading, with the input setters off those paths. Area at n=10: 11 vs 108 against the cascade build for the all-zero table (89.8%), 44 vs 120 for the all-one table (63.3%)"
 
-[audits]
-trick_prototype = 2026-11-02
-blind_reimplementation = 2026-10-30
-docstring_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-28
-
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 44.4
 seed = 0
@@ -61,6 +62,7 @@ tables = "both constants, n=1..12"
 verdict = "kept: canonical constant-root layout packing. The one-heading ring visits eight fixed cells; fill the other cells with ignored input setters, preserving the existing off-path input convention and the old n=1/2 layouts. Compare four-column and three-row rectangles by area; explicit narrower widths pack at a four-column floor and fitting widths preserve the default. At n=7 one area 32->15 (53.1%; both answers combined 42.5%), n=8 36->16 (55.6%; combined 44.4%), n=12 52->20 (61.5%; combined 49.2%). Zero area n+1 unchanged. One still diverges by the same nine-step repeated-state witness, not a finite execution claim; zero still halts at its first empty pop. Written workspace unchanged at 0/7 bits. n=3 corpus area 52634->52630; text chars 46508 unchanged. Owned trace coverage proves every setter stays outside the visited path. 1120 native/candidate row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute or prove their termination answer in default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command records and global resource caps unchanged. No added collected cases."
 
 [ablations.paired_leaves_trick]
+kind = "archive"
 arity = 8
 saving = 0.0
 seed = 7000
@@ -68,6 +70,7 @@ tables = "retained-bit interface controls, both answers and both last bits"
 verdict = "rejected 2026-11-02: incomplete construction. The raw proposal supplies no mixed-pair discriminator; existing 0/1 leaves ignore an extra D after R,D,L,U (four native interface controls: zero halts after 6/7 steps, one repeats after 13/14). Thus replacing pairs by existing leaves fails 01/10, a positive firing control. No claimed size saving or impossibility wall. Its proposed min against the old whole program is also forbidden without a class break; no searched gadget or fallback was introduced. Uniform input pairs and physical setter order remain mandatory."
 
 [ablations.fold_height_sweep_trick]
+kind = "archive"
 arity = 8
 saving = 6.1
 seed = 7000
@@ -75,13 +78,26 @@ tables = "five Random(1000n+i).choices tables and seven named tables per n=7/8"
 verdict = "rejected 2026-11-02: production search and superlinear build. Trying every height 10..2centre emits Theta(sqrt(T)) O(T) grids, rather than four fixed candidates; independently choosing the last cap adds search. Diagnostic height-only candidates reduce total area 12482->11676 (6.46%) / 21077->19788 (6.12%), below either bar. Native selected layouts passed four rows each. The first generic pilot improves 1272->1152 / 2178->2016, so the probe fires. No last-cap search was implemented and no global best-layout claim is made."
 
 [ablations.bare_zero_runs_trick]
+kind = "archive"
 arity = 8
 saving = 0.0
 seed = 7000
 tables = "200 Random(1000n+i).choices tables per n=7/8; all tables/rows n<=3; samples n=4..6"
 verdict = "kept 2026-11-02: canonical dead-code removal, percentage-exempt. A folded zero after zero omits columns 4/5; zero strip closures omit the same unused ring half. The selector crosses only column1; selected zero halts in columns2/3. Only a preceding one ring uses columns4/5, so its following row stays full; fold corridors use column0/1 and rows0/1. Shorter strips merely translate the same disjoint corridors. The cascade already has bare zero rows and is unchanged; no new Boolean construction, height search or old-program fallback. O(T) build/source, constant folding, ordered setters, uniform ./~ pair and existing source/execution/workspace bounds are unchanged. Actual area (including trailing lines) 249630->249630 / 429344->429344, zero growing generic tables; characters 245916->243794 (-0.86%) / 414776->411714 (-0.74%). Named AND area 1074->1032 / 1878->1650 (3.91/12.14%); all six other named areas tie. Default area-first selection can increase text: AND n=7 660->979, n=8 1077->1536. n=3 area52630 and chars46508 unchanged; halting-row commands96928 unchanged, nonhalting rows retain repeated-state witnesses. 7072 paired old/new row runs plus10776 balanced/narrow/height-diagnostic runs passed; all small tables/rows, five random samples n=4..6 and named cases, four sampled rows n=7/8. Public bytes equal the prototype. Wrong constant program and deleting a needed preceding-one ring half are caught. One size pin341->337; all command pins and existing proof arities unchanged; balanced example loses four unreachable glyphs. Balanced area on the same 200-table corpus249696->249696 / 432072->432072."
 
+[audits]
+trick_prototype = 2026-11-02
+blind_reimplementation = 2026-10-30
+docstring_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-28
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = -0.0192
 workload = "constructor plus step; no snapshots timed"
 seed = 0

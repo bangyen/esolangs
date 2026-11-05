@@ -22,20 +22,20 @@ folding_constant_local = "essential_inputs"  # no essential input: one push line
 "11111110" = { commands = 28, commands_by_row = { "0" = 28, "1" = 28, "2" = 28, "3" = 28, "4" = 28, "5" = 28, "6" = 28, "7" = 28 }, source_units = 1285 }
 
 [ablations]
-audited = "2026-10-29"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-29" }
 
 [ablations.polarity]
+kind = "archive"
 saving = 31.31
 arity = 8
 seed = "random.Random(184700 + n)"
 tables = 200
 verdict = "kept under the named-function rule: storing the majority value as blank lines and subtracting the loaded cell from a pushed 1 costs 112 characters and changes 11 of 200 random tables at n=7 (0.08%) and 25 at n=8 (0.20%), none grows. Re-measured 2026-10-29 (20 tables n=3..6,9,10; 200 at n=7,8): random 0.00% n<=6, 0.11% n=7, 0.18% n=8, 0.01% n=9, 0.63% n=10 chars; OR/!AND drop 19.85% n=7, 31.31% n=8, 43.62% n=9, 55.36% n=10, threshold-2 17.55/29.52/42.36/54.56%, !majority 8.11% n=8 and 16.49% n=10; AND, parity and majority 0%. Text language, no balanced area. Exhaustive n<=3 and named tables to n=8 executed, wrong-table control fails"
 
-[audits]
-trick_prototype = 2026-11-03
-plain_rewrite = 2026-10-29
-
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 85.1
 seed = 0
@@ -43,19 +43,30 @@ tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witness
 verdict = "kept: canonical whole-constant code/data spelling. A single blank exit line prints the automatically appended zero pad. For one, source opcodes 2,0,1 add the pad zero to the final literal code cell one, then the explicit exit prints it. Both add operands exist; neither an undefined instruction nor stack underflow is used. Source is exactly one newline for zero and chicken chicken/newline/newline/chicken for one: 1/24 chars, 1/2 commands, 8n+4/8n+8 written bits. The documented non-isolated code/data/stack and exit pad license the construction (https://esolangs.org/wiki/Chicken#Memory_model, checked 2026-11-01). Whole stdin is read before execution. n=8 80/88 -> 1/24 chars; n=3 corpus 305282 -> 305139 chars. A literal newline is kept, so the generated zero program is nonempty. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources and uniform embedded slots or input before output. No new collected cases."
 
 [ablations.trick_prototype_20261101_input_coercion]
+kind = "archive"
 arity = 8
 saving = 0.0
 verdict = "rejected: attachment subtract and mul_true prototypes both pass every full-input row on 01,10,0110,0001,11111110,1101001101101101, but print undefined for empty input on every table. The shipped positive control prints table[0]. Missing characters are false; numeric coercion of undefined instead produces NaN. New owned short-input regressions check empty and one-character prefixes against zero-padded input. No interpreter change, contract weakening or optimization shipped. Padding-offset proposal subsequently audited in padding_offset_fold_20261103."
 
-
 [ablations.padding_offset_fold_20261103]
+kind = "archive"
 arity = 8
 saving = -16.498
 seed = "Random(1000*n+i), i=0..19"
 tables = "20 generic per n7/8; exhaustive276 tables/2120 rows n<=3; 20 tables/all rows per n4..6"
 verdict = "rejected, completing raw3: add two explicit instructions, set U=old used+2, (base,c)=divmod(U,stride), add c before the final LOAD and remove padding. No layout search or old-program minimum. Actual chars68643->71261 /88849->103507 (-3.814/-16.498%); n3 chars305139->329423, commands53896->57960,254 tables grow and2032 rows slow. Even free removal of ALL padding AND the entire pushed-base instruction can save at most4.368/2.969% at7/8, so distributing c across Horner steps cannot rescue this rule. Native exhaustive/sampled output and short-string zero-padding controls pass; off-by-one c fails8 control rows. All nonconstant programs change, so the negative result is nonvacuous. No production paths/state added; generator, bounds, arities, pins and example unchanged."
 
+[audits]
+trick_prototype = 2026-11-03
+plain_rewrite = 2026-10-29
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 13.4644
 workload = "constructor plus step; no snapshots timed"
 seed = 0
@@ -63,11 +74,12 @@ tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-ste
 verdict = "prototype only: count parsed keywords in C. 249 programs, 150 halt cleanly; no structural trace differences, control differs on 150. Step throughput at longest 10/20/40 workload breadths: +13.46%/+14.00%/+15.94%. No production change or global performance conclusion; adoption needs broader validation."
 
 [interpreter_ablations.speedup_adoption_20261103]
-price = 18.4200
+kind = "archive"
+price = 18.42
 workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: count parsed keywords in C. 5197 paired native traces, 2264 clean halts, no differences; changed-site mutant differs on 2264. Complete-run savings 18.42\u201324.92%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+verdict = "kept: count parsed keywords in C. 5197 paired native traces, 2264 clean halts, no differences; changed-site mutant differs on 2264. Complete-run savings 18.42–24.92%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
 
 [evidence]
 version = 1

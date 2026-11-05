@@ -25,30 +25,32 @@ folding_constant_local = "_program"  # delete inputs and a literal bit
 folds_without_tree = true
 
 [ablations]
-audited = "2026-10-29"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-29" }
 
 [ablations.constant_fold]
+kind = "archive"
 saving = 120.0
 arity = 12
 verdict = "kept: canonical, exempt. A constant table deletes the embedded inputs and answers with a literal (n+3 chars). Routing constants through the indexed walk instead costs +123.08% at n=10 and +120.00% at n=12 on constant tables (the walk with no essential inputs is 2n+9 chars); against the plain walk with the projection also removed, +63076.92 / +218520.00%"
 
 [ablations.input_projection]
+kind = "archive"
 saving = 695.8
 arity = 12
 verdict = "kept: canonical, exempt. input_weights reads the table at its essential inputs only; an ignored input weighs 0, so its command is a bare 0 and it appends nothing. Embedding the full table at full positional weights instead costs 0.00% on random tables at every arity; on its classes the deletion costs at n=10/12: one ignored input +99.49 / +99.85%, two +296.96 / +299.09%, three +685.93 / +695.75%"
 
 [ablations.paired_rows]
+kind = "archive"
 saving = 18.5
 arity = 8
 seed = "2026103+n"
 tables = 50
 verdict = "kept: a cell `1 a 0 b 1 0 0` holds two rows, so the lowest input appends two zeros instead of the walk shifting a whole cell, and every other read halves; 6.5 chars a row against 8, at n=8 random 2065 -> 1683 chars (18.50%), n=7 18.29%, and the same on parity, and, or, majority and threshold since size is value-independent; each program run through esolangs.run on all 2^n rows"
 
-[audits]
-trick_prototype = 2026-11-02
-plain_rewrite = 2026-10-29
-
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 0.0
 seed = 0
@@ -56,21 +58,34 @@ tables = "both constants, n=1..12"
 verdict = "retained: one cyclic zero deletes n input bits and the literal answer, then the post-halt step prints that last deletion. Chars n+3, commands n+2 including dump: n=8 11 chars, 10 commands, 84 written bits; n=7 10 chars, n=12 15. Deleting the answer literal makes the opposite-valued input witnesses print the final input rather than the requested constant, for both answers. Owned tests verify initial data contains all inputs followed by the answer, every deletion, and output only after all n+1 deletions. No global optimum claimed. n=3 corpus chars 14492 unchanged. Executed 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Owned raw IO/template checks preserve exact input use, following records and no EOF probe."
 
 [ablations.trick_prototype_20261102_four_row_cells]
+kind = "archive"
 arity = 2
-saving = 0.0000
+saving = 0.0
 verdict = "not retained: no complete shorter fixed-stride cell follows from the supplied sketch. Test the concrete short chain1a0b1c0d100 on all16 filled patterns using the real interpreter over walk zeros: it consumes five zeros on12 patterns but three on0110,0111,1110,1111. Thus one input-derived stride cannot select those cells uniformly. Positive control concatenates existing cells1a0b1001c0d100: all16 consume six zeros and grouping them changes no emitted bytes or size. This rejects the tested chain, not every possible four-row encoding; no search or frozen cell table was introduced."
 
 [ablations.trick_prototype_20261102_two_zero_cells]
+kind = "archive"
 arity = 1
-saving = 0.0000
+saving = 0.0
 verdict = "rejected tested construction: remove the last delete from each cell (1a0b10), reduce higher-input strides to two per pair and lowest stride to one. All small tables/rows run against the actual unchanged emitter (4240 paired executions). The mutant already fails table01,row1: program100110100110,11 prints0 instead of1; table10,row1 prints1 instead of0. All baseline controls return their table bits. A shared-delete alternative would need a different complete cell, not a weakened answer/no-cascade invariant."
 
 [ablations.trick_prototype_20261102_amplified_reads]
+kind = "archive"
 arity = 1
-saving = 0.0000
+saving = 0.0
 verdict = "not retained: test10100 as the proposed expansion stage between reads and110, with both original walk zeros and unary one seeds. It reaches the held sentinel before the queued walk payload; on table01,row1 the original-seed stage halts after13 commands and prints0 instead of1. With one seeds, table10,row0 halts after10 and prints0 instead of1. Baseline controls execute all rows of01,10,0001,0110 correctly. The supplied sketch has no separate phase control or complete logarithmic expander; these are failures of the tested stages, not a universal amplification lower bound. No incomplete emitter ships."
 
+[audits]
+trick_prototype = 2026-11-02
+plain_rewrite = 2026-10-29
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = -1.504
 workload = "constructor plus step; no snapshots timed"
 seed = 0

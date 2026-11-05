@@ -23,20 +23,18 @@ sharing_exempt = "no procedures or jumps: a subtree runs only where it is writte
 "11111110" = { commands = 9, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 8, "5" = 8, "6" = 9, "7" = 9 }, source_units = 410 }
 
 [ablations]
-audited = "2026-10-30"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-30" }
 
 [ablations.halt_arm]
+kind = "archive"
 saving = 47.5
 arity = 8
 verdict = "kept: clears on random tables (47.6% at n=7, 47.5% at n=8; 30 tables each, random.Random(n) seeds) and named functions (n=8 parity 50.3%, majority 46.3%, threshold2 41.7%, and/or 35.9%); the one arm ends in waht i got banned, so the zero loop, both bumps and n-1 variables go; n=3..8 rows executed (25 tables per arity, wrong-table control fails)"
 
-[audits]
-trick_prototype = 2026-11-01
-docstring_reimplementation = 2026-10-30
-blind_reimplementation = 2026-10-27
-plain_rewrite = 2026-10-29
-
 [ablations.shipped_cost_audit_20261101]
+kind = "archive"
 arity = 8
 seed = "random.Random(6100+n)"
 tables = "2 random plus parity/majority/and/or per n=3,5,7,8"
@@ -44,6 +42,7 @@ baseline = "a8602c4f0^"
 verdict = "measured with the interpreter/helpers at 567f2cb18. At n=8: characters 154910 -> 80844, sampled commands 841 -> 298, largest sampled written-state peak 160 -> 24 bits. Sum of seven-repeat cold generation medians: 1262708 -> 791832 ns. All rows at n=3; rows 0,floor(T/3),T-1 otherwise. 204 correct executions, 24 wrong-table controls. Peaks and timings describe this corpus. The shared variable reduces both commands and sampled workspace. Current resource bounds pass where their stated domains apply"
 
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 0.0
 seed = "both constant values; witnesses(n) at n=4..6"
@@ -51,21 +50,36 @@ tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..1
 verdict = "retained: the existing constant span emits user:x, exactly n numeric reads, then its literal signature print. Both bits remain 28n+23 chars and n+2 commands; n=8 247 chars, n=12 359. The n=3 corpus stays 128652 chars. No new construction accepted; all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 are byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts within their resource bounds. Owned regressions require all reads before output and retain a following record; both Packlang literal policies execute."
 
 [ablations.trick_prototype_20261101_print_read_bit]
+kind = "archive"
 arity = 8
 saving = 11.6809
 verdict = "kept: a final 01 subtree reads x and prints it numerically; only the final read may echo. 200 Random(7+n) tables per n=7,8: chars 1843014->1625254 (11.82%) and 3709988->3276628 (11.68%), no table grows. Twenty-table extension n=9..14 stays 11.34,11.60,11.72,11.71,11.61,11.66%; every old/new table executes rows 0,1,floor(T/3),T-1. Fixed n=7/8 census: 4800 variant runs plus 400 wrong-table controls. All tables/rows n<=3 and 16 named/random tables per n=4..6 pass, 7824 paired runs plus 324 wrong-table controls, including resource bounds. The wider echo is deliberately excluded: ignored suffix reads must precede output. Global source <=105T, worst execution 2n+3 and workspace <=bl(L)+2bl(n)+4 stay valid."
 
 [ablations.trick_prototype_20261101_singular_message]
+kind = "archive"
 arity = 8
 saving = 0.8234
 verdict = "kept: minimal spelling, exempt. The documented truth-machine syntax accepts MESSAGE as well as MESSAGES. After identity leaves, chars 1625254->1611917 (0.82%) and 3276628->3249647 (0.82%) on the same 200-table n=7,8 corpus. Both changes together: n=3 total 128652->110463, n=4 parity 1553->1222. No table grows; bounds unchanged."
 
 [ablations.trick_prototype_20261101_elide_trailing_reads]
+kind = "archive"
 arity = 8
 saving = 0.0
 verdict = "rejected: dropping padding reads violates read-first/full-consumption conventions. A constant-zero mutant prints before its first read and triggers the instrumented positive control; the shipped constant consumes its input before output and preserves the following token. No size gate can admit this IO violation."
 
+[audits]
+trick_prototype = 2026-11-01
+docstring_reimplementation = 2026-10-30
+blind_reimplementation = 2026-10-27
+plain_rewrite = 2026-10-29
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 2.5569
 workload = "constructor plus step; no snapshots timed"
 seed = 0
@@ -73,11 +87,12 @@ tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-ste
 verdict = "prototype only: hoist literal regex compilation. 245 programs, 145 halt cleanly; no structural trace differences, control differs on 108. Step throughput at longest 10/20/40 workload breadths: +3.25%/+2.56%/+2.83%. No production change or global performance conclusion; adoption needs broader validation."
 
 [interpreter_ablations.speedup_adoption_20261103]
+kind = "archive"
 price = 0.3807
 workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: hoist literal regex compilation. 5193 paired native traces, 2203 clean halts, no differences; changed-site mutant differs on 2193. Complete-run savings 0.38\u20132.50%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+verdict = "kept: hoist literal regex compilation. 5193 paired native traces, 2203 clean halts, no differences; changed-site mutant differs on 2193. Complete-run savings 0.38–2.50%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
 
 [evidence]
 version = 1

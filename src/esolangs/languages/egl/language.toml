@@ -21,23 +21,21 @@ definitions = ["F = 3T+25n+digits(T)+8 through n=3; 2T+c+5r+25n+digits(c)+digits
 "1101001101101101" = { commands = 384, commands_by_row = { "0" = 366, "1" = 369, "2" = 370, "3" = 373, "4" = 372, "5" = 375, "6" = 376, "7" = 379, "8" = 371, "9" = 374, "10" = 375, "11" = 378, "12" = 377, "13" = 380, "14" = 381, "15" = 384 }, source_units = 148 }
 "11111110" = { commands = 272, commands_by_row = { "0" = 263, "1" = 266, "2" = 266, "3" = 269, "4" = 266, "5" = 269, "6" = 269, "7" = 272 }, source_units = 96 }
 
+[ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-19" }
+
 [ablations.symmetric_count]
+kind = "archive"
 saving = 62.3
 arity = 8
 seed = "named symmetric tables"
 tables = 5
 verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 walks one cell a 1 over m + 1 painted entries, raced by length against the weighted build. At n=7 / 8 / 10: parity 43.5% / 58.2% / 82.0%, majority 43.5% / 56.7% / 81.2%, and 38.4% / 52.8% / 78.6%, or 47.8% / 62.3% / 84.4%, exactly-2 40.2% / 54.1% / 79.0%; a symmetric table with an ignored input 43.5% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
 
-[catalogue]
-folding_constant_local = "_program"  # scratch reads beside a literal answer cell
-
-[schemes]
-folds_without_tree = true
-
-[ablations]
-audited = "2026-10-19"
-
 [ablations.counter_offset]
+kind = "archive"
 saving = 27.0
 arity = 7
 seed = "random.Random(n)"
@@ -45,36 +43,36 @@ tables = 200
 verdict = "kept 2026-10-30 on the named-function clause (random declines, named functions flat; Nandypants read_ladder precedent): the 48 `-` per input that subtract '0' from each read become a 6x8 counter loop on a scratch cell one row below the read cell (`v++++++(-^--------v)^`, 21 chars for 48), grid `size,3` with the table in row 2 and the program ending `vv=`, on every route including the symmetric race. A fixed 27n saving, so random tables fall 27.0 / 20.1 / 13.7 / 8.7% at n=7 / 8 / 9 / 10 (200 tables at n<=8, 100 above: 138,770 -> 101,370 and 213,140 -> 170,340 chars at n=7, 8), 41.5 / 42.9 / 41.3 / 38.1 / 33.3% at n=2..6, while parity, and, or, majority and threshold-2 fall about 48% at every n=7..10 (parity 392 -> 205 / 446 -> 232 / 502 -> 261 / 556 -> 288) and balanced area alike (parity 392 -> 210 / 450 -> 242 at n=7 / 8). 0 of 200 per n=2..8, 0 of 100 at n=9, 10 and 0 of the 276 tables at n<=3 grew. Executed through esolangs.run: every row of every table at n<=3, of the five named functions and of 50 random tables at n=7 and n=8; the wrong-table control (or program against the and table) fails"
 
 [ablations.constant_fold]
+kind = "archive"
 saving = 48938.9
 arity = 12
 verdict = "kept: canonical, exempt. A constant reads its inputs into a scratch cell and prints a literal cell. Routing constants through the indexed path over the full table instead costs +16018.75 / +21094.12% at n=10 and +48938.89 / +67915.79% at n=12 (all-zero / all-one)"
 
 [ablations.input_projection]
+kind = "archive"
 saving = 90.7
 arity = 12
 verdict = "kept: canonical, exempt. Row 1 is painted with the table read at the essential inputs and each guard walks by its weight in that table; an ignored input is a bare read. Painting the full table with full weights instead costs 0.00% on random tables at every arity; on its classes the deletion costs at n=10/12: one ignored input +75.71 / +90.71%, two +190.45 / +251.55%, three +338.81 / +516.61%, a half-constant table +4077.03 / +14209.21%"
 
 [ablations.balance_width_search]
+kind = "archive"
 saving = 0.0
 arity = 12
 seed = "random.Random(9100 + n)"
 tables = 564
 verdict = "retired 2026-10-29 (plain-rewrite audit): the balance hook also tried widths square - 1, square + 1 and floor - 1. None ever won: the plain fold at max(floor, balance_width) gives byte-identical balanced output on 564 tables (60 random a arity to n=8, 6 above, plus parity, and, or, majority, at-least-2) at n=1..12, so balanced area is unchanged"
-
-[audits]
-trick_prototype = 2026-11-02
-blind_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-29
+retirement = { verb = "retired", date = 2026-10-29, balanced = [195, 203] }
 
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 0.0
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "retained: scratch reads then a move to the fresh output cell. Chars n+6+b, commands n+2+b: n=8 14/15 chars, 10/11 commands, 20 written bits. The executed single-cell alternative clears the final ASCII byte with (-): n=7 grows 13/14->15/16 chars, n=8 grows 14/15->16/17, commands 10/11->108/109 and workspace 20->24 bits. It is larger and slower. Native controls pass; no global optimum claimed. n=3 corpus chars 25106 unchanged. 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Owned raw read-first tests preserve exact read counts and following input records, with no EOF probe."
 
-
 [ablations.trick_prototype_20261102_folded_rows]
+kind = "archive"
 arity = 8
 saving = 22.308324527415756
 seed = "random.Random(n).choice"
@@ -82,6 +80,7 @@ tables = 200
 verdict = "kept: split the binary-weight lookup into three-row blocks, paint alternate table rows in reverse traversal order, return from the last odd block with _^, and move high weights down whole three-row blocks. Low weights still move right. Choose W=2^min(m,(m+3)//2), R=2^m/W analytically by minimizing W+5R; no search or whole-old program race. The population-count reader remains one row because its unit steps require carries across a split; R=1 gives identical old bytes. Generic7/8 totals101370->84970 (16.1784%) and170340->132340 (22.3083%), no sampled growth. Sustained10% gate: full-essential source becomes T+P+W+5R+25n+digits(W)+digits(3R)+2 against2T+P+25n+digits(T)+9, P the popcount. With mean P=T/2 and W,R=O(sqrt(T)), savings rise toward40%; there is no finite expected peak to search for. Twenty native-checked9/10 tables save30268->21988 (27.3556%) and56527->38787 (31.3832%). Simple half-width splitting saves15.3892%/19.4904%; the selected width is one closed rule, not an extra candidate. Native true3 corpus25106chars/526304steps unchanged.78624 selected native runs cover all200 judged tables/all rows, named functions and20 random4..6 boundary rows; each alternative has1920 native runs, plus13000 small-corpus runs across all five variants. Wrong-stride control prints0 instead of1. Dimensions keep3T cells; changed row coordinates require a new ceiling, not the old one-dimensional formula. Native7/8 workspace peaks433/822->433/823bits. The new grid+counter+one-loop-frame+coordinates+two-cursor formula also bounds width1/balanced programs; newline execution no-ops are bounded separately. Native medians over five tables/all rows, three repeats: n7 .982183->.940422s (4.3% faster), n8 4.301344->3.994214s (7.1% faster). Generation medians over twenty tables, eleven repeats, n8/10/12: .001191/.004136/.015692 -> .001304/.004458/.016672s (+9.5/7.8/6.2%)."
 
 [ablations.trick_prototype_20261102_paired_cells]
+kind = "archive"
 arity = 8
 saving = 19.261477045908183
 seed = "random.Random(n).choice"
@@ -89,17 +88,35 @@ tables = 200
 verdict = "size-qualified but unselected: paint lo+2hi in a five-row half-width grid, retain the final essential input as selector, and use three nested, at-most-once decrements to write parity/quotient into two fresh cells. Ignored inputs after the selector read scratch with vx^; bare x would overwrite it (projection0011 is a native counterexample). Generic7/8 save13.6017%/19.2615%, sustained, but the chosen folded rows save16.1784%/22.3083% without a decoder. Native9/10 totals30268->23162 and56527->41765 also favor folded rows. The standalone construction replaces ordinary rows, keeping only the existing count-reader family; no whole-old min hides its small-table cost. True3 corpus25106->30061 chars,526304->551152 steps. Native workspace7/8 peaks446/808bits; packed values and three nested frames need their own linear ceiling, not the selected rule's one-frame proof. Both are linear in T. Every small table/row executes, plus1920 random/named boundary rows; deleting a decoder increment prints-1 instead of0. No packing rule ships, and its savings are not bundled with folding."
 
 [ablations.trick_prototype_20261102_complement_paint]
+kind = "archive"
 arity = 8
 saving = 0.26006809909592254
 seed = "random.Random(n).choice"
 tables = 200
 verdict = "rejected: race a complemented painted row against the original, with a fresh row3 cell initialized to1 and the selected bit subtracted into it. Horizontal-only reflection returns the four-row grid to the read origin. Generic7/8 totals101370->101151 (0.2160%) and170340->169897 (0.2601%), below10%; signed named parity, thresholds and projections gain0%. The eleven-character overhead exceeds typical imbalance; this is a limited saving tending to zero, not a sustained one. True3 corpus and steps unchanged.1920 random/named native rows plus all small tables/rows pass; omitting the fresh1 prints0 instead of1 on table1011111111111111,row0. Native7/8 workspace561/1079bits versus baseline433/822: a fourth grid row is a real resource cost. No complement race ships."
 
-
 [ablations.exact_contract_restoration_20261103]
+kind = "archive"
 verdict = "proof-only repair of the exactness dropped by4b969293c; emitted programs unchanged. Full binary inputs with P=T-1 attain exact source and command maxima; a single zero at rowT-2 prevents the count-reader route and all-one input takes every guard. Original R=1 bytes and exact workspace formula remain through n3. For n>=4 the folded W ceiling is attained: last normalizer has x=c-2,y=3r-2, same bit widths as grid maxima; its counter frame PC=B-21 has bl(B) at n4..6 by direct values149/214/313 and thereafter B=2T+c+5r+25n-1 lies between2T+21 and4T. Seven grid bits above baseline come from ASCII49 and counter6. Existing global witness corpus already includes the off-diagonal zero. Source/E/W exactness and all old verification arities restored; no source, pins, example, runtime state or construction path changes."
 
+[catalogue]
+folding_constant_local = "_program"  # scratch reads beside a literal answer cell
+
+[schemes]
+folds_without_tree = true
+
+[audits]
+trick_prototype = 2026-11-02
+blind_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-29
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = -3.4976
 workload = "constructor plus step; no snapshots timed"
 seed = 0

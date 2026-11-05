@@ -24,92 +24,97 @@ qualification = "ordered primitive lookups or a direct complementary-residual pa
 sharing_local = "_dig_indexed_shared"  # indexed six-input leaf classes
 
 [ablations]
-audited = "2026-10-19"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-19" }
 
 [ablations.essential_drop_tree]
+kind = "archive"
 saving = 14.5
 arity = 4
 verdict = "kept: canonical, exempt from the bar; saving on its ignored-input class (35.9% at n=3)"
 
 [ablations.essential_drop_alternating]
+kind = "archive"
 saving = 47.3
 arity = 9
 verdict = "kept: canonical, exempt; saving on its ignored-input class (44.9% at n=8); 0.0% on random tables"
 
 [ablations.leaf_input_selection]
+kind = "archive"
 saving = 43.5
 arity = 9
 verdict = "kept: canonical, exempt; the leaf-extension component of the alternating drop -- the tree levels' own skips are the residual 6.7%"
 
 [ablations.leading_ignored_wrapper]
+kind = "archive"
 saving = 15.5
 arity = 9
 verdict = "kept: canonical, exempt; saving on its leading-ignored class (37.1% at n=8 -- the share declines at n=9)"
 
 [ablations.constant_folding_tree]
+kind = "archive"
 saving = 15.8
 arity = 4
 verdict = "kept: canonical, exempt; saving on the ignored-input class, 18.8% on random tables at n=3"
 
 [ablations.constant_span_alternating]
+kind = "archive"
 saving = 25.4
 arity = 9
 verdict = "kept: canonical, exempt; saving on the half-constant class (20.0% at n=8)"
 
 [ablations.constant_column_race]
+kind = "archive"
 saving = 68.4
 arity = 10
 verdict = "kept: canonical, exempt; saving on the constant-table class"
 
 [ablations.indexed_leaf_decoder]
+kind = "archive"
 saving = 96.8
 arity = 12
 verdict = "kept: clears on its mosaic class (88.0% at n=10, 200 tables); the execution ledger that refused it is removed: it refused three or more classes at n=8, four at n=9, five at n=10, four at n=11 (395 against 384), eight at n=12, costing 53.2% of area on random tables at n=8, 63.1% at n=9 and 94.6% on eight classes at n=12, to keep a constant of a bound whose growth the decoder keeps -- it runs at n = 7..12 only, at most 201 (n=7), 265, 371, 435, 539, 561 commands. n=7 (one prefix bit read and left as its own class label, 2 classes) added 2026-10-28 with the stamp folding ignored leaf inputs (an ignored leaf input weighs 0 in its adder; ignored inputs just before the leaf lead the first adder and those after it trail the second; the capture and the body's entry column follow the painter's first store): 945 -> 540 cells and 802 -> 461 chars on every random, balanced, parity and majority table (42.9% of area; 20 + 20 tables run, 0 wrong), 12.2% and 17.7% of area on or and and (chars +13.8%, +13.3%); n=8 random, balanced, parity, majority, and, or the same size, n=8 with an input ignored 6.8-32.0% smaller; trailing ignored inputs ride the second adder rather than the prefix (a last-slot ignored input cost 155 chars against a limit of 150 before that); an adder with no live input among its first two keeps its three inputs"
 
 [ablations.lane_and_parallel_sharing]
+kind = "archive"
 saving = 0.0
 arity = 10
 verdict = "split by decision 2026-10-20 (retirement candidate #2): the parallel route is removed and the lane route kept as the canonical realization -- 0.0% marginal each on every mosaic measured, 0.0-6.5% jointly beyond the indexed route"
 
 [ablations.tree_max_race]
+kind = "archive"
 saving = 34.3
 arity = 4
 verdict = "split 2026-10-30 (re-audit): kept at n=4 only (30.7% of length, 33.2% of area over all 65,536 tables); the n>=5 race is retired -- byte-identical area on random tables (seeds random.Random(n) and n*1000+k, 20 per arity, n=5..10: 0.0% default and balanced) and on parity, majority, and, or, nand, nor at n=6..12 (default and balanced); only n=5 and/or/nand/nor won (341-372 against 416 cells, 10.6-18.0%), a share that is 0.0% at n=6"
 
 [ablations.length_keyed_races]
+kind = "archive"
 saving = -2.3
 arity = 3
 verdict = "retired 2026-10-20: the layout races key by area, then length (_dig_size), as the bar judges grids; 2.2% of area over the 256 n=3 tables (+0.4% length), 0.2% at n=4, ties at n=5..8"
+retirement = { verb = "retired", date = 2026-10-20 }
 
 [ablations.banded_default]
+kind = "archive"
 saving = 0.0
 arity = 8
 verdict = "retired 2026-10-21 (plain-rewrite audit): the two-band tree stays a width candidate only; as a default candidate it saved 9.4% of area over the 256 n=3 tables, 0.2% at n=4 (2,000 random), 0.0% at n=5..10 on random and one-to-three-essential tables, and on and/or 19.5% at n=7, 4.5% at n=8, 0.0% at n=9 -- a share in decline"
+retirement = { verb = "retired", date = 2026-10-21 }
 
 [ablations.compaction]
+kind = "archive"
 saving = 67.4
 arity = 16
 verdict = "kept, repriced 2026-11-02: the strict full-parity chain supersedes its original full-parity qualifier, but parity with one ignored input immediately before the six-bit leaf still qualifies. Physical n=14/drop7 and n=15/drop8 default and balanced grid_area 24969 vs 60557 (58.7678%) /43624 vs 124845 (65.0575%) with compaction disabled; all 32 paired default/balanced native rows pass. No new construction/state is added. Majority and random four-class mosaic marginals are only 1.3453% /1.7897% at n=13/14 (balanced same); retain this path for the live ignored-input parity class, not those weak marginals. Historical full-parity savings (58.8% of area at n=13, 65.1% at n=14, 67.4% at n=16, against the same shared build uncompacted); 1.3-1.8% on random repeated-leaf tables at n=12..14, 0.0% at n <= 12 where no lane build wins"
 
 [ablations.width_machinery]
+kind = "archive"
 saving = 0.0
 verdict = "kept: feasibility -- fit-width candidates, the quarter turn and the two-input XOR stencil, now the chain’s n=2 instance; width paths remain unchanged"
 
-[interpreter_ablations]
-audited = "2026-10-18"
-benchmark = "interp-audit-2026-10-18/tracediff-n3"
-
-[interpreter_ablations.padded_grid_cache]
-price = -3.0
-workload = "run"
-verdict = "removed 2026-10-20 (interpreter candidate I-6): -3.0% run with overlapping spreads in the audit; no measurable earning"
-
-[audits]
-trick_prototype = 2026-11-02
-blind_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-30
-
 [ablations.smaller_leaf_prototype]
+kind = "archive"
 saving = 0.0
 arity = 8
 seed = "random.Random(1847+n)"
@@ -117,14 +122,15 @@ tables = "20 random plus parity/majority/and/or per n=7,8; representative n=3 ex
 verdict = "Screened four- and five-input flat leaves against the shipped six-input leaves: neither saves area on 20 seeded random tables or parity/majority/and/or at n=7 or n=8. Both change 48 screened programs and pass 70 sampled output checks apiece. No size candidate; unshared leaf variants only, not a lower bound on other layouts."
 
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 0.0
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "retained: counted windows already read ignored inputs and print a literal. At n=8 both constants use 16 cells, 16 commands and 22 written bits; at n=7 area 15, n=12 area 20. Removing the explicit final @ executes correctly on all 512 n=8 rows and saves one cell, but relies on the interpreter-only off-grid halt documented in interpreter.py rather than the explicit halt. Keep @; no claim of universal optimality. n=3 corpus area 54912 unchanged. 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Owned raw read-first tests preserve exact read counts and following input records, with no EOF probe."
 
-
 [ablations.whole_table_leaf_prototype]
+kind = "archive"
 saving = -28.0
 arity = 8
 seed = "random.Random(1847+n), sequential choice('01')"
@@ -132,6 +138,7 @@ tables = "20 fixed tables at each n=7/8; all rows, plus all-small and sampled4..
 verdict = "rejected 2026-11-02: existing four-bit adders emit multi-character10/11 counters and a16-column paint row emits literal16, not a cell. Faithful executable repair chains one-digit arming windows and computes/stores16 before inputs. Bootstrap multiplication isolates its operand with an armed spacer so all rotations read the same unique numeric neighbour. Actual whole rectangles608/1152 cells versus indexed540/900: fixed20 areas10800 ->12160 /18000 ->23040 (growth12.5926/28.0%). E totals496640 ->519680 /1320960 ->1377280, maxima210/284 vs201/265; no25% command alternative. n<=3 source/E unchanged, so no5% route. Repaired programs execute all7680 judge rows with n ordered reads, exactone output and trailing sentinel. No production path/state added; no claim that every possible whole-table layout fails."
 
 [ablations.leaf_orientation_race_prototype]
+kind = "archive"
 saving = 0.0
 arity = 8
 seed = "random.Random(1847+n), sequential choice('01')"
@@ -139,6 +146,7 @@ tables = "20 fixed tables per n=7/8, all rows in each unselected shape; named co
 verdict = "rejected 2026-11-02: both proposed opposite splits are executable after the same counter repairs. Four/two-bit leaves cost1435/2911 cells at n=7/8; two/four (with stored16 setup and rotated arrows)3381/6831. Fixed20 actual area totals28700/58220 and67620/136620 versus default10800/18000. All15360 alternative judge rows run, including each rotated stage. Existing indexed bodies win every fixed generic table, so a three-orientation race changes no selected default (0%); the unselected candidates demonstrably differ and execute. Four/two E totals537600/1259520 (n8 -4.65%, n7 growth), two/four688640/1633280: no25% command gain; n3 unchanged excludes5% route. No production layout parameter/race added."
 
 [ablations.complement_leaf_print]
+kind = "archive"
 saving = 49.0909
 arity = 8
 seed = "random.Random(1847+n), sequential choice('01')"
@@ -154,13 +162,27 @@ complexity = "One parity carry recognizer and one chained version of the existin
 tradeoffs = "Source admission only: n3 commands grow2.5852%; primitive/indexed H remains unchanged on those layouts, but the named bound48n-48 exceeds old numeric H atn6..9 (240/288/336/384 vs199/217/273/371). Global max(H,48n-48) keeps O(sqrtT); every old E7..12 rung remains False. Native warm allrow medians atn4/6/8 .001422/.007950/.043219 ->.002814/.019264/.107631s, commands2016/10624/53760 ->2304/15360/86016. Warm5-build medians atn8/12/16 improve4.286625/47.105834/830.232541 ->.069666/.701250/10.825750ms. Balanced positive area945 ->288 /660 ->336; negative945 ->300 /660 ->348."
 
 [ablations.workspace_accounting_repair]
+kind = "archive"
 seed = "random.Random(1847+n), indexed classes random.Random(4400+n)"
 tables = "4754 native rows: old/final small, parity both biases2..12, indexed class maxima7..12, leading-discard thresholds1/2/5/6/7/8/9"
 saving = 0.0
 arity = 12
 verdict = "correctness repair 2026-11-02: inherited indexed W undercounts real states (old parity n7 last4349>4347; n9 5791>5789,n10 7199>7197,n11 7231>7229). Derive class label<=9,stride<=8, stored offset<=72,row count<=81; prefix decoder<=16. All stored cells remain nonnegative<=81 (one byte). Indexed mole/num need at most7+7 bits plus heading2, so replace primitive constant10 with16 only for existing capture opcode ';*$2'. Native10-class controls attain the full+6 correction, not only the observed parity+2. Primitive formula/scopes unchanged. Polynomial route is recognized by its actual twelve-row travel/terminal line and exact existing discard-column grammar, with no marker/state; exact W uses visited coordinates, counter9, signed-mole peak and uniform-token cursors. All old Wn5 exact=True coverage retained; negative two-input special and discard-window boundaries checked natively."
 
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-10-18", benchmark = "interp-audit-2026-10-18/tracediff-n3" }
+
+[interpreter_ablations.padded_grid_cache]
+kind = "archive"
+price = -3.0
+workload = "run"
+verdict = "removed 2026-10-20 (interpreter candidate I-6): -3.0% run with overlapping spreads in the audit; no measurable earning"
+retirement = { verb = "removed", date = 2026-10-20 }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 3.2973
 workload = "constructor plus step; no snapshots timed"
 seed = 0
@@ -168,11 +190,17 @@ tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-ste
 verdict = "prototype only: construct immutable named tuples through tuple.__new__. 253 programs, 234 halt cleanly; no structural trace differences, control differs on 148. Step throughput at longest 10/20/40 workload breadths: +3.49%/+3.46%/+3.30%. No production change or global performance conclusion; adoption needs broader validation."
 
 [interpreter_ablations.speedup_adoption_20261103]
+kind = "archive"
 price = 3.7383
 workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: construct immutable named tuples through tuple.__new__. 5201 paired native traces, 4774 clean halts, no differences; changed-site mutant differs on 2304. Complete-run savings 3.74\u20136.89%, including source parsing and output. Only full positional records bypass the wrapper; keyword-defined defaults remain centralized. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+verdict = "kept: construct immutable named tuples through tuple.__new__. 5201 paired native traces, 4774 clean halts, no differences; changed-site mutant differs on 2304. Complete-run savings 3.74–6.89%, including source parsing and output. Only full positional records bypass the wrapper; keyword-defined defaults remain centralized. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+
+[audits]
+trick_prototype = 2026-11-02
+blind_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-30
 
 [evidence]
 version = 1

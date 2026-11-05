@@ -27,39 +27,42 @@ folding_constant_local = "_program"  # restore inputs and leave one answer cell
 folds_without_tree = true
 
 [ablations]
-audited = "2026-11-02"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-11-02" }
 
 [ablations.constant_fold]
+kind = "archive"
 saving = 15800.0
 arity = 12
 verdict = "kept: canonical, exempt. A constant table restores each input to one white origin and leaves it black or white. Routing constants through the indexed corridor over the full table instead costs +4700.00 / +4942.86% at n=10 and +15800.00 / +16448.00% at n=12 (all-zero / all-one)"
 
 [ablations.input_projection]
+kind = "archive"
 saving = 99.7
 arity = 12
 verdict = "kept: canonical, exempt. The corridor covers the table read at the essential inputs only; an ignored input gets no walk. Building it over the full table instead costs 0.00% on random tables at every arity; on its classes the deletion costs at n=10/12: one ignored input +99.09 / +99.74%, two +294.69 / +298.40%, three +676.42 / +692.54%, a half-constant table +8516.67 / +29852.08%"
 
 [ablations.trailing_run_trim]
+kind = "archive"
 saving = 790.7
 arity = 12
 verdict = "kept: the corridor ends where the trailing run of equal answers starts; a walk halts at the corridor's end and every index past it shares that answer. Painting the full corridor instead costs +768.42 / +790.73% at n=10/12 on OR and dense tables and +480.26 / +494.21% on sparse tables; on random tables only +0.08 / +0.02%, since a random trailing run is ~2 rows. The saving is proportional to the trailing run, not a fixed amount. Plain-rewrite audit 2026-10-28 (20 random tables per n, Random(1000n+s).getrandbits(1<<n), plus named tables; plain build = full corridor on both forms): random 0.62% / 0.39% at n=7 / 8 (balanced 1.08% / 0.63%); or/nor 86.4% / 87.5% / 88.5% at n=7 / 8 / 10 (nor 79.8% / 81.4% / 82.8%), popcount>=2 43.3% / 43.9% / 44.3%, popcount>=3 22.2% / 22.4% / 22.4%, majority 11.5% / 7.8% / 4.1%; balanced area or 86.5% / 86.9% / 88.1%; share holds across n, kept for the or/nor and threshold family"
 
 [ablations.flipped_corridor]
+kind = "archive"
 saving = 5103.0
 arity = 10
 verdict = "kept: a table with a long leading run walks the mirror corridor (top index first, a zero input walks the lane east, a white wall cell and lane stopper clamp it), as cheap as the OR-like form. Dropping it costs +476.47 / +762.74% on and / nand at n=10 (6,174 vs 1,071, 9,240 vs 1,071) and 0.00% on parity; thresholds k=7 / 8 / 9 at n=10 +8.4 / +23.9 / +69.0% (+0.9% on majority); random tables at n=7 / 8 +0.31 / +0.16% (20 seeded). Share on and holds across n=7..12 (-79 to -83%, nand -86 to -89%). Plain-rewrite audit 2026-10-28 (same tables): random 0.17% / 0.10% at n=7 / 8 (balanced 0.44% / 0.16%); and 79.0% / 81.0% / 82.7% and nand 85.8% / 87.2% / 88.4% at n=7 / 8 / 10, balanced and 77.4% / 80.1% / 82.4%; majority 0.0% / 1.8% / 0.9%, parity, or, nor and thresholds 0.0%; kept for the and/nand family"
 
 [ablations.westward_build]
+kind = "archive"
 saving = 13.3
 arity = 9
 verdict = "kept: the east corridor is built west from its far end, ending the build at the origin; later passes reach the far end with one run of E (it halts at the black cell past the corridor), so the pass-1 return run of W is gone. Reverting costs +13.01 / +13.18 / +13.27% on 20 random tables at n=7 / 8 / 9 (Random(1000n+s).getrandbits(1<<n); balanced area +12.54 / +12.98 / +13.27%), parity +12.99 / +13.14 / +13.22%, majority +13.05 / +12.40 / +13.27%, popcount>=2 +12.95 / +13.49 / +13.83%; and, nand and the flipped corridor unchanged, or / nor 0.2-0.6%; share flat to rising across n, run through the interpreter on every row (all tables n<=3, 3000 at n=4, 20 random plus named at n=7, 8, 20 and 4 at n=9)"
 
-[audits]
-trick_prototype = 2026-11-02
-blind_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-28
-
 [ablations.constant_table_audit_20261101]
+kind = "archive"
 arity = 8
 saving = 0.0
 seed = 0
@@ -67,6 +70,7 @@ tables = "both constants, n=1..12"
 verdict = "retained: the native path restores every input to one white origin before leaving it black/white. Chars 2n+2-b; execution 2*chars proves a repeat at the pass boundary, then the dump renders. n=8 18/17 chars, 36/34 commands, workspace at most 10 bits in the measured rows. Removing the final S makes the all-zero input drift north each pass for both answers: positions (0,-1) through (0,-10), rather than reaching a fixed point. Positive controls: 1120 native row runs prove equal states after passes one and two and correct rendered answers. This rejects the missing-reset candidate, not a universal optimum. n=3 corpus 12327 chars unchanged. Executed 1120 candidate/native runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command records and global resource caps unchanged. Owned tests preserve exact input use; embedded Ant slots execute before the periodic-state dump with no port reads."
 
 [ablations.serpentine_answer_sweep]
+kind = "archive"
 arity = 8
 saving = -16.48
 seed = "random.Random(1000*n+i).choices('01',k=2**n), i<200"
@@ -74,6 +78,7 @@ tables = "all tables/rows n<=3; 10 random/all rows n4..6; 200 random/four bounda
 verdict = "rejected 2026-11-02: dropping the leading E reset lets wP paint a new west cell on later passes; table00000001/input000 fails the two-pass invariant. Omitting W instead prevents walking an already-white corridor. A valid repair retains both E-to-end and W-return runs, uses wPW for the corridor, and makes the first answer white so later answer sweeps freeze on the corridor. Native4840 rows pass, but source grows n3 12327->14875, n7 166478->194790, n8 332485->387278. No unseen global impossibility is inferred; this repair simply fails admission."
 
 [ablations.pass1_refusal_peephole]
+kind = "archive"
 arity = 8
 saving = 0.0
 seed = "bounded local contexts: first build and stable later pass; mirrored east frame"
@@ -81,13 +86,25 @@ tables = "all shorter strings over nsewNSEWpP:111 per three-command fragment,111
 verdict = "rejected 2026-11-02: native local probes find no shorter exact effect for wPW,sPN,ePE,wPWsPN,ePEsPN or SN in the tested first/later contexts. The same enumerator finds wPW for redundant wPWP, so the probe fires. These finite contexts do not prove a global minimum. No searched fragment or new production search ships."
 
 [ablations.eastward_flipped_build]
+kind = "archive"
 arity = 16
 saving = 14.28
 seed = "strict full-input popcount>=n-1 and its negation; generic seed1000*n+i above"
 tables = "both named functions through n16; generic200 each n7/8; all tables/rows n<=3"
 verdict = "kept 2026-11-02 only for the named all-but-one threshold family. The repaired mirror starts at its wall, plants its lane stopper, then builds westward to the input origin. Later E reaches that wall and exactly C west steps return to the origin; one old W run of C-1 chars disappears. Generic application saves only .208%/.098% at7/8 and AND/NAND only1 char, so none ships there. Named source n7 507/509->442/444 and n8 961/963->832/834, at least12.77%/13.39%, sustained above10%. For n>=5,C=T/2+2: old7T/2+6n+17 and new3T+6n+16, plus2 for the negation. Saving(.5T+1)/(3.5T+6n+17) increases since successive cross-product difference is(3n+2)T-6>0 (negation3n+3), tending1/7=14.2857%; n16 229489/229491->196720/196722. No peak/window workaround or arity cap. Recognition counts the n+1 answers at indices T-1 and T-1-2**i, a direct O(T) rule. Four candidates and the uniform ordered(n,N) fills remain. Other functions retain byte-identical programs; n3 totals12327 chars/197232 commands and all eight pins stay unchanged. Both n10 anchors execute unchanged (parity6684,and1071). Balanced grid_area n7 512->450,n8 968->840 for both polarities; named workspace peaks n7 550->637,n8 1142->1299 bits, within the unchanged cap. Public bytes match the prototype;7936 native rows plus108 resource runs cover every small row, samples, every named row through8 and boundary rows through12, default/width1/balance. Earlier unqualified prototype additionally ran9888 rows and the named curve through16 executes. Wrong-table and membership mutations fire. Source/E caps remain valid since this family only shrinks and reaches a fixed point after one pass. For n>=4 the selected mirror paints C+n+3<=T+1 cells, each <=n+3 bits including negative-coordinate signs, and ant coordinates total<=2(n+1) bits. Then(n+3)(T+1)+2(n+1)<=2(n+1)T+3 since(n-1)T-3n-2>=0; the existing workspace cap including bl(L-1) survives. n2/3 programs remain unchanged."
 
+[audits]
+trick_prototype = 2026-11-02
+blind_reimplementation = 2026-10-30
+plain_rewrite = 2026-10-28
+
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
+
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 5.7987
 workload = "constructor plus step; no snapshots timed"
 seed = 0
@@ -95,11 +112,12 @@ tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-ste
 verdict = "prototype only: decode movement spelling once. 247 programs, 0 halt cleanly; no structural trace differences, control differs on 240. Step throughput at longest 10/20/40 workload breadths: +5.80%/+6.60%/+7.30%. No production change or global performance conclusion; adoption needs broader validation."
 
 [interpreter_ablations.speedup_adoption_20261103]
+kind = "archive"
 price = 6.0171
 workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 300 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: decode movement spelling once. 2495 paired native traces, 0 clean halts, no differences; changed-site mutant differs on 2479. Complete-run savings 6.02\u20136.64%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+verdict = "kept: decode movement spelling once. 2495 paired native traces, 0 clean halts, no differences; changed-site mutant differs on 2479. Complete-run savings 6.02–6.64%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
 
 [evidence]
 version = 1

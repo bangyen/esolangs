@@ -11,9 +11,12 @@ qualification = "inputs buffer in stream order; shared residual cases branch on 
 definitions = ["B = Σ_{0<=i<n}(8len(x_i)+6)"]
 
 [ablations]
-audited = "2026-11-02"
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = { audited = "2026-11-02" }
 
 [ablations.essential_projection]
+kind = "archive"
 saving = 48.6
 arity = 12
 seed = "random.Random(184700 + n)"
@@ -21,11 +24,53 @@ tables = 200
 verdict = "kept: canonical, exempt; index loops and blocks over the essential inputs against every input: 0.0% on random tables, 39.5-48.6% one-ignored at n=8-12, 95.3-99.5% on constants; never larger. Plain-rewrite audit: the one bespoke trick, leaving out an arm where the index already is the bit, saved 5.1-6.6% at n=8-12 and was retired under the 10% bar; the per-row countdown cascade (14.0 chars a row) was not shipped"
 
 [ablations.symmetric_count]
+kind = "archive"
 saving = 82.1
 arity = 8
 seed = "named symmetric tables"
 tables = 5
 verdict = "retired 2026-11-02: full shared residual dispatch supersedes this reader; new marginal measurements are in split_switch_on_top_bit. Measured balanced area with pipelined definitions at n=7/8: old parity 910/1020→434/490, AND/OR 880/990→308/343, majority/threshold 910/1020→497/595. All five named families also improve balanced area through n=16. Historical: kept under the named-function rule: a table depending only on how many essential inputs are 1 adds each bit into one index without doubling and switches over m + 1 rows, a rule, not a race: the count build is never longer (byte-identical to the former length race on all 65,812 tables n<=4 and 112 tables n=5..8). Parity, majority, and, or and exactly-2 all 45.8-45.9% at n=4, 63.8% at n=6, 73.5% at n=7, 82.1% at n=8, 93.3% at n=10; a symmetric table with an ignored input 73.0% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
+retirement = { verb = "retired", date = 2026-11-02, balanced = [141, 149] }
+
+[ablations.constant_table_audit_20261101]
+kind = "archive"
+arity = 8
+saving = 82.5
+seed = 0
+tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
+verdict = "kept: canonical whole-constant folding. The initial zero arm defines fresh answer a and reads all inputs into _. The next case selects a at zero and prints it, incremented once for constant one. No existing variable is redefined and no jump is needed. Exactly n+15+2b chars and n+6+b commands, b the answer; written bits 25+bl(n+1)+bl(n), including both variable names. n=8 zero/one 137/137 -> 23/25 chars; n=12 177/177 -> 27/29. n=3 corpus 70352 -> 70218 chars; area 161740 -> 161416. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced constant scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions verify exact resources, every read before output and an unread sentinel."
+
+[ablations.fallthrough_minority_arms]
+kind = "archive"
+saving = 17.009
+arity = 8
+seed = "random.Random(184700+n), sequential choice('01')"
+tables = "200 random per n=7,8; all tables/rows n<=3; 20 random per n=4..6,9..16"
+verdict = "rejected 2026-11-02: empty minority arms fall into an adjacent printer and the default jumps over it. Author spec https://esolangs.org/wiki/SwitchCase#Control_flow requires a question-mark part, with no command-count minimum; native empty arms work. Fixed n=7/8 source 193647→168133 (13.176%) / 296224→245838 (17.009%) misses the 20% declining bar: per-arm saving 2/(digits+4) tends to zero. Extension peaks at 24.626% at n=13, then 23.641/22.898/22.549% at n=14/15/16; moving the fixed window cannot qualify it. Nonempty +0 control saves only 0.826%/0.540%. n=3 source 70218→66890, commands 113616→114628 (+0.891%); no execution admission. All 3960 paired native controls passed with all reads before output and sentinel untouched; flipped-answer mutant rejected. No empty-arm production path retained."
+
+[ablations.split_switch_on_top_bit]
+kind = "archive"
+saving = 57.4
+arity = 3
+seed = "random.Random(184700+n), sequential choice('01')"
+tables = "all tables/rows n<=3; 20 random per n=4..6; 200 random per n=7,8; named functions n=7,8,10,12,16"
+verdict = "kept 2026-11-02 as full-split repair under the 5% execution gate: buffer inputs in stream order, share equal residuals by subtree IDs, collapse equal children and constant residuals, then jump to two printing leaves. Raw bounded digit-drop split j<=4 is correct but rejected: source remains Theta(T log T), even though sampled n=7/8 commands fall 43.043%/68.748% and chars save 5.538%/10.875%; forced split controls cover 1728 asymmetric n=3 rows. Full splitting plus mandatory canonical sharing gives O(T/log T) residuals with O(log T) addresses, hence O(T) source/build, no old-build race. Exhaustive n=3 source 70218→31572, commands 113616→48400 (57.400% fewer), no table larger or row slower. Generic n=7/8 chars 193647→157528 (18.652%) / 296224→258576 (12.709%); source alone misses declining20%. All 76800 new n=7/8 rows run natively: old analytic totals 14564714/55703186 commands become 1225691/2757749. Baseline formula T*(4T+7n+7)+2*minor_count was validated against 12 complete native pilot tables n=3..8. Native public/prototype and resource/IO controls cover 808 tables and 4268 rows, including every sole-essential-input position. Old symmetric reader marginal savings versus the DAG at n=7/8: parity -19.315%/-17.582%, AND/OR -63.556%/-63.889%, majority/threshold -3.794%/3.604%; none clears the fixed corpus, so no old reader remains. All-positive one leaf on parity attains 6n+8 commands. Explicit at-most source/workspace ceilings include names, address widths, selected arm and IO cursor. New proof also removes the old false 8T+7n+3 bound: native 00100001,row7 took 90, not 88. Fresh zero-buffer read arms define the next buffer in sequence, moving definitions out of the header and removing the redundant default read arm: exactly 3m fewer characters, with the same command count. Generic balanced area n=7/8 is 405570→209293 / 567930→341831; named balanced areas are recorded beside the retired count reader. Later generic controls (20 tables per n=10/12/14/16, same seed rule) save -0.125%/20.161%/33.003%/40.469% source: n=10 grows 86060→86168 chars, nine tables grow; all 320 new sampled rows execute and source ceilings hold. Named n=16 majority grows 815→1397 chars while balanced area falls 1940→1799; the retired reader misses the fixed n=7/8 marginal gate. Constants and input convention unchanged; wrong-answer and wrong-input-order mutants detected."
+
+[ablations.input_order_for_small_keys]
+kind = "archive"
+saving = -2.15
+arity = 8
+seed = "random.Random(184700+n), sequential choice('01')"
+tables = "200 random per n=7,8; all tables/rows n<=3; 20 random per n=4..6; forced reverse-order asymmetric n=3 controls"
+verdict = "rejected 2026-11-02: greedy significance ordering minimizes decimal-key digit sums by search, contrary to construction policy. Scratch buffered stream-order repair costs source: n=7 193647→199386 (-2.964% saving), n=8 296224→302592 (-2.150%); 187/196 tables grow. The path fires in those 187/196 tables; one-digit keys through n=3 otherwise tie and keep identity. Sampled commands rise 320722→350690 / 599950→709254. All 3960 paired native default controls pass; forced reverse significance executes 1728 asymmetric n=3 rows correctly, while an unbuffered permutation mutant fails. No production search or reordered stream reads retained."
+
+[ablations.workspace_exactness_repair_20261103]
+kind = "archive"
+arity = 5
+saving = 0.0
+seed = 0
+tables = "parity at n=1,2,3; first eight unequal-half two-bit functions concatenated at n=5; retained workspace corpus"
+verdict = "proof-only repair: restore exact workspace at old3/5 and retain lower1/2. Let B sum each buffered name's bits plus its6-bit character. Full environment costs B+18, default key! costs8, branch command cursor0 costs1, and case index is at most n+diagram_cap(n); input progress adds bl(n). Other phases have numeric keys or missing buffers, dominating their longer cursors; an ignored read adds5 bits to_ but removes at least22 buffer bits. Global ceiling B+27+bl(n+diagram_cap(n))+bl(n) is attained at the registered exact rungs, not asserted globally infinite. Native52/76/99/145 bits at1/2/3/5,46 correct output rows plus46 resource rows; global upper controls3297 rows across309 tables pass, including allsmall, every sole-essential position4..6, and9/10/12 name-width cases. The constructive n5 witness has17 internal nodes, and allones reaches the first identity node at case22. The old ceiling overcounted independent header/command maxima and maximum name widths; new exact rungs need no policy exception. No generator path/state or emitted byte changes."
 
 [generator_sizes]
 "00000001" = { commands = 26, commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 23, "5" = 23, "6" = 25, "7" = 26 }, source_units = 111 }
@@ -43,42 +88,13 @@ docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 blind_reimplementation = 2026-10-27
 
-[ablations.constant_table_audit_20261101]
-arity = 8
-saving = 82.5
-seed = 0
-tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
-verdict = "kept: canonical whole-constant folding. The initial zero arm defines fresh answer a and reads all inputs into _. The next case selects a at zero and prints it, incremented once for constant one. No existing variable is redefined and no jump is needed. Exactly n+15+2b chars and n+6+b commands, b the answer; written bits 25+bl(n+1)+bl(n), including both variable names. n=8 zero/one 137/137 -> 23/25 chars; n=12 177/177 -> 27/29. n=3 corpus 70352 -> 70218 chars; area 161740 -> 161416. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced constant scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions verify exact resources, every read before output and an unread sentinel."
-
-[ablations.fallthrough_minority_arms]
-saving = 17.009
-arity = 8
-seed = "random.Random(184700+n), sequential choice('01')"
-tables = "200 random per n=7,8; all tables/rows n<=3; 20 random per n=4..6,9..16"
-verdict = "rejected 2026-11-02: empty minority arms fall into an adjacent printer and the default jumps over it. Author spec https://esolangs.org/wiki/SwitchCase#Control_flow requires a question-mark part, with no command-count minimum; native empty arms work. Fixed n=7/8 source 193647→168133 (13.176%) / 296224→245838 (17.009%) misses the 20% declining bar: per-arm saving 2/(digits+4) tends to zero. Extension peaks at 24.626% at n=13, then 23.641/22.898/22.549% at n=14/15/16; moving the fixed window cannot qualify it. Nonempty +0 control saves only 0.826%/0.540%. n=3 source 70218→66890, commands 113616→114628 (+0.891%); no execution admission. All 3960 paired native controls passed with all reads before output and sentinel untouched; flipped-answer mutant rejected. No empty-arm production path retained."
-
-[ablations.split_switch_on_top_bit]
-saving = 57.4
-arity = 3
-seed = "random.Random(184700+n), sequential choice('01')"
-tables = "all tables/rows n<=3; 20 random per n=4..6; 200 random per n=7,8; named functions n=7,8,10,12,16"
-verdict = "kept 2026-11-02 as full-split repair under the 5% execution gate: buffer inputs in stream order, share equal residuals by subtree IDs, collapse equal children and constant residuals, then jump to two printing leaves. Raw bounded digit-drop split j<=4 is correct but rejected: source remains Theta(T log T), even though sampled n=7/8 commands fall 43.043%/68.748% and chars save 5.538%/10.875%; forced split controls cover 1728 asymmetric n=3 rows. Full splitting plus mandatory canonical sharing gives O(T/log T) residuals with O(log T) addresses, hence O(T) source/build, no old-build race. Exhaustive n=3 source 70218→31572, commands 113616→48400 (57.400% fewer), no table larger or row slower. Generic n=7/8 chars 193647→157528 (18.652%) / 296224→258576 (12.709%); source alone misses declining20%. All 76800 new n=7/8 rows run natively: old analytic totals 14564714/55703186 commands become 1225691/2757749. Baseline formula T*(4T+7n+7)+2*minor_count was validated against 12 complete native pilot tables n=3..8. Native public/prototype and resource/IO controls cover 808 tables and 4268 rows, including every sole-essential-input position. Old symmetric reader marginal savings versus the DAG at n=7/8: parity -19.315%/-17.582%, AND/OR -63.556%/-63.889%, majority/threshold -3.794%/3.604%; none clears the fixed corpus, so no old reader remains. All-positive one leaf on parity attains 6n+8 commands. Explicit at-most source/workspace ceilings include names, address widths, selected arm and IO cursor. New proof also removes the old false 8T+7n+3 bound: native 00100001,row7 took 90, not 88. Fresh zero-buffer read arms define the next buffer in sequence, moving definitions out of the header and removing the redundant default read arm: exactly 3m fewer characters, with the same command count. Generic balanced area n=7/8 is 405570→209293 / 567930→341831; named balanced areas are recorded beside the retired count reader. Later generic controls (20 tables per n=10/12/14/16, same seed rule) save -0.125%/20.161%/33.003%/40.469% source: n=10 grows 86060→86168 chars, nine tables grow; all 320 new sampled rows execute and source ceilings hold. Named n=16 majority grows 815→1397 chars while balanced area falls 1940→1799; the retired reader misses the fixed n=7/8 marginal gate. Constants and input convention unchanged; wrong-answer and wrong-input-order mutants detected."
-
-[ablations.input_order_for_small_keys]
-saving = -2.15
-arity = 8
-seed = "random.Random(184700+n), sequential choice('01')"
-tables = "200 random per n=7,8; all tables/rows n<=3; 20 random per n=4..6; forced reverse-order asymmetric n=3 controls"
-verdict = "rejected 2026-11-02: greedy significance ordering minimizes decimal-key digit sums by search, contrary to construction policy. Scratch buffered stream-order repair costs source: n=7 193647→199386 (-2.964% saving), n=8 296224→302592 (-2.150%); 187/196 tables grow. The path fires in those 187/196 tables; one-digit keys through n=3 otherwise tie and keep identity. Sampled commands rise 320722→350690 / 599950→709254. All 3960 paired native default controls pass; forced reverse significance executes 1728 asymmetric n=3 rows correctly, while an unbuffered permutation mutant fails. No production search or reordered stream reads retained."
-
-[ablations.workspace_exactness_repair_20261103]
-arity = 5
-saving = 0.0
-seed = 0
-tables = "parity at n=1,2,3; first eight unequal-half two-bit functions concatenated at n=5; retained workspace corpus"
-verdict = "proof-only repair: restore exact workspace at old3/5 and retain lower1/2. Let B sum each buffered name's bits plus its6-bit character. Full environment costs B+18, default key! costs8, branch command cursor0 costs1, and case index is at most n+diagram_cap(n); input progress adds bl(n). Other phases have numeric keys or missing buffers, dominating their longer cursors; an ignored read adds5 bits to_ but removes at least22 buffer bits. Global ceiling B+27+bl(n+diagram_cap(n))+bl(n) is attained at the registered exact rungs, not asserted globally infinite. Native52/76/99/145 bits at1/2/3/5,46 correct output rows plus46 resource rows; global upper controls3297 rows across309 tables pass, including allsmall, every sole-essential position4..6, and9/10/12 name-width cases. The constructive n5 witness has17 internal nodes, and allones reaches the first identity node at case22. The old ceiling overcounted independent header/command maxima and maximum name widths; new exact rungs need no policy exception. No generator path/state or emitted byte changes."
+[interpreter_ablations]
+version = 1
+archive_revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+archive_context = {  }
 
 [interpreter_ablations.speedup_prototype_20261103]
+kind = "archive"
 price = 3.9309
 workload = "constructor plus step; no snapshots timed"
 seed = 0
@@ -86,11 +102,12 @@ tables = "pilot: exhaustive n<=2 plus 100 seeded mutations and examples; 400-ste
 verdict = "prototype only: hoist literal regex compilation. 248 programs, 146 halt cleanly; no structural trace differences, control differs on 148. Step throughput at longest 10/20/40 workload breadths: +3.93%/+4.73%/+4.37%. No production change or global performance conclusion; adoption needs broader validation."
 
 [interpreter_ablations.speedup_adoption_20261103]
+kind = "archive"
 price = 4.5864
 workload = "complete run; source parsing and final output included"
 seed = 0
 tables = "all generated tables/rows through n=3; 3000 seeded mutations; native complete-run random/parity profiles at n=3/5/7, four asymmetric rows each"
-verdict = "kept: hoist literal regex compilation. 5196 paired native traces, 2221 clean halts, no differences; changed-site mutant differs on 2313. Complete-run savings 4.59\u20135.83%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
+verdict = "kept: hoist literal regex compilation. 5196 paired native traces, 2221 clean halts, no differences; changed-site mutant differs on 2313. Complete-run savings 4.59–5.83%, including source parsing and output. Source growth, immutable state fields, snapshot grouping and final I/O are preserved. No generator change."
 
 [evidence]
 version = 1

@@ -70,9 +70,9 @@ the standing budget. Preserve public behavior through adapters; incompatible
 API changes need a major release. Follow the refactor and optimization gates
 in [Contributing](CONTRIBUTING.md).
 
-1. **Structured ablations.** Validate audit claims, provenance and retirement
-   records without semantic prose parsing. Retain measured figures, source
-   citations and replay gates; preserve unresolved and upper-bound verdicts.
+1. **Typed archive anchors.** Pin migrated audits to their structured snapshots
+   and retire the legacy retirement importer. Preserve provenance, source
+   citations, replay gates and unresolved verdicts.
 2. **Independent semantic checks.** Extend the Engineering oracles below into
    language admission. Derive each bounded oracle from the spec independently
    of production helpers and generator structure; record ambiguities first.
