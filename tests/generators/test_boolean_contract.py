@@ -9,6 +9,7 @@ import esolangs.languages.generators as boolean
 from esolangs.generation.helpers import essential_inputs
 from esolangs.registry import BY_BOOLEAN, LANGUAGES
 from esolangs.registry._backend import Shape
+from esolangs.registry._certification import load as load_certification
 from esolangs.runtime.io import ScriptedIO
 from scripts.docs.proof_status import load as _load_proof_status
 from scripts.source_units import source_units
@@ -268,9 +269,9 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: is busy -- which, on a suite that runs four workers, is always.
 #: Each language holds its row in ``certification.documented_sizes``.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
-    name: lang.certification.documented_sizes
+    name: load_certification(lang).documented_sizes
     for name, lang in LANGUAGES.items()
-    if lang.certification.documented_sizes is not None
+    if load_certification(lang).documented_sizes is not None
 }
 
 
@@ -294,7 +295,7 @@ _LINEAR_SCALING = sorted(
     "name",
     [
         pytest.param(name, marks=pytest.mark.slow)
-        if LANGUAGES[name].certification.slow_scaling
+        if load_certification(LANGUAGES[name]).slow_scaling
         else name
         for name in _LINEAR_SCALING
     ],
@@ -304,10 +305,10 @@ def test_generators_scale_linearly(name: str) -> None:
     lang = LANGUAGES[name]
     fn = lang.backend.generate
     assert fn is not None
-    arities = lang.certification.scaling_rungs
+    arities = load_certification(lang).scaling_rungs
     sizes = [source_units(fn(parity(n))) for n in arities]
-    if lang.certification.size_bound is not None:
-        bound = lang.certification.size_bound
+    if load_certification(lang).size_bound is not None:
+        bound = load_certification(lang).size_bound
         assert all(size <= bound(n) for size, n in zip(sizes, arities, strict=True))
         return
     if len(arities) == 2:
@@ -339,14 +340,14 @@ def test_the_expensive_generators_grow_as_documented(name: str) -> None:
 def test_nothing_else_is_anywhere_near_that_big() -> None:
     """The document's "every other generator is under 600KB at n=9"."""
     for lang in LANGUAGES.values():
-        if lang.certification.benchmark_tables:
+        if load_certification(lang).benchmark_tables:
             assert_proved_resource_cap(lang.name)
     biggest = max(
         (len(esolangs.generate(name, dense(9))), name)
         for name in esolangs.list_languages()
         if name not in _DOCUMENTED_SIZES
         and LANGUAGES[name].backend is not None
-        and not LANGUAGES[name].certification.benchmark_tables
+        and not load_certification(LANGUAGES[name]).benchmark_tables
         and esolangs.describe(name)["source_kind"] == "text"
     )
     # language-owners: ["Boolfuck", "SLOW ACV MAMMALIAN", "thisthat"]

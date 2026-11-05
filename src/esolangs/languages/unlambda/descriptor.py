@@ -2,7 +2,6 @@
 
 from esolangs.generation.wrap import _unlambda
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
@@ -16,7 +15,6 @@ LANGUAGE = Language(
         eof="an exhausted '@' hands its argument v, the spec's branch",
         empty_program="an Unlambda program cannot be empty",
     ),
-    certification=CertificationSpec(reader_checked=True),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.unlambda.generator", "unlambda", ("truth_table",)

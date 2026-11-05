@@ -9,6 +9,7 @@ import sys
 import pytest
 
 from esolangs.registry import LANGUAGES
+from esolangs.registry._certification import load as load_certification
 from esolangs.registry._functions import FunctionRef
 from tests.support.reference import REFERENCE
 
@@ -53,6 +54,7 @@ def test_declared_callable_parameters_match_implementations():
 
     for language in LANGUAGES.values():
         check(language)
+        check(load_certification(language))
 
 
 def test_callable_references_observe_mutation(monkeypatch):

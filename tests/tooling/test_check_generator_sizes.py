@@ -16,6 +16,7 @@ from checks.check_generator_sizes import (
     differences,
     recorded_baseline,
 )
+from esolangs.registry._certification import load as load_certification
 from scripts import benchmark as b
 from tests.support.reference import REFERENCE
 
@@ -297,13 +298,10 @@ def test_custom_corpus_cannot_hide_an_unproved_scaling_failure(
     from checks import check_generator_sizes as sizes
     from docs import proof_status
 
-    lang = replace(
-        sizes.LANGUAGES[REFERENCE],
-        certification=replace(
-            sizes.LANGUAGES[REFERENCE].certification, benchmark_tables=("01",)
-        ),
+    record = replace(
+        load_certification(sizes.LANGUAGES[REFERENCE]), benchmark_tables=("01",)
     )
-    monkeypatch.setattr(sizes, "LANGUAGES", {REFERENCE: lang})
+    monkeypatch.setattr(sizes, "load_certification", lambda _lang: record)
     rows = (
         ()
         if verdict is None

@@ -43,7 +43,6 @@ from esolangs.languages.sstack.generator._binary import _PROLOGUE, best_binary_b
 from esolangs.languages.sstack.generator._walk import _Hooks, _TreeWalk
 from esolangs.languages.sstack.proof_formulas import workspace
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec

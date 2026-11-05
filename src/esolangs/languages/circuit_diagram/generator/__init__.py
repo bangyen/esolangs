@@ -65,7 +65,6 @@ from esolangs.languages.circuit_diagram.generator.layout import (
 )
 from esolangs.languages.circuit_diagram.proof_formulas import workspace
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec

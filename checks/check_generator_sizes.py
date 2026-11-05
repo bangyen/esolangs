@@ -42,6 +42,7 @@ from benchmark import evidence_session, measure  # noqa: E402
 import esolangs  # noqa: E402
 from checks import generator_sizes  # noqa: E402
 from esolangs.registry import LANGUAGES  # noqa: E402
+from esolangs.registry._certification import load as load_certification  # noqa: E402
 
 
 def benchmark_tables() -> tuple[str, ...]:
@@ -69,9 +70,9 @@ SCHEMA = 4
 
 # Dense parity reaches each language's layout switch without folding inputs.
 BOUNDARIES = {
-    name: lang.certification.layout_switch
+    name: load_certification(lang).layout_switch
     for name, lang in LANGUAGES.items()
-    if lang.certification.layout_switch
+    if load_certification(lang).layout_switch
 }
 
 
@@ -85,7 +86,7 @@ def boundary_tables(name: str) -> tuple[str, ...]:
 
 def control_tables(name: str) -> tuple[str, ...]:
     """Return smaller controls only for a proved language resource cap."""
-    custom = LANGUAGES[name].certification.benchmark_tables
+    custom = load_certification(LANGUAGES[name]).benchmark_tables
     if custom:
         from docs.proof_status import load
 

@@ -179,10 +179,10 @@ def test_language_corpus_is_independent_of_other_examples(monkeypatch) -> None:
     monkeypatch.setattr(
         leaks,
         "LANGUAGES",
-        {
-            name: Language(name, certification=CertificationSpec(fuzz_max_digits=0))
-            for name in ("before", "fixture")
-        },
+        {name: Language(name) for name in ("before", "fixture")},
+    )
+    monkeypatch.setattr(
+        leaks, "load_certification", lambda _lang: CertificationSpec(fuzz_max_digits=0)
     )
     examples = {"before": ["a"], "fixture": ["+."]}
     old = leaks._corpus("fixture", examples)

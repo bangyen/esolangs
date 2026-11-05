@@ -6,6 +6,7 @@ from math import isqrt
 
 import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.registry._certification import load as load_certification
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace
 from tests.support.evaluation import _DEFAULT, _Default, _evaluate
@@ -65,11 +66,11 @@ def probe_table(name: str, default: str = "0110") -> str:
     from esolangs.registry import LANGUAGES
 
     lang = LANGUAGES[esolangs.resolve(name)]
-    if lang.certification.benchmark_tables:
+    if load_certification(lang).benchmark_tables:
         assert_proved_resource_cap(name)
         return next(
             table
-            for table in lang.certification.benchmark_tables
+            for table in load_certification(lang).benchmark_tables
             if "0" in table and "1" in table
         )
     return default

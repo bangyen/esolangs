@@ -12,6 +12,7 @@ import pytest
 import esolangs
 import esolangs.languages.generators as boolean
 from esolangs.registry import LANGUAGES
+from esolangs.registry._certification import load as load_certification
 from tests.support.cli_support import call_main
 from tests.support.evaluation import _evaluate
 from tests.support.generator_support import probe_table
@@ -82,7 +83,7 @@ def test_structured_witnesses_build_at_the_arity_cap(name) -> None:
 
 #: Generators whose ``GeneratorCapError`` never reaches a caller.
 _INTERNAL_CAPS = {
-    name for name, lang in LANGUAGES.items() if lang.certification.internal_cap
+    name for name, lang in LANGUAGES.items() if load_certification(lang).internal_cap
 }
 
 

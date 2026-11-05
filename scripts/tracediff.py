@@ -44,6 +44,7 @@ sys.path.insert(0, str(ROOT))
 import esolangs  # noqa: E402
 from esolangs.exceptions import GeneratorCapError  # noqa: E402
 from esolangs.registry import INTERPRETERS, LANGUAGES, resolve  # noqa: E402
+from esolangs.registry._certification import load as load_certification  # noqa: E402
 from esolangs.runtime._lifecycle import Completion, completion  # noqa: E402
 from esolangs.runtime.io import ScriptedIO  # noqa: E402
 from esolangs.runtime.randomness import Seeded  # noqa: E402
@@ -344,7 +345,7 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
                             )
                             programs.append((program, str(stdin)))
     return programs + _random_programs(
-        programs, count, language.certification.fuzz_max_digits
+        programs, count, load_certification(language).fuzz_max_digits
     )
 
 

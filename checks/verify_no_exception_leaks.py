@@ -65,6 +65,7 @@ from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError
 from esolangs.raster import Raster
 from esolangs.registry import INTERPRETERS, LANGUAGES, example_stems
+from esolangs.registry._certification import load as load_certification
 from esolangs.runtime._program import Program
 from esolangs.vm import make_vm, run_until_halt
 
@@ -314,7 +315,7 @@ def _corpus(lang: str, examples: dict[str, list[Program]]) -> list[Program]:
     for raw_src in examples[lang]:
         assert isinstance(raw_src, str)
         src = raw_src
-        if digits := LANGUAGES[lang].certification.fuzz_max_digits:
+        if digits := load_certification(LANGUAGES[lang]).fuzz_max_digits:
             src = _cap_numeric_runs(src, digits)
         progs.append(src)
         progs.extend(mutate(src, rng))

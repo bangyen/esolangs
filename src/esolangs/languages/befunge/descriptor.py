@@ -1,7 +1,6 @@
 """Runtime and compiler capabilities for Befunge."""
 
 from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
 from esolangs.runtime._definition import RuntimeSpec
@@ -17,9 +16,6 @@ LANGUAGE = Language(
         random=True,
         split=True,
         empty_program="Befunge program cannot be empty",
-    ),
-    certification=CertificationSpec(
-        layout_switch=(2, 7, 8, 9),
     ),
     backend=BooleanBackend(
         max_inputs=MAX_INPUTS,

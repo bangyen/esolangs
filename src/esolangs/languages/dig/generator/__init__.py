@@ -62,7 +62,6 @@ from esolangs.languages.dig.generator._leaf import (
 from esolangs.languages.dig.generator._shared import _dig_indexed_shared
 from esolangs.languages.dig.proof_formulas import execution, workspace
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 

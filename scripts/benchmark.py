@@ -45,6 +45,7 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.registry import LANGUAGES, resolve
+from esolangs.registry._certification import load as load_certification
 from esolangs.registry._describe import LanguageInfo
 from esolangs.runtime._state import WorkspaceSnapshot
 from esolangs.runtime._validate import check_timeout
@@ -340,9 +341,9 @@ def _payload_profile(language: str, vm: VM) -> dict[str, int] | None:
     """Count logical data and control integers where the language splits them.
 
     Excludes Python overhead, static parser indexes and I/O state; what a
-    machine's state holds is its ``LANGUAGE.certification.payload``'s to say.
+    machine's state holds is its language-owned certification payload's to say.
     """
-    split = LANGUAGES[language].certification.payload
+    split = load_certification(LANGUAGES[language]).payload
     if split is None:
         return None
     data, control, pc, flags = split(cast(SnapshotVM, vm).snapshot())

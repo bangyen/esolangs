@@ -2,7 +2,6 @@
 
 from esolangs.languages.slow_acv_mammalian.interpreter import LEAPFROG_RESUMES, MODULI
 from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
@@ -51,8 +50,5 @@ LANGUAGE = Language(
     ),
     contract=BooleanContract(
         input_shape="char_stream",
-    ),
-    certification=CertificationSpec(
-        slow_width_sweep=True,
     ),
 )

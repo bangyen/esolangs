@@ -1,7 +1,6 @@
 """Runtime and compiler capabilities for Streetcode."""
 
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
@@ -15,10 +14,6 @@ LANGUAGE = Language(
         category="grid_based",
         split=True,
         empty_program="Streetcode program cannot be empty",
-    ),
-    certification=CertificationSpec(
-        layout_switch=(4, 5),
-        slow_scaling=True,
     ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(

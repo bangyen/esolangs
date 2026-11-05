@@ -38,7 +38,6 @@ from esolangs.languages.malbolge.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.malbolge.descriptor import MAX_INPUTS as MAX_INPUTS
 from esolangs.languages.malbolge.proof_formulas import execution, workspace
 from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec

@@ -5,6 +5,7 @@ import pytest
 import esolangs
 from esolangs import vm
 from esolangs.registry import LANGUAGES
+from esolangs.registry._certification import load as load_certification
 from esolangs.runtime.io import ScriptedIO
 from tests.support.evaluation import _row_answerer
 from tests.support.generator_support import assert_proved_resource_cap
@@ -149,7 +150,7 @@ def test_the_audit_rejects_a_crash_after_the_final_read(monkeypatch, table, fail
 )
 def test_every_input_is_read(monkeypatch, name, path) -> None:
     built = 0
-    controls = LANGUAGES[name].certification.benchmark_tables if not path else ()
+    controls = load_certification(LANGUAGES[name]).benchmark_tables if not path else ()
     if controls:
         assert_proved_resource_cap(name)
     for table in dict.fromkeys((*IGNORING, *controls)):
@@ -256,7 +257,9 @@ def test_contract_at_declared_cap(monkeypatch, name, n) -> None:
     "audit", [test_contract_at_larger_arities, test_contract_at_declared_cap]
 )
 def test_arity_audits_report_complete_refusal(monkeypatch, audit):
-    name = next(n for n in GENERATED if LANGUAGES[n].certification.benchmark_tables)
+    name = next(
+        n for n in GENERATED if load_certification(LANGUAGES[n]).benchmark_tables
+    )
     n = INFOS[name]["generator_max_inputs"]
     refused = []
 
@@ -292,7 +295,9 @@ def test_arity_audit_rejects_an_empty_corpus(monkeypatch):
 
 @pytest.mark.medium
 def test_arity_audit_executes_remaining_witnesses(monkeypatch):
-    name = next(n for n in GENERATED if LANGUAGES[n].certification.benchmark_tables)
+    name = next(
+        n for n in GENERATED if load_certification(LANGUAGES[n]).benchmark_tables
+    )
     generate = esolangs.generate
 
     def partial(language, table):

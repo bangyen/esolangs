@@ -7,6 +7,7 @@ import pytest
 import esolangs
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES
+from esolangs.registry._certification import load as load_certification
 from tests.support.evaluation import _evaluate
 from tests.support.generator_support import assert_proved_resource_cap
 from tests.support.pick import languages
@@ -24,7 +25,7 @@ def test_generated_program_obeys_its_table(language: str) -> None:
     rng = random.Random(20261001)
     dense = "".join(rng.choice("01") for _ in range(4))
     # Two 2-input tables and 3-input parity, which nothing can fold.
-    tables = LANGUAGES[language].certification.benchmark_tables
+    tables = load_certification(LANGUAGES[language]).benchmark_tables
     if tables:
         assert_proved_resource_cap(language)
     tables = tables or ("0000", dense, "01101001")

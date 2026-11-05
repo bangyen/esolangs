@@ -6,6 +6,7 @@ import pytest
 
 from esolangs.languages.subleq.interpreter import _Machine
 from esolangs.languages.subleq.interpreter import run as run_subleq
+from esolangs.registry._certification import load as load_certification
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.semantic_oracles import STDINS, agrees
 from tests.interpreters.semantic_oracles import subleq as oracle
@@ -84,11 +85,11 @@ def test_subleq_input_and_eof() -> None:
     assert io.getvalue() == "A"
     state = machine.snapshot()
     assert state[-1] > 0
-    assert LANGUAGE.certification.payload is not None
-    assert LANGUAGE.certification.payload(state) == (state[0], (), machine.ip, 0)
-    assert LANGUAGE.certification.payload(
+    assert load_certification(LANGUAGE).payload is not None
+    assert load_certification(LANGUAGE).payload(state) == (state[0], (), machine.ip, 0)
+    assert load_certification(LANGUAGE).payload(
         (*state[:-1], 100)
-    ) == LANGUAGE.certification.payload(state)
+    ) == load_certification(LANGUAGE).payload(state)
 
 
 @pytest.mark.parametrize("code", ["-1 -2 0", "-2 0 0", "0 -2 0"])

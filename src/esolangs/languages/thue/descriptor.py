@@ -1,7 +1,6 @@
 """Runtime and compiler capabilities for Thue."""
 
 from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
@@ -18,7 +17,6 @@ LANGUAGE = Language(
             "either side, to separate its rules from its starting state"
         ),
     ),
-    certification=CertificationSpec(reader_checked=True),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.thue.generator", "thue", ("truth_table", "width")

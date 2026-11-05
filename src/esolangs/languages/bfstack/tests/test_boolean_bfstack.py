@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.languages import generators as boolean
+from esolangs.registry._certification import load as load_certification
 from tests.generators.boolean_runners import _runner
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_an_ignored_input_costs
@@ -116,11 +117,11 @@ class TestBfstack:
         assert io.getvalue() == "A"
         state = machine.snapshot()
         assert state[-1] > 0
-        assert LANGUAGE.certification.payload is not None
-        assert LANGUAGE.certification.payload(state) == (*state[:3], 0)
-        assert LANGUAGE.certification.payload(
+        assert load_certification(LANGUAGE).payload is not None
+        assert load_certification(LANGUAGE).payload(state) == (*state[:3], 0)
+        assert load_certification(LANGUAGE).payload(
             (*state[:-1], 100)
-        ) == LANGUAGE.certification.payload(state)
+        ) == load_certification(LANGUAGE).payload(state)
 
 
 @pytest.mark.medium

@@ -6,6 +6,7 @@ from typing import Any
 
 import esolangs
 from esolangs.registry import LANGUAGES
+from esolangs.registry._certification import load as load_certification
 from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import row_bits
 
@@ -23,7 +24,7 @@ def _reader(language_id: str) -> tuple[Callable[[str], Any], Callable[..., None]
 _READERS = {
     lang.id: _reader(lang.id)
     for lang in LANGUAGES.values()
-    if lang.certification.reader_checked
+    if load_certification(lang).reader_checked
 }
 
 

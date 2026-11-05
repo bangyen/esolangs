@@ -2,7 +2,6 @@
 
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
@@ -18,11 +17,6 @@ LANGUAGE = Language(
         "malbolge",
         category="program_based",
         eof="an exhausted read is the value 59048, not an error",
-    ),
-    certification=CertificationSpec(
-        # Every source loads into the fixed store, so every program -- this
-        # generator's or any other -- is bounded by a constant.
-        size_bound=lambda _n: 59_049,
     ),
     backend=BooleanBackend(
         max_inputs=MAX_INPUTS + 1,

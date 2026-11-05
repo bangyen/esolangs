@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from importlib import import_module
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from esolangs.registry._language import Language
 
 Payload = tuple[tuple[int, ...], tuple[int, ...], int, int]
 
@@ -27,3 +31,21 @@ class CertificationSpec:
     #: Split a snapshot into data, control, program counter and flag bits.
     payload: Callable[[Any], Payload] | None = None
     fuzz_max_digits: int | None = None
+
+
+_DEFAULT = CertificationSpec()
+
+
+def load(language: Language) -> CertificationSpec:
+    """Load language-owned evidence only when verification requests it."""
+    package = f"esolangs.languages.{language.id}"
+    module = package + ".certification"
+    try:
+        record = import_module(module).CERTIFICATION
+    except ModuleNotFoundError as error:
+        if error.name not in (package, module):
+            raise
+        return _DEFAULT
+    if not isinstance(record, CertificationSpec):
+        raise TypeError(f"{module}.CERTIFICATION must be a CertificationSpec")
+    return record

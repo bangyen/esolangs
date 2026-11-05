@@ -2,7 +2,6 @@
 
 from esolangs.generation.wrap import _false
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
@@ -13,7 +12,6 @@ LANGUAGE = Language(
     RuntimeSpec(
         "false", category="stack_based", eof="an exhausted '^' is the spec's -1"
     ),
-    certification=CertificationSpec(reader_checked=True),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.false.generator", "false", ("truth_table", "width")

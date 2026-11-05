@@ -118,10 +118,11 @@ def _generator(name: str, *, image_extra: bool) -> None:
     """Execute all rows in one process; its parent supplies the deadline."""
     import esolangs
     from esolangs.registry import LANGUAGES, resolve
+    from esolangs.registry._certification import load as load_certification
 
     _evaluate = _evaluator()
 
-    controls = LANGUAGES[resolve(name)].certification.benchmark_tables
+    controls = load_certification(LANGUAGES[resolve(name)]).benchmark_tables
     table = next((t for t in controls if "0" in t and "1" in t), "0110")
     generated = esolangs.generate(name, table)
     if image_extra and isinstance(generated, esolangs.Raster):

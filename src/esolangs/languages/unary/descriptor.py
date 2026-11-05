@@ -2,7 +2,6 @@
 
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
@@ -24,7 +23,6 @@ LANGUAGE = Language(
         ),
         wrap=wrap_chars,
     ),
-    certification=CertificationSpec(benchmark_tables=("00", "01", "10", "11", "0001")),
     contract=BooleanContract(
         alphabet=("\x00", "\xff"),
         input_shape="char_stream",

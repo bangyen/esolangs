@@ -10,7 +10,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._slug import canonical_id
 from esolangs.runtime._definition import RuntimeSpec, SourceKind
@@ -45,7 +44,6 @@ class Language:
     contract: BooleanContract = field(default_factory=BooleanContract)
     #: The committed example, where the default AND reader does not fit.
     example: Example = field(default_factory=Example)
-    certification: CertificationSpec = field(default_factory=CertificationSpec)
 
     def __post_init__(self) -> None:
         """Fill the id from the name when none is given."""

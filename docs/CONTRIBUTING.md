@@ -107,6 +107,10 @@ languages; stalled rows remain open on the [roadmap](roadmap.md).
 Each package's `language.toml` owns its data. Aggregators read only their
 section and skip absent files or sections.
 
+Optional `certification.py` owns its `CERTIFICATION = CertificationSpec(...)`
+verification policy. Checks load it separately; runtime descriptors and
+ordinary execution do not import certification modules.
+
 | Kind | Sections | Meaning |
 | --- | --- | --- |
 | Gates | `proof_status`, `evidence`, `resource_evidence`, `generator_sizes`, `catalogue`, `schemes`, `deep_arities` | claims consumed by checks; wrong data fails |

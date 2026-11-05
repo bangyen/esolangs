@@ -9,6 +9,7 @@ from esolangs.generation import wrap as _wrap
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score, wrap_chars, wrap_program
 from esolangs.registry import LANGUAGES, SourceKind, render_template
+from esolangs.registry._certification import load as load_certification
 from tests.support.evaluation import _evaluate
 from tests.support.exact_token_width import exact_token_width
 from tests.support.witness_tables import witnesses
@@ -114,7 +115,7 @@ def _balanced_languages() -> list[str]:
             or id(lang.backend.wrap) in token_wrappers
             or (lang.backend.wrap is wrap_chars and lang.parameterized)
         )
-        and not lang.certification.slow_width_sweep
+        and not load_certification(lang).slow_width_sweep
     )
 
 

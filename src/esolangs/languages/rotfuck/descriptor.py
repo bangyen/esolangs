@@ -3,7 +3,6 @@
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.rotfuck.interpreter import ROTATIONS, validate_rotation
 from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
@@ -35,10 +34,5 @@ LANGUAGE = Language(
     ),
     contract=BooleanContract(
         input_shape="char_stream",
-    ),
-    certification=CertificationSpec(
-        # Retain the even scaling rungs across bias phases; parity now measures
-        # 285/339/390 chars there ([ablations.constant_runs_by_multiplication]).
-        scaling_rungs=(10, 12, 14),
     ),
 )

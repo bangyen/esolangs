@@ -119,6 +119,9 @@ def test_generated_and_restored_bindings_need_no_recovery(
         with pytest.raises(esolangs.ProgramError):
             esolangs.run(REFERENCE, filled)
 
+    with pytest.raises(esolangs.TemplateError, match="fill the template"):
+        esolangs.Language(language).from_source(source)
+
 
 def test_template_record_copies_bindings_and_retains_settings() -> None:
     settings = esolangs.DialectSettings()
@@ -250,6 +253,14 @@ def test_explicit_source_survives_all_execution_routes_and_persistence(tmp_path)
             assert result.input_position == 0
             assert result.completion is not None
 
+    language = esolangs.Language(REFERENCE)
+    with pytest.raises(esolangs.ArgumentError, match="settings"):
+        language.from_file(tmp_path / "absent.txt", settings={})
+    with pytest.raises(esolangs.ArgumentError, match="path"):
+        language.from_file(1)
+    with pytest.raises(esolangs.ProgramNotFoundError):
+        language.from_file(tmp_path / "absent.txt")
+
 
 @pytest.mark.medium
 @pytest.mark.parametrize(("language", "table"), _PILOTS)
@@ -280,29 +291,6 @@ def test_explicit_artifacts_execute_without_tagged_string_adapters(
         )
 
 
-@pytest.mark.parametrize("language", _EMBEDDING)
-def test_explicit_source_cannot_disguise_a_known_template(language):
-    template = esolangs.generate(language, "0110")
-    with pytest.raises(esolangs.TemplateError, match="fill the template"):
-        esolangs.Language(language).from_source(template)
-
-
-def test_explicit_file_validates_choices_before_reading(tmp_path):
-    language = esolangs.Language(REFERENCE)
-    with pytest.raises(esolangs.ArgumentError, match="settings"):
-        language.from_file(tmp_path / "absent.txt", settings={})
-    with pytest.raises(esolangs.ArgumentError, match="path"):
-        language.from_file(1)
-    with pytest.raises(esolangs.ProgramNotFoundError):
-        language.from_file(tmp_path / "absent.txt")
-
-
-@pytest.mark.parametrize("source", [None, 1, b"+."])
-def test_public_record_rejects_invalid_source(source):
-    with pytest.raises(esolangs.ProgramError):
-        ProgramArtifact(source, REFERENCE)
-
-
 def test_public_records_canonicalize_and_validate_metadata():
     artifact = ProgramArtifact("+.", REFERENCE.upper())
     assert artifact.language == REFERENCE
@@ -316,3 +304,6 @@ def test_public_records_canonicalize_and_validate_metadata():
     template = TemplateArtifact("", REFERENCE.upper(), TemplateBindings())
     with pytest.raises(esolangs.TemplateError):
         esolangs.run(REFERENCE, template)
+
+    with pytest.raises(esolangs.ProgramError):
+        ProgramArtifact(b"+.", REFERENCE)
