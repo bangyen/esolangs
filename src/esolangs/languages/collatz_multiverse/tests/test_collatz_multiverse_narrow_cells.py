@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-from esolangs import compat
+from esolangs import compat, run
 from esolangs.languages.collatz_multiverse.generator import (
     _cm_layout,
     collatz_multiverse,
@@ -57,7 +57,7 @@ def test_alias_prefix_is_not_inserted_when_it_cannot_narrow() -> None:
     source = "a=z x+negativeOne,NOT PRINT.\na=z x+z,DO PRINT."
     narrowed = _cm_layout(source, 1)
     assert narrowed == source
-    assert compat.run("collatz-multiverse", narrowed) == "\x00"
+    assert run("collatz-multiverse", narrowed).output == "\x00"
 
 
 def test_xor_floor_and_numbered_constant_source_size() -> None:

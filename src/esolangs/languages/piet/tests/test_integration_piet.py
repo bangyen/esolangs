@@ -6,7 +6,7 @@ from dataclasses import replace
 import pytest
 
 import esolangs
-from esolangs import Raster, compat
+from esolangs import Raster, compat, run
 from esolangs.exceptions import TemplateError
 from esolangs.registry import LANGUAGES, SourceKind
 from tests.support.evaluation import _evaluate
@@ -51,8 +51,8 @@ def test_raster_interpreter_owns_loading_and_scale_support(
             backend=None,
         ),
     )
-    assert compat.run("Piet", program.to_png(), stdin="1", scale=2) == "1"
-    assert compat.run("Piet", program, stdin="1", scale=2, max_steps=100) == "1"
+    assert run("Piet", program.to_png(), stdin="1", scale=2).output == "1"
+    assert run("Piet", program, stdin="1", scale=2, max_steps=100).output == "1"
 
 
 class TestSpecAbortsRatherThanReturningNothing:
@@ -72,7 +72,7 @@ class TestSpecAbortsRatherThanReturningNothing:
 def test_raster_interpreter_retains_geometry_hint() -> None:
     image = Raster((((255, 255, 255),),))
     with pytest.raises(esolangs.ProgramError, match=r".+") as caught:
-        compat.run("Piet", image, scale=2, timeout=1)
+        run("Piet", image, scale=2, timeout=1)
     assert "dividing both image dimensions" in caught.value.__notes__[0]
 
 
@@ -89,16 +89,16 @@ def test_piet_explicit_scale_resolves_ambiguous_image() -> None:
         ((light, black, terminal), (light, red, terminal), (black, black, terminal))
     )
     image = Raster.from_png(logical.upscaled(2).to_png())
-    assert compat.run("Piet", image) == "2"
-    assert compat.run("Piet", image, scale=1) == "8"
-    assert compat.run("Piet", image, scale=2, isolated=True) == "2"
+    assert run("Piet", image).output == "2"
+    assert run("Piet", image, scale=1).output == "8"
+    assert run("Piet", image, scale=2, isolated=True).output == "2"
 
 
 def test_empty_piet_operation_path_halts() -> None:
     from esolangs.generation.raster_lookup.balance import _emit, _plan
 
     image = _emit([], _plan([], 13, 14))
-    assert compat.run("Piet", image) == ""
+    assert run("Piet", image).output == ""
 
 
 @pytest.mark.medium

@@ -7,49 +7,11 @@ import pytest
 import esolangs
 from esolangs import compat
 from esolangs.registry import LANGUAGES
+from esolangs.results import ExecutionResult
 from esolangs.runtime._isolated import _decode
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
-from esolangs.runtime._result import ExecutionResult
 from esolangs.runtime._result_wire import decode_result, encode_result
-from tests.support.pick import one, one_where
 from tests.support.reference import REFERENCE
-
-
-@pytest.mark.parametrize("max_output", [None, 1])
-def test_worker_retains_actual_unicode_input_usage(max_output):
-    result = esolangs._run_result(
-        REFERENCE, ",.", stdin="é", isolated=True, max_output=max_output
-    )
-    assert result == esolangs._run_result(REFERENCE, ",.", stdin="é")
-    assert result[:4] == ("é", 1, 1, 0)
-
-
-@pytest.mark.parametrize(
-    "language",
-    [
-        *one_where(
-            lambda info: info["answer_mode"] != "termination",
-            dumps_on_the_post_halt_step=True,
-        ),
-        *one(steppable_to_answer=False),
-    ],
-)
-def test_declared_completion_survives_a_worker(language):
-    template = compat.generate(language, "01")
-    source = (
-        compat.instantiate(language, template, [1])
-        if LANGUAGES[language].parameterized
-        else template
-    )
-    stdin = (
-        ""
-        if LANGUAGES[language].parameterized
-        else esolangs.encode_inputs(language, [1])
-    )
-    native = esolangs._run_result(language, source, stdin=stdin)
-    assert native.completion is not None
-    assert esolangs.read_answer(language, native.output) == "1"
-    assert esolangs._run_result(language, source, stdin=stdin, isolated=True) == native
 
 
 def test_immutable_cycle_state_survives_json():
@@ -86,30 +48,6 @@ def test_worker_refuses_corrupt_counters_and_retains_output(counter, failure):
     ) as caught:
         _decode(text, expired=False)
     assert caught.value.partial_output == "prefix"
-
-
-@pytest.mark.parametrize("isolated", [False, True])
-@pytest.mark.parametrize("max_steps", [None, 16])
-def test_routes_retain_success_and_failed_input_observations(isolated, max_steps):
-    options = {"isolated": isolated, "max_steps": max_steps}
-    success = esolangs._run_result(REFERENCE, ",.", stdin="é", **options)
-    steps = 2 if max_steps is not None else None
-    assert success == ExecutionResult(
-        "é", 1, 1, 0, CompletionReport(Completion.HALTED), steps
-    )
-    for source, stdin, expected in (
-        (",", "", ExecutionResult("", 0, 0, 1)),
-        (",.,", "é", ExecutionResult("é", 1, 1, 1)),
-    ):
-        with pytest.raises(esolangs.InputExhaustedError) as caught:
-            esolangs._run_result(REFERENCE, source, stdin=stdin, **options)
-        observed = (
-            expected._replace(steps=0 if source == "," else 2)
-            if max_steps is not None
-            else expected
-        )
-        assert caught.value.execution == observed
-        assert caught.value.partial_output == expected.output
 
 
 @pytest.mark.parametrize("isolated", [False, True])

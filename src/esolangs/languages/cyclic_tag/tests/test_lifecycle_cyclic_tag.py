@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 import esolangs
-from esolangs import vm
+from esolangs import run, vm
 from esolangs.debugger import make_debugger
 from esolangs.languages.cyclic_tag import interpreter
 from esolangs.results import Completion, CompletionReport
@@ -35,10 +35,8 @@ assert module in sys.modules, 'loading control did not fire'
         timeout=10,
     )
     for source, expected, steps in ((",", "", 0), (",1", "1", 1), (";,10", "0", 2)):
-        native = esolangs.run_result("Cyclic tag", source, stdin="unused")
-        isolated = esolangs.run_result(
-            "Cyclic tag", source, stdin="unused", isolated=True
-        )
+        native = run("Cyclic tag", source, stdin="unused")
+        isolated = run("Cyclic tag", source, stdin="unused", isolated=True)
         assert native == isolated
         assert native.output == expected
         assert native.completion == CompletionReport(Completion.POST_HALT)
@@ -63,7 +61,7 @@ assert module in sys.modules, 'loading control did not fire'
         lambda _source, _io: CompletionReport(Completion.HALTED),
     )
     with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):
-        esolangs.run_result("Cyclic tag", ",1")
+        run("Cyclic tag", ",1")
 
 
 def test_declared_debug_surface_ignores_incidental_machine_attributes(monkeypatch):
@@ -97,4 +95,4 @@ def test_declared_debug_surface_ignores_incidental_machine_attributes(monkeypatc
     assert machine.views == (("answer", "None"), ("head", "0"), ("live", "'10'"))
     assert vm.complete_vm(machine, max_steps=2) == "0"
     assert vm.complete_vm(machine, max_steps=0) == "0"
-    assert esolangs.run_result("Cyclic tag", ",10").output == "0"
+    assert run("Cyclic tag", ",10").output == "0"

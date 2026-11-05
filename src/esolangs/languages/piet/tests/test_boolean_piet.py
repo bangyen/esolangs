@@ -6,7 +6,7 @@ from itertools import pairwise, product
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from esolangs.generation.helpers import essential_inputs, read_at
 from esolangs.generation.raster_lookup.balance import _bounded_operations
 from esolangs.languages.piet.generator import piet as generate
@@ -26,7 +26,7 @@ def test_every_row_executes(truth_table: str) -> None:
     for bits in product((0, 1), repeat=inputs):
         stdin = "".join(f"{bit}\n" for bit in bits)
         row = int("".join(map(str, bits)), 2) if bits else 0
-        assert compat.run("Piet", program, stdin=stdin) == truth_table[row]
+        assert run("Piet", program, stdin=stdin).output == truth_table[row]
 
 
 def test_the_generator_scale_upscales_and_executes() -> None:
@@ -35,7 +35,7 @@ def test_the_generator_scale_upscales_and_executes() -> None:
     assert len(scaled.rows[0]) == 3 * len(plain.rows[0])
     for row, bits in enumerate(product((0, 1), repeat=2)):
         stdin = "".join(f"{bit}\n" for bit in bits)
-        assert compat.run("Piet", scaled, stdin=stdin) == "0110"[row]
+        assert run("Piet", scaled, stdin=stdin).output == "0110"[row]
 
 
 @pytest.mark.parametrize("balanced", [False, True])
@@ -83,7 +83,7 @@ def test_every_three_input_function_executes_through_png() -> None:
         total += pixels
         for row in range(8):
             stdin = "".join(f"{bit}\n" for bit in f"{row:03b}")
-            assert compat.run("Piet", program, stdin=stdin) == truth_table[row]
+            assert run("Piet", program, stdin=stdin).output == truth_table[row]
     # Parent table lookup emitted 38,997 codels over this exhaustive corpus.
     # The halved lookup (retired 2026-10-28) held this at 34,062; storing the
     # complement past half zeros brings it to 33,882.
@@ -130,7 +130,7 @@ def test_ignored_inputs_are_read_but_not_indexed() -> None:
     assert [b - a for a, b in pairwise(widths)] == [2] * 7
     # The second input is ignored: the stored table is the one-input one.
     assert len(generate("0011").rows[0]) == len(generate("01").rows[0]) + 2
-    assert compat.run("Piet", generate("0" * 8), stdin="1\n1\n1\n") == "0"
+    assert run("Piet", generate("0" * 8), stdin="1\n1\n1\n").output == "0"
 
 
 def _codels(program: Raster) -> int:
@@ -209,11 +209,11 @@ def test_piet_balance_matches_rendered_width_oracle(table: str) -> None:
         assert isinstance(image, Raster)
         candidates.append(image)
         assert (
-            compat.run(
+            run(
                 "Piet",
                 Raster.from_png(image.to_png()),
                 stdin="0\n" * (len(table).bit_length() - 1),
-            )
+            ).output
             == table[0]
         )
     balanced = compat.generate("Piet", table, balance=True)
@@ -390,7 +390,7 @@ def _check_constants() -> None:
                     scaled = compat.generate("Piet", bit * (1 << n), scale=3)
                     assert len(scaled.rows) == 3 * len(program.rows)
                     assert len(scaled.rows[0]) == 3 * len(program.rows[0])
-                    assert compat.run("Piet", scaled, stdin="1\n" * n) == bit
+                    assert run("Piet", scaled, stdin="1\n" * n).output == bit
 
 
 def _check_triples() -> None:

@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 from esolangs import compat
+from esolangs import run as execute
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -116,7 +117,7 @@ def test_short_selectors_keep_public_provenance_and_uniform_width() -> None:
             filled = compat.instantiate(
                 "Underload", template, [row // 2, row % 2], truth_table=table
             )
-            assert compat.run("Underload", filled) == expected
+            assert execute("Underload", filled).output == expected
             if width < 5:
                 assert max(map(len, filled.splitlines())) <= max(3, width)
         with pytest.raises(esolangs.TemplateError, match="not the template"):

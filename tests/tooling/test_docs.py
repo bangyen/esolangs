@@ -14,9 +14,10 @@ from urllib.parse import unquote
 
 import pytest
 
+import esolangs
 from esolangs import encode_inputs
 from esolangs.cli import HELP, USAGE
-from esolangs.compat import generate, run
+from esolangs.compat import generate
 from esolangs.registry import LANGUAGES
 
 ROOT = pathlib.Path(__file__).parents[2]
@@ -281,7 +282,7 @@ def test_readme_program_computes_xor_on_every_row() -> None:
     language = _readme_language()
     for row, expected in enumerate(_TABLE):
         stdin = encode_inputs(language, [row >> 1, row & 1])
-        assert run(language, program, stdin=stdin) == expected
+        assert esolangs.run(language, program, stdin=stdin).output == expected
 
 
 def test_readme_states_the_real_length() -> None:

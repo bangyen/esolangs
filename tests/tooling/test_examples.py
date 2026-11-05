@@ -219,7 +219,7 @@ def test_boolean_example(name: str) -> None:
     stdin = BOOLEAN_GENERATED[name].stdin
     program = esolangs._read_source(name, path)
     if isinstance(program, Raster):
-        got = compat.run(name, program, stdin=stdin)
+        got = esolangs.run(name, program, stdin=stdin).output
     else:
         vm = make_vm(VM_LANGUAGE[_module], program, stdin=stdin)
     if name == "a-painter-ant":

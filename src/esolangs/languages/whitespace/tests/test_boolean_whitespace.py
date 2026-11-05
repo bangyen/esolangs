@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -104,7 +104,7 @@ def _check_power_steps() -> None:
 
     saved = Path(__file__).parents[1] / "whitespace.txt"
     for source in (saved, saved.read_text()):
-        assert compat.run("Whitespace", source, stdin="0\n1\n") == "0"
+        assert run("Whitespace", source, stdin="0\n1\n").output == "0"
 
 
 @pytest.mark.parametrize("table", ["01", "0101", "0011", "0000", "0110"])
@@ -129,4 +129,4 @@ def test_cli_exports_exact_command_bytes(
     assert output == whitespace("0110")
     path = tmp_path / "generated.ws"
     path.write_bytes(output.encode())
-    assert compat.run("Whitespace", path, stdin="0\n1\n") == "1"
+    assert run("Whitespace", path, stdin="0\n1\n").output == "1"

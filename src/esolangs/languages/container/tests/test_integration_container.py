@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import run
 from tests.support.reference import REFERENCE
 
 
@@ -20,4 +20,4 @@ def test_invalid_utf8_input_is_an_argument_error(container: str, mode: str) -> N
     elif mode == "isolated":
         bounds["isolated"] = True
     with pytest.raises(esolangs.ArgumentError, match="cannot read stdin"):
-        compat.run(REFERENCE, ",.", stdin=argument, **bounds)
+        run(REFERENCE, ",.", stdin=argument, **bounds)

@@ -22,8 +22,8 @@ def test_steps_match_an_independently_driven_machine(source, isolated):
         assert steps < 10000, "independent step control did not halt"
         vm.step()
         steps += 1
-    native = esolangs.run_result(REFERENCE, source, isolated=isolated)
-    bounded = esolangs.run_result(REFERENCE, source, isolated=isolated, max_steps=steps)
+    native = esolangs.run(REFERENCE, source, isolated=isolated)
+    bounded = esolangs.run(REFERENCE, source, isolated=isolated, max_steps=steps)
     assert native.output == bounded.output == vm.output
     assert native.steps is None
     assert bounded.steps == steps
@@ -32,7 +32,7 @@ def test_steps_match_an_independently_driven_machine(source, isolated):
 @pytest.mark.parametrize("isolated", [False, True])
 def test_zero_budget_performs_no_command(isolated):
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-        esolangs.run_result(REFERENCE, "+.", max_steps=0, isolated=isolated)
+        esolangs.run(REFERENCE, "+.", max_steps=0, isolated=isolated)
     assert caught.value.execution == ExecutionResult("", 0, 0, 0, steps=0)
 
 
@@ -53,7 +53,7 @@ def test_final_dump_is_outside_the_command_budget(isolated):
         vm.step()
         steps += 1
     output = complete_vm(vm, max_steps=0)
-    result = esolangs.run_result(name, source, max_steps=steps, isolated=isolated)
+    result = esolangs.run(name, source, max_steps=steps, isolated=isolated)
     assert result.steps == steps
     assert result.output == output
     assert esolangs.read_answer(name, result.output) == "1"

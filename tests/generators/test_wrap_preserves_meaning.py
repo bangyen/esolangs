@@ -42,7 +42,10 @@ def _evaluate(name: str, table: str, width: int | None) -> str:
             )
         else:
             source, stdin = program, esolangs.encode_inputs(name, bits)
-        got += compat.run(name, source, stdin=stdin, timeout=30).strip()[-1:] or "?"
+        got += (
+            esolangs.run(name, source, stdin=stdin, timeout=30).output.strip()[-1:]
+            or "?"
+        )
     return got
 
 

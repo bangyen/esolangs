@@ -25,7 +25,7 @@ def assert_every_row(
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs(language, bits)
-        got = compat.run(language, program, stdin=stdin, timeout=5)
+        got = esolangs.run(language, program, stdin=stdin, timeout=5).output
         assert esolangs.read_answer(language, got) == table[row], (table, row)
 
 

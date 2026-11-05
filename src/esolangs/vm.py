@@ -90,6 +90,7 @@ from esolangs._cycles import (
 )
 from esolangs.exceptions import ArgumentError, InterpreterLimitError
 from esolangs.registry import LANGUAGES, resolve
+from esolangs.results import ExecutionResult
 from esolangs.runtime._capabilities import IpShape as IpShape
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._drive import finalize
@@ -103,7 +104,6 @@ from esolangs.runtime._input import InputSource
 from esolangs.runtime._lifecycle import Completion, CompletionReport
 from esolangs.runtime._machine import MachinePreparation
 from esolangs.runtime._program import Program
-from esolangs.runtime._result import ExecutionResult
 from esolangs.runtime._source import ProgramSource, check_scale_for
 from esolangs.runtime._state import WorkspaceSnapshot
 from esolangs.runtime._traits import trait, traits

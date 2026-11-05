@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-from esolangs import compat
+from esolangs import compat, run
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.slashes.generator import slashes
 from esolangs.languages.slashes.interpreter import _Machine as SlashMachine
@@ -80,13 +80,13 @@ def test_slashes_trailing_escape() -> None:
 def test_slashes_literal_dollar_and_serialized_template() -> None:
     from esolangs.exceptions import TemplateError
 
-    assert compat.run("///", "/a/$/a") == "$"
-    assert compat.run("Slashalash", "$", max_steps=20) == "$"
+    assert run("///", "/a/$/a").output == "$"
+    assert run("Slashalash", "$", max_steps=20).output == "$"
     with pytest.raises(TemplateError, match="unfilled"):
-        compat.run("///", str(compat.generate("///", "01")))
+        run("///", str(compat.generate("///", "01")))
     partial = str(compat.generate("///", "0110")).replace("$", "a", 1)
     with pytest.raises(TemplateError, match="unfilled"):
-        compat.run("///", partial)
+        run("///", partial)
 
 
 @pytest.mark.parametrize("tail", ["$", ">qAqB", "x>qAqB", "$>qAq", "$>qAqZ", "$>qA"])

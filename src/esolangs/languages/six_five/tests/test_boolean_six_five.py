@@ -8,7 +8,7 @@ import pytest
 
 import esolangs
 from esolangs import compat
-from esolangs.compat import run
+from esolangs import run as execute
 from esolangs.generation.examples import BOOLEAN_EXAMPLES
 from esolangs.generation.helpers import permute_truth_table
 from esolangs.generation.wrap import (
@@ -448,9 +448,11 @@ def test_six_five_keeps_a_guard_with_the_instruction_it_skips() -> None:
     """``7n`` skips the next *token*, and a newline is one."""
     program = "70621A"
     stdin = BOOLEAN_EXAMPLES["6-5"].stdin
-    unwrapped = run("6-5", program, stdin=stdin)
+    unwrapped = execute("6-5", program, stdin=stdin).output
     for width in range(2, 12):
-        assert run("6-5", _six_five(program, width), stdin=stdin) == unwrapped
+        assert (
+            execute("6-5", _six_five(program, width), stdin=stdin).output == unwrapped
+        )
 
 
 def test_internal_route_budget_is_not_a_generator_restriction() -> None:

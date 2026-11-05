@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 from esolangs import compat
+from esolangs import run as execute
 from esolangs.languages import generators as boolean
 from esolangs.languages.super_snusp.generator import balance_super_snusp
 from tests.support.event_io import ReadFirstIO
@@ -17,7 +18,7 @@ class TestSuperSNUSPWidth:
     def _run(program: str, bits: list[str]) -> str:
 
         stdin = "".join(f"{bit}" for bit in bits)
-        return compat.run("Super SNUSP", program, stdin=stdin, timeout=5.0).strip()
+        return execute("Super SNUSP", program, stdin=stdin, timeout=5.0).output.strip()
 
     def test_a_width_folds_the_line_and_it_still_computes(self) -> None:
         """The folded pointer computes what the straight one did."""
@@ -68,7 +69,7 @@ def test_super_snusp_arithmetic_literals_preserve_stack_and_floor(
     for row in (0, 1, len(table) // 2, len(table) - 1):
         bits = [int(bit) for bit in format(row, f"0{inputs}b")]
         stdin = esolangs.encode_inputs("Super SNUSP", bits)
-        assert compat.run("Super SNUSP", program, stdin=stdin) == table[row]
+        assert execute("Super SNUSP", program, stdin=stdin).output == table[row]
 
 
 class TestSuperSNUSP:
@@ -181,7 +182,10 @@ def test_balanced_chunked_literal_computes_the_table() -> None:
     for row in range(1 << 7):
         bits = [(row >> (6 - i)) & 1 for i in range(7)]
         stdin = esolangs.encode_inputs("Super SNUSP", bits, truth_table=table)
-        assert compat.run("Super SNUSP", program, stdin=stdin).strip()[-1] == table[row]
+        assert (
+            execute("Super SNUSP", program, stdin=stdin).output.strip()[-1]
+            == table[row]
+        )
 
 
 def test_xor_has_one_column() -> None:
@@ -193,7 +197,7 @@ def test_xor_has_one_column() -> None:
 def test_a_number_read_is_ascii_decimal(token: str) -> None:
     """``@`` took Python's int() spellings: "1_0" read 10, "٣" read 3."""
     with pytest.raises(esolangs.ArgumentError, match="must be an integer"):
-        compat.run("Super SNUSP", '"@#', stdin=token)
+        execute("Super SNUSP", '"@#', stdin=token)
 
 
 class TestSuperSNUSPSweepPins:

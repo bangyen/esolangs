@@ -2,7 +2,7 @@
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import compat
+from esolangs import compat, run
 from tests.support.reference import REFERENCE
 from tests.support.samples import SAMPLES
 
@@ -53,8 +53,8 @@ class TestARunFinishesTheDump:
                 stdin = esolangs.encode_inputs(name, [0, 0], truth_table="0110")
             debugger = debugger_api.make_debugger(name, program, stdin=stdin)
             assert debugger.run(timeout=30) == "halted"
-            assert debugger.output == compat.run(
-                name, program, stdin=stdin, timeout=30
+            assert (
+                debugger.output == run(name, program, stdin=stdin, timeout=30).output
             ), name
             if not debugger.output:
                 empty.append(name)

@@ -181,35 +181,6 @@ class Language:
             scale=scale,
         )
 
-    def run_result(
-        self,
-        program: ProgramSource,
-        *,
-        stdin: InputSource = "",
-        timeout: float | None = None,
-        seed: int | None = None,
-        isolated: bool = False,
-        max_steps: int | None = None,
-        max_output: int | None = None,
-        max_memory: int | None = None,
-        settings: DialectSettings | None = None,
-        scale: int | None = None,
-    ) -> ExecutionResult:
-        """Execute source and retain its metadata; see :func:`esolangs.run_result`."""
-        return esolangs.run_result(
-            self.name,
-            program,
-            stdin=stdin,
-            timeout=timeout,
-            seed=seed,
-            isolated=isolated,
-            max_steps=max_steps,
-            max_output=max_output,
-            max_memory=max_memory,
-            settings=settings,
-            scale=scale,
-        )
-
     def describe(self) -> LanguageInfo:
         """Return this language's registry metadata and interpreter description.
 

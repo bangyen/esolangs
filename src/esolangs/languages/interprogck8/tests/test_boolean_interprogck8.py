@@ -7,6 +7,7 @@ import pytest
 
 import esolangs
 from esolangs import compat
+from esolangs import run as execute
 from esolangs.exceptions import GeneratorCapError
 from esolangs.languages.interprogck8 import generator
 from tests.support.event_io import ReadFirstIO
@@ -16,7 +17,7 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 def _answer(program: str, n: int, row: int) -> str:
     bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
     stdin = esolangs.encode_inputs("Interprogck8", bits)
-    got = compat.run("Interprogck8", program, stdin=stdin, timeout=30)
+    got = execute("Interprogck8", program, stdin=stdin, timeout=30).output
     return esolangs.read_answer("Interprogck8", got)
 
 

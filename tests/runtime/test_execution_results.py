@@ -3,9 +3,9 @@
 import pytest
 
 from esolangs.exceptions import InterpreterLimitError
+from esolangs.results import ExecutionResult
 from esolangs.runtime._execution import run_prepared
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
-from esolangs.runtime._result import ExecutionResult
 from esolangs.runtime.io import ScriptedIO
 from tests.support.reference import REFERENCE
 
@@ -20,12 +20,7 @@ def test_result_retains_character_cursor_reads_and_caught_eof():
         return report
 
     result = run_prepared(REFERENCE, execute, "", ScriptedIO("é"), None)
-    assert result.output == "é"
-    assert (result.input_position, result.input_reads, result.input_past_end) == (
-        1,
-        1,
-        1,
-    )
+    assert result[:4] == ("é", 1, 1, 1)
     assert result.completion is report
     with pytest.raises(AttributeError):
         result.output = "changed"

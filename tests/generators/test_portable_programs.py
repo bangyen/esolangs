@@ -28,7 +28,7 @@ def test_default_settings_distinction(choices) -> None:
     document = esolangs.dump_program("Brainfuck", _Tagged("+.", REFERENCE, choices))
     restored = compat.load_program(REFERENCE, document)
     assert restored.settings == choices
-    assert compat.run("Brainfuck", restored) == "\x01"
+    assert esolangs.run("Brainfuck", restored).output == "\x01"
 
 
 @pytest.mark.parametrize(

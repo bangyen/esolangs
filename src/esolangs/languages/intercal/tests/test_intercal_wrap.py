@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from esolangs.generation.helpers import grid_width
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.intercal.generator import (
@@ -35,7 +35,7 @@ def test_intercal_wrapped_template_keeps_public_provenance(
         program = compat.instantiate("INTERCAL", template, bits, truth_table=table)
         shapes.add(tuple(map(len, program.splitlines())))
         assert (
-            esolangs.read_answer("INTERCAL", compat.run("INTERCAL", program))
+            esolangs.read_answer("INTERCAL", run("INTERCAL", program).output)
             == expected
         )
     assert len(shapes) == 1
@@ -75,7 +75,7 @@ def test_balance_stays_within_five_percent_of_every_fit_width(seed: int) -> None
         for row, expected in enumerate(table):
             bits = list(map(int, format(row, f"0{inputs}b")))
             program = compat.instantiate("INTERCAL", balanced, bits, truth_table=table)
-            answer = compat.run("INTERCAL", program)
+            answer = run("INTERCAL", program).output
             assert esolangs.read_answer("INTERCAL", answer) == expected
 
 

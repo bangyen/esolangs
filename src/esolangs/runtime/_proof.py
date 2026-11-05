@@ -6,8 +6,8 @@ from collections.abc import Hashable
 from dataclasses import dataclass
 from typing import NamedTuple
 
+from esolangs.results import ExecutionResult
 from esolangs.runtime._lifecycle import BoundaryCycle
-from esolangs.runtime._result import ExecutionResult
 
 
 @dataclass(frozen=True, slots=True)

@@ -6,7 +6,7 @@ from typing import ClassVar
 
 import pytest
 
-from esolangs import compat
+from esolangs import run as execute
 from esolangs.languages.container.interpreter import run
 from esolangs.runtime.io import IO
 from tests.interpreters.contract import SnapshotContract, StateViewContract
@@ -84,7 +84,7 @@ class TestPublicAPI:
     def test_run_returns_output_instead_of_exiting(self) -> None:
         """EXIT is a normal halt, so the public API returns the output."""
 
-        assert compat.run("Container", "\n".join(HELLO_WORLD)) == "Hello, world!"
+        assert execute("Container", "\n".join(HELLO_WORLD)).output == "Hello, world!"
 
 
 class TestStepMachine:

@@ -44,10 +44,10 @@ def run_trigger(name: str, trigger: dict[str, object]) -> str:
     """Run one trigger; settings are built here, since they validate."""
     settings = trigger.get("settings")
     chosen = DialectSettings(**settings) if isinstance(settings, dict) else None
-    return compat.run(
+    return esolangs.run(
         name,
         _program(name, trigger),
         stdin=str(trigger.get("stdin", "")),
         timeout=5,
         settings=chosen,
-    )
+    ).output

@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row, measure_run
 
@@ -59,7 +59,7 @@ def test_skipped_reads_reject_eof() -> None:
 
     for table, stdin in (("00", ""), ("0011", "0"), ("0101", ""), ("01", "")):
         with pytest.raises(HaltError, match="no branch"):
-            compat.run("Bleh", compat.generate("Bleh", table), stdin=stdin)
+            run("Bleh", compat.generate("Bleh", table), stdin=stdin)
 
 
 def test_entrypoint_name_is_escaped_without_widening(monkeypatch) -> None:
@@ -80,4 +80,4 @@ def test_entrypoint_name_is_escaped_without_widening(monkeypatch) -> None:
         program = generator.bleh(table)
         n = len(table).bit_length() - 1
         for row in range(len(table)):
-            assert compat.run("Bleh", program, stdin=f"{row:0{n}b}") == table[row]
+            assert run("Bleh", program, stdin=f"{row:0{n}b}").output == table[row]

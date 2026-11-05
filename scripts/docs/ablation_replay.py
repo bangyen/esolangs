@@ -21,8 +21,8 @@ from esolangs import _run, _run_result
 from esolangs.generation.helpers import grid_area
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES
+from esolangs.results import ExecutionResult
 from esolangs.runtime._program import Program
-from esolangs.runtime._result import ExecutionResult
 from esolangs.runtime._source import text_source
 from esolangs.runtime._termination import _termination_result
 from esolangs.runtime.io import ScriptedIO

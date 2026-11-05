@@ -7,6 +7,7 @@ import pytest
 
 import esolangs
 from esolangs import compat
+from esolangs import run as execute
 from esolangs.generation.helpers import input_weights
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.fish.generator import (
@@ -96,7 +97,7 @@ def test_a_balanced_table_past_225_code_rows_uses_a_doubling_height_literal() ->
     for row in (0, 5000001, (1 << inputs) - 1):
         bits = [int(bit) for bit in format(row, f"0{inputs}b")]
         stdin = esolangs.encode_inputs("Fish", bits)
-        got = compat.run("Fish", program, stdin=stdin, timeout=60)
+        got = execute("Fish", program, stdin=stdin, timeout=60).output
         assert esolangs.read_answer("Fish", got) == table[row], row
 
 

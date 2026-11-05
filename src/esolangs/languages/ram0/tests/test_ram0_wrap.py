@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from esolangs.generation.wrap import wrap_space_delimited
 from esolangs.languages.ram0.generator import ram0
 from tests.support.evaluation import _evaluate
@@ -26,7 +26,7 @@ def test_saved_templates_preserve_exact_provenance(table: str, width: int) -> No
     template = str(compat.generate("RAM0", table, width=width))
     bits = [0] * (len(table).bit_length() - 1)
     source = compat.instantiate("RAM0", template, bits, truth_table=table)
-    assert esolangs.read_answer("RAM0", compat.run("RAM0", source)) == table[0]
+    assert esolangs.read_answer("RAM0", run("RAM0", source).output) == table[0]
     with pytest.raises(esolangs.TemplateError):
         compat.instantiate(
             "RAM0",

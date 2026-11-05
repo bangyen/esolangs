@@ -57,7 +57,7 @@ def test_seed_hint_tracks_registered_random_languages(monkeypatch) -> None:
     "call",
     [
         lambda name: compat.generate(name, "x"),
-        lambda name: compat.run(name, "x"),
+        lambda name: esolangs.run(name, "x").output,
         lambda name: debugger.make_debugger(name, "+"),
         # Naming the language it refused is the whole use of the message to
         # a caller who passed it by mistake.
@@ -94,7 +94,7 @@ def test_deliberate_error_keeps_partial_output(monkeypatch: pytest.MonkeyPatch) 
 
     monkeypatch.setattr(esolangs, "_run", stop)
     with pytest.raises(EsolangError) as caught:
-        compat.run(REFERENCE, "+")
+        esolangs.run(REFERENCE, "+")
     assert caught.value is error
     assert caught.value.partial_output == "before"
     assert caught.value.__notes__ == ["the program printed 'before' before this"]
@@ -105,13 +105,13 @@ def test_run_timeout_halts_runaway_program() -> None:
     from esolangs.exceptions import HaltError
 
     with pytest.raises(HaltError, match="timeout"):
-        compat.run(REFERENCE, "+[]", timeout=0.1)
+        esolangs.run(REFERENCE, "+[]", timeout=0.1)
 
 
 def test_run_timeout_halts_a_growing_program() -> None:
     """The signal interrupts a loop whose state never repeats."""
     with pytest.raises(esolangs.ExecutionTimeoutError, match="timeout"):
-        compat.run(REFERENCE, "+[>+]", timeout=0.01)
+        esolangs.run(REFERENCE, "+[>+]", timeout=0.01)
 
 
 def test_run_timeout_requires_main_thread() -> None:
@@ -122,7 +122,7 @@ def test_run_timeout_requires_main_thread() -> None:
 
     def runner() -> None:
         try:
-            compat.run(REFERENCE, "+", timeout=1)
+            esolangs.run(REFERENCE, "+", timeout=1)
         except BaseException as exc:
             out[0] = exc
 
@@ -139,9 +139,9 @@ def test_a_timeout_names_the_bound_that_fired() -> None:
     import pickle
 
     with pytest.raises(esolangs.ExecutionTimeoutError) as stepped:
-        compat.run(REFERENCE, "+[]", max_steps=100, timeout=30)
+        esolangs.run(REFERENCE, "+[]", max_steps=100, timeout=30)
     with pytest.raises(esolangs.ExecutionTimeoutError) as timed:
-        compat.run(REFERENCE, "+[]", timeout=0.05)
+        esolangs.run(REFERENCE, "+[]", timeout=0.05)
     for caught, bound in ((stepped, "max_steps"), (timed, "timeout")):
         assert caught.value.bound == bound
         assert pickle.loads(pickle.dumps(caught.value)).bound == bound
@@ -203,9 +203,9 @@ def test_truth_table_examples_execute(table: str) -> None:
     inputs = len(table).bit_length() - 1
     for row, expected in enumerate(table):
         bits = [(row >> shift) & 1 for shift in reversed(range(inputs))]
-        output = compat.run(
+        output = esolangs.run(
             REFERENCE, program, stdin=esolangs.encode_inputs(REFERENCE, bits)
-        )
+        ).output
         assert esolangs.read_answer(REFERENCE, output) == expected
 
 
@@ -245,7 +245,7 @@ def test_isolated_execution_loads_a_path_in_worker_thread(tmp_path) -> None:
 
 
 def test_isolated_seed_is_forwarded(monkeypatch) -> None:
-    from esolangs.runtime._result import ExecutionResult
+    from esolangs.results import ExecutionResult
 
     seen = []
 
@@ -254,7 +254,7 @@ def test_isolated_seed_is_forwarded(monkeypatch) -> None:
         return ExecutionResult("result", 0, 0, 0)
 
     monkeypatch.setattr(esolangs, "_run_isolated_result", execute)
-    assert compat.run(REFERENCE, "+.", isolated=True, seed=7) == "result"
+    assert esolangs.run(REFERENCE, "+.", isolated=True, seed=7).output == "result"
     ((language, program, stdin, timeout, kwargs),) = seen
     assert (language, program, stdin, timeout) == (REFERENCE, "+.", "", 30.0)
     assert kwargs["seed"] == 7

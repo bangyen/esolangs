@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import compat
+from esolangs import compat, run
 from esolangs.generation.raster_lookup.balance import (
     _bounded_operations,
     _emit,
@@ -51,9 +51,9 @@ def test_dense_bends_and_final_halt_execute(width: int) -> None:
     program = Raster.from_png(_emit(operations, plan).to_png())
     for row in range(8):
         assert (
-            compat.run(
+            run(
                 "Piet", program, stdin="\n".join(f"{row:03b}") + "\n", max_steps=1000
-            )
+            ).output
             == table[row]
         )
 
@@ -70,12 +70,12 @@ def test_tight_routing_never_grows_and_executes(width: int) -> None:
             program = Raster.from_png(_emit(operations, plan).to_png())
             for row in range(2**inputs):
                 assert (
-                    compat.run(
+                    run(
                         "Piet",
                         program,
                         stdin="\n".join(f"{row:0{inputs}b}") + "\n",
                         max_steps=2000,
-                    )
+                    ).output
                     == table[row]
                 )
 
@@ -101,12 +101,12 @@ def test_white_bridge_lanes_execute_exhaustively(
             )
             for row in range(2**inputs):
                 assert (
-                    compat.run(
+                    run(
                         "Piet",
                         program,
                         stdin="\n".join(f"{row:0{inputs}b}") + "\n",
                         max_steps=3000,
-                    )
+                    ).output
                     == table[row]
                 )
 
@@ -139,12 +139,12 @@ def test_white_bridge_turn_colors_and_halt_execute(table: str) -> None:
     inputs = len(table).bit_length() - 1
     for row in range(len(table)):
         assert (
-            compat.run(
+            run(
                 "Piet",
                 program,
                 stdin="\n".join(f"{row:0{inputs}b}") + "\n",
                 max_steps=10000,
-            )
+            ).output
             == table[row]
         )
 

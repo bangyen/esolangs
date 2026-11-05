@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -92,9 +92,9 @@ def test_parity_needs_both_its_modulus_and_every_input() -> None:
 
     program = compat.generate("Basicfuck", "0110")
     with pytest.raises(InputExhaustedError):
-        compat.run("Basicfuck", program, stdin="0")
+        run("Basicfuck", program, stdin="0")
     broken = program.replace("48~49", "48~50")
-    assert compat.run("Basicfuck", broken, stdin="11") != "0"
+    assert run("Basicfuck", broken, stdin="11").output != "0"
 
 
 def test_projected_parity_reads_ignored_inputs_without_adding_them() -> None:

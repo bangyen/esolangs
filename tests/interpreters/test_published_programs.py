@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.exceptions import ExecutionTimeoutError, InputExhaustedError
 from esolangs.settings import DialectSettings
 from esolangs.vm import complete_vm, make_vm
@@ -76,21 +76,21 @@ def test_wiki_examples(language, page, example, citation) -> None:
     stop = example.get("stop", "halt")
     settings = DialectSettings(**example.get("settings", {}))
     if stop == "halt":
-        output = compat.run(
+        output = esolangs.run(
             language,
             source,
             stdin=stdin,
             timeout=5,
             seed=example.get("seed"),
             settings=settings,
-        )
+        ).output
         if example.get("vm", "seed" not in example):
             vm = make_vm(language, source, stdin=stdin, settings=settings)
             assert complete_vm(vm, max_steps=None) == output, "stepping parity"
     else:
         error = {"steps": ExecutionTimeoutError, "eof": InputExhaustedError}[stop]
         with pytest.raises(error) as info:
-            compat.run(
+            esolangs.run(
                 language,
                 source,
                 stdin=stdin,

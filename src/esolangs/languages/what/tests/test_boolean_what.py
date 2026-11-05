@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -27,7 +27,7 @@ def test_a_table_past_the_low_input_cap_labels_its_blocks() -> None:
     program = compat.generate("What!?", table)
     for row in (0, 32767, 32768, 65535):
         stdin = esolangs.encode_inputs("What!?", [int(b) for b in format(row, "016b")])
-        got = compat.run("What!?", program, stdin=stdin, timeout=10)
+        got = run("What!?", program, stdin=stdin, timeout=10).output
         assert esolangs.read_answer("What!?", got) == table[row], row
 
 

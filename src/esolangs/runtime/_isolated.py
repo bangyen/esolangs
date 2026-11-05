@@ -20,10 +20,10 @@ from esolangs import exceptions
 from esolangs.compressed import CompressedText
 from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry import resolve
+from esolangs.results import ExecutionResult
 from esolangs.runtime._input import InputSource, read_input
 from esolangs.runtime._program import Program
 from esolangs.runtime._proof import TerminationResult
-from esolangs.runtime._result import ExecutionResult
 from esolangs.runtime._result_wire import (
     decode_result,
     decode_termination,

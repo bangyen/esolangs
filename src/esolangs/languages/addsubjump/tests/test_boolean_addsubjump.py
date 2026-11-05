@@ -7,7 +7,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import compat
+from esolangs import compat, run
 from esolangs.generation.helpers import in_input_order
 from esolangs.languages import generators as boolean
 from esolangs.languages.addsubjump.generator import (
@@ -204,12 +204,12 @@ def test_sharing_boundaries(n: int) -> None:
     assert len(program) <= len(_parent(table))
     for row, expected in enumerate(table):
         bits = [(row >> shift) & 1 for shift in reversed(range(n))]
-        output = compat.run(
+        output = run(
             "AddSubJump",
             program,
             stdin=esolangs.encode_inputs("AddSubJump", bits),
             timeout=None,
-        )
+        ).output
         assert esolangs.read_answer("AddSubJump", output) == expected
 
 
@@ -236,12 +236,12 @@ def test_packed_cells_execute(n: int) -> None:
         rows = range(len(table)) if n == 6 else (0, 1, len(table) // 2, len(table) - 1)
         for row in rows:
             bits = [(row >> shift) & 1 for shift in reversed(range(n))]
-            output = compat.run(
+            output = run(
                 "AddSubJump",
                 program,
                 stdin=esolangs.encode_inputs("AddSubJump", bits),
                 timeout=None,
-            )
+            ).output
             assert esolangs.read_answer("AddSubJump", output) == table[row]
 
 

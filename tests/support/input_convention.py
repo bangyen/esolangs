@@ -21,7 +21,7 @@ def reading_languages() -> list[str]:
 
 def assert_echoes_a_newline(language: str, program: str) -> None:
     """``program`` echoes one character; a newline must come back as one."""
-    assert compat.run(language, program, stdin="\n") == "\n"
+    assert esolangs.run(language, program, stdin="\n").output == "\n"
 
 
 def assert_reads_tokens_on_one_line(language: str) -> None:
@@ -31,6 +31,8 @@ def assert_reads_tokens_on_one_line(language: str) -> None:
     """
     program = compat.generate(language, "0110")
     assert (
-        esolangs.read_answer(language, compat.run(language, program, stdin="0 1"))
+        esolangs.read_answer(
+            language, esolangs.run(language, program, stdin="0 1").output
+        )
         == "1"
     )

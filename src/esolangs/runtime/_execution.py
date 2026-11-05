@@ -21,10 +21,10 @@ from esolangs.exceptions import (
     ProgramError,
 )
 from esolangs.registry import INTERPRETERS, LANGUAGES
+from esolangs.results import ExecutionResult
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._program import Program, RunnerProgram
-from esolangs.runtime._result import ExecutionResult
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
 from esolangs.runtime.source_hints import with_hint

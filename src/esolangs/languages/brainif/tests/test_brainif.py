@@ -4,8 +4,9 @@ from typing import ClassVar
 
 import pytest
 
+import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import compat
+from esolangs import run as execute
 from esolangs.languages.brainif.interpreter import run
 from tests.interpreters.contract import (
     CycleContract,
@@ -258,13 +259,11 @@ def test_canonical_move_commands_remain_valid() -> None:
 def test_nonpositive_goto_targets_are_rejected_by_run_and_vm() -> None:
     import pytest
 
-    import esolangs
-
     for target in (0, -1):
         for guard in (0, 1):
             code = f"if {guard} goto {target}"
             with pytest.raises(esolangs.ProgramError, match="positive line number"):
-                compat.run("BrainIf", code)
+                execute("BrainIf", code)
             vm = debugger_api.make_vm("BrainIf", code)
             with pytest.raises(esolangs.ProgramError, match="positive line number"):
                 vm.step()
@@ -277,7 +276,7 @@ def test_positive_goto_targets_match_run_and_vm() -> None:
         ("if 0 goto 3\nif 0 output\nif 0 increment\nif 1 output", "\x01"),
         ("if 0 goto 2", ""),
     ):
-        assert compat.run("BrainIf", code) == expected
+        assert execute("BrainIf", code).output == expected
         vm = debugger_api.make_vm("BrainIf", code)
         assert run_until_halt(vm, limit=4)
         assert vm.output == expected

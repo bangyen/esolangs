@@ -5,6 +5,7 @@ import random
 import pytest
 
 from esolangs import compat
+from esolangs import run as execute
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
 from tests.support.event_io import ReadFirstIO
@@ -105,7 +106,7 @@ class TestCirclefuck:
 
 def test_run_uses_native_eof() -> None:
     program = boolean.circlefuck("10")  # reads one input bit
-    assert compat.run("Circlefuck", program, stdin="") == "0"
+    assert execute("Circlefuck", program, stdin="").output == "0"
 
 
 def _check_constants() -> None:

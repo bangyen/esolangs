@@ -55,7 +55,7 @@ def test_every_first_implementation_was_one_when_admitted() -> None:
 @pytest.mark.parametrize("language", languages(boolean_generator=False))
 def test_api_and_vm(language: str) -> None:
     code, stdin = SAMPLES[language]
-    output = compat.run(language, code, stdin=stdin)
+    output = esolangs.run(language, code, stdin=stdin).output
     vm = make_vm(language, code, stdin=stdin)
     while not vm.halted:
         hash(vm.snapshot())

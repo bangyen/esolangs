@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from esolangs.languages.rubic.generator import _OPENING, _TABLE
 from esolangs.languages.rubic.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
@@ -28,7 +28,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("Rubic", bits)
-        got = compat.run("Rubic", program, stdin=stdin, timeout=5)
+        got = run("Rubic", program, stdin=stdin, timeout=5).output
         io = ReadFirstIO(stdin + "Q")
         machine = _Machine(program, io)
         while not machine.halted:
@@ -47,7 +47,7 @@ def test_the_table_holds_on_both_cube_states() -> None:
     every expression the generator emits has its stated value on both."""
 
     def out(*tokens: str) -> str:
-        return compat.run("Rubic", " ".join(tokens))
+        return run("Rubic", " ".join(tokens)).output
 
     for store in ((), ("r2",)):
         state = (*_OPENING, *store)

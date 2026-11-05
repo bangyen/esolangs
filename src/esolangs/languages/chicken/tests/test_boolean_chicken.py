@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import compat
+from esolangs import compat, run
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
@@ -17,7 +17,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
     # Missing characters are false; arithmetic coercion would produce NaN.
     for prefix in ("", "0", "1"):
         row = int(prefix.ljust(n, "0"), 2)
-        assert compat.run("Chicken", program, stdin=prefix, timeout=5) == table[row]
+        assert run("Chicken", program, stdin=prefix, timeout=5).output == table[row]
     assert_every_row("Chicken", table, program=program)
 
 

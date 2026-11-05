@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from tests.support.cli_support import call_main
 
 
@@ -30,12 +30,12 @@ def test_compressed_and_plain_sources_share_execution(tmp_path) -> None:
     path = tmp_path / "and.txt.gz"
     program.save(path)
     for source in (program, program.to_gzip(), path, str(program)):
-        assert compat.run("Unary", source, stdin="\x00\xff", max_steps=20) == ""
+        assert run("Unary", source, stdin="\x00\xff", max_steps=20).output == ""
     restored = compat.load_program("Unary", esolangs.dump_program("Unary", program))
     assert isinstance(restored, esolangs.CompressedText)
     assert restored == program
     assert (
-        compat.run("Unary", program, stdin="\x00\xff", isolated=True, timeout=5) == ""
+        run("Unary", program, stdin="\x00\xff", isolated=True, timeout=5).output == ""
     )
 
 

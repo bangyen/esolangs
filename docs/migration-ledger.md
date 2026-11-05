@@ -26,7 +26,7 @@ Owners are workstreams, not individual contributors.
 | `languages.generators` facade | Registry | Scripts and generic/owned tests | Artifact API or direct owned generator imports |
 | Unused generator-module descriptor re-exports | Registry | Legacy metadata consumers | Independent descriptors; retain constants actually used by emitters |
 | Helpers' `AffineForm`, `affine_form`, `symmetric_outputs` re-exports | Analysis | Remaining imports | `generation.algebraic` / `generation.lookup` |
-| `runtime._result.ExecutionResult` shim | Results | Runtime, VM, tests and tooling | `esolangs.results.ExecutionResult` |
+| `runtime._result.ExecutionResult` shim | Results | Retired; imports migrated; negative import check in `tests/api/test_run_results.py` | `esolangs.results.ExecutionResult` |
 | `_Machine` / `_for_run` discovery | Lifecycle | VM construction and machine traits | Declared preparation/factories and capabilities |
 | Implicit completion entrypoint defaults | Lifecycle | Runtime descriptors and native runners | Explicit completion declarations |
 | Dialect signature/default inspection | Lifecycle | Settings validation and metadata queries | Declared dialect schemas and defaults |
@@ -38,6 +38,10 @@ For each family, locate consumers before changing it; close the row only after
 those consumers migrate, the implementation disappears and a regression check
 rejects its reintroduction. A version number or a new facade is not retirement.
 Current version-1 serialization is not obsolete solely because its version is 1.
+
+The 2.0 defaults are artifacts and execution results. Output-only `compat.run`
+and public `run_result` aliases are retired; `tests/api/test_run_results.py`
+rejects their return. Source adapters in `esolangs.compat` remain open.
 
 Accounting and analysis rows require owned witnesses, not just a declared hook
 or a recognized helper name. Certification needs an installed-package/lazy-import

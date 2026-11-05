@@ -172,7 +172,10 @@ def test_a_generator_language_needs_no_hand_sample() -> None:
     # new worktree.
     name = first(boolean_generator=True, parameterized=False, answer_mode="output")
     program, stdin = samples._generated(name)
-    assert esolangs.read_answer(name, compat.run(name, program, stdin=stdin)) == "1"
+    assert (
+        esolangs.read_answer(name, esolangs.run(name, program, stdin=stdin).output)
+        == "1"
+    )
 
 
 def test_sources_names_the_interpreter_and_generator() -> None:

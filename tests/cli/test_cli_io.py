@@ -108,7 +108,7 @@ class TestNonTextInputIsRefusedNotCrashed:
         path = tmp_path / "binary.txt"
         path.write_bytes(bytes(range(256)))
         with pytest.raises(esolangs.ProgramError, match="not text"):
-            compat.run(REFERENCE, path)
+            esolangs.run(REFERENCE, path)
 
 
 # 8.5s over 9 tests: drives the CLI as a subprocess.

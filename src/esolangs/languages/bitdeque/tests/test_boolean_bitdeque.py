@@ -4,7 +4,9 @@ import itertools
 
 import pytest
 
+import esolangs
 from esolangs import compat
+from esolangs import run as execute
 from tests.proofs.conventions import _embedding, _tables
 from tests.support.witness_tables import witnesses
 
@@ -82,7 +84,7 @@ def test_bitdeque_short_load_witness_tables(width: int) -> None:
             for row, expected in enumerate(table):
                 bits = list(map(int, format(row, f"0{n}b")))
                 program = compat.instantiate("Bitdeque", template, bits)
-                assert compat.run("Bitdeque", program) == expected
+                assert execute("Bitdeque", program).output == expected
 
 
 def test_bitdeque_short_load_floor_and_rendered_total() -> None:
@@ -119,7 +121,7 @@ def test_bitdeque_short_load_saved_source_and_large_tables(width: int) -> None:
         for row in [0, 1, 2**n // 3, 2**n - 1]:
             bits = list(map(int, format(row, f"0{n}b")))
             program = compat.instantiate("Bitdeque", template, bits, truth_table=table)
-            assert compat.run("Bitdeque", program) == table[row]
+            assert execute("Bitdeque", program).output == table[row]
 
 
 def test_bitdeque_short_load_rejects_changed_prefix() -> None:
@@ -133,7 +135,6 @@ def test_bitdeque_short_load_rejects_changed_prefix() -> None:
 
 
 def test_bitdeque_short_load_rejects_wrong_table_provenance() -> None:
-    import esolangs
 
     template = str(compat.generate("Bitdeque", "0110", width=9))
     with pytest.raises(esolangs.TemplateError, match="not the template"):

@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 from esolangs import compat
+from esolangs import run as execute
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_native_rows
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -29,7 +30,7 @@ def test_larger_and_constant_tables(table: str) -> None:
     for row in range(0, len(table), 3):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("DINAC", bits)
-        got = compat.run("DINAC", program, stdin=stdin, timeout=5)
+        got = execute("DINAC", program, stdin=stdin, timeout=5).output
         assert esolangs.read_answer("DINAC", got) == table[row], (table, row)
 
 

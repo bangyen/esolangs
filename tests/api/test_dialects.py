@@ -75,7 +75,7 @@ def test_every_dialect_declares_its_values() -> None:
 )
 def test_invalid_settings_fail_before_reading(language, settings, options) -> None:
     with pytest.raises(esolangs.ArgumentError):
-        compat.run(
+        esolangs.run(
             language, Unreadable(), stdin=Unreadable(), settings=settings, **options
         )
     with pytest.raises(esolangs.ArgumentError):
@@ -98,7 +98,7 @@ def test_constructor_refuses_a_bool_integer() -> None:
 
 def test_settings_require_the_public_object() -> None:
     with pytest.raises(esolangs.ArgumentError, match="DialectSettings"):
-        compat.run(
+        esolangs.run(
             REFERENCE,
             Unreadable(),
             settings={"integer_conversion": "after_each_letter"},
@@ -139,7 +139,7 @@ def test_raster_scaling_retains_settings(balance) -> None:
 def test_inherited_choices_are_checked_before_input() -> None:
     source = _Tagged("+.", REFERENCE, foreign_settings())
     with pytest.raises(esolangs.ArgumentError, match="dialect settings"):
-        compat.run(REFERENCE, source, stdin=Unreadable())
+        esolangs.run(REFERENCE, source, stdin=Unreadable())
 
 
 @pytest.mark.parametrize(
@@ -155,7 +155,7 @@ def test_default_pickle_has_no_retained_choices() -> None:
     source = compat.generate(REFERENCE, "01")
     restored = pickle.loads(pickle.dumps(source))
     assert restored.settings is None
-    assert compat.run(REFERENCE, restored, stdin="1") == "1"
+    assert esolangs.run(REFERENCE, restored, stdin="1").output == "1"
 
 
 def test_generation_rejects_untyped_settings() -> None:

@@ -21,9 +21,11 @@ _ROUTES = [
 ]
 
 
-@pytest.mark.parametrize("route", _ROUTES)
+@pytest.mark.parametrize(
+    "route", [*_ROUTES, *(r | {"max_output": 1} for r in _ROUTES if r.get("isolated"))]
+)
 def test_result_counts_unicode_characters_and_preserves_unread_input(route):
-    result = esolangs.run_result(REFERENCE, ",.", stdin="éNEXT", **route)
+    result = esolangs.run(REFERENCE, ",.", stdin="éNEXT", **route)
     assert result == ExecutionResult(
         "é",
         1,
@@ -32,7 +34,6 @@ def test_result_counts_unicode_characters_and_preserves_unread_input(route):
         CompletionReport(Completion.HALTED),
         2 if "max_steps" in route else None,
     )
-    assert compat.run(REFERENCE, ",.", stdin="éNEXT", **route) == result.output
 
 
 @pytest.mark.parametrize("route", _ROUTES)
@@ -56,11 +57,11 @@ def test_result_retains_a_caught_eof(route, monkeypatch):
                 raise
 
     monkeypatch.setattr(esolangs, "ScriptedIO", ObservedIO)
-    native = esolangs.run_result(name, source)
+    native = esolangs.run(name, source)
     assert (native.input_position, native.input_reads) == (0, 0)
     assert attempts, "the EOF control did not perform a read"
     assert native.input_past_end == len(attempts)
-    assert esolangs.run_result(name, source, **route)._replace(steps=None) == native
+    assert esolangs.run(name, source, **route)._replace(steps=None) == native
 
 
 @pytest.mark.parametrize(
@@ -80,15 +81,15 @@ def test_post_halt_result_includes_the_final_dump(name):
         else template
     )
     stdin = "" if LANGUAGES[name].parameterized else esolangs.encode_inputs(name, [1])
-    results = [
-        esolangs.run_result(name, source, stdin=stdin, **route) for route in _ROUTES
-    ]
+    results = [esolangs.run(name, source, stdin=stdin, **route) for route in _ROUTES]
     assert all(result._replace(steps=None) == results[0] for result in results)
     assert results[1].steps == results[3].steps
     assert results[1].steps is not None
     assert results[0].completion.kind is Completion.POST_HALT
     assert results[0].completion.cycle is None
     assert esolangs.read_answer(name, results[0].output) == "1"
+    if LANGUAGES[name].parameterized:
+        assert results[0][1:4] == (0, 0, 0)
 
 
 def test_periodic_result_retains_cycle_evidence_in_a_worker():
@@ -100,37 +101,46 @@ def test_periodic_result_retains_cycle_evidence_in_a_worker():
         else template
     )
     stdin = "" if LANGUAGES[name].parameterized else esolangs.encode_inputs(name, [1])
-    native = esolangs.run_result(name, source, stdin=stdin)
+    native = esolangs.run(name, source, stdin=stdin)
     assert native.completion.kind is Completion.PERIODIC
     assert native.completion.cycle is not None
-    assert esolangs.run_result(name, source, stdin=stdin, isolated=True) == native
+    assert esolangs.run(name, source, stdin=stdin, isolated=True) == native
 
 
 @pytest.mark.parametrize("route", _ROUTES)
-def test_result_failures_still_raise_with_partial_output(route):
+@pytest.mark.parametrize(("source", "stdin"), [(",", ""), (",.,", "é")])
+def test_result_failures_still_raise_with_partial_output(route, source, stdin):
     with pytest.raises(esolangs.InputExhaustedError) as caught:
-        esolangs.run_result(REFERENCE, ",.,", stdin="é", **route)
-    assert caught.value.partial_output == "é"
+        esolangs.run(REFERENCE, source, stdin=stdin, **route)
+    assert caught.value.partial_output == stdin
     assert caught.value.execution == ExecutionResult(
-        "é", 1, 1, 1, steps=2 if "max_steps" in route else None
+        stdin,
+        len(stdin),
+        len(stdin),
+        1,
+        steps=2 * len(stdin) if "max_steps" in route else None,
     )
 
 
 def test_bound_language_returns_the_same_record():
     bound = esolangs.Language(REFERENCE)
-    result = bound.run_result(
+    result = bound.run(
         ",.", stdin="éNEXT", max_steps=2, isolated=True, max_output=1, timeout=5
     )
     assert result.steps == 2
-    assert result._replace(steps=None) == esolangs.run_result(
-        REFERENCE, ",.", stdin="éNEXT"
-    )
+    assert result._replace(steps=None) == esolangs.run(REFERENCE, ",.", stdin="éNEXT")
 
 
-def test_public_record_is_immutable_and_keeps_the_internal_import():
-    from esolangs.runtime._result import ExecutionResult as InternalResult
+def test_public_record_is_immutable_and_the_old_import_is_retired():
+    from importlib import import_module
 
-    assert InternalResult is esolangs.ExecutionResult is ExecutionResult
+    assert esolangs.ExecutionResult is ExecutionResult
+    assert not hasattr(esolangs, "run_result")
+    assert not hasattr(esolangs.Language, "run_result")
+    assert not hasattr(compat, "run")
+    with pytest.raises(ModuleNotFoundError) as missing:
+        import_module("esolangs.runtime._result")
+    assert missing.value.name == "esolangs.runtime._result"
     result = ExecutionResult("custom", None, None, None)
     assert result.completion is None
     assert pickle.loads(pickle.dumps(result)) == result

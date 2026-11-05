@@ -4,7 +4,9 @@ from itertools import pairwise
 
 import pytest
 
+import esolangs
 from esolangs import compat
+from esolangs import run as execute
 from esolangs.generation.helpers import TEMPLATE_CHAR, permute_truth_table, runs
 from esolangs.languages.back.generator import _back_ordered
 from tests.support.evaluation import _evaluate
@@ -336,7 +338,6 @@ def test_vertical_leaf_finish_preserves_every_small_table() -> None:
 def test_parity_accumulator_keeps_public_slots_and_provenance(
     n: int, bias: int, width: int
 ) -> None:
-    import esolangs
 
     table = "".join(str((row.bit_count() & 1) ^ bias) for row in range(1 << n))
     runner = TestParameterizedBack()
@@ -538,11 +539,10 @@ def _check_held_input_and_dump() -> None:
     # Non-answer cells are storage/scratch; only cell n is the answer contract.
     template = compat.generate("Back", "0001")
     source = compat.instantiate("Back", template, [1, 0])
-    assert compat.run("Back", source) == "0 0 0"
+    assert execute("Back", source).output == "0 0 0"
 
 
 def _check_exact_preload_bounds() -> None:
-    import esolangs
     from esolangs.debugger import make_vm
     from esolangs.generation.helpers import grid_area
     from esolangs.languages.back.proof_formulas import execution, workspace

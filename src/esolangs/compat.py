@@ -1,4 +1,4 @@
-"""Explicit 1.x source/output adapters; new code uses the artifact-first API."""
+"""Temporary source adapters during the 2.0 caller migration."""
 
 from __future__ import annotations
 
@@ -7,13 +7,11 @@ from typing import cast
 import esolangs
 from esolangs.artifacts import Artifact
 from esolangs.portable import load_program as load_program
-from esolangs.runtime._input import InputSource
 from esolangs.runtime._program import Program
-from esolangs.runtime._source import ProgramSource
 from esolangs.settings import DialectSettings
 from esolangs.tagged import source_adapter
 
-__all__ = ["generate", "instantiate", "load_program", "run"]
+__all__ = ["generate", "instantiate", "load_program"]
 
 
 def generate(
@@ -61,33 +59,3 @@ def instantiate(
             )
         ),
     )
-
-
-def run(
-    language: str,
-    program: ProgramSource,
-    *,
-    stdin: InputSource = "",
-    timeout: float | None = None,
-    seed: int | None = None,
-    isolated: bool = False,
-    max_steps: int | None = None,
-    scale: int | None = None,
-    max_output: int | None = None,
-    max_memory: int | None = None,
-    settings: DialectSettings | None = None,
-) -> str:
-    """Return output text; options and errors follow :func:`esolangs.run`."""
-    return esolangs.run(
-        language,
-        program,
-        stdin=stdin,
-        timeout=timeout,
-        seed=seed,
-        isolated=isolated,
-        max_steps=max_steps,
-        scale=scale,
-        max_output=max_output,
-        max_memory=max_memory,
-        settings=settings,
-    ).output

@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs.debugger as debugger_api
-from esolangs import compat
+from esolangs import run
 from esolangs.exceptions import InterpreterLimitError
 from esolangs.runtime._validate import _MAX_CELLS, check_address
 
@@ -11,7 +11,7 @@ from esolangs.runtime._validate import _MAX_CELLS, check_address
 @pytest.mark.medium
 def test_memory_limit_has_an_address_hint() -> None:
     with pytest.raises(InterpreterLimitError) as caught:
-        compat.run("S*bleq", "100000000000000000000 0 0", timeout=1)
+        run("S*bleq", "100000000000000000000 0 0", timeout=1)
     assert "smaller memory addresses" in caught.value.__notes__[0]
 
 

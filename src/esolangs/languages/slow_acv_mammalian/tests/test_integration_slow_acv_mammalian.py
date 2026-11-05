@@ -5,7 +5,7 @@ import json
 import pytest
 
 import esolangs
-from esolangs import DialectSettings, compat
+from esolangs import DialectSettings, compat, run
 from esolangs.tagged import _Tagged
 
 
@@ -13,23 +13,21 @@ from esolangs.tagged import _Tagged
 @pytest.mark.parametrize("word", ["comment", "seed"])
 def test_mammalian_rejects_unknown_words_before_output(word) -> None:
     with pytest.raises(ValueError, match="unknown SLOW ACV MAMMALIAN command"):
-        compat.run("SLOW ACV MAMMALIAN", f"PRONOUNCE {word}", timeout=1)
+        run("SLOW ACV MAMMALIAN", f"PRONOUNCE {word}", timeout=1)
 
 
 def test_partial_overrides_merge_and_validate() -> None:
     settings = DialectSettings(cell_modulus=256, io_modulus=255)
     source = _Tagged("SEED " * 255 + "DIGEST PRONOUNCE", "SLOW ACV MAMMALIAN", settings)
-    assert compat.run("SLOW ACV MAMMALIAN", source) == chr(0)
-    assert compat.run(
+    assert run("SLOW ACV MAMMALIAN", source).output == chr(0)
+    assert run(
         "SLOW ACV MAMMALIAN", source, settings=DialectSettings(io_modulus=256)
-    ) == chr(255)
+    ).output == chr(255)
     assert source.settings is settings
     with pytest.raises(esolangs.ArgumentError):
-        compat.run(
-            "SLOW ACV MAMMALIAN", source, settings=DialectSettings(cell_modulus=257)
-        )
+        run("SLOW ACV MAMMALIAN", source, settings=DialectSettings(cell_modulus=257))
     with pytest.raises(esolangs.ArgumentError, match="DialectSettings"):
-        compat.run("SLOW ACV MAMMALIAN", source, settings={})
+        run("SLOW ACV MAMMALIAN", source, settings={})
 
 
 def test_large_integer_setting_is_rejected() -> None:

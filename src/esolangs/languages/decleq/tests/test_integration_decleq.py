@@ -4,7 +4,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import compat
+from esolangs import run
 
 
 class TestDecleqNegativeAddressing:
@@ -13,7 +13,7 @@ class TestDecleqNegativeAddressing:
     def test_it_halts_instead_of_leaking(self) -> None:
         """Four characters, reduced from a 20,000-character random program."""
         with pytest.raises(esolangs.HaltError, match="past the left end"):
-            compat.run("Decleq", "4 -8", stdin="", timeout=2)
+            run("Decleq", "4 -8", stdin="", timeout=2)
 
     def test_the_documented_negative_write_is_unchanged(self) -> None:
         """Indexing from the right is deliberate and pinned elsewhere."""

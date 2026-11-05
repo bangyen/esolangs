@@ -11,16 +11,22 @@ from tests.support.reference import REFERENCE
 @pytest.mark.parametrize(
     "operation",
     [
-        lambda huge: compat.run(REFERENCE, "", timeout=huge),
-        lambda huge: compat.run(REFERENCE, "", timeout=-huge),
-        lambda huge: compat.run(REFERENCE, "", isolated=True, max_output=-huge),
+        lambda huge: esolangs.run(REFERENCE, "", timeout=huge).output,
+        lambda huge: esolangs.run(REFERENCE, "", timeout=-huge).output,
+        lambda huge: (
+            esolangs.run(REFERENCE, "", isolated=True, max_output=-huge).output
+        ),
         lambda huge: compat.generate(REFERENCE, "01", width=-huge),
         lambda huge: esolangs.encode_inputs(REFERENCE, [huge]),
         lambda huge: esolangs.encode_inputs(REFERENCE, [True, huge]),
-        lambda huge: compat.run(
-            first(source_kind="raster"), esolangs.Raster((((0, 0, 0),),)), scale=-huge
+        lambda huge: (
+            esolangs.run(
+                first(source_kind="raster"),
+                esolangs.Raster((((0, 0, 0),),)),
+                scale=-huge,
+            ).output
         ),
-        lambda huge: compat.run(REFERENCE, "", timeout={"value": huge}),
+        lambda huge: esolangs.run(REFERENCE, "", timeout={"value": huge}).output,
     ],
 )
 def test_oversized_integer_arguments_keep_public_errors(operation) -> None:

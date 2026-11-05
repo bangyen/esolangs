@@ -105,7 +105,9 @@ def execute(
         else:
             actual = esolangs.read_answer(
                 name,
-                compat.run(name, source, stdin=stdin, timeout=2, settings=settings),
+                esolangs.run(
+                    name, source, stdin=stdin, timeout=2, settings=settings
+                ).output,
             )
         if actual != table[row]:
             raise ValueError(f"{name} row {row}: {actual!r} != {table[row]!r}")

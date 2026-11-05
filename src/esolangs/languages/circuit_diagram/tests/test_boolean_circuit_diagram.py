@@ -8,6 +8,7 @@ import pytest
 
 import esolangs
 from esolangs import compat
+from esolangs import run as execute
 from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from esolangs.languages.circuit_diagram.generator.hlayout import _LATTICE, _h_size
@@ -653,9 +654,9 @@ def test_circuit_gate_column_and_band_fit_transitions(inputs, affine) -> None:
     assert balance_score(balanced) == min(map(balance_score, layouts))
     for row in (0, 1, len(table) // 2, len(table) - 1):
         bits = tuple(map(int, format(row, f"0{inputs}b")))
-        output = compat.run(
+        output = execute(
             language, balanced, stdin=esolangs.encode_inputs(language, bits)
-        )
+        ).output
         assert esolangs.read_answer(language, output) == table[row]
 
 

@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.compressed import CompressedText
 from esolangs.runtime._source import text_source
 from scripts.source_units import source_units
@@ -55,10 +54,10 @@ def test_wrapping_preserves_characters_and_bounds_lines() -> None:
 
 def test_compressed_source_retains_language_origin() -> None:
     program = CompressedText.from_chunks((",.",)).tagged(REFERENCE)
-    assert compat.run(REFERENCE, program, stdin="Z") == "Z"
+    assert esolangs.run(REFERENCE, program, stdin="Z").output == "Z"
     other = next(n for n in esolangs.list_languages() if n != REFERENCE)
     with pytest.raises(esolangs.ProgramError, match="generated for"):
-        compat.run(REFERENCE, program.tagged(other), stdin="Z")
+        esolangs.run(REFERENCE, program.tagged(other), stdin="Z")
 
 
 def test_format_budgets_are_independent_and_survive_wrapping() -> None:

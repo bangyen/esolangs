@@ -6,6 +6,7 @@ from itertools import pairwise
 import pytest
 
 from esolangs import compat
+from esolangs import run as execute
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
 from tests.support.event_io import ReadFirstIO
@@ -170,8 +171,8 @@ def test_brainif_zero_landing_public_and_larger_samples(width: int) -> None:
         program = compat.generate("BrainIf", table, width=width)
         for row in [0, 1, 2**n // 3, 2**n - 1]:
             stdin = format(row, f"0{n}b")
-            assert compat.run("BrainIf", program, stdin=stdin) == table[row]
-            assert compat.run("BrainIf", str(program), stdin=stdin) == table[row]
+            assert execute("BrainIf", program, stdin=stdin).output == table[row]
+            assert execute("BrainIf", str(program), stdin=stdin).output == table[row]
 
 
 def test_brainif_unpruned_large_tree_uses_spatial_fallback() -> None:

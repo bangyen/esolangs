@@ -6,7 +6,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.befunge.generator import (
@@ -41,7 +41,7 @@ def test_befunge_folded_header_reads_the_table(inputs: int, width: int | None) -
     for row in rows:
         bits = [int(bit) for bit in format(row, f"0{inputs}b")]
         stdin = esolangs.encode_inputs("Befunge", bits)
-        assert compat.run("Befunge", program, stdin=stdin).strip() == table[row]
+        assert run("Befunge", program, stdin=stdin).output.strip() == table[row]
 
 
 def test_befunge_keeps_a_header_that_already_fits() -> None:
@@ -94,7 +94,7 @@ def test_packed_ascii_lookup_answers_every_row(inputs: int, width: int | None) -
         bits = [int(bit) for bit in f"{row:0{inputs}b}"]
         stdin = esolangs.encode_inputs("Befunge", bits)
         assert (
-            compat.run("Befunge", program, stdin=stdin, max_steps=500).strip()
+            run("Befunge", program, stdin=stdin, max_steps=500).output.strip()
             == expected
         )
 
@@ -114,7 +114,7 @@ def test_packed_ascii_lookup_controls_and_balance(inputs: int, kind: str) -> Non
         bits = [int(bit) for bit in f"{row:0{inputs}b}"]
         stdin = esolangs.encode_inputs("Befunge", bits)
         assert (
-            compat.run("Befunge", program, stdin=stdin, max_steps=500).strip()
+            run("Befunge", program, stdin=stdin, max_steps=500).output.strip()
             == table[row]
         )
 
@@ -220,7 +220,7 @@ def test_a_width_beyond_the_torus_still_fits_it(width: int) -> None:
         bits = [int(bit) for bit in f"{row:011b}"]
         stdin = esolangs.encode_inputs("Befunge", bits)
         assert (
-            compat.run("Befunge", program, stdin=stdin, max_steps=500).strip()
+            run("Befunge", program, stdin=stdin, max_steps=500).output.strip()
             == table[row]
         )
 
@@ -332,6 +332,4 @@ def test_packed_header_reserves_a_two_digit_offset() -> None:
         assert len(program.splitlines()) <= 25
         for row, expected in enumerate(table):
             stdin = esolangs.encode_inputs("Befunge", list(map(int, f"{row:08b}")))
-            assert (
-                esolangs.run("Befunge", program, stdin=stdin).output.strip() == expected
-            )
+            assert run("Befunge", program, stdin=stdin).output.strip() == expected

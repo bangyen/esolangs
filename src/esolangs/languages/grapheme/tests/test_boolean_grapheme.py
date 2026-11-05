@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import compat
+from esolangs import run as execute
 from esolangs.languages import generators as boolean
 from esolangs.languages.grapheme.generator import (
     _grapheme_literal,
@@ -71,7 +72,7 @@ class TestGraphemeTable:
         for row in (0, 5461, len(table) - 1):
             bits = [(row >> (13 - i)) & 1 for i in range(14)]
             stdin = esolangs.encode_inputs("Grapheme", bits)
-            got = compat.run("Grapheme", program, stdin=stdin, timeout=60)
+            got = execute("Grapheme", program, stdin=stdin, timeout=60).output
             assert esolangs.read_answer("Grapheme", got) == table[row], row
 
     def test_an_off_by_one_shift_returns_a_wrong_answer(

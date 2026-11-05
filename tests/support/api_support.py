@@ -41,7 +41,6 @@ PUBLIC_MEMBERS = {
         "name",
         "read_answer",
         "run",
-        "run_result",
     },
     esolangs.Raster: {
         "from_png",

@@ -2,6 +2,7 @@
 
 import pytest
 
+import esolangs
 from esolangs import compat
 from esolangs.exceptions import ArgumentError, ProgramError
 from esolangs.raster import Raster
@@ -54,11 +55,11 @@ def test_scale_validation_and_uniformity(name: str) -> None:
     with pytest.raises(ArgumentError, match="raster"):
         compat.generate(REFERENCE, "00", scale=2)
     with pytest.raises(ArgumentError, match="raster"):
-        compat.run(REFERENCE, "+.", scale=1)
+        esolangs.run(REFERENCE, "+.", scale=1)
     with pytest.raises(ArgumentError, match="raster"):
         _evaluate(REFERENCE, "+.", inputs=1, scale=1)
     with pytest.raises(ProgramError, match="uniform"):
-        compat.run(name, image, scale=2)
+        esolangs.run(name, image, scale=2)
 
 
 def test_monochrome_codel_grid() -> None:

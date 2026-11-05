@@ -59,7 +59,7 @@ class TestErrorsSurviveAProcessBoundary:
 
         program = compat.generate(REFERENCE, "10010110")
         with pytest.raises(esolangs.InputExhaustedError) as caught:
-            compat.run(REFERENCE, program, stdin="10", timeout=10)
+            esolangs.run(REFERENCE, program, stdin="10", timeout=10)
         restored = pickle.loads(pickle.dumps(caught.value))
         assert str(restored) == str(caught.value)
         assert restored.reads == caught.value.reads
@@ -148,7 +148,7 @@ class TestABadStdinIsAnArgumentFault:
     @pytest.mark.parametrize(
         "call",
         [
-            lambda: compat.run(REFERENCE, ",.", stdin=["0"]),
+            lambda: esolangs.run(REFERENCE, ",.", stdin=["0"]).output,
             lambda: _check_program(REFERENCE, ",.", ["0"]),
             lambda: debugger_api.make_vm(REFERENCE, ",.", stdin=["0"]),
             lambda: debugger_api.make_debugger(REFERENCE, ",.", stdin=["0"]),
@@ -162,7 +162,7 @@ class TestABadStdinIsAnArgumentFault:
     def test_a_bad_program_is_still_a_program_error(self) -> None:
         """The change must not blur the distinction the other way."""
         with pytest.raises(esolangs.ProgramError, match="program must be a string"):
-            compat.run(REFERENCE, 42, stdin="")
+            esolangs.run(REFERENCE, 42, stdin="")
 
 
 class TestBoolsAreRefusedForAStatedReason:
@@ -178,7 +178,9 @@ class TestRawInputKeepsItsNativeMeaning:
     def test_extra_input_does_not_change_the_row(self) -> None:
         program = compat.generate(REFERENCE, "00011011")
         assert (
-            compat.run(REFERENCE, program, stdin="1\n1\n0\n0\n1\n1\n", timeout=10)
+            esolangs.run(
+                REFERENCE, program, stdin="1\n1\n0\n0\n1\n1\n", timeout=10
+            ).output
             == "0"
         )
 
@@ -239,7 +241,7 @@ class TestATimeoutCannotKillTheProcess:
     def test_a_bound_too_short_to_service_is_refused(self) -> None:
         """The floor, which is what makes restoring the disposition safe."""
         with pytest.raises(esolangs.ArgumentError, match=r"at least 0\.001"):
-            compat.run(REFERENCE, "+.", stdin="", timeout=0.0001)
+            esolangs.run(REFERENCE, "+.", stdin="", timeout=0.0001)
 
     @pytest.mark.parametrize(
         "handler",
@@ -253,7 +255,7 @@ class TestATimeoutCannotKillTheProcess:
         try:
             program = compat.generate(REFERENCE, "0110")
             stdin = esolangs.encode_inputs(REFERENCE, [0, 1], truth_table="0110")
-            compat.run(REFERENCE, program, stdin=stdin, timeout=5)
+            esolangs.run(REFERENCE, program, stdin=stdin, timeout=5)
             assert signal.getsignal(signal.SIGALRM) is handler
         finally:
             signal.signal(signal.SIGALRM, previous)
@@ -266,7 +268,7 @@ class TestATimeoutCannotKillTheProcess:
         stdin = esolangs.encode_inputs(REFERENCE, [0, 1], truth_table="0110")
         for bound in (10, 0.001):
             with contextlib.suppress(esolangs.ExecutionTimeoutError):
-                compat.run(REFERENCE, program, stdin=stdin, timeout=bound)
+                esolangs.run(REFERENCE, program, stdin=stdin, timeout=bound)
             assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
 
     @pytest.mark.slow
@@ -280,7 +282,7 @@ class TestATimeoutCannotKillTheProcess:
         try:
             for _ in range(400):
                 with contextlib.suppress(esolangs.ExecutionTimeoutError):
-                    compat.run(REFERENCE, program, stdin=stdin, timeout=0.001)
+                    esolangs.run(REFERENCE, program, stdin=stdin, timeout=0.001)
                 assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
                 assert signal.getsignal(signal.SIGALRM) is signal.SIG_DFL
         finally:

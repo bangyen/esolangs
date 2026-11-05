@@ -102,7 +102,7 @@ def test_text_adapter_converts_to_an_immutable_record(language: str) -> None:
         assert isinstance(artifact, TemplateArtifact)
         filled = artifact.bindings.fill(artifact.source, [0, 1])
         assert filled == source.fill([0, 1])
-        assert compat.run(language, filled) == "1"
+        assert esolangs.run(language, filled).output == "1"
     else:
         assert isinstance(artifact, ProgramArtifact)
 
@@ -138,12 +138,12 @@ def test_generated_and_restored_bindings_need_no_recovery(
     monkeypatch.setattr(esolangs, "recover_setters", refuse_recovery)
     for template in (source, restored):
         with pytest.raises(esolangs.TemplateError):
-            compat.run(language, template)
+            esolangs.run(language, template)
         with pytest.raises(esolangs.TemplateError):
             compat.instantiate(REFERENCE, template, [0, 1])
         filled = compat.instantiate(language, template, [0, 1])
         with pytest.raises(esolangs.ProgramError):
-            compat.run(REFERENCE, filled)
+            esolangs.run(REFERENCE, filled)
 
     with pytest.raises(esolangs.TemplateError, match="fill the template"):
         esolangs.Language(language).from_source(source)
@@ -217,7 +217,7 @@ def test_template_record_reuses_validated_runs_and_retains_provenance(
         assert isinstance(filled, ProgramArtifact)
         assert filled.language == language
         assert filled.settings is choices
-        assert compat.run(language, filled.source) == answer
+        assert esolangs.run(language, filled.source).output == answer
         assert restored.fill(bits).source == filled.source == source.fill(bits)
 
 
@@ -235,9 +235,7 @@ def test_explicit_source_survives_all_execution_routes_and_persistence(tmp_path)
     assert artifact == restored == loaded
     for program in (artifact, restored, loaded):
         for isolated, max_steps in ((False, None), (False, 100), (True, 100)):
-            result = language.run_result(
-                program, isolated=isolated, max_steps=max_steps
-            )
+            result = language.run(program, isolated=isolated, max_steps=max_steps)
             assert result.output == "\x00"
             assert result.input_position == 0
             assert result.completion is not None
@@ -254,7 +252,7 @@ def test_explicit_source_survives_all_execution_routes_and_persistence(tmp_path)
 def test_public_records_canonicalize_and_validate_metadata():
     artifact = ProgramArtifact("+.", REFERENCE.upper())
     assert artifact.language == REFERENCE
-    assert compat.run(REFERENCE, artifact) == "\x01"
+    assert esolangs.run(REFERENCE, artifact).output == "\x01"
     with pytest.raises(esolangs.ArgumentError):
         ProgramArtifact("+.", REFERENCE, scale=1)
     with pytest.raises(esolangs.ArgumentError):

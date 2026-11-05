@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from esolangs.generation.examples import BOOLEAN_EXAMPLES
 from esolangs.generation.wrap import wrap_program
 from esolangs.languages.packlang.generator import packlang
@@ -34,8 +34,8 @@ def test_packlang_lexical_folds_execute_sampled_rows(inputs: int, width: int) ->
     for row in [0, 1, len(table) // 2, len(table) - 2, len(table) - 1]:
         bits = [int(bit) for bit in format(row, f"0{inputs}b")]
         stdin = esolangs.encode_inputs("Packlang", bits)
-        assert compat.run("Packlang", source, stdin=stdin) == table[row]
-        assert compat.run("Packlang", reflowed, stdin=stdin) == table[row]
+        assert run("Packlang", source, stdin=stdin).output == table[row]
+        assert run("Packlang", reflowed, stdin=stdin).output == table[row]
 
 
 def test_packlang_default_and_fitting_source_stay_unchanged() -> None:
@@ -51,6 +51,7 @@ def test_wrapping_only_breaks_between_tokens() -> None:
     plain = example.build(13)
     wrapped = wrap_program(plain, "packlang", 6)
     assert _tokenize(wrapped) == _tokenize(plain)
-    assert compat.run("Packlang", wrapped, stdin=example.stdin) == compat.run(
-        "Packlang", plain, stdin=example.stdin
+    assert (
+        run("Packlang", wrapped, stdin=example.stdin).output
+        == run("Packlang", plain, stdin=example.stdin).output
     )

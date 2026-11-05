@@ -152,7 +152,7 @@ class TestAProgramKnowsWhoseItIs:
     def test_a_foreign_program_is_refused_by_run(self) -> None:
         program = compat.generate(REFERENCE, "0110")
         with pytest.raises(esolangs.ProgramError, match="generated for brainfuck"):
-            compat.run(TEMPLATED, program)
+            esolangs.run(TEMPLATED, program)
 
     def test_a_foreign_program_is_refused_by_make_vm(self) -> None:
         program = compat.generate(REFERENCE, "0110")
@@ -164,20 +164,20 @@ class TestAProgramKnowsWhoseItIs:
         program = compat.instantiate(TEMPLATED, template, [0, 1])
         assert getattr(program, "language", None) == TEMPLATED
         with pytest.raises(esolangs.ProgramError, match=f"generated for {TEMPLATED}"):
-            compat.run(REFERENCE, program)
+            esolangs.run(REFERENCE, program)
 
     def test_the_name_is_resolved_before_it_is_compared(self) -> None:
         program = compat.generate("BRAINFUCK", "0110")
-        assert compat.run(
+        assert esolangs.run(
             REFERENCE, program, stdin=esolangs.encode_inputs(REFERENCE, [0, 1])
-        )
+        ).output
 
     def test_a_plain_string_is_accepted_unchecked(self) -> None:
         program = str(compat.generate(REFERENCE, "0110"))
         assert getattr(program, "language", None) is None
-        assert compat.run(
+        assert esolangs.run(
             REFERENCE, program, stdin=esolangs.encode_inputs(REFERENCE, [0, 1])
-        )
+        ).output
 
     def test_a_width_keeps_the_tag(self) -> None:
         program = compat.generate(REFERENCE, "0110", width=20)
@@ -201,7 +201,7 @@ class TestExamplePathsWorkFromAnywhere:
         """The advertised package resource executes after changing directory."""
         example = files("esolangs") / esolangs.describe(REFERENCE)["examples"][0]
         monkeypatch.chdir(tmp_path)
-        assert compat.run(REFERENCE, example, stdin="1\n0\n", timeout=20)
+        assert esolangs.run(REFERENCE, example, stdin="1\n0\n", timeout=20).output
 
 
 class TestWhatHappensWhenAProgramIsUnderfed:
@@ -221,7 +221,7 @@ class TestWhatHappensWhenAProgramIsUnderfed:
         n = len(table).bit_length() - 1
         short = esolangs.encode_inputs(name, list(probe[1][: n - 1])) if n > 1 else ""
         try:
-            output = compat.run(name, program, stdin=short, timeout=10)
+            output = esolangs.run(name, program, stdin=short, timeout=10).output
         except esolangs.InputExhaustedError:
             return "raised", None
         except esolangs.EsolangError:

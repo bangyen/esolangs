@@ -1,7 +1,7 @@
 """Home Row through the shared API, CLI and machinery."""
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from tests.support.witness_tables import XOR
 
 
@@ -14,11 +14,11 @@ def test_the_width_applies_once_the_bits_are_in() -> None:
 def test_a_wrapped_instantiation_still_computes_the_table() -> None:
     template = compat.generate("Home Row", XOR)
     got = "".join(
-        compat.run(
+        run(
             "Home Row",
             compat.instantiate("Home Row", template, [a, b], width=10),
             timeout=30,
-        )
+        ).output
         for a in (0, 1)
         for b in (0, 1)
     )

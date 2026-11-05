@@ -99,7 +99,7 @@ with file newline handling and retains embedded dialect settings and scale.
 Both return `ProgramArtifact`; parsing still happens when the program executes.
 
 `generate` and `load_program` return artifacts; `instantiate` returns a filled
-`ProgramArtifact`. `run` returns `ExecutionResult` (`run_result` is an alias).
+`ProgramArtifact`. `run` returns `ExecutionResult`.
 Extract `.source` for native source operations and `.output` for output text.
 Source is a string, `Raster`, or `CompressedText` (Unary).
 
@@ -166,7 +166,6 @@ Functions:
 - `esolangs.load_program` -- restore version-1 JSON as an explicit program or template record
 - `esolangs.read_answer` -- return the answer bit, `"0"` or `"1"`, a program's `output` carries
 - `esolangs.run` -- execute `program` and return output, input usage and completion evidence
-- `esolangs.run_result` -- execute `program` and return output, input usage and completion evidence
 - `esolangs.save_program` -- write a program as a native source file
 
 Types:
@@ -185,7 +184,7 @@ Types:
 - `esolangs.TemplateArtifact` -- text with explicit input bindings; never runnable source
 - `esolangs.TemplateBindings` -- ordered, equal-width input bindings, independent of source storage
 - `esolangs.TextLimits` -- independent raw-export, generation-work and compressed-file budgets
-- `esolangs.compat` -- explicit 1.x source/output adapters; new code uses the artifact-first API
+- `esolangs.compat` -- temporary source adapters during the 2.0 caller migration
 
 Exceptions:
 
@@ -485,8 +484,8 @@ return `ProgramArtifact | TemplateArtifact`, `instantiate` returns a runnable
 these same defaults. Existing serialized documents and CLI source/output formats
 remain compatible.
 
-For 1.x code that requires tagged strings, rasters, compressed source or output
-text, call `esolangs.compat.generate`, `.instantiate`, `.load_program` and `.run`.
+For 1.x code that requires tagged strings, rasters or compressed source, call `esolangs.compat.generate`, `.instantiate` and `.load_program`.
+Use `run(...).output` for output text; `run_result` is replaced by `run`.
 These adapters are explicit projections of the artifact-first implementation;
 new code should retain records and extract `.source` or `.output` where needed.
 

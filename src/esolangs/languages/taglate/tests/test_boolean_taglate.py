@@ -3,6 +3,7 @@
 import pytest
 
 from esolangs import compat
+from esolangs import run as execute
 from esolangs.languages import generators as boolean
 from esolangs.languages.taglate.wrapping import _taglate
 from tests.support.event_io import ReadFirstIO
@@ -12,7 +13,7 @@ from tests.support.witness_tables import row_bits, witnesses
 
 def run_taglate(program: str, inputs: list[str]) -> str:
 
-    return compat.run("Taglate", program, stdin="".join(inputs))
+    return execute("Taglate", program, stdin="".join(inputs)).output
 
 
 def test_execution_bound_is_one_form() -> None:

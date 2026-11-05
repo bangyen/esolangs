@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import compat
+from esolangs import compat, run
 from esolangs.debugger import make_vm
 from esolangs.exceptions import TemplateError
 from esolangs.generation.wrap import wrap_program
@@ -46,7 +46,7 @@ def test_constant_root_parses_inputs_without_selecting_a_table(inputs, bit) -> N
     assert _evaluate("///", template, inputs=inputs) == table
     assert _is_unfilled_template(str(template))
     with pytest.raises(TemplateError, match="unfilled"):
-        compat.run("///", str(template))
+        run("///", str(template))
     for row in (0, (1 << inputs) - 1):
         bits = [int(c) for c in format(row, f"0{inputs}b")]
         program = compat.instantiate("///", template, bits)
@@ -86,7 +86,7 @@ def test_more_ignored_slots_than_slots_is_a_program_not_a_template() -> None:
     # Two X in a three-character slot list once shifted by -1 and raised.
     program = _UNARY + _DECODE + "$XX>qAqB"
     assert not _is_unfilled_template(program)
-    assert isinstance(compat.run("///", program), str)
+    assert isinstance(run("///", program).output, str)
 
 
 def test_ignored_input_template_is_recognized_only_while_canonical() -> None:
@@ -100,7 +100,7 @@ def test_ignored_input_template_is_recognized_only_while_canonical() -> None:
 
 def test_partly_filled_constant_still_requires_its_remaining_input() -> None:
     assert _is_unfilled_template("/a///b//a$b1")
-    assert compat.run("///", "$0") == "$0"
+    assert run("///", "$0").output == "$0"
 
 
 def test_unwrappable_source_is_untouched() -> None:

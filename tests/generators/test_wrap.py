@@ -7,7 +7,7 @@ import pytest
 
 import esolangs
 from esolangs import compat
-from esolangs.compat import generate, run
+from esolangs.compat import generate
 from esolangs.generation.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.generation.examples import BooleanExample
 from esolangs.generation.wrap import (
@@ -153,7 +153,7 @@ def _is_grid(name: str) -> bool:
 def _run(name: str, program: str) -> str:
     """What ``program`` does under ``name``'s interpreter: output, or a raise."""
     try:
-        return run(name, program, stdin=_stdin(name))
+        return esolangs.run(name, program, stdin=_stdin(name)).output
     except Exception as exc:
         return f"{type(exc).__name__}: {exc}"
 
@@ -263,7 +263,7 @@ def _behaviour(name: str, program: str, stdin: str) -> str:
     if diverges(name, program, stdin):
         return "diverges (cycle proven)"
     try:
-        return run(name, program, stdin=stdin, timeout=_RUN_TIMEOUT)
+        return esolangs.run(name, program, stdin=stdin, timeout=_RUN_TIMEOUT).output
     except Exception as exc:
         return f"{type(exc).__name__}: {exc}"
 

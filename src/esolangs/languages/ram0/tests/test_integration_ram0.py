@@ -8,7 +8,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import compat
+from esolangs import compat, run
 from tests.support.cli_support import call_main
 from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
@@ -129,7 +129,7 @@ def test_a_dump_is_reachable_without_touching_the_wrapped_vm() -> None:
 def test_read_answer_finds_a_dumped_answer(capsys: pytest.CaptureFixture[str]) -> None:
     """RAM0's answer is its `z` register, three lines from the end."""
     program = compat.instantiate("RAM0", compat.generate("RAM0", "0110"), [0, 1])
-    output = compat.run("RAM0", program, timeout=20)
+    output = run("RAM0", program, timeout=20).output
     assert call_main(["read-answer", "RAM0"], capsys, stdin=output).strip() == "1"
 
 

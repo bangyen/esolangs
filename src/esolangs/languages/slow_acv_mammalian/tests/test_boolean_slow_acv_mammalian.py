@@ -9,6 +9,7 @@ import pytest
 
 import esolangs
 from esolangs import compat
+from esolangs import run as execute
 from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
@@ -57,12 +58,12 @@ def test_mod255_projected_chain_runs_nonadjacent_input_coordinates(
     settings = esolangs.DialectSettings(cell_modulus=255, io_modulus=io_modulus)
     for row in (0, 1, 85, 128, 170, 255):
         bits = [int(bit) for bit in f"{row:08b}"]
-        output = compat.run(
+        output = execute(
             "SLOW ACV MAMMALIAN",
             program,
             stdin=esolangs.encode_inputs("SLOW ACV MAMMALIAN", bits),
             settings=settings,
-        )
+        ).output
         assert esolangs.read_answer("SLOW ACV MAMMALIAN", output) == table[row]
 
 

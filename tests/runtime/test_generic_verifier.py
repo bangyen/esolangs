@@ -54,7 +54,9 @@ def _verify(name: str, table: str) -> str:
         if facts["answer_mode"] == "termination":
             got += _terminates(name, source, stdin)
         else:
-            output = compat.run(name, source, stdin=stdin, timeout=_RUN_TIMEOUT)
+            output = esolangs.run(
+                name, source, stdin=stdin, timeout=_RUN_TIMEOUT
+            ).output
             got += esolangs.read_answer(name, output)
     return got
 
@@ -94,6 +96,6 @@ class TestTheFactsThatMakeItPossible:
     def test_a_timeout_is_distinguishable_from_a_faulting_halt(self) -> None:
         """``except HaltError`` would score an invalid-op halt as a 1."""
         with pytest.raises(esolangs.ExecutionTimeoutError) as exc:
-            compat.run(REFERENCE, "+[]", timeout=0.01)
+            esolangs.run(REFERENCE, "+[]", timeout=0.01)
         assert isinstance(exc.value, esolangs.HaltError)
         assert isinstance(exc.value, TimeoutError)

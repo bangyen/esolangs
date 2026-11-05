@@ -35,7 +35,7 @@ class TestNameResolution:
 
     def test_case_is_ignored(self) -> None:
         """The registry mixes conventions, so a caller cannot guess one."""
-        assert compat.run("BRAINFUCK", "+.", timeout=5) == "\x01"
+        assert esolangs.run("BRAINFUCK", "+.", timeout=5).output == "\x01"
 
     def test_a_near_miss_is_named(self) -> None:
         """A misspelling is a spelling problem; answer it with the spelling."""
@@ -60,16 +60,16 @@ class TestErrorsAreCatchable:
         ("call", "expected"),
         [
             (
-                lambda: compat.run(REFERENCE, ",.", stdin=""),
+                lambda: esolangs.run(REFERENCE, ",.", stdin="").output,
                 InputExhaustedError,
             ),
             (lambda: compat.generate(REFERENCE, "0121"), TruthTableError),
-            (lambda: compat.run(REFERENCE, 42), ProgramError),
+            (lambda: esolangs.run(REFERENCE, 42).output, ProgramError),
             # A bad stdin is an ArgumentError, not a ProgramError: the stdin
             # is not the program.  Either way it is an EsolangError, which is
             # what this class is about.
-            (lambda: compat.run(REFERENCE, ",.", stdin=["0"]), ArgumentError),
-            (lambda: compat.run("zzzz", "+"), UnknownLanguageError),
+            (lambda: esolangs.run(REFERENCE, ",.", stdin=["0"]).output, ArgumentError),
+            (lambda: esolangs.run("zzzz", "+").output, UnknownLanguageError),
         ],
     )
     def test_it_derives_from_the_base(self, call: object, expected: type) -> None:
@@ -81,12 +81,12 @@ class TestErrorsAreCatchable:
     def test_exhausted_input_says_how_much_there_was(self) -> None:
         """A bare ``EOFError()`` reached the caller as the empty string."""
         with pytest.raises(InputExhaustedError, match="1 character supplied"):
-            compat.run(REFERENCE, ",,.", stdin="0")
+            esolangs.run(REFERENCE, ",,.", stdin="0")
 
     def test_it_is_still_an_eoferror(self) -> None:
         """The repo-wide convention every interpreter documents is unchanged."""
         with pytest.raises(EOFError):
-            compat.run(REFERENCE, ",.", stdin="")
+            esolangs.run(REFERENCE, ",.", stdin="")
 
 
 class TestDebuggerResume:
@@ -192,7 +192,7 @@ class TestEveryDeliberateErrorIsCatchable:
 
         ``assert_rejected_with_hint`` checks each language's own."""
         with pytest.raises(ProgramError) as exc:
-            compat.run(REFERENCE, "[[[", timeout=5)
+            esolangs.run(REFERENCE, "[[[", timeout=5)
         assert isinstance(exc.value, EsolangError)
         assert str(exc.value)
 
@@ -210,7 +210,7 @@ class TestEveryDeliberateErrorIsCatchable:
                 continue  # needs bits embedded, or answers by terminating
             for example in facts["examples"]:
                 try:
-                    compat.run(
+                    esolangs.run(
                         name,
                         pathlib.Path(str(files("esolangs") / example)),
                         stdin=esolangs.encode_inputs(name, [0, 1]),
@@ -228,11 +228,11 @@ class TestAMissingFileIsAFileNotFoundError:
         """Ours for callers who catch ours, the stdlib's for the rest."""
         missing = tmp_path / "absent.bf"
         with pytest.raises(FileNotFoundError):
-            compat.run(REFERENCE, missing, stdin="", timeout=5)
+            esolangs.run(REFERENCE, missing, stdin="", timeout=5)
         with pytest.raises(esolangs.EsolangError):
-            compat.run(REFERENCE, missing, stdin="", timeout=5)
+            esolangs.run(REFERENCE, missing, stdin="", timeout=5)
         with pytest.raises(esolangs.ProgramError):
-            compat.run(REFERENCE, missing, stdin="", timeout=5)
+            esolangs.run(REFERENCE, missing, stdin="", timeout=5)
 
     def test_an_unreadable_file_is_still_a_plain_program_error(
         self, tmp_path: Path
@@ -241,7 +241,7 @@ class TestAMissingFileIsAFileNotFoundError:
         blocked = tmp_path / "blocked.bf"
         blocked.write_bytes(b"\xff\xfe\x00")
         with pytest.raises(esolangs.ProgramError) as caught:
-            compat.run(REFERENCE, blocked, stdin="", timeout=5)
+            esolangs.run(REFERENCE, blocked, stdin="", timeout=5)
         assert not isinstance(caught.value, FileNotFoundError)
 
     def test_a_directory_is_an_os_error_not_a_decode_error(
@@ -249,7 +249,7 @@ class TestAMissingFileIsAFileNotFoundError:
     ) -> None:
         """The third clause: an ``OSError`` that is not ``FileNotFoundError``."""
         with pytest.raises(esolangs.ProgramError) as caught:
-            compat.run(REFERENCE, tmp_path, stdin="", timeout=5)
+            esolangs.run(REFERENCE, tmp_path, stdin="", timeout=5)
         assert not isinstance(caught.value, FileNotFoundError)
         assert "cannot read" in str(caught.value)
 
@@ -278,7 +278,7 @@ class TestAMistypedPathIsNotRunAsAProgram:
         """Existence is exactly what it must not depend on."""
         assert not pathlib.Path(argument).exists()
         with pytest.raises(esolangs.ProgramError, match="looks like a path"):
-            compat.run(REFERENCE, argument, stdin="", timeout=5)
+            esolangs.run(REFERENCE, argument, stdin="", timeout=5)
 
     def test_a_path_that_does_exist_is_still_refused(
         self, tmp_path: pathlib.Path
@@ -287,12 +287,12 @@ class TestAMistypedPathIsNotRunAsAProgram:
         path = tmp_path / "p.txt"
         path.write_text("+++.")
         with pytest.raises(esolangs.ProgramError, match="looks like a path"):
-            compat.run(REFERENCE, str(path), stdin="", timeout=5)
+            esolangs.run(REFERENCE, str(path), stdin="", timeout=5)
 
     def test_every_entry_point_agrees(self) -> None:
         """All four take a program, so all four have to refuse the same thing."""
         for call in (
-            lambda: compat.run(REFERENCE, "nope.txt", stdin="", timeout=5),
+            lambda: esolangs.run(REFERENCE, "nope.txt", stdin="", timeout=5).output,
             lambda: _check_program(REFERENCE, "nope.txt", ""),
             lambda: debugger_api.make_vm(REFERENCE, "nope.txt", stdin=""),
             lambda: debugger_api.make_debugger(REFERENCE, "nope.txt", stdin=""),
@@ -302,7 +302,7 @@ class TestAMistypedPathIsNotRunAsAProgram:
 
     def test_a_real_program_is_untouched(self) -> None:
         """A guard that refuses real programs is worse than the bug."""
-        assert compat.run(REFERENCE, "+++.", stdin="", timeout=5) == "\x03"
+        assert esolangs.run(REFERENCE, "+++.", stdin="", timeout=5).output == "\x03"
 
     def test_no_committed_example_looks_like_a_path(self) -> None:
         """The claim the widened rule rests on, checked rather than asserted."""
@@ -316,9 +316,9 @@ class TestAMistypedPathIsNotRunAsAProgram:
         """A Path was always correct, and stays the way to say "this file"."""
         path = tmp_path / "p.txt"
         path.write_text("+++.")
-        assert compat.run(REFERENCE, path, stdin="", timeout=5) == "\x03"
+        assert esolangs.run(REFERENCE, path, stdin="", timeout=5).output == "\x03"
         with pytest.raises(FileNotFoundError):
-            compat.run(REFERENCE, tmp_path / "absent.txt", stdin="", timeout=5)
+            esolangs.run(REFERENCE, tmp_path / "absent.txt", stdin="", timeout=5)
 
 
 # 2.2s over 12 tests: runs a diverging program to its bound.
@@ -346,7 +346,7 @@ class TestTheThreadRefusalNamesAWayThrough:
     def test_the_message_names_the_debugger_route(self) -> None:
         """Naming a route is a claim; the test below runs it."""
         outcome = self._off_thread(
-            lambda: compat.run(REFERENCE, "+++.", stdin="", timeout=5)
+            lambda: esolangs.run(REFERENCE, "+++.", stdin="", timeout=5).output
         )
         assert isinstance(outcome, esolangs.ArgumentError)
         message = str(outcome)
@@ -418,12 +418,12 @@ class TestThePathGuardKnowsMoreThanTxt:
     def test_a_path_shaped_string_is_refused(self, argument: str) -> None:
         """Rooted, or ending in a short extension, and only path characters."""
         with pytest.raises(esolangs.ProgramError, match="looks like a path"):
-            compat.run(REFERENCE, argument, stdin="", timeout=5)
+            esolangs.run(REFERENCE, argument, stdin="", timeout=5)
 
     @pytest.mark.parametrize("program", [".", ".."])
     def test_a_real_program_still_runs(self, program: str) -> None:
         """``.`` and ``..`` are legal brainfuck and must not be mistaken."""
-        compat.run(REFERENCE, program, stdin="", timeout=5)
+        esolangs.run(REFERENCE, program, stdin="", timeout=5)
 
     @pytest.mark.parametrize("program", ["~~", "-", "a/b/c", "/", "./", "1.5"])
     def test_a_hand_written_program_is_not_mistaken(self, program: str) -> None:

@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from esolangs.languages.stisp.interpreter import _Machine
 from esolangs.languages.stisp.proof_formulas import workspace
 from esolangs.runtime.io import ScriptedIO
@@ -22,7 +22,7 @@ def test_every_row_results_in_its_answer(table: str) -> None:
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         program = compat.instantiate("Stisp", template, bits)
-        got = compat.run("Stisp", program, timeout=5)
+        got = run("Stisp", program, timeout=5).output
         assert esolangs.read_answer("Stisp", got) == table[row], (table, row)
         io = ScriptedIO("7")
         machine = _Machine(program, io)

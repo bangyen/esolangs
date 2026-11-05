@@ -11,6 +11,7 @@ import pytest
 
 import esolangs
 from esolangs import compat
+from esolangs import run as execute
 from esolangs.languages.qoibl import interpreter as qoibl
 from esolangs.languages.qoibl.interpreter import (
     _advance,
@@ -268,12 +269,12 @@ class TestQoiblParserGuards:
     )
     def test_mismatched_markers_are_rejected_at_execution(self, source: str) -> None:
         with pytest.raises(esolangs.ProgramError):
-            compat.run("Qoibl", source)
+            execute("Qoibl", source)
 
     def test_matched_markers_execute(self) -> None:
-        assert compat.run("Qoibl", "tt y tt") == chr(1)
-        assert compat.run("Qoibl", "tt e yr ee yr y tt") == chr(0)
-        assert compat.run("Qoibl", "tt e ry ee ry y tt") == chr(1)
+        assert execute("Qoibl", "tt y tt").output == chr(1)
+        assert execute("Qoibl", "tt e yr ee yr y tt").output == chr(0)
+        assert execute("Qoibl", "tt e ry ee ry y tt").output == chr(1)
 
     def test_steal_declines_a_literal_without_the_character(self) -> None:
         """Nothing is given back unless the literal actually ends in it."""
@@ -333,7 +334,9 @@ class TestTheTokenizerCarriesItsOwnStack:
         previous = sys.getrecursionlimit()
         try:
             sys.setrecursionlimit(live + 200)
-            assert compat.run("Qoibl", program, stdin=stdin, timeout=120).endswith("0")
+            assert execute("Qoibl", program, stdin=stdin, timeout=120).output.endswith(
+                "0"
+            )
         finally:
             sys.setrecursionlimit(previous)
 

@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from esolangs.runtime import _isolated
 from tests.support.evaluation import _evaluate
 from tests.support.vm_support import _BUDGET, _LINUX
@@ -20,12 +20,12 @@ from tests.support.vm_support import _BUDGET, _LINUX
 )
 def test_underload_errors_have_the_right_hint(source, message, hint) -> None:
     with pytest.raises(esolangs.HaltError, match=message) as caught:
-        compat.run("Underload", source, timeout=1)
+        run("Underload", source, timeout=1)
     assert any(hint in note for note in caught.value.__notes__)
 
 
 def test_underload_literal_text_is_preserved() -> None:
-    assert compat.run("Underload", "(X)S", timeout=1) == "X"
+    assert run("Underload", "(X)S", timeout=1).output == "X"
 
 
 @pytest.mark.medium
@@ -36,12 +36,12 @@ def test_memory_probe_template_reaches_execution() -> None:
 @pytest.mark.parametrize("limit", [0, True, 1.5, "1", 1 << 63])
 def test_invalid_memory_budget_precedes_source_reads(limit: object) -> None:
     with pytest.raises(esolangs.ArgumentError, match="max_memory"):
-        compat.run("Underload", Path("missing"), isolated=True, max_memory=limit)
+        run("Underload", Path("missing"), isolated=True, max_memory=limit)
 
 
 def test_memory_budget_requires_isolation() -> None:
     with pytest.raises(esolangs.ArgumentError, match="isolated"):
-        compat.run("Underload", Path("missing"), max_memory=_BUDGET)
+        run("Underload", Path("missing"), max_memory=_BUDGET)
 
 
 @pytest.mark.parametrize("platform", ["win32", "darwin"])
@@ -58,10 +58,10 @@ def test_unsupported_platform_refuses_before_acquisition(monkeypatch, platform) 
 def test_growing_state_fails_and_worker_is_reaped(spawned) -> None:
     source = "(A)S(x)" + ":*" * 29
     with pytest.raises(esolangs.InterpreterLimitError, match="memory limit") as caught:
-        compat.run("Underload", source, isolated=True, timeout=10, max_memory=_BUDGET)
+        run("Underload", source, isolated=True, timeout=10, max_memory=_BUDGET)
     assert caught.value.partial_output == "A"
     assert spawned[0].poll() is not None
-    assert compat.run("Underload", "(ok)S", isolated=True, max_memory=_BUDGET) == "ok"
+    assert run("Underload", "(ok)S", isolated=True, max_memory=_BUDGET).output == "ok"
 
 
 @pytest.mark.medium

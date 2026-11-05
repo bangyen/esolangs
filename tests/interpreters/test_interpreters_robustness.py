@@ -5,7 +5,6 @@ import os
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.exceptions import ExecutionTimeoutError, HaltError, ProgramError
 from esolangs.registry import LANGUAGES, SourceKind
 
@@ -29,7 +28,7 @@ def _check_empty_program(language: str) -> None:
     message = LANGUAGES[language].runtime.empty_program
     if not message:
         try:
-            compat.run(language, source, **options)
+            esolangs.run(language, source, **options)
         except esolangs.EsolangError as exc:
             pytest.fail(
                 f"{language} refuses an empty program; if the spec does, add "
@@ -37,7 +36,7 @@ def _check_empty_program(language: str) -> None:
             )
         return
     with pytest.raises(esolangs.EsolangError) as caught:
-        compat.run(language, source, **options)
+        esolangs.run(language, source, **options)
     error = caught.value
     assert type(error) in _REJECTION_KINDS, f"{type(error).__name__}: {error}"
     assert str(error) == message, f"{language}: {error}"

@@ -14,7 +14,7 @@ class TestRun:
         dbg = debugger_api.make_debugger(REFERENCE, "+++[>+++<-]>.")
         dbg.run()
         assert dbg.halted
-        assert dbg.output == compat.run(REFERENCE, "+++[>+++<-]>.")
+        assert dbg.output == esolangs.run(REFERENCE, "+++[>+++<-]>.").output
 
     def test_max_steps_bounds_runaway(self) -> None:
         dbg = debugger_api.make_debugger(REFERENCE, "+[]")
@@ -69,7 +69,7 @@ class TestABreakpointAtTheHaltIsReported:
         assert dbg.run(max_steps=300_000) == "breakpoint"
         assert dbg.output == ""
         assert dbg.run(max_steps=300_000) == "halted"
-        assert dbg.output == compat.run(name, program, stdin=stdin, timeout=30)
+        assert dbg.output == esolangs.run(name, program, stdin=stdin, timeout=30).output
 
     @pytest.mark.parametrize("name", _DUMPERS)
     def test_the_dump_step_is_taken_once_not_once_per_run(self, name: str) -> None:

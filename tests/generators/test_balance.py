@@ -81,7 +81,7 @@ def test_balance_executes(name: str, table: str) -> None:
             source, stdin = program, esolangs.encode_inputs(name, bits)
         assert (
             esolangs.read_answer(
-                name, compat.run(name, source, stdin=stdin, timeout=10)
+                name, esolangs.run(name, source, stdin=stdin, timeout=10).output
             )
             == expected
         )

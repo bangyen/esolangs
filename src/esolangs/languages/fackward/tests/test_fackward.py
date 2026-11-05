@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import compat
+from esolangs import run as execute
 from esolangs.exceptions import HaltError
 from esolangs.languages.fackward.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
@@ -88,4 +88,4 @@ def test_a_count_past_sys_maxsize_is_a_limit() -> None:
     from esolangs.exceptions import InterpreterLimitError
 
     with pytest.raises(InterpreterLimitError, match="index-sized"):
-        compat.run("Fackward", "$ 99999999999999999999 1", timeout=2)
+        execute("Fackward", "$ 99999999999999999999 1", timeout=2)

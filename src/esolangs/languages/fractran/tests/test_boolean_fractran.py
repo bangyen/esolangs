@@ -5,7 +5,7 @@ from collections.abc import Iterator
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.generation.wrap import balance_program, balance_score
 from esolangs.languages import generators as boolean
@@ -120,7 +120,7 @@ def test_fractran_parity_two_executes_at_every_width() -> None:
                     "FRACTRAN", template, [row // 2, row % 2], truth_table="0110"
                 )
                 assert (
-                    esolangs.read_answer("FRACTRAN", compat.run("FRACTRAN", program))
+                    esolangs.read_answer("FRACTRAN", run("FRACTRAN", program).output)
                     == expected
                 )
             with pytest.raises(esolangs.TemplateError, match="not the template"):
@@ -137,7 +137,7 @@ def test_fractran_phase_parity_retains_larger_layout_execution(n: int) -> None:
             bits = list(map(int, format(row, f"0{n}b")))
             filled = compat.instantiate("FRACTRAN", program, bits)
             assert (
-                esolangs.read_answer("FRACTRAN", compat.run("FRACTRAN", filled))
+                esolangs.read_answer("FRACTRAN", run("FRACTRAN", filled).output)
                 == table[row]
             )
 

@@ -67,7 +67,7 @@ def _audit(
     for row in range(1 << n) if selected is None else selected:
         stdin = esolangs.encode_inputs(name, [row >> s & 1 for s in reversed(range(n))])
         if INFOS[name]["answer_mode"] != "termination":
-            output = compat.run(name, program, stdin=stdin, timeout=10)
+            output = esolangs.run(name, program, stdin=stdin, timeout=10).output
             if table is not None:
                 assert esolangs.read_answer(name, output) == table[row], (name, row)
         else:

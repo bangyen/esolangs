@@ -6,6 +6,7 @@ from itertools import pairwise
 import pytest
 
 from esolangs import compat
+from esolangs import run as execute
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs, in_input_order
 from esolangs.languages.smallfuck.generator import (
     PAIR,
@@ -61,7 +62,7 @@ def test_constant_arms_and_banded_results_shrink_the_tree() -> None:
     for row, expected in enumerate(table):
         bits = [int(bit) for bit in format(row, "06b")]
         program = compat.instantiate("Smallfuck", template, bits)
-        assert compat.run("Smallfuck", program, max_steps=10_000) == expected
+        assert execute("Smallfuck", program, max_steps=10_000).output == expected
 
 
 @pytest.mark.medium
@@ -74,7 +75,7 @@ def test_fresh_setters_lower_the_public_floor() -> None:
             for row, expected in enumerate(table):
                 bits = [int(bit) for bit in format(row, f"0{inputs}b")]
                 source = compat.instantiate("Smallfuck", template, bits, width=1)
-                assert compat.run("Smallfuck", source) == expected
+                assert execute("Smallfuck", source).output == expected
 
 
 @pytest.mark.parametrize("tagged", [False, True])
@@ -87,7 +88,7 @@ def test_narrow_smallfuck_saved_provenance(*, tagged: bool) -> None:
             "Smallfuck", source, [row >> 1, row & 1], width=1, truth_table=table
         )
         assert max(map(len, program.splitlines())) == 1
-        assert compat.run("Smallfuck", program) == expected
+        assert execute("Smallfuck", program).output == expected
     with pytest.raises(ValueError, match="does not compute that table"):
         compat.instantiate("Smallfuck", source, [0, 1], truth_table="1001")
 
@@ -102,10 +103,10 @@ def test_narrow_smallfuck_preserves_fitting_and_large_execution() -> None:
             bits = [int(bit) for bit in format(row, f"0{n}b")]
             template = compat.generate("Smallfuck", table, width=1)
             assert (
-                compat.run(
+                execute(
                     "Smallfuck",
                     compat.instantiate("Smallfuck", template, bits),
-                )
+                ).output
                 == table[row]
             )
 
@@ -314,7 +315,7 @@ def test_one_pair_keeps_completed_constant_paths_and_fixed_code_bits(word) -> No
         program = fill_runs(
             template, TEMPLATE_CHAR, [PAIR] * 4, [int(bit) for bit in f"{row:04b}"]
         )
-        assert compat.run("Smallfuck", program) == expected
+        assert execute("Smallfuck", program).output == expected
 
 
 @pytest.mark.parametrize("n", [4, 9])

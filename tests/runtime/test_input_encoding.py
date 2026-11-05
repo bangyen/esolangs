@@ -27,7 +27,9 @@ def _rows(language: str, table: str) -> str:
     for row in range(len(table)):
         bits = row_bits(row, inputs)
         stdin = esolangs.encode_inputs(language, bits)
-        got += compat.run(language, program, stdin=stdin, timeout=30)[-1:] or "?"
+        got += (
+            esolangs.run(language, program, stdin=stdin, timeout=30).output[-1:] or "?"
+        )
     return got
 
 
@@ -80,7 +82,7 @@ class TestRemainingGuards:
 
     def test_a_missing_path_is_a_programerror(self) -> None:
         with pytest.raises(ProgramError, match="cannot read"):
-            compat.run(REFERENCE, pathlib.Path("nope/missing.txt"))
+            esolangs.run(REFERENCE, pathlib.Path("nope/missing.txt"))
 
     def test_a_non_string_language_is_refused_by_name(self) -> None:
         """It leaked ``'NoneType' object has no attribute 'replace'``."""
@@ -101,7 +103,7 @@ class TestEveryDeliberateErrorHasTheBase:
         [
             lambda: compat.generate(REFERENCE, XOR, width=0),
             lambda: compat.generate(REFERENCE, XOR, width="20"),
-            lambda: compat.run(REFERENCE, "+.", timeout=0),
+            lambda: esolangs.run(REFERENCE, "+.", timeout=0).output,
             lambda: esolangs.encode_inputs(REFERENCE, [2, 0]),
         ],
     )

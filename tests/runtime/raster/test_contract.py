@@ -63,7 +63,7 @@ def test_every_raster_language_generates_shared_source(language: str) -> None:
     assert program.rows
     assert program.rows[0]
     assert esolangs.describe(language)["source_kind"] == "raster"
-    assert compat.run(language, program, stdin="1\n") == "1"
+    assert esolangs.run(language, program, stdin="1\n").output == "1"
 
 
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
@@ -82,7 +82,7 @@ def test_every_raster_language_runs_its_png(language: str, tmp_path: Path) -> No
     assert isinstance(program, Raster)
     path = tmp_path / f"{language.lower()}.png"
     path.write_bytes(program.to_png())
-    assert compat.run(language, path, stdin="0\n") == "0"
+    assert esolangs.run(language, path, stdin="0\n").output == "0"
 
 
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
@@ -150,7 +150,10 @@ def test_bounded_raster_run_preserves_explicit_scale(language: str) -> None:
     source = compat.generate(language, "01", scale=2)
     assert isinstance(source, Raster)
     source = Raster.from_png(source.to_png())
-    assert compat.run(language, source, stdin="1\n", scale=2, max_steps=1000) == "1"
+    assert (
+        esolangs.run(language, source, stdin="1\n", scale=2, max_steps=1000).output
+        == "1"
+    )
     vm = make_vm(language, source, stdin="0\n", scale=2)
     while not vm.halted:
         vm.step()
@@ -279,7 +282,7 @@ def test_png_settings_retain_integer_choices() -> None:
 def test_png_language_tag_refuses_cross_language_execution() -> None:
     source = compat.generate(RASTER_LANGUAGES[0], "01")
     with pytest.raises(esolangs.ProgramError, match="generated for"):
-        compat.run(RASTER_LANGUAGES[1], source.to_png(), max_steps=1000)
+        esolangs.run(RASTER_LANGUAGES[1], source.to_png(), max_steps=1000)
 
 
 def test_tagging_unknown_pixels_preserves_automatic_scale_detection() -> None:
@@ -303,13 +306,13 @@ def test_explicit_scale_overrides_png_metadata(language) -> None:
     assert (
         esolangs.read_answer(
             language,
-            compat.run(
+            esolangs.run(
                 language,
                 changed.to_png(),
                 stdin=esolangs.encode_inputs(language, [1]),
                 scale=2,
                 max_steps=1000,
-            ),
+            ).output,
         )
         == "1"
     )

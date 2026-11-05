@@ -5,12 +5,12 @@ from functools import partial
 import esolangs
 from esolangs._cycles import _halt_or_cycle_result
 from esolangs.exceptions import EsolangError, InterpreterLimitError
+from esolangs.results import ExecutionResult
 from esolangs.runtime._program import Program
 from esolangs.runtime._proof import (
     TerminationResult,
     checked_termination,
 )
-from esolangs.runtime._result import ExecutionResult
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import DialectSettings, dialect_options
 from esolangs.vm import _capture_observation, make_vm

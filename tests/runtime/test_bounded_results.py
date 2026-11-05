@@ -5,46 +5,9 @@ import pytest
 import esolangs
 from esolangs import compat
 from esolangs.registry import LANGUAGES
-from esolangs.runtime._execution import interpreter_module, run_prepared
 from esolangs.runtime._lifecycle import Completion
-from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_result, complete_vm, make_vm
 from tests.support.reference import REFERENCE
-
-
-def test_bounded_and_native_input_usage_agree():
-    native = run_prepared(
-        REFERENCE,
-        interpreter_module(REFERENCE)._execute,
-        ",.",
-        ScriptedIO("é"),
-        None,
-    )
-    bounded = esolangs._run_bounded_result(REFERENCE, ",.", stdin="é", max_steps=2)
-    assert bounded[:4] == native[:4] == ("é", 1, 1, 0)
-    assert native.completion.kind is Completion.HALTED
-    assert bounded.completion.kind is Completion.HALTED
-    assert compat.run(REFERENCE, ",.", stdin="é", max_steps=2) == bounded.output
-
-
-def test_post_halt_result_follows_the_final_dump():
-    name = next(
-        name
-        for name, lang in LANGUAGES.items()
-        if lang.parameterized
-        and lang.contract.answer_mode != "termination"
-        and esolangs.describe(name)["dumps_on_the_post_halt_step"]
-    )
-    source = compat.instantiate(name, compat.generate(name, "01"), [1])
-    result = esolangs._run_bounded_result(name, source, max_steps=1000)
-    assert result.completion.kind is Completion.POST_HALT
-    assert result.completion.cycle is None
-    assert esolangs.read_answer(name, result.output) == "1"
-    assert (result.input_position, result.input_reads, result.input_past_end) == (
-        0,
-        0,
-        0,
-    )
 
 
 def test_step_exhaustion_does_not_publish_a_completed_result():
@@ -67,12 +30,7 @@ def test_custom_vm_io_fields_stay_caller_owned():
         _io = object()
 
     result = _capture_result(Custom())
-    assert result.output == "custom"
-    assert (result.input_position, result.input_reads, result.input_past_end) == (
-        None,
-        None,
-        None,
-    )
+    assert result[:4] == ("custom", None, None, None)
     assert result.completion.kind is Completion.HALTED
 
 

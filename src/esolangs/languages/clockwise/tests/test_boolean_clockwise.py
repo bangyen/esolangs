@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import compat
+from esolangs import compat, run
 from esolangs.languages import generators as boolean
 from tests.support.witness_tables import parity, row_bits, witnesses
 
@@ -10,7 +10,7 @@ from tests.support.witness_tables import parity, row_bits, witnesses
 def run_clockwise(program: str, inputs: list[str] | list[int]) -> str:
 
     # Clockwise loads the complete character stream (7 bits per char).
-    return compat.run("Clockwise", program, stdin="".join(map(str, inputs)))
+    return run("Clockwise", program, stdin="".join(map(str, inputs))).output
 
 
 @pytest.mark.parametrize("n", [1, 3, 8])

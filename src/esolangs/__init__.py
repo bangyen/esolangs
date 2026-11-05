@@ -13,8 +13,8 @@ Public operations split by who supplies the program:
   ``dump_program``/``load_program`` preserve source in portable JSON;
   ``load_artifact`` restores an explicit record.
 * Catalog: ``describe`` and ``list_languages`` provide registry facts.
-* Aliases: ``generate_artifact`` and ``run_result`` retain explicit spellings.
-* Compatibility: ``compat`` projects records to the 1.x source/output values.
+* Aliases: ``generate_artifact`` retains its explicit spelling.
+* Compatibility: ``compat`` projects records to the temporary source values.
 
 Boolean evaluation over every row is private certification machinery,
 not public API.  ``Language(name)`` binds these functions to one language.
@@ -214,7 +214,6 @@ __all__ = [
     "load_program",
     "read_answer",
     "run",
-    "run_result",
     "save_program",
 ]
 
@@ -871,9 +870,6 @@ def run(
         max_memory=max_memory,
         settings=settings,
     )
-
-
-run_result = run
 
 
 def _run_result(

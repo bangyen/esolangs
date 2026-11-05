@@ -5,7 +5,7 @@ from functools import partial
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import run as execute
 from esolangs.exceptions import HaltError
 from esolangs.languages.decleq.interpreter import run
 from esolangs.runtime.io import ScriptedIO
@@ -211,4 +211,4 @@ class TestNegativeWriteIndex:
 def test_a_huge_address_is_refused_before_allocating() -> None:
     """A store grown to whatever the program named thrashed the machine."""
     with pytest.raises(esolangs.InterpreterLimitError, match="grow its store"):
-        compat.run("Decleq", "1 100000000000000000000", stdin="", timeout=2)
+        execute("Decleq", "1 100000000000000000000", stdin="", timeout=2)

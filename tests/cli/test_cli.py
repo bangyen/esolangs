@@ -43,7 +43,9 @@ class TestInProcess:
         image = esolangs.Raster.from_png(out)
         stdin = esolangs.encode_inputs(_RASTER, [1, 0])
         assert (
-            esolangs.read_answer(_RASTER, compat.run(_RASTER, image, stdin=stdin))
+            esolangs.read_answer(
+                _RASTER, esolangs.run(_RASTER, image, stdin=stdin).output
+            )
             == "1"
         )
 
@@ -170,7 +172,7 @@ def test_width_option(
         assert max(len(line) for line in out.rstrip("\n").split("\n")) <= limit
         assert "\n" in out.rstrip("\n")
     if runs:
-        assert compat.run(REFERENCE, out, stdin="011") == "0"
+        assert esolangs.run(REFERENCE, out, stdin="011").output == "0"
 
 
 class TestHelp:

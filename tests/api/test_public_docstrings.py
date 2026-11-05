@@ -97,7 +97,7 @@ def _without_pillow(call: Callable[[], object]) -> object:
 
 def _run_png_without_pillow() -> object:
     data = _raster_png()
-    return _without_pillow(lambda: compat.run(_first("raster"), data))
+    return _without_pillow(lambda: esolangs.run(_first("raster"), data).output)
 
 
 def _load_png_without_pillow(load=esolangs.load_program) -> object:
@@ -188,39 +188,39 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
         lambda: compat.instantiate(_first("parameterized"), _template(), [1, 2]),
         None,
     ),
-    ("run", x.UnknownLanguageError, lambda: compat.run("Nolang", ""), None),
+    ("run", x.UnknownLanguageError, lambda: esolangs.run("Nolang", "").output, None),
     (
         "run",
         x.ArgumentError,
-        lambda: compat.run(R, "", max_steps=-1),
+        lambda: esolangs.run(R, "", max_steps=-1).output,
         None,
     ),
-    ("run", x.ArgumentError, lambda: compat.run(R, "", seed=1), None),
-    ("run", x.ProgramError, lambda: compat.run(R, "["), None),
-    ("run", x.ProgramNotFoundError, lambda: compat.run(R, _MISSING), None),
+    ("run", x.ArgumentError, lambda: esolangs.run(R, "", seed=1).output, None),
+    ("run", x.ProgramError, lambda: esolangs.run(R, "[").output, None),
+    ("run", x.ProgramNotFoundError, lambda: esolangs.run(R, _MISSING).output, None),
     (
         "run",
         x.TemplateError,
-        lambda: compat.run(_first("parameterized"), _template()),
+        lambda: esolangs.run(_first("parameterized"), _template()).output,
         None,
     ),
-    ("run", x.InputExhaustedError, lambda: compat.run(R, ","), None),
+    ("run", x.InputExhaustedError, lambda: esolangs.run(R, ",").output, None),
     (
         "run",
         x.ExecutionTimeoutError,
-        lambda: compat.run(R, "+[]", timeout=0.2),
+        lambda: esolangs.run(R, "+[]", timeout=0.2).output,
         None,
     ),
     (
         "run",
         x.ExecutionTimeoutError,
-        lambda: compat.run(R, "+[]", max_steps=100),
+        lambda: esolangs.run(R, "+[]", max_steps=100).output,
         None,
     ),
     (
         "run",
         x.InterpreterLimitError,
-        lambda: compat.run(R, "+[.]", isolated=True, timeout=5, max_output=10),
+        lambda: esolangs.run(R, "+[.]", isolated=True, timeout=5, max_output=10).output,
         None,
     ),
     ("run", x.HaltError, _halting_trigger, None),
@@ -368,23 +368,6 @@ TRIGGERS += [
         lambda: _load_png_without_pillow(esolangs.load_artifact),
         None,
     ),
-]
-
-
-def _result_api(setup: _Setup | None) -> _Setup:
-    def configure(patch: pytest.MonkeyPatch) -> None:
-        if setup is not None:
-            setup(patch)
-        patch.setattr(esolangs, "run", esolangs.run_result)
-
-    return configure
-
-
-# Execute the same error corpus through both return conventions.
-TRIGGERS += [
-    ("run_result", exception, call, _result_api(setup))
-    for name, exception, call, setup in TRIGGERS
-    if name == "run"
 ]
 
 

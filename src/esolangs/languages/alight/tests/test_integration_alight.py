@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import DialectSettings, compat
+from esolangs import DialectSettings, compat, run
 from tests.support.cli_support import call_both
 from tests.support.dialect_support import Unreadable
 from tests.support.evaluation import _evaluate
@@ -76,7 +76,7 @@ def test_cli_generate_and_run_share_settings(tmp_path: Path, capsys) -> None:
 
 def test_single_choice_languages_refuse_other_keys() -> None:
     with pytest.raises(esolangs.ArgumentError):
-        compat.run("Alight", Unreadable(), settings=DialectSettings(cell_modulus=255))
+        run("Alight", Unreadable(), settings=DialectSettings(cell_modulus=255))
 
 
 @pytest.mark.medium
@@ -93,7 +93,7 @@ def test_foreign_language_guard_precedes_retained_choices() -> None:
         "Alight", "01", settings=DialectSettings(expression_syntax="postfix")
     )
     with pytest.raises(esolangs.ProgramError, match="generated for"):
-        compat.run("Brainfuck", source)
+        run("Brainfuck", source)
 
 
 def test_short_settings_flag(capsys) -> None:

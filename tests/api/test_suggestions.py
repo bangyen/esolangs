@@ -7,7 +7,6 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.cli.hints import _did_you_mean
 from esolangs.registry import _BY_ID, SUGGESTION_CUTOFF, canonical_id
 from tests.support.reference import REFERENCE
@@ -22,7 +21,7 @@ class TestPackageEntryPoint:
         with patch.object(sys, "argv", ["esolangs", "generate", REFERENCE, "0110"]):
             runpy.run_module("esolangs", run_name="__main__")
         out = capsys.readouterr().out
-        assert compat.run(REFERENCE, out, stdin="01") == "1"
+        assert esolangs.run(REFERENCE, out, stdin="01").output == "1"
 
 
 class TestASuggestionIsWorthLessThanSilence:

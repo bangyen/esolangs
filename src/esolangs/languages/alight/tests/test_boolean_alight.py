@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from esolangs.languages.alight.interpreter import run as alight_run
@@ -56,9 +56,9 @@ def test_alight_layouts_stay_near_the_exhaustive_column_selector(inputs) -> None
         width, _ = _dimensions(program)
         forms.append((max(width, columns), columns + 1, program))
         assert (
-            compat.run(
+            run(
                 "Alight", program, stdin=esolangs.encode_inputs("Alight", [0] * inputs)
-            )
+            ).output
             == table[0]
         )
     ranked = []
@@ -83,9 +83,9 @@ def test_alight_layouts_stay_near_the_exhaustive_column_selector(inputs) -> None
     assert balance_score(balanced)[0] <= 1.05 * min(map(balance_score, winners))[0]
     for row in (0, 1, len(table) // 2, len(table) - 1):
         bits = tuple(map(int, format(row, f"0{inputs}b")))
-        output = compat.run(
+        output = run(
             "Alight", balanced, stdin=esolangs.encode_inputs("Alight", bits)
-        )
+        ).output
         assert esolangs.read_answer("Alight", output) == table[row]
 
 
@@ -96,7 +96,7 @@ class TestAlightWidth:
     def _run(program: str, bits: list[str]) -> str:
 
         stdin = "".join(f"{bit}" for bit in bits)
-        return compat.run("Alight", program, stdin=stdin, timeout=5.0).strip()
+        return run("Alight", program, stdin=stdin, timeout=5.0).output.strip()
 
     def test_a_width_turns_the_straight_walk_vertical(self) -> None:
         """A narrow program is one column and has no padding."""

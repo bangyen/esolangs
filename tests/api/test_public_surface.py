@@ -61,7 +61,6 @@ class TestPackageSurface:
             "load_program",
             "read_answer",
             "run",
-            "run_result",
             "save_program",
         ]
 
@@ -286,7 +285,7 @@ class TestProgramObjectsRefuseMisuse:
             REFERENCE.upper()
         )
         assert tagged.language == REFERENCE
-        assert compat.run(REFERENCE, tagged) == "\x01"
+        assert esolangs.run(REFERENCE, tagged).output == "\x01"
 
     def test_public_annotations_resolve_at_runtime(self) -> None:
         """``DialectSettings`` was a TYPE_CHECKING-only name: NameError."""
@@ -346,9 +345,9 @@ class TestProgramObjectsRefuseMisuse:
                 raise RuntimeError("boom")
 
         with pytest.raises(esolangs.ArgumentError, match="'x at 0xdead'"):
-            compat.run(REFERENCE, "+", isolated="x at 0xdead")  # type: ignore[arg-type]
+            esolangs.run(REFERENCE, "+", isolated="x at 0xdead")  # type: ignore[arg-type]
         with pytest.raises(esolangs.ArgumentError, match="<Raises>"):
-            compat.run(REFERENCE, "+", isolated=Raises())  # type: ignore[arg-type]
+            esolangs.run(REFERENCE, "+", isolated=Raises())  # type: ignore[arg-type]
 
     def test_quoted_text_in_a_container_is_kept(self) -> None:
         with pytest.raises(esolangs.ArgumentError, match=r"\['x at 0xdead'\]"):
@@ -408,7 +407,7 @@ class TestProgramObjectsRefuseMisuse:
 
     def test_a_stepped_timeout_reads_as_an_unstepped_one(self) -> None:
         with pytest.raises(esolangs.ExecutionTimeoutError, match=r"0\.2-second"):
-            compat.run(REFERENCE, "+[]", timeout=0.2, max_steps=10**9)
+            esolangs.run(REFERENCE, "+[]", timeout=0.2, max_steps=10**9)
 
     def test_settings_need_a_language(self) -> None:
         """Untagged, ``run`` ignored them silently."""
@@ -424,7 +423,7 @@ class TestProgramObjectsRefuseMisuse:
     def test_flags_must_be_bools(self) -> None:
         """A truthy ``isolated="no"`` switched the sandbox on."""
         with pytest.raises(esolangs.ArgumentError, match="isolated"):
-            compat.run(REFERENCE, "+", isolated="no")  # type: ignore[arg-type]
+            esolangs.run(REFERENCE, "+", isolated="no")  # type: ignore[arg-type]
         with pytest.raises(esolangs.ArgumentError, match="balance"):
             compat.generate(REFERENCE, "0110", balance="no")  # type: ignore[arg-type]
 
@@ -433,6 +432,6 @@ class TestProgramObjectsRefuseMisuse:
         messages = set()
         for isolated in (False, True):
             with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-                compat.run(REFERENCE, "+[]", timeout=0.5, isolated=isolated)
+                esolangs.run(REFERENCE, "+[]", timeout=0.5, isolated=isolated)
             messages.add(str(caught.value))
         assert messages == {"execution exceeded the 0.5-second timeout"}

@@ -8,6 +8,7 @@ from functools import cache
 from importlib import import_module
 from typing import Any, cast
 
+from esolangs.results import ExecutionResult
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
 from esolangs.runtime._proof import (
     BranchProof,
@@ -16,7 +17,6 @@ from esolangs.runtime._proof import (
     checked_decision,
     checked_termination,
 )
-from esolangs.runtime._result import ExecutionResult
 
 
 @cache

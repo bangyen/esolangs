@@ -4,8 +4,9 @@ import random
 
 import pytest
 
-from esolangs import compat
-from esolangs.compat import generate, run
+import esolangs
+from esolangs import compat, run
+from esolangs.compat import generate
 from esolangs.generation.wrap import (
     wrap_program,
 )
@@ -126,7 +127,7 @@ class TestDimensional:
         for row in range(0, 128, 5):
             stdin = "\n".join(format(row, "07b"))
             assert (
-                run("Dimensional", program, stdin=stdin, max_steps=100_000)
+                run("Dimensional", program, stdin=stdin, max_steps=100_000).output
                 == table[row]
             )
         either = "0" + "1" * 127
@@ -139,7 +140,8 @@ class TestDimensional:
         for row, expected in enumerate(table):
             stdin = "\n".join(format(row, "04b"))
             assert (
-                run("Dimensional", program, stdin=stdin, max_steps=10_000) == expected
+                run("Dimensional", program, stdin=stdin, max_steps=10_000).output
+                == expected
             )
 
     def test_scales_beyond_the_old_reference_cap(self) -> None:
@@ -191,7 +193,6 @@ def test_fourteen_input_lookup_stays_within_step_cap(kind: str) -> None:
 
 
 def _check_constants() -> None:
-    import esolangs
     from esolangs.languages.dimensional.interpreter import _Machine
     from scripts.benchmark import WrittenState
 

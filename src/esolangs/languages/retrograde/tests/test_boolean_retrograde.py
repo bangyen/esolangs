@@ -4,6 +4,7 @@ from itertools import product
 from random import Random
 
 from esolangs import compat
+from esolangs import run as execute
 from tests.support.generator_support import evaluate_generated
 
 
@@ -61,11 +62,11 @@ def check_boolean_tables() -> None:
             assert (pointer, direction) == (n, 1)
             assert tuple(int(i in tape) for i in range(n)) == bits
             expected = str(int(pointer in tape))
-            assert compat.run("Retrograde", source) == expected == table[row]
+            assert execute("Retrograde", source).output == expected == table[row]
     source = compat.instantiate("Retrograde", compat.generate("Retrograde", "01"), (0,))
     at = source.index("/")
     broken = source[:at] + "\\" + source[at + 1 :]
-    assert compat.run("Retrograde", broken, max_steps=1000) != "0"
+    assert execute("Retrograde", broken, max_steps=1000).output != "0"
 
 
 def _check_constants() -> None:

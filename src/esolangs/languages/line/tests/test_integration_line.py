@@ -9,7 +9,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs import DialectSettings, Raster, compat
+from esolangs import DialectSettings, Raster, compat, run
 from esolangs.cli import main
 from esolangs.languages.line.interpreter.extract import detect_scale, normalize_scale
 from esolangs.languages.line.interpreter.mask import Mask
@@ -83,7 +83,7 @@ class TestTheSmallInconsistencies:
         captured = capsysbinary.readouterr()
         assert b"no effect on Line" in captured.err
         image = esolangs.Raster.from_png(captured.out)
-        assert compat.run("Line", image, stdin="0\n0\n") == "0"
+        assert run("Line", image, stdin="0\n0\n").output == "0"
 
 
 def test_source_kind_cannot_change_language_contract() -> None:
@@ -97,7 +97,7 @@ def test_source_kind_cannot_change_language_contract() -> None:
 def test_raster_interpreter_retains_geometry_hint() -> None:
     image = Raster((((255, 255, 255),),))
     with pytest.raises(esolangs.ProgramError, match=r".+") as caught:
-        compat.run("Line", image, scale=None, timeout=1)
+        run("Line", image, scale=None, timeout=1)
     assert "dark connected paths" in caught.value.__notes__[0]
 
 
@@ -123,7 +123,7 @@ def test_a_one_pixel_path_below_a_stair_stepped_arrowhead_keeps_scale_one() -> N
     ]
     ink, blank = (0, 0, 0), (255, 255, 255)
     image = Raster(tuple(tuple(ink if c == "#" else blank for c in r) for r in art))
-    assert compat.run("Line", image) == ""
+    assert run("Line", image).output == ""
 
 
 def test_a_two_pixel_speck_nearer_than_the_path_is_not_the_path() -> None:
@@ -132,8 +132,8 @@ def test_a_two_pixel_speck_nearer_than_the_path_is_not_the_path() -> None:
     for y in (1, 2):
         rows[y][51] = (0, 0, 0)
     image = Raster(tuple(map(tuple, rows)))
-    assert compat.run("Line", image, stdin="0\n") == "0"
-    assert compat.run("Line", image, stdin="1\n") == "1"
+    assert run("Line", image, stdin="0\n").output == "0"
+    assert run("Line", image, stdin="1\n").output == "1"
 
 
 def test_explicit_line_scale_checks_ink_blocks() -> None:
@@ -148,10 +148,10 @@ def test_explicit_line_scale_checks_ink_blocks() -> None:
 @pytest.mark.medium
 def test_explicit_scale_validates_lazy_line_pixels() -> None:
     image = compat.generate("Line", "00", scale=2)
-    assert compat.run("Line", image, stdin="1\n", scale=2) == "0"
-    assert compat.run("Line", Raster.from_png(image.to_png()), stdin="1\n") == "0"
+    assert run("Line", image, stdin="1\n", scale=2).output == "0"
+    assert run("Line", Raster.from_png(image.to_png()), stdin="1\n").output == "0"
     with pytest.raises(esolangs.ProgramError, match="uniform"):
-        compat.run("Line", image, stdin="1\n", scale=3)
+        run("Line", image, stdin="1\n", scale=3)
 
 
 def test_it_reads_numeric_tokens_on_the_same_line() -> None:

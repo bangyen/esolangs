@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 from esolangs import compat
+from esolangs import run as execute
 from esolangs.languages.pilas.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 from tests.support.event_io import ReadFirstIO
@@ -30,7 +31,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("Pilas", bits)
-        got = compat.run("Pilas", program, stdin=stdin, timeout=5)
+        got = execute("Pilas", program, stdin=stdin, timeout=5).output
         io = ReadFirstIO(stdin + "7")
         run(program, io)
         assert io.getvalue() == table[row]

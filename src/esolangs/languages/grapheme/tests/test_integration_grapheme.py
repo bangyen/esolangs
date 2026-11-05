@@ -4,7 +4,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import DialectSettings, compat
+from esolangs import DialectSettings, compat, run
 from esolangs.debugger import make_debugger
 from tests.support.cli_support import call_both, call_main
 from tests.support.evaluation import _evaluate
@@ -20,7 +20,7 @@ class TestGraphemeReadsWhatTheDocsNowSay:
         program = compat.generate("Grapheme", "01")
         answers = {}
         for line in ("A", "%", "0", "1", "x", " "):
-            output = compat.run("Grapheme", program, stdin=line + "\n", timeout=10)
+            output = run("Grapheme", program, stdin=line + "\n", timeout=10).output
             answers[line] = esolangs.read_answer("Grapheme", output)
         assert answers == {
             "A": "1",
@@ -45,22 +45,22 @@ def test_conversion_reaches_debugger_and_bound_language() -> None:
 @pytest.mark.parametrize("source", ["EFAFYEG", "FZFHFAFYMHZ"])
 def test_called_code_uses_selected_conversion(source) -> None:
     assert (
-        compat.run(
+        run(
             "Grapheme",
             source,
             settings=DialectSettings(integer_conversion="after_each_letter"),
-        )
+        ).output
         == "10"
     )
 
 
 def test_numeric_and_function_conversion_remain_literal() -> None:
     assert (
-        compat.run(
+        run(
             "Grapheme",
             "FAFJYHABHJY",
             settings=DialectSettings(integer_conversion="after_each_letter"),
-        )
+        ).output
         == "102"
     )
 
@@ -68,13 +68,13 @@ def test_numeric_and_function_conversion_remain_literal() -> None:
 def test_string_skip_count_uses_conversion() -> None:
     source = "FZFEAEFZFV" + "P" * 9 + "TY"
     settings = DialectSettings(integer_conversion="after_each_letter")
-    assert compat.run("Grapheme", source, settings=settings) == "0"
-    assert compat.run("Grapheme", source) == "1"
+    assert run("Grapheme", source, settings=settings).output == "0"
+    assert run("Grapheme", source).output == "1"
 
 
 @pytest.mark.parametrize(("source", "expected"), [("FAFDY", "1"), ("EABEDY", "AB")])
 def test_unset_names_read_as_themselves(source, expected) -> None:
-    assert compat.run("Grapheme", source) == expected
+    assert run("Grapheme", source).output == expected
 
 
 @pytest.mark.medium
@@ -161,8 +161,8 @@ class TestInputUsesTheDeclaredAlphabet:
         """Grapheme's own bits are %/A, so 0/1 is what is wrong there."""
         assert esolangs.encode_inputs("Grapheme", [0, 1]) == "%\nA\n"
         source = compat.generate("Grapheme", "0101")
-        assert compat.run("Grapheme", source, stdin="%\nA\n") == "1"
-        assert compat.run("Grapheme", source, stdin="0\n1\n") == "0"
+        assert run("Grapheme", source, stdin="%\nA\n").output == "1"
+        assert run("Grapheme", source, stdin="0\n1\n").output == "0"
 
 
 class TestRawInputKeepsItsNativeMeaning:
@@ -190,7 +190,7 @@ def test_the_named_alphabet_is_the_one_that_works() -> None:
     zero, one = esolangs.describe("Grapheme")["input_encoding"]
     program = compat.generate("Grapheme", XOR)
     got = "".join(
-        compat.run("Grapheme", program, stdin=f"{[zero, one][a]}\n{[zero, one][b]}\n")
+        run("Grapheme", program, stdin=f"{[zero, one][a]}\n{[zero, one][b]}\n").output
         for a in (0, 1)
         for b in (0, 1)
     )
@@ -199,7 +199,7 @@ def test_the_named_alphabet_is_the_one_that_works() -> None:
 
 def test_digit_lines_are_read_as_zero() -> None:
     program = compat.generate("Grapheme", "0110")
-    assert compat.run("Grapheme", program, stdin="0\n1\n", timeout=10) == "0"
+    assert run("Grapheme", program, stdin="0\n1\n", timeout=10).output == "0"
 
 
 def test_a_zero_line_reads_as_true_so_zero_is_percent() -> None:

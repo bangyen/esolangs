@@ -92,11 +92,12 @@ def _cli(args: list[str], stdin: str = "") -> str:
 
 
 def _refuses_timeout() -> None:
+
     import esolangs
 
     refusal = _refused(
         esolangs.ArgumentError,
-        lambda: esolangs.compat.run("brainfuck", "+.", timeout=0.1),
+        lambda: esolangs.run("brainfuck", "+.", timeout=0.1).output,
         "unsupported signal timeout was accepted",
     )
     assert "Unix main thread" in str(refusal)
@@ -209,11 +210,11 @@ def _smoke_install(package: Path) -> None:
         bound.read_answer(bound.run(program, stdin=bound.encode_inputs([0, 1])).output)
         == "1"
     )
-    assert esolangs.compat.run("brainfuck", "+.", max_steps=2) == "\x01"
-    assert esolangs.compat.run("brainfuck", "+.", timeout=1, isolated=True) == "\x01"
+    assert esolangs.run("brainfuck", "+.", max_steps=2).output == "\x01"
+    assert esolangs.run("brainfuck", "+.", timeout=1, isolated=True).output == "\x01"
     _refused(
         esolangs.ExecutionTimeoutError,
-        lambda: esolangs.compat.run("brainfuck", "+[]", max_steps=10),
+        lambda: esolangs.run("brainfuck", "+[]", max_steps=10).output,
         "the bounded runner accepted a diverging program",
     )
     executable = Path(sys.executable).with_name(
@@ -246,7 +247,7 @@ def _smoke_generators(package: Path, *, image_extra: bool) -> None:
     example = package / examples[0]
     assert (
         esolangs.read_answer(
-            "brainfuck", esolangs.compat.run("brainfuck", example, stdin="0\n1\n")
+            "brainfuck", esolangs.run("brainfuck", example, stdin="0\n1\n").output
         )
         == "0"
     )
@@ -324,9 +325,9 @@ def _smoke_rasters(*, image_extra: bool) -> None:
                 assert "esolangs[image]" in str(refusal)
         for row in range(4):
             bits = [row >> 1, row & 1]
-            output = esolangs.compat.run(
+            output = esolangs.run(
                 language, decoded, stdin=esolangs.encode_inputs(language, bits)
-            )
+            ).output
             assert esolangs.read_answer(language, output) == "0110"[row]
 
 
@@ -348,7 +349,7 @@ def _smoke_deadlines() -> None:
         )
         _refused(
             esolangs.ExecutionTimeoutError,
-            lambda: esolangs.compat.run("brainfuck", "+[]", timeout=0.02),
+            lambda: esolangs.run("brainfuck", "+[]", timeout=0.02).output,
             "signal timeout did not stop a loop",
         )
     else:
@@ -386,7 +387,7 @@ def _smoke_deadlines() -> None:
         )
     _refused(
         esolangs.ExecutionTimeoutError,
-        lambda: esolangs.compat.run("brainfuck", "+[]", timeout=0.5, isolated=True),
+        lambda: esolangs.run("brainfuck", "+[]", timeout=0.5, isolated=True).output,
         "isolated timeout did not stop a loop",
     )
     for language in terminating:

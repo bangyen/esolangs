@@ -8,6 +8,7 @@ import pytest
 
 import esolangs
 from esolangs import compat
+from esolangs import run as execute
 from esolangs.languages import generators as boolean
 from esolangs.languages.dig.generator import _DIG_BRANCH, _DIG_STRIDE
 from esolangs.languages.dig.interpreter import _Machine
@@ -200,7 +201,7 @@ class TestDig:
         table = "1" * 128  # n == 7, constant
         program = boolean.dig(table)
         assert program.count("$") > 1  # more than one window
-        assert compat.run("Dig", program, stdin="\n".join(["1"] * 7)).strip() == "1"
+        assert execute("Dig", program, stdin="\n".join(["1"] * 7)).output.strip() == "1"
 
     def test_a_width_turns_the_tree_round_and_it_still_computes(self) -> None:
         """A narrower grid is the same walk, folded back over its own columns."""

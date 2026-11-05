@@ -5,7 +5,7 @@ from itertools import product
 from random import Random
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from esolangs.languages.refractran.generator import _swap
 from esolangs.languages.refractran.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
@@ -65,7 +65,7 @@ def test_tables_and_reference() -> None:
                 base, _, exponent = term.partition("^")
                 value *= int(base) ** int(exponent or "1")
             answer = _rational_run(value, fractions)
-            output = compat.run("REFRACTRAN", program)
+            output = run("REFRACTRAN", program).output
             assert int(output, 2) == answer
             assert esolangs.read_answer("REFRACTRAN", output) == table[row]
 

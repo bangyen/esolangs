@@ -8,6 +8,7 @@ import pytest
 
 import esolangs
 from esolangs import compat
+from esolangs import run as execute_program
 from esolangs.compat import generate
 from esolangs.languages import generators as boolean
 from esolangs.languages.algebraic_programming_language.interpreter import _Machine
@@ -301,7 +302,9 @@ def test_apl_elementary_public_tagged_and_plain_source(
     for bits, expected in (("00", "0"), ("01", "1"), ("10", "1"), ("11", "0")):
         stdin = "\n".join(bits) + "\n"
         assert (
-            compat.run("Algebraic Programming Language", program, stdin=stdin)
+            execute_program(
+                "Algebraic Programming Language", program, stdin=stdin
+            ).output
             == expected + "\n"
         )
 
@@ -315,7 +318,7 @@ def test_apl_width_layout_drops_an_ignored_input(width: int) -> None:
     assert len(str(program)) < len(compat.generate(lang, "01101001" * 4, width=width))
     for combo in range(32):
         stdin = "\n".join(format(combo, "05b")) + "\n"
-        assert compat.run(lang, program, stdin=stdin) == table[combo] + "\n"
+        assert execute_program(lang, program, stdin=stdin).output == table[combo] + "\n"
 
 
 # Below the five-column floor, at it, and above it -- less where a table
@@ -357,7 +360,9 @@ def test_xor_arithmetic_family_reaches_four_columns() -> None:
         stdin = "\n".join(format(row, "02b"))
         for source in (program, str(program)):
             assert (
-                compat.run("Algebraic Programming Language", source, stdin=stdin)
+                execute_program(
+                    "Algebraic Programming Language", source, stdin=stdin
+                ).output
                 == expected + "\n"
             )
     assert algebraic_programming_language("0110", 4) == program
@@ -394,7 +399,7 @@ def test_a_wide_table_keeps_its_one_line_tail_under_the_frame_floor() -> None:
     assert len(program) == 35
     for combo in (0, 1, 2, 127):
         stdin = "\n".join(format(combo, "07b")) + "\n"
-        assert compat.run(lang, program, stdin=stdin) == table[combo] + "\n"
+        assert execute_program(lang, program, stdin=stdin).output == table[combo] + "\n"
 
 
 def _check_constants() -> None:

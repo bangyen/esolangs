@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from tests.proofs._ledger import load
 from tests.support.cli_support import _failure
 from tests.support.input_convention import assert_reads_tokens_on_one_line
@@ -34,11 +34,11 @@ def test_invalid_numeric_input_is_not_mislabeled_as_a_program_error(mode: str) -
         bounds["max_steps"] = 100
     elif mode == "isolated":
         bounds["isolated"] = True
-    assert compat.run("Befunge", "&.@", stdin=b"-12345", **bounds) == "-12345 "
+    assert run("Befunge", "&.@", stdin=b"-12345", **bounds).output == "-12345 "
     with pytest.raises(
         esolangs.ArgumentError, match="input must be an integer"
     ) as error:
-        compat.run("Befunge", '"A",&.@', stdin=io.StringIO("invalid"), **bounds)
+        run("Befunge", '"A",&.@', stdin=io.StringIO("invalid"), **bounds)
     assert error.value.partial_output == "A"
 
 
@@ -63,7 +63,7 @@ def test_random_snapshot_cannot_prove_a_cycle(wrapped) -> None:
         run_until_halt_or_cycle(machine, limit=1000)
     run_until_halt(vm, limit=1000)
     assert vm.halted
-    assert compat.run("Befunge", source, seed=0, timeout=1) == ""
+    assert run("Befunge", source, seed=0, timeout=1).output == ""
     assert run_until_halt_or_cycle(vm, limit=1000) is True
 
 
@@ -87,14 +87,14 @@ def test_seeded_steps_debuggers_and_combined_worker_budgets_agree(tmp_path):
     source = "?.@\n. @\n@ @"
     observed = {}
     for seed in range(8):
-        native = compat.run("Befunge", source, seed=seed)
+        native = run("Befunge", source, seed=seed).output
         machine = make_vm("Befunge", source, seed=seed)
         debugger = make_debugger("Befunge", source, seed=seed)
         complete_vm(machine)
         assert debugger.run(max_steps=100) == "halted"
         assert machine.output == debugger.output == native
         assert machine.snapshot() == debugger.snapshot()
-        assert compat.run("Befunge", source, seed=seed, max_steps=100) == native
+        assert run("Befunge", source, seed=seed, max_steps=100).output == native
         observed.setdefault(native, seed)
     assert len(observed) > 1  # Positive control: the program actually drew.
 
@@ -102,7 +102,7 @@ def test_seeded_steps_debuggers_and_combined_worker_budgets_agree(tmp_path):
     path.write_text(source)
     for output, seed in observed.items():
         assert (
-            compat.run(
+            run(
                 "Befunge",
                 source,
                 seed=seed,
@@ -110,7 +110,7 @@ def test_seeded_steps_debuggers_and_combined_worker_budgets_agree(tmp_path):
                 timeout=5,
                 max_steps=100,
                 max_output=len(output),
-            )
+            ).output
             == output
         )
         shell = run_cli(

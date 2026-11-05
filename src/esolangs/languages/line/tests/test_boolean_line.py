@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from esolangs import compat
+from esolangs import compat, run
 from esolangs.languages.line.generator import line_boolean
 from esolangs.languages.line.generator.layout import Node
 from esolangs.languages.line.generator.render import render
@@ -231,15 +231,16 @@ def test_line_extent_fast_path_preserves_merged_runs_and_shared_arms() -> None:
                 Raster.from_png(png.write_grey(canvas.pixels))
                 for canvas in (compact, legacy)
             ]
-            assert compat.run("Line", sources[0], stdin=str(value)) == compat.run(
-                "Line", sources[1], stdin=str(value)
+            assert (
+                run("Line", sources[0], stdin=str(value)).output
+                == run("Line", sources[1], stdin=str(value)).output
             )
     assert (
-        compat.run(
+        run(
             "Line",
             Raster.from_png(png.write_grey(render(leaf, acyclic=True).pixels)),
             stdin="",
-        )
+        ).output
         == "2"
     )
     leaf.goto = Node("o")
@@ -367,7 +368,7 @@ def test_balanced_choice_scores_the_drawn_extent(
     assert (len(image.rows[0]), len(image.rows)) == size
     for row in (0, 5, 33, 63):
         stdin = "\n".join(f"{row:06b}") + "\n"
-        assert compat.run("Line", image, stdin=stdin) == table[row]
+        assert run("Line", image, stdin=stdin).output == table[row]
 
 
 @pytest.mark.medium

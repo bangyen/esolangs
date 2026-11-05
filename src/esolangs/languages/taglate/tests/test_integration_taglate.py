@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs import compat
+from esolangs import compat, run
 from tests.support.witness_tables import XOR
 
 
@@ -28,12 +28,12 @@ class TestAnswerMode:
             got = "".join(
                 esolangs.read_answer(
                     name,
-                    compat.run(
+                    run(
                         name,
                         program,
                         stdin=esolangs.encode_inputs(name, [(row >> 1) & 1, row & 1]),
                         timeout=30,
-                    ),
+                    ).output,
                 )
                 for row in range(4)
             )

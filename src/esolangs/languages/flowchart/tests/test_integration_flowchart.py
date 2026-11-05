@@ -2,7 +2,7 @@
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import compat
+from esolangs import compat, run
 from tests.support.samples import FLOWCHART_CAT, FLOWCHART_TRUTH_MACHINE
 from tests.support.vm_support import _run_all, assert_starts_downward
 
@@ -10,7 +10,7 @@ from tests.support.vm_support import _run_all, assert_starts_downward
 class TestDebuggerInputAndHalting:
     def test_underfed_input_matches_run(self) -> None:
         program = compat.generate("Flowchart", "0110")
-        output = compat.run("Flowchart", program, stdin="1\n", timeout=10)
+        output = run("Flowchart", program, stdin="1\n", timeout=10).output
         debugger = debugger_api.make_debugger("Flowchart", program, stdin="1\n")
         assert debugger.run(timeout=10) == "halted"
         assert debugger.vm.output == output

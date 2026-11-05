@@ -54,7 +54,7 @@ class TestTheChecksAreSymmetric:
     @pytest.mark.parametrize("timeout", ["5", float("inf"), float("nan"), True, 0])
     def test_both_runs_refuse_the_same_timeout(self, timeout: object) -> None:
         with pytest.raises(esolangs.ArgumentError, match="timeout"):
-            compat.run(REFERENCE, "+.", timeout=timeout)
+            esolangs.run(REFERENCE, "+.", timeout=timeout)
         with pytest.raises(esolangs.ArgumentError, match="timeout"):
             _debugger().run(timeout=timeout)
 
@@ -75,7 +75,7 @@ class TestTheChecksAreSymmetric:
         self, program: object, stdin: object, expected: type[Exception]
     ) -> None:
         with pytest.raises(expected):
-            compat.run(REFERENCE, program, stdin=stdin)
+            esolangs.run(REFERENCE, program, stdin=stdin)
         with pytest.raises(expected):
             debugger_api.make_debugger(REFERENCE, program, stdin=stdin)
 

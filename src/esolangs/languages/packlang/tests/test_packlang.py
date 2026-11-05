@@ -7,7 +7,7 @@ from typing import Any, ClassVar
 
 import pytest
 
-from esolangs import compat
+from esolangs import run as execute
 from esolangs.exceptions import HaltError
 from esolangs.languages.packlang.generator import packlang
 from esolangs.languages.packlang.interpreter import _get, _Machine, _node, run
@@ -333,7 +333,7 @@ Package : IO {
 
 class TestRegistry:
     def test_registered_interpreter_runs(self) -> None:
-        assert compat.run("Packlang", HELLO) == "Hello, World!\r\n"
+        assert execute("Packlang", HELLO).output == "Hello, World!\r\n"
 
 
 class TestBooleanGenerator:

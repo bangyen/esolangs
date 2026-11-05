@@ -63,7 +63,7 @@ if LANGUAGES[language].parameterized:
     stdin = ''
 else:
     stdin = esolangs.encode_inputs(language, [0, 1])
-output = esolangs.compat.run(language, source, stdin=stdin)
+output = esolangs.run(language, source, stdin=stdin).output
 assert esolangs.read_answer(language, output) == '1'
 try:
     importlib.import_module('esolangs.generation.examples')
