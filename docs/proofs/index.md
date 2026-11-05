@@ -476,7 +476,7 @@ Symbols the formula cells use:
 - **Collatz Multiverse:** m = min(16, T/4), the distinct four-row cells; K = the constants closure: 30 for n = 6..8, 2n + 14 past n = 8; A = the cell array, an (index, value) pair per entry; D = the decoder array, one entry per set bit of the m cells.
 - **Crement:** P = Σ_{k<n} min(2^k, 4^s - 2^s), s = 2^(n-k-1), the shared nodes per level; N = 5 at n=1, 13 at n=2, otherwise 3P+2n+3; E = 4 at n=1, otherwise 5n+2.
 - **Cyclic tag:** E = T+n+2 below n=3, otherwise T+n+3; W = 8T+9+bl(T+n) at n=1, otherwise 8T+17+bl(T+n).
-- **Decleq:** M = bits of the program's cells; C = cell count.
+- **Decleq:** B = _chars in the language-owned tests/formulas.py: header, reads, pass loop and distinct-subtree bound; M = bits of the program's cells; C = cell count.
 - **EGL:** F = 3T+25n+digits(T)+8 through n=3; 2T+c+5r+25n+digits(c)+digits(3r)+1 beyond; c = 2^min(n,floor((n+3)/2)), r = T/c; E = 3T+85n+5 through n=3; 2T+c+5r+85n-1 beyond, with c,r as in F; W = 3T+2n+10+bl(L-d-3)+bl(L-d-9)+2bl(n) through n=3, d = digits(T); wh+7+2b(w-1)+2b(h-1)+2b(B)+2b(n) beyond; w,h declared dimensions, B body length, b(x) = max(1,bl(x)).
 - **Eval:** S = 2T+7n at n=4,5; 7T/4+9n+1 from n=6 (unwrapped); W = 8L+T+2n+1+bl(L), minus n when T<8n+4.
 - **FALSE:** W = bl(n)+6n+2b+1 constant, bl(n)+5n+6+2b(S+2n+2) expression, bl(n)+34n+67+2b(n+2) lookup, bl(n)+n+1+2b(S+n+2) diagram.

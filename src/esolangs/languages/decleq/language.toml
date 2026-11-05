@@ -8,7 +8,7 @@ admitted = 2026-08-14T08:52:07-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "zero edges enter fixed print gadgets directly; admitted symmetric thresholds use fall-through chains"
-definitions = ["M = bits of the program's cells", "C = cell count"]
+definitions = ["B = _chars in the language-owned tests/formulas.py: header, reads, pass loop and distinct-subtree bound", "M = bits of the program's cells", "C = cell count"]
 
 [generator_sizes]
 "00000001" = { commands = 244, commands_by_row = { "0" = 241, "1" = 241, "2" = 241, "3" = 241, "4" = 242, "5" = 242, "6" = 243, "7" = 244 }, source_units = 149 }

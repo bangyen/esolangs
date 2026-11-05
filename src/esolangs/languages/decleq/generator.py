@@ -130,8 +130,8 @@ class _CodeBuilder:
         return len(self.mem)
 
     def _emit_preamble(self) -> None:
-        # These decrements never reach 0: target 0.  I/O targets the next
-        # instruction, so SUBBIG's jump-to-c reading runs the same program.
+        # Read every input first. I/O targets the next instruction, so
+        # SUBBIG's jump-to-c reading runs the same program.
         for rc in self.read_cells:
             self.emit(-1, rc, self.pc() + 3)
         if not self.routes:

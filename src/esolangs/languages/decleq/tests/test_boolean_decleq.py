@@ -163,17 +163,37 @@ def test_constants_reuse_scratch_and_print_after_every_read() -> None:
 
 
 def _check_gadgets_and_owner_families() -> None:
-    from esolangs.languages.decleq.generator import _owner_family
+    from esolangs.languages.decleq.generator import (
+        _CodeBuilder,
+        _owner_family,
+        _OwnerBuilder,
+    )
     from esolangs.languages.decleq.interpreter import _Machine
     from esolangs.languages.decleq.proof_formulas import workspace
     from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
+    for n in range(1, 7):
+        table = "0" * ((1 << n) - 1) + "1"
+        for case in (table, table.translate(str.maketrans("01", "10"))):
+            assert (
+                _CodeBuilder(case, n, list(range(n))).build()
+                == _OwnerBuilder(case, n, list(range(n))).build()
+            )
+
     cells = list(map(int, boolean.decleq("01").split()))
     tree = cells[2] + 12  # one read, one normalization and its two controls
     assert cells[tree : tree + 3] == [17, 17, 3]
     cases = ["00010100"]
-    for n, threshold, admitted in ((7, 4, True), (8, 6, True), (8, 7, False)):
+    for n, threshold, admitted in (
+        (1, 1, True),
+        (4, 2, False),
+        (7, 4, True),
+        (7, 7, False),
+        (8, 6, True),
+        (8, 7, False),
+        (12, 7, True),
+    ):
         table = "".join(str(int(row.bit_count() >= threshold)) for row in range(1 << n))
         assert _owner_family(table, n) == admitted
         cases.extend((table, table.translate(str.maketrans("01", "10"))))
