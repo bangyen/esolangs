@@ -8,7 +8,7 @@ are unconditional and first.  From six essential inputs the literal holds
 two rows per character and a second ``at`` unpacks the last input's bit.
 
 Size:
-    O(n) commands over an O(2**n) literal, no branching.
+    Default: O(n) commands over an O(2**n) literal, no branching.
     n=10 random 1847: 738 chars, n=16 random 1847: 33,092 chars.
     A zero fold is the construction working (``shape`` is ``LOOKUP``): a
     literal has no subtrees to fold or share.
