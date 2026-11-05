@@ -3,7 +3,7 @@
 Horner's rule folds the essential bits into base-128 index cells that delete
 the entries before the named one; ``.`` prints the rest, or a constant's tail.
 One character an entry; a symmetric table counts its bits into one digit
-over n + 1 entries ([ablations.symmetric_count]).
+over m + 1 entries for m essential inputs ([ablations.symmetric_count]).
 
 Size:
     O(T) chars; n=10 random 1847: 1,541 chars, n=10 parity: 423 chars,
@@ -107,8 +107,8 @@ def _program(truth_table: str) -> str:
 def _counted(n: int, weights: list[int], table: str) -> str:
     """Count the essential bits into one digit and delete that many entries.
 
-    A symmetric table's entries are indexed by the count, n + 1 of them
-    ([ablations.symmetric_count]); each bit walks home to cell 0.
+    A symmetric table has m + 1 count entries for m essential inputs
+    ([ablations.symmetric_count]); each bit walks to the trailing cell -1.
     """
     prog = ["<[-]>", _reads(n)]
     prog.extend(
