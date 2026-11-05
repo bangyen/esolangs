@@ -10,6 +10,7 @@ LANGUAGE = Language(
     RuntimeSpec(
         "whitespace",
         category="stack_based",
+        file_newline=False,
         empty_program="Whitespace program is empty",
     ),
     backend=BooleanBackend(

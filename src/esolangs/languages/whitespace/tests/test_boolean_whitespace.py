@@ -1,5 +1,7 @@
 """Tests for the Whitespace Boolean generator."""
 
+from pathlib import Path
+
 import pytest
 
 import esolangs
@@ -101,5 +103,34 @@ def _check_power_steps() -> None:
     from pathlib import Path
 
     saved = Path(__file__).parents[1] / "whitespace.txt"
-    for source in (saved, saved.read_text().removesuffix("\n")):
+    for source in (saved, saved.read_text()):
         assert esolangs.run("Whitespace", source, stdin="0\n1\n") == "0"
+
+
+@pytest.mark.parametrize("table", ["01", "0101", "0011", "0000", "0110"])
+def test_exact_saved_commands_preserve_the_final_line_feed(
+    tmp_path: Path, table: str
+) -> None:
+    from esolangs.languages.whitespace.generator import whitespace
+
+    source = whitespace(table)
+    path = tmp_path / "program.ws"
+    path.write_bytes(source.encode())
+    assert path.read_bytes() == source.encode()
+    n = len(table).bit_length() - 1
+    for row, expected in enumerate(table):
+        stdin = "\n".join(f"{row:0{n}b}")
+        assert esolangs.run("Whitespace", path, stdin=stdin) == expected
+
+
+def test_cli_exports_exact_command_bytes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from esolangs.languages.whitespace.generator import whitespace
+    from tests.support.cli_support import call_main
+
+    output = call_main(["generate", "Whitespace", "0110"], capsys)
+    assert output == whitespace("0110")
+    path = tmp_path / "generated.ws"
+    path.write_bytes(output.encode())
+    assert esolangs.run("Whitespace", path, stdin="0\n1\n") == "1"

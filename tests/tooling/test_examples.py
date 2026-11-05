@@ -83,7 +83,8 @@ def test_boolean_example_matches_generator(name: str) -> None:
         # PNG compression differs across platforms; the pixels are the program.
         assert Raster.from_png(path.read_bytes()) == program, stale
     else:
-        expected = (program + "\n").encode("utf-8")
+        ending = "\n" if LANGUAGES[esolangs.resolve(name)].file_newline else ""
+        expected = (program + ending).encode("utf-8")
         assert path.read_bytes() == expected, stale
 
 
@@ -213,13 +214,7 @@ def test_boolean_example(name: str) -> None:
     _module, _inputs, expected, _splitlines, _kwargs = BOOLEAN_EXAMPLES[name]
     path = BASE_DIR / "src/esolangs" / esolangs.describe(name)["examples"][0]
     stdin = BOOLEAN_GENERATED[name].stdin
-    program = (
-        Raster.from_png(path.read_bytes())
-        if path.suffix == ".png"
-        else CompressedText(path.read_bytes())
-        if path.suffix == ".gz"
-        else path.read_text(encoding="utf-8").removesuffix("\n")
-    )
+    program = esolangs._read_source(name, path)
     if isinstance(program, Raster):
         got = esolangs.run(name, program, stdin=stdin)
     else:

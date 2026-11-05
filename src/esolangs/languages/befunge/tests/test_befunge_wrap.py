@@ -168,7 +168,7 @@ def _shape(program: str) -> tuple[int, int, int]:
     [
         (1, 11, (5, 1, 5)),  # this seed is constant; no lookup header
         (4, 20, (79, 4, 20)),
-        (7, 1, (169, 20, 8)),  # the packed row floor of the narrowest request
+        (7, 1, (170, 21, 8)),  # the packed row floor of the narrowest request
         (11, 1, (500, 21, 23)),  # the packed count's ceiling sets 23 columns
         (13, 1, (1522, 23, 67)),  # the packed lookup's row floor
     ],
@@ -322,3 +322,13 @@ def _check_one_row_nibbles() -> None:
     while not machine.halted:
         machine.step()
     assert io.getvalue().strip() != "1"
+
+
+@pytest.mark.parametrize("width", [10, 11, 12, 13])
+def test_packed_header_reserves_a_two_digit_offset(width: int) -> None:
+    table = "".join(str(row.bit_count() % 2) for row in range(256))
+    program = befunge(table, width)
+    assert len(program.splitlines()) <= 25
+    for row, expected in enumerate(table):
+        stdin = esolangs.encode_inputs("Befunge", list(map(int, f"{row:08b}")))
+        assert esolangs.run("Befunge", program, stdin=stdin).strip() == expected

@@ -169,13 +169,15 @@ def _same_program(existing: bytes | None, encoded: bytes, generated: Program) ->
 def _serialize(generated: Program) -> tuple[str, bytes]:
     """Return the file suffix and bytes ``generated`` is committed as.
 
-    Append one file newline without stripping command bytes; PNGs retain their bytes.
+    Append a file terminator only when the language permits it.
     """
     if isinstance(generated, Raster):
         return ".png", generated.to_png()
     if isinstance(generated, CompressedText):
         return ".txt.gz", generated.to_gzip()
-    return ".txt", (generated + "\n").encode("utf-8")
+    origin = getattr(generated, "language", None)
+    ending = "\n" if origin is None or LANGUAGES[origin].runtime.file_newline else ""
+    return ".txt", (generated + ending).encode("utf-8")
 
 
 def write_set(name: str) -> None:

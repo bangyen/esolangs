@@ -25,6 +25,8 @@ class RuntimeSpec:
     path_like_source: bool = False
     source_kind: SourceKind = SourceKind.TEXT
     compressed_source: bool = False
+    #: Text exports append a terminator unless every LF is a command.
+    file_newline: bool = True
     #: One defaulted keyword per supported dialect setting.
     dialect: Callable[..., Any] | None = None
     dialect_values: Mapping[str, tuple[int | str, ...]] | None = None

@@ -73,6 +73,7 @@ from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._source import ProgramSource, _read_container, text_source
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -392,6 +393,12 @@ class _Machine:
                 self.io.print_num(value)
 
 
+def load_source(source: ProgramSource) -> str:
+    """Preserve command line feeds, including the last byte of a file."""
+    value, _path = _read_container(source)
+    return text_source(value)
+
+
 def _execute(code: str, io: IO) -> CompletionReport:
     """Execute a Whitespace program."""
     machine = _Machine(code, io)
@@ -404,4 +411,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    script_main(run)
+    script_main(run, loader=load_source)

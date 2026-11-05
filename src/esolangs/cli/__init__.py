@@ -267,7 +267,9 @@ def _emit(program: Program, *, plain: bool) -> None:
     elif isinstance(program, Raster):
         sys.stdout.buffer.write(program.to_png())
     else:
-        print(program)
+        origin = getattr(program, "language", None)
+        ending = "\n" if origin is None or LANGUAGES[origin].runtime.file_newline else ""
+        sys.stdout.write(program + ending)
 
 
 def _generate(rest: list[str]) -> None:

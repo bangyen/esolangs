@@ -284,12 +284,18 @@ def _packed_befunge(truth_table: str, reads: str, width: int | None) -> str:
     """Return a six-bit printable-ASCII lookup within the fixed torus."""
     count = (len(truth_table) + 5) // 6
     # Two-digit columns and a single-digit header offset cost 64 cells
-    # beyond the input fold. The floor gives at most six header rows and
-    # ceil(B/(W-2)) + ceil(T/W) <= 25, including the n=13 dense build.
+    # beyond the input fold. Narrow layouts reserve the longer offset below;
+    # the floor keeps header plus payload within the 25-row torus.
     bound = len(reads) + _BOUND_PACKED
     requested = 80 if width is None else width
     columns = min(80, max(requested, _min_columns(count, bound)))
     header_rows = _header_rows(bound, columns)
+    if header_rows >= 10:
+        # A two-digit offset needs six more cells; otherwise data starts
+        # one row below the address encoded in g (n=8 parity, width=10).
+        bound += len(_literal(header_rows)) - 1
+        columns = min(80, max(requested, _min_columns(count, bound)))
+        header_rows = _header_rows(bound, columns)
     literal = _literal(columns)
     # For u = row % 6, its binary digits build 2**u without a loop:
     # (1+u%2)*(1+3*((u//2)%2))*(1+15*(u//4)).

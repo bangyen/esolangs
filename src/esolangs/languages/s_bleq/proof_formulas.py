@@ -18,14 +18,14 @@ def _divide_steps(value: int, bit: int) -> int:
 def _packed_steps(n: int, cells: list[int]) -> int | None:
     """A packed program's exact worst-row steps, or None off that route.
 
-    The seventeen named cells sit at 3 * (2n + 9m + 45) for m essential inputs,
+    The sixteen named cells sit at 3 * (2n + 9m + 45) for m essential inputs,
     then a target cell an instruction and the negated chunks.  A row costs its
     reads (eleven an essential input, two an ignored one), the chunk walk
     7 * idx + 5 * (idx // m) + 1, the select's seven, the divide and the
     print-and-halt five; a chunk's worst row is its last, so the program's
     worst is the best chunk-end total.
     """
-    for at in range(len(cells) - 16):
+    for at in range(len(cells) - 15):
         if cells[at : at + 4] != [0, 1, -1, -48]:
             continue
         m = cells[at + 4]
@@ -35,14 +35,13 @@ def _packed_steps(n: int, cells: list[int]) -> int | None:
             and cells[at + 9] == m
             and cells[at + 10 : at + 15] == [0, 0, 0, 0, 0]
             and cells[at + 15] == 48
-            and cells[at + 16] == -1
             and at == 3 * (2 * n + 9 * m + 45)
-            and len(cells) - (at + 17 + at // 3) == -(-(1 << m) // m)
+            and len(cells) - (at + 16 + at // 3) == -(-(1 << m) // m)
         ):
             break
     else:
         return None
-    chunks = cells[at + 17 + at // 3 :]
+    chunks = cells[at + 16 + at // 3 :]
     worst = 0
     for q, cell in enumerate(chunks):
         size = m if q < len(chunks) - 1 else (1 << m) - q * m
