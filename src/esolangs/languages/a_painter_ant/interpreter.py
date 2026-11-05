@@ -22,7 +22,9 @@ from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Literal
 
+from esolangs.runtime._drive import drive_periodic
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -96,7 +98,7 @@ class _Machine:
 
     #: The answer is the render after the walk is proven periodic; use
     #: :func:`esolangs.run` (some languages carry ``self_halts = False`` too).
-    steppable_to_answer = False
+    completion = Completion.PERIODIC
 
     def __init__(
         self,
@@ -227,24 +229,7 @@ def run(code: str, io: IO) -> None:
     picture by then.
     """
     machine = _Machine(code, io)
-    span = len(machine.prog)
-    tortoise = machine.snapshot()
-    power = 1
-    passes = 0
-    while True:
-        for _ in range(span):
-            machine.step()
-        passes += 1
-        if machine.snapshot() == tortoise:
-            break
-        if passes == power:
-            tortoise = machine.snapshot()
-            power *= 2
-            passes = 0
-    # Breaks at a pass boundary, where ``interrupt`` is sound; the step
-    # after renders, like a post-halt step.
-    machine.interrupt()
-    machine.step()
+    drive_periodic(machine, len(machine.prog))
 
 
 if __name__ == "__main__":

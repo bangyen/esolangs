@@ -73,3 +73,22 @@ def test_run_read_answer_prints_the_bit_for_a_dump(
 def test_unsupported_stepping_candidate_is_bounded() -> None:
     assert _worst("a_painter_ant", "nn$", "00", [0], 0.02) == (1, 0)
     assert _worst("a_painter_ant", "N$", "00", [1], 0.5) == (0, 0)
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"), [("", "o"), ("P", "@"), ("ns", ".\no")]
+)
+def test_periodic_completion_renders_at_the_repeated_pass_boundary(source, expected):
+    from esolangs.languages.a_painter_ant.interpreter import _Machine
+    from esolangs.runtime._drive import drive_periodic
+    from esolangs.runtime.io import ScriptedIO
+
+    io = ScriptedIO()
+    machine = _Machine(source, io)
+    cycle = drive_periodic(machine, len(machine.prog))
+    assert cycle.state == machine.snapshot()
+    assert machine.ip == 0
+    assert io.getvalue() == expected
+    assert not machine.halted
+    machine.step()
+    assert io.getvalue() == expected

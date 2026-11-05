@@ -91,12 +91,14 @@ from esolangs._cycles import (
 from esolangs.exceptions import ArgumentError, InterpreterLimitError
 from esolangs.registry import resolve
 from esolangs.runtime._context import ExecutionContext
+from esolangs.runtime._drive import finalize
 from esolangs.runtime._execution import (
     interpreter_errors,
     interpreter_module,
     prepare_call,
 )
 from esolangs.runtime._input import InputSource
+from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import ProgramSource, check_scale_for
 from esolangs.runtime._traits import trait, traits
@@ -118,8 +120,13 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
         raise ArgumentError("completion requires a machine that self-halts")
     if not run_until_halt(vm, max_steps):
         raise InterpreterLimitError("VM completion exhausted max_steps")
-    if vm.dumps_on_the_post_halt_step:
-        vm.step()
+    # Public VMs declare the boolean trait; other attributes are caller-owned.
+    finalize(
+        vm,
+        policy=Completion.POST_HALT
+        if vm.dumps_on_the_post_halt_step
+        else Completion.HALTED,
+    )
     return vm.output
 
 

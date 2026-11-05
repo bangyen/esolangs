@@ -13,6 +13,7 @@ from esolangs import vm as vm_module
 from esolangs.debugger import complete_vm
 from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.registry import INTERPRETERS
+from esolangs.runtime._lifecycle import Completion
 from esolangs.vm import VM, _climbs_forever, make_vm, run_until_halt
 from tests.support.generator_support import CHECK
 from tests.support.pick import languages
@@ -254,6 +255,13 @@ def test_completion_rejects_invalid_budgets(budget) -> None:
 @pytest.mark.medium
 def test_completion_can_opt_out_of_the_step_budget() -> None:
     assert complete_vm(make_vm(REFERENCE, "+."), max_steps=None) == "\x01"
+
+
+@pytest.mark.parametrize("metadata", ["caller metadata", Completion.PERIODIC])
+def test_completion_uses_the_public_vm_trait(metadata) -> None:
+    vm = make_vm(REFERENCE, "+.")
+    vm.completion = metadata
+    assert complete_vm(vm) == "\x01"
 
 
 # Three visits, ten steps apart, whose values climb by a constant 1 with

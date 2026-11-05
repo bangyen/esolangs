@@ -1,8 +1,10 @@
-"""Unbounded execution for ordinary interpreter shells."""
+"""Shared driving and output finalization for interpreter shells and VMs."""
 
-from typing import Protocol
+from collections.abc import Hashable
+from typing import Protocol, runtime_checkable
 
-from esolangs.runtime._traits import trait
+from esolangs.runtime._lifecycle import BoundaryCycle, Completion, completion
+from esolangs.runtime._validate import check_whole
 
 
 class Machine(Protocol):
@@ -12,9 +14,73 @@ class Machine(Protocol):
     def step(self) -> None: ...
 
 
+@runtime_checkable
+class PeriodicMachine(Machine, Protocol):
+    """A machine whose final image follows a repeated complete pass."""
+
+    def snapshot(self) -> Hashable:
+        """Return future computational state, including input progress."""
+
+    def interrupt(self) -> None: ...
+
+
+def finalize(
+    machine: Machine,
+    *,
+    cycle: BoundaryCycle | None = None,
+    policy: Completion | None = None,
+) -> None:
+    """Write final output after a halt or an evidenced boundary repetition."""
+    if policy is None:
+        policy = completion(machine)
+    if policy is Completion.PERIODIC:
+        if cycle is None:
+            raise ValueError("periodic completion needs boundary-cycle evidence")
+        if not isinstance(machine, PeriodicMachine):
+            raise TypeError("periodic completion needs snapshot and interrupt")
+        if machine.snapshot() != cycle.state:
+            raise ValueError("boundary-cycle evidence no longer matches the machine")
+        machine.interrupt()
+        machine.step()
+    else:
+        if cycle is not None:
+            raise ValueError("boundary-cycle evidence requires periodic completion")
+        if not machine.halted:
+            raise ValueError("completion requires a halted machine")
+        if policy is Completion.POST_HALT:
+            machine.step()
+
+
 def drive(machine: Machine) -> None:
     """Run to halt, including a language's declared final output step."""
     while not machine.halted:
         machine.step()
-    if trait(machine, "dumps_on_the_post_halt_step"):
-        machine.step()
+    finalize(machine)
+
+
+def drive_periodic(machine: PeriodicMachine, commands_per_pass: int) -> BoundaryCycle:
+    """Detect a boundary cycle with Brent's rule; the stride is one whole pass."""
+    check_whole(commands_per_pass, "commands_per_pass")
+    if completion(machine) is not Completion.PERIODIC:
+        raise ValueError("periodic driving requires periodic completion")
+    anchor = machine.snapshot()
+    first_pass = 0
+    repeat_pass = 0
+    power = 1
+    passes = 0
+    while True:
+        for _ in range(commands_per_pass):
+            machine.step()
+        passes += 1
+        repeat_pass += 1
+        state = machine.snapshot()
+        if state == anchor:
+            break
+        if passes == power:
+            anchor = state
+            first_pass = repeat_pass
+            power *= 2
+            passes = 0
+    cycle = BoundaryCycle(state, first_pass, repeat_pass, commands_per_pass)
+    finalize(machine, cycle=cycle)
+    return cycle

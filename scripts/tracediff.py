@@ -44,6 +44,7 @@ sys.path.insert(0, str(ROOT))
 import esolangs  # noqa: E402
 from esolangs.exceptions import GeneratorCapError  # noqa: E402
 from esolangs.registry import INTERPRETERS, LANGUAGES, resolve  # noqa: E402
+from esolangs.runtime._lifecycle import Completion, completion  # noqa: E402
 from esolangs.runtime.io import ScriptedIO  # noqa: E402
 from esolangs.runtime.randomness import Seeded  # noqa: E402
 
@@ -233,7 +234,7 @@ def trace(
         for _ in range(LIMIT):
             events.append((_views(machine, ignored), machine.snapshot(), io.getvalue()))
             if machine.halted:
-                if getattr(machine, "dumps_on_the_post_halt_step", False):
+                if completion(machine) is Completion.POST_HALT:
                     machine.step()
                     machine.step()  # idempotent by the VM contract
                     events.append(("dumped", io.getvalue()))

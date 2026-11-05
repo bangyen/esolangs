@@ -112,3 +112,43 @@ def test_views_include_inherited_properties_and_respect_overrides():
     assert tracediff._views(Mutant(), frozenset()) == (("ip", "4"),)
     assert tracediff._views(Child(), frozenset({"ip"})) == ()
     assert tracediff._views(Hidden(), frozenset()) == ()
+
+
+_POST_HALT = """
+from esolangs.runtime._lifecycle import Completion
+
+class _Machine:
+    completion = Completion.POST_HALT
+
+    def __init__(self, code, io):
+        self.io = io
+        self.halted = False
+        self.printed = False
+
+    def step(self):
+        if self.halted and not self.printed:
+            self.io.print_str("done")
+            self.printed = True
+        else:
+            self.halted = True
+
+    def snapshot(self):
+        return self.halted, self.printed
+"""
+
+
+def test_explicit_completion_matches_legacy_post_halt_traces(tmp_path):
+    path = tmp_path / "explicit.py"
+    path.write_text(_POST_HALT)
+    explicit = tracediff._load(path, "explicit_completion")
+    path.write_text(
+        _POST_HALT.replace(
+            "completion = Completion.POST_HALT", "dumps_on_the_post_halt_step = True"
+        )
+    )
+    legacy = tracediff._load(path, "legacy_completion")
+    assert tracediff.differences(legacy, explicit, [("", "")]) == []
+    assert tracediff.trace(explicit, ("", ""), frozenset())[-1] == ("dumped", "done")
+    path.write_text(_POST_HALT.replace("completion = Completion.POST_HALT", ""))
+    missing = tracediff._load(path, "missing_completion")
+    assert tracediff.differences(explicit, missing, [("", "")])

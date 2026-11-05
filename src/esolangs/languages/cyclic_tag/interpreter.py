@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -58,7 +59,7 @@ class _Machine:
     production and names the last deleted bit: it is the whole control state.
     """
 
-    dumps_on_the_post_halt_step = True
+    completion = Completion.POST_HALT
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io

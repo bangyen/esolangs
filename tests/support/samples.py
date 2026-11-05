@@ -87,8 +87,7 @@ def bits_of(value: int) -> str:
 # no-op step is the second one past the halt, not the first.
 #
 # This is a fact about the language, so a caller does not have to come here
-# to learn it: each of the seven declares
-# ``dumps_on_the_post_halt_step = True`` on its ``_Machine``, and
+# to learn it: each declares its completion behavior on ``_Machine``, and
 # :attr:`esolangs.vm.VM.dumps_on_the_post_halt_step` reports it.
 #
 # **Do not derive this set from that flag.**  Importing every ``_Machine``
