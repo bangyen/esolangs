@@ -28,7 +28,6 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
-from esolangs.languages.carp.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.carp.descriptor import MAX_INPUTS as MAX_INPUTS
 from esolangs.runtime.source_hints import with_hint
 

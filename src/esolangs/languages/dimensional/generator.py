@@ -38,7 +38,6 @@ from esolangs.generation.wrap import (
     _DIMENSIONAL_COMMAND,
     wrap_program,
 )
-from esolangs.languages.dimensional.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["dimensional"]
 

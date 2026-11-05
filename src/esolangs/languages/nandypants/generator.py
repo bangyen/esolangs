@@ -25,7 +25,6 @@ Decisions:
 from heapq import heapify, heappop, heappush
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.languages.nandypants.descriptor import LANGUAGE as LANGUAGE
 
 #: The answer byte (ASCII ``0`` / ``1``, low bit first) as ``\`` and ``^``
 #: after the pointer move onto the cell that holds 1; a starts at 1 and ends 0.

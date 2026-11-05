@@ -20,7 +20,6 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.wrap import balance_score, balance_width
-from esolangs.languages.egl.descriptor import LANGUAGE as LANGUAGE
 
 
 def egl(truth_table: str, width: int | None = None) -> str:

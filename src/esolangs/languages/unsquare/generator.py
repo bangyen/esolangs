@@ -24,7 +24,6 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
-from esolangs.languages.unsquare.descriptor import LANGUAGE as LANGUAGE
 
 
 def _run(entry: str, count: int) -> str:

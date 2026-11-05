@@ -25,7 +25,6 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.languages.bit_tilde.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["bit_tilde"]
 

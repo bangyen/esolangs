@@ -33,7 +33,6 @@ from esolangs.generation.helpers import (
     read_at,
     symmetric_weights,
 )
-from esolangs.languages.sonata.descriptor import LANGUAGE as LANGUAGE
 
 #: The index rules, then the set-up rules around the table.
 # After setup, a remaining bit matches the index rules; otherwise a nonempty

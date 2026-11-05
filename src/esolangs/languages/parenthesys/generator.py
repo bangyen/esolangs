@@ -16,7 +16,6 @@ Size:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.languages.parenthesys.descriptor import LANGUAGE as LANGUAGE
 
 #: Rows a packed character holds are ``2**_BITS``; the offset is a multiple of that.
 _BITS = 3

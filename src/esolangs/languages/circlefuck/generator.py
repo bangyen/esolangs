@@ -22,7 +22,6 @@ from esolangs.generation.helpers import (
     read_at,
     symmetric_weights,
 )
-from esolangs.languages.circlefuck.descriptor import LANGUAGE as LANGUAGE
 
 #: Bits an index digit carries: seven is the widest power of two a byte can
 #: also count out (:func:`_deleter` plants that many in the digit below).

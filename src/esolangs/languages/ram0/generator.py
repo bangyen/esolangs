@@ -26,7 +26,6 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
-from esolangs.languages.ram0.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.ram0.descriptor import PAIR as PAIR
 
 #: A fixed Z precedes each slot; the one-command pair selects zero or one.

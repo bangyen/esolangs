@@ -44,7 +44,6 @@ from esolangs.generation.shared_block import (
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _RUN, balance_score, wrap_program
-from esolangs.languages.smallfuck.descriptor import LANGUAGE as LANGUAGE
 
 # Each input cell is fresh; zero needs no clear and one needs one flip.
 PAIR = ("x>>>", "*>>>")

@@ -23,7 +23,6 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.languages.movesum.descriptor import LANGUAGE as LANGUAGE
 
 #: Cells: 0 sum/test, 1/2/3/4 addends (4 stays 0), 5 V,
 #: 8 one, 9 counter seed, 10 the input.

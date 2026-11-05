@@ -40,7 +40,6 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.inject.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["inject"]
 

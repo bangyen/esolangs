@@ -30,7 +30,6 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.languages.balik.descriptor import LANGUAGE as LANGUAGE
 
 
 @dataclass

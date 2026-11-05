@@ -31,9 +31,6 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     subtree_ids,
 )
-from esolangs.languages.stisp.descriptor import _TOKEN as _TOKEN
-from esolangs.languages.stisp.descriptor import LANGUAGE as LANGUAGE
-from esolangs.languages.stisp.descriptor import PAIR as PAIR
 
 #: Each input is one atom, ``0`` or ``1``, inside its frame.
 #: The drain: under a leaf every remaining frame rewrites to the leaf.

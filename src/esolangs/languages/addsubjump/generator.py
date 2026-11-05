@@ -24,7 +24,6 @@ from esolangs.generation.helpers import (
     input_weights,
     stored_inputs,
 )
-from esolangs.languages.addsubjump.descriptor import LANGUAGE as LANGUAGE
 
 #: The ``d`` operand of every instruction: cell 7, the last word of the
 #: first data block, which nothing writes, so ``*d > 0`` never holds and the

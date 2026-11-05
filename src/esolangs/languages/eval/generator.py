@@ -24,7 +24,6 @@ from esolangs.generation.helpers import (
     permute_truth_table,
     read_at,
 )
-from esolangs.languages.eval.descriptor import LANGUAGE as LANGUAGE
 
 # ``~`` swaps the active stack, ``*`` reverses it, ``=`` pops it onto the
 # other.  Moving values across reverses them (tests/eval_support.py).

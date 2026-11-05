@@ -30,7 +30,6 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.languages.rubic.descriptor import LANGUAGE as LANGUAGE
 
 _OPENING: tuple[str, ...] = ("r'", "d'")
 _TABLE: dict[str, tuple[str, ...]] = {

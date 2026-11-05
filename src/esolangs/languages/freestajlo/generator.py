@@ -30,8 +30,6 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_program, balance_score
-from esolangs.languages.freestajlo.descriptor import _UNIT as _UNIT
-from esolangs.languages.freestajlo.descriptor import LANGUAGE as LANGUAGE
 
 #: A string, ``'`` and its character, or a digit run is one unit: a break
 #: inside pushes a newline or splits a number.

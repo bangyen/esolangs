@@ -34,7 +34,6 @@ from esolangs.generation.wrap import (
     balance_score,
     wrap_space_delimited,
 )
-from esolangs.languages.modulous.descriptor import LANGUAGE as LANGUAGE
 
 # Characters around the table in its literal push: ``[PSH STR "`` opens it
 # (10 chars) and ``"]`` closes the literal (2 chars).

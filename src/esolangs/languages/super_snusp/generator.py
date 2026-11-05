@@ -28,7 +28,6 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.super_snusp.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["super_snusp"]
 

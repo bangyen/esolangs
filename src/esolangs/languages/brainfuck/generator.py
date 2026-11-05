@@ -34,7 +34,6 @@ from esolangs.generation.helpers import (
     move_text,
 )
 from esolangs.generation.shared_flag import flag_tree_body, shared_flag_tree
-from esolangs.languages.brainfuck.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["bf_tree", "brainfuck"]
 

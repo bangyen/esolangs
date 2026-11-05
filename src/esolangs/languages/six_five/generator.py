@@ -33,7 +33,6 @@ from esolangs.generation.helpers import (
     subtree_ids,
     subtree_slot,
 )
-from esolangs.languages.six_five.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["six_five"]
 

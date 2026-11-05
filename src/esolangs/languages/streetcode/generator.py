@@ -63,7 +63,6 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.streetcode.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["streetcode"]
 

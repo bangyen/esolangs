@@ -19,8 +19,6 @@ Size:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.languages.sendstuff.descriptor import LANGUAGE as LANGUAGE
-from esolangs.languages.sendstuff.descriptor import _wrap as _wrap
 
 _MACROS = "@o(>(Subtract 49>%))@z(>(Divide 48>(Subtract 1>%)))@y(Input!o %)"
 

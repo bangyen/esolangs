@@ -18,7 +18,6 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.languages.creativescript_v2.descriptor import LANGUAGE as LANGUAGE
 from esolangs.runtime.memory import format_integer
 
 

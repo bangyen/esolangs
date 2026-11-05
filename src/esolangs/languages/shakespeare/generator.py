@@ -30,7 +30,6 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.languages.shakespeare.descriptor import LANGUAGE as LANGUAGE
 
 #: Bits packed by one sentence; bounds the parser's nesting.
 _CHUNK = 64

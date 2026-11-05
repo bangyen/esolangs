@@ -130,8 +130,8 @@ def _check_constants() -> None:
 
 
 def _check_lookup_and_cached_formula() -> None:
+    from esolangs.languages.false.descriptor import LANGUAGE
     from esolangs.languages.false.generator import (
-        LANGUAGE,
         _balance,
         _expression,
         _ExpressionSearch,

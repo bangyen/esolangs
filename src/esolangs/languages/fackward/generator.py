@@ -17,8 +17,6 @@ Size:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.languages.fackward.descriptor import LANGUAGE as LANGUAGE
-from esolangs.languages.fackward.descriptor import _wrap as _wrap
 
 
 def _node(zero: str, one: str) -> str:

@@ -27,7 +27,6 @@ from esolangs.generation.helpers import (
     SubtreeDiagram,
     _validate_truth_table,
 )
-from esolangs.languages.unlambda.descriptor import LANGUAGE as LANGUAGE
 
 #: ``@`` reads a character and applies its argument -- the promise of everything
 #: after the read -- to ``i``, or to ``v`` at end of input.

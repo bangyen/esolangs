@@ -44,7 +44,6 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import wrap_tokens
-from esolangs.languages.blindfolded_arithmetic.descriptor import LANGUAGE as LANGUAGE
 
 #: One instruction and its separator; a break after ``;`` is whitespace.
 _INSTRUCTION = r"[^;]*;?"

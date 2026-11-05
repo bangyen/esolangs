@@ -37,7 +37,6 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens
-from esolangs.languages.bitdeque.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["BITDEQUE_PAIR", "bitdeque", "bitdeque_setters"]
 

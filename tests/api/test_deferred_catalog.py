@@ -61,7 +61,7 @@ for lang in pilots:
     generate = backend.generate
     module = sys.modules[generate.__module__]
     assert getattr(module, generate.__name__) is generate
-    assert module.LANGUAGE is lang
+    assert not hasattr(module, 'LANGUAGE')
     assert inspect.getsourcefile(generate) == module.__file__
     assert (tuple(inspect.signature(generate).parameters)
             == backend.entrypoint.parameters)

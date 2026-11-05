@@ -27,7 +27,6 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.languages.chicken.descriptor import LANGUAGE as LANGUAGE
 
 #: Opcodes, as chickens a line.
 _CHICKEN, _ADD, _SUB, _MUL, _CMP, _LOAD = 1, 2, 3, 4, 5, 6

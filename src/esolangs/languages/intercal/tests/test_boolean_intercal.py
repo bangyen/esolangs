@@ -12,12 +12,8 @@ from esolangs.generation.helpers import (
     constant_span_test,
 )
 from esolangs.languages.intercal import generator
-from esolangs.languages.intercal.generator import (
-    PAIR,
-    TEMPLATE_CHAR,
-    _Expr,
-    intercal,
-)
+from esolangs.languages.intercal.descriptor import PAIR
+from esolangs.languages.intercal.generator import TEMPLATE_CHAR, _Expr, intercal
 from esolangs.languages.intercal.interpreter import run
 from tests.proofs._witnesses import _intercal_worst
 from tests.support.evaluation import _evaluate

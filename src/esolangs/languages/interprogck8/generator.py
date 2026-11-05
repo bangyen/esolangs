@@ -48,7 +48,6 @@ Decisions:
 from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.helpers import _parity_bias, _validate_truth_table, subtree_ids
 from esolangs.languages.interprogck8.descriptor import _MAX_INPUTS as _MAX_INPUTS
-from esolangs.languages.interprogck8.descriptor import LANGUAGE as LANGUAGE
 from esolangs.runtime.source_hints import with_hint
 
 #: The rung.  ``DownAccLines`` jumps to ``ip + 1 + acc``.

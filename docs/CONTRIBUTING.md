@@ -127,9 +127,9 @@ and source citations remain checked.
 typed I/O contract. `resolve` normalizes names; `RUNNERS` selects whole-source
 or split-line input. Each language declares `LANGUAGE = Language(...)` in its `descriptor.py`,
 including interpreter-only entries. Callable references load implementations
-on use; generators re-export their descriptor for compatibility.
-`scripts/docs/generate.py` collects descriptors into exports (`just docs`
-and `check`).
+on use; generators import only descriptor definitions they use.
+`scripts/docs/generate.py` derives documentation and examples from the registry
+(`just docs`, `just examples`).
 
 Execution follows this path:
 

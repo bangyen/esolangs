@@ -36,9 +36,6 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.algebraic_programming_language.descriptor import (
-    LANGUAGE as LANGUAGE,
-)
 
 #: Input variable names in harness order; a variable is bound by being
 #: named on an executed line, so these must be codepoint-ascending

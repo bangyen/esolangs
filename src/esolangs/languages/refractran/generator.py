@@ -25,8 +25,6 @@ from __future__ import annotations
 from esolangs.generation.helpers import TEMPLATE_CHAR, _validate_truth_table
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
-from esolangs.languages.refractran.descriptor import LANGUAGE as LANGUAGE
-from esolangs.languages.refractran.descriptor import PAIR as PAIR
 
 
 def _primes(count: int) -> list[int]:

@@ -29,7 +29,6 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.minsky_swap.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["MINSKY_SWAP_PAIR", "minsky_swap", "minsky_swap_setters"]
 

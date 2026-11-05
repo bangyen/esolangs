@@ -55,7 +55,6 @@ from esolangs.generation.helpers import (
     narrowest_grid,
     read_at,
 )
-from esolangs.languages.circuit_diagram.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.circuit_diagram.generator.columns import _FreeColumns
 from esolangs.languages.circuit_diagram.generator.layout import (
     _Layout,

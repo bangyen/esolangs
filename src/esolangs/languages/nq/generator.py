@@ -16,7 +16,6 @@ Size:
 """
 
 from esolangs.generation.helpers import _parity_bias, _validate_truth_table, subtree_ids
-from esolangs.languages.nq.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.nq.interpreter import guard_dialect
 
 

@@ -21,7 +21,6 @@ from esolangs.generation.packed_decoder import (
     _sbleq_constant,
     packed_decoder,
 )
-from esolangs.languages.s_bleq.descriptor import LANGUAGE as LANGUAGE
 
 #: Tables up to this many rows keep the shared tree; larger ones also try
 #: the packed decoder.

@@ -26,7 +26,6 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.lookup import symmetric_outputs
-from esolangs.languages.decleq.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["decleq"]
 

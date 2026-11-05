@@ -25,8 +25,6 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.languages.what.descriptor import LANGUAGE as LANGUAGE
-from esolangs.languages.what.descriptor import _wrap as _wrap
 
 #: Row literals stay below 2^15, at most 5 digits.
 _LOW_INPUTS = 15

@@ -29,10 +29,8 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.languages.home_row.descriptor import HOME_ROW_PAIR as HOME_ROW_PAIR
-from esolangs.languages.home_row.descriptor import LANGUAGE as LANGUAGE
 
-__all__ = ["HOME_ROW_PAIR", "home_row"]
+__all__ = ["home_row"]
 
 
 _CONSTANT_SETUP = "aaaaaalsfaaaaaaaaffffl"

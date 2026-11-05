@@ -16,7 +16,6 @@ from typing import Any
 from esolangs.generation.branch_decoder import hoisted_tree
 from esolangs.generation.helpers import _validate_truth_table, in_input_order
 from esolangs.generation.packed_decoder import packed_decoder
-from esolangs.languages.subleq.descriptor import LANGUAGE as LANGUAGE
 from esolangs.registry._certification import Payload
 
 

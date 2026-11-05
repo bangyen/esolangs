@@ -38,7 +38,6 @@ from esolangs.generation.helpers import (
     narrowest_grid,
     subtree_ids,
 )
-from esolangs.languages.laserfuck.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["laserfuck"]
 

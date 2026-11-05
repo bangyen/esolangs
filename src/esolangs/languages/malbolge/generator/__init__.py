@@ -34,8 +34,6 @@ from __future__ import annotations
 from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.wrap import wrap_chars
-from esolangs.languages.malbolge.descriptor import LANGUAGE as LANGUAGE
-from esolangs.languages.malbolge.descriptor import MAX_INPUTS as MAX_INPUTS
 from esolangs.languages.malbolge.proof_formulas import execution, workspace
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract

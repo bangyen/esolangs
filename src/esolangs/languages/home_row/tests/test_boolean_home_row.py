@@ -55,7 +55,7 @@ class TestParameterizedHomeRow:
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """The setter is two characters whichever bit it carries."""
-        from esolangs.languages.home_row.generator import HOME_ROW_PAIR
+        from esolangs.languages.home_row.descriptor import HOME_ROW_PAIR
         from tests.generators.fills import fill
 
         _fill_home_row = fill("Home Row")
@@ -89,7 +89,7 @@ class TestParameterizedHomeRow:
         """The template has input runs, not hardcoded bits."""
         from esolangs.generation.helpers import runs
         from esolangs.languages.home_row import generator as generators
-        from esolangs.languages.home_row.generator import HOME_ROW_PAIR
+        from esolangs.languages.home_row.descriptor import HOME_ROW_PAIR
 
         template = generators.home_row("0110")
         assert "{X" not in template

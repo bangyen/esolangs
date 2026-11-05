@@ -16,7 +16,6 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score, wrap_program
-from esolangs.languages.taglate.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.taglate.interpreter import _PREFIX, _SUFFIX, percent_encode
 
 

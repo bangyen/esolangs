@@ -29,7 +29,6 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
-from esolangs.languages.one_i.descriptor import LANGUAGE as LANGUAGE
 
 _CONSTANT = ("iic+", "ici*")
 

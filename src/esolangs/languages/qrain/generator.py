@@ -35,7 +35,6 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.shared_block import repeated_block, repeated_blocks
 from esolangs.generation.shared_flag import FlagDialect, flag_tree_body
-from esolangs.languages.qrain.descriptor import LANGUAGE as LANGUAGE
 
 
 def _command_budget(n: int) -> int:

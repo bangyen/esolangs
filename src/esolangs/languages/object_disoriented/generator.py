@@ -29,7 +29,6 @@ from itertools import count, product
 from string import ascii_letters, digits
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.languages.object_disoriented.descriptor import LANGUAGE as LANGUAGE
 
 #: ``I`` is the bit 1; ``N`` is 1 until a 1 bit calls it.
 _HEADER = "dI.fpzrzzzdN.fpzcbsrzzzdB.iiiiiiicitclN.pftprtzzdmain.ozozolI.olI.ozozoz"

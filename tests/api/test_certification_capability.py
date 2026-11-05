@@ -1,6 +1,8 @@
 """Certification policy cannot change backend operation."""
 
+import ast
 import importlib
+import inspect
 import subprocess
 import sys
 from dataclasses import fields
@@ -53,7 +55,22 @@ def test_certification_facts_have_one_owner(monkeypatch):
 def test_clearing_certification_preserves_generated_source(language, monkeypatch):
     original = LANGUAGES[language]
     module = importlib.import_module(original.backend.generate.__module__)
-    assert module.LANGUAGE is original
+    assert not hasattr(module, "LANGUAGE")
+    tree = ast.parse(inspect.getsource(module))
+    reads = {
+        node.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
+    }
+    assert not {
+        alias.name
+        for node in tree.body
+        if isinstance(node, ast.ImportFrom)
+        and node.module is not None
+        and node.module.endswith(".descriptor")
+        for alias in node.names
+        if (alias.asname or alias.name) not in reads
+    }
     before = esolangs.dump_program(language, esolangs.generate(language, "01"))
     path = f"esolangs.languages.{original.id}.certification"
     load_certification(original)

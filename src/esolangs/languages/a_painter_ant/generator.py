@@ -37,8 +37,6 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
-from esolangs.languages.a_painter_ant.descriptor import LANGUAGE as LANGUAGE
-from esolangs.languages.a_painter_ant.descriptor import PAIR as PAIR
 
 __all__ = ["a_painter_ant"]
 

@@ -31,7 +31,6 @@ from esolangs.generation.helpers import (
     input_weights,
     read_at,
 )
-from esolangs.languages.brainif.descriptor import LANGUAGE as LANGUAGE
 
 
 def _resolve(lines: list[str], width: int | None = None) -> str:

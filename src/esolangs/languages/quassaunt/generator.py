@@ -25,7 +25,6 @@ from typing import NamedTuple
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.token_balance import CELL_ASPECT, balanced_token_width
 from esolangs.generation.wrap import wrap_space_delimited
-from esolangs.languages.quassaunt.descriptor import LANGUAGE as LANGUAGE
 
 
 class _Node(NamedTuple):

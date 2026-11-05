@@ -37,7 +37,6 @@ from esolangs.generation.wrap import (
     balance_score,
     wrap_program,
 )
-from esolangs.languages.false.descriptor import LANGUAGE as LANGUAGE
 
 #: ``'0`` and ``'1`` differ in their low bit, so ``1&`` is the bit and ``?``
 #: takes any nonzero flag; ``$`` leaves a copy under it for the ``0`` test.

@@ -24,8 +24,6 @@ Size:
 import re
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.languages.pointless.descriptor import LANGUAGE as LANGUAGE
-from esolangs.languages.pointless.descriptor import _wrap as _wrap
 
 _OUT = 50  # cell 50 holds "0", cell 51 holds "1"
 _X = 52  # level d's character and bit cell is 52 + 2d, its flag 53 + 2d

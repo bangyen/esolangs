@@ -64,7 +64,6 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.abcdirection.descriptor import LANGUAGE as LANGUAGE
 
 RIGHT, DOWN, LEFT, UP = range(4)
 _STEPS = ((1, 0), (0, 1), (-1, 0), (0, -1))

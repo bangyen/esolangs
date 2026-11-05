@@ -22,7 +22,6 @@ Size:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.languages.monotonic_boolfuck.descriptor import LANGUAGE as LANGUAGE
 
 #: Read onto ``p``, then consume the byte's other seven bits on a set bit.
 _READ = ">1<,>,,,,,,,<"

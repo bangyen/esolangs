@@ -38,7 +38,6 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.fish.descriptor import LANGUAGE as LANGUAGE
 
 
 def fish(truth_table: str, width: int | None = None) -> str:

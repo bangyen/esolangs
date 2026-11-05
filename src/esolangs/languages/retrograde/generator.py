@@ -17,8 +17,6 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     subtree_ids,
 )
-from esolangs.languages.retrograde.descriptor import LANGUAGE as LANGUAGE
-from esolangs.languages.retrograde.descriptor import PAIR as PAIR
 
 
 def _moves(source: str) -> str:

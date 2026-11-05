@@ -39,7 +39,6 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.flowchart.descriptor import LANGUAGE as LANGUAGE
 
 # Fewest table rows a subtree must span for the stacked layout to draw it once.
 _SHARE_ROWS = 8

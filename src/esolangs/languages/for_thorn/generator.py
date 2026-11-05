@@ -26,7 +26,6 @@ from esolangs.generation.helpers import (
     permute_truth_table,
     subtree_ids,
 )
-from esolangs.languages.for_thorn.descriptor import LANGUAGE as LANGUAGE
 
 
 def _forth_const(value: int) -> str:

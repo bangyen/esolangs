@@ -24,8 +24,6 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
-from esolangs.languages.bitwise_cyclic_tag.descriptor import LANGUAGE as LANGUAGE
-from esolangs.languages.bitwise_cyclic_tag.descriptor import PAIR as PAIR
 
 #: One bit of the initial data-string, so an input's run is one TEMPLATE_CHAR.
 

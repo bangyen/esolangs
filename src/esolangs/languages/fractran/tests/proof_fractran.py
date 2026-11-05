@@ -9,7 +9,8 @@ from esolangs.generation.helpers import (
     constant_span_test,
     fill_runs,
 )
-from esolangs.languages.fractran.generator import PAIR, _primes, _tree, fractran
+from esolangs.languages.fractran.descriptor import PAIR
+from esolangs.languages.fractran.generator import _primes, _tree, fractran
 from esolangs.languages.fractran.interpreter import _choose, _parse
 from tests.support.witness_tables import row_bits
 

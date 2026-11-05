@@ -18,7 +18,6 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     subtree_ids,
 )
-from esolangs.languages.kiss.descriptor import LANGUAGE as LANGUAGE
 
 #: Each leaf outputs its bit and halts.
 _LEAF = {"0": "KK", "1": "SK"}

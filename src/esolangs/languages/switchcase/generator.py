@@ -22,7 +22,6 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
-from esolangs.languages.switchcase.descriptor import LANGUAGE as LANGUAGE
 
 
 def switchcase(truth_table: str) -> str:

@@ -75,7 +75,7 @@ def test_subleq_input_and_eof() -> None:
     with pytest.raises(EOFError):
         run_subleq(code, ScriptedIO())
 
-    from esolangs.languages.subleq.generator import LANGUAGE
+    from esolangs.languages.subleq.descriptor import LANGUAGE
 
     io = ScriptedIO("A")
     machine = _Machine("-1 9 3 9 -1 6 10 10 -1 0 0", io)

@@ -90,7 +90,6 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.languages.{slug}.descriptor import LANGUAGE as LANGUAGE
 
 
 def {slug}(truth_table: str) -> str:

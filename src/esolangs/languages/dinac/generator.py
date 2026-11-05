@@ -26,7 +26,6 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.languages.dinac.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["dinac"]
 

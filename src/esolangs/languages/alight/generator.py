@@ -25,7 +25,6 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.alight.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.alight.descriptor import _dialect as _dialect
 
 __all__ = ["alight"]

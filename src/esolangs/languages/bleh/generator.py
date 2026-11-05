@@ -23,8 +23,6 @@ from string import ascii_letters
 
 from esolangs.generation.decision import decision_layers
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.languages.bleh.descriptor import _TOKEN as _TOKEN
-from esolangs.languages.bleh.descriptor import LANGUAGE as LANGUAGE
 
 #: a name or ``::``.
 #: a name.

@@ -33,7 +33,6 @@ from esolangs.generation.helpers import (
     permute_truth_table,
     read_at,
 )
-from esolangs.languages.line.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.line.generator.forward import streaming_canvas
 from esolangs.languages.line.generator.layout import (
     Node,

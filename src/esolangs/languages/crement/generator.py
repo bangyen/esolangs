@@ -43,7 +43,6 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
-from esolangs.languages.crement.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["crement"]
 

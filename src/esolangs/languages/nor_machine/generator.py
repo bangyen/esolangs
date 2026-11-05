@@ -27,7 +27,6 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.languages.nor_machine.descriptor import LANGUAGE as LANGUAGE
 
 
 class _Queue:

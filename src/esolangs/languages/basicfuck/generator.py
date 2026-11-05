@@ -37,7 +37,6 @@ from esolangs.generation.helpers import (
     short_name,
     subtree_ids,
 )
-from esolangs.languages.basicfuck.descriptor import LANGUAGE as LANGUAGE
 
 #: Single-character names: no reserved word is one, and 53 cover every table
 #: a string can hold (n + 1 <= 53 up to 2**52 rows).

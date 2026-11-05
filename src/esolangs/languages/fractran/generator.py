@@ -34,8 +34,6 @@ from esolangs.generation.wrap import (
     balance_score,
     wrap_program,
 )
-from esolangs.languages.fractran.descriptor import LANGUAGE as LANGUAGE
-from esolangs.languages.fractran.descriptor import PAIR as PAIR
 from esolangs.languages.fractran.interpreter.index import SMALL_BASE
 
 #: How each input is set: the exponent of its prime in the starting value.

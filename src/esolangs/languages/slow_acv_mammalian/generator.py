@@ -50,7 +50,6 @@ from esolangs.languages.slow_acv_mammalian._sums import (
     _seeds_onto,
     _Sums,
 )
-from esolangs.languages.slow_acv_mammalian.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.slow_acv_mammalian.interpreter import (
     _ARRAYS,
     DEFAULT_MODULI,

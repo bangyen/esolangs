@@ -32,7 +32,6 @@ from esolangs.generation.helpers import (
     input_weights,
     subtree_ids,
 )
-from esolangs.languages.cvnc.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["cvnc"]
 

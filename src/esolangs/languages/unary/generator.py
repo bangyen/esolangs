@@ -32,7 +32,6 @@ from esolangs.generation.helpers import (
     essential_inputs,
     move_text,
 )
-from esolangs.languages.unary.descriptor import LANGUAGE as LANGUAGE
 
 _MAX_SOURCE = 256 * 1024 * 1024
 _LIMITS = TextLimits(32 * 1024 * 1024, _MAX_SOURCE, 256 * 1024)

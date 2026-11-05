@@ -20,7 +20,6 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.languages.iebel.descriptor import LANGUAGE as LANGUAGE
 
 #: Register 1 holds '1' (49), register 3 holds '0' (48).
 _SETUP = ["1 49 0", "3 48 0"]

@@ -40,8 +40,6 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.arrowqueue.descriptor import LANGUAGE as LANGUAGE
-from esolangs.languages.arrowqueue.descriptor import PAIR as PAIR
 
 #: Each input's cell: ``~`` pushes a down heading, ``.`` nothing.
 

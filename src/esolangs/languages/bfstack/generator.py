@@ -34,7 +34,6 @@ from esolangs.generation.helpers import (
     input_weights,
     symmetric_weights,
 )
-from esolangs.languages.bfstack.descriptor import LANGUAGE as LANGUAGE
 from esolangs.registry._certification import Payload
 
 

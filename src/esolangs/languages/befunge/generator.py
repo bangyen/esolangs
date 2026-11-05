@@ -29,7 +29,6 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.befunge.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.befunge.descriptor import MAX_INPUTS as MAX_INPUTS
 from esolangs.runtime.source_hints import with_hint
 

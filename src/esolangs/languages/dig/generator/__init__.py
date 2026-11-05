@@ -48,7 +48,6 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.dig.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.dig.generator._layout import _DIG_LEAF_BITS, _dig_layout
 from esolangs.languages.dig.generator._leaf import (
     _DIG_DIGITS,

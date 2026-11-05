@@ -32,7 +32,6 @@ from esolangs.generation.helpers import (
     in_input_order,
     read_at,
 )
-from esolangs.languages.three_x.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["three_x"]
 

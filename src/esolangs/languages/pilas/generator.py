@@ -22,7 +22,6 @@ Decisions:
 from functools import cache
 
 from esolangs.generation.helpers import _validate_truth_table, constant_span_test
-from esolangs.languages.pilas.descriptor import LANGUAGE as LANGUAGE
 
 #: Pushes 48, the byte ``'0'``.
 _ZERO_BYTE = "6:+:+:+"

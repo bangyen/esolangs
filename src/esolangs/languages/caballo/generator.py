@@ -24,7 +24,6 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.languages.caballo.descriptor import LANGUAGE as LANGUAGE
 
 
 def caballo(truth_table: str) -> str:

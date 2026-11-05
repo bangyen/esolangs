@@ -12,7 +12,6 @@ Size:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, essential_inputs, read_at
-from esolangs.languages.grapheme.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.grapheme.interpreter import (
     DEFAULT_GRAPHEME,
     GraphemeDialect,

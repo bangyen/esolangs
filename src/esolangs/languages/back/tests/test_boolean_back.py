@@ -134,7 +134,7 @@ class TestParameterizedBack:
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
         from esolangs.languages.back import generator as generators
-        from esolangs.languages.back.generator import PAIR
+        from esolangs.languages.back.descriptor import PAIR
 
         template = generators.back("0110")
         assert "{X" not in template

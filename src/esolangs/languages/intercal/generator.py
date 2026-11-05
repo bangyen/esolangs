@@ -30,8 +30,6 @@ from esolangs.generation.helpers import (
     in_input_order,
 )
 from esolangs.generation.wrap import _join_tokens, balance_score
-from esolangs.languages.intercal.descriptor import LANGUAGE as LANGUAGE
-from esolangs.languages.intercal.descriptor import PAIR as PAIR
 from esolangs.languages.intercal.descriptor import TEMPLATE_CHAR as TEMPLATE_CHAR
 
 _VARIABLE_MAX = 65535  # the largest INTERCAL variable number

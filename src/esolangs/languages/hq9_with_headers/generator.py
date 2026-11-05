@@ -16,7 +16,6 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.languages.hq9_with_headers.descriptor import LANGUAGE as LANGUAGE
 from esolangs.runtime._digits import digit_limit_for
 
 

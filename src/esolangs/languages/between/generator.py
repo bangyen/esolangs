@@ -27,7 +27,6 @@ from esolangs.generation.helpers import (
     short_name,
     subtree_ids,
 )
-from esolangs.languages.between.descriptor import LANGUAGE as LANGUAGE
 
 
 def _diagram(ids: list[list[int]]) -> tuple[int, dict[int, tuple[int, int, int]]]:

@@ -9,7 +9,7 @@ from esolangs import compat, run
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.generation.wrap import balance_program, balance_score
 from esolangs.languages.fractran import generator as boolean
-from esolangs.languages.fractran.generator import PAIR as FRACTRAN_PAIR
+from esolangs.languages.fractran.descriptor import PAIR as FRACTRAN_PAIR
 from esolangs.languages.fractran.generator import fractran
 from esolangs.languages.fractran.interpreter import run as run_fractran
 from esolangs.runtime.io import ScriptedIO

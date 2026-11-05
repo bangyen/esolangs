@@ -42,8 +42,6 @@ from esolangs.generation.helpers import (
     read_at,
     symmetric_weights,
 )
-from esolangs.languages.rotfuck.descriptor import LANGUAGE as LANGUAGE
-from esolangs.languages.rotfuck.descriptor import _dialect as _dialect
 from esolangs.languages.rotfuck.interpreter import (
     ROTFUCK_CYCLES,
     validate_rotation,

@@ -6,7 +6,7 @@ import pytest
 
 from esolangs import compat
 from esolangs.generation.helpers import TEMPLATE_CHAR, runs
-from esolangs.languages.arrowqueue.generator import PAIR
+from esolangs.languages.arrowqueue.descriptor import PAIR
 from tests.generators.fills import fill
 from tests.support.witness_tables import row_bits
 

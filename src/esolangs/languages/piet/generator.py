@@ -41,7 +41,6 @@ from esolangs.generation.raster_lookup.balance import (
     folded,
 )
 from esolangs.generation.raster_lookup.packing import _raster_score, smallest
-from esolangs.languages.piet.descriptor import LANGUAGE as LANGUAGE
 from esolangs.raster import Raster
 
 

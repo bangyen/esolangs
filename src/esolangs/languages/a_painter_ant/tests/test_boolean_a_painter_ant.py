@@ -8,7 +8,8 @@ import pytest
 import esolangs
 from esolangs import compat
 from esolangs.generation.helpers import TEMPLATE_CHAR, runs
-from esolangs.languages.a_painter_ant.generator import PAIR, a_painter_ant
+from esolangs.languages.a_painter_ant.descriptor import PAIR
+from esolangs.languages.a_painter_ant.generator import a_painter_ant
 from esolangs.languages.a_painter_ant.interpreter import run as run_a_painter_ant
 from tests.generators.fills import fill
 from tests.support.witness_tables import parity as _parity

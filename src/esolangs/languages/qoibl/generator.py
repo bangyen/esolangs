@@ -26,7 +26,6 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
-from esolangs.languages.qoibl.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["qoibl"]
 

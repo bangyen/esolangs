@@ -47,7 +47,6 @@ from esolangs.generation.helpers import (
     short_name,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.fargo.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["fargo"]
 

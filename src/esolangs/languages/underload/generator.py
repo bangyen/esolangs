@@ -46,7 +46,6 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import wrap_tokens
-from esolangs.languages.underload.descriptor import LANGUAGE as LANGUAGE
 
 # A zero duplicates the returned bit, giving both selectors five characters.
 PAIR = ("(!^:)", "(~!^)")

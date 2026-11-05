@@ -34,7 +34,6 @@ from esolangs.generation.shared_block import (
     repeated_mixed_bank,
 )
 from esolangs.generation.shared_flag import FlagDialect, flag_tree_body
-from esolangs.languages.painfuck.descriptor import LANGUAGE as LANGUAGE
 from esolangs.languages.painfuck.interpreter import _CYCLES
 
 __all__ = ["painfuck"]

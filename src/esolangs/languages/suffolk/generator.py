@@ -22,7 +22,6 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
-from esolangs.languages.suffolk.descriptor import LANGUAGE as LANGUAGE
 
 #: The cell plan.  Cost here is a cell's *index* -- every read spends one
 #: ``>`` per cell crossed -- so the countdown, which every sweep op reads,

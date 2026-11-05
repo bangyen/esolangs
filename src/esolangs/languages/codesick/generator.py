@@ -32,7 +32,6 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     reflected_table,
 )
-from esolangs.languages.codesick.descriptor import LANGUAGE as LANGUAGE
 
 # Non-bit ASCII words keep bit+marker tests unique without a # separator.
 _ALPHABET = "".join(

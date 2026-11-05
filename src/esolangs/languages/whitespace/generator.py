@@ -23,7 +23,6 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.languages.whitespace.descriptor import LANGUAGE as LANGUAGE
 
 _SPACE = " "
 _TAB = "\t"

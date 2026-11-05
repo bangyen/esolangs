@@ -35,7 +35,6 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.collatz_multiverse.descriptor import LANGUAGE as LANGUAGE
 
 __all__ = ["balance_collatz_multiverse", "collatz_multiverse"]
 

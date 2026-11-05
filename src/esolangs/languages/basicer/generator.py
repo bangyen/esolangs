@@ -18,7 +18,6 @@ Decisions:
 """
 
 from esolangs.generation.helpers import subtree_ids
-from esolangs.languages.basicer.descriptor import LANGUAGE as LANGUAGE
 
 
 def basicer(truth_table: str) -> str:

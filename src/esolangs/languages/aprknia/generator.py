@@ -26,7 +26,6 @@ Decisions:
 from functools import cache
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.languages.aprknia.descriptor import LANGUAGE as LANGUAGE
 
 #: ``11*`` pushes 2, 0, 1, 1, 0.  Its top 0 is a read selector (``_SKIP``);
 #: ``!!!`` leaves 2, 0 so ``~*`` after the read is byte mod 2, the bit.

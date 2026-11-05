@@ -26,7 +26,6 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.languages.hot.descriptor import LANGUAGE as LANGUAGE
 
 #: ``R_i`` with ``{}`` for ``R_(i+1)``.
 _READ = "S(KK)(S(K(S(0K)))(S(KK)(S(KK)(S(K(S(0K)))(S(K(S(0K)))(S(KK)(S(K({})))))))))"

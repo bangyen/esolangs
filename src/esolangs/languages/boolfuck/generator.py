@@ -51,7 +51,6 @@ from esolangs.generation.helpers import (
 from esolangs.generation.lookup import symmetric_outputs
 from esolangs.generation.shared_block import ContinuationCost as _Cost
 from esolangs.generation.shared_flag import flag_tree_body
-from esolangs.languages.boolfuck.descriptor import LANGUAGE as LANGUAGE
 
 type _Kind = Literal["and", "xor"]
 type _Normal = tuple[_Kind | None, int, bool, bool, int | None]

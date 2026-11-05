@@ -52,8 +52,6 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.lookup import symmetric_outputs
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.back.descriptor import LANGUAGE as LANGUAGE
-from esolangs.languages.back.descriptor import PAIR as PAIR
 
 _Node = tuple[int, int]
 _Grid = dict[tuple[int, int], str]

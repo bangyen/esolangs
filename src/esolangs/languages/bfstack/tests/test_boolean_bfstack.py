@@ -106,7 +106,7 @@ class TestBfstack:
         for table in ("10", "0110", "0001", "11111110"):
             assert set(boolean.bfstack(table)) <= set("+,-.<>[]"), table
 
-        from esolangs.languages.bfstack.generator import LANGUAGE
+        from esolangs.languages.bfstack.descriptor import LANGUAGE
         from esolangs.languages.bfstack.interpreter import _Machine
         from esolangs.runtime.io import ScriptedIO
 
