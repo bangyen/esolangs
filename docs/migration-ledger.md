@@ -1,6 +1,6 @@
 # Migration completion ledger
 
-Declaration audit: `b9dc5b162`. [Language rows](migration-status.csv) cover all
+Declaration audit: `0cfd01d7b`. [Language rows](migration-status.csv) cover all
 117 languages and 114 Boolean backends. Declarations and inherited adapters
 are recorded separately; neither proves acceptance. Every completion row stays
 open until its trace, resource, installed-package and retirement evidence is
@@ -51,7 +51,7 @@ acceptance audit after the active separation work lands. Storage policy needs
 its priced comparison and explicit decision. These remain open even where an
 implementation pilot already passed.
 
-Accounting now has thirty explicit or inherited semantic adapters; 87 language
+Accounting now has forty-five explicit or inherited semantic adapters; 72 language
 rows still use snapshot accounting. Declarations do not close lifecycle,
 storage-policy or catalog-wide acceptance requirements.
 
