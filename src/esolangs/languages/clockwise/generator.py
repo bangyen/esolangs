@@ -8,16 +8,18 @@ one are read on the return rail after printing.  A literal row has no
 subtrees to fold or share.  Constants read a full input rotation, clear the
 accumulator and emit the seven answer bits on a closed two-column ring.  A
 ``width`` exceeded rotates the program counterclockwise (two columns for
-n <= 2, else ``2*n + 5``).  ``balance`` may instead split the table into
-strips the first inputs select (:func:`_clockwise_banded`): n=6 random
+n <= 2; otherwise the rail width includes trailing ignored inputs).
+``balance`` may instead split the table into strips the first inputs select
+(:func:`_clockwise_banded`): n=6 random
 184 -> 106 on a side, n=9 1107 -> 270.  The default is
 :func:`_clockwise_flat`, which lays the gadgets in one band
-(five rows, ``5T + 8n + 4`` wide): area ``25T + 40n + 20`` where the stack
+(five rows, ``5T + 8n + 4`` wide when every input is essential):
+area ``25T + 40n + 20`` where the stack
 costs ``(2T + 9n + 2)(2n + 15)`` ([ablations.flat_band]).
 
 Size:
-    O(T) cells; n=8 random 1847: 6,223 chars, n=10 random 1847: 23,967 chars,
-    n=12 random 1847: 94,703 chars.
+    O(T) cells, T=2**n over all inputs; n=8 random 1847: 6,223 chars,
+    n=10 random 1847: 23,967 chars, n=12 random 1847: 94,703 chars.
 """
 
 from math import ceil
@@ -233,8 +235,8 @@ def _clockwise_program(truth_table: str, width: int | None = None) -> str:
     """Build the flat band, or under a width the narrower of it and the lookup."""
     flat = _clockwise_flat(truth_table)
     if width is None:
-        # Area 25T + 40n + 20 against the stack's (2T + 9n + 2)(2n + 15) >= 34T:
-        # the band wins at every n ([ablations.flat_band]).
+        # All-essential area is 25T + 40n + 20, against the stack's
+        # (2T + 9n + 2)(2n + 15) >= 34T ([ablations.flat_band]).
         return flat
     total = _validate_truth_table(truth_table)
     used = essential_inputs(truth_table, total)

@@ -29,9 +29,9 @@ one gate or port and a run prints one character.
 
 A repeated subtree is built once (:func:`_dag`, hash-consed on ``(level,
 zero, one)``); a shared output keeps its column group until its last read.
-At most one unfinished signal per input level is live.  Wide unconstrained
-builds compare natural order and the complement table with the root gate
-negated (``A``, ``O``); physical ports retain read order.
+Shared results can remain live across input levels until their last use.
+Wide unconstrained builds compare natural order and the complement table
+with the root gate negated (``A``, ``O``); physical ports retain read order.
 
 Size:
     One pass over the table, fewer than three gates per entry; n=8 and:
@@ -171,8 +171,8 @@ class _Builder:
         network's depth.  A band *moves* every live signal to a column near
         the left and frees all the columns behind it.  A mux layout's floor
         is what a band cannot reclaim -- the rails and complements, live for
-        the whole drawing -- plus the carried signals and one gate group:
-        about ``8 * n`` columns, growing with the inputs rather than the table.
+        the whole drawing -- plus the carried shared signals and one gate group.
+        The carried set depends on subtree reuse, not just the input count.
 
         :meth:`_tap` does the move (down then left, one wiring with one
         driver, crossing the rails with ``=``).  Each carried signal takes
@@ -591,7 +591,7 @@ def _finish_fold(
         rail = selectors[0][0]
         if rail is None:  # pragma: no cover - every selector has a plain rail
             raise AssertionError("selector has no plain rail")
-        result = builder.constant(rail, "x" if result == "0" else "X")
+        result = builder.constant(rail, "X" if (result == "1") ^ invert else "x")
     builder.output(result)
     return builder.layout
 
@@ -644,9 +644,9 @@ def _circuit_diagram_model(
     gates.
 
     Width is gate column groups, and a group is reused once its bus is dead.
-    Only selector rails are read more than once; each mux result is read once
-    by the carry above it.  A gate must sit right of every bus it reads, so
-    the leftmost dead group past those buses is the one reused.
+    Selector rails and shared mux results may be read more than once. A gate
+    must sit right of every bus it reads, so the leftmost dead group past
+    those buses is the one reused.
 
     The input rows are drawn first and in input order.
     """

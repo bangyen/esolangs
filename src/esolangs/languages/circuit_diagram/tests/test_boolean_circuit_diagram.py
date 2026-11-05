@@ -864,3 +864,17 @@ def test_below_gate_floor_does_not_repeat_the_banded_build(monkeypatch, width) -
     program = generator.circuit_diagram(table, width)
     assert limits == [None, width]
     assert _evaluate("Circuit Diagram", program, inputs=3) == table
+
+
+def test_complemented_constant_fold() -> None:
+    from esolangs.languages.circuit_diagram.generator import _circuit_diagram_model
+    from tests.support.evaluation import _evaluate
+
+    for bit in "01":
+        for limit in (None, 1):
+            table = bit * 8
+            program = _circuit_diagram_model(table, limit, invert=True).render()
+            assert (
+                _evaluate("Circuit Diagram", program, inputs=3)
+                == ("1" if bit == "0" else "0") * 8
+            )

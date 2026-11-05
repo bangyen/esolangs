@@ -299,8 +299,10 @@ class _RoutingLayout(_Layout):
         self._reserved_rows = {}
         self._reserved_cols = {}
         for (x, y), owner in self._reserved.items():
-            insort(self._reserved_rows.setdefault(y, []), (x, owner))
-            insort(self._reserved_cols.setdefault(x, []), (y, owner))
+            self._reserved_rows.setdefault(y, []).append((x, owner))
+            self._reserved_cols.setdefault(x, []).append((y, owner))
+        for line in (*self._reserved_rows.values(), *self._reserved_cols.values()):
+            line.sort()
 
     @staticmethod
     def _other_covering(
