@@ -101,7 +101,9 @@ def dump_program(
         "settings": encoded,
     }
     artifact = (
-        source._artifact  # noqa: SLF001 - source compatibility adapter
+        program
+        if isinstance(program, (ProgramArtifact, TemplateArtifact))
+        else source._artifact  # noqa: SLF001 - source compatibility adapter
         if isinstance(source, _Tagged)
         else ProgramArtifact(source, name, settings)
     )
@@ -115,7 +117,10 @@ def dump_program(
         )
     elif isinstance(body, Raster):
         document.update(
-            kind="png", source=base64.b64encode(body.to_png()).decode("ascii")
+            kind="png",
+            source=base64.b64encode(
+                body.tagged(name, settings=settings, scale=artifact.scale).to_png()
+            ).decode("ascii"),
         )
     elif isinstance(body, CompressedText):
         document.update(
@@ -285,7 +290,7 @@ def load_artifact(language: str, document: str) -> Artifact:
         if not isinstance(kind, str) or kind not in _LOADERS:
             raise ValueError("unknown source kind")
         artifact = _LOADERS[kind](value, name, settings)
-        _read_source(name, source_adapter(artifact))
+        _read_source(name, artifact)
         return artifact
     except (ValueError, TypeError) as error:
         raise ProgramError(f"invalid portable program: {error}") from error

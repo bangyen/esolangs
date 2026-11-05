@@ -93,6 +93,11 @@ also retain scale. `TemplateArtifact.fill(bits)` returns a runnable record.
 `load_artifact` restores them, including template bindings. Unfilled templates
 cannot run. `Language` binds `generate_artifact` and `load_artifact` too.
 
+`Language.from_source(source)` declares runnable source explicitly, including
+text that resembles a filename. `Language.from_file(path)` reads native source
+with file newline handling and retains embedded dialect settings and scale.
+Both return `ProgramArtifact`; parsing still happens when the program executes.
+
 `generate` remains the source compatibility API. It returns a `Program`, one of:
 
 - a `str` subclass, for text;

@@ -229,6 +229,74 @@ def test_record_provenance_and_scaled_raster_round_trip():
     assert _evaluate(language, restored, inputs=1) == "01"
 
 
+@pytest.mark.medium
+def test_explicit_source_survives_all_execution_routes_and_persistence(tmp_path):
+    language = esolangs.Language(REFERENCE)
+    source = "program.bf"
+    artifact = language.from_source(source)
+    with pytest.raises(esolangs.ProgramError, match="looks like a path"):
+        language.run(source)
+    restored = language.load_artifact(language.dump_program(artifact))
+    path = tmp_path / "source.txt"
+    esolangs.save_program(artifact, path)
+    loaded = language.from_file(str(path))
+    assert artifact == restored == loaded
+    for program in (artifact, restored, loaded):
+        for isolated, max_steps in ((False, None), (False, 100), (True, 100)):
+            result = language.run_result(
+                program, isolated=isolated, max_steps=max_steps
+            )
+            assert result.output == "\x00"
+            assert result.input_position == 0
+            assert result.completion is not None
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(("language", "table"), _PILOTS)
+def test_explicit_artifacts_execute_without_tagged_string_adapters(
+    language, table, monkeypatch
+):
+    import esolangs.portable as portable
+
+    artifact = esolangs.generate_artifact(language, table)
+
+    def refuse_adapter(*_args):
+        raise AssertionError("explicit artifact converted to compatibility source")
+
+    monkeypatch.setattr(esolangs, "_source_adapter", refuse_adapter)
+    monkeypatch.setattr(portable, "source_adapter", refuse_adapter)
+    restored = esolangs.load_artifact(
+        language, esolangs.dump_program(language, artifact)
+    )
+    if isinstance(restored, TemplateArtifact):
+        inputs = restored.bindings.inputs
+        for row, answer in enumerate(table):
+            bits = [int(bit) for bit in f"{row:0{inputs}b}"]
+            output = esolangs.run(language, restored.fill(bits), timeout=5)
+            assert esolangs.read_answer(language, output) == answer
+    else:
+        assert (
+            _evaluate(language, restored, inputs=len(table).bit_length() - 1) == table
+        )
+
+
+@pytest.mark.parametrize("language", _EMBEDDING)
+def test_explicit_source_cannot_disguise_a_known_template(language):
+    template = esolangs.generate(language, "0110")
+    with pytest.raises(esolangs.TemplateError, match="fill the template"):
+        esolangs.Language(language).from_source(template)
+
+
+def test_explicit_file_validates_choices_before_reading(tmp_path):
+    language = esolangs.Language(REFERENCE)
+    with pytest.raises(esolangs.ArgumentError, match="settings"):
+        language.from_file(tmp_path / "absent.txt", settings={})
+    with pytest.raises(esolangs.ArgumentError, match="path"):
+        language.from_file(1)
+    with pytest.raises(esolangs.ProgramNotFoundError):
+        language.from_file(tmp_path / "absent.txt")
+
+
 @pytest.mark.parametrize("source", [None, 1, b"+."])
 def test_public_record_rejects_invalid_source(source):
     with pytest.raises(esolangs.ProgramError):

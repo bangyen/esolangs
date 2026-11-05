@@ -701,7 +701,18 @@ def _read_source(language: str, program: ProgramSource | _FileSource) -> Program
     """Load source and check its kind and origin, allowing unfilled templates."""
     name = resolve(language)
     if isinstance(program, (ProgramArtifact, TemplateArtifact)):
-        program = _source_adapter(program)
+        if program.language != name:
+            raise ProgramError(
+                f"this program was generated for {program.language}, so running it as "
+                f"{name} would read it as {name} source -- which may well run, "
+                "and answer nonsense"
+            )
+        program = (
+            program.source.tagged(name, settings=program.settings, scale=program.scale)
+            if isinstance(program, ProgramArtifact)
+            and isinstance(program.source, Raster)
+            else program.source
+        )
     module = interpreter_module(name)
     loader = getattr(module, "load_source", text_source)
     program = loader(program)
@@ -741,9 +752,11 @@ def _check_program(
     name = resolve(language)
     if isinstance(program, TemplateArtifact):
         raise TemplateError("fill the template before execution")
+    explicit = isinstance(program, ProgramArtifact)
     program = _read_source(name, program)
     check_input(stdin)
-    _check_runnable(name, program)
+    if not explicit:
+        _check_runnable(name, program)
     return program
 
 

@@ -1,16 +1,18 @@
 """The public API with one language bound."""
 
 from dataclasses import dataclass
+from os import PathLike
+from pathlib import Path
 
 import esolangs
-from esolangs.artifacts import Artifact
+from esolangs.artifacts import Artifact, ProgramArtifact
 from esolangs.registry import resolve
 from esolangs.registry._describe import LanguageInfo
 from esolangs.results import ExecutionResult
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import ProgramSource
-from esolangs.settings import DialectSettings
+from esolangs.settings import DialectSettings, effective_settings
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,6 +31,40 @@ class Language:
     def __post_init__(self) -> None:
         """Resolve the supplied name before any operation."""
         object.__setattr__(self, "name", resolve(self.name))
+
+    def from_source(
+        self, source: Program, *, settings: DialectSettings | None = None
+    ) -> ProgramArtifact[Program]:
+        """Declare runnable source, including text that resembles a filename.
+
+        Parsing happens on execution. Use ``from_file`` to read native source.
+
+        Raises:
+            ProgramError: Source has an unsupported type or foreign provenance.
+            ArgumentError: Dialect settings are invalid for this language.
+        """
+        retained = effective_settings(self.name, source, settings)
+        return ProgramArtifact(source, self.name, retained)
+
+    def from_file(
+        self, path: str | PathLike[str], *, settings: DialectSettings | None = None
+    ) -> ProgramArtifact[Program]:
+        """Read native source with file newline handling and retained metadata.
+
+        Raises:
+            ArgumentError: Settings or the path argument are invalid.
+            ProgramNotFoundError: The source file does not exist.
+            ProgramError: Source cannot be decoded or belongs to another language.
+            MissingDependencyError: PNG loading needs the image extra.
+        """
+        from esolangs.exceptions import ArgumentError
+        from esolangs.settings import dialect_options
+
+        dialect_options(self.name, settings)
+        if not isinstance(path, (str, PathLike)):
+            raise ArgumentError("path must be a string or Path")
+        source = esolangs._read_source(self.name, Path(path))  # noqa: SLF001 - API boundary
+        return self.from_source(source, settings=settings)
 
     def generate(
         self,

@@ -587,6 +587,9 @@ def _serve_request() -> None:
             )
             result = proved.observation
         else:
+            # The parent already decoded and checked runnable source. Preserve
+            # that declaration: path-shaped source must not be guessed again.
+            program = esolangs.ProgramArtifact(program, request["language"], settings)
             result = esolangs._run_result(  # noqa: SLF001 - same result route as public run
                 request["language"],
                 program,

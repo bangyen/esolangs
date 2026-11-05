@@ -28,6 +28,8 @@ PUBLIC_MEMBERS = {
     esolangs.TemplateArtifact: {"source", "language", "bindings", "settings", "fill"},
     esolangs.TemplateBindings: {"char", "setters", "inputs", "fill"},
     esolangs.Language: {
+        "from_source",
+        "from_file",
         "describe",
         "dump_program",
         "encode_inputs",
