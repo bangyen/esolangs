@@ -24,7 +24,7 @@ Size:
 
 Decisions:
     A subtree is shared only when ``m * body > body + 5m + 9`` for its ``m``
-    callers, and at most the 52 - n largest savings get a flag: names
+    callers, and at most the 52 - n largest estimated savings get a flag: names
     stay one character.  Blocks follow the tree in depth order, so each
     flag is set before its block is tested.  Sharing never lost to the
     plain tree on 253 tables, n=2..12.

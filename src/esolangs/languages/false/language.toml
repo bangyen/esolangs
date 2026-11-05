@@ -121,3 +121,6 @@ tests = [
     "src/esolangs/languages/false/tests/test_false.py::test_a_finished_loop_has_consumed_its_flag",
     "src/esolangs/languages/false/tests/test_false.py::test_advancing_a_finished_state_is_a_no_op",
 ]
+
+[ablations.redundant_preconditions_20261104]
+verdict = "Each recursive expression state has2**len(positions) rows, so the <=6-variable disjunct is already covered by the <=512-row guard. Remove only that redundant disjunct; split choices and emitted programs are unchanged."

@@ -60,7 +60,6 @@ def sstack(truth_table: str) -> str:
     if shared is None:
         return plain
     candidate, commands = _sstack_tree(truth_table, shared)
-    n = _validate_truth_table(truth_table)
     forms = [(plain, 0), (candidate, commands)]
     # Only the two same-level banks race ([ablations.multi_block_deferral]).
     banks = (repeated_bank(truth_table, ranked=False)[0], repeated_bank(truth_table)[0])

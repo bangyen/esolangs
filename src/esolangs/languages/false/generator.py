@@ -254,7 +254,8 @@ def _splits(table: str, positions: tuple[int, ...]) -> range | tuple[int, ...]:
     split the first remaining variable (random tables are
     split-order-insensitive in expectation).
     """
-    if len(table) <= 512 or len(positions) <= 6:
+    # Every state has 2**len(positions) rows.
+    if len(table) <= 512:
         return range(len(positions))
     return (0,)
 

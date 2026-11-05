@@ -47,11 +47,11 @@ def what(truth_table: str) -> str:
             if truth_table[row] != truth_table[row - 1]
         )
         return "".join(parts) + ".!"
-    low = min(n, _LOW_INPUTS)
+    low = _LOW_INPUTS
     high = n - low
     block = 1 << low
     w = 2 * low
-    parts = ["." * w + "???" * high + "," * w if high else ""]
+    parts = ["." * w + "???" * high + "," * w]
     parts.append("??" + ".2*.??+" * (low - 1) + "..")
     for start in range(0, len(truth_table), block):
         rows = truth_table[start : start + block]

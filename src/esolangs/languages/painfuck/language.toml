@@ -121,3 +121,6 @@ tests = [
     "src/esolangs/languages/painfuck/tests/test_painfuck.py::test_painfuck_all_coin_outcomes_can_be_proved_to_loop",
     "src/esolangs/languages/painfuck/tests/test_painfuck.py::test_painfuck_one_halting_coin_refutes_an_all_branches_hang",
 ]
+
+[ablations.redundant_preconditions_20261104]
+verdict = "Reuse the public validated arity when checking affine form. Whole constants already returned, so a successful affine form cannot have all-zero coefficients. No private helper contract or emitted program changes."

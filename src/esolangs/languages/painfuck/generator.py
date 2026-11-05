@@ -82,8 +82,8 @@ def painfuck(truth_table: str) -> str:
     if count == 1:
         return _zero_chain(n, disjunction=first == "0")
     tree = in_input_order(truth_table, _painfuck_ordered)
-    form = affine_form(truth_table, _validate_truth_table(truth_table))
-    if form is None or not any(form.coefficients):
+    form = affine_form(truth_table, n)
+    if form is None:
         return tree
     return min(tree, _parity_sum(form.bias, form.coefficients), key=len)
 

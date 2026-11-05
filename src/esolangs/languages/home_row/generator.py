@@ -77,12 +77,11 @@ def _program(truth_table: str, *, negated: bool = False) -> str:
     # halves the program; its gate stays with weight zero, so nothing moves
     # and no setter changes width.
     used = essential_inputs(truth_table, n)
-    # A constant table depends on nothing and reduces to a one-input table,
-    # never to the length-1 table, which is not a valid shape.
-    table = truth_table if len(used) == n else read_at(truth_table, used or [0], n)
+    # Whole constants returned above, so at least one input remains.
+    table = truth_table if len(used) == n else read_at(truth_table, used, n)
     # The last essential input is no weight: it moves the flags, so a leaf
     # covers a pair of rows and prints one of 0, 1, x, not x.
-    last = used[-1] if used else None
+    last = used[-1]
     weights = {i: 2 ** (len(used) - 2 - slot) for slot, i in enumerate(used[:-1])}
 
     lead = "a" + TEMPLATE_CHAR + ("sla" if negated else "ls")

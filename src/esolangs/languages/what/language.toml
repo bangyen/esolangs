@@ -111,3 +111,6 @@ contract = "interpreter.py"
 tests = [
     "src/esolangs/languages/what/tests/oracle_checks.py::check_raw_what",
 ]
+
+[ablations.redundant_preconditions_20261104]
+verdict = "Past the <=15-input return, low is15 and high is positive. Remove min and the empty-prefix alternative on that branch. High-block sources remain identical at16/17 inputs, with native output controls; all bounds and pins stay unchanged."

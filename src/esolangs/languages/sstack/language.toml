@@ -118,3 +118,6 @@ contract = "interpreter.py"
 tests = [
     "src/esolangs/languages/sstack/tests/oracle_checks.py::check_raw_sstack",
 ]
+
+[ablations.redundant_preconditions_20261104]
+verdict = "Keep the public arity validated at entry instead of validating it again after constructing a shared candidate. Independent private constructors retain their checks. Emitted programs and all numeric proof scopes remain unchanged."
