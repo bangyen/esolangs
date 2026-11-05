@@ -91,7 +91,12 @@ def _adder_prefix_decoder(bits: int, prefix: str) -> _PrefixDecoder:
     )
     if bits == 4:
         # The third product begins a second window; both counts fit one digit.
-        cut = 8
+        cut = sorted(
+            col for (row, col), char in chars.items() if row == 0 and char == "~"
+        )[2]
+        first, second = cut - 1, int(chars[-1, 0]) - cut + 1
+        if not (1 <= first <= 9 and 1 <= second <= 9):
+            raise AssertionError("prefix adder windows need single-digit counts")
 
         def shift(point: tuple[int, int]) -> tuple[int, int]:
             return point[0], point[1] + int(point[1] >= cut)
@@ -99,7 +104,7 @@ def _adder_prefix_decoder(bits: int, prefix: str) -> _PrefixDecoder:
         chars = {shift(p): c for p, c in chars.items()}
         turns = {shift(p): h for p, h in turns.items()}
         reads = _remap_reads(reads, shift)
-        chars[-1, 0], chars[0, cut], chars[-1, cut] = "7", "$", "4"
+        chars[-1, 0], chars[0, cut], chars[-1, cut] = str(first), "$", str(second)
         hold = _hold_column(chars)
         chars[0, hold] = str(hold - exit_at[1] - 1)
         reads.append(((0, cut), (-1, cut), frozenset()))

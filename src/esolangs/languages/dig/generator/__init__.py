@@ -23,8 +23,9 @@ Decisions:
     collide remain unshared.  A shared walk adds one travel along a grid
     axis to the unshared descent, so commands stay O(sqrt T)
     ([proof_formulas.execution]); no ledger refuses a build.  A prefix
-    lookup can index up to ten shared leaf classes at n=7..12 (one prefix
-    bit at n=7), adding eight rows per class to one six-input body;
+    lookup can index up to ten shared leaf classes with one to six prefix
+    bits, adding eight rows per class to one six-input body. Ignored inputs
+    on the leaf adders can raise the physical input count above twelve;
     full-input parity uses 384 cells and 384 commands at n=9, four-class
     n=10 controls 1,152 cells and 291 commands.
     Narrow widths can use the indexed leaf decoder.

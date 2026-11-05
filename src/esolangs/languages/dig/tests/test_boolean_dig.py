@@ -696,6 +696,23 @@ def test_indexed_six_bit_decoder_runs_four_classes() -> None:
     worst = _check_rows(rows, table, 417)
     assert worst == 417
 
+    from esolangs.languages.dig.proof_formulas import execution
+
+    # Six prefix bits, one ignored input, then the six-input AND/OR body.
+    table = "".join(
+        str(int((row & 63) != 0 if (row >> 7).bit_count() % 2 else (row & 63) == 63))
+        for row in range(8192)
+    )
+    program = _dig_indexed_shared(table, 13)
+    assert program is not None
+    assert boolean.dig(table) == program
+    _check_rows(
+        program.splitlines(),
+        table,
+        execution(13, program),
+        (0, 1, 63, 64, 127, 128, 8190, 8191),
+    )
+
 
 @pytest.mark.medium
 def test_indexed_sharing_builds_seven_and_eight_classes_at_twelve_inputs() -> None:
