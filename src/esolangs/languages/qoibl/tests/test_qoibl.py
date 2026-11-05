@@ -132,16 +132,20 @@ class TestQoiblBehaviour:
         with pytest.raises(HaltError, match=r"is outside 0\.\.255\n"):
             _eval(["qe", "yeeeeeeee", "qe"], {}, (), 0, [])
 
-    def test_division_by_zero(self) -> None:
+    def test_signed_division_and_zero(self) -> None:
         from esolangs.exceptions import HaltError
 
-        code: list[str] = [
-            "we y we yyy we",  # var[1] = 7
-            "we ye we e we",  # var[2] = 0
-            "tt qe y qe ry yy ry qe ye qe tt",  # print var[1] // var[2]
-        ]
+        expr = ["qe", "y", "qe", "ry", "yy", "ry", "qe", "ye", "qe"]
+        for left, right, expected in (
+            (-7, 3, -3),
+            (7, -3, -3),
+            (-7, -3, 2),
+            (-6, 3, -2),
+            (-(2**80) - 1, 2, -(2**79) - 1),
+        ):
+            assert qoibl._eval(expr, {1: left, 2: right}, (), 0, [])[0] == expected
         with pytest.raises(HaltError):
-            run(code, IO())
+            run([_SET1_7, "we ye we e we", _binary("ry yy ry")], IO())
 
     def test_unrecognized_operator_rejected(self) -> None:
         """An unrecognized arithmetic operator is a malformed program."""
