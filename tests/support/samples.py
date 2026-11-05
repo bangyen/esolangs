@@ -89,8 +89,7 @@ def bits_of(value: int) -> str:
 # This is a fact about the language, so a caller does not have to come here
 # to learn it: each of the seven declares
 # ``dumps_on_the_post_halt_step = True`` on its ``_Machine``, and
-# :attr:`esolangs.vm.VM.dumps_on_the_post_halt_step` reports it -- the same
-# mechanism ``reproducible_seed`` uses, for the same reason.
+# :attr:`esolangs.vm.VM.dumps_on_the_post_halt_step` reports it.
 #
 # **Do not derive this set from that flag.**  Importing every ``_Machine``
 # and reading the attribute reproduces these names exactly, which is the

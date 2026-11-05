@@ -29,6 +29,8 @@ class RuntimeSpec:
     dialect: Callable[..., Any] | None = None
     dialect_values: Mapping[str, tuple[int | str, ...]] | None = None
     random: bool = False
+    #: Seed for reproducible stepping; ordinary runs retain real randomness.
+    reproducible_seed: int = 0
     #: What an exhausted read does instead of raising EOFError.
     eof: str = ""
     underfed_raises: bool = False

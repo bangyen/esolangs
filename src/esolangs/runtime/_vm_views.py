@@ -19,7 +19,6 @@ _NOT_A_VIEW = frozenset(
         "dumps_on_the_post_halt_step",
         "eof_is_a_value",
         "ip_shape",
-        "reproducible_seed",
     }
 )
 

@@ -232,7 +232,6 @@ def _render(stack: _Stack) -> str:
 class _Machine:
     """The run state: the pending frames, the mapping, and the halt."""
 
-    reproducible_seed = 0
     #: Missing inputs are the endless zeros below the stack: an underfed
     #: run answers the row with those inputs 0.
     eof_is_a_value = True

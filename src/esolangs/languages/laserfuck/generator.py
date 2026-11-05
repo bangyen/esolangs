@@ -884,7 +884,14 @@ def balance_laserfuck(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "LaserFuck",
-    RuntimeSpec("laserfuck", category="grid_based", random=True, split=True),
+    RuntimeSpec(
+        "laserfuck",
+        category="grid_based",
+        random=True,
+        split=True,
+        # Seed 2 draws heading 0 (up), matching this language's examples.
+        reproducible_seed=2,
+    ),
     backend=BooleanBackend(generate=laserfuck, balance=balance_laserfuck, grid=True),
     contract=BooleanContract(
         answer_mode="dump",

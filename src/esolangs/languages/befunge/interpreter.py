@@ -262,7 +262,6 @@ class _Machine:
     """Protocol shell holding one immutable Befunge state value."""
 
     #: The first draw is a fact about the program, so a seed makes it repeat.
-    reproducible_seed = 0
 
     def __init__(
         self, code: Sequence[str], io: IO, rng: Randomness | None = None

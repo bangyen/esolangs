@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import importlib
-import inspect
 import re
 import shlex
 import signal
@@ -22,10 +21,12 @@ from esolangs.exceptions import (
     ProgramError,
 )
 from esolangs.registry import INTERPRETERS, LANGUAGES
+from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._program import Program, RunnerProgram
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
 from esolangs.runtime.source_hints import with_hint
+from esolangs.settings import dialect_options
 
 
 def check_signal_timeout(timeout: float | None, message: str) -> None:
@@ -201,11 +202,7 @@ def check_seed_for(name: str, seed: int | None) -> None:
 def prepare_call(
     name: str,
     program: Program,
-    target: Callable[..., Any],
-    *,
-    scale: int | None = None,
-    seed: int | None = None,
-    reproducible: bool = False,
+    context: ExecutionContext,
 ) -> tuple[RunnerProgram, dict[str, Any]]:
     """Prepare source shape and options for a runner or machine constructor."""
     code = (
@@ -214,21 +211,22 @@ def prepare_call(
         else program
     )
     options: dict[str, Any] = {}
-    if scale is not None:
-        options["scale"] = scale
-    draws = "rng" in inspect.signature(target).parameters
-    if seed is not None and not draws:
+    if context.scale is not None:
+        options["scale"] = context.scale
+    runtime = LANGUAGES[name].runtime
+    if context.seed is not None and not runtime.random:
         raise _seed_refusal(name)
-    if draws and (seed is not None or reproducible):
+    if runtime.random and (context.seed is not None or context.reproducible):
         try:
             options["rng"] = Seeded(
-                seed if seed is not None else getattr(target, "reproducible_seed", 0)
+                context.seed if context.seed is not None else runtime.reproducible_seed
             )
         except (TypeError, ValueError) as exc:
             raise with_hint(
                 ArgumentError(str(exc)),
                 ("use a supported seed value, for example the integer seed=0"),
             ) from exc
+    options.update(dialect_options(name, context.settings))
     return code, options
 
 

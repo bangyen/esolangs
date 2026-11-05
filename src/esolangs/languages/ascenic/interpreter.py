@@ -151,7 +151,6 @@ def _advance(
 class _Machine:
     """The run state: the next instruction and the stack."""
 
-    reproducible_seed = 0
     ip_shape = "line"
 
     def __init__(self, code: str, io: IO, rng: Randomness | None = None) -> None:

@@ -82,6 +82,7 @@ from esolangs.runtime._artifacts import (
     TemplateArtifact,
     TemplateBindings,
 )
+from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._execution import (
     check_signal_timeout,
     interpreter_errors,
@@ -877,10 +878,10 @@ def run(
     name = resolve(language)
     program = _check_program(name, program, stdin)
     settings = effective_settings(name, program, settings)
-    dialect = dialect_options(name, settings)
     run_fn = interpreter_module(name).run
-    program_args, options = prepare_call(name, program, run_fn, scale=scale, seed=seed)
-    options.update(dialect)
+    program_args, options = prepare_call(
+        name, program, ExecutionContext(scale=scale, seed=seed, settings=settings)
+    )
     if options:
         run_fn = partial(run_fn, **options)
     io_obj = ScriptedIO(stdin)

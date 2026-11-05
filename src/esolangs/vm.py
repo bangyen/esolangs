@@ -90,6 +90,7 @@ from esolangs._cycles import (
 )
 from esolangs.exceptions import ArgumentError, InterpreterLimitError
 from esolangs.registry import resolve
+from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._execution import (
     interpreter_errors,
     interpreter_module,
@@ -258,9 +259,10 @@ class _DelegatingVM:
         self._io = ScriptedIO(stdin)
         state = interpreter_module(language)._Machine  # noqa: SLF001 - interpreter adapter
         code, options = prepare_call(
-            language, program, state, scale=scale, reproducible=True
+            language,
+            program,
+            ExecutionContext(scale=scale, reproducible=True, settings=settings),
         )
-        options.update(dialect_options(language, settings))
         # A machine with a cached ``_for_run`` (static topology compiled once
         # per source) skips re-validating the program on every VM.
         build = getattr(state, "_for_run", None)
@@ -334,10 +336,8 @@ class _DelegatingVM:
         """The stack, or empty where the language has none."""
         return list(getattr(self._machine, "stack", ()))
 
-    # The traits come off the machine by ``getattr``, the way
-    # ``reproducible_seed`` does: they are facts about the language, so the
-    # interpreter declares them and the fifty-odd following the common shape
-    # say nothing.  The defaults are that common case.
+    # Traits come off the machine by ``getattr``; the interpreter declares
+    # exceptions to the common shape, which supplies the defaults.
 
     @property
     def self_halts(self) -> bool:

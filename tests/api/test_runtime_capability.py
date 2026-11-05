@@ -33,6 +33,7 @@ def test_backend_and_example_changes_preserve_the_runtime_definition():
     ("relative", "class_name"),
     [
         ("runtime/_definition.py", "RuntimeSpec"),
+        ("runtime/_context.py", "ExecutionContext"),
         ("registry/_certification.py", "CertificationSpec"),
     ],
 )

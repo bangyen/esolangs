@@ -8,6 +8,7 @@ import esolangs
 from esolangs import _check_program, debugger
 from esolangs.exceptions import EsolangError, UnknownLanguageError
 from esolangs.registry import LANGUAGES
+from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._definition import RuntimeSpec
 from esolangs.runtime._validate import (
     check_bits,
@@ -46,10 +47,10 @@ def test_seed_hint_tracks_registered_random_languages(monkeypatch) -> None:
     with pytest.raises(
         esolangs.ArgumentError, match="the languages that draw are Draws"
     ):
-        _execution.prepare_call(REFERENCE, "", lambda code: code, seed=1)
+        _execution.prepare_call(REFERENCE, "", ExecutionContext(seed=1))
     del registered["Draws"]
     with pytest.raises(esolangs.ArgumentError, match="no registered language draws"):
-        _execution.prepare_call(REFERENCE, "", lambda code: code, seed=1)
+        _execution.prepare_call(REFERENCE, "", ExecutionContext(seed=1))
 
 
 @pytest.mark.parametrize(

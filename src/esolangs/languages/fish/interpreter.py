@@ -404,7 +404,6 @@ def _thaw(state: _State) -> tuple[_Core, int]:
 class _Machine:
     """Fish shell: one immutable :data:`_Core`, rebound per step."""
 
-    reproducible_seed = 0
     ip_shape = "grid"
     #: ``i`` pushes -1 at EOF and the run goes on (underfed XOR printed -48).
     eof_is_a_value = True

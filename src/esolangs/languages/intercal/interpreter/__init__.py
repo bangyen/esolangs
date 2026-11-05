@@ -109,8 +109,6 @@ class _Machine:
     asks and writes what it returns.
     """
 
-    reproducible_seed = 0
-
     def __init__(self, code: str, io: IO, rng: Randomness | None = None) -> None:
         self.io = io
         self._rng = rng

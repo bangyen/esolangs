@@ -25,6 +25,32 @@ def test_bound_execution_passes_the_seed() -> None:
     assert [language.run("o+++.\n", seed=0) for _ in range(6)] == ["3"] * 6
 
 
+def test_seeded_run_accepts_an_opaque_runner(monkeypatch):
+    module = interpreter_module("LaserFuck")
+    original = module.run
+
+    def opaque(*args, **kwargs):
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(module, "run", opaque)
+    assert esolangs.run("LaserFuck", "o+++.\n", seed=0) == "3"
+
+
+def test_reproducible_vm_accepts_an_opaque_factory(monkeypatch):
+    module = interpreter_module("LaserFuck")
+    original = module._Machine
+
+    def opaque(*args, **kwargs):
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(module, "_Machine", opaque)
+    vm = esolangs.vm.make_vm("LaserFuck", "\u00ff   x\n    +\n    o")
+    assert vm.ip == (2, 4, 0)
+    vm.step()
+    assert vm.ip == (1, 4, 0)
+    assert vm.memory == [1]
+
+
 @pytest.mark.medium
 def test_isolation_preserves_integer_seeds_beyond_the_decimal_rendering_limit() -> None:
     seeds = [*range(8), 10**5000, -(10**5000)]  # strings are refused now
@@ -59,8 +85,8 @@ class TestLaserFuck:
         assert vm.output == "\x01"
 
     def test_dump_output_matches_interpreter(self) -> None:
-        from esolangs.languages.laserfuck.interpreter import _Machine as _LFMachine
         from esolangs.languages.laserfuck.interpreter import run as lf_run
+        from esolangs.registry import LANGUAGES
         from esolangs.runtime.io import ScriptedIO
         from esolangs.runtime.randomness import Seeded
 
@@ -69,7 +95,11 @@ class TestLaserFuck:
         # The VM builds its machine with ``Seeded(reproducible_seed)``, so
         # handing ``run`` the same source is what makes the two sides
         # comparable -- the heading is drawn, not passed, on both.
-        lf_run(program.splitlines(), io_obj, rng=Seeded(_LFMachine.reproducible_seed))
+        lf_run(
+            program.splitlines(),
+            io_obj,
+            rng=Seeded(LANGUAGES["LaserFuck"].runtime.reproducible_seed),
+        )
         vm = debugger_api.make_vm("LaserFuck", program)
         _run_all(vm)
         vm.step()  # the dump, which run performs as its own last step
