@@ -224,8 +224,8 @@ class _Stream:
     def jump(self, level: int, block: int, accumulator: int) -> bool:
         """Jump into an earlier copy of this subtree if that is shorter.
 
-        The copy is its own run of whole syllables, so what it spent is
-        known to the character, and so is the jump that would replace it.
+        The copy's segment length is known. A conservative syllable cost
+        admits only jumps shorter than that segment.
         """
         if not self._ids:
             return False
@@ -374,10 +374,9 @@ def cvnc(truth_table: str) -> str:
     shapes = [(truth_table, [1] * n)]
     if 1 < len(table) < len(truth_table):
         shapes.append((table, weights))
-    # The gadget must reach past the program.  Sharing only shortens a body
-    # (a jump is taken only where shorter), so the unshared body bounds it
-    # whatever the prologue, and the squarings follow from that length at
-    # once; the 64 covers the gadget itself (8 + 2 per squaring).
+    # Price the gadget from the unshared body plus slack. Segment cuts can
+    # make sharing grow despite individually cheaper jumps; the final guard
+    # rejects a body beyond this reach rather than emitting a nonhalting one.
     unshared = min(
         len(in_input_order(shape, partial(_direct, offset=None, weights=named)))
         for shape, named in shapes
@@ -394,6 +393,6 @@ def cvnc(truth_table: str) -> str:
         key=len,
     )
     program = _halt(squarings) + body
-    if len(program) >= _reach(squarings):  # pragma: no cover - sharing never grows
-        raise AssertionError("shared body outgrew the unshared bound")
+    if len(program) >= _reach(squarings):
+        raise AssertionError("program exceeds the halting gadget reach")
     return program

@@ -238,7 +238,9 @@ class TestCvncScalingBound:
         for table, chars in _PAIR_CHARS.items():
             assert len(module._render(module._tree(table))) == chars
 
-    def test_a_program_is_at_most_its_prologue_and_chunks(self) -> None:
+    def test_a_program_is_at_most_its_prologue_and_chunks(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """The 17T/2 + 13 bound: pairs 12, nodes above 5, prologue <= 18."""
         rng = random.Random(7)
         tables = [format(v, "08b") for v in range(256)]
@@ -250,6 +252,25 @@ class TestCvncScalingBound:
             n = len(table).bit_length() - 1
             assert len(boolean.cvnc(table)) <= 18 + _closed(table), table
             assert _closed(table) <= 17 * 2 ** (n - 1) - 5
+
+        # Segment cuts can add a character even when every taken jump saves.
+        table = (
+            "0100010011011101000000000111011101000100110111010000000001110111"
+            "1000100000010001011001101001100110001000000100010110011010011001"
+        )
+        module = importlib.import_module("esolangs.languages.cvnc.generator")
+        weights, reduced = module.input_weights(table, 7)
+        shapes = ((table, [1] * 7), (reduced, weights))
+        plain = min(len(_direct(t, (), None, w)) for t, w in shapes)
+        shared = min(len(_direct(t, (), 7, w)) for t, w in shapes)
+        assert shared == plain + 1
+        program = boolean.cvnc(table)
+        assert len(program) < module._reach(_HALT_SQUARINGS)
+        assert run_cvnc(program, "0000000") == table[0]
+        assert run_cvnc(program, "1111111") == table[-1]
+        monkeypatch.setattr(module, "_reach", lambda _s: 0)
+        with pytest.raises(AssertionError, match="halting gadget reach"):
+            module.cvnc(table)
 
 
 def _check_constants() -> None:
