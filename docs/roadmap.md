@@ -65,45 +65,70 @@ check or weakening a contract.
 
 ## Architecture migrations
 
-Previous architecture migrations are integrated. All 117 languages execute a
-bounded independent semantic model and detect a live output fault. Models
-cover their declared fragments; broader regressions, purity and snapshot
-checks remain. Language-specific compatibility decisions stay in the
-interpreter contracts. Brainfuck now projects a versioned workspace model;
-cycle snapshots and Python backing storage retain separate contracts.
+The earlier incremental migrations met their scoped acceptance criteria, not a repository-wide
+compatibility-removal goal. Independent descriptors cover all 117 languages;
+artifacts, shared results, construction analyses, structured evidence and semantic
+accounting are integrated at differing scopes. Existing line, case, duration and
+purity gates remain in force.
 
-Public artifacts, independent lazy descriptors and shared execution results
-are integrated. Decision analyses serve four backends; affine forms and
-weighted lookups retain specialized emitters. Resource claims render from
-structured evidence. The cost/fault pilot retained the current verification
-budgets. Further migrations retain corpus, timing and growth gates.
+Finish the rollouts below, then delete their legacy API, import and protocol
+adapters. Price each batch within the standing compute budget. Review active
+migration work before assigning overlapping changes. Public breaking changes
+require a versioned cutover and caller migration; moving adapters into
+`esolangs.compat` does not complete their removal.
 
-Next experiments, in priority order. Price each pilot within the standing
-compute budget before running it; these proposals do not change contracts.
-
-1. **Artifact-first API:** prototype explicit source/file construction and
-   program/template results using the existing artifacts and execution results.
-   Map compatibility adapters that disappear and caller migrations required;
-   changing public defaults needs a versioned compatibility plan.
-2. **Typed interpreter lifecycle:** pilot declared preparation, machine factories
-   and optional debugging/completion capabilities in place of private-name and
-   signature discovery. Preserve lazy loading, source-step accounting, dialects
-   and completion evidence; compare corpus traces and timings before expansion.
-3. **State-storage policy:** measure an owned mutable-store prototype against
-   the immutable core, including snapshot isolation, independent semantics and
-   trace equivalence. Retain purity gates; adopting mutable storage requires an
-   explicit policy decision backed by the pilot's costs and guarantees.
-4. **Generator analysis boundaries:** identify duplicated analysis beyond the
-   existing decision, affine and lookup helpers. Pilot shared validated inputs
-   and analysis only where emitters benefit; associate the selected construction
-   with its bounds and witnesses. Require byte-identical corpus output and
-   preserved growth and timings; keep language-specific emission and selection.
-5. **Certification boundaries:** audit operational imports and remaining
-   duplicated evidence. Pilot moving certification dependencies outside runtime
-   descriptors and rendering duplicated claims from structured evidence.
-   Preserve lazy catalog access, installed-package behavior, independent oracles
-   and live fault detection; replace private-name discovery with declarations
-   only when equivalent checks execute.
+1. **Artifact-first API cutover:** finish explicit source/file inputs and
+   program/template results across the public API, CLI, scripts, docs and tests.
+   Migrate callers, then remove tagged-string defaults, `_Tagged`, `_Template`,
+   source adapters and plain-string template/binding recovery. Done when the
+   canonical API retains metadata without hidden tags or inferred bindings,
+   rejects unfilled templates, and no runtime caller needs the legacy facade.
+2. **Declared interpreter lifecycle:** migrate all 117 descriptors to declared
+   preparation, machine factories, completion/debugging capabilities and dialect
+   schemas. Remove `_Machine`/`_for_run` discovery, implicit entry-point defaults,
+   signature inspection and legacy constructor adapters. Done when every native,
+   stepped and isolated route uses declarations, with equivalent traces, source
+   steps, errors, dialect behavior, completion evidence and acceptable timings.
+3. **Semantic accounting and storage:** extend versioned workspace models to all
+   117 interpreters, separating logical resource state from cycle snapshots and
+   Python storage. Preserve input progress, snapshot isolation and independent
+   semantics; remove snapshot-as-accounting fallbacks. Decide storage policy from
+   priced immutable/mutable pilots without weakening purity gates. Done when
+   every interpreter has exact resource witnesses and trace-equivalence checks.
+4. **Generator analysis rollout:** audit all 114 Boolean backends for duplicated
+   validation and decision, algebraic or lookup analysis. Use canonical analyses
+   where applicable; record justified target-specific constructions and retain
+   emitter-owned reads, layout and selection. Remove superseded implementations
+   and migrate imports off compatibility re-exports. Done when each backend is
+   accounted for, corpus bytes match, growth bounds hold and timing gates pass.
+5. **Certification and evidence separation:** finish separating certification
+   dependencies from runtime descriptors across the catalog. Replace remaining
+   private-name discovery and duplicated claims with declarations and structured
+   evidence. Done when installed runtime/catalog operations avoid certification
+   implementations, documented claims execute, and independent oracles and live
+   fault controls retain their coverage. Keep current budgets unless a separately
+   validated policy replacement is adopted.
+6. **Result and persistence cutover:** migrate callers and persisted fixtures to
+   canonical artifact/result schemas. Remove tagged-source loading adapters,
+   legacy worker-field fallbacks and the private `_result` import shim; unavailable
+   counters and observations remain explicit. For superseded formats, provide a
+   one-time conversion path; retire legacy decoders and conversion scaffolding
+   when the data migration is complete.
+   Done when round trips and success/failure route witnesses use only canonical
+   schemas, including EOF, partial output, post-halt dumps and periodic evidence.
+7. **Registry and import retirement:** migrate legacy generator indexes/exports,
+   `BooleanBackend(generate=...)` callers and duplicate descriptor exports to
+   canonical declarations. Delete obsolete aliases, facade modules and helper
+   re-exports after their consumers migrate. Preserve lazy implementation loading.
+   Done when repository callers, docs, tests and installed-package checks use only
+   the supported imports and constructors.
+8. **Compatibility-removal acceptance:** keep a finite inventory of every adapter,
+   its owner, consumers, replacement and removal release, plus a per-language/backend
+   rollout ledger. Close a migration only after all affected rows are migrated
+   and its adapters are deleted, including any temporary `esolangs.compat`.
+   Add checks preventing retired imports, defaults and protocol forms from
+   returning; verify the installed package on supported Python versions. Finish
+   with corpus, execution, timing, size/resource and required referee gates.
 
 ## Engineering
 
