@@ -444,6 +444,8 @@ def _dispatch_head(st: _Sums) -> int:
         (target - heads[_W]) * _W_INV % _MODULUS
         for target in range(want, _GREEDY_MIN, _ARRAYS)
     )
+    # Only SEED moves heads, so they share a phase modulo 256. Absolute phase
+    # 26 meets both print filters; every reachable phase can reach it.
     return next(
         count
         for count in counts
@@ -722,8 +724,7 @@ def _program_255(truth_table: str, n: int, io_modulus: int) -> str:
     """Cell modulus 255: a coprime-array chain, or a tree below its break-even.
 
     A table with ignored inputs also races the chain projected onto its
-    essential inputs, keeping the shorter; one ignored input saves 4.6% at
-    n=8 and 11.6% at n=10 (I/O 255).
+    essential inputs, keeping the shorter while preserving every input read.
     """
     legacy = _unprojected_255(truth_table, n, io_modulus)
     used = essential_inputs(truth_table, n)

@@ -189,8 +189,8 @@ def _leaf(digit: int, *, unit: int, guard: bool = True) -> list[str]:
     target instead of after it lands one token early, here, and the
     accumulator exceeds the array, so it does nothing before falling into
     the leaf.  The unguarded form keeps the closing ``EXCRETE`` that
-    zeroes the accumulator for the halt; the compact chain builds with
-    it and turns the slot's last padding token into the guard itself.
+    zeroes the accumulator for the halt. Guarded leaves require a nonzero
+    print tail and a head larger than the printed digit.
     """
     body = [
         "EXCRETE",
@@ -204,7 +204,7 @@ def _leaf(digit: int, *, unit: int, guard: bool = True) -> list[str]:
     if not guard:
         return [*body, *["SEED"] * (unit - len(body))]
     del body[-2]
-    if len(body) >= unit:  # pragma: no cover - callers pass unit >= 8
+    if len(body) >= unit:  # pragma: no cover - callers pass unit >= 7
         raise AssertionError(f"a {len(body)}-token leaf leaves no guard in {unit}")
     return [*body, *["SEED"] * (unit - len(body) - 1), "SPRINT"]
 

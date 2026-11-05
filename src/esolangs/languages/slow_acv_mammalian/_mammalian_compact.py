@@ -281,15 +281,15 @@ class _Chain:
     def plan(self, inputs: int) -> tuple[list[tuple[int, int | None]], int, int, int]:
         free = min(inputs, len(self.pools) + 1)
         fixed = inputs - free
-        # The unit leaves one token past the longest leaf (6 tokens plus
-        # its digit SEEDs) for the SPRINT guard that ends the slot.
-        unit = 7 + self.digit_seeds
+        # A nonzero print tail lets the leaf halt without a closing EXCRETE.
+        # Include its guard, and align binary I/O blocks without a large LCM.
+        minimum = 6 + self.digit_seeds
+        unit = minimum if self.io_modulus == 255 else 1 << (minimum - 1).bit_length()
         stride = lcm(self.io_modulus, unit)
         if self.io_modulus == 255 and inputs > free:
-            unit = 7 + self.digit_seeds
-            # A group's leaf offsets must stay under the stride:
-            # (2**free - 1) * unit < io_modulus.
-            free = min(free, ((self.io_modulus - 1) // unit + 1).bit_length() - 1)
+            # The whole group must fit: overlapping the last guard with the
+            # next group made at-target dispatch loop on the prior LEAPFROG.
+            free = min(free, (self.io_modulus // unit).bit_length() - 1)
             fixed = inputs - free
             stride = self.io_modulus
         weights = [stride * (1 << (fixed - bit - 1)) for bit in range(fixed)]
@@ -340,7 +340,7 @@ class _Chain:
         for digit, array in enumerate(self.prints):
             tokens += self.route(state, array, short=True)
             tokens += self.append(state, 48 + digit)
-            tokens += self.clear(state)
+            tokens += self.append(state, 1)
             tokens += self.route(state, 0, short=True)
         for weight, pool in plan:
             if pool is not None:
@@ -403,15 +403,10 @@ class _Chain:
                 suffix = int(f"{offset:0{free}b}"[::-1], 2)
                 digit = table[(group << free) | suffix]
                 start = base + group * stride + offset * unit
-                leaf = _leaf(int(digit) * self.digit_seeds, unit=unit, guard=False)
-                if leaf[-1] != "SEED":  # pragma: no cover - plan sizes the unit
-                    raise AssertionError("leaf slot leaves no room for its guard")
-                # The unguarded body keeps the closing EXCRETE the halt
-                # needs; the slot's last padding token becomes the
-                # SPRINT guard the next slot's dispatch lands on when a
-                # LEAPFROG resumes at its target instead of after it.
-                leaf[-1] = "SPRINT"
+                leaf = _leaf(int(digit) * self.digit_seeds, unit=unit)
                 tokens[start : start + unit] = leaf
+                # Group gaps are padding, not a preceding leaf's guard.
+                tokens[start - 1] = "SPRINT"
         return " ".join(tokens)
 
 

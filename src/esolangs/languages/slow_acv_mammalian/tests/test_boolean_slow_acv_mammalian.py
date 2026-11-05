@@ -335,6 +335,34 @@ class TestSlowAcvMammalian:
                 answers.append(io.getvalue())
             assert answers == [table[row]] * 2
 
+        if table == "0110" and io_modulus == 255:
+            # Full groups used to overlap: row 128 landed on the prior leaf's
+            # LEAPFROG and repeated it forever under the at-target reading.
+            monkeypatch.setattr(interpreter, "_advance", advance)
+            table = format(random.Random(1847).getrandbits(256), "0256b")
+            program = boolean.slow_acv_mammalian(
+                table, cell_modulus=255, io_modulus=255
+            )
+            limit = 2 * len(program.split())
+            for resume in ("after", "at"):
+                for row in (16, 32, 64, 128, 240, 255):
+                    io = ScriptedIO(f"{row:08b}Q")
+                    machine = _Machine(
+                        program,
+                        io,
+                        cell_modulus=255,
+                        io_modulus=255,
+                        leapfrog_resume=resume,
+                    )
+                    for _ in range(limit):
+                        if machine.halted:
+                            break
+                        machine.step()
+                    assert machine.halted
+                    assert io.getvalue() == table[row]
+                    assert io.reads == 8
+                    assert io.input_char() == ord("Q")
+
     def test_a_slot_is_the_same_width_for_either_digit(self) -> None:
         """The table's stride is a leaf, and a leaf does not read the sum."""
         from esolangs.languages.slow_acv_mammalian.generator import _program
