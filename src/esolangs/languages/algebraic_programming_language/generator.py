@@ -157,7 +157,7 @@ def _apl_repeated_expressions(program: str) -> str:
             names[index] = short_name(offset + len(names), ascii_uppercase)
             count = 1
         # A definition writes its body once. An inline group keeps every copy.
-        # Descendants have not been named yet, so each accepted gain is exact.
+        # Descendants are not named yet; the charge leaves two characters of slack.
         for part in nodes[index]:
             if isinstance(part, int):
                 copies[part] += count
