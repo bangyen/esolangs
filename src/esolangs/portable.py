@@ -14,6 +14,7 @@ from esolangs.compressed import CompressedText, TextLimits
 from esolangs.exceptions import ArgumentError, ProgramError
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, resolve, template_char
+from esolangs.runtime._artifacts import ProgramArtifact, TemplateArtifact
 from esolangs.runtime._program import Program
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 from esolangs.tagged import _Tagged, _Template
@@ -88,25 +89,31 @@ def dump_program(
         "language": name,
         "settings": encoded,
     }
-    if isinstance(source, Raster):
-        document.update(
-            kind="png", source=base64.b64encode(source.to_png()).decode("ascii")
-        )
-    elif isinstance(source, CompressedText):
-        document.update(
-            kind="gzip",
-            source=base64.b64encode(source.to_gzip()).decode("ascii"),
-            limits=asdict(source.limits) if source.limits is not None else None,
-        )
-    elif isinstance(source, _Template):
+    artifact = (
+        source._artifact  # noqa: SLF001 - source compatibility adapter
+        if isinstance(source, _Tagged)
+        else ProgramArtifact(source, name, settings)
+    )
+    body = artifact.source
+    if isinstance(artifact, TemplateArtifact):
         document.update(
             kind="template",
-            source=str(source),
-            char=source.char,
-            setters=source.setters,
+            source=artifact.source,
+            char=artifact.bindings.char,
+            setters=artifact.bindings.setters,
+        )
+    elif isinstance(body, Raster):
+        document.update(
+            kind="png", source=base64.b64encode(body.to_png()).decode("ascii")
+        )
+    elif isinstance(body, CompressedText):
+        document.update(
+            kind="gzip",
+            source=base64.b64encode(body.to_gzip()).decode("ascii"),
+            limits=asdict(body.limits) if body.limits is not None else None,
         )
     else:
-        document.update(kind="text", source=str(source))
+        document.update(kind="text", source=str(body))
     try:
         # The check ``load_program`` makes: a lone surrogate dumped as a
         # ``\ud800`` escape, which it then refused.

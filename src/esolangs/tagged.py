@@ -5,12 +5,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Self
 
-from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
-    Setters,
-    check_setters,
-    fill_runs,
-    runs,
+from esolangs.generation.helpers import TEMPLATE_CHAR, Setters
+from esolangs.runtime._artifacts import (
+    ProgramArtifact,
+    TemplateArtifact,
+    TemplateBindings,
 )
 
 if TYPE_CHECKING:
@@ -42,6 +41,11 @@ class _Tagged(str):
         object.__setattr__(program, "settings", settings)
         return program
 
+    @property
+    def _artifact(self) -> ProgramArtifact[str] | TemplateArtifact:
+        """Convert at the boundary; retaining a record doubles stored text."""
+        return ProgramArtifact(str(self), self.language, self.settings)
+
     def __setattr__(self, name: str, value: object) -> None:
         """Refuse: a retag (``p.language = "Brainfuck"``) changed what ran."""
         raise AttributeError(f"{type(self).__name__} is immutable")
@@ -71,8 +75,7 @@ class _Template(_Tagged):
     every run kept whole.
     """
 
-    char: str
-    setters: Setters
+    _bindings: TemplateBindings
 
     def __new__(
         cls,
@@ -83,30 +86,36 @@ class _Template(_Tagged):
         settings: DialectSettings | None = None,
     ) -> Self:
         """Return ``text`` tagged as ``language``'s template."""
-        template = super().__new__(cls, text, language, settings)
-        object.__setattr__(template, "char", char)
-        object.__setattr__(template, "setters", check_setters(setters))
-        runs(text, char, template.setters)
+        artifact = TemplateArtifact(
+            str(text), language, TemplateBindings(char, tuple(setters)), settings
+        )
+        template = super().__new__(cls, artifact.source, language, settings)
+        object.__setattr__(template, "_bindings", artifact.bindings)
         return template
+
+    @property
+    def char(self) -> str:
+        """The character marking input runs."""
+        return self._bindings.char
+
+    @property
+    def setters(self) -> Setters:
+        """Ordered zero/one bindings."""
+        return self._bindings.setters
+
+    @property
+    def _artifact(self) -> TemplateArtifact:
+        """Recover the explicit record from the legacy source adapter."""
+        return TemplateArtifact(str(self), self.language, self._bindings, self.settings)
 
     @property
     def inputs(self) -> int:
         """How many inputs the template embeds."""
-        return len(self.setters)
+        return self._bindings.inputs
 
     def fill(self, bits: Sequence[int]) -> str:
         """Return the program for ``bits``; the wrong count is a TemplateError."""
-        from esolangs.exceptions import TemplateError
-        from esolangs.runtime._validate import check_bits
-
-        # ``fill([0])`` on a two-input template raised a bare ValueError.
-        bits = check_bits(bits, "bits")
-        if len(bits) != self.inputs:
-            raise TemplateError(
-                f"this template has {self.inputs} inputs, but {len(bits)} "
-                f"bits were given"
-            )
-        return fill_runs(str(self), self.char, self.setters, bits)
+        return self._bindings.fill(str(self), bits)
 
     def __reduce__(self) -> tuple[object, ...]:
         """Pickle with the character and the setters."""
