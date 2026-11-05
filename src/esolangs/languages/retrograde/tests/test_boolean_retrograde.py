@@ -3,7 +3,7 @@
 from itertools import product
 from random import Random
 
-from esolangs import compat
+import esolangs
 from esolangs import run as execute
 from tests.support.generator_support import evaluate_generated
 
@@ -50,22 +50,24 @@ def check_boolean_tables() -> None:
             table = format(value, f"0{1 << n}b")
             assert evaluate_generated("Retrograde", table) == table
             if n == 3:
-                n3_source += len(compat.generate("Retrograde", table))
+                n3_source += len(esolangs.generate("Retrograde", table).source)
     assert n3_source == 12399
     for n in (4, 5, 6):
         rng = Random(1000 * n)
         table = "".join(rng.choice("01") for _ in range(1 << n))
-        template = compat.generate("Retrograde", table)
+        template = esolangs.generate("Retrograde", table)
         for row, bits in enumerate(product((0, 1), repeat=n)):
-            source = compat.instantiate("Retrograde", template, bits)
-            pointer, direction, tape = _reference(source)
+            source = esolangs.instantiate("Retrograde", template, bits)
+            pointer, direction, tape = _reference(source.source)
             assert (pointer, direction) == (n, 1)
             assert tuple(int(i in tape) for i in range(n)) == bits
             expected = str(int(pointer in tape))
             assert execute("Retrograde", source).output == expected == table[row]
-    source = compat.instantiate("Retrograde", compat.generate("Retrograde", "01"), (0,))
-    at = source.index("/")
-    broken = source[:at] + "\\" + source[at + 1 :]
+    source = esolangs.instantiate(
+        "Retrograde", esolangs.generate("Retrograde", "01"), (0,)
+    )
+    at = source.source.index("/")
+    broken = source.source[:at] + "\\" + source.source[at + 1 :]
     assert execute("Retrograde", broken, max_steps=1000).output != "0"
 
 
@@ -76,15 +78,17 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = compat.generate("Retrograde", bit * (1 << n), **options)
-                assert template.count("$") == n
+                template = esolangs.generate("Retrograde", bit * (1 << n), **options)
+                assert template.source.count("$") == n
                 for bits in ([0] * n, [1] * n):
-                    source = compat.instantiate("Retrograde", template, bits)
-                    pointer, direction, tape = _reference(source.replace("\n", ""))
+                    source = esolangs.instantiate("Retrograde", template, bits)
+                    pointer, direction, tape = _reference(
+                        source.source.replace("\n", "")
+                    )
                     assert (pointer, direction) == (n, 1)
                     assert [int(i in tape) for i in range(n)] == bits
                     io = ScriptedIO("7")
-                    run(source, io)
+                    run(source.source, io)
                     assert io.getvalue() == bit
                     assert io.reads == 0
                     assert io.input_char() == ord("7")

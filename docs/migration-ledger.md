@@ -68,6 +68,10 @@ Owned Boolean tests for Underload, Eval, Cyclic tag, Bitwise Cyclic Tag, Stisp
 and FRACTRAN retain template bindings. Persistence checks restore artifacts;
 native calls unwrap only filled programs. Remaining template callers stay open.
 
+REFRACTRAN and Retrograde Boolean callers and Smallfuck, RAM0, Crement and
+INTERCAL layout callers retain explicit bindings. Saved-layout checks restore
+portable templates; independent native models inspect filled source.
+
 Owned integration callers now retain artifacts through execution, debugging,
 pickle and portable round trips, including raster and compressed source.
 Native-file fixtures unwrap explicitly; modified templates retain bindings.

@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import compat, run
+from esolangs import run
 from esolangs.generation.helpers import grid_width
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.intercal.generator import (
@@ -21,26 +21,28 @@ def test_intercal_token_floor_and_wrapped_corpus_size() -> None:
 
 
 @pytest.mark.parametrize("width", [1, 6, 9, 17, 22, 40])
-@pytest.mark.parametrize("as_string", [False, True])
+@pytest.mark.parametrize("restored", [False, True])
 def test_intercal_wrapped_template_keeps_public_provenance(
-    width: int, *, as_string: bool
+    width: int, *, restored: bool
 ) -> None:
     table = "0110"
-    template = compat.generate("INTERCAL", table, width=width)
-    if as_string:
-        template = str(template)
+    template = esolangs.generate("INTERCAL", table, width=width)
+    if restored:
+        template = esolangs.load_program(
+            "INTERCAL", esolangs.dump_program("INTERCAL", template)
+        )
     shapes = set()
     for row, expected in enumerate(table):
         bits = list(map(int, format(row, "02b")))
-        program = compat.instantiate("INTERCAL", template, bits, truth_table=table)
-        shapes.add(tuple(map(len, program.splitlines())))
+        program = esolangs.instantiate("INTERCAL", template, bits, truth_table=table)
+        shapes.add(tuple(map(len, program.source.splitlines())))
         assert (
             esolangs.read_answer("INTERCAL", run("INTERCAL", program).output)
             == expected
         )
     assert len(shapes) == 1
     with pytest.raises(esolangs.TemplateError, match="is not the template"):
-        compat.instantiate("INTERCAL", template, [0, 1], truth_table="1001")
+        esolangs.instantiate("INTERCAL", template, [0, 1], truth_table="1001")
 
 
 def _fit_width_oracle(default: str) -> int:
@@ -69,12 +71,16 @@ def test_balance_stays_within_five_percent_of_every_fit_width(seed: int) -> None
     rng = random.Random(seed)
     for inputs in (1, 2, 3, 4, 5):
         table = format(rng.getrandbits(1 << inputs), f"0{1 << inputs}b")
-        balanced = compat.generate("INTERCAL", table, balance=True)
-        default = compat.generate("INTERCAL", table)
-        assert balance_score(balanced)[0] <= 1.05 * _fit_width_oracle(default)
+        balanced = esolangs.generate("INTERCAL", table, balance=True)
+        default = esolangs.generate("INTERCAL", table)
+        assert balance_score(balanced.source)[0] <= 1.05 * _fit_width_oracle(
+            default.source
+        )
         for row, expected in enumerate(table):
             bits = list(map(int, format(row, f"0{inputs}b")))
-            program = compat.instantiate("INTERCAL", balanced, bits, truth_table=table)
+            program = esolangs.instantiate(
+                "INTERCAL", balanced, bits, truth_table=table
+            )
             answer = run("INTERCAL", program).output
             assert esolangs.read_answer("INTERCAL", answer) == expected
 
@@ -87,9 +93,10 @@ def test_balance_packs_short_statements_into_shared_rows(n: int, side: int) -> N
     from tests.support.evaluation import _evaluate
 
     table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
-    balanced = str(compat.generate("INTERCAL", table, balance=True))
-    assert balance_score(balanced)[0] == side
+    balanced = esolangs.generate("INTERCAL", table, balance=True)
+    assert balance_score(balanced.source)[0] == side
     assert any(
-        row.count("DO ") + row.count("PLEASE ") > 1 for row in balanced.split("\n")
+        row.count("DO ") + row.count("PLEASE ") > 1
+        for row in balanced.source.split("\n")
     )
     assert _evaluate("INTERCAL", balanced, inputs=n) == table
