@@ -41,7 +41,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Example, Language, TemplateSpec
 
 #: Each input's cell: ``~`` pushes a down heading, ``.`` nothing.
 PAIR = (".", "~")
@@ -326,6 +326,7 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="the queue and decision tree occupy fixed grid coordinates",
-    example=Example(pair=PAIR, expected=""),
+    template=TemplateSpec(pair=PAIR),
+    example=Example(expected=""),
     grid=True,
 )

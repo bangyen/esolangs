@@ -12,7 +12,7 @@ from tests.support.pick import languages
 
 
 def _parameterized_generators():
-    """Return every registered generator whose examples carry a fill recipe."""
+    """Return every registered backend declaring embedded inputs."""
     from esolangs.registry import LANGUAGES, parameterized_ids
 
     ids = parameterized_ids()
@@ -25,11 +25,12 @@ def _parameterized_generators():
 
 def _embedded_inputs(gen: object, template: str, n: int) -> list[int]:
     """The inputs ``template`` embeds, in the order it embeds them."""
-    from esolangs.generation.examples import BOOLEAN_EXAMPLES
     from esolangs.generation.helpers import runs
 
-    example = next(e for e in BOOLEAN_EXAMPLES.values() if e.generator is gen)
-    spans = runs(template, example.char, example.setters(template, n))
+    language = next(lang for lang in LANGUAGES.values() if lang.boolean is gen)
+    spec = language.template
+    assert spec is not None
+    spans = runs(template, spec.char, spec.bindings(template, n))
     return list(range(len(spans)))
 
 

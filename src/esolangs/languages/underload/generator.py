@@ -47,7 +47,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import wrap_tokens
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Language, TemplateSpec
 
 # A zero duplicates the returned bit, giving both selectors five characters.
 PAIR = ("(!^:)", "(~!^)")
@@ -206,5 +206,5 @@ LANGUAGE = Language(
     contract=BooleanContract(),
     balance=_balance,
     no_wrap="a break inside a pushed element changes the string it contains",
-    example=Example(setters=underload_setters),
+    template=TemplateSpec(setters=underload_setters),
 )

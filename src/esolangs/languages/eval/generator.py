@@ -26,7 +26,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import _quote_literal
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Language, TemplateSpec
 
 # ``~`` swaps the active stack, ``*`` reverses it, ``=`` pops it onto the
 # other.  Moving values across reverses them (tests/eval_support.py).
@@ -142,5 +142,5 @@ LANGUAGE = Language(
     contract=BooleanContract(),
     # Print through a literal that must not be broken.
     wrap=_quote_literal,
-    example=Example(setters=eval_setters),
+    template=TemplateSpec(setters=eval_setters),
 )

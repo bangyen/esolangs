@@ -34,7 +34,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import TokenWrapper
 from esolangs.languages.stisp.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Language, TemplateSpec
 
 #: Each input is one atom, ``0`` or ``1``, inside its frame.
 PAIR = ("0", "1")
@@ -108,6 +108,6 @@ LANGUAGE = Language(
     ),
     wrap=TokenWrapper(_TOKEN),
     empty_program="a Stisp program needs a stack expression",
-    example=Example(pair=PAIR),
+    template=TemplateSpec(pair=PAIR),
     proof_workspace=(workspace, False, (3, 4, 5, 6, 7)),
 )

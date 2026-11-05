@@ -108,8 +108,8 @@ def {slug}(truth_table: str) -> str:
 # exhausted read has a spec value, empty_program="..." if "" is rejected,
 # random=True if an instruction draws at random (run(seed=...) fixes it);
 # a generator taking a width needs balance=, picking its squarest regime;
-# example=Example(pair=PAIR, expected=...) for a template, or
-# Example(expected=...) when the 0,1 row's output is not a bare "0" (a
+# template=TemplateSpec(pair=PAIR) for embedded inputs, and
+# example=Example(expected=...) when the 0,1 row's output is not a bare "0" (a
 # trailing newline, a dump).
 LANGUAGE = Language("{name}", "{slug}", category="{category}", boolean={slug})
 '''

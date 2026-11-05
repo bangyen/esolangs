@@ -30,7 +30,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import _join_tokens, balance_score
 from esolangs.languages.intercal.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Example, Language, TemplateSpec
 
 TEMPLATE_CHAR = "@"
 _VARIABLE_MAX = 65535  # the largest INTERCAL variable number
@@ -478,7 +478,8 @@ LANGUAGE = Language(
     ),
     balance=balance_intercal,
     empty_program="INTERCAL program is insufficiently or excessively polite (E099)",
-    example=Example(pair=PAIR, char=TEMPLATE_CHAR, expected="_\n\n"),
+    template=TemplateSpec(pair=PAIR, char=TEMPLATE_CHAR),
+    example=Example(expected="_\n\n"),
     proof_execution=(execution, True, (3, 4, 5, 6, 7, 8)),
     proof_workspace=(workspace, True, (1, 2, 3, 4, 5, 6, 7, 8)),
 )

@@ -11,9 +11,7 @@ terminating; ``answer_mode`` and ``answer_pattern`` carry which.  A
 termination answer's committed row is a halting one, so its ``expected``
 bytes are a placeholder (``expected_compared`` is false).
 
-The ``_fill_*`` functions are the only place a setter is spelled: a
-generator lays its template out by the filled width, and a second
-spelling that drifted made an instantiated program loop and the suite hang.
+Template bindings come from the backend declaration, shared with runtime.
 """
 
 import re
@@ -110,9 +108,6 @@ class BooleanExample:
     #: The character the public template spells its inputs with, one run
     #: per input; outside the language's alphabet.
     char: str = TEMPLATE_CHAR
-    #: Strips a header the template carries for its setters' sake -- the
-    #: part of the template that is not program.
-    body: Callable[[str], str] | None = None
     split: bool = False
     kwargs: tuple[tuple[str, int], ...] = ()
     note: str = ""
@@ -224,25 +219,15 @@ def _embedded(
     generator: Callable[[str], str],
     interpreter: str,
     *,
-    pair: tuple[str, str] | None = None,
-    setters: Callable[[str, int], Setters] | None = None,
+    setters: Callable[[str, int], Setters],
     char: str = TEMPLATE_CHAR,
-    body: Callable[[str], str] | None = None,
     table: str = AND2,
     bits: tuple[int, ...] = (0, 1),
     expected: str = "0",
     split: bool = False,
     kwargs: tuple[tuple[str, int], ...] = (),
 ) -> BooleanExample:
-    """Build a parameterized example, whose bits are embedded in the text.
-
-    ``pair`` is the one pair every input is spelled with, or
-    ``setters(template, n)`` names them; ``body`` strips a header first.
-    """
-    if (pair is None) == (setters is None):
-        raise TypeError("exactly one of pair and setters")
-    if setters is None:
-        setters = uniform(pair)
+    """Build an example using its backend's declared input bindings."""
     return BooleanExample(
         **_contract_fields(_contract_for(interpreter)),
         generator=generator,
@@ -250,36 +235,22 @@ def _embedded(
         interpreter=interpreter,
         expected=expected,
         bits=bits,
-        fill=_fill_from(setters, body, char),
+        fill=_fill_from(setters, char),
         setters=setters,
         char=char,
-        body=body,
         split=split,
         kwargs=kwargs,
     )
 
 
-def uniform(pair: tuple[str, str] | None) -> Callable[[str, int], Setters]:
-    """Return the setters of a uniform embed: ``pair`` for every input."""
-    if pair is None:  # pragma: no cover - _embedded checks first
-        raise TypeError("a uniform embed needs its pair")
-
-    def setters(_template: str, n: int) -> Setters:
-        return (pair,) * n
-
-    return setters
-
-
 def _fill_from(
     setters: Callable[[str, int], Setters],
-    body: Callable[[str], str] | None,
     char: str,
 ) -> Callable[[str, list[int]], str]:
     """Return the substitution a ``setters`` function defines."""
 
     def fill(template: str, bits: list[int]) -> str:
-        source = template if body is None else body(template)
-        return fill_runs(source, char, setters(template, len(bits)), bits)
+        return fill_runs(template, char, setters(template, len(bits)), bits)
 
     return fill
 
@@ -302,20 +273,19 @@ def _register() -> None:
     from esolangs.runtime._answers import encode_inputs
 
     # Everything an example needs is in its ``LANGUAGE``: the registry facts
-    # ``_reader`` takes, and ``example=`` for a template or other answer.
+    # ``_reader`` takes, backend bindings, and the committed invocation.
     for lang in LANGUAGES.values():
         if lang.boolean is None or lang.interpreter is None:
             continue
         spec = lang.example
-        if spec.pair is not None or spec.setters is not None:
+        if lang.template is not None:
             example = _embedded(
                 cast(Callable[[str], str], lang.boolean),
                 lang.interpreter,
                 table=spec.table,
                 bits=spec.bits,
-                pair=spec.pair,
-                setters=spec.setters,
-                char=spec.char or TEMPLATE_CHAR,
+                setters=lang.template.bindings,
+                char=lang.template.char,
                 expected=spec.expected,
                 split=lang.split,
                 kwargs=spec.kwargs,

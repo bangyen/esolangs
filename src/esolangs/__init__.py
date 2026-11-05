@@ -68,7 +68,6 @@ from esolangs.registry import (
     recover_setters,
     render_template,
     resolve,
-    template_body,
     template_char,
 )
 from esolangs.registry._describe import (
@@ -546,9 +545,7 @@ def instantiate(
             f"pass exactly {inputs} integer bits to instantiate(), one per input",
         )
     filled = artifact.fill(bits)
-    program = wrap_program(
-        template_body(LANGUAGES[name].id, filled.source), LANGUAGES[name].id, width
-    )
+    program = wrap_program(filled.source, LANGUAGES[name].id, width)
     if program is not filled.source or settings is not filled.settings:
         filled = ProgramArtifact(program, name, settings)
     return cast(str, _source_adapter(filled))
@@ -644,7 +641,9 @@ def _check_runnable(language: str, program: Program) -> None:
         )
     char = template_char(LANGUAGES[name].id)
     if char is not None and char in program:
-        unfilled = LANGUAGES[name].example.unfilled
+        spec = LANGUAGES[name].template
+        assert spec is not None  # template_char uses the same declaration
+        unfilled = spec.unfilled
         if (
             unfilled is not None
             and not isinstance(program, _Template)

@@ -29,7 +29,7 @@ from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
 from esolangs.languages.ram0.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Example, Language, TemplateSpec
 
 #: A fixed Z precedes each slot; the one-command pair selects zero or one.
 #: RAM0 has no input command, so each input run is a fixed-length ``Z``,
@@ -269,6 +269,7 @@ LANGUAGE = Language(
     # only safe break.
     wrap=wrap_space_delimited,
     balance=_balance,
-    example=Example(pair=PAIR, expected="z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}"),
+    template=TemplateSpec(pair=PAIR),
+    example=Example(expected="z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}"),
     proof_workspace=(workspace, True, (3, 6)),
 )

@@ -27,7 +27,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.cyclic_tag.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, Shape
+from esolangs.registry._language import Language, Shape, TemplateSpec
 
 #: One bit of the initial data-string, so an input's run is one TEMPLATE_CHAR.
 PAIR = ("0", "1")
@@ -81,5 +81,5 @@ LANGUAGE = Language(
     proof_execution=(execution, True, (1, 2, 3, 5)),
     proof_workspace=(workspace, True, (1, 2, 3, 5)),
     empty_program="Cyclic tag requires productions,queue using bits and semicolons",
-    example=Example(pair=PAIR),
+    template=TemplateSpec(pair=PAIR),
 )

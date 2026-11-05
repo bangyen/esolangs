@@ -45,7 +45,7 @@ from esolangs.generation.shared_block import (
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _RUN, balance_score, wrap_chars, wrap_program
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Language, TemplateSpec
 
 # Each input cell is fresh; zero needs no clear and one needs one flip.
 PAIR = ("x>>>", "*>>>")
@@ -851,5 +851,5 @@ LANGUAGE = Language(
     ),
     wrap=wrap_chars,
     balance=_balance,
-    example=Example(setters=smallfuck_setters),
+    template=TemplateSpec(setters=smallfuck_setters),
 )

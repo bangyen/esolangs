@@ -39,7 +39,7 @@ from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, _tokens, balance_score
 from esolangs.languages.slashes.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, Shape
+from esolangs.registry._language import Language, Shape, TemplateSpec
 
 #: Binary to unary, most significant bit first: the row as that many ``*``.
 _UNARY = "/b/a*//*a/a**//a//"
@@ -166,5 +166,5 @@ LANGUAGE = Language(
     no_wrap="newlines are literal output and substitution data",
     wrap_balance=_balance,
     proof_workspace=(workspace, True, (1, 2, 3, 5)),
-    example=Example(pair=("a", "b"), unfilled=_is_unfilled_template),
+    template=TemplateSpec(pair=("a", "b"), unfilled=_is_unfilled_template),
 )

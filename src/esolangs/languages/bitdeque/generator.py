@@ -38,7 +38,7 @@ from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens
 from esolangs.languages.bitdeque.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Language, TemplateSpec
 
 __all__ = ["BITDEQUE_PAIR", "bitdeque", "bitdeque_setters"]
 
@@ -283,6 +283,6 @@ LANGUAGE = Language(
     # Space-delimited, but ``GOTO`` and its target must stay on one line.
     wrap=_bitdeque,
     balance=_balance,
-    example=Example(setters=bitdeque_setters),
+    template=TemplateSpec(setters=bitdeque_setters),
     proof_workspace=(workspace, True, (3, 4, 5, 6)),
 )

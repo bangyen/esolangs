@@ -2,7 +2,7 @@
 
 A generator module ends with ``LANGUAGE = Language(...)``; the registry
 collects those, so a new language is registered where it is written.  This
-module imports nothing from the package, so any generator can import it.
+module keeps declarations independent of example generation.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from esolangs.generation.helpers import TEMPLATE_CHAR, Setters, check_setters
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._slug import canonical_id
 from esolangs.runtime._program import Program
@@ -42,26 +43,42 @@ class Shape(StrEnum):
 
 
 @dataclass(frozen=True)
-class Example:
-    """How the committed example deviates from a plain reading program.
+class TemplateSpec:
+    """How a Boolean backend embeds inputs, independently of its examples."""
 
-    ``pair`` or ``setters(template, n)`` makes it a template whose bits are
-    embedded (``char`` marks the runs; empty means the shared one);
-    ``expected`` is its whole output on the 0,1 row, and ``expected_compared``
-    False where that output is junk around a halting answer.
-    """
+    pair: tuple[str, str] | None = None
+    setters: Callable[[str, int], Setters] | None = None
+    char: str = TEMPLATE_CHAR
+    #: Whether text is unfilled, where ``char`` is also source.
+    unfilled: Callable[[str], bool] | None = None
+
+    def __post_init__(self) -> None:
+        """Require one binding rule and a single placeholder character."""
+        if (self.pair is None) == (self.setters is None):
+            raise ValueError("exactly one of pair and setters")
+        if len(self.char) != 1:
+            raise ValueError("template char must be one character")
+        if self.pair is not None:
+            check_setters((self.pair,))
+
+    def bindings(self, template: str, inputs: int) -> Setters:
+        """Return ordered zero/one substitutions for this template."""
+        if self.pair is not None:
+            return (self.pair,) * inputs
+        assert self.setters is not None  # checked at declaration
+        return self.setters(template, inputs)
+
+
+@dataclass(frozen=True)
+class Example:
+    """Invocation and expected output of a committed example."""
 
     table: str = "0001"
     bits: tuple[int, ...] = (0, 1)
     expected: str = "0"
-    pair: tuple[str, str] | None = None
-    setters: Callable[[str, int], Any] | None = None
-    char: str = ""
     expected_compared: bool = True
     kwargs: tuple[tuple[str, int], ...] = ()
     scale: int = 1
-    #: Whether text is unfilled, where ``char`` is also source.
-    unfilled: Callable[[str], bool] | None = None
     #: Building it balanced is a medium-length run.
     slow_build: bool = False
 
@@ -88,6 +105,7 @@ class Language:
     # The Boolean generator, its limits, and how its programs read inputs
     # and give the answer (default: a 0/1 line per input, the bit printed).
     boolean: Generator | None = None
+    template: TemplateSpec | None = None
     generator_max_inputs: int | None = None
     generator_restrictions: str = ""
     shape: Shape = Shape.TREE
@@ -155,9 +173,5 @@ class Language:
 
     @property
     def parameterized(self) -> bool:
-        """Whether the example embeds its inputs (a template to fill).
-
-        Derived from ``example=``: a ``pair`` or ``setters`` means the
-        program is a template whose bits are embedded, not read.
-        """
-        return self.example.pair is not None or self.example.setters is not None
+        """Whether the backend embeds inputs instead of reading stdin."""
+        return self.template is not None

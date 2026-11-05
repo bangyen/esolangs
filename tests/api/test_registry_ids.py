@@ -75,8 +75,13 @@ def test_a_language_cannot_both_wrap_and_refuse_to() -> None:
         Language("X", wrap=wrap_chars, no_wrap="a break changes it")
 
 
-def test_parameterized_follows_the_example() -> None:
-    from esolangs.registry._language import Example, Language
+def test_parameterized_follows_the_backend_independently_of_examples() -> None:
+    from dataclasses import replace
 
-    assert Language("X", example=Example(pair=("a", "b"))).parameterized
-    assert not Language("X").parameterized
+    from esolangs.registry._language import Example, Language, TemplateSpec
+
+    embedded = Language("X", template=TemplateSpec(pair=("a", "b")))
+    assert embedded.parameterized
+    assert replace(embedded, example=Example(table="01", bits=(1,))).parameterized
+    reader = Language("X", example=Example(table="01", bits=(1,)))
+    assert not reader.parameterized

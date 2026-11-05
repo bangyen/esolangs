@@ -32,7 +32,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.home_row.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, Shape
+from esolangs.registry._language import Language, Shape, TemplateSpec
 
 __all__ = ["HOME_ROW_PAIR", "home_row"]
 
@@ -123,5 +123,5 @@ LANGUAGE = Language(
     contract=BooleanContract(),
     proof_workspace=(workspace, True, (2, 3, 4, 5, 6)),
     wrap=wrap_chars,
-    example=Example(pair=HOME_ROW_PAIR),
+    template=TemplateSpec(pair=HOME_ROW_PAIR),
 )

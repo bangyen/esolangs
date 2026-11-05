@@ -19,7 +19,7 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
 
     from esolangs.cli import help as help_module
     from esolangs.registry import Language
-    from esolangs.registry._language import Example
+    from esolangs.registry._language import TemplateSpec
 
     def build(table):
         return table
@@ -29,7 +29,7 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
             "Template Choice",
             "template_choice",
             boolean=build,
-            example=Example(pair=("0", "1")),
+            template=TemplateSpec(pair=("0", "1")),
         ),
         "Dialect Choice": Language(
             "Dialect Choice",

@@ -26,7 +26,7 @@ from esolangs.generation.helpers import TEMPLATE_CHAR, _validate_truth_table
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Example, Language, TemplateSpec
 
 PAIR = ("0", "1")
 
@@ -167,5 +167,6 @@ LANGUAGE = Language(
     wrap=wrap_space_delimited,
     balance=_balance,
     empty_program="REFRACTRAN needs an initial integer",
-    example=Example(pair=PAIR, expected_compared=False),
+    template=TemplateSpec(pair=PAIR),
+    example=Example(expected_compared=False),
 )

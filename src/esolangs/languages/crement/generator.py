@@ -45,7 +45,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
 from esolangs.languages.crement.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Example, Language, TemplateSpec
 
 __all__ = ["crement"]
 
@@ -295,7 +295,8 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="jumps and patches name instruction numbers, so lines stay whole",
-    example=Example(setters=crement_setters, expected=""),
+    template=TemplateSpec(setters=crement_setters),
+    example=Example(expected=""),
     proof_workspace=(workspace, False, (3, 6)),
     proof_execution=(execution, True, (1, 2, 3, 5, 6)),
 )

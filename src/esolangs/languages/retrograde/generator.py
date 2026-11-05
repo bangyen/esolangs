@@ -19,7 +19,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Language, TemplateSpec
 
 PAIR = ("\\", "*")
 
@@ -133,5 +133,5 @@ LANGUAGE = Language(
         note="Inputs are ordered one-instruction setters; the final current "
         "tape bit is the whole answer dump.",
     ),
-    example=Example(pair=PAIR),
+    template=TemplateSpec(pair=PAIR),
 )

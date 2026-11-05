@@ -138,11 +138,9 @@ class TestATemplateCarriesItsSetters:
 
     def test_the_template_is_the_shape_of_every_program(self) -> None:
         """Every run is as long as its setter, so filling moves no character."""
-        from esolangs.registry import template_body
-
         for name in languages(parameterized=True):
             template = esolangs.generate(name, "0110")
-            shape = len(template_body(esolangs.describe(name)["id"], template))
+            shape = len(template)
             for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
                 assert len(esolangs.instantiate(name, template, bits)) == shape
 

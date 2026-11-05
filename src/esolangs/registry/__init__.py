@@ -6,18 +6,14 @@ import difflib
 import unicodedata
 from collections import Counter
 from functools import cache
-from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 from esolangs.exceptions import TemplateError, UnknownLanguageError
 from esolangs.generation.helpers import MOST_INPUTS, Setters, mark_runs, runs, unmark
 from esolangs.generation.wrap import wrap_program
+from esolangs.registry._language import TemplateSpec
 from esolangs.registry._slug import SUGGESTION_CUTOFF, canonical_id
 from esolangs.registry._table import LANGUAGES, Generator, Language, SourceKind
-
-if TYPE_CHECKING:
-    from esolangs.generation.examples import BooleanExample
-
 
 __all__ = [
     "BY_BOOLEAN",
@@ -35,7 +31,6 @@ __all__ = [
     "recover_setters",
     "render_template",
     "resolve",
-    "template_body",
     "template_char",
     "template_setters",
     "wiki_url",
@@ -90,18 +85,6 @@ def example_stems() -> dict[str, str]:
     }
 
 
-@cache
-def _examples_by_id() -> dict[str, BooleanExample]:
-    """Return canonical id -> example, for the templates only."""
-    from esolangs.generation import examples as _examples
-
-    return {
-        example.language: example
-        for example in _examples.BOOLEAN_EXAMPLES.values()
-        if example.setters is not None
-    }
-
-
 def _reads_inputs(language_id: str) -> TemplateError:
     """Refuse a template operation on a language that reads its inputs."""
     return TemplateError(f"{language_id} reads its inputs rather than embedding them")
@@ -109,25 +92,14 @@ def _reads_inputs(language_id: str) -> TemplateError:
 
 def template_char(language_id: str) -> str | None:
     """Return the character ``language_id``'s templates spell inputs with."""
-    example = _examples_by_id().get(language_id)
-    return None if example is None else example.char
+    template = _template(language_id)
+    return None if template is None else template.char
 
 
-def _example(language_id: str) -> BooleanExample:
-    """Return the template example of ``language_id``, or refuse."""
-    example = _examples_by_id().get(language_id)
-    if example is None:
-        raise TemplateError(f"unknown language: {language_id}")
-    return example
-
-
-def template_body(language_id: str, text: str) -> str:
-    """Return ``text`` without the header a template carries for its setters.
-
-    A template is all program; no remaining language carries a header.
-    """
-    body = _example(language_id).body
-    return text if body is None else body(text)
+def _template(language_id: str) -> TemplateSpec | None:
+    """Return a backend's input binding declaration using the existing id index."""
+    name = _BY_ID.get(language_id)
+    return None if name is None else LANGUAGES[name].template
 
 
 def template_setters(language_id: str, template: str, n: int) -> Setters:
@@ -137,10 +109,10 @@ def template_setters(language_id: str, template: str, n: int) -> Setters:
     or the rendered run form -- the setters read what they need from it,
     which for the two-route generators is the route's prefix.
     """
-    setters = _example(language_id).setters
-    if setters is None:
-        raise _reads_inputs(language_id)
-    return setters(template, n)
+    spec = _template(language_id)
+    if spec is None:
+        raise TemplateError(f"unknown language: {language_id}")
+    return spec.bindings(template, n)
 
 
 def render_template(
@@ -171,7 +143,7 @@ def recover_setters(language_id: str, template: str) -> Setters:
 
     A template read back from a file carries no pairs, but the language's
     setters are a function of the input count alone (plus the text, for the
-    header and route cases), and the runs' total length grows with the
+    route cases), and the runs' total length grows with the
     count -- every generator spells more with more inputs -- so the count
     is the one value at which the widths sum to what the text holds.  The
     runs are then checked against it like any other template.

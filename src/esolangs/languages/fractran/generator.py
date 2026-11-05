@@ -38,7 +38,7 @@ from esolangs.generation.wrap import (
 from esolangs.languages.fractran.interpreter.index import SMALL_BASE
 from esolangs.languages.fractran.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Example, Language, TemplateSpec
 
 #: How each input is set: the exponent of its prime in the starting value.
 #: One digit wide, so the run is one :data:`TEMPLATE_CHAR`.
@@ -227,7 +227,8 @@ LANGUAGE = Language(
     wrap=wrap_space_delimited,
     balance=_balance,
     empty_program="a FRACTRAN program needs a starting value",
-    example=Example(pair=PAIR, expected="1"),
+    template=TemplateSpec(pair=PAIR),
+    example=Example(expected="1"),
     proof_execution=(execution, True, (3, 5)),
     proof_workspace=(workspace, True, (3, 5, 6)),
 )

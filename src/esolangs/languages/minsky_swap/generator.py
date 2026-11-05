@@ -31,7 +31,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.minsky_swap.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, Shape
+from esolangs.registry._language import Example, Language, Shape, TemplateSpec
 
 __all__ = ["MINSKY_SWAP_PAIR", "minsky_swap", "minsky_swap_setters"]
 
@@ -236,7 +236,8 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="only line 1 is code; line 2 gives its numeric jump distances",
-    example=Example(setters=minsky_swap_setters, expected="1 0"),
+    template=TemplateSpec(setters=minsky_swap_setters),
+    example=Example(expected="1 0"),
     proof_execution=(execution, True, (3, 5)),
     proof_workspace=(workspace, False, (3, 6)),
 )

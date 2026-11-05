@@ -26,7 +26,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, Shape
+from esolangs.registry._language import Language, Shape, TemplateSpec
 
 #: One bit of the initial data-string, so an input's run is one TEMPLATE_CHAR.
 PAIR = ("0", "1")
@@ -76,5 +76,5 @@ LANGUAGE = Language(
     ),
     # Safe anywhere: every space and newline is stripped before parsing.
     wrap=wrap_chars,
-    example=Example(pair=PAIR),
+    template=TemplateSpec(pair=PAIR),
 )

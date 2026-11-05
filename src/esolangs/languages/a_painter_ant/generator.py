@@ -40,7 +40,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.a_painter_ant.proof_formulas import execution
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, Shape
+from esolangs.registry._language import Example, Language, Shape, TemplateSpec
 
 __all__ = ["a_painter_ant"]
 
@@ -166,6 +166,7 @@ LANGUAGE = Language(
         "shown by 'o' (on black, a zero) or '@' (on white, a one)",
     ),
     wrap=wrap_chars,
-    example=Example(pair=PAIR, expected="....\n####\n.o.#"),
+    template=TemplateSpec(pair=PAIR),
+    example=Example(expected="....\n####\n.o.#"),
     proof_execution=(execution, True, (3, 6)),
 )
