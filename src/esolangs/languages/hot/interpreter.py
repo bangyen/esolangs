@@ -40,7 +40,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime.combinators import Args as _Args
 from esolangs.runtime.combinators import State as _State
 from esolangs.runtime.combinators import Term as _Term
-from esolangs.runtime.combinators import count, parse, stack, unwind
+from esolangs.runtime.combinators import parse, stack
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -50,9 +50,12 @@ ARITY = {"K": 2, "S": 3, "F": 1, "A": 1, "B": 1, "C": 1, "D": 1, "0": 2, "1": 0}
 
 def _settle(term: _Term, args: _Args) -> _State:
     """Return ``term`` applied to ``args`` as a head with enough arguments."""
-    term, args = unwind(term, args)
+    while not isinstance(term, str):
+        term, args = term[0], (term[1], args)
     arity = ARITY[term]
-    depth = count(args, arity)
+    depth, rest = 0, args
+    while rest is not None and depth < arity:
+        depth, rest = depth + 1, rest[1]
     if depth < arity:
         # Appending at the far end: the stack has fewer than three cells.
         cells: list[_Term] = []
