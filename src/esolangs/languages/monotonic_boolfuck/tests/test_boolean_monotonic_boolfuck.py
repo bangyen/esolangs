@@ -43,18 +43,16 @@ def _check_constants() -> None:
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     io = ReadFirstIO(f"{row:0{n}b}" + "Q", expected=n)
                     machine = _Machine("".join(program.split()), io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                         assert steps <= commands
-                    assert steps == commands
-                    assert written.bits == bound
+                    assert (steps, written.bits) == (commands, bound)
                     assert io.getvalue() == bit
-                    assert machine.state.remaining == 0
-                    assert io.past_end == 0
+                    assert (machine.state.remaining, io.past_end) == (0, 0)
                     assert io.input_char() == ord("Q")
     assert (
         sum(len(compat.generate("Monotonic Boolfuck", f"{v:08b}")) for v in range(256))

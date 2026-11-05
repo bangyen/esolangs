@@ -41,19 +41,17 @@ def _check_constants() -> None:
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     io = ReadFirstIO(f"{row:0{n}b}" + "Q", expected=n)
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         command = machine.code[machine.state.pc]
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += int(command in "><+[],;")
                         assert steps <= commands
-                    assert steps == commands
+                    assert (steps, io.getvalue()) == (commands, bit)
                     assert written.bits == workspace(n, program)
-                    assert machine.state.remaining == 0
-                    assert io.past_end == 0
-                    assert io.getvalue() == bit
+                    assert (machine.state.remaining, io.past_end) == (0, 0)
                     assert io.input_char() == ord("Q")
     assert (
         sum(len(compat.generate("Boolfuck", f"{v:08b}")) for v in range(256)) == 30652
@@ -79,19 +77,16 @@ def _check_zero_guard() -> None:
         for row, expected in enumerate(table):
             io = ScriptedIO(f"{row:0{n}b}Q")
             machine = _Machine(program, io)
-            written = WrittenState(machine.snapshot())
+            written = WrittenState(machine.workspace_snapshot())
             commands = prints = 0
             while not machine.halted:
                 prints += machine.code[machine.state.pc] == ";"
                 machine.step()
-                written.sample(machine.snapshot())
+                written.sample(machine.workspace_snapshot())
                 commands += 1
                 assert commands <= _command_bound(n)
-            assert io.getvalue() == expected
-            assert io.reads == n
-            assert io.past_end == 0
-            assert machine.state.remaining == 0
-            assert prints == 8
+            assert (io.getvalue(), prints) == (expected, 8)
+            assert (io.reads, machine.state.remaining, io.past_end) == (n, 0, 0)
             assert io.input_char() == ord("Q")
             assert written.bits <= workspace(n, program)
             assert 1 not in machine.ones

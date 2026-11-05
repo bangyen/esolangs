@@ -2,6 +2,7 @@
 
 from typing import NamedTuple
 
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.bits import flush_byte, put_bit, take_bit
 from esolangs.runtime.brackets import match_brackets
 from esolangs.runtime.io import IO
@@ -44,6 +45,7 @@ class _BitTapeMachine:
 
     eof_is_a_value = True
     set_command = "+"
+    _workspace_model: WorkspaceModel
 
     def __init__(self, code: str, io: IO) -> None:
         self.code = code
@@ -72,6 +74,22 @@ class _BitTapeMachine:
 
     def snapshot(self) -> tuple[object, ...]:
         return (self.state, frozenset(self.ones), self.io.progress())
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic control/buffers, set cells and consumed input."""
+        state = self.state
+        return self._workspace_model.capture(
+            control=(
+                state.pc,
+                state.ptr,
+                state.incoming,
+                state.remaining,
+                state.outgoing,
+                state.used,
+            ),
+            ones=frozenset(self.ones),
+            input_cursor=self.io.progress(),
+        )
 
     def step(self) -> None:
         pc, ptr, incoming, remaining, outgoing, used = self.state

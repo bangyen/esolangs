@@ -17,12 +17,17 @@ Errors:
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel
 from esolangs.runtime.bit_tape import _BitTapeMachine
 from esolangs.runtime.io import IO
 
 
 class _Machine(_BitTapeMachine):
     """Language-owned bit-tape machine."""
+
+    _workspace_model = WorkspaceModel(
+        "boolfuck-v1", ("control", "ones", "input_cursor")
+    )
 
 
 def _execute(code: str, io: IO) -> CompletionReport:
