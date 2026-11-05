@@ -37,15 +37,12 @@ from __future__ import annotations
 from esolangs.exceptions import ArgumentError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime.combinators import Args as _Args
+from esolangs.runtime.combinators import State as _State
 from esolangs.runtime.combinators import Term as _Term
-from esolangs.runtime.combinators import parse
+from esolangs.runtime.combinators import count, parse, stack, unwind
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
-
-#: The arguments, first on top: a persistent stack, so a step is O(1).
-type _Args = tuple[_Term, _Args] | None
-#: The head combinator and its arguments.
-type _State = tuple[str, _Args]
 
 #: How many arguments each rule takes.
 ARITY = {"K": 2, "S": 3, "F": 1, "A": 1, "B": 1, "C": 1, "D": 1, "0": 2, "1": 0}
@@ -53,12 +50,9 @@ ARITY = {"K": 2, "S": 3, "F": 1, "A": 1, "B": 1, "C": 1, "D": 1, "0": 2, "1": 0}
 
 def _settle(term: _Term, args: _Args) -> _State:
     """Return ``term`` applied to ``args`` as a head with enough arguments."""
-    while not isinstance(term, str):
-        term, args = term[0], (term[1], args)
+    term, args = unwind(term, args)
     arity = ARITY[term]
-    depth, rest = 0, args
-    while rest is not None and depth < arity:
-        depth, rest = depth + 1, rest[1]
+    depth = count(args, arity)
     if depth < arity:
         # Appending at the far end: the stack has fewer than three cells.
         cells: list[_Term] = []
@@ -140,12 +134,7 @@ class _Machine:
     @property
     def stack(self) -> list[object]:
         """The head, then its arguments, first argument first."""
-        cells: list[object] = [self.state[0]]
-        args = self.state[1]
-        while args is not None:
-            cells.append(args[0])
-            args = args[1]
-        return cells
+        return stack(self.state)
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

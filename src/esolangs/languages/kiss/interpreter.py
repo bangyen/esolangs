@@ -40,33 +40,13 @@ from __future__ import annotations
 from esolangs.exceptions import ArgumentError, InputExhaustedError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
-from esolangs.runtime.combinators import Term as _Term
-from esolangs.runtime.combinators import parse
+from esolangs.runtime.combinators import State as _State
+from esolangs.runtime.combinators import count, parse, stack, unwind
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
-#: The arguments, first on top: a persistent stack, so a step is O(1).
-type _Args = tuple[_Term, _Args] | None
-#: The head combinator and its arguments.
-type _State = tuple[str, _Args]
-
 #: How many arguments each rewrite takes.
 ARITY = {"K": 2, "S": 3}
-
-
-def _unwind(term: _Term, args: _Args) -> _State:
-    """Return ``term`` applied to ``args`` as a head and its arguments."""
-    while not isinstance(term, str):
-        term, args = term[0], (term[1], args)
-    return term, args
-
-
-def _count(args: _Args, limit: int) -> int:
-    """Return how many arguments there are, counting at most ``limit``."""
-    depth = 0
-    while args is not None and depth < limit:
-        depth, args = depth + 1, args[1]
-    return depth
 
 
 def _advance(state: _State, bit: int | None) -> tuple[_State | int, int | None]:
@@ -76,23 +56,23 @@ def _advance(state: _State, bit: int | None) -> tuple[_State | int, int | None]:
     """
     head, args = state
     arity = ARITY[head]
-    depth = _count(args, arity)
+    depth = count(args, arity)
     if depth == arity:
         assert args is not None
         assert args[1] is not None
         if head == "K":
-            return _unwind(args[0], args[1][1]), None
+            return unwind(args[0], args[1][1]), None
         x, (y, rest) = args[0], args[1]
         assert rest is not None
         z, tail = rest
-        return _unwind(x, (z, ((y, z), tail))), None
+        return unwind(x, (z, ((y, z), tail))), None
     if depth == 0:
         return int(head == "S"), None
     assert args is not None
     if depth == 1:
-        return _unwind(args[0], None), int(head == "S")
+        return unwind(args[0], None), int(head == "S")
     assert args[1] is not None
-    return _unwind(args[0] if bit == 0 else args[1][0], None), None
+    return unwind(args[0] if bit == 0 else args[1][0], None), None
 
 
 class _Machine:
@@ -103,7 +83,7 @@ class _Machine:
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
-        self.state: _State = _unwind(
+        self.state: _State = unwind(
             parse(code, "".join(ARITY), "Kiss", "use K, S, parentheses and whitespace"),
             None,
         )
@@ -118,17 +98,12 @@ class _Machine:
     @property
     def ip(self) -> tuple[int, ...]:
         """The number of arguments on the spine."""
-        return (_count(self.state[1], 1 << 62),)
+        return (count(self.state[1], 1 << 62),)
 
     @property
     def stack(self) -> list[object]:
         """The head, then its arguments, first argument first."""
-        cells: list[object] = [self.state[0]]
-        args = self.state[1]
-        while args is not None:
-            cells.append(args[0])
-            args = args[1]
-        return cells
+        return stack(self.state)
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
@@ -159,7 +134,7 @@ class _Machine:
             return
         head, args = self.state
         bit = None
-        if head == "S" and _count(args, 3) == 2:
+        if head == "S" and count(args, 3) == 2:
             bit = self._read()
         result, out = _advance(self.state, bit)
         if isinstance(result, int):

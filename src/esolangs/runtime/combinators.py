@@ -1,9 +1,13 @@
-"""Left-associated combinator terms with parenthesized grouping."""
+"""Combinator terms, parenthesized parsing and persistent argument spines."""
 
 from esolangs.runtime.source_hints import syntax_error
 
 #: A symbol, or a function applied to an argument.
 type Term = str | tuple[Term, Term]
+#: Arguments in application order; the first argument is on top.
+type Args = tuple[Term, Args] | None
+#: The head symbol and its arguments.
+type State = tuple[str, Args]
 
 
 def parse(code: str, symbols: str, language: str, hint: str) -> Term:
@@ -51,3 +55,28 @@ def _applied(items: list[Term]) -> Term:
     for item in items[1:]:
         term = (term, item)
     return term
+
+
+def unwind(term: Term, args: Args) -> State:
+    """Return ``term`` applied to ``args`` as a head and its arguments."""
+    while not isinstance(term, str):
+        term, args = term[0], (term[1], args)
+    return term, args
+
+
+def count(args: Args, limit: int) -> int:
+    """Return the argument count, stopping at ``limit``."""
+    depth = 0
+    while args is not None and depth < limit:
+        depth, args = depth + 1, args[1]
+    return depth
+
+
+def stack(state: State) -> list[object]:
+    """Return the head followed by its arguments in application order."""
+    cells: list[object] = [state[0]]
+    args = state[1]
+    while args is not None:
+        cells.append(args[0])
+        args = args[1]
+    return cells
