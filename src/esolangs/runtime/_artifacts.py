@@ -19,7 +19,6 @@ from esolangs.runtime._validate import check_bits
 
 if TYPE_CHECKING:
     from esolangs.settings import DialectSettings
-    from esolangs.tagged import _Template
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,17 +90,6 @@ class TemplateArtifact:
             self.language,
             self.settings,
         )
-
-    @classmethod
-    def from_adapter(cls, template: _Template) -> TemplateArtifact:
-        """Copy an immutable adapter's already validated bindings and run index."""
-        artifact = object.__new__(cls)
-        object.__setattr__(artifact, "source", str(template))
-        object.__setattr__(artifact, "language", template.language)
-        object.__setattr__(artifact, "bindings", template._bindings)  # noqa: SLF001
-        object.__setattr__(artifact, "settings", template.settings)
-        object.__setattr__(artifact, "_spans", template._spans)  # noqa: SLF001
-        return artifact
 
 
 type Artifact = ProgramArtifact[Program] | TemplateArtifact

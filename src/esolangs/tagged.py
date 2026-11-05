@@ -118,7 +118,13 @@ class _Template(_Tagged):
     @property
     def _artifact(self) -> TemplateArtifact:
         """Recover the explicit record from the legacy source adapter."""
-        return TemplateArtifact.from_adapter(self)
+        artifact = object.__new__(TemplateArtifact)
+        object.__setattr__(artifact, "source", str(self))
+        object.__setattr__(artifact, "language", self.language)
+        object.__setattr__(artifact, "bindings", self._bindings)
+        object.__setattr__(artifact, "settings", self.settings)
+        object.__setattr__(artifact, "_spans", self._spans)
+        return artifact
 
     @property
     def inputs(self) -> int:
