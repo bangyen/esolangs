@@ -7,6 +7,7 @@ import re
 import pytest
 
 import esolangs
+from esolangs.generation.helpers import runs
 from esolangs.registry import LANGUAGES
 from tests.support.pick import languages
 
@@ -21,21 +22,6 @@ def _parameterized_generators():
         for language in LANGUAGES.values()
         if language.id in ids and language.backend is not None
     ]
-
-
-def _embedded_inputs(gen: object, template: str, n: int) -> list[int]:
-    """The inputs ``template`` embeds, in the order it embeds them."""
-    from esolangs.generation.helpers import runs
-
-    language = next(
-        lang
-        for lang in LANGUAGES.values()
-        if lang.backend is not None and lang.backend.generate is gen
-    )
-    spec = language.backend.template
-    assert spec is not None
-    spans = runs(template, spec.char, spec.bindings(template, n))
-    return list(range(len(spans)))
 
 
 @pytest.mark.parametrize(("language", "gen"), _parameterized_generators())
@@ -67,41 +53,15 @@ def test_parameterized_generators_embed_each_input_once() -> None:
                 # from quietly emptying the sweep.
                 continue
             checked += 1
-            xs = _embedded_inputs(gen, template, n)
+            spec = LANGUAGES[esolangs.resolve(name)].backend.template
+            assert spec is not None
+            spans = runs(template, spec.char, spec.bindings(template, n))
             cs = re.findall(r"\{C(\d+)\}", template)
-            assert sorted(xs) == list(range(n)), (name, n, xs)
-            assert len(xs) == n, (name, n, xs)
+            assert len(spans) == n, (name, n, spans)
             assert not cs, (name, n, cs)
     # Guard the skip above: every generator covers at least n == 2, so a run
     # that checked far fewer templates than that means the sweep stopped
     # exercising the generators rather than the generators getting stricter.
-    assert checked >= len(_parameterized_generators()), checked
-
-
-_SLOT_ORDER_TABLES = ("0110", "01101001", "10101010", "11110000", "00111100")
-
-
-def _slot_order(gen: object, table: str) -> list[int] | None:
-    """The input indices in the order ``gen`` emits them, or None."""
-
-    try:
-        template = gen(table)
-    except ValueError:
-        return None  # a generator need not cover every arity
-    return _embedded_inputs(gen, template, len(table).bit_length() - 1)
-
-
-@pytest.mark.slow  # builds every generator over several tables
-def test_slots_run_in_name_order() -> None:
-    """Every template's runs fit its setters, one run per input, in order."""
-    checked = 0
-    for name, gen in _parameterized_generators():
-        for table in _SLOT_ORDER_TABLES:
-            slots = _slot_order(gen, table)
-            if slots is None:
-                continue
-            checked += 1
-            assert slots == sorted(slots), (name, table, slots)
     assert checked >= len(_parameterized_generators()), checked
 
 

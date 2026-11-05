@@ -9,11 +9,14 @@ from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES
 from tests.support.evaluation import _evaluate
 from tests.support.generator_support import assert_proved_resource_cap
+from tests.support.pick import languages
 
 GENERATORS = sorted(
     name for name, lang in LANGUAGES.items() if lang.backend is not None
 )
 pytestmark = pytest.mark.medium
+
+_SLOT_ORDER_TABLES = ("0110", "01101001", "10101010", "11110000", "00111100")
 
 
 @pytest.mark.parametrize("language", GENERATORS)
@@ -24,7 +27,10 @@ def test_generated_program_obeys_its_table(language: str) -> None:
     tables = LANGUAGES[language].certification.benchmark_tables
     if tables:
         assert_proved_resource_cap(language)
-    for table in tables or ("0000", dense, "01101001"):
+    tables = tables or ("0000", dense, "01101001")
+    if LANGUAGES[language].parameterized:
+        tables = tuple(dict.fromkeys((*tables, *_SLOT_ORDER_TABLES)))
+    for table in tables:
         random.seed(0)
         first = esolangs.generate(language, table)
         random.seed(0)
@@ -36,7 +42,27 @@ def test_generated_program_obeys_its_table(language: str) -> None:
             else esolangs.load_program(language, esolangs.dump_program(language, first))
         )
         inputs = len(table).bit_length() - 1
-        assert _evaluate(language, program, inputs=inputs) == table
+        assert _evaluate(language, program, inputs=inputs) == table, (
+            "answers",
+            language,
+            table,
+        )
+
+
+@pytest.mark.parametrize("language", languages(parameterized=True))
+def test_round_trip_rejects_swapped_inputs(language: str, monkeypatch) -> None:
+    instantiate = esolangs.instantiate
+    changed = []
+
+    def swapped(name, template, bits, **options):
+        swapped_bits = list(reversed(bits))
+        changed.append(swapped_bits != list(bits))
+        return instantiate(name, template, swapped_bits, **options)
+
+    monkeypatch.setattr(esolangs, "instantiate", swapped)
+    with pytest.raises(AssertionError, match="answers"):
+        test_generated_program_obeys_its_table(language)
+    assert any(changed), "the control never permuted distinct input bits"
 
 
 #: A bad table of each kind, and the start of the shared validator's message.
