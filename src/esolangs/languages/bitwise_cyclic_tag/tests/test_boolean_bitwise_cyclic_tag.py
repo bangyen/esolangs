@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.bitwise_cyclic_tag import generator as boolean
 from esolangs.languages.bitwise_cyclic_tag.descriptor import PAIR as BCT_PAIR
@@ -76,11 +76,11 @@ def test_constant_deletes_inputs_and_literal_answer(n, bit) -> None:
     if n == 1 and bit == "0":
         _check_constants()
     table = bit * (1 << n)
-    template = compat.generate("Bitwise Cyclic Tag", table)
-    assert template == "0," + "$" * n + bit
-    assert len(template) == n + 3
+    template = esolangs.generate("Bitwise Cyclic Tag", table)
+    assert template.source == "0," + "$" * n + bit
+    assert len(template.source) == n + 3
     for options in ({}, {"width": 1}, {"balance": True}):
-        program = compat.generate("Bitwise Cyclic Tag", table, **options)
+        program = esolangs.generate("Bitwise Cyclic Tag", table, **options)
         assert _evaluate("Bitwise Cyclic Tag", program, inputs=n) == table
     for row in (0, (1 << n) - 1):
         io = ScriptedIO("")
@@ -101,14 +101,14 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = compat.generate(
+                template = esolangs.generate(
                     "Bitwise Cyclic Tag", bit * (1 << n), **options
                 )
-                assert template.count("$") == n
+                assert template.source.count("$") == n
                 for bits in ([0] * n, [1] * n):
-                    program = compat.instantiate("Bitwise Cyclic Tag", template, bits)
+                    program = esolangs.instantiate("Bitwise Cyclic Tag", template, bits)
                     io = ScriptedIO("7")
-                    machine = _Machine(program, io)
+                    machine = _Machine(program.source, io)
                     assert machine.data == [str(b) for b in bits] + [bit]
                     for count in range(n + 1):
                         assert machine.read == count

@@ -5,7 +5,7 @@ from collections.abc import Iterator
 import pytest
 
 import esolangs
-from esolangs import compat, run
+from esolangs import run
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.generation.wrap import balance_program, balance_score
 from esolangs.languages.fractran import generator as boolean
@@ -111,12 +111,14 @@ def test_fractran_phase_parity_witness_tables(width: int) -> None:
 
 def test_fractran_parity_two_executes_at_every_width() -> None:
     for width in (1, 4, 8, 9, 80):
-        for as_string in (False, True):
-            template = compat.generate("FRACTRAN", "0110", width=width)
-            if as_string:
-                template = str(template)
+        for restored in (False, True):
+            template = esolangs.generate("FRACTRAN", "0110", width=width)
+            if restored:
+                template = esolangs.load_program(
+                    "FRACTRAN", esolangs.dump_program("FRACTRAN", template)
+                )
             for row, expected in enumerate("0110"):
-                program = compat.instantiate(
+                program = esolangs.instantiate(
                     "FRACTRAN", template, [row // 2, row % 2], truth_table="0110"
                 )
                 assert (
@@ -124,7 +126,7 @@ def test_fractran_parity_two_executes_at_every_width() -> None:
                     == expected
                 )
             with pytest.raises(esolangs.TemplateError, match="not the template"):
-                compat.instantiate("FRACTRAN", template, [0, 1], truth_table="0001")
+                esolangs.instantiate("FRACTRAN", template, [0, 1], truth_table="0001")
 
 
 @pytest.mark.parametrize("n", [4, 5, 6])
@@ -132,10 +134,10 @@ def test_fractran_phase_parity_retains_larger_layout_execution(n: int) -> None:
 
     table = "".join(str(row.bit_count() % 2) for row in range(2**n))
     for width in [1, 4, 80]:
-        program = compat.generate("FRACTRAN", table, width=width)
+        program = esolangs.generate("FRACTRAN", table, width=width)
         for row in [0, 1, 2**n // 3, 2**n - 1]:
             bits = list(map(int, format(row, f"0{n}b")))
-            filled = compat.instantiate("FRACTRAN", program, bits)
+            filled = esolangs.instantiate("FRACTRAN", program, bits)
             assert (
                 esolangs.read_answer("FRACTRAN", run("FRACTRAN", filled).output)
                 == table[row]
@@ -158,16 +160,19 @@ def test_a_request_as_wide_as_the_widest_token_keeps_the_plain_root() -> None:
 def test_balanced_width_bounds_stop_below_the_widest_token() -> None:
     """The balance regimes cap at the widest token minus one, not above it."""
     table = "0100110000110100000110010110110100111010011101100010000011011111"
-    program = str(compat.generate("FRACTRAN", table, balance=True))
-    rows = program.split("\n")
-    assert (len(program), len(rows), max(map(len, rows))) == (431, 16, 30)
+    program = esolangs.generate("FRACTRAN", table, balance=True)
+    rows = program.source.split("\n")
+    assert (len(program.source), len(rows), max(map(len, rows))) == (431, 16, 30)
     assert _evaluate("FRACTRAN", program, inputs=6) == table
 
 
 def test_fractran_parity_two_balances_and_executes() -> None:
+    from dataclasses import replace
+
     from esolangs.languages.fractran.generator import _balance as _fractran
 
-    balanced = _fractran("0110", compat.generate("FRACTRAN", "0110", width=4))
+    template = esolangs.generate("FRACTRAN", "0110", width=4)
+    balanced = replace(template, source=_fractran("0110", template.source))
     assert _evaluate("FRACTRAN", balanced, inputs=2) == "0110"
 
 
@@ -180,15 +185,17 @@ def _check_native_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = compat.generate("FRACTRAN", bit * (1 << n), **options)
-                assert len(runs(template, TEMPLATE_CHAR, [FRACTRAN_PAIR] * n)) == n
-                assert len(template.split()) == n + 1
+                template = esolangs.generate("FRACTRAN", bit * (1 << n), **options)
+                assert (
+                    len(runs(template.source, TEMPLATE_CHAR, [FRACTRAN_PAIR] * n)) == n
+                )
+                assert len(template.source.split()) == n + 1
                 peak = 0
                 sizes = set()
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     bits = list(map(int, f"{row:0{n}b}"))
-                    program = compat.instantiate("FRACTRAN", str(template), bits)
-                    sizes.add(len(program))
+                    program = esolangs.instantiate("FRACTRAN", template, bits)
+                    sizes.add(len(program.source))
                     machine = make_vm("FRACTRAN", program)
                     written = WrittenState(machine.snapshot())
                     steps = 0
@@ -199,7 +206,7 @@ def _check_native_constants() -> None:
                         assert steps <= n + 1
                     assert steps == 1 + sum(bits)
                     assert esolangs.read_answer("FRACTRAN", machine.output) == bit
-                    assert written.bits <= workspace(n, template)
+                    assert written.bits <= workspace(n, template.source)
                     peak = max(peak, written.bits)
                 assert len(sizes) == 1
-                assert peak == workspace(n, template)
+                assert peak == workspace(n, template.source)

@@ -64,6 +64,10 @@ Owned source-inspection tests for 91 text backends use explicit artifact source
 for native machines, layout checks and size pins. Template, raster, compressed
 and metadata-sensitive owned callers remain open.
 
+Owned Boolean tests for Underload, Eval, Cyclic tag, Bitwise Cyclic Tag, Stisp
+and FRACTRAN retain template bindings. Persistence checks restore artifacts;
+native calls unwrap only filled programs. Remaining template callers stay open.
+
 Accounting and analysis rows require owned witnesses, not just a declared hook
 or a recognized helper name. Certification needs an installed-package/lazy-import
 acceptance audit after the active separation work lands. Storage policy needs

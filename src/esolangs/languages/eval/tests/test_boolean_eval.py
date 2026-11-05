@@ -1,6 +1,6 @@
 """Covers :mod:`esolangs.languages.eval.generator`."""
 
-from esolangs import compat
+import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, permute_truth_table
 from esolangs.languages.eval import generator as boolean
 from esolangs.languages.eval.generator import PAIR
@@ -25,11 +25,9 @@ class TestEvalBoolean:
         run(prog, io_)
         return io_.getvalue()
 
-    def instantiate(self, tpl: str, bits: list[int]) -> str:
+    def instantiate(self, tpl: esolangs.TemplateArtifact, bits: list[int]) -> str:
         """Fill the template the way the example harness does."""
-        from tests.generators.fills import fill
-
-        return fill("Eval")(tpl, bits)
+        return esolangs.instantiate("Eval", tpl, bits).source
 
     def test_ignored_inputs_shrink_the_lookup(self) -> None:
         """A constant table pushes one result; its staged inputs never drain."""
@@ -43,7 +41,7 @@ class TestEvalBoolean:
         """Folding shrinks the template, never one instantiation."""
         for table in ("11111111", "11110000", "11001100", "0001"):
             n = len(table).bit_length() - 1
-            template = boolean.eval(table)
+            template = esolangs.generate("Eval", table)
             widths = {
                 len(self.instantiate(template, row_bits(c, n))) for c in range(2**n)
             }
@@ -84,16 +82,12 @@ class TestEvalBoolean:
 
     def test_reorder_ops_run_outside_the_placeholders(self) -> None:
         """The rearrangement is emitted code, not a change to the fills."""
-        from tests.generators.fills import fill
-
-        _fill_eval = fill("Eval")
-
         # A table whose cheapest order is not the free one.
         table = "00001101"
-        template = boolean.eval(table)
-        assert template.startswith(_X * 3)  # runs unmoved
+        template = esolangs.generate("Eval", table)
+        assert template.source.startswith(_X * 3)  # runs unmoved
         widths = {
-            len(_fill_eval(template, [(c >> (2 - i)) & 1 for i in range(3)]))
+            len(self.instantiate(template, [(c >> (2 - i)) & 1 for i in range(3)]))
             for c in range(8)
         }
         assert len(widths) == 1  # every fill the same length
@@ -176,9 +170,9 @@ class TestEvalBoolean:
 
         n = 6
         table = "".join("1" if (i).bit_count() % 2 else "0" for i in range(2**n))
-        template = boolean.eval(table)
+        template = esolangs.generate("Eval", table)
         # The template is the exact shape of every program it fills to.
-        assert len(template) == len(self.instantiate(template, [0] * n)) == 167
+        assert len(template.source) == len(self.instantiate(template, [0] * n)) == 167
         for combo in range(2**n):
             bits = row_bits(combo, n)
             got = self.run_eval(self.instantiate(template, bits))
@@ -194,8 +188,8 @@ class TestEvalBoolean:
             "0" * 127 + "1",
         ):
             n = len(table).bit_length() - 1
-            template = boolean.eval(table)
-            assert template.count(TEMPLATE_CHAR) == (3 if n >= 6 else 2) * n
+            template = esolangs.generate("Eval", table)
+            assert template.source.count(TEMPLATE_CHAR) == (3 if n >= 6 else 2) * n
             for combo in range(2**n):
                 program = self.instantiate(template, row_bits(combo, n))
                 assert self.run_eval(program) == table[combo], (table, combo)
@@ -209,13 +203,13 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = compat.generate("Eval", bit * (1 << n), **options)
-                assert template.count("$") == n
-                assert eval_setters(template, n) == (("0", "`"),) * n
+                template = esolangs.generate("Eval", bit * (1 << n), **options)
+                assert template.source.count("$") == n
+                assert eval_setters(template.source, n) == (("0", "`"),) * n
                 for bits in ([0] * n, [1] * n):
-                    program = compat.instantiate("Eval", template, bits)
+                    program = esolangs.instantiate("Eval", template, bits)
                     io = ScriptedIO("7")
-                    run(program, io)
+                    run(program.source, io)
                     assert io.getvalue() == bit
                     assert io.reads == 0
                     assert io.input_char() == ord("7")
