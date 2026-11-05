@@ -46,6 +46,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -119,6 +120,11 @@ def _advance(
     return tuple.__new__(_State, (new_ips, new_stks, 1 - me)), out
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "pilas-v1", ("instruction_pointers", "stacks", "turn", "input_cursor")
+)
+
+
 class _Machine:
     """A Pilas run: both lines, rebound to a new ``_State`` per step."""
 
@@ -147,6 +153,15 @@ class _Machine:
         """Whether either pointer has passed the end of its line."""
         return any(
             ip >= len(line) for ip, line in zip(self.state.ips, self.lines, strict=True)
+        )
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of storage and cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            instruction_pointers=self.state.ips,
+            stacks=self.state.stks,
+            turn=self.state.turn,
+            input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:

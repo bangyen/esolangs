@@ -54,6 +54,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.randomness import Randomness, draw
@@ -149,6 +150,11 @@ def _advance(
     return (nxt, stack), out
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "ascenic-v1", ("instruction", "stack", "input_cursor")
+)
+
+
 class _Machine:
     """The run state: the next instruction and the stack."""
 
@@ -180,6 +186,14 @@ class _Machine:
             values.append(cell[0])
             cell = cell[1]
         return values[::-1]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of storage and cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.state[0],
+            stack=tuple(self.stack),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

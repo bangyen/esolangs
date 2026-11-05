@@ -46,6 +46,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import unmatched
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer, parse_integer
@@ -148,6 +149,11 @@ def _advance(state: _State, ops: list[_Op], byte: int | None = None) -> _State:
     return (ind + 1, tuple(new))
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "sstack-v1", ("instruction", "stacks", "input_cursor")
+)
+
+
 class _Machine:
     """An SStack run: one immutable ``_State``, rebound per step."""
 
@@ -176,6 +182,15 @@ class _Machine:
                 node = node[1]
             out[name] = items[::-1]
         return out
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of storage and cycle grouping."""
+        stacks = self.stacks
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.state[0],
+            stacks=tuple(tuple(stacks[name]) for name in _NAMES),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

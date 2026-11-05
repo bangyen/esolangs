@@ -43,6 +43,7 @@ from typing import NamedTuple
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -119,6 +120,11 @@ def _advance(
     return (min(nxt, len(ops)), regs), out
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "iebel-v1", ("instruction", "registers", "input_cursor")
+)
+
+
 class _Machine:
     """An IEBEL run: the instruction index and the 256 registers."""
 
@@ -139,6 +145,14 @@ class _Machine:
     @property
     def halted(self) -> bool:
         return self.state[0] >= len(self.ops)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of storage and cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.state[0],
+            registers=self.state[1],
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

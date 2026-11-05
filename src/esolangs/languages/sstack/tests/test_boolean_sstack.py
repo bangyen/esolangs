@@ -8,6 +8,7 @@ import esolangs
 from esolangs import compat
 from esolangs import run as execute
 from esolangs.languages import generators as boolean
+from esolangs.vm import _capture_workspace
 from scripts import new_language
 from tests.generators.boolean_runners import _runner
 from tests.support.event_io import ReadFirstIO
@@ -194,12 +195,12 @@ def test_six_bit_labels_include_the_ascii_constants_and_last_label() -> None:
     seen = set()
     for row in [0, len(table) - 1, *[blocks[i][1] for i in (47, 48, 62)]]:
         machine = make_vm("SStack", program, stdin=f"{row:011b}")
-        written = WrittenState(machine.snapshot())
+        written = WrittenState(_capture_workspace(machine))
         commands = 0
         while not machine.halted and commands <= limit:
             machine.step()
             state = machine.snapshot()
-            written.sample(state)
+            written.sample(_capture_workspace(machine))
             commands += 1
             pending = state[1][4]
             if pending is not None:

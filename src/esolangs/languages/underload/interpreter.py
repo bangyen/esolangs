@@ -19,6 +19,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 type _State = tuple[str, int, tuple[str, ...]]
@@ -84,6 +85,11 @@ def _advance(state: _State) -> tuple[_State, _Effect]:
     return (program, at + 1, stack), printed
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "underload-v1", ("program", "instruction", "stack", "input_cursor")
+)
+
+
 class _Machine:
     """Underload's growing program and string stack."""
 
@@ -103,6 +109,15 @@ class _Machine:
     @property
     def stack(self) -> list[object]:
         return list(self.state[2])
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic components independently of storage and cycle grouping."""
+        return _WORKSPACE_MODEL.capture(
+            program=self.state[0],
+            instruction=self.state[1],
+            stack=self.state[2],
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         return (*self.state, self.io.progress())
