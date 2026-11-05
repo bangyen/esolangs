@@ -28,12 +28,9 @@ Size:
 
 Decisions:
     A half-turn rotation only strips trailing blanks (0.0% by area at n=2-8),
-    so it is not tried.  When no shape fits ``width``, a clockwise turn of the
-    indexed street gives a nine-column floor, seven with its room floors
-    shared with the kerb.  Being one cell per entry, it has no constant halves
-    or repeats to fold or share; ignored inputs still drop.  A tree one column
-    past ``width`` falls to it (``00000011``: 12x41 -> 165x9 at ``width=40``):
-    a shape switch, not a missing piece.
+    so it is not tried. When no shape fits ``width``, a clockwise turn of the
+    shared-kerb lookup gives a seven-column floor (``00000011``: 12x41 ->
+    165x7 at ``width=40``). Entries are individual cells; ignored inputs drop.
 
     ``balance`` snakes the indexed street into strips (456x9 -> 98x48 at
     n=6 random).  Blocks stand two blank rows apart and cuts keep four clear
@@ -202,8 +199,10 @@ def _streetcode_tree_span(
     def child(lo: int, hi: int) -> list[str]:
         if constant(lo, hi):
             return _streetcode_leaf(int(table[lo]), skipped)
-        # A child is half a span, and spans start at most 32 long (the tree
-        # is only built through five inputs), so every child fits the memo.
+        # Folded trees can beat the lookup past five inputs. Recurse without
+        # retaining their large children (n=6 AND has a 32-entry child).
+        if hi - lo > _TREE_CACHE_MAX:
+            return _streetcode_tree_span(table, lo, hi, constant)
         return list(_streetcode_tree_memo(table[lo:hi]))
 
     return _streetcode_join(child(start, middle), child(middle, stop))
@@ -682,11 +681,9 @@ def _streetcode_shared_program(n: int, tree: list[str]) -> str:
     return "\n".join(row.rstrip() for row in shared)
 
 
-def _streetcode_narrow(flat: str, width: int) -> str:
-    """Turn the indexed street clockwise: nine columns, or seven with a shared kerb."""
-    return _streetcode_quarter_turn(
-        _streetcode_shared_kerb(flat) if width < _SILL + 1 else flat
-    )
+def _streetcode_narrow(flat: str) -> str:
+    """Turn the shared-kerb lookup clockwise, retaining its seven-column floor."""
+    return _streetcode_quarter_turn(_streetcode_shared_kerb(flat))
 
 
 _WALLS = frozenset("-|+")
@@ -948,9 +945,9 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
         fitting = [p for p in programs if grid_width(p) <= width]
         if fitting:
             return _smallest(*fitting)
-        # The indexed street has nine rows at every arity; rotating it
-        # makes those the width floor while preserving right-hand driving.
-        return _streetcode_narrow(_streetcode_flat(truth_table, n), width)
+        # Sharing the kerb wins even when the wider turn fits; see
+        # [ablations.narrow_kerb_and_cache_repair_20261104].
+        return _streetcode_narrow(_streetcode_flat(truth_table, n))
     return _smallest(*programs)
 
 

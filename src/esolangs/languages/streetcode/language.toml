@@ -153,3 +153,6 @@ tests = [
     "src/esolangs/languages/streetcode/tests/test_streetcode.py::TestStreetcodeCPBounds",
     "src/esolangs/languages/streetcode/tests/test_streetcode.py::TestStreetcodeWikiExamples::test_infinite_loop_example_traces_its_17_cell_lap",
 ]
+
+[ablations.narrow_kerb_and_cache_repair_20261104]
+verdict = "correctness/selection repair: all width fallbacks rotate the shared-kerb lookup, even when nine columns fit. Actual n3/7/8 areas1485/5436/7668 ->1155/4228/5964 cells,22.22% less; old/new controls execute. All6360 small public variant rows pass. Large folded trees now recurse outside the memo above16entries: n6 AND previously cached32, now at most16. Tree drawings and defaults are byte-identical in the compared corpus; default pins, bounds and anchors unchanged."

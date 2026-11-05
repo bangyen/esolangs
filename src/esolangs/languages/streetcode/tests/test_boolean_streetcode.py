@@ -33,3 +33,32 @@ def test_streetcode_lays_out_every_two_input_table(width: int) -> None:
     """The regression itself, kept separate so it names the language."""
     for table in ("0001", "0010", "1101", "1110", "0110"):
         assert evaluate_generated("Streetcode", table, timeout=30, width=width) == table
+
+
+def test_fitting_narrow_lookup_still_shares_its_kerb() -> None:
+    table = "00000011"
+    program = esolangs.generate("Streetcode", table, width=40)
+    rows = program.splitlines()
+    assert len(rows) == 165
+    assert max(map(len, rows)) == 7
+    assert evaluate_generated("Streetcode", table, width=40) == table
+
+
+def test_large_folded_tree_only_memoizes_small_children(monkeypatch) -> None:
+    import esolangs.languages.streetcode.generator as generator
+
+    memo = generator._streetcode_tree_memo
+    sizes = []
+
+    def bounded(table: str) -> tuple[str, ...]:
+        sizes.append(len(table))
+        assert len(table) <= generator._TREE_CACHE_MAX
+        return memo(table)
+
+    monkeypatch.setattr(generator, "_streetcode_tree_memo", bounded)
+    program = generator.streetcode("0" * 63 + "1")
+    assert sizes
+    for row in (0, 63):
+        assert esolangs.run("Streetcode", program, stdin=f"{row:06b}") == str(
+            int(row == 63)
+        )
