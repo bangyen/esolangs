@@ -502,7 +502,7 @@ Symbols the formula cells use:
 - **SendStuff:** N_d = 1 + Σ_{j>d} V_j + V_d - 4, the node index of the last depth-d Input; V_j = 4b + min(2^j - b, 2^(s/2)), b = min(2^j, 2^s - 2^(s/2)), s = 2^(n-j).
 - **Shakespeare:** K = ceil(T/64), E = 6 for n=1, otherwise 2n+K+6.
 - **SLOW ACV MAMMALIAN:** E = first jump, prologue, per-level prefix, node and arm, tail: each list at its residue maximum; B = 8 bits a cell on arrays 0 and 16, pool zeros, heads, counters.
-- **Smu:** E = 93T - 80, the macro-expanded program with no constant subtree.
+- **Smu:** C = historical finite price; its 44-name derivation at n=12..16 remains open. Raw-tree bound 6T+86 is independent of name prices; E = 93T - 80, the macro-expanded program with no constant subtree.
 - **Streetcode:** F = 5T/2 + 110n + 108 to n = 7, then 7T/2 + 14n + 652: the flat street.
 - **Subleq:** I = the program's cell bits: bl(|v|) plus one per zero or negative cell; R = 6n + 5 on a tree, 4 on a constant; packed, its worst read, advance or halving row; P = the pc: bl(Q-3) on a tree, bl(Q) on a constant, bl(D-3) packed; Q cells, D decoder cells.
 - **Suffolk:** W = bl(L-1)+max(6,n-1)+max(19,4n-1)+bl(n)+4, plus 3+max(0,n-6)+bl(max(7,n+1)) through n=10.

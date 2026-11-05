@@ -8,7 +8,7 @@ admitted = 2026-10-07T12:46:28-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "a node stores its halves under the input bit's own names and pushes the one the bit names as the next run's program, above seven skip runs for the byte's other bits; a node with equal halves is a pad; five macros and up to three delimiter macros carry the repeated text, and a subtree two parents reach is one more when that is shorter"
-definitions = ["E = 93T - 80, the macro-expanded program with no constant subtree"]
+definitions = ["C = historical finite price; its 44-name derivation at n=12..16 remains open. Raw-tree bound 6T+86 is independent of name prices", "E = 93T - 80, the macro-expanded program with no constant subtree"]
 
 [generator_sizes]
 "00000001" = { commands = 164, commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 164, "7" = 164 }, source_units = 119 }

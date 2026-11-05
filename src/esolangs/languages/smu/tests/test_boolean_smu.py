@@ -32,7 +32,7 @@ def test_sharing_totals() -> None:
     three = [format(value, "08b") for value in range(256)]
     assert sum(len(tools.smu(table)) for table in three) == 31076
     assert sum(len(tools.smu(table)) for table in five_input_sample()) == 35887
-    # Past 47 macros names take a digit, so which ones earn the short names
+    # Past 44 macros names take a digit, so which ones earn the short names
     # and whether a long name still pays both show in the length.
     wide = format(random.Random(3).getrandbits(1 << 11), f"0{1 << 11}b")
     assert len(tools.smu(wide)) == 2124

@@ -2,29 +2,21 @@
 
 
 def _chars(n: int, _: str) -> int:
-    """C: 103 + per level 3 a node, 2 a pad, plus 2D + E or 3(E - D) of macro names.
+    """Return default-source legacy ceilings, then the universal raw-tree ceiling.
 
-    Terminal leaf targets save four fixed characters; sharing is unchanged.
-    Exact at n = 3, 5, 9, 10, 11 (n = 7: no table reaches it, the 4 level-5 pads
-    used twice stay inline, 3 < 4).  From n = 12 it is the price before
-    the delimiter macros, an upper bound only (witness 4,252 at n = 12, 42,528
-    at n = 16, against 6,263 and 59,326): the old constants no longer fit
-    and the exact worst case is open. The historical derivation assumed 47
-    names before delimiter
-    macros (the current allocator has 44). From n = 12 the 256
-    eight-bit subtables are each named, one-letter names going to the most
-    used; then exact to n = 15.  From n = 16 (32 uses, above the
-    4-bit tables' 31) the 8-bit tables outrank the lower macros: 47 get
-    one-letter names, the rest and every 4- and 2-bit macro two letters, so
-    5T/8 + 465T/2048 + 3486, then exact at n = 16 only.  Past n = 16 that price
-    charges every subtable once per distinct parent; a level n - 4 pair
-    repeated twice under a three-letter name fails the macro test
-    ((2 - 1) * 9 <= (2 + 2) * 3) and is written out at both places, so its
-    subtables collect two references per parent while names still rank by
-    parents.  Keeping the 47 one-letter subtables' pairs distinct and
-    repeating the 209 two-letter subtables' pairs beats it (n = 17
-    116,220 > 115,166; n = 19 454,877 > 450,206; n = 20 905,766 > 896,926),
-    so 6T + 86 bounds past n = 16.
+    Registered exact rungs are 3, 5, 9, 10, 11. The tighter n=12..16 prices used
+    47 names; their derivation for the current 44-name allocator is open.
+    Raw 44-name witness prices exceed them by 9, 18, 30, 54, 102 chars;
+    the shipped delimiter-compressed witnesses still fit.
+
+    A raw leaf costs 1; a branch costs 5 plus its children, a pad 3 plus
+    its child. Thus a height-n tree costs at most 6T-5, plus 91 fixed chars.
+    A kept macro's u direct parents guarantee at least u references; its
+    (u-1)b > (u+2)l admission saves text even when ancestors inline.
+    Each chosen delimiter occurs at least five times in the all-delimiter
+    build, hence in the expanded tree, paying its four-character definition.
+    X/Y/W are reserved, so these counts contain no macro names.
+    The resulting 6T+86 bound does not depend on macro-name lengths.
     """
     if n > 16:
         return 6 * (1 << n) + 86

@@ -20,8 +20,8 @@ reach is a macro of its own when that is shorter: defined once, named at
 each use.
 
 Size:
-    O(T) worst case, never longer than the plain tree; O(n) steps, one run
-    per input bit.  n=10 parity: 224 chars, n=10 and: 182 chars, n=10
+    O(T) worst case, at most 6T+86 chars; O(n) steps, one run per input
+    bit.  n=10 parity: 224 chars, n=10 and: 182 chars, n=10
     random 1847: 1,190 chars. Constants: n=8: 75 chars; 55n+5 commands.
 
 Decisions:
