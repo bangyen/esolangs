@@ -267,3 +267,7 @@ Alight declares canonical reachable-list graphs, typed pending expressions and
 walker fields. List aliases/cycles survive allocation and namespace reordering;
 immutable parser-container sharing and cycle serialization are excluded. Its
 exact default workspace formula counts logical payloads and both input cursors.
+
+Modulous and Painfuck declare RNG-aware text factories and debug fields.
+Preparation binds options without drawing; variables, tape, loop/repeat state,
+input progress and draw counts remain per-run.

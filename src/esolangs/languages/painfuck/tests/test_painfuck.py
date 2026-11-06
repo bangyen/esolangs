@@ -7,8 +7,9 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.painfuck.interpreter import _Machine as Painfuck
+from esolangs.languages.painfuck.interpreter import prepare_machine
 from esolangs.runtime.io import ScriptedIO
-from esolangs.runtime.randomness import FirstDraw
+from esolangs.runtime.randomness import FirstDraw, Seeded
 from esolangs.vm import (
     run_until_halt,
     run_until_halt_or_all_branches_cycle,
@@ -449,6 +450,27 @@ def test_branching_search_leaves_input_and_wide_coin_paths_undecided() -> None:
 def test_stepping_through_the_random_instruction_is_reproducible() -> None:
     """Its random instruction steps the same way twice under one seed."""
     assert_random_steps_reproduce("Painfuck", "y")
+
+    rng = Seeded(7)
+    before = rng._random.getstate()
+    options = {"rng": rng}
+    factory = prepare_machine(_encode("yp"), options)
+    options.clear()
+    first, second = factory(ScriptedIO()), factory(ScriptedIO())
+    assert first is not second
+    assert first._rng is second._rng is rng
+    assert rng._random.getstate() == before
+    initial = second.snapshot()
+    first.step()
+    assert rng._random.getstate() != before
+    assert second.snapshot() == initial
+    assert second.memory == [0]
+    assert second.ptr == second.ind == 0
+    assert second.snapshot() == initial
+    with pytest.raises(TypeError, match="text source"):
+        prepare_machine([], {})
+    with pytest.raises(TypeError, match="only the rng"):
+        prepare_machine("", {"unknown": True})
 
 
 def test_branching_limit_admits_exactly_its_outcomes() -> None:

@@ -48,12 +48,15 @@ import re
 from collections.abc import Callable, Mapping
 from difflib import get_close_matches
 from types import MappingProxyType
-from typing import Never, cast
+from typing import Any, Never, cast
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.modulous.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
@@ -619,6 +622,22 @@ _DISPATCH: dict[str, _Handler] = {
 }
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind text and caller-owned RNG; construct state only when IO is supplied."""
+    if not isinstance(source, str):
+        raise TypeError("modulous machines require text source")
+    if options.keys() - {"rng"}:
+        raise TypeError("modulous machines accept only the rng runtime option")
+    rng = options.get("rng")
+
+    def build(io: IO) -> _Machine:
+        return _Machine(source, io, rng)
+
+    return build
+
+
 def _execute(code: str, io: IO, rng: Randomness | None = None) -> CompletionReport:
     """Run a Modulous program, drawing ``RND`` from ``rng``.
 
@@ -629,7 +648,7 @@ def _execute(code: str, io: IO, rng: Randomness | None = None) -> CompletionRepo
     only ``run`` could not pin the draw without patching ``secrets``
     globally.  This is the signature the other random-drawing runs take.
     """
-    return drive(_Machine(code, io, rng))
+    return drive(_Machine(code, io, rng), policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO, rng: Randomness | None = None) -> None:

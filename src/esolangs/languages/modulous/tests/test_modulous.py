@@ -5,9 +5,15 @@ from itertools import product
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.modulous.interpreter import _advance, _named, run
+from esolangs.languages.modulous.interpreter import (
+    _advance,
+    _named,
+    prepare_machine,
+    run,
+)
 from esolangs.languages.modulous.interpreter import _Machine as Modulous
 from esolangs.runtime.io import IO, ScriptedIO
+from esolangs.runtime.randomness import Seeded
 from esolangs.vm import (
     run_until_halt,
     run_until_halt_or_all_branches_cycle,
@@ -471,6 +477,28 @@ def test_rnd_one_still_consumes_a_draw() -> None:
     io = ScriptedIO()
     run("[RND 1][RND 100][PRT INT]", io, _Scripted(0, 7))
     assert io.getvalue() == "7"
+
+    rng = Seeded(7)
+    before = rng._random.getstate()
+    options = {"rng": rng}
+    factory = prepare_machine("[RND 9][PSH INT 4][PSH VAR1][END]", options)
+    options.clear()
+    first, second = factory(ScriptedIO()), factory(ScriptedIO())
+    assert first is not second
+    assert first.rng is second.rng is rng
+    assert rng._random.getstate() == before
+    initial = second.snapshot()
+    first.step()
+    assert rng._random.getstate() != before
+    assert second.snapshot() == initial
+    first.step()
+    first.step()
+    assert first.var != second.var
+    assert second.snapshot() == initial
+    with pytest.raises(TypeError, match="text source"):
+        prepare_machine([], {})
+    with pytest.raises(TypeError, match="only the rng"):
+        prepare_machine("", {"unknown": True})
 
 
 def test_a_variable_change_moves_the_snapshot_at_the_same_cursor() -> None:
