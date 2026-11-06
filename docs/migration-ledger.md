@@ -418,3 +418,12 @@ unfinished observations and five complete. Direct bounded execution matches
 the debugger too. All four supported Python versions pass. This is witness
 coverage, not whole-corpus equivalence; exact workspace accounting and broader
 lifecycle acceptance remain open.
+
+Basicfuck uses canonical affine analysis and a reduced decision diagram;
+local equal-half reduction and representative-subtable discovery are deleted.
+Breadth-first flag placement, gain pricing, complemented output and unconditional
+reads remain owned. All 632 corpus programs and 75 larger layouts match byte
+for byte; 2,286 paired native/stepped rows retain traces and resource peaks.
+The canonical-analysis fault control changes executed answers. Existing bounds,
+size pins and the n=4 parity anchor remain unchanged. The wheel matches these
+witnesses on Python 3.12–3.15; catalog acceptance stays open.

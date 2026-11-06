@@ -31,11 +31,11 @@ Decisions:
 """
 
 from esolangs.generation.algebraic import affine_form
+from esolangs.generation.decision import reduced_diagram
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     short_name,
-    subtree_ids,
 )
 
 #: Single-character names: no reserved word is one, and 53 cover every table
@@ -88,33 +88,30 @@ def _program(truth_table: str, n: int, mark: str, base: int) -> str:
     repeated subtree that pays for it becomes a block ``if(f){..}`` after the
     tree, and each place the tree would descend into it sets ``f`` instead.
     """
-    ids = subtree_ids(truth_table)
-    reps: dict[_Key, int] = {}
+    diagram, root_id = reduced_diagram(truth_table, n)
     levels: list[list[_Key]] = [[] for _ in range(n)]
     children: dict[_Key, tuple[_Ref, _Ref]] = {}
 
-    def resolve(depth: int, k: int) -> _Ref:
-        """The leaf or node reached from subtable ``k``, skipping untested inputs."""
-        while ids[depth][k] >= 2 and ids[depth + 1][2 * k] == ids[depth + 1][2 * k + 1]:
-            depth, k = depth + 1, 2 * k
-        if ids[depth][k] < 2:
-            return ids[depth][k]
-        key = (depth, ids[depth][k])
-        if key not in reps:
-            reps[key] = k
-            levels[depth].append(key)
-        return key
+    def reference(node: int) -> _Ref:
+        return node if node < 2 else (diagram[node].level, node)
 
-    root = resolve(0, 0)
+    root = reference(root_id)
+    if not isinstance(root, int):
+        levels[root[0]].append(root)
+    placed = {root}
     callers: dict[_Key, int] = {}
+    # Flag allocation retains breadth-first, zero-first placement and pricing.
     for depth in range(n):
-        for key in levels[depth]:  # grows only at deeper levels
-            k = reps[key]
-            zero, one = resolve(depth + 1, 2 * k), resolve(depth + 1, 2 * k + 1)
+        for key in levels[depth]:
+            node = diagram[key[1]]
+            zero, one = reference(node.zero), reference(node.one)
             children[key] = zero, one
             for child in (zero, one):
                 if not isinstance(child, int):
                     callers[child] = callers.get(child, 0) + 1
+                    if child not in placed:
+                        placed.add(child)
+                        levels[child[0]].append(child)
 
     # Bottom-up: a node's body is its arms, a call standing for a shared child.
     shared: set[_Key] = set()

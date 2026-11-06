@@ -59,6 +59,20 @@ def test_constant_reads_precede_output_and_preserve_the_next_character() -> None
                     assert written.bits == workspace
                     assert io.getvalue() == bit
                     assert io.input_char() == ord("Q")
+    from unittest.mock import patch
+
+    from esolangs.generation.decision import reduced_diagram
+    from tests.support.generator_support import evaluate_generated
+
+    table = "0001"
+    with patch(
+        "esolangs.languages.basicfuck.generator.reduced_diagram",
+        side_effect=lambda value, n: reduced_diagram(
+            value.translate(str.maketrans("01", "10")), n
+        ),
+    ) as corrupted:
+        assert evaluate_generated("Basicfuck", table) == "1110"
+        assert corrupted.called
     assert (
         sum(
             len(esolangs.generate("Basicfuck", format(v, "08b")).source)

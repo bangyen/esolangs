@@ -15,7 +15,7 @@ B-tapemark,yes,declared,declared,declared,owned-adapter,b-tapemark-v1,pending-ba
 Back,yes,declared,not-applicable,declared,owned-adapter,back-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
 Balik,yes,declared,not-applicable,declared,owned-adapter,balik-v1,pending-backend-audit,pending-acceptance-audit,open
 BASICER,yes,declared,not-applicable,declared,owned-adapter,basicer-v1,canonical-decision-layers,pending-acceptance-audit,open
-Basicfuck,yes,declared,not-applicable,declared,owned-adapter,basicfuck-v1,pending-backend-audit,pending-acceptance-audit,open
+Basicfuck,yes,declared,not-applicable,declared,owned-adapter,basicfuck-v1,canonical-affine-reduced-diagram;owned-flag-pricing,pending-acceptance-audit,open
 Befunge,yes,declared,not-applicable,declared,owned-adapter,befunge-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
 Between,yes,declared,not-applicable,declared,owned-adapter,between-v1,pending-backend-audit,pending-acceptance-audit,open
 BFStack,yes,declared,not-applicable,declared,owned-adapter,bfstack-v1,pending-backend-audit,pending-acceptance-audit,open
