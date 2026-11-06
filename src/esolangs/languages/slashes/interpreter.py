@@ -14,6 +14,7 @@ EOF does not arise, and no source is invalid, so no ProgramError arises.
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 #: ``(source, rule)``: the unread program, and the ``(pattern, replacement)``
@@ -68,6 +69,11 @@ def _advance(state: _State) -> tuple[_State, str]:
     return (source[1:], None), source[0]
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "slashes-v1", ("source", "pattern", "replacement", "input_cursor")
+)
+
+
 class _Machine:
     """The unread source and the rule being applied to it."""
 
@@ -88,6 +94,17 @@ class _Machine:
     @property
     def memory(self) -> list[int]:
         return [ord(c) for c in self.state[0]]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        source, rule = self.state
+        pattern, replacement = rule if rule is not None else (None, "")
+        return _WORKSPACE_MODEL.capture(
+            source=source,
+            pattern=pattern,
+            replacement=replacement,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         # Flat, as the ledger's exact workspace bound measures it.

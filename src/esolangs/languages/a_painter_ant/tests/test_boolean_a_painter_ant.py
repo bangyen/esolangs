@@ -204,16 +204,18 @@ def _check_near_unanimity() -> None:
                     source = esolangs.instantiate("A Painter Ant", template, bits)
                     io = ScriptedIO("Q")
                     machine = _Machine(source.source, io)
-                    written = WrittenState(machine.snapshot()) if row == 0 else None
+                    written = (
+                        WrittenState(machine.workspace_snapshot()) if row == 0 else None
+                    )
                     for _ in machine.prog:
                         machine.step()
                         if written:
-                            written.sample(machine.snapshot())
+                            written.sample(machine.workspace_snapshot())
                     after = machine.snapshot()
                     for _ in machine.prog:
                         machine.step()
                         if written:
-                            written.sample(machine.snapshot())
+                            written.sample(machine.workspace_snapshot())
                     assert machine.snapshot() == after
                     if written:
                         bound = 2 * (n + 1) * (1 << n) + 3

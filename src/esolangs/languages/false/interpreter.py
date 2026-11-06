@@ -50,6 +50,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import trunc_div, wrap_int32
 from esolangs.runtime.source_hints import syntax_error
@@ -453,6 +454,11 @@ def _advance(
     return _io_step(step, char_input)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "false-v1", ("stack", "variables", "frames", "input_cursor")
+)
+
+
 class _Machine:
     """The run state: the stack, the variables, and the frame stack."""
 
@@ -493,6 +499,25 @@ class _Machine:
     def stack(self) -> list[object]:
         # Loop completion consumes its flag even when no command follows.
         return list(_finalize(self.state)[0])
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+
+        def value(item: _Value | None) -> int | tuple[int, int] | None:
+            return (item.start, item.end) if isinstance(item, _Lambda) else item
+
+        frames = tuple(
+            (frame.pc, frame.end, value(frame.cond), value(frame.body), frame.testing)
+            if isinstance(frame, _Loop)
+            else (frame.pc, frame.end)
+            for frame in self.state[2]
+        )
+        return _WORKSPACE_MODEL.capture(
+            stack=tuple(value(item) for item in self.state[0]),
+            variables=tuple(value(item) for item in self.state[1]),
+            frames=frames,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

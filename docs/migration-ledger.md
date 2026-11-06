@@ -97,7 +97,7 @@ acceptance audit after the active separation work lands. Storage policy needs
 its priced comparison and explicit decision. These remain open even where an
 implementation pilot already passed.
 
-Accounting now has 95 explicit or inherited semantic adapters; 22 language
+Accounting now has 104 explicit or inherited semantic adapters; 13 language
 rows still use snapshot accounting. Declarations do not close lifecycle,
 storage-policy or catalog-wide acceptance requirements.
 
@@ -167,3 +167,6 @@ read-only dialect names are excluded; the corresponding bit bound is tightened.
 Line declares raster preparation, scale binding and grid debug fields. Cached
 geometry, fresh step state and both native execution paths remain unchanged.
 Ordinary lifecycle checks now cover raster sources.
+The continuation/scope batch freezes nine more logical stores and frame stacks.
+Persistent scope-map history, grid caches and accumulator list spines are excluded;
+input and clock-read progress remain explicit.

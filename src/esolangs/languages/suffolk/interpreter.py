@@ -38,6 +38,7 @@ from esolangs.runtime._lifecycle import (
 )
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -71,6 +72,12 @@ def _advance(state: _State, code: str, byte: int | None = None) -> _State:
         acc = byte if byte is not None else 0
     ind += 1
     return (0 if ind == len(code) else ind, ptr, acc, tape)
+
+
+_WORKSPACE_MODEL = WorkspaceModel(
+    "suffolk-v1",
+    ("instruction", "pointer", "accumulator", "tape", "input_cursor", "exhausted"),
+)
 
 
 class _Machine:
@@ -164,6 +171,18 @@ class _Machine:
     def memory(self) -> list[int]:
         """The addressable cells."""
         return list(self.state[3])
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        instruction, pointer, accumulator, tape = self.state
+        return _WORKSPACE_MODEL.capture(
+            instruction=instruction,
+            pointer=pointer,
+            accumulator=accumulator,
+            tape=tape,
+            input_cursor=self.io.progress(),
+            exhausted=self._exhausted,
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.

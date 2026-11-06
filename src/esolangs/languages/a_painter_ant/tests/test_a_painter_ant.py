@@ -102,3 +102,16 @@ class TestPainterAntDumpsOnce:
         machine.step()
         machine.step()
         assert io.getvalue() == first
+
+
+def test_workspace_ignores_cycle_grid_cache_and_visited_extent():
+    machine = _Machine("pN")
+    machine.step()
+    saved = machine.workspace_snapshot()
+    retained = {saved}
+    machine._frozen = frozenset({((999, 999), 1)})
+    machine.visited.add((-999, -999))
+    machine.snapshot = lambda: ("unrelated cycle key",)
+    assert machine.workspace_snapshot() == saved
+    assert saved in retained
+    assert saved.parts[0] == frozenset(machine.grid.items())

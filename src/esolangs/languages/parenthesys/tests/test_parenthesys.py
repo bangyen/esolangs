@@ -151,3 +151,16 @@ def test_runtime_errors() -> None:
         _run("([ind|3|abc])")
     with pytest.raises(HaltError, match="needs an integer"):
         _run("([chr|65.5|])")
+
+
+def test_workspace_accumulator_ignores_piece_boundaries():
+    from esolangs.languages.parenthesys.interpreter import _Acc
+
+    machine = _Machine("(x)", ScriptedIO())
+    machine.state = (0, (_Acc(("cd", ("ab", None)), number=True), None), None)
+    saved = machine.workspace_snapshot()
+    retained = {saved}
+    machine.state = (0, (_Acc(("abcd", None), number=True), None), None)
+    assert machine.workspace_snapshot() == saved
+    assert saved in retained
+    assert saved.parts[1] == (("abcd", True),)

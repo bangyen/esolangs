@@ -50,13 +50,17 @@ def _execute(table, code, rows=None):
             with mock.patch(f"{_Machine.__module__}._compile", return_value=topology):
                 vm = _Machine(lines, io)
             assert io.progress() == n
-            written = WrittenState(vm.snapshot()) if row in (0, (1 << n) - 1) else None
+            written = (
+                WrittenState(vm.workspace_snapshot())
+                if row in (0, (1 << n) - 1)
+                else None
+            )
             commands = 0
             while not vm.halted and commands <= 2 * n + 2:
                 vm.step()
                 commands += 1
                 if written is not None:
-                    written.sample(vm.snapshot())
+                    written.sample(vm.workspace_snapshot())
             assert vm.halted
             assert io.getvalue() == table[row], (row, io.getvalue())
             assert commands <= 2 * n + 2

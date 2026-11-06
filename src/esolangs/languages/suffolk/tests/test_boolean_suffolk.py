@@ -47,10 +47,10 @@ class TestSuffolk:
                         assert io.input_char() == ord("Q")
                         io = ReadFirstIO(stdin, expected=n)
                         machine = _Machine("".join(program.split()), io)
-                        written = WrittenState(machine.snapshot())
+                        written = WrittenState(machine.workspace_snapshot())
                         for _ in range(length + 1):
                             machine.step()
-                            written.sample(machine.snapshot())
+                            written.sample(machine.workspace_snapshot())
                         assert machine.halted
                         assert io.getvalue() == bit
                         assert (
@@ -107,11 +107,11 @@ def _check_stored_input_records() -> None:
                 commands = "".join(program.split())
                 io = ScriptedIO("".join(f"{r:0{n}b}" for r in records))
                 machine = _Machine(commands, io)
-                written = WrittenState(machine.snapshot())
+                written = WrittenState(machine.workspace_snapshot())
                 steps = 0
                 while not machine.halted:
                     machine.step()
-                    written.sample(machine.snapshot())
+                    written.sample(machine.workspace_snapshot())
                     steps += 1
                     assert steps <= 3 * len(commands) + commands.index(",") + 1
                 assert io.getvalue() == "".join(table[r] for r in records)

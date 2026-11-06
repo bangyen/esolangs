@@ -163,3 +163,19 @@ def test_scope_transition_keeps_old_tables_immutable() -> None:
     with pytest.raises(TypeError):
         moved[1][1] = "3"
     assert _advance(before) == moved
+
+
+def test_workspace_scope_values_survive_backing_root_moves():
+    machine = Forth("1{a}2{b}1{x}", ScriptedIO())
+    machine.step()
+    machine.step()
+    first_table = machine.table
+    saved = machine.workspace_snapshot()
+    retained = {saved}
+    for _ in range(4):
+        machine.step()
+        assert dict(first_table.items()) == {1: "a"}
+        assert saved in retained
+    assert dict(machine.table.items()) == {1: "x", 2: "b"}
+    assert machine.workspace_snapshot().parts[1] == frozenset({(1, "x"), (2, "b")})
+    assert saved.parts[1] == frozenset({(1, "a")})

@@ -29,6 +29,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -89,6 +90,9 @@ def _advance(state: _State, grid: _Grid, program: str) -> _Move:
     return (x, y, ip, None)
 
 
+_WORKSPACE_MODEL = WorkspaceModel("a-painter-ant-v1", ("grid", "x", "y", "instruction"))
+
+
 class _Machine:
     """Per-run A Painter Ant state.
 
@@ -145,6 +149,15 @@ class _Machine:
     def memory(self) -> list[int]:
         """The addressable cells."""
         return [v for _, v in sorted(self.grid.items())]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            grid=frozenset(self.grid.items()),
+            x=self.x,
+            y=self.y,
+            instruction=self.ip,
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

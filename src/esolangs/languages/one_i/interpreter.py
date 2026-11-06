@@ -61,6 +61,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 #: An exact Gaussian rational ``(re, im)``, or a float once inexact.
@@ -367,6 +368,9 @@ def _advance(
     return frames, edit, out
 
 
+_WORKSPACE_MODEL = WorkspaceModel("one-i-v1", ("frames", "values", "input_cursor"))
+
+
 class _Machine:
     """The shell around :func:`_advance`: the stack, input and output."""
 
@@ -394,6 +398,22 @@ class _Machine:
     def stack(self) -> list[_Value]:
         """The stack, bottom first."""
         return list(self.values)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        frames = []
+        rest = self.frames
+        while rest is not None:
+            (function, _, cursor), rest = rest
+            frames.append((function.offset, cursor))
+        return _WORKSPACE_MODEL.capture(
+            frames=tuple(frames),
+            values=tuple(
+                ("fn", value.offset) if isinstance(value, _Fn) else value
+                for value in self.values
+            ),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.

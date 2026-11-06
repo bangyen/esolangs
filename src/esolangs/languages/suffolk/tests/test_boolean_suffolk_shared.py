@@ -34,11 +34,11 @@ def _execute(table, program, rows):
     peak = 0
     for row in rows:
         machine = _Machine(program, ScriptedIO(f"{row:0{n}b}"))
-        written = WrittenState(machine.snapshot())
+        written = WrittenState(machine.workspace_snapshot())
         steps = 0
         while not machine.halted and steps <= len(program) + 151:
             machine.step()
-            written.sample(machine.snapshot())
+            written.sample(machine.workspace_snapshot())
             steps += 1
         assert machine.halted
         assert machine.io.getvalue() == table[row]

@@ -14,6 +14,7 @@ from esolangs.languages.slashes.generator import (
     _UNARY,
     _is_unfilled_template,
 )
+from esolangs.vm import _capture_workspace
 from scripts.benchmark import WrittenState
 from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import witnesses
@@ -53,11 +54,11 @@ def test_constant_root_parses_inputs_without_selecting_a_table(inputs, bit) -> N
         program = esolangs.instantiate("///", template, bits)
         assert not _is_unfilled_template(program.source)
         vm = make_vm("///", program)
-        state = WrittenState(vm.snapshot())
+        state = WrittenState(_capture_workspace(vm))
         commands = 0
         while not vm.halted and commands < inputs + 5:
             vm.step()
-            state.sample(vm.snapshot())
+            state.sample(_capture_workspace(vm))
             commands += 1
         assert vm.halted
         assert vm.output == bit
@@ -157,10 +158,10 @@ def _check_run_macros() -> None:
                 )
                 io = ScriptedIO("Q")
                 machine = _Machine(program.source, io)
-                written = WrittenState(machine.snapshot())
+                written = WrittenState(machine.workspace_snapshot())
                 while not machine.halted:
                     machine.step()
-                    written.sample(machine.snapshot())
+                    written.sample(machine.workspace_snapshot())
                 assert io.getvalue() == table[row]
                 assert io.reads == 0
                 assert io.input_char() == ord("Q")

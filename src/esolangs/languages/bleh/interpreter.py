@@ -56,6 +56,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -707,6 +708,11 @@ def _return(value: str, kont: _Kont, fresh: int) -> _State:
     return tuple.__new__(_State, (frame, rest, fresh))  # retry the branch
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "bleh-v1", ("control", "continuation", "fresh", "heap", "lookahead", "input_cursor")
+)
+
+
 class _Machine:
     """The functions, the control and continuation, the heap, and lookahead."""
 
@@ -734,6 +740,22 @@ class _Machine:
         while kont is not None:
             depth, kont = depth + 1, kont[1]
         return (depth,)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        continuation = []
+        rest = self.state.kont
+        while rest is not None:
+            frame, rest = rest
+            continuation.append(frame)
+        return _WORKSPACE_MODEL.capture(
+            control=self.state.control,
+            continuation=tuple(continuation),
+            fresh=self.state.fresh,
+            heap=frozenset(self.heap.items()),
+            lookahead=self.ahead,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

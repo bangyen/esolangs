@@ -70,6 +70,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 _NUMBER = re.compile(r"-?[0-9]+(?:\.[0-9]+)?")
@@ -469,6 +470,20 @@ def _advance(
     return (nxt, stack, frames), effects, out
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "parenthesys-v1",
+    (
+        "instruction",
+        "stack",
+        "frames",
+        "globals",
+        "functions",
+        "locals",
+        "input_cursor",
+    ),
+)
+
+
 class _Machine:
     """The shell around :func:`_advance`: variables, functions, I/O."""
 
@@ -500,6 +515,39 @@ class _Machine:
             item, node = node
             texts.append(item[0] if isinstance(item, tuple) else "<loop>")
         return texts[::-1]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        stack: list[_Value] = []
+        rest = self.state[1]
+        while rest is not None:
+            item, rest = rest
+            if isinstance(item, _Acc):
+                pieces = []
+                remaining = item.pieces
+                while remaining is not None:
+                    piece, remaining = remaining
+                    pieces.append(piece)
+                stack.append(("".join(reversed(pieces)), item.number))
+            else:
+                stack.append(item)
+        frames = []
+        calls = self.state[2]
+        while calls is not None:
+            frame, calls = calls
+            frames.append(frame)
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.state[0],
+            stack=tuple(stack),
+            frames=tuple(frames),
+            globals=frozenset(self.globals.items()),
+            functions=frozenset(self.functions.items()),
+            locals=frozenset(
+                (name, frozenset(values.items()))
+                for name, values in self.locals.items()
+            ),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

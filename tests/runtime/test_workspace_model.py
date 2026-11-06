@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.languages.brainfuck.interpreter import _WORKSPACE_MODEL, _Machine
 from esolangs.registry import LANGUAGES
+from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace, complete_vm, make_vm
@@ -188,15 +189,30 @@ def test_declared_models_keep_immutable_accounting_without_cycle_keys(
     retained = {saved}
     measured = WrittenState(saved)
     monkeypatch.setattr(type(vm._machine), "snapshot", lambda _self: ())
+    capabilities = LANGUAGES[name].runtime.capabilities
+    periodic = (
+        capabilities is not None and capabilities.completion is Completion.PERIODIC
+    )
+    boundaries = set()
     for _ in range(5000):
+        if periodic and vm.ip == 0:
+            state = _capture_workspace(vm)
+            if state in boundaries:
+                break
+            boundaries.add(state)
         if vm.halted:
             break
         vm.step()
         measured.sample(_capture_workspace(vm))
         assert saved in retained
     else:
-        pytest.fail("one-input accounting witness did not halt")
-    complete_vm(vm)
+        pytest.fail("one-input accounting witness did not complete")
+    if periodic:
+        assert _capture_workspace(vm) in boundaries
+        vm._machine.interrupt()
+        vm.step()
+    else:
+        complete_vm(vm)
     measured.sample(_capture_workspace(vm))
     assert measured.bits > 0
     if termination:

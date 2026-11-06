@@ -43,6 +43,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import trunc_div, trunc_mod, wrap_int32
 
@@ -433,6 +434,11 @@ def _advance(state: _State, line: str | None = None) -> _State:
     return state
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "for-thorn-v1", ("stack", "scopes", "frames", "input_cursor", "input_reads")
+)
+
+
 class _Machine:
     """Per-run Forþ state: the shared stack, scope table, and call stack.
 
@@ -475,6 +481,16 @@ class _Machine:
         """
         frames = self.frames
         return tuple(f.pc for f in frames) if frames else (self._length,)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            stack=self.stack,
+            scopes=frozenset(self.table.items()),
+            frames=tuple((frame.code, frame.pc, frame.loop) for frame in self.frames),
+            input_cursor=self.io.progress(),
+            input_reads=self._input_reads,
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

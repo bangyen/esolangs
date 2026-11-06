@@ -738,6 +738,7 @@ def test_complete_wide_projection_retains_nonadjacent_ports() -> None:
 @pytest.mark.parametrize("kind", ["shared", "projected", "minterms"])
 def test_wide_layouts_preserve_execution_and_written_state_bounds(kind) -> None:
     from esolangs.debugger import make_vm
+    from esolangs.vm import _capture_workspace
     from scripts.benchmark import WrittenState
 
     rng = random.Random(841)
@@ -752,11 +753,11 @@ def test_wide_layouts_preserve_execution_and_written_state_bounds(kind) -> None:
     for row in (0, 1, 128, 255):
         stdin = esolangs.encode_inputs("Circuit Diagram", list(map(int, f"{row:08b}")))
         vm = make_vm("Circuit Diagram", program, stdin=stdin)
-        state = WrittenState(vm.snapshot())
+        state = WrittenState(_capture_workspace(vm))
         commands = 0
         while not vm.halted and commands < 18:
             vm.step()
-            state.sample(vm.snapshot())
+            state.sample(_capture_workspace(vm))
             commands += 1
         assert vm.halted
         assert vm.output == table[row]

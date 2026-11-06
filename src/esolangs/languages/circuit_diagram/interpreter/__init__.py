@@ -109,6 +109,7 @@ from esolangs.languages.circuit_diagram.interpreter._parse import (
 )
 from esolangs.runtime._drive import drive
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 # ``tests/test_circuit_diagram.py`` carries ``PRIME_TESTER`` (repaired, replayed over
@@ -387,6 +388,11 @@ def _generation(
     return (tuple(driven), grown), quiet
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "circuit-diagram-v1", ("signals", "latches", "stopped", "clock_cursor")
+)
+
+
 class _Machine:
     """Per-run Circuit Diagram state: the wirings, the gates, their latches.
 
@@ -562,6 +568,15 @@ class _Machine:
                 break
             except _ClockNeededError:
                 sampled.append(self.clock.read())
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            signals=self.values,
+            latches=self.latches,
+            stopped=self.halted,
+            clock_cursor=self.clock.position,
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return events, latches, halt and the runtime clock-read cursor."""
