@@ -130,12 +130,15 @@ class TestStepMachine:
 
     def test_snapshot_includes_the_input_bits_and_their_rotation(self) -> None:
         """A consuming ``.`` rotates the input bit list, changing the snapshot."""
-        from esolangs.languages.clockwise.interpreter import _Machine
+        from esolangs.languages.clockwise.interpreter import prepare_machine
 
-        machine = _Machine(
-            ["+-?.;.;.;.;.;.;.;?R", "  R              R", "R                 R"],
-            ScriptedIO("0"),
-        )
+        rows = ["+-?.;.;.;.;.;.;.;?R", "  R              R", "R                 R"]
+        factory = prepare_machine(rows, {})
+        machine, other = factory(ScriptedIO("0")), factory(ScriptedIO("1"))
+        rows.clear()
+        untouched = other.snapshot()
+        assert other.io.position() == 1
+        assert factory(ScriptedIO("1")).snapshot() == untouched
         assert machine.io.position() == 1  # the whole input line was read up front
         for _ in range(3):
             machine.step()  # no '.' yet: the input is untouched
@@ -143,6 +146,13 @@ class TestStepMachine:
         machine.step()  # the '.' at (4,0) consumes the first bit and rotates it
         assert machine.snapshot() != before
         assert "".join(machine.inp) == "1100000"
+
+        assert other.snapshot() == untouched
+        assert machine.out == ()
+        with pytest.raises(TypeError, match="split text"):
+            prepare_machine("R", {})
+        with pytest.raises(TypeError, match="no runtime options"):
+            prepare_machine([], {"unexpected": True})
 
 
 def test_reading_with_no_input_is_eof() -> None:

@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Clockwise."""
 
+from esolangs.languages.clockwise.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -11,6 +12,9 @@ LANGUAGE = Language(
     RuntimeSpec(
         "clockwise",
         category="grid_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         split=True,
         empty_program="Clockwise program cannot be empty",
     ),

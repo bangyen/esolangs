@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Circuit Diagram."""
 
+from esolangs.languages.circuit_diagram.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -11,6 +12,9 @@ LANGUAGE = Language(
     RuntimeSpec(
         "circuit_diagram",
         category="grid_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         split=True,
         eof="resolves its inputs while laying the grid",
     ),

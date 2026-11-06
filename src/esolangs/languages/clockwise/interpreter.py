@@ -19,12 +19,16 @@ Errors:
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 from esolangs.exceptions import InputExhaustedError
+from esolangs.languages.clockwise.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
@@ -234,10 +238,26 @@ class _Machine:
             self.io.print_char(chr(byte))
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind source; each IO-bound construction owns fresh runtime state."""
+    if not isinstance(source, list):
+        raise TypeError("clockwise machines require split text source")
+    if options:
+        raise TypeError("clockwise machines accept no runtime options")
+    code = tuple(source)
+
+    def build(io: IO) -> _Machine:
+        return _Machine(list(code), io)
+
+    return build
+
+
 def _execute(code: list[str], io: IO) -> CompletionReport:
     """Run a Clockwise program, reading input bits when the ring reads ``.``."""
     machine = _Machine(code, io)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(code: list[str], io: IO) -> None:

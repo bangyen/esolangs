@@ -696,7 +696,10 @@ class TestPureTransition:
     def test_generation_is_pure_and_needs_no_wall_time(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from esolangs.languages.circuit_diagram.interpreter import _generation
+        from esolangs.languages.circuit_diagram.interpreter import (
+            _generation,
+            prepare_machine,
+        )
         from esolangs.languages.circuit_diagram.interpreter._functions import (
             _BufferedClock,
         )
@@ -718,6 +721,28 @@ class TestPureTransition:
         assert machine.io.getvalue() == ""
         assert first == second
         assert first[0] != state
+
+        rows = ["-.~.-:"]
+        factory = prepare_machine(rows, {})
+        first, second = factory(ScriptedIO("0")), factory(ScriptedIO("1"))
+        rows.clear()
+        assert first.topology is second.topology
+        assert first.clock is not second.clock
+        untouched = second.snapshot()
+        first.step()
+        assert second.snapshot() == untouched
+        assert second.io.getvalue() == ""
+        while not first.halted:
+            first.step()
+        assert first.io.getvalue() == "1"
+        assert factory(ScriptedIO("0")).snapshot() == before
+        while not second.halted:
+            second.step()
+        assert second.io.getvalue() == "0"
+        with pytest.raises(TypeError, match="split text"):
+            prepare_machine("-.~.-:", {})
+        with pytest.raises(TypeError, match="no runtime options"):
+            prepare_machine([], {"unexpected": True})
 
     def test_a_buffer_clock_serves_explicit_values_then_asks_for_more(self) -> None:
         from esolangs.languages.circuit_diagram.interpreter._functions import (

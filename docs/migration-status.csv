@@ -31,8 +31,8 @@ Caballo,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,cabal
 CARP,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,carp-v1,pending-backend-audit,pending-acceptance-audit,open
 Chicken,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,chicken-v1,pending-backend-audit,pending-acceptance-audit,open
 Circlefuck,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,circlefuck-v1,pending-backend-audit,pending-acceptance-audit,open
-Circuit Diagram,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,circuit-diagram-v1,pending-backend-audit,pending-acceptance-audit,open
-Clockwise,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,clockwise-v1,pending-backend-audit,pending-acceptance-audit,open
+Circuit Diagram,yes,declared,not-applicable,declared,owned-adapter,circuit-diagram-v1,pending-backend-audit,pending-acceptance-audit,open
+Clockwise,yes,declared,not-applicable,declared,owned-adapter,clockwise-v1,pending-backend-audit,pending-acceptance-audit,open
 Codesick,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,codesick-v1,pending-backend-audit,pending-acceptance-audit,open
 Collatz Multiverse,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,collatz-multiverse-v1,pending-backend-audit,pending-acceptance-audit,open
 Container,yes,declared,not-applicable,declared,owned-adapter,container-v1,pending-backend-audit,pending-acceptance-audit,open

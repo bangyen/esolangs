@@ -213,3 +213,7 @@ Native trace construction also retains artifact dialect choices.
 The raster/store batch declares five more models. Logical cells, array dimensions,
 stashed values, beam/tape state and bit buffers exclude persistent-map buckets,
 chunk boundaries, immutable program fingerprints and final-dump guards.
+
+Clockwise and Circuit Diagram declare split-grid factories and debug fields.
+Cyclic input bits, output buffers, circuit events/latches and default clock
+cursors remain per-run; topology caching and constructor input reads stay intact.

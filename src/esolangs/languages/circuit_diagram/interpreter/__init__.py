@@ -82,9 +82,10 @@ Decisions:
 """
 
 from collections import OrderedDict
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from threading import Lock
-from typing import NamedTuple, cast
+from typing import Any, NamedTuple, cast
 
 from esolangs.languages.circuit_diagram.interpreter._functions import (
     _BufferedClock,
@@ -107,8 +108,11 @@ from esolangs.languages.circuit_diagram.interpreter._parse import (
     _split_definitions,
     _Wiring,
 )
+from esolangs.languages.circuit_diagram.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
@@ -585,10 +589,26 @@ class _Machine:
         return (self.values, self.latches, self.halted, self.clock.position)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind source; each IO-bound construction owns fresh runtime state."""
+    if not isinstance(source, list):
+        raise TypeError("circuit_diagram machines require split text source")
+    if options:
+        raise TypeError("circuit_diagram machines accept no runtime options")
+    code = tuple(source)
+
+    def build(io: IO) -> _Machine:
+        return _Machine(list(code), io)
+
+    return build
+
+
 def _execute(code: list[str], io: IO) -> CompletionReport:
     """Execute a Circuit Diagram program."""
     machine = _Machine(code, io)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(code: list[str], io: IO) -> None:
