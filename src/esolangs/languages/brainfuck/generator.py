@@ -35,18 +35,12 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.shared_flag import flag_tree_body, shared_flag_tree
 
-__all__ = ["bf_tree", "brainfuck"]
-
-
-def brainfuck(truth_table: str) -> str:
-    """Return a program for a binary, MSB-first ``2**n`` truth table."""
-    return bf_tree(truth_table)
-
+__all__ = ["brainfuck"]
 
 _RIGHT, _LEFT = ">", "<"
 
 
-def bf_tree(truth_table: str) -> str:
+def brainfuck(truth_table: str) -> str:
     """Return a compact program, consuming every input unconditionally."""
     n = _validate_truth_table(truth_table)
     if n >= 2 and truth_table == truth_table[0] * len(truth_table):

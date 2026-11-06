@@ -12,7 +12,11 @@ from tests.support.reference import REFERENCE
 def test_affine_stream_all_small_coefficients_within_ledger() -> None:
     from esolangs.debugger import make_vm
     from esolangs.languages.brainfuck.generator import _affine_stream
+    from tests.support.analysis_support import assert_analysis_complement
 
+    assert_analysis_complement("brainfuck", "affine_form", "0110100110010110")
+    with pytest.raises(ImportError):
+        exec("from esolangs.languages.brainfuck.generator import bf_tree")
     _check_constants()
     _check_zero_guards()
     admitted = 0
@@ -74,6 +78,9 @@ def test_deferred_flags_require_ordered_distinct_levels(blocks) -> None:
 
 @pytest.mark.medium
 def test_multiple_residuals_reduce_guarded_parity_within_ledger() -> None:
+    from tests.support.analysis_support import assert_analysis_complement
+
+    assert_analysis_complement("brainfuck", "flag_tree_body", "0001")
     with pytest.MonkeyPatch.context() as patch:
         _check_shared_body_must_be_strictly_shorter(patch)
     from esolangs.generation.shared_block import repeated_block
@@ -207,10 +214,23 @@ def _check_zero_guards() -> None:
 def _check_shared_body_must_be_strictly_shorter(monkeypatch) -> None:
     import importlib
 
+    from esolangs.generation.helpers import move_text
+    from esolangs.generation.shared_flag import shared_flag_tree
     from esolangs.languages.brainfuck.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
+    from tests.support.generator_support import evaluate_generated
 
     module = importlib.import_module("esolangs.languages.brainfuck.generator")
+    assert module.shared_flag_tree is shared_flag_tree
+    monkeypatch.setattr(
+        module,
+        "shared_flag_tree",
+        lambda _table, _perm, start, result, **_kw: (
+            move_text(start, result, ">", "<") + "+",
+            abs(result - start) + 1,
+        ),
+    )
+    assert evaluate_generated("brainfuck", "0001") == "1111"
     table, order, tail = "0011", (0, 1), "+" * 48 + "."
     monkeypatch.setattr(module, "shared_flag_tree", lambda *_a, **_k: None)
     plain = module._tree_for(table, order, tail)

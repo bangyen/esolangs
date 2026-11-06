@@ -28,7 +28,8 @@ Owners are workstreams, not individual contributors.
 | `languages.generators` facade | Registry | Retired; callers use owned modules or backend declarations; negative import checks in `tests/api/test_deferred_catalog.py` | Artifact API or direct owned generator imports |
 | Unused generator-module descriptor re-exports | Registry | Retired; owned metadata consumers use descriptors; all-backend checks in `tests/api/test_certification_capability.py` reject unused imports and `LANGUAGE` exports | Independent descriptors; retain constants actually used by emitters |
 | Helpers' `AffineForm`, `affine_form`, `symmetric_outputs` re-exports | Analysis | Retired; callers migrated; negative export check in `tests/generators/test_symmetry.py` | `generation.algebraic` / `generation.lookup` |
-| Helpers' `_parity_bias` and duplicate parity recognizers | Analysis | Retired; eight backends and REFRACTRAN ablations use canonical analysis; independent affine oracle and removed-export checks | `generation.algebraic.parity_bias` |
+| Helpers' `_parity_bias` and duplicate parity recognizers | Analysis | Retired; audited backends and REFRACTRAN ablations use canonical analysis; independent affine oracle and removed-export checks | `generation.algebraic.parity_bias` |
+| `brainfuck.bf_tree` and Grapheme's `_program` wrapper | Registry | Retired; owned tests and installed-package checks reject both imports | Owned `brainfuck` / `grapheme` entrypoints |
 | `runtime._result.ExecutionResult` shim | Results | Retired; imports migrated; negative import check in `tests/api/test_run_results.py` | `esolangs.results.ExecutionResult` |
 | Private cycle helpers/protocols re-exported by `vm` | Registry | Retired; five caller files use their owner; 16 actual import refusals in `tests/api/test_run_results.py` | `esolangs._cycles`; public VM detector imports remain supported |
 | `_Machine` / `_for_run` discovery | Lifecycle | Retired; runtime and verification drivers use declared factories; raw native machines remain independent oracles | Declared preparation/factories and capabilities |
@@ -705,3 +706,19 @@ empty frames after halt. Thirty-one field-erasure controls, a null-type
 omission and reversed scope slots preserve execution but fail resource checks. The common observer
 accepts a modeled null state only at a halted boundary; malformed-source
 controls remain strict. Existing step caps remain; broader acceptance stays open.
+
+Shakespeare uses canonical parity analysis. Grapheme's wrapper and brainfuck's
+`bf_tree` alias are removed. These backends, /// and Underload retain canonical
+projection, weights, affine or subtree queries. Signed packing, decimal lifts,
+flag budgets, directional rewrite sweeps and terminal/carry pricing remain
+owned target constructions. Nine live analysis faults change executed answers.
+
+The five audits preserve 3,912 artifact requests, 16,960 executed rows and
+1,348,793 complete state samples, including both Grapheme dialects and narrow
+Underload selectors. Another 1,050 layouts and 253 size witnesses retain bytes
+and paired execution; original resource, scaling, pin and anchor scopes pass.
+All 72 balanced generation comparisons pass the unchanged 0.9 floor. Adaptive
+repeat counts fix an audit timeout without changing its 60 s cap or sample
+floor; double-work controls still fail. Installed Python 3.12–3.15 preserves
+execution, round trips, retired-import refusals and guarded isolated workers.
+Catalog-wide acceptance remains open.

@@ -25,6 +25,7 @@ Decisions:
 
 from __future__ import annotations
 
+from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
@@ -146,12 +147,8 @@ def shakespeare(truth_table: str) -> str:
             "Open your heart."
         )
     table = read_at(truth_table, essential, n)
-    parity = "0"
-    for _ in essential:
-        parity += parity.translate(str.maketrans("01", "10"))
-    invert = table[0] == "1"
-    expected = parity.translate(str.maketrans("01", "10")) if invert else parity
-    if table == expected:
-        return _parity(n, essential, invert=invert)
+    bias = parity_bias(table)
+    if bias is not None:
+        return _parity(n, essential, invert=bool(bias))
     # A rule, not a race: see [ablations.polarity].
     return _program(table, n, essential, invert=2 * table.count("1") > len(table))

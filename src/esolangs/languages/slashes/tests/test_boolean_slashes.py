@@ -92,6 +92,9 @@ def test_more_ignored_slots_than_slots_is_a_program_not_a_template() -> None:
 
 
 def test_ignored_input_template_is_recognized_only_while_canonical() -> None:
+    from tests.support.analysis_support import assert_analysis_complement
+
+    assert_analysis_complement("///", "input_weights")
     template = esolangs.generate("///", "0011")  # slots "$X$": one ignored
     assert template.source.endswith("$X$>qAqB")
     assert _is_unfilled_template(template.source)

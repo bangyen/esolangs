@@ -71,6 +71,9 @@ def test_first_eight_tables_through_three_inputs(n: int) -> None:
 
 
 def test_setters_are_equal_width_and_embedded_once() -> None:
+    from tests.support.analysis_support import assert_analysis_complement
+
+    assert_analysis_complement("Underload", "SubtreeDiagram")
     assert len(PAIR[0]) == len(PAIR[1]) == 5
     for n in range(1, 8):
         template = underload("01" * (1 << (n - 1)))

@@ -25,6 +25,8 @@ class TestGrapheme:
         """Indexing a literal needs no skip: parity emits no ``U``/``V``/``X``."""
         _check_constants()
         _check_seed()
+        with pytest.raises(ImportError):
+            exec("from esolangs.languages.grapheme.generator import _program")
         parity = boolean.grapheme("01101001")
         assert set("UVX").isdisjoint(parity)
         assert set("UVX").isdisjoint(boolean.grapheme("0" * 8))
@@ -88,8 +90,27 @@ class TestGraphemeTable:
 
 @pytest.mark.parametrize("mode", ["between_letters", "after_each_letter"])
 def test_generator_literals_are_exact(mode: str) -> None:
-    from esolangs.languages.grapheme.generator import grapheme
+    from unittest.mock import patch
 
+    from esolangs.generation.helpers import read_at
+    from esolangs.languages.grapheme.generator import grapheme
+    from tests.support.evaluation import _evaluate
+
+    assert boolean.read_at is read_at
+    with patch.object(
+        boolean,
+        "read_at",
+        side_effect=lambda table, *args: read_at(
+            table.translate(str.maketrans("01", "10")), *args
+        ),
+    ) as corrupted:
+        artifact = esolangs.generate(
+            "Grapheme",
+            "0011",
+            settings=esolangs.DialectSettings(integer_conversion=mode),
+        )
+        assert _evaluate("Grapheme", artifact, inputs=2) == "1100"
+        assert corrupted.called
     for n in range(1, 13):
         for bit in "01":
             program = grapheme(bit * (1 << n), integer_conversion=mode)

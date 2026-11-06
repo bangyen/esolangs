@@ -3,6 +3,7 @@
 import importlib
 from unittest.mock import patch
 
+from esolangs.generation.algebraic import affine_form, parity_bias
 from esolangs.generation.decision import decision_layers, reduced_diagram
 from esolangs.generation.helpers import (
     SubtreeDiagram,
@@ -27,6 +28,8 @@ def assert_analysis_complement(name: str, attribute: str, table: str = "0011") -
     module = importlib.import_module(reference.module)
     query = {
         "SubtreeDiagram": SubtreeDiagram,
+        "affine_form": affine_form,
+        "parity_bias": parity_bias,
         "decision_layers": decision_layers,
         "reduced_diagram": reduced_diagram,
         "subtree_ids": subtree_ids,

@@ -75,6 +75,10 @@ def _check_large_packing_bounds() -> None:
 
 def test_a_flipped_bit_is_caught() -> None:
     """Positive control: a program built for another table fails some row."""
+    from tests.support.analysis_support import assert_analysis_complement
+
+    assert_analysis_complement("Shakespeare", "read_at")
+    assert_analysis_complement("Shakespeare", "parity_bias", "0110100110010110")
     table = "01101001"
     flipped = "01101011"
     assert _wrong_rows(flipped, esolangs.generate("Shakespeare", table).source) > 0

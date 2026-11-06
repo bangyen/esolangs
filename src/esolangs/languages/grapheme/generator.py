@@ -92,15 +92,6 @@ def grapheme(
     entry, indexed by Horner's rule run on the complemented or direct input
     bits; the answer bit or its complement is printed (the smallest packing).
     """
-    return _program(truth_table, integer_conversion=integer_conversion)
-
-
-def _program(
-    truth_table: str,
-    *,
-    integer_conversion: str = "between_letters",
-) -> str:
-    """Build the integer lookup, including a one-entry constant table."""
     dialect = GraphemeDialect(integer_conversion)
     n = _validate_truth_table(truth_table)
     if truth_table.count(truth_table[0]) == len(truth_table):

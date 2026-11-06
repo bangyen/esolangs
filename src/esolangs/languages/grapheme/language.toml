@@ -22,7 +22,7 @@ definitions = ["λ = the largest minimal leading-one lift modulo 2^T; d = digits
 
 [catalogue]
 sharing_exempt = "one integer table literal"
-folding_constant_local = "_program"  # one-entry integer lookup
+folding_constant_local = "grapheme"  # one-entry integer lookup
 
 [ablations]
 archive_refs = [
