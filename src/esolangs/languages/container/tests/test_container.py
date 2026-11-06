@@ -46,17 +46,12 @@ class TestContainer:
             exit_code = run(code, IO())
         assert exit_code == 0
 
-    def test_rule_before_declaration_rejected(self) -> None:
-        """A rule line before any container declaration is malformed."""
-        with pytest.raises(ValueError, match="before any container"):
-            run(["+1 A>=0"], IO())
-
     def test_less_equal_takes_only_a_constant(self) -> None:
         """The page lists ``Container<=Constant``, never ``A<=B``."""
         with pytest.raises(ValueError, match="with a constant only"):
             run(["A:", "+1 A<=B", "B:"], IO())
 
-    def test_the_malformed_program_message_reads_exactly(self) -> None:
+    def test_rule_before_declaration_rejected(self) -> None:
         """``match=`` only looks for a substring, so pin the whole message."""
         with raises_message(ValueError, "rule line before any container declaration"):
             run(["+1 A>=0"], IO())

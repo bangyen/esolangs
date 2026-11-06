@@ -181,3 +181,7 @@ An inherited warm prefix can no longer give the baseline a cheaper first lap.
 Piet declares raster/scale preparation and grid/stack debug fields, completing
 both raster factories. Normalized rows stay shared; stack, ports and successful
 read counts stay per-run. EOF commands remain ignored.
+
+BrainIf and Container declare split-text preparation with private line lists and
+debug fields. Guarded reads, left-growing tape, zero-valued Container EOF and
+the legacy Container EXIT return remain unchanged.

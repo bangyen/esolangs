@@ -26,7 +26,7 @@ Bleh,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,bleh-v1,
 Blindfolded Arithmetic,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,blindfolded-arithmetic-v1,pending-backend-audit,pending-acceptance-audit,open
 Boolfuck,yes,declared,not-applicable,declared,inherited-adapter,boolfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 brainfuck,yes,declared,not-applicable,declared,owned-adapter,brainfuck-v1,pending-backend-audit,pending-acceptance-audit,open
-BrainIf,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,brainif-v1,pending-backend-audit,pending-acceptance-audit,open
+BrainIf,yes,declared,not-applicable,declared,owned-adapter,brainif-v1,pending-backend-audit,pending-acceptance-audit,open
 Caballo,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,caballo-v1,pending-backend-audit,pending-acceptance-audit,open
 CARP,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,carp-v1,pending-backend-audit,pending-acceptance-audit,open
 Chicken,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,chicken-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -35,7 +35,7 @@ Circuit Diagram,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapt
 Clockwise,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,clockwise-v1,pending-backend-audit,pending-acceptance-audit,open
 Codesick,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,codesick-v1,pending-backend-audit,pending-acceptance-audit,open
 Collatz Multiverse,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,collatz-multiverse-v1,pending-backend-audit,pending-acceptance-audit,open
-Container,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,container-v1,pending-backend-audit,pending-acceptance-audit,open
+Container,yes,declared,not-applicable,declared,owned-adapter,container-v1,pending-backend-audit,pending-acceptance-audit,open
 CreativeScript v2,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,creativescript-v2-v1,pending-backend-audit,pending-acceptance-audit,open
 Crement,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,crement-v1,pending-backend-audit,pending-acceptance-audit,open
 CV(N)(C),yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,cvnc-v1,pending-backend-audit,pending-acceptance-audit,open

@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Container."""
 
+from esolangs.languages.container.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -11,6 +12,9 @@ LANGUAGE = Language(
     RuntimeSpec(
         "container",
         category="variable_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         split=True,
         # Wiki: the empty container sets IN "with EOF returning 0".
         eof="an exhausted read sets IN to the spec's 0",

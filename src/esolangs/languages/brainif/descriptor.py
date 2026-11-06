@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for BrainIf."""
 
+from esolangs.languages.brainif.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -8,7 +9,14 @@ from esolangs.runtime._definition import RuntimeSpec
 
 LANGUAGE = Language(
     "BrainIf",
-    RuntimeSpec("brainif", category="tape_based", split=True),
+    RuntimeSpec(
+        "brainif",
+        category="tape_based",
+        split=True,
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+    ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.brainif.generator", "brainif", ("truth_table", "width")

@@ -159,14 +159,6 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 2
 
-    def test_machine_steps_over_a_blank_line(self) -> None:
-        from esolangs.languages.brainif.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
-
-        machine = _Machine(["", "if 0 output"], ScriptedIO())
-        machine.step()
-        assert machine.ind == 1
-
     def test_the_read_lands_in_the_cell(self) -> None:
         """``input`` puts the byte where the language says it goes."""
         from esolangs.languages.brainif.interpreter import _Machine
@@ -192,6 +184,13 @@ def test_a_blank_line_is_skipped() -> None:
     """A line with nothing on it advances the counter and does no work."""
     assert run_and_capture(["if 0 increment", "", "if 1 output"]) == "\x01"
     assert run_and_capture(["if 0 increment", "", "   ", "if 1 output"]) == "\x01"
+
+    from esolangs.languages.brainif.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    machine = _Machine(["", "if 0 output"], ScriptedIO())
+    machine.step()
+    assert machine.ind == 1
 
 
 def test_run_reuses_a_parsed_line_after_a_backward_goto() -> None:
