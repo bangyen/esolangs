@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -11,6 +12,8 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 @pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
+    if table == "00":
+        assert_analysis_complement("SwitchCase", "reduced_diagram")
     assert_every_row("SwitchCase", table)
 
 

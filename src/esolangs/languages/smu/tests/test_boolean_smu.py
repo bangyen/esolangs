@@ -9,6 +9,7 @@ from esolangs.languages.smu import generator as tools
 from esolangs.languages.smu.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.sample_tables import five_input_sample
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 
 
@@ -134,6 +135,7 @@ def _check_terminal_leaves() -> None:
 
 
 def _check_constants() -> None:
+    assert_analysis_complement("Smu", "decision_layers")
     from esolangs.languages.smu.interpreter import _Machine
     from esolangs.languages.smu.proof_formulas import workspace
     from scripts.benchmark import WrittenState

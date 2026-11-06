@@ -16,11 +16,11 @@ Decisions:
     narrow. Sharing is canonical; see [ablations.split_switch_on_top_bit].
 """
 
+from esolangs.generation.decision import reduced_diagram
 from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
     read_at,
-    subtree_ids,
 )
 
 
@@ -42,25 +42,22 @@ def switchcase(truth_table: str) -> str:
 
 def _diagram(n: int, essential: list[int], table: str) -> str:
     """Read every input, then dispatch shared residuals to two answer leaves."""
-    ids = subtree_ids(table)
-    seen: dict[int, int] = {}
+    diagram, root = reduced_diagram(table, len(essential))
+    placed = {0: 0, 1: 1}
     nodes: list[tuple[int, int, int]] = []
 
-    def walk(depth: int, slot: int) -> int:
-        key = ids[depth][slot]
-        if key < 2:
-            return key
-        if key not in seen:
-            zero = walk(depth + 1, 2 * slot)
-            one = walk(depth + 1, 2 * slot + 1)
-            if zero == one:
-                seen[key] = zero
-            else:
-                seen[key] = len(nodes) + 2
-                nodes.append((depth, zero, one))
-        return seen[key]
+    def place(reference: int) -> int:
+        found = placed.get(reference)
+        if found is not None:
+            return found
+        depth, zero, one = diagram[reference]
+        zero, one = place(zero), place(one)
+        placed[reference] = result = len(nodes) + 2
+        nodes.append((depth, zero, one))
+        return result
 
-    walk(0, 0)
+    # Case addresses depend on zero-first postorder, not analysis node ids.
+    place(root)
     ranks = {physical: rank for rank, physical in enumerate(essential)}
     names = {physical: f"x{rank}" for physical, rank in ranks.items()}
     cases = ["$_\n0?=a=x0"]

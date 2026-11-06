@@ -90,15 +90,15 @@ Qrain,yes,declared,not-applicable,declared,owned-adapter,qrain-v1,pending-backen
 Quassaunt,yes,declared,not-applicable,declared,owned-adapter,quassaunt-v1,pending-backend-audit,pending-acceptance-audit,open
 RAM0,yes,declared,not-applicable,declared,owned-adapter,ram0-v1,pending-backend-audit,pending-acceptance-audit,open
 REFRACTRAN,yes,declared,not-applicable,declared,owned-adapter,refractran-v1,canonical-decision-parity,pending-acceptance-audit,open
-Retrograde,yes,declared,not-applicable,declared,owned-adapter,retrograde-v1,pending-backend-audit,pending-acceptance-audit,open
+Retrograde,yes,declared,not-applicable,declared,owned-adapter,retrograde-v1,canonical-subtree-analysis;owned-reversal-involution,pending-acceptance-audit,open
 ROTfuck,yes,declared,declared,declared,owned-adapter,rotfuck-v1,pending-backend-audit,pending-acceptance-audit,open
-Rubic,yes,declared,not-applicable,declared,owned-adapter,rubic-v1,pending-backend-audit,pending-acceptance-audit,open
+Rubic,yes,declared,not-applicable,declared,owned-adapter,rubic-v1,canonical-subtree-analysis;owned-cube-layout,pending-acceptance-audit,open
 S*bleq,yes,declared,not-applicable,declared,owned-adapter,s-bleq-v1,pending-backend-audit,pending-acceptance-audit,open
 SendStuff,yes,declared,not-applicable,declared,owned-adapter,sendstuff-v1,canonical-decision-layers;owned-macro-layout,pending-acceptance-audit,open
 Shakespeare,yes,declared,not-applicable,declared,owned-adapter,shakespeare-v1,pending-backend-audit,pending-acceptance-audit,open
 SLOW ACV MAMMALIAN,yes,declared,declared,declared,owned-adapter,slow-acv-mammalian-v1,pending-backend-audit,pending-acceptance-audit,open
 Smallfuck,yes,declared,not-applicable,declared,owned-adapter,smallfuck-v1,pending-backend-audit,pending-acceptance-audit,open
-Smu,yes,declared,not-applicable,declared,owned-adapter,smu-v1,pending-backend-audit,pending-acceptance-audit,open
+Smu,yes,declared,not-applicable,declared,owned-adapter,smu-v1,canonical-decision-layers;owned-macro-placement,pending-acceptance-audit,open
 Sonata,yes,declared,not-applicable,declared,owned-adapter,sonata-v1,pending-backend-audit,pending-acceptance-audit,open
 SStack,yes,declared,not-applicable,declared,owned-adapter,sstack-v1,pending-backend-audit,pending-acceptance-audit,open
 Stisp,yes,declared,not-applicable,declared,owned-adapter,stisp-v1,canonical-decision-layers;owned-bounded-literals,pending-acceptance-audit,open
@@ -106,7 +106,7 @@ Streetcode,yes,declared,not-applicable,declared,owned-adapter,streetcode-v1,pend
 Subleq,yes,declared,not-applicable,declared,owned-adapter,subleq-v1,pending-backend-audit,pending-acceptance-audit,open
 Suffolk,yes,declared,not-applicable,declared,owned-adapter,suffolk-v1,pending-backend-audit,pending-acceptance-audit,open
 Super SNUSP,yes,declared,not-applicable,declared,owned-adapter,super-snusp-v1,pending-backend-audit,pending-acceptance-audit,open
-SwitchCase,yes,declared,not-applicable,declared,owned-adapter,switchcase-v1,pending-backend-audit,pending-acceptance-audit,open
+SwitchCase,yes,declared,not-applicable,declared,owned-adapter,switchcase-v1,canonical-reduced-diagram;owned-case-placement,pending-acceptance-audit,open
 Taglate,yes,declared,not-applicable,declared,owned-adapter,taglate-v1,pending-backend-audit,pending-acceptance-audit,open
 thisthat,yes,declared,not-applicable,declared,owned-adapter,thisthat-v1,pending-backend-audit,pending-acceptance-audit,open
 Thue,yes,declared,not-applicable,declared,owned-adapter,thue-v1,pending-backend-audit,pending-acceptance-audit,open

@@ -14,7 +14,6 @@ Size:
 
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
-    _validate_truth_table,
     subtree_ids,
 )
 
@@ -33,8 +32,8 @@ def _moves(source: str) -> str:
 
 def retrograde(truth_table: str) -> str:
     """Return a template whose final current cell is the requested answer."""
-    n = _validate_truth_table(truth_table)
     ids = subtree_ids(truth_table)
+    n = len(ids) - 1
     prefix = (TEMPLATE_CHAR + ">") * n
     if ids[0][0] < 2:
         return prefix + ("*" if ids[0][0] else "")

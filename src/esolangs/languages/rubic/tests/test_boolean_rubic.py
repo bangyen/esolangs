@@ -7,6 +7,7 @@ from esolangs import run
 from esolangs.languages.rubic.generator import _OPENING, _TABLE
 from esolangs.languages.rubic.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
@@ -14,6 +15,8 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 @pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
+    if table == "00":
+        assert_analysis_complement("Rubic", "subtree_ids")
     n = len(table).bit_length() - 1
     program = esolangs.generate("Rubic", table).source
     opening = _Machine(" ".join(_OPENING), ScriptedIO())

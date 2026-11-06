@@ -38,7 +38,8 @@ Decisions:
 from collections import Counter
 from string import ascii_letters
 
-from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.decision import decision_layers
+from esolangs.generation.helpers import _validate_truth_table
 
 #: ``k`` drops a run's bit and outputs nothing; ``n`` is a node less its
 #: halves, ``m`` a pad; ``z``/``o`` print ``'0'`` (0x30), ``'1'`` (0x31) low bit first.
@@ -72,24 +73,25 @@ def smu(truth_table: str) -> str:
         delimiter = _DELIMS["W"] if n > 4 else ""
         close = "W" if n > 4 else ")m"
         return _SKIP + _PAD + _LEAVES[bit] + delimiter + "(" * n + "zo"[bit] + close * n
-    ids = subtree_ids(truth_table)
+    diagram = decision_layers(truth_table)
     kids: dict[tuple[int, int], tuple[tuple[int, int], ...]] = {}
     text: dict[tuple[int, int], str] = {}
 
-    def walk(level: int, lo: int, hi: int) -> tuple[int, int]:
-        key = (level, ids[level][lo >> (n - level)])
+    def place(level: int, node: int) -> tuple[int, int]:
+        key = (level, node)
         if key in kids:
             return key
         if level == n:
             kids[key] = ()
-            text[key] = "zo"[truth_table[lo] == "1"]
+            text[key] = "zo"[node]
         else:
-            mid = (lo + hi) // 2
-            zero, one = walk(level + 1, lo, mid), walk(level + 1, mid, hi)
+            low, high = diagram.children[level][node]
+            zero, one = place(level + 1, low), place(level + 1, high)
             kids[key] = (zero,) if zero == one else (zero, one)
         return key
 
-    root = walk(0, 0, 1 << n)
+    # Macro names and definitions retain zero-first dependency order.
+    root = place(0, diagram.root)
     uses = Counter(child for pair in kids.values() for child in pair)
     shared = sorted((k for k in kids if uses[k] > 1 and kids[k]), key=uses.__getitem__)
     names = {key: _name(index) for index, key in enumerate(reversed(shared))}

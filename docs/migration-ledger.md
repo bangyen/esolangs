@@ -387,3 +387,11 @@ failure routes preserve unfinished observations and partial output. Worker guard
 run positive import controls before execution. The wheel passes this witness
 matrix on Python 3.12–3.15. Installed catalog-wide worker,
 failure and accounting acceptance remain open.
+
+Smu uses canonical ordered layers; macro ordering, delimiter pricing and
+constant pads remain owned. SwitchCase uses a canonical reduced diagram,
+retaining zero-first case placement. Retrograde derives arity from canonical
+subtree ids; its backward-function involution and lexical turns remain owned.
+Rubic retains canonical subtree ids with cube-neutral instructions. These
+four audits preserve source bytes, EOF behavior, bounds and the timing floor,
+with executed shared-analysis fault controls.
