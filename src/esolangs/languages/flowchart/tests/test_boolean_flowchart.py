@@ -28,9 +28,53 @@ class TestFlowchart:
         "table",
         ["00", "01", "0000", "0110", "11111111", "01101001", "0110100110010110"],
     )
-    def test_an_unconstrained_call_uses_the_default_lookup(self, table: str) -> None:
+    def test_an_unconstrained_call_uses_the_default_lookup(
+        self, table: str, monkeypatch
+    ) -> None:
         """Tree layouts remain available for width requests."""
         assert boolean.flowchart(table) == _flowchart_deque(table)
+
+        if table == "0110":
+            from esolangs.generation.helpers import (
+                constant_span_test,
+                essential_inputs,
+                read_at,
+            )
+
+            assert boolean.constant_span_test is constant_span_test
+            assert boolean.essential_inputs is essential_inputs
+            assert boolean.read_at is read_at
+            for query, damaged_query, expected in (
+                ("essential_inputs", lambda _table, _n: [], "0000"),
+                (
+                    "read_at",
+                    lambda table, used, n: read_at(table, used, n).translate(
+                        str.maketrans("01", "10")
+                    ),
+                    "1001",
+                ),
+                (
+                    "constant_span_test",
+                    lambda _table: lambda _lo, _hi: True,
+                    "0000",
+                ),
+            ):
+                with monkeypatch.context() as patch:
+                    patch.setattr(boolean, query, damaged_query)
+                    damaged = (
+                        _flowchart_render(_flowchart_cells(table))
+                        if query == "constant_span_test"
+                        else boolean.flowchart(table)
+                    )
+                for row, answer in enumerate(expected):
+                    assert run_flowchart(damaged, list(f"{row:02b}")) == answer
+
+            def forbidden(_table):
+                raise AssertionError("unpruned frontier queried dummy data")
+
+            monkeypatch.setattr(boolean, "constant_span_test", forbidden)
+            _, channels, _ = boolean._TopPainter([1, 8, 8]).paint_top()
+            assert len(channels) == 8
 
     @pytest.mark.parametrize(
         ("table", "length"),
@@ -222,7 +266,7 @@ class TestFlowchart:
             assert run_flowchart(once, bits) == table[row], row
 
 
-def test_a_shared_drawing_has_an_exact_size() -> None:
+def test_a_shared_drawing_has_an_exact_size(monkeypatch) -> None:
     """Repeated 8-row blocks drawn once and jumped to: size and rows."""
     table = "00010110" * 2 + "00111110" + "01111100"
     program = boolean.flowchart(table, 60)
@@ -230,6 +274,19 @@ def test_a_shared_drawing_has_an_exact_size() -> None:
     for row in range(32):
         bits = [str((row >> (4 - i)) & 1) for i in range(5)]
         assert run_flowchart(program, bits) == table[row], row
+
+    from esolangs.generation.helpers import subtree_ids
+
+    assert boolean.subtree_ids is subtree_ids
+    assert not hasattr(boolean._Stacked("0001", share=True), "constant")
+    monkeypatch.setattr(
+        boolean,
+        "subtree_ids",
+        lambda table: [[0] * len(layer) for layer in subtree_ids(table)],
+    )
+    damaged = _flowchart_render(_flowchart_stacked("0001", share=True))
+    for row in range(4):
+        assert run_flowchart(damaged, list(f"{row:02b}")) == "0"
 
 
 @pytest.mark.slow

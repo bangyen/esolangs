@@ -779,3 +779,24 @@ Shared immutable model declarations compact 39 owned resource fixtures without
 changing cases: before/after digests retain 414,385 captures, 310 refusals and
 101,919 observed records; an altered-width control is detected. The existing
 source/test line budget remains enforced.
+
+Flowchart reuses canonical subtree IDs for stacked constant spans and repeated
+shared drawings, removing a second span index and its classifier field.
+The unpruned band frontier no longer indexes dummy data. Dependency projection
+and flat span queries remain canonical; deque addressing, drawing order,
+sharing eligibility and grid layout remain owned. Four executed query faults
+alter answers; a forbidden-query control covers the dummy frontier.
+
+All 632 corpus requests and 240 larger public layouts retain their bytes.
+Native/stepped pairs preserve 2,286 records and 108,219 state/resource samples.
+All 1,344 private layouts preserve source and ordered sharing counts; 9,020
+native rows execute through eight inputs. The combined audit exceeded 60 s;
+priced arity cohorts pass. A ten-input dense baseline exceeded its existing
+2 s execution cap: its source matches, but execution acceptance stays open.
+Another 144 native rows cover timing fixtures at four and eight inputs.
+
+All 36 generation timings through twelve inputs pass the 0.9 floor (minimum
+median 0.979), with matched hash seeds and garbage collection included.
+Installed Python 3.12–3.15 preserves the paired records and larger layouts.
+All 915 size measurements, original bounds, pins and anchors remain unchanged;
+the referee gate passes. Catalog-wide acceptance remains open.

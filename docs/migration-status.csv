@@ -51,7 +51,7 @@ Fackward,yes,declared,not-applicable,declared,owned-adapter,fackward-v1,canonica
 FALSE,yes,declared,not-applicable,declared,owned-adapter,false-v1,pending-backend-audit,pending-acceptance-audit,open
 Fargo,yes,declared,not-applicable,declared,owned-adapter,fargo-v1,pending-backend-audit,pending-acceptance-audit,open
 Fish,yes,declared,not-applicable,declared,owned-adapter,fish-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
-Flowchart,yes,declared,not-applicable,declared,owned-adapter,flowchart-v1,pending-backend-audit,pending-acceptance-audit,open
+Flowchart,yes,declared,not-applicable,declared,owned-adapter,flowchart-v1,canonical-projection-subtree-spans;owned-deque-grid-layout,pending-acceptance-audit,open
 Forbin,yes,declared,not-applicable,declared,owned-adapter,forbin-v1,pending-backend-audit,pending-acceptance-audit,open
 Forþ,yes,declared,not-applicable,declared,owned-adapter,for-thorn-v1,canonical-projection-subtrees;owned-heap-dispatch,pending-acceptance-audit,open
 FRACTRAN,yes,declared,not-applicable,declared,owned-adapter,fractran-v1,canonical-reduced-diagram;owned-prime-postorder-layout,pending-acceptance-audit,open

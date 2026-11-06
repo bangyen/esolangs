@@ -197,12 +197,16 @@ class _TreePainter:
         fold: int,
         answer_cols: int,
         plan: tuple[str, list[int], int] | None = None,
+        *,
+        constant: Callable[[int, int], bool] | None = None,
     ) -> None:
         self.fold = fold
         self.answer_cols = answer_cols
         self.cells: dict[tuple[int, int], str] = {}
         self.truth_table, self.costs, self.tail = plan or _plan(truth_table)
-        self.constant = constant_span_test(self.truth_table)
+        self.constant = (
+            constant_span_test(self.truth_table) if constant is None else constant
+        )
         self.n = len(self.costs)
         self.lanes = [-(-cost // fold) for cost in self.costs]
         # top[d] is level d's first read row; top[n] is where the tail's
@@ -393,8 +397,13 @@ class _TopPainter(_TreePainter):
 
     def __init__(self, costs: list[int]) -> None:
         size = 1 << len(costs)
-        super().__init__("0" * size, 1, 1, ("0" * size, costs, 0))
-        self.constant = lambda lo, hi: hi - lo == 1
+        super().__init__(
+            "0" * size,
+            1,
+            1,
+            ("0" * size, costs, 0),
+            constant=lambda lo, hi: hi - lo == 1,
+        )
 
     def paint_leaf(self, _lo: int, _depth: int, _step: int) -> int:
         """Return the entry column of the next band's channel."""
@@ -501,36 +510,28 @@ def _shareable(
     return sid if sid >= 2 and counts[depth][sid] > 1 else None
 
 
-def _occurrences(
-    ids: list[list[int]], constant: Callable[[int, int], bool]
-) -> Counter[int]:
-    """Count, per id, the subtrees of ``_SHARE_ROWS`` rows or more that repeat.
+def _occurrences(ids: list[list[int]]) -> Counter[int]:
+    """Count repeated drawings, one-branch first.
 
-    Scans in drawing order, one-branch first, and stops at such a subtree
-    (its inside is never shared), so a path jumps at most once.
+    Stop at each shared root: a path may jump only once.
     """
     counts = [Counter(level) for level in ids]
     found: Counter[int] = Counter()
+    levels = len(ids) - 1
 
-    def on_leaf(_lo: int, _depth: int, _cursor: None) -> None:
-        """Constant spans are never shared, so there is nothing to count."""
-
-    def on_branch(
-        lo: int,
-        hi: int,
-        depth: int,
-        _cursor: None,
-        descend: Callable[[int, int, int, None], None],
-    ) -> None:
-        sid = _shareable(ids, counts, depth, lo, hi)
+    def visit(depth: int, block: int) -> None:
+        if ids[depth][block] < 2:
+            return
+        span = 1 << (levels - depth)
+        lo = block * span
+        sid = _shareable(ids, counts, depth, lo, lo + span)
         if sid is None:
-            half = (hi - lo) // 2
-            descend(lo + half, hi, depth + 1, None)
-            descend(lo, lo + half, depth + 1, None)
+            visit(depth + 1, 2 * block + 1)
+            visit(depth + 1, 2 * block)
         else:
             found[sid] += 1
 
-    _folded_walk(len(ids[-1]), constant, on_leaf, on_branch, None)
+    visit(0, 0)
     return found
 
 
@@ -556,16 +557,20 @@ class _Stacked:
         self.spine = len(self.costs) + 2
         self.bus = self.spine + 3
         self.cells: dict[tuple[int, int], str] = {}
-        self.constant = constant_span_test(self.truth_table)
         self.taps: list[int] = []
         self.share = share
         self.ids = subtree_ids(self.truth_table)
         self.counts = [Counter(level) for level in self.ids] if share else []
-        self.copies = _occurrences(self.ids, self.constant) if share else Counter[int]()
+        self.copies = _occurrences(self.ids) if share else Counter[int]()
         self.seen: Counter[int] = Counter()
         self.entries: dict[int, int] = {}
         # (row, first column east, id) of each copy drawn as a jump.
         self.jumps: list[tuple[int, int, int]] = []
+
+    def is_constant(self, lo: int, hi: int) -> bool:
+        """Classify a dyadic span from the already indexed canonical subtree."""
+        span = hi - lo
+        return self.ids[len(self.ids) - span.bit_length()][lo // span] < 2
 
     def reads(self, y: int, count: int) -> int:
         """Draw ``count`` ``/ /`` nodes down the spine; return the row after."""
@@ -742,7 +747,7 @@ def _flowchart_stacked(
     painter = _Stacked(truth_table, share=share)
     _folded_walk(
         len(painter.truth_table),
-        painter.constant,
+        painter.is_constant,
         painter.paint_leaf,
         painter.paint_branch,
         (2, False),
