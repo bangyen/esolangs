@@ -7,7 +7,9 @@ from functools import cache
 import pytest
 
 from esolangs.languages.hq9.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import WorkspaceWitness, missing_workspace
 
 
 @cache
@@ -47,7 +49,15 @@ def _model(source):
 def _agrees(factory, source):
     expected = _model(source)
 
+    views = iter(expected[1])
+    witness = WorkspaceWitness(
+        WorkspaceModel("hq9-v1", ("instruction", "accumulator", "input_cursor"))
+    )
+
     def state(m):
+        view, _halted, _output, _position, progress = next(views)
+        instruction, accumulator, _source, _memory = view
+        witness.sample(m.workspace_snapshot(), (instruction, accumulator, progress))
         return (*m.state, m.code, tuple(m.memory))
 
     assert observed(factory, source, "λ\nunused", state) == expected, source
@@ -102,4 +112,7 @@ def check_raw_hq9():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source)
-    return len(corpus), len(controls)
+    for component in ("instruction", "accumulator", "input_cursor"):
+        with pytest.raises(AssertionError):
+            _agrees(missing_workspace(_Machine, component), "++Q")
+    return len(corpus), len(controls) + 3

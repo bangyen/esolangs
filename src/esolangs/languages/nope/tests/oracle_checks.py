@@ -5,14 +5,24 @@ import random
 import pytest
 
 from esolangs.languages.nope.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import WorkspaceWitness, missing_workspace
 
 
 def _agrees(factory, source, stdin):
     initial = ((False, 0), False, "", 0, 0)
     final = ((True, 1), True, "Nope.", 0, 0)
     expected = None, [initial, *([final] * 4)]
-    assert observed(factory, source, stdin, lambda m: (m.state, m.ip)) == expected, (
+    views = iter(expected[1])
+    witness = WorkspaceWitness(WorkspaceModel("nope-v1", ("emitted", "input_cursor")))
+
+    def state(m):
+        view, _halted, _output, _position, progress = next(views)
+        witness.sample(m.workspace_snapshot(), (view[0], progress))
+        return m.state, m.ip
+
+    assert observed(factory, source, stdin, state) == expected, (
         source,
         stdin,
     )
@@ -53,4 +63,7 @@ def check_raw_nope():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, "", "unused")
-    return len(sources) * len(inputs), 5
+    for component in ("emitted", "input_cursor"):
+        with pytest.raises(AssertionError):
+            _agrees(missing_workspace(_Machine, component), "", "unused")
+    return len(sources) * len(inputs), 7

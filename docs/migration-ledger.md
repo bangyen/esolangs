@@ -635,3 +635,10 @@ and responses. Malformed worker frames retain only the validated output prefix;
 capped streams still kill and reap their child. Existing tests include equal
 repeated values and preserve separate CLI overrides and future PNG versions.
 Canonical version-1 formats remain supported; catalog acceptance stays open.
+
+Deadfish, HQ9+ and Nope. workspace captures now match independent semantic
+traces at every observed boundary, including idle steps after halting. Charged
+peaks are checked against complete independently predicted components, rather
+than machine state copied into a second model. Ten live component-erasure
+faults preserve execution but fail capture checks. Deadfish/HQ9+ long traces
+remain bounded at 64 commands; this does not close whole-corpus acceptance.

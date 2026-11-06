@@ -3,7 +3,8 @@
 from dataclasses import fields, is_dataclass
 from fractions import Fraction
 
-from esolangs.runtime._state import WorkspaceVariant
+from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
+from scripts.benchmark import WrittenState
 
 
 class WorkspaceOracle:
@@ -59,3 +60,41 @@ class WorkspaceOracle:
             for peak, written in zip(self.peaks, self.written, strict=True)
             if written
         )
+
+
+class WorkspaceWitness:
+    """Compare captures and charged peaks against an independently stepped model."""
+
+    def __init__(self, model):
+        self.model = model
+        self.measured = None
+        self.expected = None
+        self.previous = None
+
+    def sample(self, captured, parts):
+        reference = WorkspaceSnapshot(self.model, parts)
+        if self.previous is not None:
+            previous, saved = self.previous
+            assert previous == saved
+        assert captured == reference
+        if self.measured is None:
+            self.measured = WrittenState(captured)
+            self.expected = WorkspaceOracle(reference)
+        else:
+            self.measured.sample(captured)
+            self.expected.sample(reference)
+        assert self.measured.bits == self.expected.bits
+        self.previous = captured, reference
+
+
+def missing_workspace(factory, component):
+    """Erase one charged component without changing execution or state views."""
+
+    class Fault(factory):
+        def workspace_snapshot(self):
+            captured = super().workspace_snapshot()
+            parts = list(captured.parts)
+            parts[captured.model.components.index(component)] = None
+            return WorkspaceSnapshot(captured.model, tuple(parts))
+
+    return Fault
