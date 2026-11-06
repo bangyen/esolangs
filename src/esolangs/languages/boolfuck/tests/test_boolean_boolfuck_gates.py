@@ -42,10 +42,61 @@ def _execute(table: str, program: str, rows: range | list[int]) -> int:
     return maximum
 
 
-def test_small_tables_keep_existing_paths() -> None:
+def test_small_tables_keep_existing_paths(monkeypatch) -> None:
     assert normal_gates("0110") is None
     assert affine_stream("01") is None
     assert affine_stream("0001") is None
+
+    from esolangs.generation.algebraic import affine_form
+    from esolangs.generation.helpers import input_weights
+    from esolangs.generation.lookup import symmetric_outputs
+    from esolangs.generation.shared_flag import flag_tree_body
+    from esolangs.languages.boolfuck import generator
+
+    assert generator.affine_form is affine_form
+    assert generator.input_weights is input_weights
+    assert generator.symmetric_outputs is symmetric_outputs
+    assert generator.flag_tree_body is flag_tree_body
+
+    def flipped_bias(table: str, n: int):
+        form = affine_form(table, n)
+        return None if form is None else form._replace(bias=1 - form.bias)
+
+    def flipped_counts(table: str, n: int):
+        bits = symmetric_outputs(table, n)
+        return None if bits is None else bits.translate(str.maketrans("01", "10"))
+
+    with monkeypatch.context() as patch:
+        patch.setattr(generator, "affine_form", flipped_bias)
+        damaged = affine_stream("01101001")
+        assert damaged is not None
+        _execute("10010110", damaged, range(8))
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            generator,
+            "symmetric_outputs",
+            flipped_counts,
+        )
+        damaged = popcount_stream("01101001")
+        assert damaged is not None
+        _execute("10010110", damaged, range(8))
+
+    def complemented(table: str, n: int):
+        weights, core = input_weights(table, n)
+        return weights, core.translate(str.maketrans("01", "10"))
+
+    for query, damaged_query in (
+        ("input_weights", complemented),
+        (
+            "flag_tree_body",
+            lambda table, *args, **kwargs: flag_tree_body(
+                table.translate(str.maketrans("01", "10")), *args, **kwargs
+            ),
+        ),
+    ):
+        with monkeypatch.context() as patch:
+            patch.setattr(generator, query, damaged_query)
+            _execute("1110", generator._boolfuck_tree("0001"), range(4))
 
 
 @pytest.mark.medium
@@ -131,7 +182,9 @@ def test_dense_boundary_tables_read_every_row_within_ledgers(seed: int) -> None:
 
 
 @pytest.mark.parametrize("constant", ["0", "1"])
-def test_early_constant_exit_does_not_dispatch_a_second_output(constant: str) -> None:
+def test_early_constant_exit_does_not_dispatch_a_second_output(
+    constant: str, monkeypatch
+) -> None:
     table = constant * 256 + "0001011101101001" * 16
     program = normal_gates(table)
     assert program is not None
@@ -142,6 +195,20 @@ def test_early_constant_exit_does_not_dispatch_a_second_output(constant: str) ->
     pending = _GateTree(constant * 4, {}, _Emitter(4, 6))
     with pytest.raises(ValueError, match="constant cofactor reached a pending gate"):
         pending.gate_leaf(0, 4)
+
+    from esolangs.generation.helpers import subtree_ids
+    from esolangs.languages.boolfuck import generator
+
+    assert generator.subtree_ids is subtree_ids
+    assert not hasattr(generator, "constant_span_test")
+    monkeypatch.setattr(
+        generator,
+        "subtree_ids",
+        lambda table: [[0] * len(layer) for layer in subtree_ids(table)],
+    )
+    damaged = normal_gates(table)
+    assert damaged is not None
+    _execute(constant * 512, damaged, [0, 3, 256, 259, 511])
 
 
 @pytest.mark.medium

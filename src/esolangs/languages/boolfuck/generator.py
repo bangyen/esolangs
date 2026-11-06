@@ -43,7 +43,6 @@ from typing import Literal
 from esolangs.generation.algebraic import affine_form
 from esolangs.generation.helpers import (
     _validate_truth_table,
-    constant_span_test,
     input_weights,
     move_text,
     subtree_ids,
@@ -206,7 +205,6 @@ class _GateTree:
         self.x = 2 * self.depth
         self.y = self.x + 2
         self.ids = subtree_ids(table)
-        self.constant = constant_span_test(table)
 
     # Workspace: docs/proofs/boolfuck-gates.md.  After the prefix only x, y,
     # R and one pending flag can be 1, within the tree's tape bits from n=4.
@@ -276,7 +274,7 @@ class _GateTree:
     def node(self, i: int, lo: int, hi: int) -> _Cost[int]:
         e = self.e
         start = e.count
-        if self.constant(lo, hi):
+        if self.ids[i][lo // (hi - lo)] < 2:
             self.leaf(int(self.table[lo]))
             # Each clear executes at most four commands, one more than text.
             return _Cost(e.count - start + 2)

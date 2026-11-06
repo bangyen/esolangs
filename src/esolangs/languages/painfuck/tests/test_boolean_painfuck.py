@@ -15,7 +15,7 @@ from tests.support.generator_support import (
 
 
 class TestPainfuck:
-    def test_commands_are_preshifted_for_the_trans_table(self) -> None:
+    def test_commands_are_preshifted_for_the_trans_table(self, monkeypatch) -> None:
         """The interpreter shifts commands through its cycles, so the source
         must be the inverse shift; the translated commands are the BF moves."""
         from esolangs.languages.painfuck.interpreter import _translate
@@ -28,6 +28,38 @@ class TestPainfuck:
         assert "b" in translated  # ] loops
         assert translated.count("a") == translated.count("b")
         assert "rl" in translated or "l" in translated  # pointer moves
+
+        from esolangs.generation import shared_block
+        from esolangs.generation.algebraic import affine_form
+        from esolangs.generation.shared_flag import flag_tree_body
+        from tests.support.evaluation import _evaluate
+
+        assert boolean.affine_form is affine_form
+        assert boolean.flag_tree_body is flag_tree_body
+        assert boolean.repeated_block is shared_block.repeated_block
+        assert boolean.repeated_bank is shared_block.repeated_bank
+        assert boolean.repeated_mixed_bank is shared_block.repeated_mixed_bank
+
+        def flipped_bias(table: str, n: int):
+            form = affine_form(table, n)
+            return None if form is None else form._replace(bias=1 - form.bias)
+
+        table = "".join(str(row.bit_count() & 1) for row in range(64))
+        with monkeypatch.context() as patch:
+            patch.setattr(boolean, "affine_form", flipped_bias)
+            damaged = boolean.painfuck(table)
+        assert _evaluate("Painfuck", damaged, inputs=6) == table.translate(
+            str.maketrans("01", "10")
+        )
+        monkeypatch.setattr(
+            boolean,
+            "flag_tree_body",
+            lambda table, *args, **kwargs: flag_tree_body(
+                table.translate(str.maketrans("01", "10")), *args, **kwargs
+            ),
+        )
+        damaged, _ = boolean._painfuck_shared("0001", (0, 1), ())
+        assert _evaluate("Painfuck", damaged, inputs=2) == "1110"
 
 
 @pytest.mark.medium

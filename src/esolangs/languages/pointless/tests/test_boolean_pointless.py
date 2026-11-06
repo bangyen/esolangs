@@ -9,9 +9,22 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
 @pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer(table: str, monkeypatch) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     assert_every_row("Pointless", table)
+
+    if table == "0001":
+        from esolangs.generation.helpers import subtree_ids
+        from esolangs.languages.pointless import generator
+        from tests.support.evaluation import _evaluate
+
+        assert generator.subtree_ids is subtree_ids
+        monkeypatch.setattr(
+            generator,
+            "subtree_ids",
+            lambda table: [[1] * len(layer) for layer in subtree_ids(table)],
+        )
+        assert _evaluate("Pointless", generator.pointless(table), inputs=2) == "1111"
 
 
 def test_a_function_called_once_is_pasted_in() -> None:

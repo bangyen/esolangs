@@ -731,3 +731,17 @@ charged peaks; native and 38 import-guarded workers match results and partial
 failures. Ten live faults cover caller retention, pending/returned values,
 block stacks, function identity, scope, frame order, output, input and stalls.
 All traces remain within 48 commands; larger-program acceptance stays open.
+
+Boolfuck uses canonical constant IDs for normalized-gate folding, removing a
+second span index and its classifier field. Affine, symmetry, projection and
+flag queries remain canonical; two-input normalization is native gate lowering.
+Painfuck retains canonical affine/flag-bank analysis and its command-cycle codec.
+Pointless retains canonical subtree analysis and native function inlining.
+Canonical queries have executed fault controls; the latter two emitters are
+unchanged. No compatibility adapters are needed for these constructions.
+
+All 1,896 corpus requests and 720 larger layouts retain their bytes; 6,858 paired
+records preserve 1,138,437 semantic samples. All sixteen normalized gate words
+execute across 8,192 nine-input rows with matching bytes and answers; timed
+programs add 165 sampled native rows through twelve inputs. Original bounds,
+pins and anchors remain unchanged; catalog acceptance stays open.
