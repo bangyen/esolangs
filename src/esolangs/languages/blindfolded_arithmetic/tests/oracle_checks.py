@@ -101,10 +101,20 @@ def _model(source, stdin):
 
 def _agrees(factory, source, stdin):
     expected = _model(source, stdin)
+    configuration = None
+
+    def parts(row):
+        nonlocal configuration
+        current = row[0][:2]
+        # Equal immutable views retain the width oracle's identity memo.
+        if current != configuration:
+            configuration = current
+        return configuration, row[1], row[-1]
+
     checked = workspace_view(
         expected[1],
         _WORKSPACE,
-        lambda row: ((row[0][0], row[0][1]), row[1], row[-1]),
+        parts,
         lambda m: (*m.state, tuple(m.memory), m.ip),
     )
     assert observed(factory, source, stdin, checked, cap=16) == expected, (

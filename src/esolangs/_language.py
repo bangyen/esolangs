@@ -112,7 +112,7 @@ class Language:
         )
 
     def dump_program(
-        self, program: Program | Artifact, *, settings: DialectSettings | None = None
+        self, program: "Program | Artifact", *, settings: DialectSettings | None = None
     ) -> str:
         """Return portable JSON retaining source and dialect choices.
 

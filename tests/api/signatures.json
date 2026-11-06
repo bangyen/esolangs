@@ -15,7 +15,7 @@
   "DialectSettings.options": "(self, language: str) -> dict[str, typing.Any]",
   "Language.__init__": "(self, name: str) -> None",
   "Language.describe": "(self) -> esolangs.registry._describe.LanguageInfo",
-  "Language.dump_program": "(self, program: Program | Artifact, *, settings: esolangs.settings.DialectSettings | None = None) -> str",
+  "Language.dump_program": "(self, program: 'Program | Artifact', *, settings: esolangs.settings.DialectSettings | None = None) -> str",
   "Language.encode_inputs": "(self, bits: list[int] | tuple[int, ...], *, truth_table: str | None = None) -> str",
   "Language.from_file": "(self, path: str | os.PathLike[str], *, settings: esolangs.settings.DialectSettings | None = None) -> esolangs.artifacts.ProgramArtifact[Program]",
   "Language.from_source": "(self, source: Program, *, settings: esolangs.settings.DialectSettings | None = None) -> esolangs.artifacts.ProgramArtifact[Program]",

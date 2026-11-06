@@ -289,6 +289,7 @@ class TestProgramObjectsRefuseMisuse:
         import typing
 
         for cls in (
+            esolangs.Language,
             esolangs.Raster,
             esolangs.CompressedText,
             esolangs.ProgramArtifact,
