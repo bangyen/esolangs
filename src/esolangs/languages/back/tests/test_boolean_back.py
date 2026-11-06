@@ -30,12 +30,12 @@ class TestParameterizedBack:
         return io.getvalue().split()[n]
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        """Fill the template the way the example harness does."""
-        from tests.generators.fills import fill
+        """Bind native source with explicitly declared setters."""
+        from esolangs.languages.back.descriptor import PAIR
 
-        _fill_back = fill("Back")
-
-        return _fill_back(tpl, bits)
+        bindings = esolangs.TemplateBindings(setters=(PAIR,) * len(bits))
+        template = esolangs.TemplateArtifact(tpl, "Back", bindings)
+        return esolangs.instantiate("Back", template, bits).source
 
     @pytest.mark.medium
     def test_constant_embedding_keeps_its_resource_bounds(self) -> None:
@@ -256,14 +256,11 @@ class TestParameterizedBack:
     def test_reordering_keeps_the_equal_width_embedding(self) -> None:
         """Reordered loads still cost the same for either bit."""
         from esolangs.languages.back import generator as generators
-        from tests.generators.fills import fill
-
-        _fill_back = fill("Back")
 
         for table in ("10101010", "11001100", "01101001"):
             template = generators.back(table)
             sizes = {
-                len(_fill_back(template, [(c >> (2 - i)) & 1 for i in range(3)]))
+                len(self.instantiate(template, [(c >> (2 - i)) & 1 for i in range(3)]))
                 for c in range(8)
             }
             assert len(sizes) == 1, f"{table} sizes {sorted(sizes)}"

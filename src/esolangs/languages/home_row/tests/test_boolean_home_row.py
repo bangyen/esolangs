@@ -4,8 +4,8 @@ import random
 
 import pytest
 
+import esolangs
 from esolangs import compat
-from tests.generators.fills import _run_form
 from tests.support.witness_tables import row_bits
 
 
@@ -46,28 +46,25 @@ class TestParameterizedHomeRow:
         return io_.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        """Fill the template the way the example harness does."""
-        from tests.generators.fills import fill
+        """Bind native source with explicitly declared setters."""
+        from esolangs.languages.home_row.descriptor import HOME_ROW_PAIR
 
-        _fill_home_row = fill("Home Row")
-
-        return _fill_home_row(tpl, bits)
+        bindings = esolangs.TemplateBindings(setters=(HOME_ROW_PAIR,) * len(bits))
+        template = esolangs.TemplateArtifact(tpl, "Home Row", bindings)
+        return esolangs.instantiate("Home Row", template, bits).source
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """The setter is two characters whichever bit it carries."""
         from esolangs.languages.home_row.descriptor import HOME_ROW_PAIR
-        from tests.generators.fills import fill
-
-        _fill_home_row = fill("Home Row")
 
         for n in (1, 2, 3):
-            template = _run_form(HOME_ROW_PAIR, n)
+            template = "$" * len(HOME_ROW_PAIR[0]) * n
             for i in range(n):
                 zeros = [0] * n
                 ones = list(zeros)
                 ones[i] = 1
-                assert len(_fill_home_row(template, zeros)) == len(
-                    _fill_home_row(template, ones)
+                assert len(self.instantiate(template, zeros)) == len(
+                    self.instantiate(template, ones)
                 ), f"n={n} input {i}"
 
     def test_five_inputs_sample(self) -> None:

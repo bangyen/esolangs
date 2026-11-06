@@ -16,11 +16,10 @@ from esolangs.languages.a_painter_ant.generator import (
     a_painter_ant,
 )
 from esolangs.languages.a_painter_ant.tests.a_painter_ant_trace import run
-from tests.generators.fills import fill
+from esolangs.languages.a_painter_ant.tests.test_boolean_a_painter_ant import (
+    _instantiate_apa,
+)
 from tests.support.witness_tables import row_bits
-
-_instantiate_apa = fill("A Painter Ant")
-
 
 #: Cost band; see ``__main__.py``.  L4's ladder to n=10 is most of it.
 BAND = "by-hand"

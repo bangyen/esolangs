@@ -5,6 +5,7 @@ import re
 
 import pytest
 
+import esolangs
 from esolangs import compat
 from esolangs.languages.ram0 import generator as boolean
 from tests.support.generator_support import assert_parity_at_most_doubles
@@ -26,12 +27,12 @@ class TestParameterizedRam0:
         return m.group(1)
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        """Fill through the shipped filler, not a copy of it."""
-        from tests.generators.fills import fill
+        """Bind native source with explicitly declared setters."""
+        from esolangs.languages.ram0.descriptor import PAIR
 
-        _fill_ram0 = fill("RAM0")
-
-        return _fill_ram0(tpl, bits)
+        bindings = esolangs.TemplateBindings(setters=(PAIR,) * len(bits))
+        template = esolangs.TemplateArtifact(tpl, "RAM0", bindings)
+        return esolangs.instantiate("RAM0", template, bits).source
 
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""

@@ -4,6 +4,7 @@ from itertools import pairwise
 
 import pytest
 
+import esolangs
 from esolangs import compat
 from tests.support.generator_support import measure_run
 from tests.support.witness_tables import witnesses
@@ -21,12 +22,14 @@ class TestParameterizedMinskySwap:
         return io.getvalue().split()[1]
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        """Fill the template the way a caller does, not the way this file did."""
-        from tests.generators.fills import fill
+        """Bind native source with explicitly declared setters."""
+        from esolangs.languages.minsky_swap.generator import minsky_swap_setters
 
-        _fill_minsky_swap = fill("Minsky Swap")
-
-        return _fill_minsky_swap(tpl, bits)
+        bindings = esolangs.TemplateBindings(
+            setters=minsky_swap_setters(tpl, len(bits))
+        )
+        template = esolangs.TemplateArtifact(tpl, "Minsky Swap", bindings)
+        return esolangs.instantiate("Minsky Swap", template, bits).source
 
     @pytest.mark.parametrize("width", [1, 10, 15, 40, 80])
     def test_rmsn_templates_preserve_command_targets(self, width: int) -> None:
@@ -108,11 +111,8 @@ class TestParameterizedMinskySwap:
         """``_fill_minsky_swap`` spells a set bit above the LSB too."""
         from esolangs.generation.examples import AND2
         from esolangs.languages.minsky_swap.generator import minsky_swap
-        from tests.generators.fills import fill
 
-        _fill_minsky_swap = fill("Minsky Swap")
-
-        program = _fill_minsky_swap(minsky_swap(AND2), list(bits))
+        program = self.instantiate(minsky_swap(AND2), list(bits))
         assert self.run_minsky_swap(program) == AND2[(bits[0] << 1) | bits[1]]
 
     def test_tables_with_ignored_inputs_execute(self) -> None:

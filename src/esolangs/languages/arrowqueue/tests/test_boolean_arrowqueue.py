@@ -4,13 +4,18 @@ import random
 
 import pytest
 
+import esolangs
 from esolangs import compat
 from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.languages.arrowqueue.descriptor import PAIR
-from tests.generators.fills import fill
 from tests.support.witness_tables import row_bits
 
-_instantiate_arrowqueue = fill("ArrowQueue")
+
+def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
+    """Bind native source with explicitly declared setters."""
+    bindings = esolangs.TemplateBindings(setters=(PAIR,) * len(bits))
+    artifact = esolangs.TemplateArtifact(template, "ArrowQueue", bindings)
+    return esolangs.instantiate("ArrowQueue", artifact, bits).source
 
 
 class TestParameterizedArrowQueue:

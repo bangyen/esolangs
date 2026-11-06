@@ -4,11 +4,11 @@ import pytest
 
 from esolangs import compat
 from esolangs.languages.arrowqueue.generator import arrowqueue
-from tests.generators.fills import fill
+from esolangs.languages.arrowqueue.tests.test_boolean_arrowqueue import (
+    _instantiate_arrowqueue,
+)
 from tests.support.divergence import diverges
 from tests.support.witness_tables import row_bits
-
-_instantiate_arrowqueue = fill("ArrowQueue")
 
 
 # 80 builds what None does.

@@ -11,10 +11,15 @@ from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.languages.a_painter_ant.descriptor import PAIR
 from esolangs.languages.a_painter_ant.generator import a_painter_ant
 from esolangs.languages.a_painter_ant.interpreter import run as run_a_painter_ant
-from tests.generators.fills import fill
 from tests.support.witness_tables import parity as _parity
 
-_instantiate_apa = fill("A Painter Ant")
+
+def _instantiate_apa(template: str, bits: list[int]) -> str:
+    """Bind native source with explicitly declared setters."""
+    bindings = esolangs.TemplateBindings(setters=(PAIR,) * len(bits))
+    artifact = esolangs.TemplateArtifact(template, "A Painter Ant", bindings)
+    return esolangs.instantiate("A Painter Ant", artifact, bits).source
+
 
 _MOVE = {"n": (0, -1), "e": (1, 0), "s": (0, 1), "w": (-1, 0)}
 

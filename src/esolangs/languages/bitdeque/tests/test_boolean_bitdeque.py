@@ -27,11 +27,12 @@ class TestParameterizedBitdeque:
         # earlier duplicate here kept passing after the load order changed
         # under it, so the suite disagreed with the harness it is meant to
         # mirror.
-        from tests.generators.fills import fill
+        """Bind native source with explicitly declared setters."""
+        from esolangs.languages.bitdeque.generator import bitdeque_setters
 
-        _fill_bitdeque = fill("Bitdeque")
-
-        return _fill_bitdeque(tpl, bits)
+        bindings = esolangs.TemplateBindings(setters=bitdeque_setters(tpl, len(bits)))
+        template = esolangs.TemplateArtifact(tpl, "Bitdeque", bindings)
+        return esolangs.instantiate("Bitdeque", template, bits).source
 
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""

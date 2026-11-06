@@ -5,6 +5,7 @@ from itertools import pairwise, product
 
 import pytest
 
+import esolangs
 from esolangs import compat
 from esolangs.exceptions import TruthTableError
 from esolangs.generation.helpers import TEMPLATE_CHAR, runs
@@ -16,13 +17,17 @@ from esolangs.languages.crement.generator import (
 )
 from esolangs.languages.crement.interpreter import _Machine
 from esolangs.vm import run_until_halt_or_cycle
-from tests.generators.fills import fill
 from tests.generators.sample_tables import five_input_sample
 from tests.support.divergence import diverges
 from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import dense, parity
 
-instantiate_crement = fill("Crement")
+
+def instantiate_crement(template: str, bits: list[int]) -> str:
+    """Bind native source with explicitly declared setters."""
+    bindings = esolangs.TemplateBindings(setters=crement_setters(template, len(bits)))
+    artifact = esolangs.TemplateArtifact(template, "Crement", bindings)
+    return esolangs.instantiate("Crement", artifact, bits).source
 
 
 def _result(program: str) -> str:
