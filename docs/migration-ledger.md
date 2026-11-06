@@ -917,3 +917,16 @@ These two analysis rows are audited; broader lifecycle/accounting acceptance
 and the remaining backend rows stay open.
 Installed Python 3.12–3.15 repeats both default corpora, raw-language oracles,
 analysis faults, narrow layouts and n=10 bounds against byte-checked modules.
+
+Forbin uses canonical input projection, constant spans and subtree IDs; three
+live analysis faults change executed answers. Painted blocks, lexical names,
+register dispatch and width selection remain emitter-owned. All 1,400 programs
+retain bytes across default, widths 1/4/13 and balanced layouts: exhaustive
+n=1..3 plus projected, constant-span and repeated-block witnesses at n=8..9.
+All 11,100 selected rows execute correctly; default command/workspace bounds
+hold. Eight size/command pins retain 76 executed rows, and the 80/3,111/10,224
+character anchors retain executed witnesses. Generator throughput ratio is
+1.004; emitter, bounds and size anchors are unchanged. Installed Python
+3.12–3.15 repeats the corpus, projection/subtree faults and pins against all
+832 byte-checked Python modules. Only this backend's analysis row is closed;
+catalog lifecycle, accounting and certification acceptance remain open.

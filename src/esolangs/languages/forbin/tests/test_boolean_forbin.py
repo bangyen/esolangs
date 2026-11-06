@@ -10,11 +10,14 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import HaltError
+from esolangs.generation.helpers import constant_span_test, subtree_ids
 from esolangs.languages.forbin import generator as boolean
 from esolangs.languages.forbin.generator import _BLOCK_WIDTHS, _Names
 from esolangs.languages.forbin.tests.forbin_support import _build
 from tests.generators.boolean_runners import _runner
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import evaluate_generated
 from tests.support.witness_tables import witnesses
 
 run_forbin_boolean = _runner("forbin")
@@ -58,6 +61,7 @@ class TestForbinBoolean:
 
     def test_uses_the_lsb_of_each_input(self) -> None:
         """Each input is read as 8 bits and only the LSB is kept."""
+        assert_analysis_complement("Forbin", "input_weights")
         program = boolean.forbin("01")
         assert "a,a,a,a,a,a,a,b=(in 0);" in program
 
@@ -84,8 +88,11 @@ class TestForbinBoolean:
         assert len(set(names)) == len(names)
         assert not set(names) & _FORBIN_RESERVED
 
-    def test_constant_spans_fold_above_the_block(self) -> None:
+    def test_constant_spans_fold_above_the_block(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """A constant span of blocks calls a printer instead of painting."""
+        assert boolean.constant_span_test is constant_span_test
         block_bits = max(_BLOCK_WIDTHS)
         arity = block_bits + 2
         wide = 2**arity
@@ -98,6 +105,10 @@ class TestForbinBoolean:
         parity = "".join(str(i.bit_count() & 1) for i in range(wide // 4))
         mixed = _build("0" * (wide // 2) + "1" * (wide // 4) + parity, None, block_bits)
         assert mixed.count("return(") == 3
+        monkeypatch.setattr(
+            boolean, "constant_span_test", lambda _table: lambda _left, _right: True
+        )
+        assert evaluate_generated("Forbin", "0011") == "0000"
 
     def test_block_width_is_raced_and_never_grows(self) -> None:
         """Parity at n=8 takes a narrower block than seven; no width is longer."""
@@ -116,8 +127,11 @@ class TestForbinBoolean:
             sizes.append(len(boolean.forbin(parity)))
         assert all(later < 2 * earlier for earlier, later in itertools.pairwise(sizes))
 
-    def test_a_repeated_block_is_painted_once(self) -> None:
+    def test_a_repeated_block_is_painted_once(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Blocks a b b a share one function per distinct block."""
+        assert boolean.subtree_ids is subtree_ids
         block_bits = max(_BLOCK_WIDTHS)
         rng = random.Random(7)
         a, b = (
@@ -129,6 +143,12 @@ class TestForbinBoolean:
         for row in (0, 127, 128, 300, 400, 511):
             bits = list(format(row, "09b"))
             assert run_forbin_boolean(program, bits) == table[row]
+
+        def merged_ids(table: str) -> list[list[int]]:
+            return [[min(key, 2) for key in level] for level in subtree_ids(table)]
+
+        monkeypatch.setattr(boolean, "subtree_ids", merged_ids)
+        assert evaluate_generated("Forbin", table) != table
 
     @pytest.mark.parametrize(
         ("layout", "size"), [("XXXYXYXY", 1932), ("XXXYXXYX", 1978)]
