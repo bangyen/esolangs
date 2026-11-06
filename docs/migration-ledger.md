@@ -722,3 +722,12 @@ repeat counts fix an audit timeout without changing its 60 s cap or sample
 floor; double-work controls still fail. Installed Python 3.12–3.15 preserves
 execution, round trips, retired-import refusals and guarded isolated workers.
 Catalog-wide acceptance remains open.
+
+DINAC has independent call-frame witnesses for nested overloads, recursive IFs,
+WHILE calls, void fallthrough, input/EOF and three typed-call failures. Named
+call and block rules derive all 38 traces without the production parser or
+transition. Raw, VM and debugger routes match complete frame payloads and
+charged peaks; native and 38 import-guarded workers match results and partial
+failures. Ten live faults cover caller retention, pending/returned values,
+block stacks, function identity, scope, frame order, output, input and stalls.
+All traces remain within 48 commands; larger-program acceptance stays open.

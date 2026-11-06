@@ -197,6 +197,9 @@ def test_lowercase_hex_is_a_name() -> None:
 
 
 def test_functions_overload_recurse_and_loop() -> None:
+    from esolangs.languages.dinac.tests.call_frames import check_call_frames
+
+    check_call_frames()
     add = (
         "DEF/00 add a:00 b:00\n    WHILE b\n        a . a+\n"
         "        b . b-\n    GIVE a\n"
