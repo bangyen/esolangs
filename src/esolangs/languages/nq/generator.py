@@ -23,12 +23,17 @@ from esolangs.languages.nq.interpreter import guard_dialect
 def nq(truth_table: str, *, guard_binding: str = "opcode") -> str:
     """Build a program printing space for false or # for true."""
     guard_dialect(guard_binding)
-    n = _validate_truth_table(truth_table)
-    if truth_table.count(truth_table[0]) == len(truth_table):
+    if (
+        isinstance(truth_table, str)
+        and truth_table
+        and truth_table.count(truth_table[0]) == len(truth_table)
+    ):
+        n = _validate_truth_table(truth_table)
         # Keep the answer at the front while reads append behind it.
         return ("+0" if truth_table[0] == "0" else "+2") + "r" * n + "WH"
-    parity = parity_bias(truth_table) is not None
     ids = subtree_ids(truth_table)
+    n = len(ids) - 1
+    parity = parity_bias(truth_table) is not None
     chunks: list[str] = []
     stack: list[tuple[int, int] | str] = [(0, 0)]
     while stack:

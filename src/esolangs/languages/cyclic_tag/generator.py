@@ -30,11 +30,6 @@ from esolangs.generation.helpers import (
 
 def cyclic_tag(truth_table: str) -> str:
     """Return an ordered queue embed with final-deletion output."""
-    return _program(truth_table)
-
-
-def _program(truth_table: str) -> str:
-    """Build the indexed padding walk, or an empty-production constant root."""
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         return "," + TEMPLATE_CHAR * n + truth_table[0]

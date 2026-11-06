@@ -66,7 +66,7 @@ def _check_constants() -> None:
 
 
 @pytest.mark.medium
-def test_minority_marker_keeps_answer_after_padding() -> None:
+def test_minority_marker_keeps_answer_after_padding(monkeypatch) -> None:
     """The final one must stop past its queued zero, without wrapping to input0."""
     for n in (2, 3, 5):
         size = 1 << n
@@ -88,3 +88,17 @@ def test_minority_marker_keeps_answer_after_padding() -> None:
         for n in (2, 3)
     ]
     assert totals == [211, 6721]
+    from esolangs.languages.cyclic_tag import generator
+
+    assert not hasattr(generator, "_program")
+    canonical = generator.input_weights
+
+    def wrong_weights(table, n):
+        lookup = canonical(table, n)
+        return type(lookup)(lookup.weights[::-1], lookup.table)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(generator, "input_weights", wrong_weights)
+        mutant = esolangs.generate("Cyclic tag", "0011")
+        with pytest.raises(AssertionError):
+            assert _evaluate("Cyclic tag", mutant, inputs=2) == "0011"

@@ -349,3 +349,13 @@ completion. Baselines and mutants without factories fail before tracing.
 Semantic probes identify the native fault target through a representative
 factory-built machine; raw models retain their independent constructor references.
 No driver inspects machine signatures or guesses private constructor names.
+
+Hot uses canonical subtree ids and symmetric profiles for majority admission;
+the exact one-count rejects other families before a full scan. Its Church
+terms, tie rule and readers remain owned. NQ derives arity from canonical
+subtree analysis; parity grouping, draining reads and both dialects remain.
+Neither repeats validation on nonconstant inputs. Bitwise Cyclic Tag and
+Cyclic tag use canonical weighted lookup; seven-character cells, production
+markers and embedded inputs remain owned. Their unused `_program` wrappers
+are removed. These four backend audits retain source and resource bounds;
+catalog-wide runtime and certification acceptance remain open.

@@ -31,11 +31,6 @@ from esolangs.generation.helpers import (
 _SENTINEL = "1"
 
 
-def bitwise_cyclic_tag(truth_table: str) -> str:
-    """Return the BCT template computing ``truth_table``."""
-    return _program(truth_table)
-
-
 def _read(weight: int) -> str:
     """One input's command: zeros it appends when set, then the ``0`` eating its bit."""
     if weight == 1:
@@ -43,8 +38,8 @@ def _read(weight: int) -> str:
     return "10" * (3 * (weight // 2)) + "0"
 
 
-def _program(truth_table: str) -> str:
-    """Build the indexed walk, or delete inputs and a literal constant answer."""
+def bitwise_cyclic_tag(truth_table: str) -> str:
+    """Return the BCT template computing ``truth_table``."""
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         return "0," + TEMPLATE_CHAR * n + truth_table[0]

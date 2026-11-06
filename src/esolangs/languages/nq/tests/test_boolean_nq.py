@@ -11,10 +11,11 @@ from esolangs.languages.nq.generator import nq
 from esolangs.languages.nq.tests.ablations import ablate
 from esolangs.languages.nq.tests.test_nq import check_instructions
 from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import assert_every_row
 
 
 @pytest.mark.medium
-def test_language_contract() -> None:
+def test_language_contract(monkeypatch) -> None:
     """Execute all small tables and sampled larger rows through the real VM."""
     _check_constants()
     check_instructions()
@@ -65,6 +66,24 @@ def test_language_contract() -> None:
                 steps += 1
             assert steps == 3 * n + (4 if n == 1 else 3)
             assert vm.output == "#"
+
+    from esolangs.languages.nq import generator
+
+    canonical = generator.subtree_ids
+
+    def wrong_children(table):
+        ids = canonical(table)
+        ids[1][1] = ids[1][0]
+        return ids
+
+    with monkeypatch.context() as patch:
+        patch.setattr(generator, "subtree_ids", wrong_children)
+        for binding in ("opcode", "recursive"):
+            program = language.generate(
+                "0011", settings=esolangs.DialectSettings(guard_binding=binding)
+            )
+            with pytest.raises(AssertionError):
+                assert_every_row("NQ", "0011", program=program)
 
 
 def _check_constants() -> None:

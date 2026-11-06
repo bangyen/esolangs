@@ -25,7 +25,10 @@ Decisions:
     fold, n=10 parity is 14,640 chars against 15,696.
 """
 
+from math import comb
+
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.lookup import symmetric_outputs
 
 #: ``R_i`` with ``{}`` for ``R_(i+1)``.
 _READ = "S(KK)(S(K(S(0K)))(S(KK)(S(KK)(S(K(S(0K)))(S(K(S(0K)))(S(KK)(S(K({})))))))))"
@@ -36,9 +39,8 @@ _ANSWER = (
 )
 
 
-def _tree(table: str, *, majority: bool = False) -> str:
+def _tree(table: str, ids: list[list[int]], *, majority: bool = False) -> str:
     """Return the pair tree, emitting each character once from canonical IDs."""
-    ids = subtree_ids(table)
     n = len(ids) - 1
     pieces: list[str] = []
 
@@ -76,15 +78,27 @@ def _tree(table: str, *, majority: bool = False) -> str:
 
 def hot(truth_table: str) -> str:
     """Build a Hot program printing ``truth_table[row]`` for the inputs."""
-    n = _validate_truth_table(truth_table)
-    if truth_table.count(truth_table[0]) == len(truth_table):
+    if (
+        isinstance(truth_table, str)
+        and truth_table
+        and truth_table.count(truth_table[0]) == len(truth_table)
+    ):
+        n = _validate_truth_table(truth_table)
         # A0 drops one stream bit; each input is a marker followed by its value.
         return "A0" * (2 * n) + "D" + ("D" if truth_table[0] == "1" else "C") + "C"
+    ids = subtree_ids(truth_table)
+    n = len(ids) - 1
     program = _ANSWER
     for _ in range(n):
         program = _READ.format(program)
     # Only the named family clears the gate ([ablations.majority_pair_rule]).
-    majority = all(
-        (bit == "1") == (2 * row.bit_count() > n) for row, bit in enumerate(truth_table)
+    # Majority excludes tied rows; scanning other profiles cost 0.63x on AND.
+    tied_rows = comb(n, n // 2) if n % 2 == 0 else 0
+    majority_ones = (len(truth_table) - tied_rows) // 2
+    profile = (
+        symmetric_outputs(truth_table, n)
+        if truth_table.count("1") == majority_ones
+        else None
     )
-    return f"{program}({_tree(truth_table, majority=majority)})"
+    majority = profile == "0" * (n // 2 + 1) + "1" * (n - n // 2)
+    return f"{program}({_tree(truth_table, ids, majority=majority)})"

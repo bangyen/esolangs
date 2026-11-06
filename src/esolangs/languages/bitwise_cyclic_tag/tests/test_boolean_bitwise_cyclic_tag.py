@@ -31,7 +31,7 @@ def _bct_answer(table: str, row: int) -> str:
     return io.getvalue()
 
 
-def test_bitwise_cyclic_tag_answers_every_row() -> None:
+def test_bitwise_cyclic_tag_answers_every_row(monkeypatch) -> None:
     """Every program's last deletion is its table's bit, and a 1 answer must
     not run on into the rows below it (no cascade)."""
     for table in _TABLES:
@@ -40,6 +40,18 @@ def test_bitwise_cyclic_tag_answers_every_row() -> None:
             assert _bct_answer(table, row) == table[row], (table, row)
     assert _bct_answer("1000", 0) == "1"
     assert _bct_answer("1" + "0" * 15, 0) == "1"
+    assert not hasattr(boolean, "_program")
+    canonical = boolean.input_weights
+
+    def wrong_weights(table, n):
+        lookup = canonical(table, n)
+        return type(lookup)(lookup.weights[::-1], lookup.table)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(boolean, "input_weights", wrong_weights)
+        mutant = esolangs.generate("Bitwise Cyclic Tag", "0011")
+        with pytest.raises(AssertionError):
+            assert _evaluate("Bitwise Cyclic Tag", mutant, inputs=2) == "0011"
 
 
 def test_bitwise_cyclic_tag_spells_the_table_at_a_fixed_rate() -> None:

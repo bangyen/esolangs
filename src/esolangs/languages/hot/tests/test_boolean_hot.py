@@ -9,9 +9,23 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
 @pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer(table: str, monkeypatch) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     assert_every_row("Hot", table)
+    if table == "0011":
+        from esolangs.languages.hot import generator
+
+        canonical = generator.subtree_ids
+
+        def wrong_children(table):
+            ids = canonical(table)
+            ids[1][1] = ids[1][0]
+            return ids
+
+        with monkeypatch.context() as patch:
+            patch.setattr(generator, "subtree_ids", wrong_children)
+            with pytest.raises(AssertionError):
+                assert_every_row("Hot", table)
 
 
 def test_the_bits_are_one_unseparated_string() -> None:
@@ -49,7 +63,7 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
                 assert io.input_char() == ord("Q")
 
 
-def test_three_input_corpus_size() -> None:
+def test_three_input_corpus_size(monkeypatch) -> None:
     _check_majority()
     assert (
         sum(
@@ -58,6 +72,15 @@ def test_three_input_corpus_size() -> None:
         )
         == 98234
     )
+    from esolangs.languages.hot import generator
+
+    table = "00010111"
+    admitted = esolangs.generate("Hot", table)
+    with monkeypatch.context() as patch:
+        patch.setattr(generator, "symmetric_outputs", lambda _table, _n: None)
+        generic = esolangs.generate("Hot", table)
+        assert len(generic.source) > len(admitted.source)
+        assert_every_row("Hot", table, program=generic)
 
 
 def _check_majority() -> None:
