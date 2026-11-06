@@ -377,5 +377,13 @@ proof providers. The all-backend barrier rejects proof-formula imports as well
 as certification imports; unused metadata re-exports are checked across all
 114 backends. The wheel passes generation/round trips and native execution for
 all 117 runtimes with both import controls on Python 3.12–3.15, using cached
-ABI-matched Pillow 13.0. Installed stepped, failure and accounting acceptance
-remain open.
+ABI-matched Pillow 13.0. Broader installed acceptance remains open.
+
+The certification barrier also covers all 117 debugger witnesses: 116 match
+native completion, output and input observations after normalizing step counts;
+the periodic witness reaches the reported boundary without inventing completion.
+Three guarded reference workers cover success, step exhaustion and EOF; both
+failure routes preserve unfinished observations and partial output. Worker guards
+run positive import controls before execution. The wheel passes this witness
+matrix on Python 3.12–3.15. Installed catalog-wide worker,
+failure and accounting acceptance remain open.

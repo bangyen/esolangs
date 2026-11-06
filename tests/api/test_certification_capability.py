@@ -107,22 +107,29 @@ def test_operational_catalog_and_execution_do_not_import_certification():
     code = """
 import importlib.abc
 import json
+import os
 import sys
+from unittest.mock import patch
 class Barrier(importlib.abc.MetaPathFinder):
     def __init__(self):
         self.blocked = []
+        self.fatal = False
     def find_spec(self, fullname, path, target=None):
         if fullname.endswith(('._certification', '.certification', '.proof_formulas')):
+            if self.fatal:
+                os._exit(86)
             self.blocked.append(fullname)
             raise ImportError('certification is not operational')
 barrier = Barrier()
 sys.meta_path.insert(0, barrier)
 import esolangs
 from esolangs.registry import LANGUAGES
+from esolangs.debugger import make_debugger
 samples = json.loads(sys.argv[2])
 assert set(samples) == {n for n, l in LANGUAGES.items() if l.backend is None}
 generated = 0
 executed = set()
+stepped = periodic = 0
 for name in esolangs.list_languages():
     info = esolangs.describe(name)
     language = LANGUAGES[name]
@@ -148,9 +155,59 @@ for name in esolangs.list_languages():
     assert result.input_position is not None and result.input_reads is not None, name
     if language.backend is not None and language.contract.answer_mode != 'termination':
         assert esolangs.read_answer(name, result.output) == str(bit), name
+    debugger = make_debugger(name, program, stdin=stdin, seed=seed)
+    if debugger.steppable_to_answer:
+        assert debugger.run(max_steps=100_000) == 'halted', name
+        stepped += 1
+        observed = debugger.result
+        assert observed.steps > 0, name
+        assert observed == result._replace(steps=observed.steps), (
+            name, observed, result)
+        debugger.step()
+        assert debugger.result == observed, name
+    else:
+        periodic += 1
+        cycle = result.completion.cycle
+        assert cycle is not None, name
+        steps = cycle.repeat_pass * cycle.commands_per_pass
+        for _ in range(steps):
+            debugger.step()
+        assert debugger.snapshot() == cycle.state, name
+        assert debugger.result.completion is None, name
     executed.add(name)
 assert generated == sum(lang.backend is not None for lang in LANGUAGES.values()) > 0
 assert executed == set(LANGUAGES)
+assert stepped == 116 and periodic == 1, (stepped, periodic)
+assert not barrier.blocked, barrier.blocked
+
+# Workers start fresh interpreters; install the guard before their first import.
+from esolangs.runtime import _isolated
+original_popen = _isolated.subprocess.Popen
+worker_guard = sys.argv[3]
+launched = []
+def guarded_popen(command, **kwargs):
+    assert command[:2] == [sys.executable, '-c'], command
+    assert command[2] == 'from esolangs.runtime._isolated import _worker; _worker()'
+    launched.append(command)
+    return original_popen(command[:2] + [worker_guard + command[2]], **kwargs)
+with patch.object(_isolated.subprocess, 'Popen', guarded_popen):
+    assert esolangs.run(sys.argv[1], '+.') == esolangs.run(
+        sys.argv[1], '+.', isolated=True)
+    for isolated in (False, True):
+        for source, options, error_type, expected in (
+            ('+[.]', {'max_steps': 4}, esolangs.ExecutionTimeoutError,
+             esolangs.ExecutionResult('\\x01', 0, 0, 0, steps=4)),
+            (',.,', {'stdin': 'é', 'max_steps': 4}, esolangs.InputExhaustedError,
+             esolangs.ExecutionResult('é', 1, 1, 1, steps=2)),
+        ):
+            try:
+                esolangs.run(sys.argv[1], source, isolated=isolated, **options)
+            except error_type as error:
+                assert error.execution == expected, (isolated, error.execution)
+                assert error.partial_output == expected.output
+            else:
+                raise AssertionError('failure witness completed')
+assert len(launched) == 3, len(launched)
 assert not barrier.blocked, barrier.blocked
 try:
     import esolangs.registry._certification
@@ -169,8 +226,25 @@ assert len(barrier.blocked) == 2, barrier.blocked
     samples = {
         name: SAMPLES[name] for name, lang in LANGUAGES.items() if lang.backend is None
     }
+    worker_guard = (
+        code.split("import esolangs\n", 1)[0]
+        + """
+for module in ('esolangs.registry._certification',
+               'esolangs.languages.brainfuck.proof_formulas'):
+    try:
+        __import__(module)
+    except ImportError as error:
+        assert str(error) == 'certification is not operational'
+    else:
+        raise AssertionError('worker import barrier did not fire')
+assert len(barrier.blocked) == 2
+barrier.blocked.clear()
+# Exit immediately: a caught ImportError must not permit a successful wire result.
+barrier.fatal = True
+"""
+    )
     subprocess.run(
-        [sys.executable, "-c", code, REFERENCE, json.dumps(samples)],
+        [sys.executable, "-c", code, REFERENCE, json.dumps(samples), worker_guard],
         check=True,
         timeout=10,
     )
