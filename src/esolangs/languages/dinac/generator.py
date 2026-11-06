@@ -21,11 +21,14 @@ Decisions:
     again log T each.  The scan has neither.
 """
 
+from bisect import bisect_right
+
 from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
     read_at,
 )
+from esolangs.generation.lookup import prefix_counts
 
 __all__ = ["dinac"]
 
@@ -80,9 +83,7 @@ def _test(parent: str | None, height: int, bit: int) -> str:
 def _scan(truth_table: str, mark: str, reads: list[str]) -> str:
     """Fold full blocks and singleton conjunctions; flag only mixed prefixes."""
     lines = [*_PRELUDE, *reads, "SET a:00"]
-    counts = [0]
-    for entry in truth_table:
-        counts.append(counts[-1] + (entry == mark))
+    counts = prefix_counts(truth_table, mark)
     declared: set[int] = set()
 
     def visit(lo: int, hi: int, parent: str | None) -> None:
@@ -92,7 +93,8 @@ def _scan(truth_table: str, mark: str, reads: list[str]) -> str:
         height = (hi - lo).bit_length() - 1
         if count == hi - lo or count == 1:
             if count == 1:
-                row = truth_table.index(mark, lo, hi)
+                # The first prefix increment identifies the sole matching row.
+                row = bisect_right(counts, counts[lo], lo, hi + 1) - 1
                 for h in range(height - 1, -1, -1):
                     parent = _test(parent, h, row >> h & 1)
             assert parent is not None

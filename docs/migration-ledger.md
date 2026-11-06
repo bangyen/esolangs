@@ -464,3 +464,15 @@ All 632 corpus requests and 375 larger layouts match byte for byte. The live
 analysis fault changes answers; 2,950 paired rows retain traces, input progress
 and resource peaks, including short-load, wrapped and balanced paths. Bounds,
 size pins and anchors remain unchanged; catalog acceptance stays open.
+
+Constant-span queries and DINAC share canonical prefix counts. DINAC derives
+singleton rows from prefix increments; native flags, reads and polarity stay
+owned. Pilas uses canonical subtree ids and inline chunks, deleting its span
+memo and rendered-child comparisons; residue cancellation stays owned.
+
+Chicken, Home Row, Sonata, Freestajlo, Unsquare and Whitespace retain canonical
+projection, weights and symmetric profiles with native row alignment, pair/run
+layouts, literal packing and arithmetic selection. These eight audits retain
+bytes and resource scopes with executed analysis faults. The shared-prefix
+change preserves all 6,840 catalog artifact requests and declared refusals;
+its fingerprint fault control changes all 60 injected requests.

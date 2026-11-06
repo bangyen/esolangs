@@ -1,4 +1,12 @@
-"""Lookup profiles indexed by the number of set inputs."""
+"""Boolean row counts and popcount lookup profiles."""
+
+
+def prefix_counts(table: str, value: str) -> list[int]:
+    """Return matching-entry counts for every prefix, including the empty one."""
+    counts = [0]
+    for entry in table:
+        counts.append(counts[-1] + (entry == value))
+    return counts
 
 
 def symmetric_outputs(table: str, n: int) -> str | None:

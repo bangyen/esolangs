@@ -9,6 +9,7 @@ from itertools import pairwise
 from typing import NamedTuple
 
 from esolangs.exceptions import TruthTableError
+from esolangs.generation.lookup import prefix_counts as _prefix_counts
 from esolangs.generation.lookup import symmetric_outputs as _symmetric_outputs
 from esolangs.runtime.source_hints import with_hint
 
@@ -54,9 +55,7 @@ def narrowest_grid(*candidates: str) -> str:
 
 def constant_span_test(truth_table: str) -> Callable[[int, int], bool]:
     """Return an O(1) test for whether a half-open table span is constant."""
-    ones = [0]
-    for bit in truth_table:
-        ones.append(ones[-1] + (bit == "1"))
+    ones = _prefix_counts(truth_table, "1")
 
     def constant(start: int, stop: int) -> bool:
         count = ones[stop] - ones[start]

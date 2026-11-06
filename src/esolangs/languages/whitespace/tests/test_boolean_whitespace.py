@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import run
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -21,6 +22,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 
 def _check_constants() -> None:
+    assert_analysis_complement("Whitespace", "read_at")
     from esolangs.languages.whitespace.generator import _END
     from esolangs.languages.whitespace.interpreter import _Machine
     from scripts.benchmark import WrittenState

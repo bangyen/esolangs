@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 from esolangs.generation.wrap import balance_score
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_constant_output, assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -40,6 +41,8 @@ def test_balance_of_n8_cuts_the_literal() -> None:
 
 
 def _check_constants() -> None:
+    assert_analysis_complement("Freestajlo", "read_at")
+    assert_analysis_complement("Freestajlo", "symmetric_weights", "0110")
     from esolangs.languages.freestajlo.interpreter import run
 
     for n in range(1, 13):

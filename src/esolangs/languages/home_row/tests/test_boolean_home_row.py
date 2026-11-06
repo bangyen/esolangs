@@ -5,6 +5,7 @@ import random
 import pytest
 
 import esolangs
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.witness_tables import row_bits
 
 
@@ -122,6 +123,7 @@ class TestParameterizedHomeRow:
 
 
 def _check_constants() -> None:
+    assert_analysis_complement("Home Row", "read_at")
     from esolangs.languages.home_row.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
 

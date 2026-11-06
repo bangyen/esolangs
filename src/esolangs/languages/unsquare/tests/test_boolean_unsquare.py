@@ -5,6 +5,7 @@ import pytest
 import esolangs
 from esolangs.languages.unsquare import generator as boolean
 from tests.generators.boolean_runners import _runner
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_constant_output
 from tests.support.witness_tables import witnesses
@@ -71,6 +72,7 @@ class TestUnsquare:
 
 
 def _check_constants() -> None:
+    assert_analysis_complement("Unsquare", "input_weights")
     from esolangs.languages.unsquare.interpreter import run
 
     for n in range(1, 13):

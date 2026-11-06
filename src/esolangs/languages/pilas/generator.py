@@ -19,9 +19,7 @@ Decisions:
     two's stack, where its ``{`` would pop it instead of its own 0.
 """
 
-from functools import cache
-
-from esolangs.generation.helpers import _validate_truth_table, constant_span_test
+from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 
 #: Pushes 48, the byte ``'0'``.
 _ZERO_BYTE = "6:+:+:+"
@@ -35,8 +33,7 @@ _NINETY_SEVEN = _ZERO_BYTE + ":+1+"
 
 def pilas(truth_table: str) -> str:
     """Build a Pilas program printing ``truth_table[row]`` for the inputs."""
-    _validate_truth_table(truth_table)
-    n = len(truth_table).bit_length() - 1
+    n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         # ASCII 0/1 is nonzero, so {} discards a byte. Retention costs six bits.
         # Reserve 14 plus pointer/input widths within the unchanged 3n+24 bound.
@@ -45,33 +42,44 @@ def pilas(truth_table: str) -> str:
         )
         bump = "1+" if truth_table[0] == "1" else ""
         return "," * keep + ",{}" * (n - keep) + _ZERO_BYTE + bump + ".\n0{0}"
-    constant = constant_span_test(truth_table)
+    ids = subtree_ids(truth_table)
+    parts: list[str] = []
 
-    @cache
-    def build(lo: int, hi: int) -> str:
-        if constant(lo, hi):
-            left = (hi - lo).bit_length() - 1
-            bump = "1+" if truth_table[lo] == "1" else ""
-            return _DROP * left + _ZERO_BYTE + bump + ".0" + "+" * left
-        mid = (lo + hi) // 2
-        if constant(lo, mid) and constant(mid, hi):
+    def emit(depth: int, slot: int) -> None:
+        node = ids[depth][slot]
+        if node < 2:
+            left = n - depth
+            bump = "1+" if node else ""
+            parts.append(_DROP * left + _ZERO_BYTE + bump + ".0" + "+" * left)
+            return
+        zero, one = ids[depth + 1][2 * slot : 2 * slot + 2]
+        if zero < 2 and one < 2:
             # The first input is the answer: read the rest away (each folds
             # into it as 0), then print its byte, or 97 minus it.
-            rest = (hi - lo).bit_length() - 2
-            head = "," if truth_table[lo] == "0" else _NINETY_SEVEN + ",-"
-            return head + _DROP * rest + "+" * rest + ".0"
-        zero, one = build(lo, mid), build(mid, hi)
+            rest = n - depth - 1
+            head = "," if not zero else _NINETY_SEVEN + ",-"
+            parts.append(head + _DROP * rest + "+" * rest + ".0")
+            return
         if zero == one:
             # An ignored input is still read, then zeroed and folded away.
-            return _DROP + zero + "+"
-        return _READ + ":{" + zero + "+2+1}1-:{" + one + "+1+1}1-"
+            parts.append(_DROP)
+            emit(depth + 1, 2 * slot)
+            parts.append("+")
+            return
+        parts.append(_READ + ":{")
+        emit(depth + 1, 2 * slot)
+        parts.append("+2+1}1-:{")
+        emit(depth + 1, 2 * slot + 1)
+        parts.append("+1+1}1-")
 
+    emit(0, 0)
     # A child's zero residue followed by + is an identity. Cancel in one
     # pass; repeated replacement is quadratic on nested 00++ spellings.
     line: list[str] = []
-    for char in build(0, 2**n):
-        if char == "+" and line and line[-1] == "0":
-            line.pop()
-        else:
-            line.append(char)
+    for part in parts:
+        for char in part:
+            if char == "+" and line and line[-1] == "0":
+                line.pop()
+            else:
+                line.append(char)
     return "".join(line) + "\n0{0}"

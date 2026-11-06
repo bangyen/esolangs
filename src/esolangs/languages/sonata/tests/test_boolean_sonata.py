@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 from esolangs import run
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
@@ -34,6 +35,8 @@ def test_pair_table_prints_its_answer() -> None:
 
 
 def _check_constants() -> None:
+    assert_analysis_complement("Sonata", "symmetric_weights", "0110")
+    assert_analysis_complement("Sonata", "read_at", "0010")
     from esolangs.languages.sonata.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
