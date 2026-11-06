@@ -45,8 +45,9 @@ Decisions:
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from types import MappingProxyType
+from typing import Any
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.forbin.interpreter._parse import (
@@ -64,9 +65,12 @@ from esolangs.languages.forbin.interpreter._scope import (
 )
 from esolangs.languages.forbin.interpreter._step import _advance, _run_block
 from esolangs.languages.forbin.interpreter._workspace import _Scopes
+from esolangs.languages.forbin.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._fault import _Fault
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
@@ -390,10 +394,25 @@ class _Machine:
         self._flush(out, flushed)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind source; each IO-bound construction owns fresh runtime state."""
+    if not isinstance(source, str):
+        raise TypeError("Forbin machines require text source")
+    if options:
+        raise TypeError("Forbin machines accept no runtime options")
+
+    def build(io: IO) -> _Machine:
+        return _Machine(source, io)
+
+    return build
+
+
 def _execute(code: str, io: IO) -> CompletionReport:
     """Run a Forbin program, calling ``main`` with a dummy argument."""
     machine = _Machine(code, io)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO) -> None:

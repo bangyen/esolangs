@@ -385,21 +385,9 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
                 esolangs.run(name, source, stdin=stdin, seed=seed)
 
 
-def test_legacy_vm_does_not_discover_cached_constructors(monkeypatch):
-    name = next(
-        name
-        for name, lang in LANGUAGES.items()
-        if lang.runtime.capabilities is None and name in SAMPLES
-    )
-    machine = interpreter_module(name)._Machine
-
-    def rejected(*_args, **_kwargs):
-        raise AssertionError("legacy cached constructor discovered")
-
-    monkeypatch.setattr(machine, "_for_run", rejected, raising=False)
-    monkeypatch.setattr(
-        vm, "interpreter_module", lambda _name: SimpleNamespace(_Machine=machine)
-    )
-    source, stdin = SAMPLES[name]
-    runner = vm.make_vm(name, source, stdin=stdin)
-    assert isinstance(runner._machine, machine)
+def test_every_runtime_declares_preparation_and_capabilities():
+    for language in LANGUAGES.values():
+        runtime = language.runtime
+        assert runtime.machine_preparation
+        assert runtime.completion_entrypoint
+        assert runtime.capabilities is not None

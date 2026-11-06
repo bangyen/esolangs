@@ -1,9 +1,10 @@
 """Runtime and compiler capabilities for Packlang."""
 
-from esolangs.languages.packlang.interpreter._literals import (
+from esolangs.languages.packlang.dialect import (
     LITERAL_POLICIES,
     PacklangLiterals,
 )
+from esolangs.languages.packlang.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -20,6 +21,9 @@ LANGUAGE = Language(
     "Packlang",
     RuntimeSpec(
         "packlang",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="variable_based",
         dialect=_dialect,
         dialect_values={"literal_policy": LITERAL_POLICIES},

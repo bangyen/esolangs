@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for FRACTRAN."""
 
 from esolangs.generation.wrap import wrap_space_delimited
+from esolangs.languages.fractran.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -14,6 +15,9 @@ LANGUAGE = Language(
     "FRACTRAN",
     RuntimeSpec(
         "fractran",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="register_based",
         empty_program="a FRACTRAN program needs a starting value",
     ),

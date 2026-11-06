@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Algebraic Programming Language."""
 
+from esolangs.languages.algebraic_programming_language.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -8,7 +9,13 @@ from esolangs.runtime._definition import RuntimeSpec
 
 LANGUAGE = Language(
     "Algebraic Programming Language",
-    RuntimeSpec("algebraic_programming_language", category="variable_based"),
+    RuntimeSpec(
+        "algebraic_programming_language",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+        category="variable_based",
+    ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.algebraic_programming_language.generator",

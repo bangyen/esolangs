@@ -26,11 +26,15 @@ from __future__ import annotations
 
 import math
 import re
-from typing import NamedTuple
+from collections.abc import Mapping
+from typing import Any, NamedTuple
 
+from esolangs.languages.refractran.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
@@ -134,9 +138,24 @@ class _Machine:
             self.state = _advance(self.state, self.fractions)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind source; each IO-bound construction owns fresh runtime state."""
+    if not isinstance(source, str):
+        raise TypeError("REFRACTRAN machines require text source")
+    if options:
+        raise TypeError("REFRACTRAN machines accept no runtime options")
+
+    def build(io: IO) -> _Machine:
+        return _Machine(source, io)
+
+    return build
+
+
 def _execute(code: str, io: IO) -> CompletionReport:
     """Run REFRACTRAN, dumping its final integer in binary."""
-    return drive(_Machine(code, io))
+    return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO) -> None:

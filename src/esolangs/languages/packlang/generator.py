@@ -43,7 +43,7 @@ from esolangs.generation.wrap import (
     balance_score,
     wrap_program,
 )
-from esolangs.languages.packlang.interpreter._literals import (
+from esolangs.languages.packlang.dialect import (
     PacklangLiterals,
 )
 from esolangs.languages.packlang.wrapping import (

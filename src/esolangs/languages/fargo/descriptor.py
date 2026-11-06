@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Fargo."""
 
+from esolangs.languages.fargo.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -9,7 +10,12 @@ from esolangs.runtime._definition import RuntimeSpec
 LANGUAGE = Language(
     "Fargo",
     RuntimeSpec(
-        "fargo", category="other", eof="the interpreter reads before the program starts"
+        "fargo",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+        category="other",
+        eof="the interpreter reads before the program starts",
     ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(

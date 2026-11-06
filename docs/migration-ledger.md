@@ -302,3 +302,9 @@ and full installed-package acceptance remain open.
 Hot, Kiss, Smu and Unlambda declare factories and debugger fields. Term graphs,
 continuations, variables and input/output buffers remain per-run. Kiss keeps
 its native exit-code result and declares completion on both native routes.
+
+The remaining nine runtimes declare text factories and debugger fields: ///,
+Algebraic Programming Language, Fargo, Forbin, FRACTRAN, Object disoriented,
+Packlang, REFRACTRAN and Shakespeare. Each construction owns execution state;
+Packlang captures literal policy and loads its metadata without execution.
+All 117 preparation declarations are present; lifecycle retirement remains open.

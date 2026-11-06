@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Forbin."""
 
+from esolangs.languages.forbin.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -10,6 +11,9 @@ LANGUAGE = Language(
     "Forbin",
     RuntimeSpec(
         "forbin",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="variable_based",
         empty_program="Forbin program has no main function",
     ),

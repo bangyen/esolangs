@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for REFRACTRAN."""
 
 from esolangs.generation.wrap import wrap_space_delimited
+from esolangs.languages.refractran.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -14,6 +15,9 @@ LANGUAGE = Language(
     "REFRACTRAN",
     RuntimeSpec(
         "refractran",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="register_based",
         empty_program="REFRACTRAN needs an initial integer",
     ),

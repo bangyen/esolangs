@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for ///."""
 
+from esolangs.languages.slashes.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -8,7 +9,14 @@ from esolangs.runtime._definition import RuntimeSpec
 
 LANGUAGE = Language(
     "///",
-    RuntimeSpec("slashes", category="program_based", path_like_source=True),
+    RuntimeSpec(
+        "slashes",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+        category="program_based",
+        path_like_source=True,
+    ),
     id="slashes",
     aliases=("Slashalash",),
     backend=BooleanBackend(

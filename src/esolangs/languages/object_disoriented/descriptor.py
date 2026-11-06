@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Object disoriented."""
 
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.object_disoriented.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -11,6 +12,9 @@ LANGUAGE = Language(
     "Object disoriented",
     RuntimeSpec(
         "object_disoriented",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="other",
         empty_program="Object disoriented program defines no 'main' class",
     ),
