@@ -230,8 +230,15 @@ def test_declared_models_keep_immutable_accounting_without_cycle_keys(
     periodic = (
         capabilities is not None and capabilities.completion is Completion.PERIODIC
     )
+    from tests.proofs.execution import FORMULAS
+
+    budget = 5000
+    if name in FORMULAS:
+        bound, _, arities = FORMULAS[name]
+        if 1 in arities:
+            budget = max(budget, bound(1, artifact.source) + 1)
     boundaries = set()
-    for _ in range(5000):
+    for _ in range(budget):
         if periodic and vm.ip == 0:
             state = _capture_workspace(vm)
             if state in boundaries:
@@ -243,7 +250,7 @@ def test_declared_models_keep_immutable_accounting_without_cycle_keys(
         measured.sample(_capture_workspace(vm))
         assert saved in retained
     else:
-        pytest.fail("one-input accounting witness did not complete")
+        pytest.fail(f"one-input accounting witness exceeded {budget} commands")
     if periodic:
         assert _capture_workspace(vm) in boundaries
         vm._machine.interrupt()

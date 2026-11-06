@@ -35,6 +35,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.persistent import CHUNK, chunked
 from esolangs.runtime.source_hints import syntax_error
@@ -177,6 +178,15 @@ def _initial_memory(code: str) -> tuple[int, ...]:
     return tuple(memory)
 
 
+# Canonical pages avoid the flat-copy formula sweep exceeding 60 s, without
+# depending on the cycle cache partition.
+_WORKSPACE_PAGE = 64
+_WORKSPACE_MODEL = WorkspaceModel(
+    "malbolge-v1",
+    ("accumulator", "instruction", "data", "stopped", "memory", "input_cursor"),
+)
+
+
 class _Machine:
     """Protocol shell holding the registers and the mutable word store."""
 
@@ -192,6 +202,8 @@ class _Machine:
         # so a per-step snapshot costs the writes, not all 59049 words.
         self._chunks = list(chunked(self.memory))
         self._dirty: set[int] = set()
+        self._workspace_pages: list[tuple[int, ...]] | None = None
+        self._workspace_dirty: set[int] = set()
 
     @property
     def halted(self) -> bool:
@@ -204,6 +216,29 @@ class _Machine:
     @property
     def ip(self) -> int | None:
         return None if self.halted else self.state[1]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture the finite word store independently of cycle-cache chunks."""
+        if self._workspace_pages is None:
+            self._workspace_pages = [
+                tuple(self.memory[start : min(start + _WORKSPACE_PAGE, _WORDS)])
+                for start in range(0, _WORDS, _WORKSPACE_PAGE)
+            ]
+        for page in self._workspace_dirty:
+            start = page * _WORKSPACE_PAGE
+            self._workspace_pages[page] = tuple(
+                self.memory[start : min(start + _WORKSPACE_PAGE, _WORDS)]
+            )
+        self._workspace_dirty.clear()
+        a, c, d, halted = self.state
+        return _WORKSPACE_MODEL.capture(
+            accumulator=a,
+            instruction=c,
+            data=d,
+            stopped=halted,
+            memory=tuple(self._workspace_pages),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         for at in self._dirty:
@@ -225,6 +260,8 @@ class _Machine:
         for address, value in writes:
             self.memory[address] = value
             self._dirty.add(address // CHUNK)
+            if self._workspace_pages is not None:
+                self._workspace_dirty.add(address // _WORKSPACE_PAGE)
         if effect is not None:
             self.io.print_char(chr(effect))
 

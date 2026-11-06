@@ -63,13 +63,31 @@ def test_a_known_program_prints_its_greeting() -> None:
 def test_the_snapshot_memory_follows_every_write() -> None:
     """The chunked snapshot rebuilds written chunks and shares the rest."""
     machine = _Machine(HELLO, ScriptedIO(""))
+    from scripts.benchmark import WrittenState, state_bits
+
     before = machine.snapshot()
+    saved = machine.workspace_snapshot()
+    retained = {saved}
+    old_meter, new_meter = WrittenState(before), WrittenState(saved)
     while not machine.halted:
         machine.step()
         snapshot = machine.snapshot()
         chunks = snapshot[4]
         assert isinstance(chunks, tuple)
         assert [word for chunk in chunks for word in chunk] == machine.memory
+        workspace = machine.workspace_snapshot()
+        assert workspace.parts[:4] == machine.state
+        assert tuple(word for page in workspace.parts[4] for word in page) == tuple(
+            machine.memory[:_WORDS]
+        )
+        assert workspace.parts[5] == machine.io.progress()
+        old_meter.sample(snapshot)
+        new_meter.sample(workspace)
+        assert new_meter.bits == old_meter.bits
+        assert saved in retained
+        assert state_bits(workspace.parts[4], {}) == sum(
+            word.bit_length() or 1 for word in machine.memory[:_WORDS]
+        )
     assert sum(a is not b for a, b in zip(chunks, before[4], strict=True)) < 100
 
 

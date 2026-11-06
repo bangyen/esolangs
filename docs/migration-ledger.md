@@ -107,7 +107,7 @@ acceptance audit after the active separation work lands. Storage policy needs
 its priced comparison and explicit decision. These remain open even where an
 implementation pilot already passed.
 
-Accounting now has 111 explicit or inherited semantic adapters; 6 language
+Accounting now has 112 explicit or inherited semantic adapters; 5 language
 rows still use snapshot accounting. Declarations do not close lifecycle,
 storage-policy or catalog-wide acceptance requirements.
 
@@ -237,3 +237,7 @@ the exponent model; zero entries, guard indexes and selection caches are exclude
 Super SNUSP and thisthat declare RNG-aware split-grid factories and debug fields.
 Preparation freezes source/options without drawing; tape, values, pointers,
 transfer cells and input-set state remain per-run.
+
+Malbolge accounts for its finite 59,049-word store and registers independently
+of cycle-cache chunks. Canonical accounting pages retain immutable captures;
+physical cache partitions and spare capacity are excluded.
