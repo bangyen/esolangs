@@ -22,7 +22,7 @@ class WorkspaceOracle:
         if value is None:
             return 0
         if isinstance(value, int):
-            return max(1, abs(value).bit_length()) + (value < 0)
+            return 1 if value == 0 else abs(value).bit_length() + (value < 0)
         if isinstance(value, (str, bytes)):
             return 8 * len(value)
         if isinstance(value, float):

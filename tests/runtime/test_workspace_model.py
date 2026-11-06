@@ -88,6 +88,8 @@ def test_accounting_refuses_a_mid_run_model_change():
         with pytest.raises(ValueError, match="model changed"):
             written.sample(changed)
     oracle = WorkspaceOracle(model.capture(cursor=0, cells=(0,)))
+    for value, bits in ((False, 1), (0, 1), (255, 8), (-255, 9)):
+        assert oracle.width(value) == bits
     for cursor, cells, expected in ((1, (8, -1), 7), (2, (0,), 8)):
         snapshot = model.capture(cursor=cursor, cells=cells)
         written.sample(snapshot)
