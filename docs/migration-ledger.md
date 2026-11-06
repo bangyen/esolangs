@@ -28,6 +28,7 @@ Owners are workstreams, not individual contributors.
 | `languages.generators` facade | Registry | Retired; callers use owned modules or backend declarations; negative import checks in `tests/api/test_deferred_catalog.py` | Artifact API or direct owned generator imports |
 | Unused generator-module descriptor re-exports | Registry | Retired; owned metadata consumers use descriptors; all-backend checks in `tests/api/test_certification_capability.py` reject unused imports and `LANGUAGE` exports | Independent descriptors; retain constants actually used by emitters |
 | Helpers' `AffineForm`, `affine_form`, `symmetric_outputs` re-exports | Analysis | Retired; callers migrated; negative export check in `tests/generators/test_symmetry.py` | `generation.algebraic` / `generation.lookup` |
+| Helpers' `_parity_bias` and duplicate parity recognizers | Analysis | Retired; eight backends and REFRACTRAN ablations use canonical analysis; independent affine oracle and removed-export checks | `generation.algebraic.parity_bias` |
 | `runtime._result.ExecutionResult` shim | Results | Retired; imports migrated; negative import check in `tests/api/test_run_results.py` | `esolangs.results.ExecutionResult` |
 | `_Machine` / `_for_run` discovery | Lifecycle | VM construction, diff/proof drivers and machine traits | Declared preparation/factories and capabilities |
 | Implicit completion entrypoint defaults | Lifecycle | Runtime descriptors and native runners | Explicit completion declarations |
@@ -308,3 +309,9 @@ Algebraic Programming Language, Fargo, Forbin, FRACTRAN, Object disoriented,
 Packlang, REFRACTRAN and Shakespeare. Each construction owns execution state;
 Packlang captures literal policy and loads its metadata without execution.
 All 117 preparation declarations are present; lifecycle retirement remains open.
+
+Back, Befunge, Blindfolded Arithmetic, Dig, Fish, Interprogck8 and NQ join
+REFRACTRAN on canonical parity analysis. Reads, stencils, layout and selection
+remain owned.
+Each matches 632 corpus requests; 384 additional parity/layout witnesses match
+and 480 rows execute per tree. Other backend analyses remain unaudited.

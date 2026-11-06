@@ -37,8 +37,8 @@ Decisions:
     copies disappear ([ablations.alternating_counter_rounds_trick]).
 """
 
+from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.helpers import (
-    _parity_bias,
     _validate_truth_table,
     essential_inputs,
     read_at,
@@ -169,7 +169,7 @@ def blindfolded_arithmetic(truth_table: str) -> str:
         return "i=i-i;i=i/a" if truth_table[0] == "0" else "i=i/i;i=i/a"
     # At n=3 the larger constant setup grows parity by one instruction;
     # n=4 ties, and the independently judged saving tends to 25%.
-    if n >= 4 and _parity_bias(truth_table) is not None:
+    if n >= 4 and parity_bias(truth_table) is not None:
         return ";".join(_parity_integer(truth_table) + _lookup(n, list(range(n))))
     essential = essential_inputs(truth_table, n)
     projected = read_at(truth_table, essential, n)

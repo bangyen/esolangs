@@ -660,17 +660,6 @@ def decision_tree_body(
     return "".join(cells), pos
 
 
-def _parity_bias(truth_table: str) -> int | None:
-    """Return the complement bit for parity, or None, in O(T)."""
-    bias = int(truth_table[0])
-    parity = bytearray(len(truth_table))
-    for row in range(1, len(truth_table)):
-        parity[row] = parity[row >> 1] ^ (row & 1)
-        if int(truth_table[row]) != parity[row] ^ bias:
-            return None
-    return bias
-
-
 def same_up_to_wrapping(template: str, plain: str) -> bool:
     """Whether ``template`` is ``plain``, or ``plain`` broken by newlines.
 

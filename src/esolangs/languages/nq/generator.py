@@ -15,7 +15,8 @@ Size:
     Root constants: n + 4 chars and n + 3 commands.
 """
 
-from esolangs.generation.helpers import _parity_bias, _validate_truth_table, subtree_ids
+from esolangs.generation.algebraic import parity_bias
+from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.languages.nq.interpreter import guard_dialect
 
 
@@ -26,7 +27,7 @@ def nq(truth_table: str, *, guard_binding: str = "opcode") -> str:
     if truth_table.count(truth_table[0]) == len(truth_table):
         # Keep the answer at the front while reads append behind it.
         return ("+0" if truth_table[0] == "0" else "+2") + "r" * n + "WH"
-    parity = _parity_bias(truth_table) is not None
+    parity = parity_bias(truth_table) is not None
     ids = subtree_ids(truth_table)
     chunks: list[str] = []
     stack: list[tuple[int, int] | str] = [(0, 0)]

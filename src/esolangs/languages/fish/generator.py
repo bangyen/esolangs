@@ -30,8 +30,8 @@ Decisions:
 
 from math import isqrt
 
+from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.helpers import (
-    _parity_bias,
     _validate_truth_table,
     grid_rank,
     input_weights,
@@ -47,7 +47,7 @@ def fish(truth_table: str, width: int | None = None) -> str:
         return _constant(n, truth_table[0], width)
     # A one-column parity program fits any width; at n=10 it is 24 cells
     # against the lookup's 2,050 (default) and 3,435 (width 3).
-    bias = _parity_bias(truth_table)
+    bias = parity_bias(truth_table)
     if bias is not None:
         return _parity(n, bias)
     # An ignored input is read and dropped; the table indexes the rest.

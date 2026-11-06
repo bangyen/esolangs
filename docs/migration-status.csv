@@ -12,18 +12,18 @@ Aprknia,yes,declared,not-applicable,declared,owned-adapter,aprknia-v1,pending-ba
 ArrowQueue,yes,declared,not-applicable,declared,owned-adapter,arrowqueue-v1,pending-backend-audit,pending-acceptance-audit,open
 Ascenic,yes,declared,not-applicable,declared,owned-adapter,ascenic-v1,pending-backend-audit,pending-acceptance-audit,open
 B-tapemark,yes,declared,declared,declared,owned-adapter,b-tapemark-v1,pending-backend-audit,pending-acceptance-audit,open
-Back,yes,declared,not-applicable,declared,owned-adapter,back-v1,pending-backend-audit,pending-acceptance-audit,open
+Back,yes,declared,not-applicable,declared,owned-adapter,back-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
 Balik,yes,declared,not-applicable,declared,owned-adapter,balik-v1,pending-backend-audit,pending-acceptance-audit,open
 BASICER,yes,declared,not-applicable,declared,owned-adapter,basicer-v1,pending-backend-audit,pending-acceptance-audit,open
 Basicfuck,yes,declared,not-applicable,declared,owned-adapter,basicfuck-v1,pending-backend-audit,pending-acceptance-audit,open
-Befunge,yes,declared,not-applicable,declared,owned-adapter,befunge-v1,pending-backend-audit,pending-acceptance-audit,open
+Befunge,yes,declared,not-applicable,declared,owned-adapter,befunge-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
 Between,yes,declared,not-applicable,declared,owned-adapter,between-v1,pending-backend-audit,pending-acceptance-audit,open
 BFStack,yes,declared,not-applicable,declared,owned-adapter,bfstack-v1,pending-backend-audit,pending-acceptance-audit,open
 Bitdeque,yes,declared,not-applicable,declared,owned-adapter,bitdeque-v1,pending-backend-audit,pending-acceptance-audit,open
 Bitwise Cyclic Tag,yes,declared,not-applicable,declared,owned-adapter,bitwise-cyclic-tag-v1,pending-backend-audit,pending-acceptance-audit,open
 bit~,yes,declared,not-applicable,declared,owned-adapter,bit-tilde-v1,pending-backend-audit,pending-acceptance-audit,open
 Bleh,yes,declared,not-applicable,declared,owned-adapter,bleh-v1,pending-backend-audit,pending-acceptance-audit,open
-Blindfolded Arithmetic,yes,declared,not-applicable,declared,owned-adapter,blindfolded-arithmetic-v1,pending-backend-audit,pending-acceptance-audit,open
+Blindfolded Arithmetic,yes,declared,not-applicable,declared,owned-adapter,blindfolded-arithmetic-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
 Boolfuck,yes,declared,not-applicable,declared,inherited-adapter,boolfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 brainfuck,yes,declared,not-applicable,declared,owned-adapter,brainfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 BrainIf,yes,declared,not-applicable,declared,owned-adapter,brainif-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -42,7 +42,7 @@ CV(N)(C),yes,declared,not-applicable,declared,owned-adapter,cvnc-v1,pending-back
 Cyclic tag,yes,declared,not-applicable,declared,owned-adapter,cyclic-tag-v1,pending-backend-audit,pending-acceptance-audit,open
 Deadfish,no,declared,not-applicable,declared,owned-adapter,deadfish-v1,not-applicable,pending-acceptance-audit,open
 Decleq,yes,declared,not-applicable,declared,owned-adapter,decleq-v1,pending-backend-audit,pending-acceptance-audit,open
-Dig,yes,declared,not-applicable,declared,owned-adapter,dig-v1,pending-backend-audit,pending-acceptance-audit,open
+Dig,yes,declared,not-applicable,declared,owned-adapter,dig-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
 Dimensional,yes,declared,not-applicable,declared,owned-adapter,dimensional-v1,pending-backend-audit,pending-acceptance-audit,open
 DINAC,yes,declared,not-applicable,declared,owned-adapter,dinac-v1,pending-backend-audit,pending-acceptance-audit,open
 EGL,yes,declared,not-applicable,declared,owned-adapter,egl-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -50,7 +50,7 @@ Eval,yes,declared,not-applicable,declared,owned-adapter,eval-v1,pending-backend-
 Fackward,yes,declared,not-applicable,declared,owned-adapter,fackward-v1,pending-backend-audit,pending-acceptance-audit,open
 FALSE,yes,declared,not-applicable,declared,owned-adapter,false-v1,pending-backend-audit,pending-acceptance-audit,open
 Fargo,yes,declared,not-applicable,declared,owned-adapter,fargo-v1,pending-backend-audit,pending-acceptance-audit,open
-Fish,yes,declared,not-applicable,declared,owned-adapter,fish-v1,pending-backend-audit,pending-acceptance-audit,open
+Fish,yes,declared,not-applicable,declared,owned-adapter,fish-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
 Flowchart,yes,declared,not-applicable,declared,owned-adapter,flowchart-v1,pending-backend-audit,pending-acceptance-audit,open
 Forbin,yes,declared,not-applicable,declared,owned-adapter,forbin-v1,pending-backend-audit,pending-acceptance-audit,open
 Forþ,yes,declared,not-applicable,declared,owned-adapter,for-thorn-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -64,7 +64,7 @@ HQ9+ with headers,yes,declared,not-applicable,declared,owned-adapter,hq9-with-he
 IEBEL,yes,declared,not-applicable,declared,owned-adapter,iebel-v1,pending-backend-audit,pending-acceptance-audit,open
 Inject,yes,declared,not-applicable,declared,owned-adapter,inject-v1,pending-backend-audit,pending-acceptance-audit,open
 INTERCAL,yes,declared,not-applicable,declared,owned-adapter,intercal-v1,pending-backend-audit,pending-acceptance-audit,open
-Interprogck8,yes,declared,not-applicable,declared,owned-adapter,interprogck8-v1,pending-backend-audit,pending-acceptance-audit,open
+Interprogck8,yes,declared,not-applicable,declared,owned-adapter,interprogck8-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
 Kiss,yes,declared,not-applicable,declared,owned-adapter,kiss-v1,pending-backend-audit,pending-acceptance-audit,open
 LaserFuck,yes,declared,not-applicable,declared,owned-adapter,laserfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Line,yes,declared,not-applicable,declared,owned-adapter,line-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -77,7 +77,7 @@ Movesum,yes,declared,not-applicable,declared,owned-adapter,movesum-v1,pending-ba
 Nandypants,yes,declared,not-applicable,declared,owned-adapter,nandypants-v1,pending-backend-audit,pending-acceptance-audit,open
 Nope.,no,declared,not-applicable,declared,owned-adapter,nope-v1,not-applicable,pending-acceptance-audit,open
 NOR machine,yes,declared,not-applicable,declared,owned-adapter,nor-machine-v1,pending-backend-audit,pending-acceptance-audit,open
-NQ,yes,declared,declared,declared,owned-adapter,nq-v1,pending-backend-audit,pending-acceptance-audit,open
+NQ,yes,declared,declared,declared,owned-adapter,nq-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
 Object disoriented,yes,declared,not-applicable,declared,owned-adapter,object-disoriented-v1,pending-backend-audit,pending-acceptance-audit,open
 Packlang,yes,declared,declared,declared,owned-adapter,packlang-v1,pending-backend-audit,pending-acceptance-audit,open
 Painfuck,yes,declared,not-applicable,declared,owned-adapter,painfuck-v1,pending-backend-audit,pending-acceptance-audit,open

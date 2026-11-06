@@ -22,8 +22,8 @@ from __future__ import annotations
 from math import isqrt
 
 from esolangs.exceptions import GeneratorCapError
+from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.helpers import (
-    _parity_bias,
     _validate_truth_table,
     input_weights,
 )
@@ -145,7 +145,7 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     if len(table) > 1 << 10:
         return _packed_befunge(table, reads, width)
     if width is not None and width < 4:
-        bias = _parity_bias(truth_table)
+        bias = parity_bias(truth_table)
         if bias is not None:
             # One vertical column of sums modulo two: at most 25 commands even
             # at n=10, within the native torus.
@@ -361,6 +361,6 @@ def balance_befunge(truth_table: str, default: str) -> str:
             befunge(truth_table, min(high, max(floor, width)))
             for width in (side - 1, side, side + 1, side + 2)
         )
-    if n <= 10 and _parity_bias(truth_table) is not None:
+    if n <= 10 and parity_bias(truth_table) is not None:
         candidates.append(befunge(truth_table, 1))
     return min(candidates, key=balance_score)

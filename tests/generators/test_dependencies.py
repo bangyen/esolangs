@@ -19,6 +19,9 @@ def _oracle(table: str, n: int) -> list[int]:
 
 
 def test_dependencies_exhaustive() -> None:
+    assert not hasattr(helpers, "_parity_bias")
+    assert parity_bias("0") == 0
+    assert parity_bias("1") == 1
     for n in range(1, 5):
         forms = {
             "".join(
@@ -71,6 +74,13 @@ def test_dependencies_exhaustive() -> None:
 def test_dependencies_late_witnesses_and_ignored_inputs() -> None:
     rng = random.Random(929)
     for n in range(5, 11):
+        for bias in (0, 1):
+            parity = "".join(
+                str((sum(bits) + bias) % 2) for bits in product((0, 1), repeat=n)
+            )
+            assert parity_bias(parity) == bias
+            late_fault = parity[:-1] + str(1 - int(parity[-1]))
+            assert parity_bias(late_fault) is None
         tables = ["0" * (1 << n), "0" * ((1 << n) - 1) + "1"]
         tables += [
             "".join(str((row >> bit) & 1) for row in range(1 << n)) for bit in range(n)

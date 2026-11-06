@@ -39,6 +39,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import cast
 
+from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -367,20 +368,6 @@ def _dig_quarter_turn(program: str) -> str:
     return "\n".join("".join(row).rstrip() for row in grid)
 
 
-def _dig_parity_bias(table: str) -> int | None:
-    """Recognize complementary residuals using fewer than 2T carry toggles."""
-    parity = bias = int(table[0])
-    for row, value in enumerate(table):
-        if int(value) != parity:
-            return None
-        carry = row
-        while carry & 1:
-            parity ^= 1
-            carry >>= 1
-        parity ^= 1
-    return bias
-
-
 def _dig_parity_chain(n: int, bias: int) -> str:
     """Chain the four-pass a+b-2ab stencil, retaining each preceding result."""
     # Reads/stores a,b; copies b, saves a+b; forms/stores ab; then subtracts
@@ -450,7 +437,7 @@ def dig(truth_table: str, width: int | None = None, *, share: bool = True) -> st
     """
     n = _validate_truth_table(truth_table)
     if n >= 2 and share and width is None:
-        bias = _dig_parity_bias(truth_table)
+        bias = parity_bias(truth_table)
         if bias is not None:
             return _dig_parity_chain(n, bias)
     built = _dig_build(truth_table, n, width, share=share)

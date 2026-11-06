@@ -54,6 +54,7 @@ class TestDig:
         )
         from scripts.benchmark import WrittenState
 
+        assert not hasattr(boolean, "_dig_parity_bias")
         for n in (4, 5):
             for bias in (0, 1):
                 table = "".join(str(bias ^ (r.bit_count() % 2)) for r in range(1 << n))

@@ -46,7 +46,8 @@ Decisions:
 """
 
 from esolangs.exceptions import GeneratorCapError
-from esolangs.generation.helpers import _parity_bias, _validate_truth_table, subtree_ids
+from esolangs.generation.algebraic import parity_bias
+from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.languages.interprogck8.descriptor import _MAX_INPUTS as _MAX_INPUTS
 from esolangs.runtime.source_hints import with_hint
 
@@ -229,7 +230,7 @@ def interprogck8(truth_table: str) -> str:
     # [ablations.trick_prototype_20261102_wider_parity]
     free = (
         _PARITY_FREE
-        if 3 <= n <= _PARITY_MAX and _parity_bias(truth_table) is not None
+        if 3 <= n <= _PARITY_MAX and parity_bias(truth_table) is not None
         else _FREE
     )
     plan = _Plan(truth_table, n, free)

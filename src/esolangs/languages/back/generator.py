@@ -40,6 +40,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from itertools import pairwise
 
+from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -138,12 +139,9 @@ def _descending_back(grid: _Grid, units: list[str]) -> str:
 
 def _back_parity(truth_table: str, n: int) -> str | None:
     """Return a one-column parity accumulator, or None for another function."""
-    bias = int(truth_table[0])
-    parity = bytearray(len(truth_table))
-    for row in range(1, len(truth_table)):
-        parity[row] = parity[row >> 1] ^ (row & 1)
-        if int(truth_table[row]) != parity[row] ^ bias:
-            return None
+    bias = parity_bias(truth_table)
+    if bias is None:
+        return None
     # The primer flips the accumulator. Zero flips it back; one keeps it,
     # and its possible skip consumes only the blank spacer, not the next bit.
     rows = ["\\", *(">" * n), *(["-"] if bias else [])]
