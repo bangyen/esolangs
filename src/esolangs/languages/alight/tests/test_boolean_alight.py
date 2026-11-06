@@ -22,7 +22,7 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 
 
 @pytest.mark.parametrize("syntax", ["infix", "postfix"])
-def test_alight_balance_drops_ignored_inputs(syntax) -> None:
+def test_alight_balance_drops_ignored_inputs(syntax, monkeypatch) -> None:
     from esolangs.settings import DialectSettings
 
     settings = DialectSettings(expression_syntax=syntax)
@@ -34,6 +34,21 @@ def test_alight_balance_drops_ignored_inputs(syntax) -> None:
     full = "0" * 31 + "1" + "0" * 32  # every input matters
     kept = esolangs.generate("Alight", full, balance=True, settings=settings).source
     assert len(program) < len(str(kept))
+
+    from esolangs.generation.helpers import input_weights
+
+    assert boolean.input_weights is input_weights
+
+    def complemented(table: str, n: int):
+        weights, core = input_weights(table, n)
+        return weights, core.translate(str.maketrans("01", "10"))
+
+    monkeypatch.setattr(boolean, "input_weights", complemented)
+    for balance in (False, True):
+        damaged = esolangs.generate(
+            "Alight", "00010001", balance=balance, settings=settings
+        ).source
+        assert _evaluate("Alight", damaged, inputs=3, settings=settings) == "11101110"
 
 
 @pytest.mark.medium

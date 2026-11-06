@@ -613,3 +613,17 @@ All 632 corpus requests and 240 larger layouts retain their bytes; 4,406 paired
 rows include exhaustive width-one execution through three inputs, preserving
 1,330,216 semantic samples. Bounds, pins and anchors remain unchanged;
 catalog acceptance stays open.
+
+Alight retains canonical weighted projection; notation-specific literal packing,
+width planning and the fold remain owned. ABCDirection retains canonical
+input dependency/projection; byte teeth, tape moves and helix planning remain
+owned. Neither emitter duplicates Boolean analysis or needs a compatibility
+adapter. Their imported canonical queries have executed fault controls in both
+default and balanced routes, including Alight's two expression notations.
+
+All 1,264 corpus requests and 1,200 larger layouts retain their bytes; 11,430
+paired records preserve 1,176,344 semantic samples. Alight's four dialect
+combinations cover all small tables and larger layouts through ten inputs,
+including packed pairs; ABCDirection's byte progress and final cycle agree.
+Emitter source, bounds, pins and anchors remain unchanged; catalog acceptance
+stays open.

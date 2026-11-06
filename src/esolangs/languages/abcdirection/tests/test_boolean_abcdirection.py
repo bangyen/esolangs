@@ -14,12 +14,37 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
 @pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer(table: str, monkeypatch) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     program = esolangs.generate("ABCDirection", table).source
     from esolangs.languages.abcdirection.interpreter import run
 
     assert_native_rows("ABCDirection", table, program, run, sentinel="Q")
+
+    if table == "0001":
+        from esolangs.generation.helpers import essential_inputs, read_at
+        from esolangs.languages.abcdirection import generator
+        from tests.support.evaluation import _evaluate
+
+        assert generator.essential_inputs is essential_inputs
+        assert generator.read_at is read_at
+        for query, damaged_query, expected in (
+            ("essential_inputs", lambda _table, _n: [], "0000"),
+            (
+                "read_at",
+                lambda table, used, n: read_at(table, used, n).translate(
+                    str.maketrans("01", "10")
+                ),
+                "1110",
+            ),
+        ):
+            with monkeypatch.context() as patch:
+                patch.setattr(generator, query, damaged_query)
+                for balance in (False, True):
+                    damaged = esolangs.generate(
+                        "ABCDirection", table, balance=balance
+                    ).source
+                    assert _evaluate("ABCDirection", damaged, inputs=2) == expected
 
 
 def _swept_side(table: str) -> int:
