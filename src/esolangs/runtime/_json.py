@@ -11,3 +11,13 @@ def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
             raise ValueError(f"duplicate field: {key}")
         result[key] = value
     return result
+
+
+def canonical_integer(value: Any) -> int:
+    """Decode exactly the hexadecimal spelling emitted by worker encoders."""
+    if not isinstance(value, str) or not value.startswith(("0x", "-0x")):
+        raise ValueError("invalid worker integer")
+    decoded = int(value, 16)
+    if hex(decoded) != value:
+        raise ValueError("noncanonical worker integer")
+    return decoded

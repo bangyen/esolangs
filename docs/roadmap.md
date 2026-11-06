@@ -141,6 +141,10 @@ Remaining closure work (track evidence in the ledger and CSV, not declarations a
   snapshot isolation, errors and completion evidence.
 - [ ] Complete installed certification/import isolation and runtime acceptance on
   Python 3.12–3.15, including stepped execution, failures and accounting.
+- [ ] Finish snapshot wire coverage: the bounded generated probe cannot encode
+  Fraction values in 1 + i, 3x and Alight; undeclared records in B-tapemark,
+  Bleh, FALSE, Fackward, Unlambda and thisthat; or Forþ’s scope mapping. Preserve
+  exact equality/hash semantics, then check native and isolated cycle evidence.
 - [ ] Audit worker envelopes, nested evidence and persisted fixtures for obsolete
   or permissive protocol forms; reject retired forms with live negative controls.
   Retain supported canonical formats; version 1 alone does not imply obsolescence.

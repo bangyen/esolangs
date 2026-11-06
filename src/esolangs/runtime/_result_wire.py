@@ -10,6 +10,7 @@ from math import isfinite
 from typing import Any, cast
 
 from esolangs.results import ExecutionResult
+from esolangs.runtime._json import canonical_integer
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
 from esolangs.runtime._proof import (
     BranchProof,
@@ -81,13 +82,12 @@ def _state_from_wire(value: Any) -> Hashable:
     if not isinstance(value, dict) or len(value) != 1:
         raise ValueError("invalid cycle state")
     if "bytes" in value and isinstance(value["bytes"], str):
-        return bytes.fromhex(value["bytes"])
-    if (
-        "int" in value
-        and isinstance(value["int"], str)
-        and value["int"].startswith(("0x", "-0x"))
-    ):
-        return int(value["int"], 16)
+        decoded = bytes.fromhex(value["bytes"])
+        if decoded.hex() != value["bytes"]:
+            raise ValueError("noncanonical cycle bytes")
+        return decoded
+    if "int" in value:
+        return canonical_integer(value["int"])
     if "record" in value:
         record = value["record"]
         if (
@@ -112,7 +112,11 @@ def _state_from_wire(value: Any) -> Hashable:
         )
     for key, build in (("tuple", tuple), ("frozenset", frozenset)):
         if key in value and isinstance(value[key], list):
-            return build(_state_from_wire(item) for item in value[key])
+            items = tuple(_state_from_wire(item) for item in value[key])
+            decoded_items = build(items)
+            if len(decoded_items) != len(items):
+                raise ValueError("duplicate cycle state member")
+            return decoded_items
     raise ValueError("invalid cycle state tag")
 
 

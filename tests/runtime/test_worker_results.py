@@ -44,6 +44,8 @@ def test_immutable_cycle_state_survives_json():
     state = (
         frozenset({((1, -2), 3), ((4, 5), 6)}),
         b"\x00\xff",
+        1 << 15000,
+        -(1 << 15000),
         None,
         True,
         1.5,
@@ -95,6 +97,14 @@ def test_immutable_cycle_state_survives_json():
         broken = copy.deepcopy(metadata)
         broken["completion"]["cycle"]["state"] = {"tuple": [invalid]}
         refuses(broken, "non-finite")
+    for state_tag in (
+        *({"bytes": value} for value in ("AA", "aa bb", "00\n")),
+        *({"int": value} for value in ("0x01", "0x0_1", "-0x0", "0xA", "0x1 ")),
+        *({"frozenset": value} for value in ([1, 1], [1, True], [1, 1.0])),
+    ):
+        broken = copy.deepcopy(metadata)
+        broken["completion"]["cycle"]["state"] = state_tag
+        refuses(broken, "noncanonical|duplicate")
     record = record_at(metadata)
     for key in (*record, "obsolete"):
         broken = copy.deepcopy(metadata)
@@ -334,9 +344,13 @@ def test_worker_requires_the_complete_request(monkeypatch, capsys):
         },
         {"settings": {"cell_modulus": "256"}, "integer_settings": ["cell_modulus"]},
         *(
+            {"settings": {"cell_modulus": value}, "integer_settings": ["cell_modulus"]}
+            for value in ("0x0100", "0x1_00", "0x100 ")
+        ),
+        *(
             {key: value, f"integer_{key}": True}
             for key in ("seed", "max_output", "max_steps")
-            for value in (None, 0, "1", "0x!")
+            for value in (None, 0, "1", "0x!", "0x01", "0x0_1", "-0x0", "0xA", "0x1 ")
         ),
         *({key: "-0x1", f"integer_{key}": True} for key in ("max_output", "max_steps")),
     ]

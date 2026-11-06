@@ -46,6 +46,7 @@ Owners are workstreams, not individual contributors.
 | Disconnected, mutable or draw-dependent branch verdicts | Results | Retired; constructor, wire and parent-decoder refusal controls preserve partial output | Immutable root-reachable graphs; run-specific termination decisions |
 | Legacy worker-field defaults | Results | Retired; complete typed requests and explicit success/error observations; omission, flag, integer-tag and raster-run controls in `tests/runtime/test_worker_results.py` | Explicit canonical fields, including unavailable observations |
 | Permissive worker envelopes and nested proof fields | Results | Retired; missing/extra fields, unknown error kinds, duplicate terminals and contradictory output fail with retained prefixes | Exact canonical stream, result and evidence schemas |
+| Normalized worker hex spellings and duplicate snapshot-set members | Results | Retired; request, result and parent-decoder refusals retain signed huge integers, byte snapshots and partial output | Encoder spellings and distinct immutable members |
 | Malformed PNG metadata version downgrade | Persistence | Retired; missing, mistyped and nonpositive versions fail with live controls in `tests/runtime/raster/test_png.py` | Plain PNG, valid v1 provenance and future positive-integer versions |
 | Superseded serialization decoders/converters | Persistence | Not applicable: no persisted format was superseded; version-1 JSON/PNG and unlabelled native files remain supported | Retain canonical decoders; convert only after a format cutover |
 
@@ -852,3 +853,9 @@ Four native corpora retain 6,718 programs, 6,651 clean halts and 218,321
 trace observations. Five public file routes retain matching results and
 median throughput ratios of 0.994–1.016 against the baseline.
 Unrelated acceptance remains open.
+
+Worker hexadecimal scalars use their encoder spelling; byte tags no longer
+accept whitespace or uppercase, and snapshot sets reject duplicate/equal members
+instead of discarding evidence. The bounded 114-backend probe retains 1,584
+supported snapshots and 86 halts with matching baseline records. It also finds
+ten unsupported snapshot families; this probe is not full lifecycle acceptance.

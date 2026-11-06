@@ -23,7 +23,7 @@ from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry import resolve
 from esolangs.results import ExecutionResult
 from esolangs.runtime._input import InputSource, read_input
-from esolangs.runtime._json import unique_object
+from esolangs.runtime._json import canonical_integer, unique_object
 from esolangs.runtime._program import Program
 from esolangs.runtime._proof import TerminationResult
 from esolangs.runtime._result_wire import (
@@ -637,11 +637,11 @@ def _read_request(stream: TextIO) -> dict[str, Any]:
         if not isinstance(value, str):
             raise ValueError("invalid worker setting")
         if key in integer_settings:
-            _request_integer(value)
+            canonical_integer(value)
     for key in ("seed", "max_output", "max_steps"):
         value = request[key]
         if request[f"integer_{key}"]:
-            decoded = _request_integer(value)
+            decoded = canonical_integer(value)
             if key != "seed" and decoded < 0:
                 raise ValueError("invalid worker limit")
             if key != "seed":
@@ -657,13 +657,6 @@ def _read_request(stream: TextIO) -> dict[str, Any]:
     elif not isinstance(request["program"], str):
         raise ValueError("invalid worker source")
     return cast("dict[str, Any]", request)
-
-
-def _request_integer(value: Any) -> int:
-    """Decode a tagged hexadecimal integer without accepting decimal fallbacks."""
-    if not isinstance(value, str) or not value.startswith(("0x", "-0x")):
-        raise ValueError("invalid worker integer")
-    return int(value, 16)
 
 
 def _check_raster_request(runs: Any) -> None:
