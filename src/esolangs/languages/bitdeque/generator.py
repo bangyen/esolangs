@@ -28,12 +28,12 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from esolangs.generation.decision import DecisionLayers, decision_layers
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     runs,
     same_tokens,
-    subtree_ids,
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens
@@ -124,9 +124,7 @@ class _BitdequeTreeBuilder:
     """
 
     n: int
-    seen: str
-    ids: list[list[int]]
-    rotations: list[list[str]]
+    diagram: DecisionLayers
     placed: dict[int, int] = field(default_factory=dict)
     #: Print the last bit itself, or its complement, at a last level whose
     #: leaves differ.  Only while at most one constant kind sits above the
@@ -147,13 +145,8 @@ class _BitdequeTreeBuilder:
         out.append("GOTO 1")
         return out
 
-    def width(self, level: int) -> int:
-        """Return the commands a node at ``level`` spends before its subtrees."""
-        # The consuming EJECT/POP and the node's own ``GOTO``.
-        return len(self.rotations[level]) + 1
-
-    def walk(self, level: int, block: int, at: int) -> list[str]:
-        """Emit the subtree at ``level``/``block``, its first command at ``at``.
+    def walk(self, level: int, key: int, at: int) -> list[str]:
+        """Emit the subtree ``key`` at ``level``, its first command at ``at``.
 
         A subtree already emitted is reached by ``GOTO`` to its first copy:
         a one-child's node operand, or ``INVERT GOTO`` where a zero-child
@@ -162,29 +155,28 @@ class _BitdequeTreeBuilder:
         the register it is entered with.  Equal halves drop the node's
         ``GOTO``: the zero subtree is the only one.
         """
-        key = self.ids[level][block]
         if key in self.placed:
             return ["INVERT", f"GOTO {self.placed[key]}"]
         self.placed[key] = at
         if key < 2:
-            return self.leaf(self.seen[block << (self.n - level)])
-        zero_key, one_key = self.ids[level + 1][2 * block : 2 * block + 2]
+            return self.leaf(str(key))
+        zero_key, one_key = self.diagram.children[level][key]
         if self.last_forms and level == self.n - 1:
             flip = [] if (zero_key, one_key) == (0, 1) else ["INVERT"]
             return ["POP", *flip, "PUSH", "GOTO 1", "INVERT", "GOTO 1"]
-        rotation = self.rotations[level]
+        rotation = "POP" if level == self.n - 1 else "EJECT"
         if zero_key == one_key and zero_key not in self.placed:
-            return [*rotation, *self.walk(level + 1, 2 * block, at + len(rotation))]
-        below = at + self.width(level)
-        zero = self.walk(level + 1, 2 * block, below)
+            return [rotation, *self.walk(level + 1, zero_key, at + 1)]
+        below = at + 2
+        zero = self.walk(level + 1, zero_key, below)
         if one_key in self.placed:
-            return [*rotation, f"GOTO {self.placed[one_key]}", *zero]
-        one = self.walk(level + 1, 2 * block + 1, below + len(zero))
-        return [*rotation, f"GOTO {below + len(zero)}", *zero, *one]
+            return [rotation, f"GOTO {self.placed[one_key]}", *zero]
+        one = self.walk(level + 1, one_key, below + len(zero))
+        return [rotation, f"GOTO {below + len(zero)}", *zero, *one]
 
     def build(self, start: int) -> list[str]:
         """Emit the whole tree, its first command at address ``start``."""
-        return self.walk(0, 0, start)
+        return self.walk(0, self.diagram.root, start)
 
 
 def _bitdeque_ordered(truth_table: str, *, short: bool = False) -> str:
@@ -208,9 +200,6 @@ def _bitdeque_ordered(truth_table: str, *, short: bool = False) -> str:
     mask = 0 if short else sum(1 << (n - 1 - level) for level in range(n) if level % 2)
     seen = "".join(truth_table[row ^ mask] for row in range(2**n))
 
-    # The head is input ``level`` at each level, so no rotation is needed.
-    rotations = [["EJECT"]] * (n - 1) + [["POP"]]
-
     # Commands count from 1.  Initially command 1 falls through on zero and
     # commands 2/3 skip the trampoline.  A leaf returns with one, so ``GOTO
     # 1`` reaches command 4; only that command carries the widening end
@@ -224,13 +213,11 @@ def _bitdeque_ordered(truth_table: str, *, short: bool = False) -> str:
     # A node spends its EJECT/POP and its ``GOTO`` before either
     # subtree. Commands count from 1; the load occupies ``load_len`` commands
     # ahead of the tree, so the ``GOTO`` operands are right after substitution.
-    ids = subtree_ids(seen)
-    constants = {key for level in ids[:n] for key in level if key < 2}
+    diagram = decision_layers(seen)
+    constants = {key for layer in diagram.children for key in layer if key < 2}
     builder = _BitdequeTreeBuilder(
         n=n,
-        seen=seen,
-        ids=ids,
-        rotations=rotations,
+        diagram=diagram,
         last_forms=len(constants) < 2,
     )
     tree = builder.build(len(prelude) + load_len + 1)

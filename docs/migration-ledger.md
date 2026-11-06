@@ -456,3 +456,11 @@ matching runtime faults. Each runtime has output/view fault controls; all timing
 ratios pass 0.9. Scope: n<=2, Malbolge n=1, at most 400 steps per case.
 The wheel rejects all 16 retired imports on Python 3.12–3.15 while preserving
 13,778 accounting observations. Broader semantic/corpus acceptance remains open.
+
+Bitdeque consumes canonical decision layers directly. The emitter no longer
+carries source-table copies, a subtree matrix or fixed rotation lists;
+address placement, last-level forms, short loads and input polarity remain owned.
+All 632 corpus requests and 375 larger layouts match byte for byte. The live
+analysis fault changes answers; 2,950 paired rows retain traces, input progress
+and resource peaks, including short-load, wrapped and balanced paths. Bounds,
+size pins and anchors remain unchanged; catalog acceptance stays open.

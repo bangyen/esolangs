@@ -63,7 +63,9 @@ class TestParameterizedBitdeque:
     def test_constant_leaf_and_shared_halt_trampoline(self) -> None:
         """Whole constants need no trampoline; branching leaves still share one."""
         from esolangs.languages.bitdeque import generator as generators
+        from tests.support.analysis_support import assert_analysis_complement
 
+        assert_analysis_complement("Bitdeque", "decision_layers")
         template = generators.bitdeque("0000")
         assert "POP" in template
         assert "GOTO" not in template

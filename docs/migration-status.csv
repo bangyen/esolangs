@@ -19,7 +19,7 @@ Basicfuck,yes,declared,not-applicable,declared,owned-adapter,basicfuck-v1,canoni
 Befunge,yes,declared,not-applicable,declared,owned-adapter,befunge-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
 Between,yes,declared,not-applicable,declared,owned-adapter,between-v1,pending-backend-audit,pending-acceptance-audit,open
 BFStack,yes,declared,not-applicable,declared,owned-adapter,bfstack-v1,pending-backend-audit,pending-acceptance-audit,open
-Bitdeque,yes,declared,not-applicable,declared,owned-adapter,bitdeque-v1,pending-backend-audit,pending-acceptance-audit,open
+Bitdeque,yes,declared,not-applicable,declared,owned-adapter,bitdeque-v1,canonical-decision-layers;owned-deque-placement,pending-acceptance-audit,open
 Bitwise Cyclic Tag,yes,declared,not-applicable,declared,owned-adapter,bitwise-cyclic-tag-v1,canonical-weighted-lookup,pending-acceptance-audit,open
 bit~,yes,declared,not-applicable,declared,owned-adapter,bit-tilde-v1,pending-backend-audit,pending-acceptance-audit,open
 Bleh,yes,declared,not-applicable,declared,owned-adapter,bleh-v1,canonical-decision-layers;owned-function-layout,pending-acceptance-audit,open
