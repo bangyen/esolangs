@@ -30,7 +30,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._source import ProgramSource, _read_container, text_source
+from esolangs.runtime._source import ProgramSource, compressed_text_source
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -39,16 +39,6 @@ def _at_eof(state: _BFState) -> _BFState:
     """Return the comma successor with Unary's zero EOF value."""
     ind, ptr, tape = state
     return ind + 1, ptr, _written(tape, ptr, 0)
-
-
-def load_source(source: ProgramSource) -> str | CompressedText:
-    """Keep gzip source compressed; accept the ordinary text containers too."""
-    value, _path = _read_container(source)
-    if isinstance(value, CompressedText):
-        return value
-    if isinstance(value, bytes) and value.startswith(b"\x1f\x8b"):
-        return CompressedText(value)
-    return text_source(value)
 
 
 def decode(code: str | CompressedText) -> str:
@@ -109,7 +99,9 @@ def prepare_machine(
 
 def _execute(code: str | CompressedText | ProgramSource, io: IO) -> CompletionReport:
     """Decode Unary and run its Brainfuck program."""
-    return drive(_Machine(load_source(code), io), policy=CAPABILITIES.completion)
+    return drive(
+        _Machine(compressed_text_source(code), io), policy=CAPABILITIES.completion
+    )
 
 
 def run(code: str | CompressedText | ProgramSource, io: IO) -> None:
@@ -118,4 +110,4 @@ def run(code: str | CompressedText | ProgramSource, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    script_main(run)
+    script_main(run, loader=compressed_text_source)

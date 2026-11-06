@@ -4,12 +4,13 @@ from esolangs.languages.whitespace.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._definition import RuntimeSpec, SourceLoader
 
 LANGUAGE = Language(
     "Whitespace",
     RuntimeSpec(
         "whitespace",
+        source_loader=SourceLoader.VERBATIM,
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
         category="stack_based",

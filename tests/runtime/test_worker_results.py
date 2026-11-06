@@ -17,6 +17,18 @@ from tests.support.reference import REFERENCE
 
 
 def test_immutable_cycle_state_survives_json():
+    def record_at(value):
+        pending = [value]
+        while pending:
+            node = pending.pop()
+            if isinstance(node, dict):
+                if "record" in node:
+                    return node["record"]
+                pending.extend(node.values())
+            elif isinstance(node, list):
+                pending.extend(node)
+        raise AssertionError("snapshot corpus reached no declared record")
+
     name = next(
         name
         for name, language in LANGUAGES.items()
@@ -34,6 +46,7 @@ def test_immutable_cycle_state_survives_json():
         b"\x00\xff",
         None,
         True,
+        1.5,
         machine.snapshot(),
     )
     result = ExecutionResult(
@@ -55,31 +68,9 @@ def test_immutable_cycle_state_survives_json():
     assert (
         decode_result(zero.output, json.loads(json.dumps(encode_result(zero)))) == zero
     )
-    for field in ("first_pass", "repeat_pass", "commands_per_pass"):
-        for invalid in (False, True, 0.0, 1.5, float("nan"), float("inf"), "1", None):
-            broken = copy.deepcopy(metadata)
-            broken["completion"]["cycle"][field] = invalid
-            with pytest.raises(ValueError, match="counter"):
-                decode_result(result.output, broken)
-            with pytest.raises(
-                esolangs.InterpreterLimitError, match="invalid isolated"
-            ) as caught:
-                _decode(
-                    json.dumps({"output": result.output})
-                    + "\n"
-                    + json.dumps({"result": result.output, "execution": broken}),
-                    expired=False,
-                )
-            assert caught.value.partial_output == result.output
-    record = metadata["completion"]["cycle"]["state"]["tuple"][-1]["record"]
-    for key in (*record, "obsolete"):
-        broken = copy.deepcopy(metadata)
-        changed = broken["completion"]["cycle"]["state"]["tuple"][-1]["record"]
-        if key == "obsolete":
-            changed[key] = True
-        else:
-            del changed[key]
-        with pytest.raises(ValueError, match="snapshot record"):
+
+    def refuses(broken, match):
+        with pytest.raises(ValueError, match=match):
             decode_result(result.output, broken)
         packet = json.dumps({"result": result.output, "execution": broken})
         with pytest.raises(
@@ -89,6 +80,30 @@ def test_immutable_cycle_state_survives_json():
                 json.dumps({"output": result.output}) + "\n" + packet, expired=False
             )
         assert caught.value.partial_output == result.output
+
+    for field in ("first_pass", "repeat_pass", "commands_per_pass"):
+        for invalid in (False, True, 0.0, 1.5, float("nan"), float("inf"), "1", None):
+            broken = copy.deepcopy(metadata)
+            broken["completion"]["cycle"][field] = invalid
+            refuses(broken, "counter")
+    for invalid in (float("nan"), float("inf"), float("-inf")):
+        cycle = BoundaryCycle((invalid,), 1, 3, 7)
+        with pytest.raises(ValueError, match="non-finite"):
+            encode_result(
+                result._replace(completion=CompletionReport(Completion.PERIODIC, cycle))
+            )
+        broken = copy.deepcopy(metadata)
+        broken["completion"]["cycle"]["state"] = {"tuple": [invalid]}
+        refuses(broken, "non-finite")
+    record = record_at(metadata)
+    for key in (*record, "obsolete"):
+        broken = copy.deepcopy(metadata)
+        changed = record_at(broken)
+        if key == "obsolete":
+            changed[key] = True
+        else:
+            del changed[key]
+        refuses(broken, "snapshot record")
 
 
 @pytest.mark.parametrize("counter", [-1, True])

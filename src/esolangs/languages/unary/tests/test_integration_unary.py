@@ -40,14 +40,24 @@ def test_compressed_and_plain_sources_share_execution(tmp_path) -> None:
     )
 
 
-def test_cli_exports_gzip_by_default_and_plain_on_request() -> None:
+def test_cli_exports_gzip_by_default_and_plain_on_request(tmp_path) -> None:
     import subprocess
     import sys
 
     command = [sys.executable, "-m", "esolangs", "generate", "Unary", "01"]
-    packed = subprocess.run(command, capture_output=True, timeout=10, check=True)
-    plain = subprocess.run(
-        [*command, "--plain"], capture_output=True, timeout=10, check=True
-    )
+    options = {"capture_output": True, "timeout": 10}
+    packed = subprocess.run(command, check=True, **options)
+    plain = subprocess.run([*command, "--plain"], check=True, **options)
     assert str(esolangs.CompressedText(packed.stdout)) == "0" * 887
     assert plain.stdout == b"0" * 887
+    path = tmp_path / "source.txt.gz"
+    module = esolangs.registry.INTERPRETERS["Unary"]
+    for body in (packed.stdout, plain.stdout):
+        path.write_bytes(body)
+        native = subprocess.run(
+            [sys.executable, "-m", module, str(path)],
+            input=b"\0",
+            check=True,
+            **options,
+        )
+        assert native.stdout == b"Input: "

@@ -6,6 +6,7 @@ from collections.abc import Hashable
 from dataclasses import fields, is_dataclass
 from functools import cache
 from importlib import import_module
+from math import isfinite
 from typing import Any, cast
 
 from esolangs.results import ExecutionResult
@@ -43,6 +44,8 @@ def _record_type(module_name: str, name: str) -> type[Any]:
 
 def _state_wire(state: Hashable) -> Any:
     """Tag immutable containers so JSON cannot turn snapshots into lists."""
+    if type(state) is float and not isfinite(state):
+        raise ValueError("non-finite cycle state")
     # A valid program's integers can exceed Python's decimal rendering cap.
     if type(state) is int and state.bit_length() > 1024:
         return {"int": hex(state)}
@@ -71,6 +74,8 @@ def _state_wire(state: Hashable) -> Any:
 
 def _state_from_wire(value: Any) -> Hashable:
     """Restore supported immutable snapshots, refusing untagged containers."""
+    if type(value) is float and not isfinite(value):
+        raise ValueError("non-finite cycle state")
     if value is None or type(value) in (str, int, bool, float):
         return cast("Hashable", value)
     if not isinstance(value, dict) or len(value) != 1:

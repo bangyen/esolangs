@@ -414,6 +414,8 @@ def test_every_runtime_declares_preparation_and_capabilities():
         assert runtime.machine_preparation
         assert runtime.completion_entrypoint
         assert runtime.capabilities is not None
+        with pytest.raises(ValueError, match="declared policy"):
+            replace(runtime, source_loader="text")
         with pytest.raises(TypeError, match="capabilities must be declared"):
             replace(runtime, capabilities=None)
         with pytest.raises(TypeError, match="capabilities must be declared"):

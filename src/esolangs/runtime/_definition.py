@@ -18,6 +18,15 @@ class SourceKind(StrEnum):
     RASTER = "raster"
 
 
+class SourceLoader(StrEnum):
+    """Declared container decoding and file-newline policy."""
+
+    TEXT = "text"
+    VERBATIM = "verbatim"
+    COMPRESSED = "compressed"
+    RASTER = "raster"
+
+
 @dataclass(frozen=True)
 class RuntimeSpec:
     """Interpreter, source representation and language-defined runtime choices."""
@@ -28,6 +37,7 @@ class RuntimeSpec:
     path_like_source: bool = False
     source_kind: SourceKind = SourceKind.TEXT
     compressed_source: bool = False
+    source_loader: SourceLoader = field(default=SourceLoader.TEXT, kw_only=True)
     #: Text exports append a terminator unless every LF is a command.
     file_newline: bool = True
     #: One defaulted keyword per supported dialect setting.
@@ -54,6 +64,8 @@ class RuntimeSpec:
 
     def __post_init__(self) -> None:
         """Require lifecycle declarations and exact dialect defaults."""
+        if not isinstance(self.source_loader, SourceLoader):
+            raise ValueError("source loader must be a declared policy")
         if self.capabilities is None:
             raise TypeError("runtime capabilities must be declared")
         for name in ("machine_preparation", "completion_entrypoint"):

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import IO
@@ -11,6 +12,7 @@ from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import ArgumentError, ProgramError, ProgramNotFoundError
 from esolangs.raster import Raster
+from esolangs.runtime._definition import SourceLoader
 from esolangs.runtime._program import Program
 from esolangs.runtime._validate import check_scale
 from esolangs.runtime.source_hints import syntax_error, with_hint
@@ -97,6 +99,22 @@ def text_source(source: ProgramSource | _FileSource) -> str:
     )
 
 
+def literal_text_source(source: ProgramSource | _FileSource) -> str:
+    """Preserve file command line feeds, including the last byte."""
+    value, _path = _read_container(source)
+    return text_source(value)
+
+
+def compressed_text_source(source: ProgramSource | _FileSource) -> str | CompressedText:
+    """Keep gzip source compressed; accept ordinary text containers too."""
+    value, _path = _read_container(source)
+    if isinstance(value, CompressedText):
+        return value
+    if isinstance(value, bytes) and value.startswith(b"\x1f\x8b"):
+        return CompressedText(value)
+    return text_source(value)
+
+
 def raster_source(source: ProgramSource | _FileSource) -> Raster:
     """Load a Raster or lossless PNG bytes from any supported container."""
     value, _path = _read_container(source)
@@ -109,6 +127,23 @@ def raster_source(source: ProgramSource | _FileSource) -> Raster:
             error_type=ProgramError,
         )
     return value
+
+
+_SOURCE_LOADERS: dict[
+    SourceLoader, Callable[[ProgramSource | _FileSource], Program]
+] = {
+    SourceLoader.TEXT: text_source,
+    SourceLoader.VERBATIM: literal_text_source,
+    SourceLoader.COMPRESSED: compressed_text_source,
+    SourceLoader.RASTER: raster_source,
+}
+
+
+def source_for(language: str, source: ProgramSource | _FileSource) -> Program:
+    """Decode containers using declared policy without importing an interpreter."""
+    from esolangs.registry import LANGUAGES, resolve
+
+    return _SOURCE_LOADERS[LANGUAGES[resolve(language)].runtime.source_loader](source)
 
 
 def effective_scale(language: str, program: object, scale: int | None) -> int | None:
@@ -125,12 +160,10 @@ def check_scale_for(language: str, scale: int | None) -> None:
     """Validate scale using the interpreter's declared capability."""
     if scale is None:
         return
-    from esolangs.registry import resolve
-    from esolangs.runtime._execution import interpreter_module
+    from esolangs.registry import LANGUAGES, resolve
 
     check_scale(scale)
-    module = interpreter_module(resolve(language))
-    if not getattr(module, "supports_scale", False):
+    if not LANGUAGES[resolve(language)].runtime.capabilities.supports_scale:
         raise with_hint(
             ArgumentError("scale is only supported for raster interpreters"),
             ("omit scale for text languages; apply it only to raster source"),

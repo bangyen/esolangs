@@ -36,6 +36,8 @@ Owners are workstreams, not individual contributors.
 | `_Machine` / `_for_run` discovery | Lifecycle | Retired; runtime and verification drivers use declared factories; raw native machines remain independent oracles | Declared preparation/factories and capabilities |
 | Generator proof-function re-exports | Certification | Retired; five package generators dropped unused imports; all-backend import barrier rejects proof loading | Explicit owned proof providers |
 | Implicit completion entrypoint defaults | Lifecycle | Retired; required declaration fields and explicit driver policies; rejection controls in `tests/runtime/test_lifecycle.py` | Explicit completion declarations |
+| Interpreter `supports_scale` lookup/default | Lifecycle | Retired; two raster declarations replace module globals; crossed declaration/flag controls in `tests/runtime/raster/test_contract.py` | Declared machine scale capability |
+| Interpreter `load_source` lookup/text fallback | Lifecycle | Retired; declared policies replace discovery and four module exports; source-loading import barriers and native CLI controls retain formats | Declared text, literal-newline, compressed and raster loading |
 | Dialect metadata signature/default inspection | Lifecycle | Retired; all seven schemas declared; constructor/default and no-discovery checks in `tests/api/test_dialects.py` | Declared dialect schemas and defaults |
 | Generator callable-option signature inference | Analysis | Retired; all 114 backends use declared options; independent signature oracle and no-discovery checks in `tests/api/test_artifact_defaults.py` and `tests/api/test_api_contracts.py` | Declared backend option capabilities |
 | `FunctionRef.__signature__` proxy | Registry | Retired; recursive declaration checks reject its return in `tests/api/test_descriptor_loading.py` | Explicit callable parameter declarations |
@@ -831,3 +833,22 @@ Eleven refusal controls retain plain PNG, optional v1 metadata and future
 integer-version pixel readability. Both raster backends retain portable
 bytes and four executed answers. No supported persisted format is retired.
 Broader compatibility and catalog acceptance remain open.
+
+
+Scale acceptance uses declared machine capabilities, removing both interpreter
+flags and the absent-flag fallback. Crossed declaration/flag controls retain
+explicit PNG scale overrides and reject a disabled declaration. All 117
+capability queries run without importing an interpreter; a blocked-import
+positive control fires. Both raster corpora preserve 2,192 clean halts and
+traces each, with output-fault controls and unchanged throughput above 0.9.
+Source loading uses declared policies instead of discovering interpreter hooks.
+All 1,414 container/error records match across 117 languages, including literal
+file newlines and retained gzip objects. Native entry points use canonical
+loaders; Unary now reads its exported gzip files with unchanged prompts.
+Snapshot-record refusal controls traverse nested as well as root records.
+Raw non-finite cycle scalars are rejected before encoding and after decoding;
+finite floats and Chicken’s canonical snapshot sentinels remain supported.
+Four native corpora retain 6,718 programs, 6,651 clean halts and 218,321
+trace observations. Five public file routes retain matching results and
+median throughput ratios of 0.994–1.016 against the baseline.
+Unrelated acceptance remains open.

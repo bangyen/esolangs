@@ -6,12 +6,13 @@ from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._definition import RuntimeSpec, SourceLoader
 
 LANGUAGE = Language(
     "Unary",
     RuntimeSpec(
         "unary",
+        source_loader=SourceLoader.COMPRESSED,
         category="tape_based",
         compressed_source=True,
         eof="stores zero",

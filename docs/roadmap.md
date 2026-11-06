@@ -136,16 +136,11 @@ Remaining closure work (track evidence in the ledger and CSV, not declarations a
 
 - [ ] Finish every pending Boolean-backend analysis audit; delete duplicate analysis
   or record why the construction must remain target-specific.
-- [ ] Finish declared source loading; remove native `load_source` discovery and
-  implicit `text_source` defaults after migrating their consumers.
 - [ ] Complete lifecycle and exact accounting acceptance for all 117 languages:
   native, stepped and isolated traces, input progress, workspace witnesses,
   snapshot isolation, errors and completion evidence.
 - [ ] Complete installed certification/import isolation and runtime acceptance on
   Python 3.12–3.15, including stepped execution, failures and accounting.
-- [ ] Triage raw-NaN snapshot transport: establish whether manually supplied NaN
-  is supported before requiring round-trip equality. Chicken sentinel
-  normalization is already integrated.
 - [ ] Audit worker envelopes, nested evidence and persisted fixtures for obsolete
   or permissive protocol forms; reject retired forms with live negative controls.
   Retain supported canonical formats; version 1 alone does not imply obsolescence.

@@ -66,7 +66,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._source import raster_source as load_source
+from esolangs.runtime._source import raster_source
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.codels import (
     BLACK,
@@ -79,9 +79,7 @@ from esolangs.runtime.codels import (
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer
 
-__all__ = ["load_source", "run"]
-
-supports_scale = True
+__all__ = ["run"]
 
 Pixel = tuple[int, int, int]
 Point = tuple[int, int]
@@ -383,4 +381,4 @@ def run(program: Raster, io: IO, *, scale: int | None = None) -> None:
 
 
 if __name__ == "__main__":
-    script_main(run, loader=load_source)
+    script_main(run, loader=raster_source)

@@ -26,19 +26,33 @@ assert pilots, 'no deferred descriptor exercised'
 assert 'GENERATORS' not in dir(registry)
 assert not hasattr(registry, 'GENERATORS')
 modules = {lang.backend.entrypoint.module for lang in pilots}
+native_modules = set(registry.INTERPRETERS.values())
+blocked = modules | native_modules
 assert not modules.intersection(sys.modules), 'pilot imported during initialization'
 
 class Block(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
-        if fullname in modules:
+        if fullname in blocked:
             raise ImportError('deferred import control')
 
 block = Block()
 sys.meta_path.insert(0, block)
 try:
     esolangs.list_languages()
-    before = [esolangs.describe(name) for name in esolangs.list_languages()]
     assert not modules.intersection(sys.modules), 'catalog imported a pilot'
+    for name, language in registry.LANGUAGES.items():
+        source = (esolangs.Raster((((0, 0, 0),),))
+                  if language.runtime.source_kind.value == 'raster' else '')
+        esolangs._read_source(name, source)
+    assert not native_modules.intersection(sys.modules), 'source imported runner'
+    try:
+        importlib.import_module(next(iter(native_modules)))
+    except ImportError as error:
+        assert 'deferred import control' in str(error)
+    else:
+        raise AssertionError('native import control did not fire')
+    blocked = modules
+    before = [esolangs.describe(name) for name in esolangs.list_languages()]
     try:
         esolangs.generate(pilots[0].name, '00110101')
     except ImportError as error:
@@ -57,6 +71,8 @@ except ModuleNotFoundError as error:
 else:
     raise AssertionError('retired generator facade imported')
 for lang in pilots:
+    native = importlib.import_module(registry.INTERPRETERS[lang.name])
+    assert all(not hasattr(native, key) for key in ('load_source', 'supports_scale'))
     backend = lang.backend
     generate = backend.generate
     module = sys.modules[generate.__module__]

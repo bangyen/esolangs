@@ -1,5 +1,6 @@
 """Contracts shared by every registered raster language."""
 
+from dataclasses import replace
 from importlib.resources import files
 from pathlib import Path
 
@@ -303,19 +304,24 @@ def test_retained_scale_is_validated(scale) -> None:
 
 @pytest.mark.medium
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
-def test_explicit_scale_overrides_png_metadata(language) -> None:
+def test_explicit_scale_overrides_png_metadata(language, monkeypatch) -> None:
+    module = esolangs.interpreter_module(language)
+    assert not hasattr(module, "supports_scale")
+    monkeypatch.setattr(module, "supports_scale", False, raising=False)
     source = esolangs.generate(language, "01", scale=2)
     changed = Raster(source.source.rows, language=language, scale=7)
-    assert (
-        esolangs.read_answer(
-            language,
-            esolangs.run(
-                language,
-                changed.to_png(),
-                stdin=esolangs.encode_inputs(language, [1]),
-                scale=2,
-                max_steps=1000,
-            ).output,
-        )
-        == "1"
+    result = esolangs.run(
+        language,
+        changed.to_png(),
+        stdin=esolangs.encode_inputs(language, [1]),
+        scale=2,
+        max_steps=1000,
     )
+    assert esolangs.read_answer(language, result.output) == "1"
+    spec = LANGUAGES[language]
+    caps = replace(spec.runtime.capabilities, supports_scale=False)
+    runtime = replace(spec.runtime, capabilities=caps)
+    monkeypatch.setitem(LANGUAGES, language, replace(spec, runtime=runtime))
+    monkeypatch.setattr(module, "supports_scale", True)
+    with pytest.raises(esolangs.ArgumentError, match="scale"):
+        esolangs.run(language, changed, scale=2)

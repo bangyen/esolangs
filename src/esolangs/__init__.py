@@ -94,7 +94,7 @@ from esolangs.runtime._source import (
     _FileSource,
     check_scale_for,
     effective_scale,
-    text_source,
+    source_for,
 )
 from esolangs.runtime._validate import (
     check_bits,
@@ -601,9 +601,7 @@ def _read_source(language: str, program: ProgramSource | _FileSource) -> Program
     if isinstance(program, (ProgramArtifact, TemplateArtifact)):
         program = program.source
     check_origin(program)
-    module = interpreter_module(name)
-    loader = getattr(module, "load_source", text_source)
-    program = loader(program)
+    program = source_for(name, program)
     check_origin(program)
     return program
 

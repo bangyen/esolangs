@@ -30,6 +30,8 @@ class MachineCapabilities:
     debug: DebugSpec | None = None
     #: Native execution may prove a repeat before the stepped EOF halt.
     native_completions: frozenset[Completion] | None = None
+    #: Whether preparation accepts a raster pixel scale.
+    supports_scale: bool = False
 
     def accepts_native(self, kind: Completion) -> bool:
         """Whether the native runner declares this completion kind."""

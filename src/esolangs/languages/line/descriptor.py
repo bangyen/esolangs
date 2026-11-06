@@ -4,12 +4,13 @@ from esolangs.languages.line.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec, SourceKind
+from esolangs.runtime._definition import RuntimeSpec, SourceKind, SourceLoader
 
 LANGUAGE = Language(
     "Line",
     RuntimeSpec(
         "line",
+        source_loader=SourceLoader.RASTER,
         category="tape_based",
         machine_preparation="prepare_machine",
         completion_entrypoint="_execute",

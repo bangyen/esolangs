@@ -33,7 +33,6 @@ from esolangs.raster import Pixel, Raster, Rows
 from esolangs.runtime._lifecycle import HALTED_REPORT, CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._source import raster_source as load_source
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
@@ -55,9 +54,7 @@ if TYPE_CHECKING:
 
     from .simulate import _Compiled
 
-__all__ = ["load_source", "run"]
-
-supports_scale = True
+__all__ = ["run"]
 
 
 def _luma(pixel: Pixel) -> int:

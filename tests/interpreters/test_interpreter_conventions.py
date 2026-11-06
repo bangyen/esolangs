@@ -472,7 +472,11 @@ class TestEntryPointConventions:
         shape = "text"
         for keyword in call.keywords:
             if keyword.arg == "loader":
-                assert ast.unparse(keyword.value) == "load_source"
+                wanted = {
+                    "raster_source": {"Raster"},
+                    "literal_text_source": {"str"},
+                    "compressed_text_source": {"str", "CompressedText"},
+                }[ast.unparse(keyword.value)]
                 shape = "loaded"
                 continue
             assert isinstance(keyword.value, ast.Constant)
@@ -491,18 +495,8 @@ class TestEntryPointConventions:
         # equality: the shape has to be among what `run` takes, not the only
         # thing it takes.
         accepted = {part.strip() for part in ast.unparse(annotation).split("|")}
-        if shape == "loaded":
-            loader = next(
-                (
-                    node
-                    for node in tree.body
-                    if isinstance(node, ast.FunctionDef) and node.name == "load_source"
-                ),
-                None,
-            )
-            wanted = ast.unparse(loader.returns) if loader is not None else "Raster"
-        else:
-            wanted = "str" if shape == "text" else "list[str]"
-        assert wanted in accepted, (
+        if shape != "loaded":
+            wanted = {"str" if shape == "text" else "list[str]"}
+        assert wanted <= accepted, (
             f"{path.name}: shape={shape!r} but run takes {accepted}"
         )
