@@ -4,11 +4,12 @@ import random
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.generation import wrap as _wrap
+from esolangs.generation.helpers import mark_runs, unmark
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score, wrap_chars, wrap_program
-from esolangs.registry import LANGUAGES, SourceKind, render_template
+from esolangs.registry import LANGUAGES, SourceKind
 from esolangs.registry._certification import load as load_certification
 from tests.support.evaluation import _evaluate
 from tests.support.exact_token_width import exact_token_width
@@ -80,15 +81,18 @@ def _width_layouts(language, table, default, widths):
     """Yield every requested width, reusing width-independent emission."""
     lang = LANGUAGES[language]
     native = lang.backend.layout_width
-    inputs = len(table).bit_length() - 1
-    yield default
+    yield default.source
     for width in widths:
         if native:
-            yield compat.generate(language, table, width=width)
-        elif lang.parameterized:
-            yield render_template(lang.id, default, inputs, width)[0]
+            yield esolangs.generate(language, table, width=width).source
+        elif isinstance(default, esolangs.TemplateArtifact):
+            bindings = default.bindings
+            marked = mark_runs(default.source, bindings.char, bindings.setters)
+            yield unmark(
+                wrap_program(marked, lang.id, width), bindings.char, bindings.inputs
+            )
         else:
-            yield wrap_program(default, lang.id, width)
+            yield wrap_program(default.source, lang.id, width)
 
 
 # XOR and one wide irregular table; primitive fit oracles exhaust geometry.
@@ -136,9 +140,9 @@ def _balance_cases():
 
 @pytest.mark.parametrize(("language", "table"), _balance_cases())
 def test_balance_reaches_the_supported_minimum(language, table) -> None:
-    default = compat.generate(language, table)
-    balanced = compat.generate(language, table, balance=True)
-    widest = max(map(len, default.split("\n")))
+    default = esolangs.generate(language, table)
+    balanced = esolangs.generate(language, table, balance=True)
+    widest = max(map(len, default.source.split("\n")))
     # Grid cases subsume the former aligned sweep, including every width to 128.
     limit = max(65, widest + 1) if table in _REGIME_TABLES else 0
     if LANGUAGES[language].backend.wrap is _wrap.wrap_grid and table in _GRID_TABLES:
@@ -150,7 +154,7 @@ def test_balance_reaches_the_supported_minimum(language, table) -> None:
         )
     )
     # Contract relaxed by the user (2026-10-16): balance may be 5% worse in side.
-    assert balance_score(balanced)[0] <= 1.05 * optimum[0]
+    assert balance_score(balanced.source)[0] <= 1.05 * optimum[0]
     assert _evaluate(language, balanced, inputs=len(table).bit_length() - 1) == table
 
 

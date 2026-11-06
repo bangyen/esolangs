@@ -14,7 +14,6 @@ import tomllib
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.wrap import balance_score
 from esolangs.registry import LANGUAGES
@@ -34,7 +33,9 @@ def _area(program: object) -> int:
 def _mean_area(name: str, n: int) -> float:
     rng = random.Random(4242 + n)
     tables = ["".join(rng.choice("01") for _ in range(1 << n)) for _ in range(2)]
-    return sum(_area(compat.generate(name, t, balance=True)) for t in tables) / 2
+    return (
+        sum(_area(esolangs.generate(name, t, balance=True).source) for t in tables) / 2
+    )
 
 
 _LANGUAGES_DIR = pathlib.Path(esolangs.__file__).parent / "languages"

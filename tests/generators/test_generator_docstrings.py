@@ -16,7 +16,7 @@ import tomllib
 import pytest
 
 import esolangs
-from esolangs import compat, exceptions
+from esolangs import exceptions
 from esolangs.registry import LANGUAGES
 from scripts.docs.ablations import load as load_ablations
 from scripts.docs.evidence import source_anchors
@@ -303,7 +303,7 @@ def test_the_size_anchor_is_what_generate_emits(
     """A documented size is regenerated, so an optimization must update it."""
     # Both raster names count emitted color cells at the generator's default scale.
     measured_unit = "codels" if unit == "pixels" else unit
-    assert _size(compat.generate(name, named_table(n, table))) == (
+    assert _size(esolangs.generate(name, named_table(n, table)).source) == (
         size,
         measured_unit,
     )
@@ -399,7 +399,7 @@ def test_the_trigger_raises_what_the_docstring_says(
     options = trigger.get("options", {})
     assert isinstance(options, dict)
     with pytest.raises(getattr(exceptions, str(trigger["expect"]))):
-        compat.generate(name, _table(str(trigger["table"])), **options)
+        esolangs.generate(name, _table(str(trigger["table"])), **options)
 
 
 def test_every_raises_entry_has_a_trigger() -> None:

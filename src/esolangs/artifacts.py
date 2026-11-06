@@ -49,7 +49,7 @@ class ProgramArtifact[Source: Program]:
         """Validate source storage and retain canonical provenance."""
         from esolangs.tagged import _Template
 
-        if isinstance(self.source, _Template):
+        if isinstance(self.source, (_Template, TemplateArtifact)):
             raise TemplateError("fill the template before declaring runnable source")
         if not isinstance(self.source, (str, Raster, CompressedText)):
             raise ProgramError("a program needs text, compressed source, or a raster")

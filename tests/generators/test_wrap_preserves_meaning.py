@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.registry import LANGUAGES
 from tests.support.witness_tables import row_bits
 
@@ -30,14 +29,14 @@ def _wrappable() -> list[str]:
 def _evaluate(name: str, table: str, width: int | None) -> str:
     """Return the program's answer on every row of ``table``, at ``width``."""
     parameterized = esolangs.describe(name)["parameterized"]
-    program = compat.generate(name, table, width=None if parameterized else width)
+    program = esolangs.generate(name, table, width=None if parameterized else width)
     inputs = len(table).bit_length() - 1
     got = ""
     for row in range(len(table)):
         bits = row_bits(row, inputs)
         if parameterized:
             source, stdin = (
-                compat.instantiate(name, program, bits, width=width),
+                esolangs.instantiate(name, program, bits, width=width),
                 "",
             )
         else:

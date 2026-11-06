@@ -40,6 +40,7 @@ class Language:
         Parsing happens on execution. Use ``from_file`` to read native source.
 
         Raises:
+            TemplateError: Source is an unfilled template.
             ProgramError: Source has an unsupported type or foreign provenance.
             ArgumentError: Dialect settings are invalid for this language.
         """

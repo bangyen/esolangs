@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.registry import LANGUAGES
 from esolangs.registry._certification import load as load_certification
 from tests.support.cli_support import call_main
@@ -50,7 +49,7 @@ def test_boolean_generators_take_a_truth_table() -> None:
 )
 def test_declared_arity_cap_is_enforced(name, cap) -> None:
     with pytest.raises(esolangs.GeneratorCapError):
-        compat.generate(name, "0" * (1 << (cap + 1)))
+        esolangs.generate(name, "0" * (1 << (cap + 1)))
 
 
 @pytest.mark.parametrize(
@@ -61,7 +60,7 @@ def test_structured_witnesses_build_at_the_arity_cap(name) -> None:
     inputs = min(LANGUAGES[name].backend.max_inputs or 11, 11)
     for table in witnesses(inputs)[:-1]:  # the random witness is priced per language
         with contextlib.suppress(esolangs.GeneratorCapError):
-            compat.generate(name, table)
+            esolangs.generate(name, table)
 
 
 #: Generators whose ``GeneratorCapError`` never reaches a caller.
@@ -106,7 +105,7 @@ def test_restricted_generators_have_executed_positive_controls(name) -> None:
     assert (
         _evaluate(
             name,
-            compat.generate(name, table),
+            esolangs.generate(name, table),
             inputs=len(table).bit_length() - 1,
         )
         == table

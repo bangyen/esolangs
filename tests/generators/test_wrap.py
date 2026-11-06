@@ -6,8 +6,6 @@ from functools import cache
 import pytest
 
 import esolangs
-from esolangs import compat
-from esolangs.compat import generate
 from esolangs.generation.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.generation.examples import BooleanExample
 from esolangs.generation.wrap import (
@@ -241,12 +239,14 @@ def test_every_wrapper_actually_fires(name: str) -> None:
     pytest.fail(f"{name}: no table up to 4 inputs produced a program long enough")
 
 
-def _grown(name: str, table: str, width: int | None) -> str:
+def _grown(name: str, table: str, width: int | None) -> esolangs.Program:
     """A runnable program for ``table``: the template filled with zeros."""
     if _example(name).fill is None:
-        return generate(name, table, width=width)
+        return esolangs.generate(name, table, width=width).source
     arity = len(table).bit_length() - 1
-    return compat.instantiate(name, generate(name, table), [0] * arity, width=width)
+    return esolangs.instantiate(
+        name, esolangs.generate(name, table), [0] * arity, width=width
+    ).source
 
 
 _RUN_TIMEOUT = 2.0

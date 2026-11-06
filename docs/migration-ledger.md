@@ -95,6 +95,12 @@ All owned template callers retain bindings through public execution. Their test
 fixture rejects source-facade calls and plain-text binding recovery, including
 captured aliases. Native fixtures declare setters explicitly.
 
+Shared generator execution, layout, size and documentation tests use artifacts;
+their fixture now rejects facade calls and plain-template recovery throughout
+the generator group. Native measurements read explicit source. Layout candidates
+reuse retained bindings; persisted templates use portable documents and native
+files are tested after filling. Source-adapter references are fault controls.
+
 Accounting and analysis rows require owned witnesses, not just a declared hook
 or a recognized helper name. Certification needs an installed-package/lazy-import
 acceptance audit after the active separation work lands. Storage policy needs

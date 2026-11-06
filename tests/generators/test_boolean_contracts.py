@@ -48,7 +48,7 @@ from tests.support.generator_support import probe_table
 for name in {names!r}:
     table = probe_table(name)
     inputs = len(table).bit_length() - 1
-    program = esolangs.compat.generate(name, table)
+    program = esolangs.generate(name, table)
     result = _evaluate(name, program, inputs=inputs)
     if result != table:
         raise AssertionError((name, result))

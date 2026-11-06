@@ -128,13 +128,17 @@ def _repair_coverage_lock() -> Generator[None, None, None]:
 def _owned_template_boundaries(
     request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Keep owned execution cases off the retired source/template protocols."""
-    if not request.node.nodeid.startswith("src/esolangs/languages/"):
+    """Keep migrated execution cases off legacy source/template adaptation."""
+    if not request.node.nodeid.startswith(
+        ("src/esolangs/languages/", "tests/generators/")
+    ):
         return
     import esolangs
 
     def forbidden(*_args: object, **_kwargs: object) -> None:
-        raise AssertionError("owned tests reached legacy source/template adaptation")
+        raise AssertionError(
+            "canonical tests reached legacy source/template adaptation"
+        )
 
     for module, names in (
         (esolangs, ("_recover_template",)),
