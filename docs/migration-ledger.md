@@ -38,6 +38,7 @@ Owners are workstreams, not individual contributors.
 | Generator callable-option signature inference | Analysis | Retired; all 114 backends use declared options; independent signature oracle and no-discovery checks in `tests/api/test_artifact_defaults.py` and `tests/api/test_api_contracts.py` | Declared backend option capabilities |
 | `FunctionRef.__signature__` proxy | Registry | Retired; recursive declaration checks reject its return in `tests/api/test_descriptor_loading.py` | Explicit callable parameter declarations |
 | Snapshot-as-workspace fallback | Accounting | Retired; VM capture and `WrittenState` require models; missing/invalid adapters and raw values are rejected in runtime/tooling tests | Versioned semantic accounting models |
+| Noninteger cycle counters and unhashable cycle snapshots | Results | Retired; constructor, JSON and parent-decoder controls retain zero-stride completion and partial output | Integer ordered boundaries and hashable snapshots |
 | Disconnected, mutable or draw-dependent branch verdicts | Results | Retired; constructor, wire and parent-decoder refusal controls preserve partial output | Immutable root-reachable graphs; run-specific termination decisions |
 | Legacy worker-field defaults | Results | Retired; complete requests and explicit success/error observations; omission controls in `tests/runtime/test_worker_results.py` | Explicit canonical fields, including unavailable observations |
 | Permissive worker envelopes and nested proof fields | Results | Retired; missing/extra fields, unknown error kinds, duplicate terminals and contradictory output fail with retained prefixes | Exact canonical stream, result and evidence schemas |
@@ -585,3 +586,12 @@ owned. The independent drawing oracle retains its prefix classifier. All 632
 corpus requests and 240 larger layouts retain their bytes; 2,286 paired rows
 retain 75,368 semantic samples. Live ID faults damage both executed layouts.
 Bounds, size pins and anchors remain unchanged; catalog acceptance stays open.
+
+Cycle construction now rejects Boolean, fractional, nonfinite and unavailable
+counters before comparison, matching transport's actual-integer requirement.
+Snapshots must be hashable. Existing tests cover each boundary/stride position,
+mutable snapshots, valid zero-stride records, JSON round trips and rejected
+worker frames retaining their output prefix. Installed Python 3.12–3.15 passes
+these checks plus the 73-case periodic and 180-row termination matrices.
+Canonical fields and generation/resource budgets are unchanged. Remaining
+larger-corpus, branching and semantic-resource acceptance stays open.

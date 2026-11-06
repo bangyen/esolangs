@@ -119,6 +119,16 @@ def test_declared_post_halt_output_remains_available():
 def test_cycle_evidence_needs_ordered_boundaries(first, repeat, stride):
     with pytest.raises(ValueError, match="ordered passes"):
         BoundaryCycle(0, first, repeat, stride)
+    for invalid in (False, True, 0.0, 1.5, float("nan"), float("inf"), "1", None):
+        for index in range(3):
+            counts = [0, 1, 1]
+            counts[index] = invalid
+            with pytest.raises(ValueError, match="ordered passes"):
+                BoundaryCycle(0, *counts)
+    for state in ([], {}, ([],)):
+        with pytest.raises(TypeError, match="unhashable"):
+            BoundaryCycle(state, 0, 1, 1)
+    assert BoundaryCycle(frozenset(), 0, 1, 0).commands_per_pass == 0
 
 
 def test_a_timeout_does_not_finalize_periodic_output():

@@ -25,13 +25,18 @@ class BoundaryCycle:
     commands_per_pass: int
 
     def __post_init__(self) -> None:
-        """Require ordered boundaries and a nonnegative command count."""
+        """Require integer boundaries, a nonnegative stride and hashable state."""
         if (
-            self.first_pass < 0
+            any(
+                type(value) is not int
+                for value in (self.first_pass, self.repeat_pass, self.commands_per_pass)
+            )
+            or self.first_pass < 0
             or self.repeat_pass <= self.first_pass
             or self.commands_per_pass < 0
         ):
             raise ValueError("a boundary cycle needs ordered passes and a stride")
+        hash(self.state)
 
 
 @dataclass(frozen=True, slots=True)

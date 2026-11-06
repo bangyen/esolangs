@@ -48,6 +48,29 @@ def test_immutable_cycle_state_survives_json():
     assert hash(decode_result(result.output, metadata).completion.cycle.state) == hash(
         state
     )
+    zero = result._replace(
+        completion=CompletionReport(Completion.PERIODIC, BoundaryCycle(state, 0, 1, 0)),
+        steps=0,
+    )
+    assert (
+        decode_result(zero.output, json.loads(json.dumps(encode_result(zero)))) == zero
+    )
+    for field in ("first_pass", "repeat_pass", "commands_per_pass"):
+        for invalid in (False, True, 0.0, 1.5, float("nan"), float("inf"), "1", None):
+            broken = copy.deepcopy(metadata)
+            broken["completion"]["cycle"][field] = invalid
+            with pytest.raises(ValueError, match="counter"):
+                decode_result(result.output, broken)
+            with pytest.raises(
+                esolangs.InterpreterLimitError, match="invalid isolated"
+            ) as caught:
+                _decode(
+                    json.dumps({"output": result.output})
+                    + "\n"
+                    + json.dumps({"result": result.output, "execution": broken}),
+                    expired=False,
+                )
+            assert caught.value.partial_output == result.output
     record = metadata["completion"]["cycle"]["state"]["tuple"][-1]["record"]
     for key in (*record, "obsolete"):
         broken = copy.deepcopy(metadata)
