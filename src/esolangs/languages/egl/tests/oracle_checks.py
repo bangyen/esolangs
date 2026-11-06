@@ -7,21 +7,12 @@ from decimal import Decimal
 import pytest
 
 from esolangs.languages.egl.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support import workspace_oracle
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
-_WORKSPACE = WorkspaceModel(
-    "egl-v1",
-    (
-        "instruction",
-        "row",
-        "column",
-        "cells",
-        "loops",
-        "input_cursor",
-        "input_reads",
-    ),
+_WORKSPACE = workspace_oracle.workspace_model(
+    "egl-v1", "instruction row column cells loops input_cursor input_reads"
 )
 
 

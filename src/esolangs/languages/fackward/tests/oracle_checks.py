@@ -7,20 +7,12 @@ from operator import add, floordiv, mul, neg
 import pytest
 
 from esolangs.languages.fackward.interpreter import Block, _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed, stalled
+from tests.support import workspace_oracle
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
-_WORKSPACE = WorkspaceModel(
-    "fackward-v1",
-    (
-        "forward",
-        "backward",
-        "active",
-        "swapped",
-        "stopped",
-        "input_cursor",
-    ),
+_WORKSPACE = workspace_oracle.workspace_model(
+    "fackward-v1", "forward backward active swapped stopped input_cursor"
 )
 
 _MATH = {"+": add, "-": neg, "*": mul, "/": floordiv, "%": lambda n: int(not n)}

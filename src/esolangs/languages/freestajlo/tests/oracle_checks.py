@@ -11,22 +11,13 @@ from itertools import product
 import pytest
 
 from esolangs.languages.freestajlo.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.support import workspace_oracle
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
-_WORKSPACE = WorkspaceModel(
+_WORKSPACE = workspace_oracle.workspace_model(
     "freestajlo-v1",
-    (
-        "instruction",
-        "stack",
-        "transfer",
-        "calls",
-        "functions",
-        "index",
-        "other_stacks",
-        "input_cursor",
-    ),
+    "instruction stack transfer calls functions index other_stacks input_cursor",
 )
 
 

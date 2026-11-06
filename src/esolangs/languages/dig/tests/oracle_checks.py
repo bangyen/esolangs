@@ -10,22 +10,12 @@ from itertools import product
 import pytest
 
 from esolangs.languages.dig.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.support import workspace_oracle
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
-_WORKSPACE = WorkspaceModel(
-    "dig-v1",
-    (
-        "row",
-        "column",
-        "direction",
-        "mole",
-        "number",
-        "grid",
-        "input_cursor",
-        "input_reads",
-    ),
+_WORKSPACE = workspace_oracle.workspace_model(
+    "dig-v1", "row column direction mole number grid input_cursor input_reads"
 )
 
 

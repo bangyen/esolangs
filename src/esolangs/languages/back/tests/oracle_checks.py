@@ -6,21 +6,12 @@ import random
 import pytest
 
 from esolangs.languages.back.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support import workspace_oracle
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
-_WORKSPACE = WorkspaceModel(
-    "back-v1",
-    (
-        "row",
-        "column",
-        "direction_row",
-        "direction_column",
-        "tape",
-        "cell",
-        "input_cursor",
-    ),
+_WORKSPACE = workspace_oracle.workspace_model(
+    "back-v1", "row column direction_row direction_column tape cell input_cursor"
 )
 
 

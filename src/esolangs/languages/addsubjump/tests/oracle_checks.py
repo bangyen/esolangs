@@ -5,21 +5,12 @@ from itertools import product
 import pytest
 
 from esolangs.languages.addsubjump.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support import workspace_oracle
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
-_WORKSPACE = WorkspaceModel(
-    "addsubjump-v1",
-    (
-        "cells",
-        "extent",
-        "instruction",
-        "zero",
-        "negative",
-        "flag_update",
-        "input_cursor",
-    ),
+_WORKSPACE = workspace_oracle.workspace_model(
+    "addsubjump-v1", "cells extent instruction zero negative flag_update input_cursor"
 )
 
 

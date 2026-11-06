@@ -6,21 +6,13 @@ import random
 import pytest
 
 from esolangs.languages.clockwise.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support import workspace_oracle
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
-_WORKSPACE = WorkspaceModel(
+_WORKSPACE = workspace_oracle.workspace_model(
     "clockwise-v1",
-    (
-        "row",
-        "column",
-        "direction",
-        "accumulator",
-        "output_bits",
-        "input_bits",
-        "input_cursor",
-    ),
+    "row column direction accumulator output_bits input_bits input_cursor",
 )
 
 

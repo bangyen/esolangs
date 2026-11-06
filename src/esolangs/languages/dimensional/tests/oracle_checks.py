@@ -11,7 +11,14 @@ from itertools import product
 import pytest
 
 from esolangs.languages.dimensional.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.support.workspace_oracle import missing_workspace, workspace_view
+
+_WORKSPACE = WorkspaceModel(
+    "dimensional-v1",
+    ("instruction", "comment", "axis", "height", "hierarchy", "input_cursor"),
+)
 
 
 def _assemble(code):
@@ -94,17 +101,38 @@ def _path(positions, level):
     return route
 
 
-def _write(cells, key, value):
-    if value is not None:
-        value %= 256
-        if value:
-            cells[key] = value
-        else:
-            cells.pop(key, None)
-
-
 def _value(command, byte, literal):
     return {"+": byte + 1, "-": byte - 1, ":": literal, "=": literal}[command]
+
+
+def _allocate(nodes, positions, height, level):
+    nodes.update(((),) * (5 - k) for k in range(height + 1, level + 1))
+    height = max(height, level)
+    nodes.update(_path(positions, k) for k in range(level, height + 1))
+    return height
+
+
+def _write(nodes, positions, cells, height, key, value):
+    if value is not None:
+        height = _allocate(nodes, positions, height, 2)
+        cells[key] = value % 256
+    return height
+
+
+def _hierarchy(positions, cells, nodes, route):
+    if len(route) == 3:
+        slots = (
+            (frozenset(key[-1]), value)
+            for key, value in cells.items()
+            if key[:-1] == route
+        )
+    else:
+        slots = (
+            (frozenset(child[-1]), _hierarchy(positions, cells, nodes, child))
+            for child in nodes
+            if len(child) == len(route) + 1 and child[:-1] == route
+        )
+    return frozenset(positions.get(route, ())), frozenset(slots)
 
 
 def _model(code, stdin):
@@ -113,6 +141,7 @@ def _model(code, stdin):
     except (ValueError, IndexError):
         return "syntax", [(None, False, "", 0, 0)]
     positions, cells = {}, {}
+    nodes, height = {((), (), ())}, 2
     pc = cursor = 0
     axis, comment, output, trace = 2, False, "", []
 
@@ -121,7 +150,9 @@ def _model(code, stdin):
         return (*route, positions.get(route, ()))
 
     def byte():
-        return cells.get(location(), 0)
+        nonlocal height
+        height = _allocate(nodes, positions, height, 2)
+        return cells.setdefault(location(), 0)
 
     def row():
         state = (
@@ -129,7 +160,9 @@ def _model(code, stdin):
             comment,
             axis,
             tuple(sorted(positions.items())),
-            tuple(sorted(cells.items())),
+            tuple(sorted((key, value) for key, value in cells.items() if value)),
+            height,
+            _hierarchy(positions, cells, nodes, ((),) * (5 - height)),
         )
         return state, pc >= len(code), output, cursor, cursor
 
@@ -161,6 +194,7 @@ def _model(code, stdin):
             axis = arg
         elif c in "><!?{":
             dim = byte() if arg is None else arg
+            height = _allocate(nodes, positions, height, axis)
             coordinate = _pointer(c, positions, _path(positions, axis), dim)
             if c == "?":
                 value = coordinate
@@ -170,7 +204,7 @@ def _model(code, stdin):
             pc = pairs[start] + 1
         elif c in "]}":
             pc = pairs[start]
-        _write(cells, location(), value)
+        height = _write(nodes, positions, cells, height, location(), value)
     return None, trace
 
 
@@ -199,10 +233,15 @@ def _view(machine):
 
 
 def _check(factory, code, stdin="unused"):
-    assert observed(factory, code, stdin, _view, cap=64) == _model(code, stdin), (
-        code,
-        stdin,
+    error, rows = _model(code, stdin)
+    checked = workspace_view(
+        rows, _WORKSPACE, lambda row: (*row[0][:3], *row[0][5:], row[-1]), _view
     )
+    expected = (
+        error,
+        [(None if row[0] is None else row[0][:5], *row[1:]) for row in rows],
+    )
+    assert observed(factory, code, stdin, checked, cap=64) == expected, (code, stdin)
 
 
 def check_raw_dimensional():
@@ -265,3 +304,37 @@ def check_raw_dimensional():
     for factory in (stalled(_Machine), WrongByte, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, "+$3>0+<0.")
+
+    for component in _WORKSPACE.components:
+        with pytest.raises(AssertionError):
+            _check(missing_workspace(_Machine, component), "+$3>0+<0.")
+    for fault, code in (("zero", "."), ("empty", "$5>0"), ("height", "$5>0.")):
+
+        class Fault(_Machine):
+            mode = fault
+
+            def workspace_snapshot(self):
+                saved = super().workspace_snapshot()
+                parts = list(saved.parts)
+
+                def prune(node):
+                    position, slots = node
+                    pairs = (
+                        (key, prune(value) if isinstance(value, tuple) else value)
+                        for key, value in slots
+                    )
+                    return position, frozenset(
+                        (key, value)
+                        for key, value in pairs
+                        if value
+                        != (0 if self.mode == "zero" else (frozenset(), frozenset()))
+                    )
+
+                if self.mode == "height":
+                    parts[3] = 2
+                else:
+                    parts[4] = prune(parts[4])
+                return WorkspaceSnapshot(saved.model, tuple(parts))
+
+        with pytest.raises(AssertionError):
+            _check(Fault, code)

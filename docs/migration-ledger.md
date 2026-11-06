@@ -800,3 +800,16 @@ median 0.979), with matched hash seeds and garbage collection included.
 Installed Python 3.12–3.15 preserves the paired records and larger layouts.
 All 915 size measurements, original bounds, pins and anchors remain unchanged;
 the referee gate passes. Catalog-wide acceptance remains open.
+
+Dimensional's bounded independent model now predicts allocated hierarchy,
+height, empty levels and stored zero cells. The prior semantic projection
+retains 367 comparisons and 3,388 boundaries; an altered-trace control fires.
+Six component erasures and three allocation-only faults supplement the three
+semantic faults. Installed Python 3.12–3.15 runs the raw corpus and 13 public
+cases across VM, debugger, native and guarded isolated routes, including input
+failures: 164 VM/debug boundaries and literal peaks 2, 5, 11 and 14 bits.
+Deadfish and HQ9+ drop duplicate same-payload meters while retaining independent
+peak predictions. Whole-language and catalog-wide acceptance remain open.
+Eight owned models share ordered component-name parsing; corpus digests retain
+62,382 captures, 79 refusals and 14,038 observations, with an altered-width
+positive control. This preserves the source/test line budget after integration.

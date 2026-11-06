@@ -5,20 +5,12 @@ from itertools import product
 import pytest
 
 from esolangs.languages.hot.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support import workspace_oracle
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
-_WORKSPACE = WorkspaceModel(
-    "hot-v1",
-    (
-        "expression",
-        "pending_bit",
-        "input_ended",
-        "output_odd",
-        "stopped",
-        "input_cursor",
-    ),
+_WORKSPACE = workspace_oracle.workspace_model(
+    "hot-v1", "expression pending_bit input_ended output_odd stopped input_cursor"
 )
 
 _ARITY = dict(zip("KSFABCD01", (2, 3, 1, 1, 1, 1, 1, 2, 0), strict=True))

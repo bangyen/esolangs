@@ -3,7 +3,7 @@
 from dataclasses import fields, is_dataclass
 from fractions import Fraction
 
-from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from scripts.benchmark import WrittenState
 
 
@@ -112,3 +112,8 @@ def workspace_view(trace, model, parts, view):
         return view(machine)
 
     return observe
+
+
+def workspace_model(name, components):
+    """Declare ordered component names separated by spaces."""
+    return WorkspaceModel(name, tuple(components.split()))
