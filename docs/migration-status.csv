@@ -107,7 +107,7 @@ Subleq,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,subleq
 Suffolk,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Super SNUSP,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,super-snusp-v1,pending-backend-audit,pending-acceptance-audit,open
 SwitchCase,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,switchcase-v1,pending-backend-audit,pending-acceptance-audit,open
-Taglate,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,taglate-v1,pending-backend-audit,pending-acceptance-audit,open
+Taglate,yes,declared,not-applicable,declared,owned-adapter,taglate-v1,pending-backend-audit,pending-acceptance-audit,open
 thisthat,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Thue,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Unary,yes,declared,not-applicable,declared,inherited-adapter,brainfuck-v1,pending-backend-audit,pending-acceptance-audit,open

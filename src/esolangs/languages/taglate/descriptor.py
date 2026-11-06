@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Taglate."""
 
+from esolangs.languages.taglate.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -8,7 +9,14 @@ from esolangs.runtime._definition import RuntimeSpec
 
 LANGUAGE = Language(
     "Taglate",
-    RuntimeSpec("taglate", category="queue_based", split=True),
+    RuntimeSpec(
+        "taglate",
+        category="queue_based",
+        split=True,
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+    ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.taglate.generator", "taglate", ("truth_table", "width")

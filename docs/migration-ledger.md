@@ -132,3 +132,7 @@ grid debug fields. The last `_for_run` discovery hook and VM fallback are remove
 The grid/stack batch freezes mutable grids, hierarchical tapes, pointer memories
 and scoped stacks without cycle serializers or storage caches. ABCDirection's cycle
 model records write-epoch equality, preserving behavior under epoch renumbering.
+
+Taglate declares cached token preparation, queue debug fields and ordinary
+completion. Machines retain private token/pair copies; native rotation/pop
+batching and partial fault state remain unchanged.

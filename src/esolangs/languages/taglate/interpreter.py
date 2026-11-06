@@ -27,12 +27,14 @@ Decisions:
 """
 
 import re
-from collections.abc import Iterable
-from functools import lru_cache
+from collections.abc import Callable, Iterable, Mapping
+from functools import lru_cache, partial
+from typing import Any
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import HALTED_REPORT, CompletionReport
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import unmatched
 from esolangs.runtime.io import IO
@@ -289,9 +291,20 @@ def _advance_bulk(state: _State, tokens: list[str]) -> _State | None:
     return queue[consumed:], ind + consumed
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> Callable[[IO], _Machine]:
+    """Bind fresh queues and token copies while retaining the program cache."""
+    if not isinstance(source, list):
+        raise TypeError("taglate machines require split text source")
+    if options:
+        raise TypeError("taglate machines accept no runtime options")
+    return partial(_Machine, list(source))
+
+
 def _execute(code: list[str], io: IO) -> CompletionReport:
     """Run Taglate, applying pure batched rotation/pop transitions."""
-    machine = _Machine(code, io)
+    machine = prepare_machine(code, {})(io)
     while not machine.halted:
         moved = _advance_bulk((machine.queue, machine.ind), machine.tokens)
         if moved is None:
