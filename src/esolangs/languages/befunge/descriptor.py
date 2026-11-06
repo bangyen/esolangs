@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Befunge."""
 
+from esolangs.languages.befunge.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
@@ -13,6 +14,9 @@ LANGUAGE = Language(
     RuntimeSpec(
         "befunge",
         category="grid_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         random=True,
         split=True,
         empty_program="Befunge program cannot be empty",

@@ -5,7 +5,12 @@ from ctypes import c_long, sizeof
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.befunge.interpreter import _advance, _Machine, run
+from esolangs.languages.befunge.interpreter import (
+    _advance,
+    _Machine,
+    prepare_machine,
+    run,
+)
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Seeded
 from esolangs.vm import make_vm, run_until_halt, run_until_halt_or_cycle
@@ -127,6 +132,27 @@ def test_random_direction_uses_the_supplied_draw() -> None:
 def test_a_seeded_run_is_reproducible() -> None:
     program = "@@@\n@?@\n@@@"
     assert run_befunge(program, rng=Seeded(0)) == run_befunge(program, rng=Seeded(0))
+
+    source = ["?@"]
+    rng = Seeded(7)
+    before = rng._random.getstate()
+    options = {"rng": rng}
+    factory = prepare_machine(source, options)
+    source[0] = "@"
+    options.clear()
+    first, second = factory(IO()), factory(IO())
+    assert first is not second
+    assert first._rng is second._rng is rng
+    assert rng._random.getstate() == before
+    initial = second.snapshot()
+    first.step()
+    assert rng._random.getstate() != before
+    assert second.snapshot() == initial
+    assert not first.halted
+    with pytest.raises(TypeError, match="split text"):
+        prepare_machine("invalid", {})
+    with pytest.raises(TypeError, match="only the rng"):
+        prepare_machine([";"], {"unknown": True})
 
 
 def test_empty_program_is_rejected() -> None:

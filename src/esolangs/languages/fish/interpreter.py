@@ -60,12 +60,15 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Mapping, Sequence
 from types import MappingProxyType
-from typing import Never, cast
+from typing import Any, Never, cast
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.fish.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
@@ -590,12 +593,29 @@ class _Machine:
                 self.io.print_str(cast(str, value))
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind source and caller-owned RNG without drawing from it."""
+    if not isinstance(source, list):
+        raise TypeError("fish machines require split text source")
+    if options.keys() - {"rng"}:
+        raise TypeError("fish machines accept only the rng runtime option")
+    code = tuple(source)
+    rng = options.get("rng")
+
+    def build(io: IO) -> _Machine:
+        return _Machine(list(code), io, rng)
+
+    return build
+
+
 def _execute(
     code: list[str], io: IO, rng: Randomness | None = None
 ) -> CompletionReport:
     """Execute a Fish codebox until ``;``."""
     machine = _Machine(code, io, rng)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:

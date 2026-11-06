@@ -217,3 +217,7 @@ chunk boundaries, immutable program fingerprints and final-dump guards.
 Clockwise and Circuit Diagram declare split-grid factories and debug fields.
 Cyclic input bits, output buffers, circuit events/latches and default clock
 cursors remain per-run; topology caching and constructor input reads stay intact.
+
+Befunge and Fish declare RNG-aware split-grid factories and debug fields.
+Preparation freezes source/options without drawing; machines retain the caller's
+RNG and own their codebox, stack and register state.

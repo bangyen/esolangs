@@ -5,9 +5,9 @@ from itertools import product
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.fish.interpreter import _advance, _Machine, run
+from esolangs.languages.fish.interpreter import _advance, _Machine, prepare_machine, run
 from esolangs.runtime.io import ScriptedIO
-from esolangs.runtime.randomness import FirstDraw
+from esolangs.runtime.randomness import FirstDraw, Seeded
 from tests.support.raises import assert_halts_with_hint
 
 
@@ -72,6 +72,27 @@ def test_advance_takes_its_random_draw_as_an_argument() -> None:
     second, _ = _advance(state, random_dir=2)
     assert first == second
     assert first[2:4] == (-1, 0)
+
+    source = ["x;"]
+    rng = Seeded(7)
+    before = rng._random.getstate()
+    options = {"rng": rng}
+    factory = prepare_machine(source, options)
+    source[0] = ";"
+    options.clear()
+    first, second = factory(ScriptedIO()), factory(ScriptedIO())
+    assert first is not second
+    assert first._rng is second._rng is rng
+    assert rng._random.getstate() == before
+    initial = second.snapshot()
+    first.step()
+    assert rng._random.getstate() != before
+    assert second.snapshot() == initial
+    assert not first.halted
+    with pytest.raises(TypeError, match="split text"):
+        prepare_machine("invalid", {})
+    with pytest.raises(TypeError, match="only the rng"):
+        prepare_machine([";"], {"unknown": True})
 
 
 def test_advance_takes_its_input_value_as_an_argument() -> None:

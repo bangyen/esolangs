@@ -16,7 +16,7 @@ Back,yes,declared,not-applicable,declared,owned-adapter,back-v1,pending-backend-
 Balik,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,balik-v1,pending-backend-audit,pending-acceptance-audit,open
 BASICER,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,basicer-v1,pending-backend-audit,pending-acceptance-audit,open
 Basicfuck,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,basicfuck-v1,pending-backend-audit,pending-acceptance-audit,open
-Befunge,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,befunge-v1,pending-backend-audit,pending-acceptance-audit,open
+Befunge,yes,declared,not-applicable,declared,owned-adapter,befunge-v1,pending-backend-audit,pending-acceptance-audit,open
 Between,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,between-v1,pending-backend-audit,pending-acceptance-audit,open
 BFStack,yes,declared,not-applicable,declared,owned-adapter,bfstack-v1,pending-backend-audit,pending-acceptance-audit,open
 Bitdeque,yes,declared,not-applicable,declared,owned-adapter,bitdeque-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -50,7 +50,7 @@ Eval,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,eval-v1,
 Fackward,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,fackward-v1,pending-backend-audit,pending-acceptance-audit,open
 FALSE,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,false-v1,pending-backend-audit,pending-acceptance-audit,open
 Fargo,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-Fish,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,fish-v1,pending-backend-audit,pending-acceptance-audit,open
+Fish,yes,declared,not-applicable,declared,owned-adapter,fish-v1,pending-backend-audit,pending-acceptance-audit,open
 Flowchart,yes,declared,not-applicable,declared,owned-adapter,flowchart-v1,pending-backend-audit,pending-acceptance-audit,open
 Forbin,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Forþ,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,for-thorn-v1,pending-backend-audit,pending-acceptance-audit,open
