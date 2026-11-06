@@ -146,12 +146,12 @@ def _check_constants() -> None:
                     )
                     io = ReadFirstIO(stdin + "Q", expected=n)
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         command = machine.code[machine.ind]
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += int(command in "+-<>[],.")
                         assert steps <= n + 82 + int(bit)
                     assert steps == n + 82 + int(bit)
@@ -183,12 +183,12 @@ def _check_zero_guards() -> None:
                 io = ReadFirstIO(f"{row:0{n}b}Q", expected=0)
                 io.expected = n
                 machine = _Machine(source, io)
-                written = WrittenState(machine.snapshot())
+                written = WrittenState(machine.workspace_snapshot())
                 commands = 0
                 while not machine.halted:
                     command = machine.code[machine.ind]
                     machine.step()
-                    written.sample(machine.snapshot())
+                    written.sample(machine.workspace_snapshot())
                     commands += int(command in "+-<>[],.")
                     assert commands <= 75 * n + 49
                 assert io.getvalue() == table[row]

@@ -14,6 +14,7 @@ from esolangs.languages.whitespace.interpreter import (
 )
 from esolangs.languages.whitespace.tests.oracle_checks import _assemble, _check
 from esolangs.results import Completion
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace, make_vm
 from scripts.benchmark import WrittenState
@@ -106,8 +107,15 @@ def test_repacked_storage_retains_semantic_workspace(monkeypatch, program, stdin
         _RepackedMachine(source, ScriptedIO(stdin)),
     ]
     semantic = [WrittenState(m.workspace_snapshot()) for m in machines]
-    legacy = WrittenState(machines[0].snapshot())
-    regrouped = WrittenState(machines[1].snapshot())
+    reference = WorkspaceModel(
+        "whitespace-reference-test-v1",
+        ("instruction", "stack", "heap", "return_stack", "ended", "input_cursor"),
+    )
+    grouped = WorkspaceModel(
+        "whitespace-grouped-test-v1", ("control", "stores", "input_cursor")
+    )
+    legacy = WrittenState(WorkspaceSnapshot(reference, machines[0].snapshot()))
+    regrouped = WrittenState(WorkspaceSnapshot(grouped, machines[1].snapshot()))
     errors = []
     for _ in range(48):
         captures = [m.workspace_snapshot() for m in machines]
@@ -115,8 +123,8 @@ def test_repacked_storage_retains_semantic_workspace(monkeypatch, program, stdin
         for machine, capture, written in zip(machines, captures, semantic, strict=True):
             assert capture.parts == (*machine.state, machine.io.progress())
             written.sample(capture)
-        legacy.sample(machines[0].snapshot())
-        regrouped.sample(machines[1].snapshot())
+        legacy.sample(WorkspaceSnapshot(reference, machines[0].snapshot()))
+        regrouped.sample(WorkspaceSnapshot(grouped, machines[1].snapshot()))
         assert semantic[0].bits == semantic[1].bits == legacy.bits
         assert machines[0].io.getvalue() == machines[1].io.getvalue()
         if errors:

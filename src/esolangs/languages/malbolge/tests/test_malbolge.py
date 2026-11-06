@@ -12,6 +12,7 @@ from esolangs.languages.malbolge.interpreter import (
     _op,
     run,
 )
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_rejected_with_hint
@@ -68,7 +69,12 @@ def test_the_snapshot_memory_follows_every_write() -> None:
     before = machine.snapshot()
     saved = machine.workspace_snapshot()
     retained = {saved}
-    old_meter, new_meter = WrittenState(before), WrittenState(saved)
+    reference = WorkspaceModel(
+        "malbolge-reference-test-v1",
+        ("accumulator", "instruction", "data", "stopped", "memory", "input_cursor"),
+    )
+    old_meter = WrittenState(WorkspaceSnapshot(reference, before))
+    new_meter = WrittenState(saved)
     while not machine.halted:
         machine.step()
         snapshot = machine.snapshot()
@@ -81,7 +87,7 @@ def test_the_snapshot_memory_follows_every_write() -> None:
             machine.memory[:_WORDS]
         )
         assert workspace.parts[5] == machine.io.progress()
-        old_meter.sample(snapshot)
+        old_meter.sample(WorkspaceSnapshot(reference, snapshot))
         new_meter.sample(workspace)
         assert new_meter.bits == old_meter.bits
         assert saved in retained

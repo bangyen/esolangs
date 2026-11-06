@@ -34,7 +34,7 @@ Owners are workstreams, not individual contributors.
 | Dialect metadata signature/default inspection | Lifecycle | Retired; all seven schemas declared; constructor/default and no-discovery checks in `tests/api/test_dialects.py` | Declared dialect schemas and defaults |
 | Generator callable-option signature inference | Analysis | Retired; all 114 backends use declared options; independent signature oracle and no-discovery checks in `tests/api/test_artifact_defaults.py` and `tests/api/test_api_contracts.py` | Declared backend option capabilities |
 | `FunctionRef.__signature__` proxy | Registry | Retired; recursive declaration checks reject its return in `tests/api/test_descriptor_loading.py` | Explicit callable parameter declarations |
-| Snapshot-as-workspace fallback | Accounting | Retired; all registered VMs require models; missing/invalid adapters and snapshot-only callers are rejected in `tests/runtime/test_workspace_model.py` | Versioned semantic accounting models |
+| Snapshot-as-workspace fallback | Accounting | Retired; VM capture and `WrittenState` require models; missing/invalid adapters and raw values are rejected in runtime/tooling tests | Versioned semantic accounting models |
 | Legacy worker-field defaults | Results | Retired; complete requests and explicit success/error observations; omission controls in `tests/runtime/test_worker_results.py` | Explicit canonical fields, including unavailable observations |
 | Superseded serialization decoders/converters | Persistence | Persisted data and fixtures, if a format is superseded | One-time data migration, then remove the obsolete code |
 
@@ -65,9 +65,10 @@ acceptance audit after the active separation work lands. Storage policy needs
 its priced comparison and explicit decision. These remain open even where an
 implementation pilot already passed.
 
-Accounting now has 117 explicit or inherited semantic adapters; no language
-uses snapshot accounting. Declarations do not close lifecycle,
-storage-policy or catalog-wide acceptance requirements.
+Accounting now has 117 explicit or inherited semantic adapters. VM capture and
+the meter reject missing models instead of using cycle snapshots. Proof drivers
+use declared captures; synthetic and regrouping controls name their models.
+Declarations do not close lifecycle, storage-policy or catalog-wide acceptance.
 
 All seven dialect schemas now declare choices and defaults. Runtime metadata
 queries and validation no longer inspect signatures or constructors. The other

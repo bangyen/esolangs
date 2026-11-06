@@ -3,6 +3,7 @@
 import pytest
 
 from esolangs.languages.hq9.interpreter import _Machine, run
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.interpreters.runner import run_program
@@ -29,13 +30,16 @@ def test_execution_order_and_silent_accumulator() -> None:
     def parts(current):
         return (*current.state, current.io.progress())
 
-    legacy = WrittenState(parts(machine))
+    reference = WorkspaceModel(
+        "hq9-reference-test-v1", ("instruction", "accumulator", "input_cursor")
+    )
+    legacy = WrittenState(WorkspaceSnapshot(reference, parts(machine)))
     while not machine.halted:
         machine.step()
         captured = machine.workspace_snapshot()
         assert captured.parts == parts(machine)
         measured.sample(captured)
-        legacy.sample(parts(machine))
+        legacy.sample(WorkspaceSnapshot(reference, parts(machine)))
         assert measured.bits == legacy.bits
     assert measured.bits == 5
     assert io.getvalue() == "Hello, world!\nh++qHHello, world!\n"

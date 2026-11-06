@@ -83,7 +83,6 @@ def test_accounting_refuses_a_mid_run_model_change():
     for changed in (
         WorkspaceModel("two-v2", model.components).capture(cursor=1, cells=(1,)),
         WorkspaceModel("two-v1", ("cells", "cursor")).capture(cursor=1, cells=(1,)),
-        (1, (1,)),
     ):
         with pytest.raises(ValueError, match="model changed"):
             written.sample(changed)
@@ -163,11 +162,12 @@ def test_cycle_snapshot_regrouping_cannot_change_workspace(monkeypatch):
     )
     vm = make_vm("Brainfuck", "+.")
     semantic = WrittenState(_capture_workspace(vm))
-    regrouped = WrittenState(vm.snapshot())
+    grouped = WorkspaceModel("brainfuck-grouped-test-v1", ("state", "input_cursor"))
+    regrouped = WrittenState(WorkspaceSnapshot(grouped, vm.snapshot()))
     while not vm.halted:
         vm.step()
         semantic.sample(_capture_workspace(vm))
-        regrouped.sample(vm.snapshot())
+        regrouped.sample(WorkspaceSnapshot(grouped, vm.snapshot()))
     # PC: two bits; written tape: one. The regrouped tuple also counts the idle pointer.
     assert semantic.bits == 3
     assert regrouped.bits == 4

@@ -1,6 +1,7 @@
 """Tests for the Deadfish interpreter."""
 
 from esolangs.languages.deadfish.interpreter import _Machine, run
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO, ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.interpreters.contract import SnapshotContract, StateViewContract
@@ -37,13 +38,17 @@ class TestDeadfish:
             machine = _Machine(program, ScriptedIO())
             steps = 0
             measured = WrittenState(machine.workspace_snapshot())
-            legacy = WrittenState(parts(machine))
+            reference = WorkspaceModel(
+                "deadfish-reference-test-v1",
+                ("source", "instruction", "accumulator", "stopped", "input_cursor"),
+            )
+            legacy = WrittenState(WorkspaceSnapshot(reference, parts(machine)))
             while not machine.halted:
                 machine.step()
                 captured = machine.workspace_snapshot()
                 assert captured.parts == parts(machine)
                 measured.sample(captured)
-                legacy.sample(parts(machine))
+                legacy.sample(WorkspaceSnapshot(reference, parts(machine)))
                 assert measured.bits == legacy.bits
                 steps += 1
             assert steps <= len(program), program

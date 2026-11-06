@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace
 
-from esolangs.runtime._state import WorkspaceModel
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.bit_tape import _BitTapeMachine
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
@@ -19,7 +19,10 @@ def test_bit_workspace_preserves_exact_peaks_across_storage_and_cycle_views():
     def parts():
         return (tuple(machine.state), frozenset(machine.ones), machine.io.progress())
 
-    legacy = WrittenState(parts())
+    reference = WorkspaceModel(
+        "bit-reference-test-v1", ("control", "ones", "input_cursor")
+    )
+    legacy = WrittenState(WorkspaceSnapshot(reference, parts()))
     measured = WrittenState(machine.workspace_snapshot())
     machine.snapshot = lambda: ()
     for _ in range(len(machine.code) + 1):
@@ -30,7 +33,7 @@ def test_bit_workspace_preserves_exact_peaks_across_storage_and_cycle_views():
         assert machine.workspace_snapshot() == snapshot
         machine.state = state
         measured.sample(snapshot)
-        legacy.sample(parts())
+        legacy.sample(WorkspaceSnapshot(reference, parts()))
         assert measured.bits == legacy.bits
         if machine.halted:
             break

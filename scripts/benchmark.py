@@ -257,7 +257,7 @@ def _variant_bits(value: WorkspaceVariant, memo: dict[int, tuple[object, int]]) 
 
 
 class WrittenState:
-    """Peak bits of the snapshot components a run writes.
+    """Peak bits of the declared semantic components a run writes.
 
     A top-level component never changed is read-only (code, an untouched
     grid) and excluded; one written counts whole at its peak, so a
@@ -265,33 +265,28 @@ class WrittenState:
     per-component peaks can only over-count.
     """
 
-    def __init__(self, state: object) -> None:
-        """Start from a run's first snapshot."""
-        self._model = state.model if isinstance(state, WorkspaceSnapshot) else None
+    def __init__(self, state: WorkspaceSnapshot) -> None:
+        """Start from a run's first semantic capture."""
+        if not isinstance(state, WorkspaceSnapshot):
+            raise TypeError("workspace accounting requires a WorkspaceSnapshot")
+        self._model = state.model
         self._memo: dict[int, tuple[object, int]] = {}
-        self._start = self._parts(state)
+        self._start = state.parts
         self._peaks = [0] * len(self._start)
         self._written = [False] * len(self._start)
         self._last = list(self._start)
         #: Bits of each written part's last sample, for frozenset deltas.
         self._now: list[int | None] = [None] * len(self._start)
 
-    @staticmethod
-    def _parts(state: object) -> tuple[object, ...]:
-        if isinstance(state, WorkspaceSnapshot):
-            return state.parts
-        return state if isinstance(state, tuple) else (state,)
-
-    def sample(self, state: object) -> None:
-        """Record one snapshot."""
-        model = state.model if isinstance(state, WorkspaceSnapshot) else None
-        if model != self._model:
+    def sample(self, state: WorkspaceSnapshot) -> None:
+        """Record one capture under the original model."""
+        if not isinstance(state, WorkspaceSnapshot):
+            raise TypeError("workspace accounting requires a WorkspaceSnapshot")
+        if state.model != self._model:
             raise ValueError("workspace accounting model changed mid-run")
-        parts = self._parts(state)
+        parts = state.parts
         memo, peaks, written = self._memo, self._peaks, self._written
         start, previous, counts = self._start, self._last, self._now
-        if len(parts) != len(start):
-            raise ValueError("snapshot changed shape mid-run")
         for at, part in enumerate(parts):
             # Equal to the last sample, so equal bits: a rebuilt but
             # unchanged tape is compared in C, not walked in Python.

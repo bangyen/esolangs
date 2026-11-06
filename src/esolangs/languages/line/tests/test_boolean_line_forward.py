@@ -3,6 +3,7 @@
 from esolangs.languages.line.generator.forward import (
     streaming_canvas as forward_canvas,
 )
+from esolangs.languages.line.interpreter import _WORKSPACE_MODEL
 from esolangs.languages.line.interpreter.extract import extract
 from esolangs.languages.line.interpreter.simulate import (
     IO,
@@ -39,7 +40,11 @@ def _check(table, tmp_path, rows=None, scale=1):
         assert output == [int(table[row])]
         values = iter(inputs)
         state = (0, 0, 0, ())
-        written = WrittenState((0, 0, 0, (), 0))
+        written = WrittenState(
+            _WORKSPACE_MODEL.capture(
+                node=0, instruction=0, pointer=0, cells=frozenset(), input_cursor=0
+            )
+        )
         output = []
         reads = commands = 0
         while state[0] is not None:
@@ -59,12 +64,12 @@ def _check(table, tmp_path, rows=None, scale=1):
             node, at, pointer, tape = state
             assert all(0 <= cell < n and value in (0, 1) for cell, value in tape)
             written.sample(
-                (
-                    node,
-                    at,
-                    pointer,
-                    tuple((cell, value) for cell, value in tape if value),
-                    max(0, 2 * reads - 1),
+                _WORKSPACE_MODEL.capture(
+                    node=node,
+                    instruction=at,
+                    pointer=pointer,
+                    cells=frozenset((cell, value) for cell, value in tape if value),
+                    input_cursor=max(0, 2 * reads - 1),
                 )
             )
         assert reads == n
