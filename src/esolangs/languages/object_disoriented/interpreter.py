@@ -52,6 +52,7 @@ from typing import NamedTuple
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.persistent import CHUNK, Chunked, append, chunked, get, put
 
@@ -386,6 +387,12 @@ def _advance(
     ), out
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "object-disoriented-v1",
+    ("frames", "store", "extent", "input_bits", "output_bits", "input_cursor"),
+)
+
+
 class _Machine:
     """The shell around :func:`_advance`: it reads bytes and prints chars."""
 
@@ -424,6 +431,23 @@ class _Machine:
             codes.append(frames[0][0])
             frames = frames[1]
         return codes[::-1]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        frames = []
+        rest = self.state.frames
+        while rest is not None:
+            frame, rest = rest
+            code, pc, owner, param, base, pending, stack = frame
+            frames.append((code, pc, owner, param, base, pending, tuple(stack)))
+        return _WORKSPACE_MODEL.capture(
+            frames=tuple(frames),
+            store=tuple(obj for chunk in self.state.store for obj in chunk),
+            extent=self.state.size,
+            input_bits=self.state.in_bits,
+            output_bits=self.state.out_bits,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

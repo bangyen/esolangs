@@ -56,6 +56,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import with_hint
@@ -597,6 +598,20 @@ def _advance(
     )
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "thisthat-v1",
+    (
+        "pointers",
+        "cells",
+        "cursor",
+        "stopped",
+        "input_cursor",
+        "input_reads",
+        "set_ended",
+    ),
+)
+
+
 class _Machine:
     """thisthat shell: one immutable :data:`_Core`, rebound per cycle."""
 
@@ -680,6 +695,21 @@ class _Machine:
     @property
     def stack(self) -> list[object]:
         return [self.cursor, *sorted(self.cells.items())]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            pointers=tuple(
+                (p.position, p.previous, p.channel, p.value, p.paused)
+                for p in self.state[0]
+            ),
+            cells=frozenset(self.state[1].items()),
+            cursor=self.state[2],
+            stopped=self.state[3],
+            input_cursor=self.io.progress(),
+            input_reads=self._input_reads,
+            set_ended=self.state[4],
+        )
 
     def snapshot(self) -> _State:
         pointers, cells, cursor, halted, set_ended = self.state

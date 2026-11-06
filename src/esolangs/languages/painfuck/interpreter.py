@@ -79,6 +79,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import with_hint
@@ -597,6 +598,22 @@ def _advance(
     return step.finish()
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "painfuck-v1",
+    (
+        "tape",
+        "loops",
+        "pointer",
+        "instruction",
+        "repeat",
+        "origin",
+        "input_cursor",
+        "input_reads",
+        "draws",
+    ),
+)
+
+
 class _Machine:
     """Per-run Painfuck state: the tape, loop stack, pointer, and cursor.
 
@@ -639,6 +656,20 @@ class _Machine:
     def stack(self) -> list[object]:
         """The stack."""
         return list(self.loop)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            tape=self.tape,
+            loops=self.loop,
+            pointer=self.ptr,
+            instruction=self.ind,
+            repeat=self.rep,
+            origin=self.origin,
+            input_cursor=self.io.progress(),
+            input_reads=self._input_reads,
+            draws=self._random_draws,
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

@@ -54,6 +54,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 _FUNCTIONS = frozenset("+-*/%:~!$(<)H")
@@ -234,6 +235,12 @@ def _advance(state: _State, value: int | None = None) -> tuple[_State, str | Non
     return (rest, (top, backward), active, swapped, False), None
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "fackward-v1",
+    ("forward", "backward", "active", "swapped", "stopped", "input_cursor"),
+)
+
+
 class _Machine:
     """The run state: both stacks and the quiet-swap bookkeeping."""
 
@@ -251,6 +258,30 @@ class _Machine:
     def ip(self) -> tuple[int, int]:
         """The forward and backward stack depths."""
         return (_depth(self.state[0]), _depth(self.state[1]))
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+
+        def value(item: _Value) -> object:
+            if isinstance(item, Block):
+                return tuple(reversed(stack(item.rest)))
+            return item
+
+        def stack(rest: _Stack) -> tuple[object, ...]:
+            out = []
+            while rest is not None:
+                item, rest = rest
+                out.append(value(item))
+            return tuple(out)
+
+        return _WORKSPACE_MODEL.capture(
+            forward=stack(self.state[0]),
+            backward=stack(self.state[1]),
+            active=self.state[2],
+            swapped=self.state[3],
+            stopped=self.state[4],
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.

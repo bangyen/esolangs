@@ -47,6 +47,7 @@ from typing import NamedTuple
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import syntax_error
@@ -336,6 +337,9 @@ def _starts(text: str, lhs: str, low: int, high: int) -> list[int]:
     return out
 
 
+_WORKSPACE_MODEL = WorkspaceModel("thue-v1", ("text", "input_cursor"))
+
+
 class _Machine:
     """The run state: the rewritten string, against fixed rules."""
 
@@ -368,6 +372,13 @@ class _Machine:
         """
         found = self._text.first()
         return found if found is not None else ()
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            text=self.state,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

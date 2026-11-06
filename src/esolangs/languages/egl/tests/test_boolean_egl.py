@@ -105,12 +105,12 @@ def _check_folded() -> None:
             for row in (0, (1 << n) - 1):
                 io = ScriptedIO(f"{row:0{n}b}7")
                 machine = _Machine(text, io)
-                written = WrittenState(machine.snapshot())
+                written = WrittenState(machine.workspace_snapshot())
                 steps = 0
                 while not machine.halted:
                     assert not io.getvalue()
                     machine.step()
-                    written.sample(machine.snapshot())
+                    written.sample(machine.workspace_snapshot())
                     steps += 1
                 assert io.getvalue() == table[row]
                 assert io.reads == n

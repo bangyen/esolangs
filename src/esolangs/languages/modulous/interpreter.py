@@ -54,6 +54,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import keyword_hint, syntax_error, with_hint
@@ -182,6 +183,20 @@ def _pre_read(
     return (ind, mod, command, None)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "modulous-v1",
+    (
+        "instruction",
+        "stack",
+        "variables",
+        "input_cursor",
+        "stopped",
+        "input_reads",
+        "draws",
+    ),
+)
+
+
 class _Machine:
     """Stack, variables, and instruction pointer for a Modulous run."""
 
@@ -221,6 +236,18 @@ class _Machine:
     def stack(self) -> list[object]:
         """The data stack, bottom first."""
         return list(self.stk)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.ind,
+            stack=self.stk,
+            variables=frozenset(self.var.items()),
+            input_cursor=self.io.progress(),
+            stopped=self._halted,
+            input_reads=self._input_reads,
+            draws=self._draws,
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

@@ -61,6 +61,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import trunc_div, trunc_mod
 from esolangs.runtime.randomness import Randomness, draw
@@ -259,6 +260,12 @@ def _advance(
     ), effect
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "befunge-v1",
+    ("x", "y", "dx", "dy", "grid", "stack", "string", "stopped", "input_cursor"),
+)
+
+
 class _Machine:
     """Protocol shell holding one immutable Befunge state value."""
 
@@ -304,6 +311,25 @@ class _Machine:
     @property
     def stack(self) -> list[object]:
         return list(_values(self.state.stack))
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        stack = []
+        rest = self.state.stack
+        while rest is not None:
+            value, rest = rest
+            stack.append(value)
+        return _WORKSPACE_MODEL.capture(
+            x=self.state.cursor[0],
+            y=self.state.cursor[1],
+            dx=self.state.cursor[2],
+            dy=self.state.cursor[3],
+            grid=tuple(tuple(row) for row in self.state.grid),
+            stack=tuple(reversed(stack)),
+            string=self.state.string,
+            stopped=self.state.done,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         cursor, grid, stack, string, done = self.state

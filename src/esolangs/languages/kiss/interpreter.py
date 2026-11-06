@@ -41,6 +41,7 @@ from esolangs.exceptions import ArgumentError, InputExhaustedError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.combinators import State as _State
 from esolangs.runtime.combinators import count, parse, stack, unwind
 from esolangs.runtime.io import IO
@@ -76,6 +77,11 @@ def _advance(state: _State, bit: int | None) -> tuple[_State | int, int | None]:
     return unwind(args[0] if bit == 0 else args[1][0], None), None
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "kiss-v1", ("expression", "input_ended", "input_bits", "exit_code", "input_cursor")
+)
+
+
 class _Machine:
     """The expression, the input stream's state and the exit code."""
 
@@ -105,6 +111,21 @@ class _Machine:
     def stack(self) -> list[object]:
         """The head, then its arguments, first argument first."""
         return stack(self.state)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        args = []
+        rest = self.state[1]
+        while rest is not None:
+            term, rest = rest
+            args.append(term)
+        return _WORKSPACE_MODEL.capture(
+            expression=(self.state[0], tuple(args)),
+            input_ended=self.ended,
+            input_bits=self.bits,
+            exit_code=self.exit_code,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

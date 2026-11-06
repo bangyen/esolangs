@@ -242,11 +242,11 @@ def _check_constants() -> None:
                     )
                     io = ReadFirstIO(stdin + "\n7\n", expected=n)
                     machine = _Machine(program.splitlines(), io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                         assert steps < 1000
                     assert io.getvalue().strip() == bit
@@ -299,13 +299,13 @@ def _check_one_row_nibbles() -> None:
         for row in range(8):
             io = ScriptedIO(" ".join(f"{row:03b}") + " 7")
             machine = _Machine(program.splitlines(), io)
-            written = WrittenState(machine.snapshot())
+            written = WrittenState(machine.workspace_snapshot())
             steps = 0
             while not machine.halted:
                 if io.getvalue():
                     assert io.reads == 3
                 machine.step()
-                written.sample(machine.snapshot())
+                written.sample(machine.workspace_snapshot())
                 steps += 1
             assert io.getvalue().strip() == table[row]
             assert io.reads == 3

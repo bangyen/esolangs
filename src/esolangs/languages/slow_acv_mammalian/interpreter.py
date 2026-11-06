@@ -39,6 +39,7 @@ from itertools import chain
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
@@ -240,6 +241,12 @@ def _advance(
     return (arrays, ptr, acc, ind + 1, halted)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "slow-acv-mammalian-v1",
+    ("instruction", "arrays", "pointer", "accumulator", "input_cursor", "stopped"),
+)
+
+
 class _Machine:
     """One SLOW ACV MAMMALIAN run: the 23 arrays, pointer, acc, and cursor."""
 
@@ -276,6 +283,17 @@ class _Machine:
     def stack(self) -> list[object]:
         """The stack."""
         return [row for arr in self.lst for row in arr]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.ind,
+            arrays=tuple(tuple(array) for array in self.lst),
+            pointer=self.ptr,
+            accumulator=self.acc,
+            input_cursor=self.io.progress(),
+            stopped=self._halted_by_command,
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

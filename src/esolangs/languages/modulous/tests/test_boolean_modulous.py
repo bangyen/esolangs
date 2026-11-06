@@ -94,11 +94,11 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
                     for bit in "01":
                         io = ReadFirstIO(bit + "\nQ", expected=n)
                         machine = _Machine(program, io)
-                        written = WrittenState(machine.snapshot())
+                        written = WrittenState(machine.workspace_snapshot())
                         steps = 0
                         while not machine.halted and steps < 8:
                             machine.step()
-                            written.sample(machine.snapshot())
+                            written.sample(machine.workspace_snapshot())
                             steps += 1
                         assert machine.halted
                         assert io.getvalue() == table[int(bit)]
@@ -149,14 +149,14 @@ def _check_pair_resources() -> None:
             row = (1 << n) - 1
             io = ScriptedIO("\n".join(f"{row:0{n}b}") + "\nQ")
             machine = _Machine(program, io)
-            written = WrittenState(machine.snapshot())
+            written = WrittenState(machine.workspace_snapshot())
             steps = 0
             bound = execution(n, program)
             while not machine.halted:
                 if machine.tokens[machine.ind].startswith("PRT"):
                     assert io.reads == n
                 machine.step()
-                written.sample(machine.snapshot())
+                written.sample(machine.workspace_snapshot())
                 steps += 1
                 assert steps <= bound
             assert io.getvalue() == table[row]

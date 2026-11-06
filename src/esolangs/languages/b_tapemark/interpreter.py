@@ -37,10 +37,12 @@ Decisions:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -262,6 +264,15 @@ def _advance(
     )
 
 
+# The n=8 probe spent 99% rewalking unchanged grids; retain only eight views.
+@lru_cache(maxsize=8)
+def _workspace_grid(grid: _Grid) -> frozenset[tuple[_Point, str]]:
+    return frozenset(grid._cells.items())  # noqa: SLF001 - owned logical marks
+
+
+_WORKSPACE_MODEL = WorkspaceModel("b-tapemark-v1", ("configuration", "input_cursor"))
+
+
 class _Machine:
     """B-tapemark state exposed through the VM protocol."""
 
@@ -282,6 +293,15 @@ class _Machine:
     @property
     def memory(self) -> list[object]:
         return [self.state.grids, self.state.positions, self.state.program]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        s = self.state
+        grids = tuple(_workspace_grid(grid) for grid in s.grids)
+        return _WORKSPACE_MODEL.capture(
+            configuration=(s.program, s.positions, s.direction, grids, s.halted),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         return (self.state, self.io.progress())

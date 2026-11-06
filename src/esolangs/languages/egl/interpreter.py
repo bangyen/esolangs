@@ -37,6 +37,7 @@ import re
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import match_brackets
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer, parse_integer
@@ -120,6 +121,12 @@ def _advance(
     return (pc + 1, row, col, tuple(cells), loops), output
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "egl-v1",
+    ("instruction", "row", "column", "cells", "loops", "input_cursor", "input_reads"),
+)
+
+
 class _Machine:
     """EGL grid and instruction pointer exposed through the VM protocol."""
 
@@ -166,6 +173,18 @@ class _Machine:
     @property
     def memory(self) -> list[int]:
         return list(self.state[3])
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.state[0],
+            row=self.state[1],
+            column=self.state[2],
+            cells=self.state[3],
+            loops=self.state[4],
+            input_cursor=self.io.progress(),
+            input_reads=self._input_reads,
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         return (*self.state, self.io.progress(), self._input_reads)

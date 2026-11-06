@@ -93,7 +93,7 @@ acceptance audit after the active separation work lands. Storage policy needs
 its priced comparison and explicit decision. These remain open even where an
 implementation pilot already passed.
 
-Accounting now has seventy-five explicit or inherited semantic adapters; 42 language
+Accounting now has 95 explicit or inherited semantic adapters; 22 language
 rows still use snapshot accounting. Declarations do not close lifecycle,
 storage-policy or catalog-wide acceptance requirements.
 
@@ -156,3 +156,6 @@ line/stack debug fields. Preparation draws nothing; captures, call frames and
 Qoibl declares cached parser preparation, variable debug fields and ordinary
 completion. Statement lists and variables remain private; malformed-source
 diagnostics and output flushed before reads/faults remain unchanged.
+The register/rewriting batch declares twenty models, including typed call frames,
+self-modifying instructions and nested block values. Grid hash caches and
+read-only dialect names are excluded; the corresponding bit bound is tightened.

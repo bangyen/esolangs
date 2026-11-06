@@ -49,6 +49,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -283,6 +284,12 @@ def _advance(
     return (lines, spans, ind + 1, done), output
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "inject-v1",
+    ("instruction", "stopped", "lines", "input_cursor", "input_reads", "spans"),
+)
+
+
 class _Machine:
     """The run state: the program's lines, its label spans, and the pointer."""
 
@@ -316,6 +323,17 @@ class _Machine:
     def stack(self) -> list[object]:
         """The labels enclosing the cursor, innermost last."""
         return list(reversed(_enclosing(self.spans, self.ind)))
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.ind,
+            stopped=self.done,
+            lines=tuple(self.lines),
+            input_cursor=self.io.progress(),
+            input_reads=self._input_reads,
+            spans=frozenset(self.spans.items()),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

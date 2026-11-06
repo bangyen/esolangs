@@ -31,6 +31,7 @@ from typing import NamedTuple
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -78,6 +79,11 @@ def _advance(state: _State, fractions: tuple[tuple[int, int], ...]) -> _State:
     return _State(index + direction, value, direction)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "refractran-v1", ("instruction", "integer", "direction", "printed", "input_cursor")
+)
+
+
 class _Machine:
     """The fraction cursor, direction and exact integer."""
 
@@ -102,6 +108,16 @@ class _Machine:
     def memory(self) -> list[int]:
         """The exact integer and search direction."""
         return [self.state.value, self.state.direction]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.state.cursor,
+            integer=self.state.value,
+            direction=self.state.direction,
+            printed=self.printed,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return all mutable execution state and the input cursor."""

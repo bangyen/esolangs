@@ -1,4 +1,4 @@
-"""Snapshot-bit bounds for the default (``swap_marker="new"``) dialect."""
+"""Semantic workspace bounds for the default (``swap_marker="new"``) dialect."""
 
 
 def workspace(n: int, program: str) -> int:
@@ -7,8 +7,7 @@ def workspace(n: int, program: str) -> int:
     Each ``*`` or ``-`` runs at most once and writes one mark; a pointer
     moves a cell a step from inside the box. The area fold also stays below
     15T+33n+11 commands: c>=5 and r>=3 give at most 10T+44n+3sqrt(T)+6
-    from n=5; n<=4 is checked directly. The state also carries its
-    ``swap_marker`` string, 8 bits a character.
+    from n=5; n<=4 is checked directly. Read-only dialect names are excluded.
     """
     lines = program.split("\n")
     width, height = max(map(len, lines)), len(lines)
@@ -20,11 +19,4 @@ def workspace(n: int, program: str) -> int:
                 writes += char in "*-"
     reach = max(width, height) + (15 << n) + 33 * n + 11
     coord = reach.bit_length() + 1
-    return (
-        bits
-        + writes * (8 + 2 * coord)
-        + 4 * coord
-        + 5
-        + max(1, n.bit_length())
-        + 8 * len("new")
-    )
+    return bits + writes * (8 + 2 * coord) + 4 * coord + 5 + max(1, n.bit_length())

@@ -146,3 +146,27 @@ def test_the_data_tape_can_run_a_dash_command() -> None:
         machine.step()
     assert machine.state.program == 1
     assert machine.ip == (1, 0)
+
+
+def test_workspace_ignores_grid_hash_caches_and_readonly_dialect(monkeypatch):
+    from esolangs.languages.b_tapemark.interpreter import _workspace_grid
+    from scripts.benchmark import WrittenState
+
+    machine = _Machine(">*A+!", ScriptedIO())
+    alternate = _Machine(">*A+!", ScriptedIO(), swap_marker="old")
+    assert machine.workspace_snapshot() == alternate.workspace_snapshot()
+    written = WrittenState(machine.workspace_snapshot())
+    monkeypatch.setattr(_Machine, "snapshot", lambda _self: ())
+    while not machine.halted:
+        saved = machine.workspace_snapshot()
+        retained = {saved}
+        _workspace_grid.cache_clear()
+        for grid in machine.state.grids:
+            grid._digest = None
+        assert machine.workspace_snapshot() == saved
+        machine.step()
+        written.sample(machine.workspace_snapshot())
+        assert saved in retained
+    assert machine.io.getvalue() == "A"
+    assert written.bits > 0
+    assert _workspace_grid.cache_info().maxsize == 8

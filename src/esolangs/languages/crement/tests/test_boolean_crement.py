@@ -126,9 +126,9 @@ class TestCrementTree:
                         ]
                         machine = _Machine(program)
                         before = machine.snapshot()
-                        written = WrittenState(before)
+                        written = WrittenState(machine.workspace_snapshot())
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         assert machine.halted == (bit == "0")
                         assert (machine.snapshot() == before) == (bit == "1")
                         assert written.bits == workspace(n, template)

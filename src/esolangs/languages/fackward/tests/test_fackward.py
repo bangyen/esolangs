@@ -89,3 +89,14 @@ def test_a_count_past_sys_maxsize_is_a_limit() -> None:
 
     with pytest.raises(InterpreterLimitError, match="index-sized"):
         execute("Fackward", "$ 99999999999999999999 1", timeout=2)
+
+
+def test_workspace_keeps_nested_block_contents_without_link_cells():
+    machine = _Machine("[1 [2 +] 3] H", ScriptedIO())
+    saved = machine.workspace_snapshot()
+    values = dict(zip(saved.model.components, saved.parts, strict=True))
+    assert values["forward"] == ((1, (2, "+"), 3), "H")
+    retained = {saved}
+    machine.step()
+    assert saved in retained
+    assert machine.workspace_snapshot() != saved

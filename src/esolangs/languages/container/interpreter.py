@@ -22,6 +22,7 @@ from __future__ import annotations
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -113,6 +114,11 @@ class Con:
         return max(res, 0)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "container-v1", ("variables", "exit_code", "input_cursor", "input_reads")
+)
+
+
 class _Machine:
     """Per-run Container state: the containers, their values, and EXIT."""
 
@@ -186,6 +192,15 @@ class _Machine:
         """The addressable cells."""
         # The values are kept in name order, so this is already sorted.
         return [value for _name, value in self.state[0]]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            variables=frozenset(self.state[0]),
+            exit_code=self.state[1],
+            input_cursor=self.io.progress(),
+            input_reads=self.state[3],
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

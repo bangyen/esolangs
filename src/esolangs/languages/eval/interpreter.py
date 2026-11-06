@@ -52,6 +52,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 #: A value on a stack: Eval's stacks hold both.
@@ -170,6 +171,11 @@ def _iterate(
     return core, ind + 1, output, call
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "eval-v1", ("pointer", "stacks", "frames", "input_cursor")
+)
+
+
 class _Machine:
     """Two stacks with an index choosing the active one, and a frame stack."""
 
@@ -230,6 +236,15 @@ class _Machine:
         ``Sequence[object]`` accepts as it stands.
         """
         return list(self.stk[self.ptr])
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            pointer=self.ptr,
+            stacks=self.stk,
+            frames=tuple((body, pc) for body, pc in self.frames),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.

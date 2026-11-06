@@ -34,6 +34,7 @@ from esolangs.exceptions import HaltError, ProgramError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -228,6 +229,9 @@ def _advance(state: _State) -> _State:
     return _State(state.ip + 1, program)
 
 
+_WORKSPACE_MODEL = WorkspaceModel("crement-v1", ("configuration", "input_cursor"))
+
+
 class _Machine:
     """Mutable VM shell around Crement's pure transition."""
 
@@ -249,6 +253,19 @@ class _Machine:
     def memory(self) -> list[object]:
         """Return the self-modifying instruction store."""
         return list(self.state.program)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            configuration=(
+                self.state.ip,
+                tuple(
+                    (i.opcode, i.polarity, i.address, i.data)
+                    for i in self.state.program
+                ),
+            ),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> _State:
         """Return the complete immutable execution state."""

@@ -319,6 +319,10 @@ def test_null_retains_parameter_and_local_types() -> None:
     assert machines[0].ind == machines[1].ind == 5
     assert machines[0].state[0].scope == machines[1].state[0].scope
     assert machines[0].snapshot() != machines[1].snapshot()
+    saved = [machine.workspace_snapshot() for machine in machines]
+    assert saved[0] != saved[1]
+    retained = set(saved)
     for machine in machines:
         machine.step()
         assert machine.state[0].null_types == ()
+    assert all(state in retained for state in saved)

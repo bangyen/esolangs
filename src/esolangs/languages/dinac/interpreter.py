@@ -76,6 +76,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -785,6 +786,9 @@ def _wubyte_of(line: str) -> int:
     return value if value <= 255 else 0
 
 
+_WORKSPACE_MODEL = WorkspaceModel("dinac-v1", ("frames", "input_cursor"))
+
+
 class _Machine:
     """A DINAC run: the call stack as an immutable linked pair."""
 
@@ -829,6 +833,37 @@ class _Machine:
             names.append(self.prog.fns[frame[0].fn].name or "<top>")
             frame = frame[1]
         return names[::-1]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+
+        def value(item: object) -> object:
+            if isinstance(item, _Value):
+                return (item.kind, item.code)
+            if isinstance(item, tuple):
+                return tuple(value(part) for part in item)
+            if item is None or isinstance(item, (int, str)):
+                return item
+            raise TypeError("unsupported DINAC workspace value")
+
+        frames = []
+        rest = self.state
+        while rest is not None:
+            f, rest = rest
+            frames.append(
+                (
+                    f.fn,
+                    tuple(value(v) for v in f.scope),
+                    tuple((body, pc) for body, pc in f.blocks),
+                    value(f.pending),
+                    value(f.returned),
+                    tuple(f.null_types),
+                )
+            )
+        return _WORKSPACE_MODEL.capture(
+            frames=tuple(frames),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
