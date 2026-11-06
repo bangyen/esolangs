@@ -130,7 +130,7 @@ def _owned_template_boundaries(
 ) -> None:
     """Keep migrated execution cases off legacy source/template adaptation."""
     if not request.node.nodeid.startswith(
-        ("src/esolangs/languages/", "tests/generators/")
+        ("src/esolangs/languages/", "tests/generators/", "tests/runtime/")
     ):
         return
     import esolangs
@@ -150,6 +150,19 @@ def _owned_template_boundaries(
         for name in names:
             if hasattr(module, name):
                 monkeypatch.setattr(module, name, forbidden)
+
+
+@pytest.fixture
+def native_png(tmp_path: Path):
+    """Encode a raster record through the native persistence boundary."""
+    import esolangs
+
+    def encode(program):
+        path = tmp_path / "source.png"
+        esolangs.save_program(program, path)
+        return path.read_bytes()
+
+    return encode
 
 
 @pytest.fixture

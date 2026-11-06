@@ -9,7 +9,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import compat
+from tests.support.evaluation import _evaluate
 from tests.support.generator_support import evaluate_generated, probe_table
 from tests.support.pick import first, languages
 from tests.support.reference import REFERENCE
@@ -63,32 +63,40 @@ class TestATemplateKnowsWhoseItIs:
 
     def test_a_foreign_template_is_refused(self) -> None:
         """A mismatched setter silently answered 0."""
-        template = compat.generate(TEMPLATED, "0110")
-        with pytest.raises(esolangs.TemplateError, match="came from generate"):
-            compat.instantiate(OTHER_TEMPLATED, template, [0, 1])
+        template = esolangs.generate(TEMPLATED, "0110")
+        with pytest.raises(esolangs.TemplateError, match="belongs to"):
+            esolangs.instantiate(OTHER_TEMPLATED, template, [0, 1])
 
     def test_the_name_is_resolved_before_it_is_compared(self) -> None:
         """A case variant is the same language, not a mismatch."""
-        template = compat.generate(TEMPLATED.lower(), "0110")
-        assert compat.instantiate(TEMPLATED.upper(), template, [0, 1])
+        template = esolangs.generate(TEMPLATED.lower(), "0110")
+        assert esolangs.instantiate(TEMPLATED.upper(), template, [0, 1])
 
 
 class TestATemplateCarriesItsSetters:
     def test_unequal_widths_are_refused(self) -> None:
-        from esolangs.tagged import _Template
-
         with pytest.raises(ValueError, match="differ in width"):
-            _Template("$", TEMPLATED, setters=[("x", "xx")])
+            esolangs.TemplateArtifact(
+                "$", TEMPLATED, esolangs.TemplateBindings(setters=[("x", "xx")])
+            )
 
     def test_runs_that_do_not_fit_the_setters_are_refused(self) -> None:
-        from esolangs.tagged import _Template
-
         with pytest.raises(ValueError, match="shorter than its setter width"):
-            _Template("a$b$$", TEMPLATED, setters=[("aa", "bb"), ("c", "d")])
+            esolangs.TemplateArtifact(
+                "a$b$$",
+                TEMPLATED,
+                esolangs.TemplateBindings(setters=[("aa", "bb"), ("c", "d")]),
+            )
         with pytest.raises(ValueError, match="belongs to no input"):
-            _Template("a$$b$", TEMPLATED, setters=[("aa", "bb")])
+            esolangs.TemplateArtifact(
+                "a$$b$", TEMPLATED, esolangs.TemplateBindings(setters=[("aa", "bb")])
+            )
         with pytest.raises(ValueError, match="1 run"):
-            _Template("a$$b", TEMPLATED, setters=[("aa", "bb"), ("c", "d")])
+            esolangs.TemplateArtifact(
+                "a$$b",
+                TEMPLATED,
+                esolangs.TemplateBindings(setters=[("aa", "bb"), ("c", "d")]),
+            )
 
     def test_a_fill_with_the_wrong_number_of_bits_is_refused(self) -> None:
         from esolangs.generation.helpers import fill_runs
@@ -116,71 +124,70 @@ class TestATemplateCarriesItsSetters:
         assert fill_runs("a$$b", "$", pairs, [0, 1, 0]) == "ayyb"
 
     def test_adjacent_inputs_need_no_separator(self) -> None:
-        from esolangs.tagged import _Template
+        template = esolangs.TemplateArtifact(
+            "a$$$b",
+            TEMPLATED,
+            esolangs.TemplateBindings(setters=[("xx", "yy"), ("p", "q")]),
+        )
+        assert template.fill([1, 0]).source == "ayypb"
+        assert template.fill([0, 1]).source == "axxqb"
 
-        template = _Template("a$$$b", TEMPLATED, setters=[("xx", "yy"), ("p", "q")])
-        assert template.fill([1, 0]) == "ayypb"
-        assert template.fill([0, 1]) == "axxqb"
-
-    def test_a_plain_string_is_filled_by_recovering_its_setters(self) -> None:
+    def test_portable_templates_retain_their_setters(self) -> None:
         for name in languages(parameterized=True):
-            template = compat.generate(name, "0110")
-            assert compat.instantiate(name, str(template), [1, 0]) == (
-                compat.instantiate(name, template, [1, 0])
+            template = esolangs.generate(name, "0011")
+            restored = esolangs.load_program(
+                name, esolangs.dump_program(name, template)
+            )
+            assert esolangs.instantiate(name, restored, [1, 0]) == (
+                esolangs.instantiate(name, template, [1, 0])
             ), name
-        # Text no input count makes a template is refused by name, by every
-        # language that recovers its setters from the text.
-        refused = []
-        for name in languages(parameterized=True):
-            with pytest.raises(esolangs.TemplateError) as exc:
-                compat.instantiate(name, "abc$$$", [1, 0])
-            if str(exc.value).startswith(f"not a {name} templ"):
-                refused.append(name)
-        assert refused
+            assert _evaluate(name, restored, inputs=2) == "0011"
+            with pytest.raises(esolangs.TemplateError, match="is not the template"):
+                esolangs.instantiate(name, restored, [1, 0], truth_table="0001")
 
     def test_the_setters_survive_a_width_and_a_pickle(self) -> None:
         import pickle
 
-        template = compat.generate(TEMPLATED, "0110", width=20)
-        assert template.setters == compat.generate(TEMPLATED, "0110").setters
+        template = esolangs.generate(TEMPLATED, "0110", width=20)
+        assert template.bindings == esolangs.generate(TEMPLATED, "0110").bindings
         copied = pickle.loads(pickle.dumps(template))
-        assert copied.setters == template.setters
-        assert copied.char == template.char
+        assert copied.bindings == template.bindings
+        assert copied.source == template.source
 
 
 class TestAProgramKnowsWhoseItIs:
     def test_a_foreign_program_is_refused_by_run(self) -> None:
-        program = compat.generate(REFERENCE, "0110")
+        program = esolangs.generate(REFERENCE, "0110")
         with pytest.raises(esolangs.ProgramError, match="generated for brainfuck"):
             esolangs.run(TEMPLATED, program)
 
     def test_a_foreign_program_is_refused_by_make_vm(self) -> None:
-        program = compat.generate(REFERENCE, "0110")
+        program = esolangs.generate(REFERENCE, "0110")
         with pytest.raises(esolangs.ProgramError, match="generated for brainfuck"):
             debugger_api.make_vm(TEMPLATED, program, stdin="")
 
     def test_a_filled_template_carries_its_language(self) -> None:
-        template = compat.generate(TEMPLATED, "0110")
-        program = compat.instantiate(TEMPLATED, template, [0, 1])
+        template = esolangs.generate(TEMPLATED, "0110")
+        program = esolangs.instantiate(TEMPLATED, template, [0, 1])
         assert getattr(program, "language", None) == TEMPLATED
         with pytest.raises(esolangs.ProgramError, match=f"generated for {TEMPLATED}"):
             esolangs.run(REFERENCE, program)
 
     def test_the_name_is_resolved_before_it_is_compared(self) -> None:
-        program = compat.generate("BRAINFUCK", "0110")
+        program = esolangs.generate("BRAINFUCK", "0110")
         assert esolangs.run(
             REFERENCE, program, stdin=esolangs.encode_inputs(REFERENCE, [0, 1])
         ).output
 
     def test_a_plain_string_is_accepted_unchecked(self) -> None:
-        program = str(compat.generate(REFERENCE, "0110"))
+        program = esolangs.generate(REFERENCE, "0110").source
         assert getattr(program, "language", None) is None
         assert esolangs.run(
             REFERENCE, program, stdin=esolangs.encode_inputs(REFERENCE, [0, 1])
         ).output
 
     def test_a_width_keeps_the_tag(self) -> None:
-        program = compat.generate(REFERENCE, "0110", width=20)
+        program = esolangs.generate(REFERENCE, "0110", width=20)
         assert getattr(program, "language", None) == REFERENCE
 
 
@@ -217,7 +224,7 @@ class TestWhatHappensWhenAProgramIsUnderfed:
     ) -> tuple[str, str | None]:
         """Return ``(outcome, answer)`` for ``name`` fed one bit too few."""
         table = probe_table(name, probe[0])
-        program = compat.generate(name, table)
+        program = esolangs.generate(name, table)
         n = len(table).bit_length() - 1
         short = esolangs.encode_inputs(name, list(probe[1][: n - 1])) if n > 1 else ""
         try:
@@ -271,12 +278,18 @@ class TestWhatHappensWhenAProgramIsUnderfed:
 
 
 class TestInstantiateCanCheckProvenance:
-    """A tag cannot survive a file, but a table can be compared against."""
+    """Explicit bindings still permit an optional truth-table check."""
 
     def test_a_hand_written_template_is_refused_given_the_table(self) -> None:
         """`"hello $$"` filled to `'hello [<'` and ran to nothing."""
+        original = esolangs.generate(TEMPLATED, "01")
+        bindings = original.bindings
+        source = "hello " + bindings.char * sum(
+            len(zero) for zero, _ in bindings.setters
+        )
+        handwritten = esolangs.TemplateArtifact(source, TEMPLATED, bindings)
         with pytest.raises(esolangs.TemplateError, match="is not the template"):
-            compat.instantiate(TEMPLATED, "hello $$", [1], truth_table="01")
+            esolangs.instantiate(TEMPLATED, handwritten, [1], truth_table="01")
 
 
 class TestSnapshotSaysItIsOpaque:
@@ -328,7 +341,7 @@ class TestTheDebuggerMirrorsSnapshot:
 
     def test_it_matches_the_wrapped_machine(self) -> None:
         """And is the thing a caller most wants: a repeated state."""
-        program = compat.generate(REFERENCE, "0110")
+        program = esolangs.generate(REFERENCE, "0110")
         stdin = esolangs.encode_inputs(REFERENCE, [0, 1], truth_table="0110")
         debugger = debugger_api.make_debugger(REFERENCE, program, stdin=stdin)
         assert debugger.snapshot() == debugger.vm.snapshot()
@@ -364,9 +377,9 @@ class TestEvaluateTakesAWidth:
 
     def test_the_width_actually_reaches_the_program(self) -> None:
         """Otherwise this would pass with the argument thrown away."""
-        wide = compat.generate(REFERENCE, "10010110")
-        narrow = compat.generate(REFERENCE, "10010110", width=30)
-        assert "\n" not in wide  # the unwrapped default is one line
-        assert "\n" in narrow
-        assert max(len(line) for line in narrow.splitlines()) <= 30
+        wide = esolangs.generate(REFERENCE, "10010110")
+        narrow = esolangs.generate(REFERENCE, "10010110", width=30)
+        assert "\n" not in wide.source  # the unwrapped default is one line
+        assert "\n" in narrow.source
+        assert max(len(line) for line in narrow.source.splitlines()) <= 30
         assert evaluate_generated(REFERENCE, "10010110", width=30) == "10010110"

@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.results import ExecutionResult
 from esolangs.runtime._isolated import _decode, _request_wire, _worker
 from esolangs.runtime._lifecycle import HALTED_REPORT
@@ -348,8 +347,14 @@ def test_worker_executes_compact_raster_pixels(monkeypatch, capsys) -> None:
     import sys
 
     language = one(source_kind="raster", boolean_generator=True)[0]
-    image = compat.generate(language, "0110")
-    payload = _request_wire(language, image, esolangs.encode_inputs(language, [0, 1]))
+    image = esolangs.generate(language, "0110")
+    payload = _request_wire(
+        language,
+        image.source,
+        esolangs.encode_inputs(language, [0, 1]),
+        settings=image.settings,
+        scale=image.scale,
+    )
     monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
     _worker()
@@ -400,10 +405,12 @@ def test_worker_returns_a_termination_verdict(monkeypatch, capsys) -> None:
 
     monkeypatch.setattr(vm, "ScriptedIO", vm.ScriptedIO)
     monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
+    program = esolangs.generate(language, "00")
     request = _request_wire(
         language,
-        compat.generate(language, "00"),
+        program.source,
         esolangs.encode_inputs(language, [0]),
+        settings=program.settings,
         max_output=100,
         termination=True,
     )

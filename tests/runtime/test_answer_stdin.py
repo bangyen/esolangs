@@ -1,7 +1,6 @@
 """Native stdin consumption through the public API."""
 
 import esolangs
-from esolangs import compat
 from esolangs.registry import LANGUAGES
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
@@ -10,7 +9,7 @@ from tests.support.reference import REFERENCE
 class TestNativeInputConsumption:
     def test_surplus_input_preserves_the_answer(self) -> None:
         """Six lines into a three-input program answered the first three."""
-        program = compat.generate(REFERENCE, "00010111")
+        program = esolangs.generate(REFERENCE, "00010111")
         answer = esolangs.run(REFERENCE, program, stdin="110011", timeout=10).output
         assert answer == "1"
 
@@ -29,7 +28,7 @@ class TestNativeInputConsumption:
         for name in [n for n in carry_on if not LANGUAGES[n].runtime.underfed_raises][
             :3
         ]:
-            program = compat.generate(name, "10010110")
+            program = esolangs.generate(name, "10010110")
             short = esolangs.encode_inputs(name, [1, 0])
             output = esolangs.run(name, program, stdin=short, timeout=10).output
             assert esolangs.read_answer(name, output) in {"0", "1"}

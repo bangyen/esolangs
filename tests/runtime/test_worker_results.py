@@ -5,7 +5,6 @@ import json
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.registry import LANGUAGES
 from esolangs.results import ExecutionResult
 from esolangs.runtime._isolated import _decode
@@ -103,9 +102,11 @@ def test_normal_worker_cannot_omit_result_metadata(monkeypatch):
     "language", [name for name, lang in LANGUAGES.items() if lang.runtime.random]
 )
 def test_seeded_worker_result_matches_native(language):
-    template = compat.generate(language, "01")
+    template = esolangs.generate(language, "01")
     parameterized = LANGUAGES[language].parameterized
-    source = compat.instantiate(language, template, [1]) if parameterized else template
+    source = (
+        esolangs.instantiate(language, template, [1]) if parameterized else template
+    )
     stdin = "" if parameterized else esolangs.encode_inputs(language, [1])
     native = esolangs._run_result(language, source, stdin=stdin, seed=7)
     worker = esolangs._run_result(

@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._lifecycle import Completion, CompletionReport
 from tests.support.generator_support import probe_table
@@ -28,9 +27,9 @@ def test_native_driver_reports_completion(language):
         )
         n = len(table).bit_length() - 1
         bits = [int(char) for char in f"{row:0{n}b}"]
-        template = compat.generate(language, table)
+        template = esolangs.generate(language, table)
         source = (
-            compat.instantiate(language, template, bits)
+            esolangs.instantiate(language, template, bits)
             if lang.parameterized
             else template
         )

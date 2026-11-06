@@ -5,7 +5,6 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 import esolangs
-from esolangs import compat
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
 from tests.support.samples import SAMPLES
@@ -74,7 +73,7 @@ def test_invalid_bounds_are_refused(options: dict[str, object]) -> None:
     "language", languages(source_kind="raster", boolean_generator=True)
 )
 def test_raster_execution_obeys_the_step_bound(language: str) -> None:
-    source = compat.generate(language, "01")
+    source = esolangs.generate(language, "01")
     stdin = esolangs.encode_inputs(language, [1])
     out = esolangs.run(language, source, stdin=stdin, max_steps=1000).output
     assert esolangs.read_answer(language, out) == "1"

@@ -7,7 +7,6 @@ import pathlib
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.cli.hints import _template_hint
 from esolangs.exceptions import ProgramError, TemplateError
 from tests.support.evaluation import _evaluate
@@ -21,7 +20,7 @@ SIMPLE = ("char_stream", "line_per_bit")
 
 def _rows(language: str, table: str) -> str:
     """Run every row of ``table`` through a freshly generated program."""
-    program = compat.generate(language, table)
+    program = esolangs.generate(language, table)
     inputs = len(table).bit_length() - 1
     got = ""
     for row in range(len(table)):
@@ -66,8 +65,10 @@ class TestTemplatesAreNotWrapped:
     @pytest.mark.parametrize("language", languages(parameterized=True))
     def test_a_width_leaves_a_template_intact(self, language: str) -> None:
         """A narrow width used to cut a slot in half, silently; a run is whole."""
-        narrow = compat.generate(language, XOR, width=5)
-        assert narrow.count(narrow.char) == sum(len(z) for z, _ in narrow.setters)
+        narrow = esolangs.generate(language, XOR, width=5)
+        assert narrow.source.count(narrow.bindings.char) == sum(
+            len(z) for z, _ in narrow.bindings.setters
+        )
         assert _evaluate(language, narrow, inputs=2) == XOR
 
 
@@ -78,7 +79,7 @@ class TestRemainingGuards:
     def test_a_nonpositive_width_is_refused(self, width: int) -> None:
         """It returned the unwrapped program, looking like it had honoured it."""
         with pytest.raises(ValueError, match="width must be positive"):
-            compat.generate(REFERENCE, XOR, width=width)
+            esolangs.generate(REFERENCE, XOR, width=width)
 
     def test_a_missing_path_is_a_programerror(self) -> None:
         with pytest.raises(ProgramError, match="cannot read"):
@@ -87,7 +88,7 @@ class TestRemainingGuards:
     def test_a_non_string_language_is_refused_by_name(self) -> None:
         """It leaked ``'NoneType' object has no attribute 'replace'``."""
         with pytest.raises(esolangs.UnknownLanguageError, match="got NoneType"):
-            compat.generate(None, XOR)
+            esolangs.generate(None, XOR)
 
     def test_the_cli_hint_passes_through_an_unrelated_message(self) -> None:
         """Only the slot refusal names a Python call worth rewriting."""
@@ -101,8 +102,8 @@ class TestEveryDeliberateErrorHasTheBase:
     @pytest.mark.parametrize(
         "call",
         [
-            lambda: compat.generate(REFERENCE, XOR, width=0),
-            lambda: compat.generate(REFERENCE, XOR, width="20"),
+            lambda: esolangs.generate(REFERENCE, XOR, width=0),
+            lambda: esolangs.generate(REFERENCE, XOR, width="20"),
             lambda: esolangs.run(REFERENCE, "+.", timeout=0).output,
             lambda: esolangs.encode_inputs(REFERENCE, [2, 0]),
         ],

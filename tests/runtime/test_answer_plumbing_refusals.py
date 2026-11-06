@@ -10,7 +10,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import _check_program, _run, compat
+from esolangs import _check_program, _run
 from tests.support.generator_support import evaluate_generated, verify_generated
 from tests.support.pick import first, languages, one
 from tests.support.reference import REFERENCE
@@ -42,7 +42,7 @@ class TestEveryAuditedCapIsCatchable:
         escaped = []
         for name in esolangs.list_languages():
             try:
-                compat.generate(name, table)
+                esolangs.generate(name, table)
             except esolangs.EsolangError:
                 pass
             except Exception as exc:
@@ -57,7 +57,7 @@ class TestErrorsSurviveAProcessBoundary:
         """It built its message in ``__init__``, so unpickling passed one arg."""
         import pickle
 
-        program = compat.generate(REFERENCE, "10010110")
+        program = esolangs.generate(REFERENCE, "10010110")
         with pytest.raises(esolangs.InputExhaustedError) as caught:
             esolangs.run(REFERENCE, program, stdin="10", timeout=10)
         restored = pickle.loads(pickle.dumps(caught.value))
@@ -115,21 +115,21 @@ class TestATableLengthNamesTheNearestLegalOnes:
     def test_the_brackets_are_named(self, table: str, expected: str) -> None:
         """And singular where it should be: "1 input", not "1 inputs"."""
         with pytest.raises(esolangs.TruthTableError, match=re.escape(expected)):
-            compat.generate(REFERENCE, table)
+            esolangs.generate(REFERENCE, table)
 
     def test_an_empty_table_gets_no_brackets(self) -> None:
         """``2 ** -1`` is 0.5, so the arithmetic does not apply to nothing."""
         with pytest.raises(esolangs.TruthTableError) as caught:
-            compat.generate(REFERENCE, "")
+            esolangs.generate(REFERENCE, "")
         assert "is between" not in str(caught.value)
 
     def test_the_brackets_are_actually_legal_lengths(self) -> None:
         """The message would be worse than none if it named an unusable size."""
         with pytest.raises(esolangs.TruthTableError) as caught:
-            compat.generate(REFERENCE, "0" * 6)
+            esolangs.generate(REFERENCE, "0" * 6)
         for length in (4, 8):
             assert f"{length} (" in str(caught.value)
-            compat.generate(REFERENCE, "0" * length)  # so it builds
+            esolangs.generate(REFERENCE, "0" * length)  # so it builds
 
 
 class TestASurroundingSpaceResolves:
@@ -176,7 +176,7 @@ class TestBoolsAreRefusedForAStatedReason:
 
 class TestRawInputKeepsItsNativeMeaning:
     def test_extra_input_does_not_change_the_row(self) -> None:
-        program = compat.generate(REFERENCE, "00011011")
+        program = esolangs.generate(REFERENCE, "00011011")
         assert (
             esolangs.run(
                 REFERENCE, program, stdin="1\n1\n0\n0\n1\n1\n", timeout=10
@@ -253,7 +253,7 @@ class TestATimeoutCannotKillTheProcess:
     def test_the_caller_gets_their_disposition_back(self, handler: object) -> None:
         previous = signal.signal(signal.SIGALRM, handler)
         try:
-            program = compat.generate(REFERENCE, "0110")
+            program = esolangs.generate(REFERENCE, "0110")
             stdin = esolangs.encode_inputs(REFERENCE, [0, 1], truth_table="0110")
             esolangs.run(REFERENCE, program, stdin=stdin, timeout=5)
             assert signal.getsignal(signal.SIGALRM) is handler
@@ -264,7 +264,7 @@ class TestATimeoutCannotKillTheProcess:
         """A timer left armed is the next run's stray alarm."""
         import signal
 
-        program = compat.generate(REFERENCE, "0110")
+        program = esolangs.generate(REFERENCE, "0110")
         stdin = esolangs.encode_inputs(REFERENCE, [0, 1], truth_table="0110")
         for bound in (10, 0.001):
             with contextlib.suppress(esolangs.ExecutionTimeoutError):
@@ -276,7 +276,7 @@ class TestATimeoutCannotKillTheProcess:
         """The stress the floor was chosen against, in process."""
         import signal
 
-        program = compat.generate(REFERENCE, "0110")
+        program = esolangs.generate(REFERENCE, "0110")
         stdin = esolangs.encode_inputs(REFERENCE, [0, 1], truth_table="0110")
         previous = signal.signal(signal.SIGALRM, signal.SIG_DFL)
         try:

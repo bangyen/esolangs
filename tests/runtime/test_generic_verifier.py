@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 
 import esolangs
-from esolangs import compat
 from tests.support.divergence import terminates
 from tests.support.generator_support import probe_table
 from tests.support.pick import first, languages
@@ -34,7 +33,7 @@ _TERMINATION_TIMEOUT = 1.0
 _RUN_TIMEOUT = 30.0
 
 
-def _terminates(name: str, source: str, stdin: str) -> str:
+def _terminates(name: str, source: esolangs.ProgramSource, stdin: str) -> str:
     """``"0"`` if ``source`` halts, ``"1"`` if it provably does not."""
     return "0" if terminates(name, source, stdin, _TERMINATION_TIMEOUT) else "1"
 
@@ -43,12 +42,12 @@ def _verify(name: str, table: str) -> str:
     """Return what ``name``'s program answers on every row of ``table``."""
     facts = esolangs.describe(name)
     inputs = len(table).bit_length() - 1
-    program = compat.generate(name, table)
+    program = esolangs.generate(name, table)
     got = ""
     for row in range(len(table)):
         bits = row_bits(row, inputs)
         if facts["parameterized"]:
-            source, stdin = compat.instantiate(name, program, bits), ""
+            source, stdin = esolangs.instantiate(name, program, bits), ""
         else:
             source, stdin = program, esolangs.encode_inputs(name, bits)
         if facts["answer_mode"] == "termination":

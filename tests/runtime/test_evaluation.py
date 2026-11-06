@@ -8,8 +8,7 @@ import pytest
 
 import esolangs
 import tests.support.evaluation as evaluator
-from esolangs import compat
-from tests.support.evaluation import _evaluate, _iter_evaluate
+from tests.support.evaluation import _evaluate, _iter_evaluate, _row_answerer
 from tests.support.generator_support import probe_table
 from tests.support.pick import first, languages
 from tests.support.reference import REFERENCE
@@ -29,15 +28,30 @@ def _kinds() -> list[str]:
 @pytest.mark.parametrize("name", _kinds())
 def test_evaluate_files(name: str, tmp_path: Path) -> None:
     table = probe_table(name)
-    program = compat.generate(name, table)
+    program = esolangs.generate(name, table)
     path = tmp_path / "source"
-    if isinstance(program, esolangs.Raster):
-        path.write_bytes(program.to_png())
-    elif isinstance(program, esolangs.CompressedText):
-        path.write_bytes(program.to_gzip())
-    else:
-        path.write_text(program + "\n")
-    assert _evaluate(name, path, inputs=len(table).bit_length() - 1) == table
+    inputs = len(table).bit_length() - 1
+    if isinstance(program, esolangs.TemplateArtifact):
+        path.write_text(esolangs.dump_program(name, program))
+        restored = esolangs.load_program(name, path.read_text())
+        assert _evaluate(name, restored, inputs=inputs) == table
+        answer = _row_answerer(
+            name,
+            terminating=esolangs.describe(name)["answer_mode"] == "termination",
+            isolated=False,
+            settings=program.settings,
+            scale=None,
+            max_output=None,
+            max_memory=None,
+        )
+        for row, expected in enumerate(table):
+            bits = [row >> shift & 1 for shift in reversed(range(inputs))]
+            esolangs.save_program(esolangs.instantiate(name, restored, bits), path)
+            loaded = esolangs.Language(name).from_file(path, settings=program.settings)
+            assert answer(loaded, "", 30) == expected
+        return
+    esolangs.save_program(program, path)
+    assert _evaluate(name, path, inputs=inputs) == table
 
 
 @pytest.mark.parametrize("inputs", [True, 0, 65, 2.5, "2"])
@@ -56,7 +70,7 @@ def test_api_refuses_bad_source() -> None:
     [first(source_kind="text", answer_mode=m) for m in ("output", "termination")],
 )
 def test_api_refuses_raster_for_text_answer(name: str) -> None:
-    raster = compat.generate(first(source_kind="raster"), "0110")
+    raster = esolangs.generate(first(source_kind="raster"), "0110").source
     with pytest.raises(esolangs.ProgramError, match="string of source"):
         _evaluate(name, raster, inputs=2)
 
@@ -92,7 +106,7 @@ def test_termination_output_limit_is_not_a_divergence_verdict() -> None:
     """A program that prints hits the limit; a silent one still answers."""
     outcomes = set()
     for name in languages(answer_mode="termination"):
-        source = compat.generate(name, "01")
+        source = esolangs.generate(name, "01")
         try:
             answer = _evaluate(name, source, inputs=1, isolated=True, max_output=0)
         except esolangs.InterpreterLimitError as error:
@@ -125,7 +139,7 @@ def test_evaluation_output_limit_requires_isolation() -> None:
 @pytest.mark.parametrize("name", _kinds())
 def test_streaming_executes_the_expected_table(name) -> None:
     table = probe_table(name)
-    program = compat.generate(name, table)
+    program = esolangs.generate(name, table)
     assert (
         "".join(_iter_evaluate(name, program, inputs=len(table).bit_length() - 1))
         == table
@@ -250,7 +264,7 @@ def test_execution_failure_never_becomes_an_answer(
     monkeypatch, mode, error_type
 ) -> None:
     name = first(boolean_generator=True, answer_mode=mode)
-    program = compat.generate(name, "01")
+    program = esolangs.generate(name, "01")
     error = error_type("contract failure control")
 
     def fail(*_args, **_kwargs):

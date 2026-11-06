@@ -101,6 +101,11 @@ the generator group. Native measurements read explicit source. Layout candidates
 reuse retained bindings; persisted templates use portable documents and native
 files are tested after filling. Source-adapter references are fault controls.
 
+Runtime execution, debugging, worker and persistence tests use canonical records.
+The same facade/recovery guard covers the runtime group. Native PNG fixtures
+preserve record metadata through `save_program`; worker requests pass explicit
+source, settings and scale.
+
 Accounting and analysis rows require owned witnesses, not just a declared hook
 or a recognized helper name. Certification needs an installed-package/lazy-import
 acceptance audit after the active separation work lands. Storage policy needs

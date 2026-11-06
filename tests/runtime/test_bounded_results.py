@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._lifecycle import Completion
 from esolangs.vm import _capture_result, complete_vm, make_vm
@@ -82,7 +81,7 @@ def test_post_halt_completion_stays_pending_until_dump():
         and lang.contract.answer_mode != "termination"
         and esolangs.describe(name)["dumps_on_the_post_halt_step"]
     )
-    source = compat.instantiate(name, compat.generate(name, "01"), [1])
+    source = esolangs.instantiate(name, esolangs.generate(name, "01"), [1])
     debugger = make_debugger(name, source)
     # Stop at halt before the completion step.
     while not debugger.halted:
@@ -125,7 +124,7 @@ def test_failed_dump_remains_unfinished_and_can_be_retried(monkeypatch, drive):
         dumps_on_the_post_halt_step=True,
         steppable_to_answer=True,
     )[0]
-    source = compat.instantiate(name, compat.generate(name, "01"), [1])
+    source = esolangs.instantiate(name, esolangs.generate(name, "01"), [1])
     debugger = make_debugger(name, source)
     assert debugger.run(max_steps=0) == "max_steps"
     while not debugger.halted:

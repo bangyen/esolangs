@@ -4,7 +4,6 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import compat
 from tests.support.pick import one
 from tests.support.reference import REFERENCE
 
@@ -38,11 +37,11 @@ _DUMPERS = [
 ]
 
 
-def _runnable(name: str, table: str = "0110") -> tuple[str, str]:
+def _runnable(name: str, table: str = "0110") -> tuple[esolangs.ProgramArtifact, str]:
     """Return a filled program and the stdin to drive it with."""
-    program = compat.generate(name, table)
+    program = esolangs.generate(name, table)
     if esolangs.describe(name)["parameterized"]:
-        return compat.instantiate(name, program, [0, 0]), ""
+        return esolangs.instantiate(name, program, [0, 0]), ""
     return program, esolangs.encode_inputs(name, [0, 0])
 
 
@@ -52,7 +51,7 @@ class TestABreakpointAtTheHaltIsReported:
     def test_an_output_watch_on_the_last_step_fires(self) -> None:
         """The case it was reported for, on the flagship language."""
         dbg = debugger_api.make_debugger(
-            REFERENCE, compat.generate(REFERENCE, "0110"), stdin="10"
+            REFERENCE, esolangs.generate(REFERENCE, "0110"), stdin="10"
         )
         dbg.break_on_output("1")
         assert dbg.run(max_steps=100_000) == "breakpoint"

@@ -4,7 +4,6 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import compat
 from esolangs.vm import VM
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
@@ -16,14 +15,17 @@ class TestProtocol:
     @pytest.mark.parametrize(
         "language", languages(source_kind="raster", boolean_generator=True)
     )
-    def test_raster_languages_step_their_pixels(self, language: str) -> None:
-        source = compat.generate(language, "01")
-        pixels = esolangs.Raster.from_png(source.to_png())
-        vm = debugger_api.make_vm(language, pixels, stdin="1\n")
+    def test_raster_languages_step_their_pixels(
+        self, language: str, native_png
+    ) -> None:
+        source = esolangs.generate(language, "01")
+        pixels = esolangs.Raster.from_png(native_png(source))
+        program = esolangs.Language(language).from_source(pixels)
+        vm = debugger_api.make_vm(language, program, stdin="1\n")
         assert isinstance(vm, VM)
         assert _run_all(vm) == "1"
         assert vm.ip is None
-        debugger = debugger_api.make_debugger(language, pixels, stdin="0\n")
+        debugger = debugger_api.make_debugger(language, program, stdin="0\n")
         assert _run_all(debugger.vm) == "0"
 
 
