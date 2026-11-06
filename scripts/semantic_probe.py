@@ -15,7 +15,8 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from esolangs.registry import LANGUAGES
-from esolangs.runtime.io import IO
+from esolangs.runtime._execution import interpreter_module
+from esolangs.runtime.io import IO, ScriptedIO
 
 
 class Results:
@@ -42,10 +43,19 @@ class Results:
 
 def inject(name: str, result: Results) -> None:
     """Add an unwanted output byte at both native and stepped entry points."""
+    # Import by name so mypy does not duplicate its script module root.
+    trace_driver = importlib.import_module("scripts.tracediff")
+
     lang = LANGUAGES[name]
-    module = importlib.import_module(f"esolangs.languages.{lang.id}.interpreter")
-    factory = module._Machine  # noqa: SLF001 -- the injected fault belongs to the VM
-    original = factory.__init__
+    module = interpreter_module(lang.name)
+    samples = importlib.import_module("tests.support.samples").SAMPLES
+    source, stdin = samples[lang.name]
+    representative = trace_driver._machine(  # noqa: SLF001 -- owned trace binder
+        module, source, ScriptedIO(stdin), runtime=lang.runtime
+    )
+    # The factory identifies the implementation; native oracles stay independent.
+    target: Any = type(representative)
+    original = target.__init__
 
     def corrupt(args: tuple[Any, ...], kwargs: dict[str, Any]) -> None:
         for value in (*args, *kwargs.values()):
@@ -58,7 +68,7 @@ def inject(name: str, result: Results) -> None:
         original(self, *args, **kwargs)
         corrupt(args, kwargs)
 
-    factory.__init__ = broken
+    target.__init__ = broken
     entry = lang.runtime.completion_entrypoint
     execute = getattr(module, entry)
 

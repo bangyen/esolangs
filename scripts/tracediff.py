@@ -1,6 +1,6 @@
 """Diff an interpreter's step-by-step behaviour against another revision.
 
-The refactor check AGENTS.md asks for: run the old and new ``_Machine`` side
+The refactor check AGENTS.md asks for: run the old and new declared factories side
 by side and compare, at every step, each public property, the snapshot and
 the output, and on an error its type, message, notes and the state left
 behind.  The corpus is the suite sample, wiki examples, every table through
@@ -8,6 +8,7 @@ n=3 on every input row (and wrapped at width 8 below n=3), and seeded random
 programs.  Machines that draw get the same seeded source in both copies.
 ``--mutant`` is the positive control: a deliberately broken copy
 that must differ somewhere, or the corpus never reached the change.
+Baselines and mutants must expose the declared preparation hook.
 ``--speed`` also times both over the longest-running programs: a teaching
 rewrite once cost Deadfish a third of its step rate, unmeasured.
 
@@ -20,7 +21,6 @@ from __future__ import annotations
 import argparse
 import importlib
 import importlib.util
-import inspect
 import itertools
 import math
 import random
@@ -35,7 +35,7 @@ from collections.abc import Mapping
 from contextlib import suppress
 from pathlib import Path
 from types import ModuleType
-from typing import Any
+from typing import Any, cast
 
 ROOT = Path(__file__).resolve().parent.parent
 # tests/ holds the suite samples; run as a script, only scripts/ is on the path.
@@ -45,7 +45,10 @@ import esolangs  # noqa: E402
 from esolangs.exceptions import GeneratorCapError  # noqa: E402
 from esolangs.registry import INTERPRETERS, LANGUAGES, resolve  # noqa: E402
 from esolangs.registry._certification import load as load_certification  # noqa: E402
+from esolangs.runtime._definition import RuntimeSpec  # noqa: E402
 from esolangs.runtime._lifecycle import Completion  # noqa: E402
+from esolangs.runtime._machine import MachinePreparation  # noqa: E402
+from esolangs.runtime._program import RunnerProgram  # noqa: E402
 from esolangs.runtime.io import ScriptedIO  # noqa: E402
 from esolangs.runtime.randomness import Seeded  # noqa: E402
 
@@ -64,14 +67,23 @@ type Program = tuple[Any, str]
 type Event = tuple[object, ...]
 
 
-def _machine(
-    module: ModuleType, source: object, io: ScriptedIO, *, split: bool = False
-) -> Any:
-    """Build ``module``'s machine; one that draws gets a fresh seeded source.
+def _preparation(module: ModuleType, runtime: RuntimeSpec) -> MachinePreparation:
+    """Require the declared hook, including in old revisions and mutants."""
+    prepare = getattr(module, runtime.machine_preparation, None)
+    if not callable(prepare):
+        raise TypeError(
+            f"{getattr(module, '__name__', 'module')} needs declared preparation "
+            f"{runtime.machine_preparation}; "
+            "choose a revision or mutant with the declared factory"
+        )
+    return cast(MachinePreparation, prepare)
 
-    Unseeded, a draw comes from ``secrets``: tracing one INTERCAL ``%50``
-    program 20 times gave 20 different traces.
-    """
+
+def _machine(
+    module: ModuleType, source: object, io: ScriptedIO, *, runtime: RuntimeSpec
+) -> Any:
+    """Bind declared source/options and construct with a fresh seeded random source."""
+    prepare = _preparation(module, runtime)
     options: dict[str, object] = {}
     if isinstance(source, esolangs.ProgramArtifact):
         if source.settings is not None:
@@ -79,12 +91,11 @@ def _machine(
         if source.scale is not None:
             options["scale"] = source.scale
         source = source.source
-    if split and isinstance(source, str):
+    if runtime.split and isinstance(source, str):
         source = source.splitlines()
-    machine = module._Machine  # noqa: SLF001
-    if "rng" in inspect.signature(machine).parameters:
+    if runtime.random:
         options["rng"] = Seeded(0)
-    return machine(source, io, **options)
+    return prepare(cast(RunnerProgram, source), options)(io)
 
 
 def _load(path: Path, name: str) -> ModuleType:
@@ -228,21 +239,22 @@ def trace(
     program: Program,
     ignored: frozenset[str],
     *,
-    policy: Completion,
-    split: bool = False,
+    runtime: RuntimeSpec,
 ) -> list[Event]:
     """Return one event per step: views, snapshot and output so far.
 
-    ``policy`` is the language declaration, never a machine-class flag.
-    ``split`` passes the source as lines, as the registry does for grids:
-    a string there built a one-column grid and every program failed alike.
+    Completion comes from the runtime declaration, never a machine-class flag.
+    The runtime declares source splitting, random draws and the preparation hook:
+    a string passed to a split grid built one column and every program failed alike.
     """
+    policy = runtime.capabilities.completion
     if not isinstance(policy, Completion):
         raise TypeError("policy must be a Completion policy")
+    _preparation(module, runtime)
     code, stdin = program
     io = ScriptedIO(stdin)
     try:
-        machine = _machine(module, code, io, split=split)
+        machine = _machine(module, code, io, runtime=runtime)
     except Exception as error:
         return [("error", *_error(error))]
     events: list[Event] = []
@@ -378,14 +390,13 @@ def differences(
     programs: list[Program],
     ignored: frozenset[str] = frozenset(),
     *,
-    policy: Completion,
-    split: bool = False,
+    runtime: RuntimeSpec,
 ) -> list[tuple[Program, int, Event | None, Event | None]]:
     """Return each differing program with its first differing step."""
     found = []
     for program in programs:
-        before = trace(old, program, ignored, split=split, policy=policy)
-        after = trace(new, program, ignored, split=split, policy=policy)
+        before = trace(old, program, ignored, runtime=runtime)
+        after = trace(new, program, ignored, runtime=runtime)
         if before == after:
             continue
         # A snapshot holding instances (Unlambda's terms and continuations,
@@ -404,12 +415,15 @@ def differences(
     return found
 
 
-def _lap(module: ModuleType, work: list[tuple[Program, int]], *, split: bool) -> float:
+def _lap(
+    module: ModuleType, work: list[tuple[Program, int]], *, runtime: RuntimeSpec
+) -> float:
     """Seconds to build each machine and run it its step count."""
+    _preparation(module, runtime)
     start = time.perf_counter()
     for (code, stdin), steps in work:
         with suppress(Exception):  # an error ends the run, as it did when traced
-            machine = _machine(module, code, ScriptedIO(stdin), split=split)
+            machine = _machine(module, code, ScriptedIO(stdin), runtime=runtime)
             for _ in range(steps):
                 machine.step()
     return time.perf_counter() - start
@@ -420,8 +434,7 @@ def speeds(
     new: ModuleType,
     programs: list[Program],
     *,
-    policy: Completion,
-    split: bool = False,
+    runtime: RuntimeSpec,
     rounds: int = 5,
 ) -> tuple[float, float]:
     """Return each copy's steps per second over the longest-running programs.
@@ -430,20 +443,19 @@ def speeds(
     0.2 s. Both copies warm the sized workload before timed laps; laps
     alternate and the fastest of ``rounds`` counts.
     """
-    lengths = [
-        (len(trace(new, p, frozenset(), split=split, policy=policy)), p)
-        for p in programs
-    ]
+    _preparation(old, runtime)
+    _preparation(new, runtime)
+    lengths = [(len(trace(new, p, frozenset(), runtime=runtime)), p) for p in programs]
     lengths.sort(key=lambda pair: pair[0], reverse=True)
     work = [(program, steps) for steps, program in lengths[:40]]
-    work *= max(1, math.ceil(0.2 / max(_lap(new, work, split=split), 1e-6)))
+    work *= max(1, math.ceil(0.2 / max(_lap(new, work, runtime=runtime), 1e-6)))
     # Line's inherited warm prefix gave the baseline 15 misses versus 20.
-    _lap(old, work, split=split)
-    _lap(new, work, split=split)
+    _lap(old, work, runtime=runtime)
+    _lap(new, work, runtime=runtime)
     old_best = new_best = math.inf
     for _ in range(rounds):
-        old_best = min(old_best, _lap(old, work, split=split))
-        new_best = min(new_best, _lap(new, work, split=split))
+        old_best = min(old_best, _lap(old, work, runtime=runtime))
+        new_best = min(new_best, _lap(new, work, runtime=runtime))
     steps = sum(count for _, count in work)
     return steps / old_best, steps / new_best
 
@@ -454,7 +466,9 @@ def main(argv: list[str] | None = None) -> int:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("language")
-    parser.add_argument("--old", default="main", help="git revision (default main)")
+    parser.add_argument(
+        "--old", default="main", help="revision with declared factory (default main)"
+    )
     parser.add_argument("--mutant", type=Path, help="broken copy that must differ")
     parser.add_argument(
         "--ignore-views", default="", help="comma-separated renamed views"
@@ -467,38 +481,34 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as exc:
         parser.error(str(exc))
     ignored = frozenset(filter(None, args.ignore_views.split(",")))
-    split = LANGUAGES[name].runtime.split
-    capabilities = LANGUAGES[name].runtime.capabilities
-    policy = Completion.HALTED if capabilities is None else capabilities.completion
+    runtime = LANGUAGES[name].runtime
     new = importlib.import_module(INTERPRETERS[name])
-    programs = corpus(name, args.random)
     path, prefix = _source_path(INTERPRETERS[name], args.old)
     with tempfile.TemporaryDirectory() as scratch:
         old = _load(_revision(path, args.old, Path(scratch)), f"{prefix}_old")
-    found = differences(old, new, programs, ignored, split=split, policy=policy)
+    _preparation(old, runtime)
+    _preparation(new, runtime)
+    programs = corpus(name, args.random)
+    found = differences(old, new, programs, ignored, runtime=runtime)
     for (code, stdin), step, before, after in found[:3]:
         print(f"DIFF {code!r:.60} stdin={stdin[:20]!r} at step {step}")
         print(f"  {args.old}: {before!r:.300}")
         print(f"  new: {after!r:.300}")
     # A diff over programs that all fail at once proves nothing: say so.
-    halting = sum(
-        _halts(trace(new, p, ignored, split=split, policy=policy)) for p in programs
-    )
+    halting = sum(_halts(trace(new, p, ignored, runtime=runtime)) for p in programs)
     print(
         f"{name}: {len(programs)} programs ({halting} halt cleanly), "
         f"{len(found)} differ from {args.old}"
     )
     failed = bool(found)
     if args.speed:
-        was, now = speeds(old, new, programs, split=split, policy=policy)
+        was, now = speeds(old, new, programs, runtime=runtime)
         change = now / was - 1
         print(f"speed: {was:,.0f} -> {now:,.0f} steps/s ({change:+.0%})")
         failed |= change < -SLOWDOWN
     if args.mutant is not None:
         mutant = _load(args.mutant, f"{prefix}_mutant")
-        caught = len(
-            differences(old, mutant, programs, ignored, split=split, policy=policy)
-        )
+        caught = len(differences(old, mutant, programs, ignored, runtime=runtime))
         print(f"control: mutant differs on {caught}")
         failed |= not caught
     return int(failed)

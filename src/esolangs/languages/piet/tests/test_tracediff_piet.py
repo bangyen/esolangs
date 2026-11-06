@@ -5,7 +5,7 @@ import pytest
 import esolangs
 from esolangs.languages.piet import interpreter
 from esolangs.raster import Raster
-from esolangs.runtime._lifecycle import Completion
+from esolangs.registry import LANGUAGES
 from tests.tooling.script_support import REPO_ROOT, load
 
 tracediff = load(REPO_ROOT / "scripts" / "tracediff.py")
@@ -29,17 +29,22 @@ def test_trace_and_timing_keep_artifact_raster_scale(monkeypatch):
 
     monkeypatch.setattr(interpreter, "_Machine", machine)
     explicit = tracediff.trace(
-        interpreter, (program, ""), frozenset(), policy=Completion.HALTED
+        interpreter, (program, ""), frozenset(), runtime=LANGUAGES["Piet"].runtime
     )
     detected = tracediff.trace(
-        interpreter, (image, ""), frozenset(), policy=Completion.HALTED
+        interpreter, (image, ""), frozenset(), runtime=LANGUAGES["Piet"].runtime
     )
     assert tracediff._halts(explicit)
     assert tracediff._halts(detected)
     assert explicit[-1][-1] == "8"
     assert detected[-1][-1] == "2"
     assert (
-        tracediff._lap(interpreter, [((program, ""), len(explicit))], split=False) > 0
+        tracediff._lap(
+            interpreter,
+            [((program, ""), len(explicit))],
+            runtime=LANGUAGES["Piet"].runtime,
+        )
+        > 0
     )
     assert calls == [1, None, 1]
     assert outputs[-1].getvalue() == "8"

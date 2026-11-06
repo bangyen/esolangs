@@ -2,6 +2,7 @@
 
 import importlib
 import os
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -16,6 +17,15 @@ from tests.tooling.script_support import REPO_ROOT, load
 tracediff = load(REPO_ROOT / "scripts" / "tracediff.py")
 _SOURCE = REPO_ROOT / "src/esolangs/languages" / LANGUAGES[REFERENCE].id
 _INTERPRETER = _SOURCE / "interpreter.py"
+_RUNTIME = LANGUAGES[REFERENCE].runtime
+
+
+def _runtime(policy=Completion.HALTED, *, random=False):
+    return replace(
+        _RUNTIME,
+        random=random,
+        capabilities=replace(_RUNTIME.capabilities, completion=policy),
+    )
 
 
 @pytest.mark.medium
@@ -62,8 +72,7 @@ def test_artifact_and_source_traces_match_for_split_grids():
         if isinstance(code, esolangs.ProgramArtifact)
     )
     options = {
-        "policy": declaration.capabilities.completion,
-        "split": declaration.split,
+        "runtime": declaration,
     }
     events = tracediff.trace(module, (program, stdin), frozenset(), **options)
     assert tracediff._halts(events)
@@ -77,9 +86,14 @@ def test_artifact_and_source_traces_match_for_split_grids():
     choice = next(value for value in values if value != runtime.dialect_defaults[key])
     settings = esolangs.DialectSettings(**{key: choice})
     record = esolangs.ProgramArtifact("source", name, settings=settings)
-    capture = SimpleNamespace(_Machine=lambda source, _io, **bound: (source, bound))
-    body, bound = tracediff._machine(capture, record, tracediff.ScriptedIO())
-    assert body == record.source
+    runtime = replace(runtime, machine_preparation="bind_probe")
+    capture = SimpleNamespace(
+        bind_probe=lambda source, bound: lambda _io: (source, bound)
+    )
+    body, bound = tracediff._machine(
+        capture, record, tracediff.ScriptedIO(), runtime=runtime
+    )
+    assert body == (record.source.splitlines() if runtime.split else record.source)
     assert bound == settings.options(name)
 
 
@@ -87,13 +101,13 @@ def test_a_copy_matches_and_a_mutant_is_caught(tmp_path: Path) -> None:
     programs = tracediff.corpus(REFERENCE, 200, max_n=1)
     same = tracediff._load(_INTERPRETER, "tracediff_same")
     new = tracediff._load(_INTERPRETER, "tracediff_new")
-    assert tracediff.differences(same, new, programs, policy=Completion.HALTED) == []
+    assert tracediff.differences(same, new, programs, runtime=_runtime()) == []
     source = _INTERPRETER.read_text(encoding="utf-8")
     assert "(tape[ptr] + 1) % 256" in source
     broken = tmp_path / "mutant.py"
     broken.write_text(source.replace("(tape[ptr] + 1) % 256", "(tape[ptr] + 2) % 256"))
     mutant = tracediff._load(broken, "tracediff_mutant")
-    assert tracediff.differences(same, mutant, programs, policy=Completion.HALTED)
+    assert tracediff.differences(same, mutant, programs, runtime=_runtime())
 
     # Independent NaNs compare by bits; altered values remain detectable.
     nan_source = _DRAWING.replace("return self.drawn", "return self.drawn, NAN")
@@ -103,12 +117,24 @@ def test_a_copy_matches_and_a_mutant_is_caught(tmp_path: Path) -> None:
     before = tracediff._load(nan_path, "nan_before")
     after = tracediff._load(nan_path, "nan_after")
     assert (
-        tracediff.differences(before, after, [("", "")], policy=Completion.HALTED) == []
+        tracediff.differences(before, after, [("", "")], runtime=_runtime(random=True))
+        == []
     )
     nan_path.write_text(nan_source.replace('NAN = float("nan")', "NAN = 0"))
     changed = tracediff._load(nan_path, "nan_changed")
-    assert tracediff.differences(before, changed, [("", "")], policy=Completion.HALTED)
+    assert tracediff.differences(
+        before, changed, [("", "")], runtime=_runtime(random=True)
+    )
     assert tracediff._plain(float("nan"), {}) != tracediff._plain(-float("nan"), {})
+
+    legacy = SimpleNamespace(__name__="legacy", _Machine=lambda *_: None)
+    for invoke in (
+        lambda: tracediff.trace(legacy, ("", ""), frozenset(), runtime=_runtime()),
+        lambda: tracediff.differences(legacy, legacy, [("", "")], runtime=_runtime()),
+        lambda: tracediff.speeds(legacy, same, [("", "")], runtime=_runtime()),
+    ):
+        with pytest.raises(TypeError, match="declared preparation"):
+            invoke()
 
 
 @pytest.mark.medium  # warmed/sized laps and two rounds take 1.06s alone
@@ -123,9 +149,7 @@ def test_speed_sees_a_slowed_copy(tmp_path: Path) -> None:
         + "    sum(range(2000))\n    _step(self)\n\n\n_Machine.step = _slow\n"
     )
     slow = tracediff._load(slowed, "tracediff_slow")
-    before, after = tracediff.speeds(
-        same, slow, programs, rounds=2, policy=Completion.HALTED
-    )
+    before, after = tracediff.speeds(same, slow, programs, rounds=2, runtime=_runtime())
     assert after < before / 2
 
 
@@ -134,8 +158,8 @@ from esolangs.runtime.randomness import draw
 
 
 class _Machine:
-    def __init__(self, code, io, rng=None):
-        self.rng, self.halted, self.drawn = rng, False, ()
+    def __init__(self, code, io, stream):
+        self.rng, self.halted, self.drawn = stream, False, ()
 
     def snapshot(self):
         return self.drawn
@@ -143,6 +167,11 @@ class _Machine:
     def step(self):
         self.drawn += (draw(self.rng, 1 << 30),)
         self.halted = len(self.drawn) == 5
+
+
+def prepare_machine(code, options):
+    stream = options['rng']
+    return lambda io: _Machine(code, io, stream)
 """
 
 
@@ -152,18 +181,26 @@ def test_a_machine_that_draws_traces_the_same_every_time(tmp_path: Path) -> None
     path.write_text(_DRAWING)
     module = tracediff._load(path, "tracediff_drawing")
     traces = {
-        repr(tracediff.trace(module, ("", ""), frozenset(), policy=Completion.HALTED))
+        repr(
+            tracediff.trace(
+                module, ("", ""), frozenset(), runtime=_runtime(random=True)
+            )
+        )
         for _ in range(5)
     }
     assert len(traces) == 1
+    events = tracediff.trace(
+        module, ("", ""), frozenset(), runtime=_runtime(random=True)
+    )
+    assert tracediff._halts(events)
+    assert len(events) == 6
+    assert len(events[-1][1]) == 5
 
 
 def test_an_error_records_the_state_it_leaves() -> None:
     """A draft moving its pointer before a failing read passed an error-only diff."""
     module = tracediff._load(_INTERPRETER, "tracediff_error")
-    *_, last = tracediff.trace(
-        module, ("+,", ""), frozenset(), policy=Completion.HALTED
-    )
+    *_, last = tracediff.trace(module, ("+,", ""), frozenset(), runtime=_runtime())
     assert last[:2] == ("error", "InputExhaustedError")
     assert last[-1][:2] == (1, 0)  # still on the ``,``, pointer unmoved
 
@@ -209,6 +246,10 @@ class _Machine:
 
     def snapshot(self):
         return self.halted, self.printed, self.finalized
+
+
+def prepare_machine(code, options):
+    return lambda io: _Machine(code, io)
 """
 
 
@@ -219,17 +260,17 @@ def test_declared_completion_finalizes_and_keeps_the_final_state(tmp_path):
     explicit = tracediff._load(path, "declared_completion")
     program = ("", "")
     events = tracediff.trace(
-        explicit, program, frozenset(), policy=Completion.POST_HALT
+        explicit, program, frozenset(), runtime=_runtime(Completion.POST_HALT)
     )
     assert events[-1] == ("dumped", (), (True, True, 1), "done")
     assert tracediff._halts(events)
     with pytest.raises(TypeError, match="Completion policy"):
-        tracediff.trace(explicit, program, frozenset(), policy="post_halt")
+        tracediff.trace(explicit, program, frozenset(), runtime=_runtime("post_halt"))
     path.write_text(_POST_HALT.replace("self.finalized += 1", "self.finalized += 2"))
     os.utime(path, ns=(timestamp, timestamp))
     mutant = tracediff._load(path, "bad_final_state")
     assert tracediff.differences(
-        explicit, mutant, [program], policy=Completion.POST_HALT
+        explicit, mutant, [program], runtime=_runtime(Completion.POST_HALT)
     )
     for flag in ('completion = "invalid"', "dumps_on_the_post_halt_step = True"):
         path.write_text(
@@ -237,15 +278,11 @@ def test_declared_completion_finalizes_and_keeps_the_final_state(tmp_path):
         )
         flagged = tracediff._load(path, "ignored_legacy_flag")
         assert (
-            tracediff.differences(
-                explicit, flagged, [program], policy=Completion.HALTED
-            )
+            tracediff.differences(explicit, flagged, [program], runtime=_runtime())
             == []
         )
         assert (
-            tracediff.trace(flagged, program, frozenset(), policy=Completion.HALTED)[
-                -1
-            ][-1]
+            tracediff.trace(flagged, program, frozenset(), runtime=_runtime())[-1][-1]
             == ""
         )
 
@@ -304,6 +341,10 @@ class _Machine:
     def step(self):
         _clock.elapsed += 0.01
         self.halted = True
+
+
+def prepare_machine(code, options):
+    return lambda io: _Machine(code, io)
 """
     )
     before = tracediff._load(source, "cached_before")
@@ -317,6 +358,6 @@ class _Machine:
     for code, _stdin in programs[:8]:
         before._compiled(code)
     old_rate, new_rate = tracediff.speeds(
-        before, after, programs, rounds=2, policy=Completion.HALTED
+        before, after, programs, rounds=2, runtime=_runtime()
     )
     assert new_rate == pytest.approx(old_rate)

@@ -111,7 +111,7 @@ def test_a_read_and_a_test_on_the_character() -> None:
     assert run_program(run, program, "1\n") == ""
 
     from esolangs.languages.unlambda import interpreter
-    from esolangs.runtime._lifecycle import Completion
+    from esolangs.registry import LANGUAGES
     from scripts import tracediff
 
     source = "``cd``d`@|`cd"
@@ -120,7 +120,7 @@ def test_a_read_and_a_test_on_the_character() -> None:
     )
     assert program == (source, "cat\n")
     events = tracediff.trace(
-        interpreter, program, frozenset(), policy=Completion.HALTED
+        interpreter, program, frozenset(), runtime=LANGUAGES["Unlambda"].runtime
     )
     assert tracediff._halts(events)
     assert events[-1][2] == "cat\n"

@@ -30,7 +30,7 @@ Owners are workstreams, not individual contributors.
 | Helpers' `AffineForm`, `affine_form`, `symmetric_outputs` re-exports | Analysis | Retired; callers migrated; negative export check in `tests/generators/test_symmetry.py` | `generation.algebraic` / `generation.lookup` |
 | Helpers' `_parity_bias` and duplicate parity recognizers | Analysis | Retired; eight backends and REFRACTRAN ablations use canonical analysis; independent affine oracle and removed-export checks | `generation.algebraic.parity_bias` |
 | `runtime._result.ExecutionResult` shim | Results | Retired; imports migrated; negative import check in `tests/api/test_run_results.py` | `esolangs.results.ExecutionResult` |
-| `_Machine` / `_for_run` discovery | Lifecycle | Retired from runtime VM construction and traits; diff/proof drivers remain | Declared preparation/factories and capabilities |
+| `_Machine` / `_for_run` discovery | Lifecycle | Retired; runtime and verification drivers use declared factories; raw native machines remain independent oracles | Declared preparation/factories and capabilities |
 | Implicit completion entrypoint defaults | Lifecycle | Retired; required declaration fields and explicit driver policies; rejection controls in `tests/runtime/test_lifecycle.py` | Explicit completion declarations |
 | Dialect metadata signature/default inspection | Lifecycle | Retired; all seven schemas declared; constructor/default and no-discovery checks in `tests/api/test_dialects.py` | Declared dialect schemas and defaults |
 | Generator callable-option signature inference | Analysis | Retired; all 114 backends use declared options; independent signature oracle and no-discovery checks in `tests/api/test_artifact_defaults.py` and `tests/api/test_api_contracts.py` | Declared backend option capabilities |
@@ -321,7 +321,7 @@ public properties. Runtime declarations require preparation, completion and
 capabilities; native drivers require explicit completion policy. The scaffold
 and synthetic descriptors follow the same contract. Missing declarations and
 policies fail; absent debugger views retain their defaults.
-Diff/proof driver migration and final lifecycle acceptance remain open.
+Final lifecycle acceptance remains open.
 
 CreativeScript v2 uses canonical dependency/projection analysis; arithmetic
 indexing remains owned. Movesum retains its halt-on-equality rung lookup and
@@ -343,3 +343,9 @@ constant programs validate and emit without initializing decision machinery.
 The local analysis traversal and emitted-arm comparison are gone. All 632
 corpus requests and 160 larger layouts match; 3,128 native/stepped rows retain
 traces, input progress and resource peaks. Original bounds and arities remain.
+
+Trace construction now uses declared hooks, source splitting, RNG support and
+completion. Baselines and mutants without factories fail before tracing.
+Semantic probes identify the native fault target through a representative
+factory-built machine; raw models retain their independent constructor references.
+No driver inspects machine signatures or guesses private constructor names.
