@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import esolangs
 from esolangs.generation.algebraic import affine_form, parity_bias
+from esolangs.generation.anf import anf_coefficients
 from esolangs.generation.branch_decoder import hoisted_tree
 from esolangs.generation.decision import decision_layers, reduced_diagram
 from esolangs.generation.helpers import (
@@ -35,7 +36,10 @@ def assert_analysis_complement(
     reference = backend.entrypoint
     assert isinstance(reference, FunctionRef)
     module = importlib.import_module(reference.module)
+    owner, _, attribute = attribute.rpartition(".")
+    module = getattr(module, owner) if owner else module
     query = {
+        "anf_coefficients": anf_coefficients,
         "SubtreeDiagram": SubtreeDiagram,
         "hoisted_tree": hoisted_tree,
         "_sbleq_hoisted": hoisted_tree,

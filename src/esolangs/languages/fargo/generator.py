@@ -2,7 +2,7 @@
 
 ``@ i`` returns the ``i``th bit of the input number, so no routing is needed:
 ``f(x) = c0 XOR (c1 & x0) XOR ...`` with coefficients from the Möbius
-transform (:func:`anf_coefficients`, Theta(log T) coefficients per word).
+transform (:func:`anf.anf_coefficients`, Theta(log T) coefficients per word).
 Each variable is factored as ``p = p0 ^ (x & p1)``, so every coefficient
 appears at most once, in identity order (no reads, so order only renames the
 ``@`` literals).  A node keeps its 0-arm (Davio0) unless the 1-arm is the
@@ -40,8 +40,8 @@ from dataclasses import dataclass
 from math import isqrt
 from string import ascii_lowercase
 
+from esolangs.generation import anf
 from esolangs.generation.helpers import (
-    _validate_shape,
     _validate_truth_table,
     grid_width,
     short_name,
@@ -70,11 +70,6 @@ class _Grain[T]:
     xor: Callable[[T, T], T]
     child: Callable[[T, int], None]
     downgrade: Callable[[T, int], bool]
-
-
-def _word_width(n: int) -> int:
-    """Return a power-of-two packing width, at least two and Theta(n)."""
-    return max(2, 1 << (n.bit_length() - 1))
 
 
 def _popcount_table(w: int) -> list[int]:
@@ -186,15 +181,15 @@ def _arm_expression(
     Above word width, each level touches O(T/n) words. Below it, a node
     uses constant-size word arithmetic and a derived population-count table.
     """
-    w = _word_width(n)
-    anf = [
+    w = anf.word_width(n)
+    words = [
         sum(value << bit for bit, value in enumerate(coeffs[start : start + w]))
         for start in range(0, len(table), w)
     ]
-    if not any(anf):
+    if not any(words):
         return "0"
     builder = _ArmBuilder(w, at)
-    builder.leaf(anf, n - 1)
+    builder.leaf(words, n - 1)
     return "".join(builder.pieces)
 
 
@@ -206,9 +201,9 @@ def _expression(truth_table: str, n: int) -> str:
 def _expression_program(truth_table: str, n: int) -> tuple[str, str]:
     """Return the chosen expression and the packed program used to price it."""
     at = tuple(range(n))
-    plain = _arm_expression(truth_table, anf_coefficients(truth_table), n, at)
+    plain = _arm_expression(truth_table, anf.anf_coefficients(truth_table), n, at)
     flip = truth_table.translate(str.maketrans("01", "10"))
-    negated = "^ 1 " + _arm_expression(flip, anf_coefficients(flip), n, at)
+    negated = "^ 1 " + _arm_expression(flip, anf.anf_coefficients(flip), n, at)
     return min(
         ((e, _packed_program(e, n, len(f"% 0 {e}\n$\n"))) for e in (plain, negated)),
         key=lambda pair: len(pair[1]),
@@ -420,30 +415,3 @@ def _balance(table: str, default: str) -> str:
         walk.append(_packed_program(expression, n, side, share=share))
         packed += walk
     return min(default, *packed, key=balance_score)
-
-
-def anf_coefficients(truth_table: str) -> list[int]:
-    """Return row-indexed ANF coefficients, allowing a nullary reduced table.
-
-    Pack Theta(log T) coefficients per word for O(T) word-RAM work.
-    """
-    n = _validate_shape(truth_table)
-    if n == 0:
-        return [int(truth_table)]
-    width = _word_width(n)
-    words = [
-        int(truth_table[start : start + width][::-1], 2)
-        for start in range(0, len(truth_table), width)
-    ]
-    stride = 1
-    while stride < width:
-        high = int(("1" * stride + "0" * stride) * (width // (2 * stride)), 2)
-        words = [value ^ ((value << stride) & high) for value in words]
-        stride *= 2
-    stride = 1
-    while stride < len(words):
-        for start in range(0, len(words), 2 * stride):
-            for offset in range(start, start + stride):
-                words[offset + stride] ^= words[offset]
-        stride *= 2
-    return [(value >> bit) & 1 for value in words for bit in range(width)]

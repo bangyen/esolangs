@@ -61,8 +61,11 @@ class TestFargo:
             assert [run_fargo(program, [b]) for b in "01"] == list(table)
 
     def test_parity_is_one_term_per_input(self) -> None:
-        """Parity's ANF is the sum of the single-variable terms."""
         assert boolean.fargo("01101001") == "% 0 ^ ^ @ 0 @ 1 @ 10\n$\n"
+        from tests.support.analysis_support import assert_analysis_complement
+
+        assert {"anf_coefficients", "_word_width"}.isdisjoint(vars(boolean))
+        assert_analysis_complement("Fargo", "anf.anf_coefficients", "0110")
 
     def test_parity_grows_linearly_not_exponentially(self) -> None:
         """The size tracks algebraic complexity, so parity is O(n log n)."""
@@ -89,7 +92,7 @@ class TestFargo:
 
     def test_choosing_arms_shrinks_the_corpus(self) -> None:
         """Tables to two inputs never grow; the three-input corpus shrinks 11.7%."""
-        from esolangs.languages.fargo.generator import anf_coefficients
+        from esolangs.generation.anf import anf_coefficients
         from esolangs.languages.fargo.tests.fargo_oracle import _anf_expression
 
         before = after = 0

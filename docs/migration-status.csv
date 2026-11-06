@@ -49,7 +49,7 @@ EGL,yes,declared,not-applicable,declared,owned-adapter,egl-v1,canonical-projecti
 Eval,yes,declared,not-applicable,declared,owned-adapter,eval-v1,canonical-projection;owned-gray-stack-lookup,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 Fackward,yes,declared,not-applicable,declared,owned-adapter,fackward-v1,canonical-subtable-fold,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;corpus-n2;native-worker-cycle;vm-debugger-history,open
 FALSE,yes,declared,not-applicable,declared,owned-adapter,false-v1,pending-backend-audit,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;corpus-n2;native-worker-cycle;vm-debugger-history,open
-Fargo,yes,declared,not-applicable,declared,owned-adapter,fargo-v1,pending-backend-audit,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
+Fargo,yes,declared,not-applicable,declared,owned-adapter,fargo-v1,canonical-packed-anf;owned-davio-expression-layout,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 Fish,yes,declared,not-applicable,declared,owned-adapter,fish-v1,canonical-parity;pending-backend-audit,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 Flowchart,yes,declared,not-applicable,declared,owned-adapter,flowchart-v1,canonical-projection-subtree-spans;owned-deque-grid-layout,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 Forbin,yes,declared,not-applicable,declared,owned-adapter,forbin-v1,canonical-projection-span-subtree;owned-register-layout,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open

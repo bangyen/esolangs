@@ -962,3 +962,12 @@ n=9 resource node exceeds its unchanged 60 s audit cap; separate full-table
 checks cover all eleven tables and 5,632 rows under that cap, reaching both
 exact bounds. The whole-node timeout remains a finding. Catalog acceptance
 stays open.
+
+Fargo's packed ANF transform and word-width rule move to canonical analysis;
+its two test consumers migrate and the emitter exports neither old helper.
+Davio/OR choices, scalar/word grains, expression interning, profitable names
+and width/balance races remain owned. An injected coefficient fault changes
+all executed answers. All 652 corpus artifacts, 2,120 paired rows and 48,262
+semantic samples match; another 175 layouts and 57 size witnesses retain
+bytes and paired execution. Pins, resource/scaling/anchor scopes and twelve
+balanced timings pass unchanged. Catalog acceptance remains open.
