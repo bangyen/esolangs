@@ -36,7 +36,7 @@ Clockwise,yes,declared,not-applicable,declared,owned-adapter,clockwise-v1,pendin
 Codesick,yes,declared,not-applicable,declared,owned-adapter,codesick-v1,pending-backend-audit,pending-acceptance-audit,open
 Collatz Multiverse,yes,declared,not-applicable,declared,owned-adapter,collatz-multiverse-v1,pending-backend-audit,pending-acceptance-audit,open
 Container,yes,declared,not-applicable,declared,owned-adapter,container-v1,pending-backend-audit,pending-acceptance-audit,open
-CreativeScript v2,yes,declared,not-applicable,declared,owned-adapter,creativescript-v2-v1,pending-backend-audit,pending-acceptance-audit,open
+CreativeScript v2,yes,declared,not-applicable,declared,owned-adapter,creativescript-v2-v1,canonical-dependency-projection;owned-arithmetic-lookup,pending-acceptance-audit,open
 Crement,yes,declared,not-applicable,declared,owned-adapter,crement-v1,pending-backend-audit,pending-acceptance-audit,open
 CV(N)(C),yes,declared,not-applicable,declared,owned-adapter,cvnc-v1,pending-backend-audit,pending-acceptance-audit,open
 Cyclic tag,yes,declared,not-applicable,declared,owned-adapter,cyclic-tag-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -65,7 +65,7 @@ IEBEL,yes,declared,not-applicable,declared,owned-adapter,iebel-v1,pending-backen
 Inject,yes,declared,not-applicable,declared,owned-adapter,inject-v1,pending-backend-audit,pending-acceptance-audit,open
 INTERCAL,yes,declared,not-applicable,declared,owned-adapter,intercal-v1,pending-backend-audit,pending-acceptance-audit,open
 Interprogck8,yes,declared,not-applicable,declared,owned-adapter,interprogck8-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
-Kiss,yes,declared,not-applicable,declared,owned-adapter,kiss-v1,pending-backend-audit,pending-acceptance-audit,open
+Kiss,yes,declared,not-applicable,declared,owned-adapter,kiss-v1,canonical-subtree-analysis,pending-acceptance-audit,open
 LaserFuck,yes,declared,not-applicable,declared,owned-adapter,laserfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Line,yes,declared,not-applicable,declared,owned-adapter,line-v1,pending-backend-audit,pending-acceptance-audit,open
 lol waht i cant edit talk pages,yes,declared,not-applicable,declared,owned-adapter,lol-waht-i-cant-edit-talk-pages-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -73,7 +73,7 @@ Malbolge,yes,declared,not-applicable,declared,owned-adapter,malbolge-v1,pending-
 Minsky Swap,yes,declared,not-applicable,declared,owned-adapter,minsky-swap-v1,pending-backend-audit,pending-acceptance-audit,open
 Modulous,yes,declared,not-applicable,declared,owned-adapter,modulous-v1,pending-backend-audit,pending-acceptance-audit,open
 Monotonic Boolfuck,yes,declared,not-applicable,declared,inherited-adapter,monotonic-boolfuck-v1,pending-backend-audit,pending-acceptance-audit,open
-Movesum,yes,declared,not-applicable,declared,owned-adapter,movesum-v1,pending-backend-audit,pending-acceptance-audit,open
+Movesum,yes,declared,not-applicable,declared,owned-adapter,movesum-v1,canonical-validation;owned-halting-rung-lookup,pending-acceptance-audit,open
 Nandypants,yes,declared,not-applicable,declared,owned-adapter,nandypants-v1,pending-backend-audit,pending-acceptance-audit,open
 Nope.,no,declared,not-applicable,declared,owned-adapter,nope-v1,not-applicable,pending-acceptance-audit,open
 NOR machine,yes,declared,not-applicable,declared,owned-adapter,nor-machine-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -81,7 +81,7 @@ NQ,yes,declared,declared,declared,owned-adapter,nq-v1,canonical-parity;pending-b
 Object disoriented,yes,declared,not-applicable,declared,owned-adapter,object-disoriented-v1,pending-backend-audit,pending-acceptance-audit,open
 Packlang,yes,declared,declared,declared,owned-adapter,packlang-v1,pending-backend-audit,pending-acceptance-audit,open
 Painfuck,yes,declared,not-applicable,declared,owned-adapter,painfuck-v1,pending-backend-audit,pending-acceptance-audit,open
-Parenthesys,yes,declared,not-applicable,declared,owned-adapter,parenthesys-v1,pending-backend-audit,pending-acceptance-audit,open
+Parenthesys,yes,declared,not-applicable,declared,owned-adapter,parenthesys-v1,canonical-validation;owned-packed-lookup,pending-acceptance-audit,open
 Piet,yes,declared,not-applicable,declared,owned-adapter,piet-v1,pending-backend-audit,pending-acceptance-audit,open
 Pilas,yes,declared,not-applicable,declared,owned-adapter,pilas-v1,pending-backend-audit,pending-acceptance-audit,open
 Pointless,yes,declared,not-applicable,declared,owned-adapter,pointless-v1,pending-backend-audit,pending-acceptance-audit,open

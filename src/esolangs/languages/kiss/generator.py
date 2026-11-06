@@ -14,10 +14,7 @@ Size:
     chars, n=10 parity: 7,163 chars.
 """
 
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    subtree_ids,
-)
+from esolangs.generation.helpers import subtree_ids
 
 #: Each leaf outputs its bit and halts.
 _LEAF = {"0": "KK", "1": "SK"}
@@ -27,8 +24,8 @@ _SKIP = "SS(SKK)"
 
 def kiss(truth_table: str) -> str:
     """Build a Kiss program printing ``truth_table[row]`` for the inputs."""
-    n = _validate_truth_table(truth_table)
     ids = subtree_ids(truth_table)
+    n = len(ids) - 1
     parts: list[str] = []
     # A stack of nodes and closing text, emitted in order: O(T).
     work: list[tuple[int, int] | str] = [(0, 0)]

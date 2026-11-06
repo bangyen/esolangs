@@ -322,3 +322,11 @@ capabilities; native drivers require explicit completion policy. The scaffold
 and synthetic descriptors follow the same contract. Missing declarations and
 policies fail; absent debugger views retain their defaults.
 Diff/proof driver migration and final lifecycle acceptance remain open.
+
+CreativeScript v2 uses canonical dependency/projection analysis; arithmetic
+indexing remains owned. Movesum retains its halt-on-equality rung lookup and
+Parenthesys its packed character/index arithmetic; neither constructs a
+decision graph. Both use canonical validation. Kiss uses canonical subtree
+ids without duplicate validation, retaining SK emission and draining reads.
+These four backend audits preserve source, execution and resource bounds;
+catalog-wide runtime and certification acceptance remain open.

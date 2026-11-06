@@ -9,11 +9,25 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
 @pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer(table: str, monkeypatch) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     if table == "00":
         _check_constants()
     assert_every_row("Kiss", table)
+    if table == "0011":
+        from esolangs.languages.kiss import generator
+
+        canonical = generator.subtree_ids
+
+        def wrong_children(table):
+            ids = canonical(table)
+            ids[1][1] = ids[1][0]
+            return ids
+
+        with monkeypatch.context() as patch:
+            patch.setattr(generator, "subtree_ids", wrong_children)
+            with pytest.raises(AssertionError):
+                assert_every_row("Kiss", table)
 
 
 def _check_constants() -> None:
