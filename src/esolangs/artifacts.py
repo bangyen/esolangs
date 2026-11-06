@@ -30,7 +30,7 @@ def _origin(source: object, language: str, settings: DialectSettings | None) -> 
     name = check_provenance(language, settings)
     if name is None:
         raise ArgumentError("an artifact requires a language")
-    retained = getattr(source, "language", None)
+    retained = source.language if isinstance(source, (Raster, CompressedText)) else None
     if retained is not None and retained != name:
         raise ProgramError(f"source belongs to {retained}, not {name}")
     return name
@@ -47,15 +47,18 @@ class ProgramArtifact[Source: Program]:
 
     def __post_init__(self) -> None:
         """Validate source storage and retain canonical provenance."""
-        from esolangs.tagged import _Template
-
-        if isinstance(self.source, (_Template, TemplateArtifact)):
+        if isinstance(self.source, TemplateArtifact):
             raise TemplateError("fill the template before declaring runnable source")
         if not isinstance(self.source, (str, Raster, CompressedText)):
             raise ProgramError("a program needs text, compressed source, or a raster")
         object.__setattr__(
             self, "language", _origin(self.source, self.language, self.settings)
         )
+        if self.settings is None and isinstance(self.source, (Raster, CompressedText)):
+            retained = self.source.settings
+            if retained is not None:
+                check_provenance(self.language, retained)
+                object.__setattr__(self, "settings", retained)
         if isinstance(self.source, Raster):
             scale = self.source.scale if self.scale is None else self.scale
             if scale is not None:
@@ -114,7 +117,7 @@ class TemplateArtifact:
     language: str
     bindings: TemplateBindings
     settings: DialectSettings | None = None
-    # Re-parsing on adapter conversion added 20-26% to fills at n=2/4/6.
+    # Re-parsing immutable spans added 20-26% to fills at n=2/4/6.
     _spans: tuple[tuple[int, int], ...] = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:

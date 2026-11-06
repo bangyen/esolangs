@@ -23,6 +23,22 @@ class TestArrowQueue:
         check_raw_arrowqueue()
         assert run_and_capture(["   "]) == ""
 
+        import esolangs
+        from tests.support.evaluation import _row_answerer
+
+        declared = esolangs.Language("ArrowQueue").from_source("file.qq")
+        for isolated in (False, True):
+            answer = _row_answerer(
+                "ArrowQueue",
+                terminating=True,
+                isolated=isolated,
+                settings=None,
+                scale=None,
+                max_output=None,
+                max_memory=None,
+            )
+            assert answer(declared, "", 3) == "0"
+
     def test_the_dump_goes_to_the_caller_s_io(self) -> None:
         """``run`` must write through the ``io`` it is handed."""
         io = ScriptedIO("")

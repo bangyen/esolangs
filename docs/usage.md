@@ -86,12 +86,12 @@ One kind of language needs a different call:
   assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin=stdin).output) == "1"
   ```
 
-`generate` (also named `generate_artifact`) returns an immutable `ProgramArtifact` or `TemplateArtifact`.
+`generate` returns an immutable `ProgramArtifact` or `TemplateArtifact`.
 Both carry explicit `.source`, language and dialect settings; raster programs
 also retain scale. `TemplateArtifact.fill(bits)` returns a runnable record.
 `run`, `instantiate`, `dump_program` and `save_program` accept records;
-`load_artifact` restores them, including template bindings. Unfilled templates
-cannot run. `Language` binds `generate_artifact` and `load_artifact` too.
+`load_program` restores them, including template bindings. Unfilled templates
+cannot run. `Language` binds the same operations.
 
 `Language.from_source(source)` declares runnable source explicitly, including
 text that resembles a filename. `Language.from_file(path)` reads native source
@@ -159,10 +159,8 @@ Functions:
 - `esolangs.dump_program` -- return version-1 JSON preserving source, choices, and template setters
 - `esolangs.encode_inputs` -- return the stdin that feeds `bits` to a `language` program
 - `esolangs.generate` -- return an immutable program or template computing `truth_table`
-- `esolangs.generate_artifact` -- return an immutable program or template computing `truth_table`
 - `esolangs.instantiate` -- fill a parameterized generator's template with `bits`
 - `esolangs.list_languages` -- return the supported language names, sorted
-- `esolangs.load_artifact` -- restore version-1 JSON as an explicit program or template record
 - `esolangs.load_program` -- restore version-1 JSON as an explicit program or template record
 - `esolangs.read_answer` -- return the answer bit, `"0"` or `"1"`, a program's `output` carries
 - `esolangs.run` -- execute `program` and return output, input usage and completion evidence
@@ -184,7 +182,6 @@ Types:
 - `esolangs.TemplateArtifact` -- text with explicit input bindings; never runnable source
 - `esolangs.TemplateBindings` -- ordered, equal-width input bindings, independent of source storage
 - `esolangs.TextLimits` -- independent raw-export, generation-work and compressed-file budgets
-- `esolangs.compat` -- temporary source adapters during the 2.0 caller migration
 
 Exceptions:
 
@@ -484,7 +481,9 @@ return `ProgramArtifact | TemplateArtifact`, `instantiate` returns a runnable
 these same defaults. Existing serialized documents and CLI source/output formats
 remain compatible.
 
-For 1.x code that requires tagged strings, rasters or compressed source, call `esolangs.compat.generate`, `.instantiate` and `.load_program`.
+The 1.x source facade is removed. Retain artifacts through generation, filling
+and execution; use `.source` for native measurements and portable JSON to
+preserve template bindings. Plain source cannot be instantiated.
 Use `run(...).output` for output text; `run_result` is replaced by `run`.
 These adapters are explicit projections of the artifact-first implementation;
 new code should retain records and extract `.source` or `.output` where needed.

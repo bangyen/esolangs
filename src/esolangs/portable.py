@@ -19,11 +19,10 @@ from esolangs.artifacts import (
 )
 from esolangs.compressed import CompressedText, TextLimits
 from esolangs.exceptions import ArgumentError, ProgramError
-from esolangs.raster import Raster
+from esolangs.raster import Raster, png
 from esolangs.registry import LANGUAGES, resolve, template_char
 from esolangs.runtime._program import Program
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
-from esolangs.tagged import _Tagged, source_adapter
 
 _FORMAT = "esolangs.program"
 
@@ -41,14 +40,24 @@ def save_program(program: Program | Artifact, path: str | PathLike[str]) -> None
         MissingDependencyError: A raster needs ``esolangs[image]`` for PNG.
     """
     try:
-        if isinstance(program, (ProgramArtifact, TemplateArtifact)):
-            program = source_adapter(program)
+        record = (
+            program
+            if isinstance(program, (ProgramArtifact, TemplateArtifact))
+            else None
+        )
+        origin = record.language if record is not None else None
+        if record is not None:
+            program = record.source
         if isinstance(program, CompressedText):
             source = program.to_gzip()
         elif isinstance(program, Raster):
-            source = program.to_png()
+            source = png.write_source(
+                program.rows,
+                record.language if record is not None else program.language,
+                record.settings if record is not None else program.settings,
+                record.scale if isinstance(record, ProgramArtifact) else program.scale,
+            )
         elif isinstance(program, str):
-            origin = getattr(program, "language", None)
             ending = (
                 "\n" if origin is None or LANGUAGES[origin].runtime.file_newline else ""
             )
@@ -107,8 +116,6 @@ def dump_program(
     artifact = (
         program
         if isinstance(program, (ProgramArtifact, TemplateArtifact))
-        else source._artifact  # noqa: SLF001 - source compatibility adapter
-        if isinstance(source, _Tagged)
         else ProgramArtifact(source, name, settings)
     )
     body = artifact.source
@@ -123,7 +130,7 @@ def dump_program(
         document.update(
             kind="png",
             source=base64.b64encode(
-                body.tagged(name, settings=settings, scale=artifact.scale).to_png()
+                png.write_source(body.rows, name, settings, artifact.scale)
             ).decode("ascii"),
         )
     elif isinstance(body, CompressedText):
@@ -250,7 +257,7 @@ _LOADERS: dict[
 }
 
 
-def load_artifact(language: str, document: str) -> Artifact:
+def load_program(language: str, document: str) -> Artifact:
     """Restore version-1 JSON as an explicit program or template record.
 
     Raises:
@@ -298,17 +305,3 @@ def load_artifact(language: str, document: str) -> Artifact:
         return artifact
     except (ValueError, TypeError) as error:
         raise ProgramError(f"invalid portable program: {error}") from error
-
-
-def load_program(language: str, document: str) -> Program:
-    """Restore version-1 JSON as tagged source for the requested language.
-
-    Raises:
-        UnknownLanguageError: ``language`` is not registered.
-        ArgumentError: ``document`` is not a string.
-        ProgramError: The document is invalid for the requested language.
-        MissingDependencyError: A PNG source needs ``esolangs[image]``.
-    """
-    from esolangs import _read_source
-
-    return _read_source(language, source_adapter(load_artifact(language, document)))

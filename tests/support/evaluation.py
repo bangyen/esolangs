@@ -12,12 +12,13 @@ from time import monotonic
 from typing import cast
 
 import esolangs
-from esolangs.artifacts import TemplateArtifact
+from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
     ExecutionTimeoutError,
     InterpreterLimitError,
+    TemplateError,
 )
 from esolangs.generation.helpers import MOST_INPUTS
 from esolangs.registry import LANGUAGES, resolve
@@ -180,13 +181,22 @@ def _iter_evaluate(
         timeout, terminating=terminating, isolated=isolated, total=total_timeout
     )
     deadline = None if total_timeout is None else started + total_timeout
-    explicit_template = program if isinstance(program, TemplateArtifact) else None
+    record = (
+        program if isinstance(program, (ProgramArtifact, TemplateArtifact)) else None
+    )
     program = _prepare(
         lambda: esolangs._read_source(name, program),
         deadline,
         isolated=isolated,
     )
-    settings = effective_settings(name, program, settings)
+    if record is not None:
+        program = record
+    else:
+        settings = effective_settings(name, program, settings)
+    if parameterized and not isinstance(program, TemplateArtifact):
+        raise TemplateError(
+            "evaluation needs a TemplateArtifact with explicit bindings"
+        )
     answer_row = _row_answerer(
         name,
         terminating=terminating,
@@ -202,12 +212,10 @@ def _iter_evaluate(
     for row in range(rows):
         bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
 
-        def prepare_row(bits: list[int] = bits) -> tuple[Program, str]:
+        def prepare_row(bits: list[int] = bits) -> tuple[Program | Artifact, str]:
             if parameterized:
-                template = (
-                    explicit_template if explicit_template is not None else program
-                )
-                return instantiator(name, template, bits).source, ""
+                assert isinstance(program, TemplateArtifact)
+                return instantiator(name, program, bits), ""
             # A language with no generator reads no stdin at all.
             return program, (
                 encode_inputs(name, bits) if LANGUAGES[name].backend is not None else ""
@@ -273,7 +281,7 @@ def _row_answerer(
     scale: int | None,
     max_output: int | None,
     max_memory: int | None,
-) -> Callable[[Program, str, float | None], str]:
+) -> Callable[[Program | Artifact, str, float | None], str]:
     """Return the call that turns one row's source, stdin and bound into its bit."""
     if not terminating:
         run = esolangs.run
@@ -296,13 +304,13 @@ def _row_answerer(
     diverges_is = str(values.index("diverges"))
     halts_is = str(values.index("halts"))
 
-    def answer(source: Program, stdin: str, bound: float | None) -> str:
+    def answer(source: Program | Artifact, stdin: str, bound: float | None) -> str:
         if isolated:
             from esolangs.runtime._isolated import termination_result_isolated
 
             proof = termination_result_isolated(
                 name,
-                source,
+                esolangs._check_program(name, source, stdin),
                 stdin,
                 cast("float", bound),
                 settings=settings,

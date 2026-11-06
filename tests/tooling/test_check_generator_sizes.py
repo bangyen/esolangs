@@ -214,7 +214,8 @@ def test_executed_artifact_and_provenance() -> None:
 
 
 @pytest.mark.parametrize("language", languages(boolean_generator=True))
-def test_benchmark_uses_artifacts_without_source_facades(language, monkeypatch):
+@pytest.mark.usefixtures("retired_source_adapters")
+def test_benchmark_uses_artifacts_without_source_facades(language):
     generated = esolangs.generate(language, "01")
     filled = (
         generated.fill([1])
@@ -222,13 +223,6 @@ def test_benchmark_uses_artifacts_without_source_facades(language, monkeypatch):
         else generated
     )
 
-    def forbidden(*_args, **_kwargs):
-        raise AssertionError("benchmark reached a source facade")
-
-    monkeypatch.setattr(esolangs.compat, "generate", forbidden)
-    monkeypatch.setattr(esolangs.compat, "instantiate", forbidden)
-    with pytest.raises(AssertionError, match="source facade"):
-        esolangs.compat.generate(language, "01")
     with b.evidence_session():
         record = b._measure(
             language, "01", repeat=1, row=1, step_cap=200000, all_rows=True

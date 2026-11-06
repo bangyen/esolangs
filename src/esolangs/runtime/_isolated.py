@@ -17,6 +17,7 @@ from time import monotonic, sleep
 from typing import Any, TextIO, cast
 
 from esolangs import exceptions
+from esolangs.artifacts import ProgramArtifact
 from esolangs.compressed import CompressedText
 from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry import resolve
@@ -30,7 +31,7 @@ from esolangs.runtime._result_wire import (
     encode_decision,
     encode_result,
 )
-from esolangs.runtime._source import ProgramSource
+from esolangs.runtime._source import ProgramSource, effective_scale
 from esolangs.runtime._validate import check_timeout, check_whole
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
@@ -246,6 +247,9 @@ def run_isolated_result(
             ("set a positive finite timeout, for example timeout=5.0"),
         )
     name = resolve(language)
+    scale = effective_scale(name, program, scale)
+    settings = effective_settings(name, program, settings)
+    record = isinstance(program, ProgramArtifact)
     dialect_options(name, settings)
     deadline = monotonic() + timeout
     box: list[str | BaseException] = []
@@ -253,7 +257,9 @@ def run_isolated_result(
     def prepare() -> None:
         try:
             source = esolangs._check_program(name, program, stdin)  # noqa: SLF001
-            retained = effective_settings(name, source, settings)
+            retained = (
+                settings if record else effective_settings(name, source, settings)
+            )
             box.append(
                 json.dumps(
                     _request_wire(
@@ -628,6 +634,8 @@ def _serve_request() -> None:
                 for key, value in request["settings"].items()
             }
         )
+        # The parent already decoded and checked runnable source.
+        program = esolangs.ProgramArtifact(program, request["language"], settings)
         if request["termination"]:
             from esolangs.runtime._termination import _termination_result
 
@@ -640,9 +648,6 @@ def _serve_request() -> None:
             )
             result = proved.observation
         else:
-            # The parent already decoded and checked runnable source. Preserve
-            # that declaration: path-shaped source must not be guessed again.
-            program = esolangs.ProgramArtifact(program, request["language"], settings)
             result = esolangs._run_result(  # noqa: SLF001 - same result route as public run
                 request["language"],
                 program,

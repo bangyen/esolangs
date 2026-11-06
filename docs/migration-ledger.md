@@ -14,13 +14,14 @@ Owners are workstreams, not individual contributors.
 
 | Retirement | Owner | Consumers to migrate | Canonical replacement |
 | --- | --- | --- | --- |
-| Source-returning `generate` / `instantiate` defaults | Artifact API | Public callers, CLI, scripts, docs, tests | Program/template artifacts and explicit `.source` |
-| `_Tagged` | Artifact API | Source guards, settings, persistence, generator adapters | Explicit artifact metadata |
-| `_Template` | Artifact API | Instantiation, layout, serialization | `TemplateArtifact` and bindings |
-| `tagged.source_adapter` and artifact-to-tagged round trips | Artifact API | Source loading, generation and execution boundaries | Direct artifact/source handling |
-| `_recover_template` and plain-string binding inference | Artifact API | Legacy instantiation callers | Declared template bindings |
-| Tagged-source `load_program` | Persistence | CLI, scripts and saved-program callers | Canonical artifact loading |
-| Temporary `esolangs.compat` API | Artifact API | Callers moved there by the in-flight defaults migration | Canonical API; delete the facade after migration |
+| Source-returning `generate` / `instantiate` defaults | Artifact API | Retired; all ordinary repository callers retain artifacts; public surface and signature pins | Program/template artifacts and explicit `.source` |
+| `_Tagged` | Artifact API | Retired with its module; import refusals in `tests/api/test_run_results.py` | Explicit artifact metadata |
+| `_Template` | Artifact API | Retired; strict artifact filling and raw-source refusals in runtime tests | `TemplateArtifact` and bindings |
+| `tagged.source_adapter` and artifact-to-tagged round trips | Artifact API | Retired; direct metadata encoding and source loading; raster retagging fault controls | Direct artifact/source handling |
+| `_recover_template` and plain-string binding inference | Artifact API | Retired with `registry.recover_setters`; declared bindings and known-arity validation | Declared template bindings |
+| Tagged-source `load_program` | Persistence | Retired; canonical loader preserves the existing version-1 format | Canonical artifact loading |
+| Temporary `esolangs.compat` API | Artifact API | Retired; actual missing-import checks and live import barriers | Canonical API; delete the facade after migration |
+| Temporary `generate_artifact` / `load_artifact` aliases | Registry | Retired; tools use canonical names; public and bound-method absence checks | `generate` / `load_program` |
 | Shared plain-text fixture filler `tests.generators.fills` | Artifact API | Retired; native fixtures declare their bindings; negative import check in `tests/generators/test_generator_support.py` | Explicit `TemplateBindings` from declared native setters |
 | `BooleanBackend(generate=...)` constructor alias | Registry | Retired; callers use `entrypoint`; negative constructor/replacement checks in `tests/api/test_boolean_backend.py` | Canonical entrypoint field |
 | `registry.GENERATORS` | Registry | Retired; negative index checks in `tests/api/test_deferred_catalog.py` | Descriptor/backend entrypoints |
@@ -42,77 +43,21 @@ those consumers migrate, the implementation disappears and a regression check
 rejects its reintroduction. A version number or a new facade is not retirement.
 Current version-1 serialization is not obsolete solely because its version is 1.
 
-The 2.0 defaults are artifacts and execution results. Output-only `compat.run`
-and public `run_result` aliases are retired; `tests/api/test_run_results.py`
-rejects their return. Source adapters in `esolangs.compat` remain open.
+The 2.0 defaults are artifacts and execution results. Public API, CLI, scripts,
+documentation and tests retain records through binding and execution. Native
+measurements read explicit source; portable JSON retains template bindings.
+Plain source cannot be instantiated. Native source exports retain their file
+conventions; no serialized format was superseded by this cutover.
 
-Benchmarks retain artifacts through generation, binding and execution. Source
-size and hashes read `.source`; caller checks fence off the temporary facade
-for all 114 backends. Release checks, audit replay, documentation and scaffolding
-also use artifacts; replay loads preserve explicit bindings. Other source-returning
-callers remain open.
+The source facade, string wrappers, inferred binding recovery and duplicate
+artifact aliases are deleted. PNG persistence encodes record metadata directly;
+execution carries settings and scale explicitly, checking provenance before
+loading. `ProgramArtifact` retains native-container metadata at construction.
 
-Example builders return runnable artifacts through layout, binding and scaling.
-Regeneration writes them through `save_program`; the example builder no longer
-converts artifacts into tagged source.
-
-Shared generation, VM-row and proof-measurement helpers retain artifacts through
-execution. Size callbacks and native sample fixtures read explicit source after
-binding. Shared support and owned language tests no longer call the source facade;
-other repository callers still require migration.
-
-Shared generator binding, run-width, round-trip, native-container and portable
-document tests retain artifacts. Raster streams save records before encoding and
-check metadata and foreign-language rejection. Other generator callers remain open.
-
-Owned source-inspection tests for 91 text backends use explicit artifact source
-for native machines, layout checks and size pins. Other repository callers remain
-open.
-
-Owned Boolean tests for Underload, Eval, Cyclic tag, Bitwise Cyclic Tag, Stisp
-and FRACTRAN retain template bindings. Persistence checks restore artifacts;
-native calls unwrap only filled programs. Remaining template callers stay open.
-
-Native fixture fillers now declare their input count and setters explicitly.
-The generic plain-text filler and bare-run fixture helper are deleted; public
-source-facade and plain-template callers remain open.
-
-REFRACTRAN and Retrograde Boolean callers and Smallfuck, RAM0, Crement and
-INTERCAL layout callers retain explicit bindings. Saved-layout checks restore
-portable templates; independent native models inspect filled source.
-
-Owned integration callers now retain artifacts through execution, debugging,
-pickle and portable round trips, including raster and compressed source.
-Native-file fixtures unwrap explicitly; modified templates retain bindings.
-
-Native Line, Piet and NQ construction tests read explicit source bodies. Public
-scaled-Piet execution and native Line persistence retain artifact metadata.
-
-Owned `///` callers retain templates through evaluation and portable round trips.
-Native recognition, source bounds and workspace checks read explicit bodies.
-
-All owned template callers retain bindings through public execution. Their test
-fixture rejects source-facade calls and plain-text binding recovery, including
-captured aliases. Native fixtures declare setters explicitly.
-
-Shared generator execution, layout, size and documentation tests use artifacts;
-their fixture now rejects facade calls and plain-template recovery throughout
-the generator group. Native measurements read explicit source. Layout candidates
-reuse retained bindings; persisted templates use portable documents and native
-files are tested after filling. Source-adapter references are fault controls.
-
-Runtime execution, debugging, worker and persistence tests use canonical records.
-The same facade/recovery guard covers the runtime group. Native PNG fixtures
-preserve record metadata through `save_program`; worker requests pass explicit
-source, settings and scale.
-
-Public API tests use canonical generation, filling and loading, including lazy
-subprocesses and documented-error witnesses. The facade/recovery guard covers
-the API group; record immutability and retained settings replace string tags.
-
-CLI, proof, purity and documentation callers retain artifacts. Native size and
-formula inputs read explicit source; execution retains bindings. The test guard
-covers all groups; remaining facade calls are live fault controls or surface pins.
+Missing-import and symbol checks reject retired APIs. Live import barriers
+cover generation helpers, audit replay, examples, benchmarks and documentation;
+raster retagging controls protect direct artifact paths. Raw raster/compressed
+metadata operations remain native-container APIs.
 
 Accounting and analysis rows require owned witnesses, not just a declared hook
 or a recognized helper name. Certification needs an installed-package/lazy-import

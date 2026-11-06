@@ -40,15 +40,8 @@ def test_every_row_checks_the_supplied_program_without_regenerating(monkeypatch)
 
 
 @pytest.mark.parametrize("language", languages(boolean_generator=True))
-def test_verification_helpers_retain_artifacts(language, monkeypatch):
-    def forbidden(*_args, **_kwargs):
-        raise AssertionError("verification reached a source facade")
-
-    monkeypatch.setattr(esolangs.compat, "generate", forbidden)
-    monkeypatch.setattr(esolangs.compat, "instantiate", forbidden)
-    monkeypatch.setattr(esolangs.compat, "source_adapter", forbidden)
-    with pytest.raises(AssertionError, match="source facade"):
-        esolangs.compat.generate(language, "01")
+@pytest.mark.usefixtures("retired_source_adapters")
+def test_verification_helpers_retain_artifacts(language):
     program, _stdin = _row(language, "01", [1])
     assert isinstance(program, esolangs.ProgramArtifact)
     assert program.language == esolangs.describe(language)["name"]

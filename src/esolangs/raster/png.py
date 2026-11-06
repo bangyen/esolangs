@@ -16,6 +16,7 @@ from esolangs.runtime.source_hints import syntax_error
 
 if TYPE_CHECKING:
     from esolangs.raster import Pixel, Rows
+    from esolangs.settings import DialectSettings
 
 _UNLOADED = object()
 Image: Any = _UNLOADED
@@ -476,4 +477,30 @@ def write_metadata(data: bytes, metadata: dict[str, Any]) -> bytes:
         + chunk
         + struct.pack(">I", zlib.crc32(chunk) & 0xFFFFFFFF)
         + data[-12:]
+    )
+
+
+def write_source(
+    pixels: Rows,
+    language: str | None,
+    settings: DialectSettings | None,
+    scale: int | None,
+) -> bytes:
+    """Encode pixels and explicit native source metadata without retagging."""
+    data = write_rgb(pixels)
+    if language is None and settings is None and scale is None:
+        return data
+    return write_metadata(
+        data,
+        {
+            "version": 1,
+            "language": language,
+            "settings": None
+            if settings is None
+            else {
+                key: {"integer": hex(value)} if type(value) is int else value
+                for key, value in settings._items  # noqa: SLF001
+            },
+            "scale": scale,
+        },
     )

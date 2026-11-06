@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.compressed import CompressedText
 from esolangs.generation.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.raster import Raster
@@ -91,24 +90,14 @@ def test_boolean_example_matches_generator(name: str) -> None:
 
 
 @pytest.mark.medium
-def test_regeneration_yields_public_balanced_programs(monkeypatch) -> None:
+@pytest.mark.usefixtures("retired_source_adapters")
+def test_regeneration_yields_public_balanced_programs() -> None:
     import esolangs
     from scripts.docs.examples import boolean_programs
 
     generate, instantiate = esolangs.generate, esolangs.instantiate
 
-    def compatibility_roundtrip(*_args, **_kwargs):
-        pytest.fail("internal example generation must retain its artifact")
-
-    monkeypatch.setattr(compat, "generate", compatibility_roundtrip)
-    monkeypatch.setattr(compat, "instantiate", compatibility_roundtrip)
-    from esolangs import tagged
-
-    with monkeypatch.context() as guard:
-        guard.setattr(tagged, "source_adapter", compatibility_roundtrip)
-        with pytest.raises(pytest.fail.Exception, match="retain its artifact"):
-            tagged.source_adapter(generate(REFERENCE, "01"))
-        programs = dict(boolean_programs())
+    programs = dict(boolean_programs())
     assert all(
         isinstance(program, esolangs.ProgramArtifact) for program in programs.values()
     )

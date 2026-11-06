@@ -266,7 +266,7 @@ def _baseline(
         check=True,
         timeout=_remaining(deadline),
     )
-    return esolangs.load_artifact(language, generated.stdout)
+    return esolangs.load_program(language, generated.stdout)
 
 
 def _source_size(artifact: Artifact, unit: str) -> int:

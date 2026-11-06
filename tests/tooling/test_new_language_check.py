@@ -132,6 +132,7 @@ def test_quick_tests_spell_ids_as_pytest_does() -> None:
     assert any(name.encode("unicode_escape").decode() in node for node in ids)
 
 
+@pytest.mark.usefixtures("retired_source_adapters")
 def test_bounds_flags_a_stale_size_anchor(monkeypatch: pytest.MonkeyPatch) -> None:
     """Positive control: an anchor one char off is named with the real size."""
     name = first(boolean_generator=True, parameterized=False, answer_mode="output")
@@ -145,17 +146,9 @@ def test_bounds_flags_a_stale_size_anchor(monkeypatch: pytest.MonkeyPatch) -> No
         unit="chars",
     )
     monkeypatch.setattr(evidence, "source_anchors", lambda _: (anchor,))
-    with monkeypatch.context() as guard:
-
-        def forbidden(*_args, **_kwargs):
-            raise AssertionError("size anchor reached a source facade")
-
-        guard.setattr(esolangs.compat, "generate", forbidden)
-        with pytest.raises(AssertionError, match="source facade"):
-            esolangs.compat.generate(name, "01")
-        assert new_language.size_anchors(name) == [
-            f"  n=2 parity: {size + 1:,} chars  STALE: emits {size:,}"
-        ]
+    assert new_language.size_anchors(name) == [
+        f"  n=2 parity: {size + 1:,} chars  STALE: emits {size:,}"
+    ]
     load_module = importlib.import_module
 
     def without_formula_records(module, *args, **kwargs):

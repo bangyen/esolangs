@@ -10,7 +10,7 @@ from functools import cache
 from urllib.parse import quote
 
 from esolangs.exceptions import TemplateError, UnknownLanguageError
-from esolangs.generation.helpers import MOST_INPUTS, Setters, mark_runs, runs, unmark
+from esolangs.generation.helpers import Setters, mark_runs, unmark
 from esolangs.generation.wrap import wrap_program
 from esolangs.registry._backend import TemplateSpec
 from esolangs.registry._slug import SUGGESTION_CUTOFF, canonical_id
@@ -28,7 +28,6 @@ __all__ = [
     "canonical_id",
     "example_stems",
     "parameterized_ids",
-    "recover_setters",
     "render_template",
     "resolve",
     "template_char",
@@ -131,33 +130,6 @@ def render_template(
         return slots, char, setters
     wrapped = wrap_program(mark_runs(slots, char, setters), language_id, width)
     return unmark(wrapped, char, n), char, setters
-
-
-def recover_setters(language_id: str, template: str) -> Setters:
-    """Return the pairs a plain run-form ``template`` was rendered from.
-
-    A template read back from a file carries no pairs, but the language's
-    setters are a function of the input count alone (plus the text, for the
-    route cases), and the runs' total length grows with the
-    count -- every generator spells more with more inputs -- so the count
-    is the one value at which the widths sum to what the text holds.  The
-    runs are then checked against it like any other template.
-    """
-    char = template_char(language_id)
-    if char is None:
-        raise _reads_inputs(language_id)
-    total = template.count(char)
-    # Past MOST_INPUTS every generator is capped by its own table size.
-    for n in range(1, MOST_INPUTS + 1):
-        setters = template_setters(language_id, template, n)
-        if sum(len(zero) for zero, _one in setters) != total:
-            continue
-        runs(template, char, setters)  # refuses a shape the widths do not fit
-        return setters
-    raise ValueError(
-        f"no input count makes this text a {language_id} template: it has "
-        f"{total} of {char!r}"
-    )
 
 
 def parameterized_ids() -> frozenset[str]:

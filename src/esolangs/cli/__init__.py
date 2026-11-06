@@ -78,6 +78,7 @@ from esolangs.cli.io import _read_stdin
 from esolangs.cli.run import _run
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError
+from esolangs.raster import png
 from esolangs.registry import LANGUAGES, Language, resolve
 from esolangs.registry._contracts import AnswerMode, ProofStatus, SourceForm
 from esolangs.registry._describe import INPUT_SHAPES
@@ -269,9 +270,9 @@ def _emit(artifact: Artifact, *, plain: bool) -> None:
     elif isinstance(program, Raster):
         assert isinstance(artifact, ProgramArtifact)
         sys.stdout.buffer.write(
-            program.tagged(
-                artifact.language, settings=artifact.settings, scale=artifact.scale
-            ).to_png()
+            png.write_source(
+                program.rows, artifact.language, artifact.settings, artifact.scale
+            )
         )
     else:
         ending = "\n" if LANGUAGES[artifact.language].runtime.file_newline else ""

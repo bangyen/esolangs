@@ -328,48 +328,6 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
 ]
 
 
-TRIGGERS += [
-    (
-        "generate_artifact",
-        x.UnknownLanguageError,
-        lambda: esolangs.generate_artifact("Nolang", "01"),
-        None,
-    ),
-    (
-        "generate_artifact",
-        x.TruthTableError,
-        lambda: esolangs.generate_artifact(R, "012"),
-        None,
-    ),
-    (
-        "generate_artifact",
-        x.ArgumentError,
-        lambda: esolangs.generate_artifact(R, "01", scale=2),
-        None,
-    ),
-    (
-        "generate_artifact",
-        x.GeneratorCapError,
-        lambda: _over_cap(esolangs.generate_artifact),
-        None,
-    ),
-    (
-        "load_artifact",
-        x.UnknownLanguageError,
-        lambda: esolangs.load_artifact("Nolang", "{}"),
-        None,
-    ),
-    ("load_artifact", x.ArgumentError, lambda: esolangs.load_artifact(R, b"{}"), None),
-    ("load_artifact", x.ProgramError, lambda: esolangs.load_artifact(R, "{}"), None),
-    (
-        "load_artifact",
-        x.MissingDependencyError,
-        lambda: _load_png_without_pillow(esolangs.load_artifact),
-        None,
-    ),
-]
-
-
 def test_every_exported_function_lists_its_errors() -> None:
     """A ``Raises:`` section, or a recorded reason there is none."""
     missing = [

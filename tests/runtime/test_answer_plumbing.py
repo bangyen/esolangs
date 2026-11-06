@@ -142,6 +142,8 @@ class TestATemplateCarriesItsSetters:
                 esolangs.instantiate(name, template, [1, 0])
             ), name
             assert _evaluate(name, restored, inputs=2) == "0011"
+            with pytest.raises(esolangs.TemplateError, match="TemplateArtifact"):
+                esolangs.instantiate(name, restored.source, [1, 0])
             with pytest.raises(esolangs.TemplateError, match="is not the template"):
                 esolangs.instantiate(name, restored, [1, 0], truth_table="0001")
 
@@ -290,6 +292,15 @@ class TestInstantiateCanCheckProvenance:
         handwritten = esolangs.TemplateArtifact(source, TEMPLATED, bindings)
         with pytest.raises(esolangs.TemplateError, match="is not the template"):
             esolangs.instantiate(TEMPLATED, handwritten, [1], truth_table="01")
+        forged = esolangs.TemplateArtifact(
+            original.source,
+            TEMPLATED,
+            esolangs.TemplateBindings(
+                bindings.char, tuple((one, zero) for zero, one in bindings.setters)
+            ),
+        )
+        with pytest.raises(esolangs.TemplateError, match="is not the template"):
+            esolangs.instantiate(TEMPLATED, forged, [1], truth_table="01")
 
 
 class TestSnapshotSaysItIsOpaque:

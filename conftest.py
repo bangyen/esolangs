@@ -151,6 +151,23 @@ def _owned_template_boundaries(
 
 
 @pytest.fixture
+def retired_source_adapters(monkeypatch):
+    """Keep retired module imports poisoned, with a live control."""
+    import importlib
+    import sys
+
+    class Block:
+        def find_spec(self, fullname, _path=None, _target=None):
+            if fullname in {"esolangs.compat", "esolangs.tagged"}:
+                raise AssertionError("retired source adapter imported")
+            return
+
+    monkeypatch.setattr(sys, "meta_path", [Block(), *sys.meta_path])
+    with pytest.raises(AssertionError, match="retired source adapter"):
+        importlib.import_module("esolangs.compat")
+
+
+@pytest.fixture
 def native_png(tmp_path: Path):
     """Encode a raster record through the native persistence boundary."""
     import esolangs

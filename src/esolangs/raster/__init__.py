@@ -361,20 +361,4 @@ class Raster:
 
     def to_png(self) -> bytes:
         """Encode this raster as PNG bytes."""
-        data = png.write_rgb(self.rows)
-        if self.language is None and self.settings is None and self.scale is None:
-            return data
-        return png.write_metadata(
-            data,
-            {
-                "version": 1,
-                "language": self.language,
-                "settings": None
-                if self.settings is None
-                else {
-                    key: {"integer": hex(value)} if type(value) is int else value
-                    for key, value in self.settings._items  # noqa: SLF001
-                },
-                "scale": self.scale,
-            },
-        )
+        return png.write_source(self.rows, self.language, self.settings, self.scale)

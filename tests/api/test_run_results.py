@@ -136,10 +136,18 @@ def test_public_record_is_immutable_and_the_old_import_is_retired():
     assert esolangs.ExecutionResult is ExecutionResult
     assert not hasattr(esolangs, "run_result")
     assert not hasattr(esolangs.Language, "run_result")
-    assert not hasattr(esolangs.compat, "run")
-    with pytest.raises(ModuleNotFoundError) as missing:
-        import_module("esolangs.runtime._result")
-    assert missing.value.name == "esolangs.runtime._result"
+    assert not hasattr(esolangs, "compat")
+    assert not hasattr(esolangs, "_recover_template")
+    for owner in (esolangs, esolangs.Language):
+        assert not hasattr(owner, "generate_artifact")
+        assert not hasattr(owner, "load_artifact")
+    from esolangs import registry
+
+    assert not hasattr(registry, "recover_setters")
+    for retired in ("esolangs.runtime._result", "esolangs.compat", "esolangs.tagged"):
+        with pytest.raises(ModuleNotFoundError) as missing:
+            import_module(retired)
+        assert missing.value.name == retired
     result = ExecutionResult("custom", None, None, None)
     assert result.completion is None
     assert pickle.loads(pickle.dumps(result)) == result

@@ -1,7 +1,6 @@
 """Immutable artifacts retain bindings, execution and persistence metadata."""
 
 import pickle
-import sys
 from dataclasses import FrozenInstanceError
 from pathlib import Path
 
@@ -52,6 +51,7 @@ def test_artifact_persistence_executes_the_same_table(
 
     with monkeypatch.context() as patch:
         patch.setattr(portable, "source_adapter", refuse_adapter, raising=False)
+        patch.setattr(esolangs.Raster, "tagged", refuse_adapter)
         document = esolangs.dump_program(language, source)
         restored = esolangs.load_program(language, document)
         assert esolangs.dump_program(language, restored) == document
@@ -183,8 +183,7 @@ def test_generation_keeps_the_final_record(language, table, options, monkeypatch
     def forbid_adapter(*_args):
         raise AssertionError("generation adapted an explicit record")
 
-    if (tagged := sys.modules.get("esolangs.tagged")) is not None:
-        monkeypatch.setattr(tagged, "source_adapter", forbid_adapter, raising=False)
+    monkeypatch.setattr(esolangs.Raster, "tagged", forbid_adapter)
     artifact = esolangs.generate(language, table, **options)
     assert isinstance(artifact, (ProgramArtifact, TemplateArtifact))
     assert artifact.language == language
@@ -270,3 +269,22 @@ def test_public_records_canonicalize_and_validate_metadata():
 
     with pytest.raises(esolangs.ProgramError):
         ProgramArtifact(b"+.", REFERENCE)
+
+    name = one(source_kind="raster", boolean_generator=True)[0]
+    generated = esolangs.generate(name, "01")
+    settings = esolangs.DialectSettings()
+    native = esolangs.Raster(
+        generated.source.rows, language=name, settings=settings, scale=generated.scale
+    )
+    retained = ProgramArtifact(native, name)
+    assert retained.settings is settings
+    assert retained.scale == generated.scale
+    assert esolangs.run(name, retained, stdin="1\n").output == "1"
+
+    class Text(str):
+        language = name
+        settings = "invalid"
+
+    declared = ProgramArtifact(Text("+."), REFERENCE)
+    assert declared.settings is None
+    assert esolangs.run(REFERENCE, declared).output == "\x01"

@@ -34,8 +34,6 @@ PUBLIC_MEMBERS = {
         "dump_program",
         "encode_inputs",
         "generate",
-        "generate_artifact",
-        "load_artifact",
         "instantiate",
         "load_program",
         "name",

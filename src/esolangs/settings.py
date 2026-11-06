@@ -102,14 +102,13 @@ def effective_settings(
     from esolangs.artifacts import ProgramArtifact, TemplateArtifact
     from esolangs.compressed import CompressedText
     from esolangs.raster import Raster
-    from esolangs.tagged import _Tagged
 
     if settings is not None and not isinstance(settings, DialectSettings):
         raise ArgumentError(
             f"settings must be a DialectSettings object, got {type(settings).__name__}"
         )
     if not isinstance(
-        program, (_Tagged, Raster, CompressedText, ProgramArtifact, TemplateArtifact)
+        program, (Raster, CompressedText, ProgramArtifact, TemplateArtifact)
     ) or program.language != resolve(language):
         return settings
     retained = program.settings

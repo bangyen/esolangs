@@ -19,14 +19,8 @@ _INTERPRETER = _SOURCE / "interpreter.py"
 
 
 @pytest.mark.medium
-def test_generated_corpora_retain_artifacts_without_the_facade(monkeypatch):
-    def forbidden(*_args, **_kwargs):
-        raise AssertionError("legacy generation")
-
-    for name in ("generate", "instantiate", "source_adapter"):
-        monkeypatch.setattr(esolangs.compat, name, forbidden)
-    with pytest.raises(AssertionError, match="legacy generation"):
-        esolangs.compat.generate(REFERENCE, "01")
+@pytest.mark.usefixtures("retired_source_adapters")
+def test_generated_corpora_retain_artifacts_without_the_facade():
     for name, language in LANGUAGES.items():
         if language.backend is None:
             continue

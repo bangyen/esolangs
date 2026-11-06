@@ -37,9 +37,7 @@ def _read_container(
 ) -> tuple[Program | bytes, bool]:
     try:
         if isinstance(source, (ProgramArtifact, TemplateArtifact)):
-            from esolangs.tagged import source_adapter
-
-            source = source_adapter(source)
+            source = source.source
         if isinstance(source, _FileSource):
             return source.read(), True
         if isinstance(source, os.PathLike):
@@ -76,13 +74,7 @@ def text_source(source: ProgramSource | _FileSource) -> str:
     if isinstance(value, bytes) and value.startswith(b"\x1f\x8b"):
         value = CompressedText(value)
     if isinstance(value, CompressedText):
-        from esolangs.tagged import _Tagged
-
-        value = (
-            _Tagged(str(value), value.language, settings=value.settings)
-            if value.language
-            else str(value)
-        )
+        value = str(value)
     if isinstance(value, bytes):
         try:
             value = value.decode("utf-8")
@@ -117,6 +109,16 @@ def raster_source(source: ProgramSource | _FileSource) -> Raster:
             error_type=ProgramError,
         )
     return value
+
+
+def effective_scale(language: str, program: object, scale: int | None) -> int | None:
+    """Prefer an explicit scale, then a record or native raster's metadata."""
+    if scale is None and isinstance(program, (ProgramArtifact, Raster)):
+        from esolangs.registry import resolve
+
+        if program.language is None or program.language == resolve(language):
+            return program.scale
+    return scale
 
 
 def check_scale_for(language: str, scale: int | None) -> None:

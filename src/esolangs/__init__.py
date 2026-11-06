@@ -10,11 +10,8 @@ Public operations split by who supplies the program:
 * Contract adapters: ``encode_inputs`` spells input bits as stdin,
   ``read_answer`` extracts an answer bit from output,
   ``save_program`` writes native source files, and
-  ``dump_program``/``load_program`` preserve source in portable JSON;
-  ``load_artifact`` restores an explicit record.
+  ``dump_program``/``load_program`` preserve source in portable JSON.
 * Catalog: ``describe`` and ``list_languages`` provide registry facts.
-* Aliases: ``generate_artifact`` retains its explicit spelling.
-* Compatibility: ``compat`` projects records to the temporary source values.
 
 Boolean evaluation over every row is private certification machinery,
 not public API.  ``Language(name)`` binds these functions to one language.
@@ -28,7 +25,6 @@ from functools import cache, partial
 from math import isqrt
 from typing import TYPE_CHECKING, Any, cast
 
-from esolangs import compat as compat
 from esolangs._language import Language
 from esolangs.artifacts import (
     Artifact,
@@ -64,16 +60,15 @@ from esolangs.generation.wrap import (
     balance_program,
     wrap_program,
 )
-from esolangs.portable import dump_program, load_artifact, save_program
-from esolangs.portable import load_artifact as load_program
+from esolangs.portable import dump_program, load_program, save_program
 from esolangs.raster import Raster
 from esolangs.registry import (
     LANGUAGES,
     SourceKind,
-    recover_setters,
     render_template,
     resolve,
     template_char,
+    template_setters,
 )
 from esolangs.registry._describe import (
     LanguageInfo,
@@ -98,6 +93,7 @@ from esolangs.runtime._source import (
     ProgramSource,
     _FileSource,
     check_scale_for,
+    effective_scale,
     text_source,
 )
 from esolangs.runtime._validate import (
@@ -112,7 +108,6 @@ from esolangs.runtime._validate import (
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
-from esolangs.tagged import _Tagged, _Template
 from esolangs.vm import _capture_observation, _capture_result
 
 #: From the installed distribution (a hand-kept copy said 0.1.0 at 0.2.0);
@@ -142,20 +137,18 @@ else:
 def _bind_annotation_names() -> None:
     """Let ``typing.get_type_hints`` resolve the public classes' annotations.
 
-    ``compressed``, ``raster`` and ``tagged`` name ``DialectSettings`` only
+    ``artifacts``, ``compressed`` and ``raster`` name ``DialectSettings`` only
     under ``TYPE_CHECKING`` (``settings`` imports the registry, which imports
     them), so ``get_type_hints(Raster)`` raised NameError on 3.12 to 3.14.
     """
     import esolangs.artifacts
     import esolangs.compressed
     import esolangs.raster
-    import esolangs.tagged
 
     for module in (
         esolangs.artifacts,
         esolangs.compressed,
         esolangs.raster,
-        esolangs.tagged,
     ):
         module.DialectSettings = DialectSettings  # type: ignore[attr-defined]
 
@@ -195,15 +188,12 @@ __all__ = [
     "TextLimits",
     "TruthTableError",
     "UnknownLanguageError",
-    "compat",
     "describe",
     "dump_program",
     "encode_inputs",
     "generate",
-    "generate_artifact",
     "instantiate",
     "list_languages",
-    "load_artifact",
     "load_program",
     "read_answer",
     "run",
@@ -313,9 +303,6 @@ def generate(
     if lang.runtime.source_kind is SourceKind.RASTER:
         if not isinstance(generated, Raster):  # pragma: no cover - registry invariant
             raise ProgramError(f"{resolved}'s generator did not return a Raster")
-        # Tagged the way a text program is ``_Tagged``: a raster fed to a
-        # text interpreter otherwise passed ``_check_program`` and answered '', a
-        # confident garbage result rather than a refusal.
         return ProgramArtifact(generated, resolved, settings, scale=1)
     if isinstance(generated, CompressedText):
         return ProgramArtifact(generated.wrapped(width), resolved, settings)
@@ -331,10 +318,6 @@ def generate(
     return TemplateArtifact(text, resolved, TemplateBindings(char, pairs), settings)
 
 
-# Explicit-name aliases share the artifact-first implementation.
-generate_artifact = generate
-
-
 def _generate_balanced(
     language: str,
     truth_table: str,
@@ -342,7 +325,7 @@ def _generate_balanced(
     settings: DialectSettings | None,
 ) -> Artifact:
     """Return ``generate(..., balance=True)``: the default, rebuilt squarest."""
-    default = generate_artifact(language, truth_table, settings=settings)
+    default = generate(language, truth_table, settings=settings)
     source = default.source
     name = resolve(language)
     lang = LANGUAGES[name]
@@ -382,16 +365,28 @@ def _generate_balanced(
 
 
 def _is_template_for(
-    template: str, name: str, truth_table: str, settings: DialectSettings | None = None
+    template: TemplateArtifact,
+    name: str,
+    truth_table: str,
+    settings: DialectSettings | None = None,
 ) -> bool:
     """Return whether ``template`` is what ``name`` generates for the table.
 
     Compare wrapping using the language's whitespace rules.
     """
-    plain = generate(name, truth_table, settings=settings).source
-    if not isinstance(plain, str):
+    canonical = generate(name, truth_table, settings=settings)
+    if not isinstance(canonical, TemplateArtifact):
         return False
-    if template == plain:
+    bindings = canonical.bindings
+    expected = TemplateBindings(
+        bindings.char,
+        template_setters(LANGUAGES[name].id, template.source, bindings.inputs),
+    )
+    if template.bindings != expected:
+        return False
+    text = template.source
+    plain = canonical.source
+    if text == plain:
         return True
     backend = LANGUAGES[name].backend
     assert backend is not None  # generate above refuses absent backends
@@ -403,94 +398,22 @@ def _is_template_for(
 
     # Layouts may switch representations; their floor is a named candidate,
     # unlike whitespace wrapping, so compare that template exactly too.
-    if width_aware and template == layout(1):
+    if width_aware and text == layout(1):
         return True
     # A layout built for its own widest line: ArrowQueue's ``width=5`` shifts
     # the setter column, matching neither the default nor ``layout(1)``.
-    widest = max(map(len, template.splitlines()), default=0)
-    if width_aware and widest and template == layout(widest):
+    widest = max(map(len, text.splitlines()), default=0)
+    if width_aware and widest and text == layout(widest):
         return True
     same_layout = backend.same_layout or (
         lambda template, plain, _layout: same_up_to_wrapping(template, plain)
     )
-    return same_layout(template, plain, layout)
-
-
-def _check_template_source(
-    name: str,
-    template: Program,
-    truth_table: str | None,
-    settings: DialectSettings | None,
-) -> str:
-    """Return the setter character for ``template``, or refuse an unfillable one."""
-    if isinstance(template, Raster):
-        # Accepted by the annotation so ``instantiate(lang, generate(lang,
-        # table), bits)`` type-checks; no raster generator emits a template.
-        raise with_hint(
-            TemplateError(
-                f"{name} source is a Raster, and raster programs read their "
-                f"inputs rather than embedding them, so there is nothing to "
-                f"instantiate"
-            ),
-            "run the raster with stdin=encode_inputs(language, bits)",
-        )
-    if not isinstance(template, str):
-        # Before the provenance check, which calls ``template.replace`` and
-        # so leaked an ``AttributeError`` for a non-string.
-        raise with_hint(
-            TemplateError(
-                f"template must be the string generate() returned, got "
-                f"{type(template).__name__}"
-            ),
-            (
-                "pass the template returned by generate(), "
-                "then supply integer bits to instantiate()"
-            ),
-        )
-    if truth_table is not None and not _is_template_for(
-        template, name, truth_table, settings
-    ):
-        # The provenance check a tag cannot make: a hand-written string is
-        # untagged by design (a tag cannot survive a file), and
-        # `instantiate(language, "hello $$", [1])` filled it happily.
-        # Given the table it should have come from, that is decidable.
-        raise with_hint(
-            TemplateError(
-                f"this is not the template generate({name!r}, {truth_table!r}) "
-                f"returns, so filling it would produce a program that does not "
-                f"compute that table"
-            ),
-            (
-                "regenerate the template from the intended "
-                "language and truth table before instantiating "
-                "it"
-            ),
-        )
-    char = template_char(LANGUAGES[name].id)
-    if char is None:
-        raise with_hint(
-            TemplateError(
-                f"{name} reads its inputs rather than embedding them, so there "
-                f"is nothing to instantiate; pass them in as stdin instead"
-            ),
-            "run the generated program with stdin=encode_inputs(language, bits)",
-        )
-    origin = getattr(template, "language", None)
-    if origin is not None and origin != name:
-        raise with_hint(
-            TemplateError(
-                f"this template came from generate({origin!r}, ...), so filling "
-                f"it as {name} would substitute {name}'s setter code into a "
-                f"{origin} program -- which runs, and answers the wrong row"
-            ),
-            "instantiate the template using the language that generated it",
-        )
-    return char
+    return same_layout(text, plain, layout)
 
 
 def instantiate(
     language: str,
-    template: Program | Artifact,
+    template: Artifact,
     bits: list[int] | tuple[int, ...],
     *,
     width: int | None = None,
@@ -500,12 +423,12 @@ def instantiate(
     """Fill a parameterized generator's template with ``bits``.
 
     Hand substitution fails: each language spells a set-input its own way.  A
-    template from :func:`generate` carries its setters; a plain string has them
-    recovered from the language's own.  Retained dialect choices follow the
+    TemplateArtifact from :func:`generate` retains explicit bindings.
+    Retained dialect choices follow the
     filled program; explicit ``settings`` override individual ones.
 
     Args:
-        template: :func:`generate`'s result, or the same text as a plain string.
+        template: The TemplateArtifact returned by :func:`generate` or portable loading.
         bits: One integer 0 or 1 per input.
         width: As for :func:`generate`.
         truth_table: The table ``template`` was generated from; when given,
@@ -519,32 +442,54 @@ def instantiate(
         ArgumentError: A bit is not an integer 0 or 1, or an option is
             invalid.
     """
-    if isinstance(template, ProgramArtifact):
-        _check_template_source(resolve(language), template.source, None, settings)
-        raise TemplateError("a runnable program has no template bindings")
-    settings = effective_settings(language, template, settings)
-    dialect_options(language, settings)
-    check_width(width)
     name = resolve(language)
-    source: Program
-    if isinstance(template, TemplateArtifact):
-        explicit = template
-        source = template.source
-    else:
-        explicit = None
-        source = template
-    if explicit is not None and explicit.language != name:
-        raise TemplateError(f"template belongs to {explicit.language}, not {name}")
-    char = _check_template_source(name, source, truth_table, settings)
-    assert isinstance(source, str)  # the check refuses a Raster
-    bits = check_bits(bits, "bits")
-    artifact = (
-        explicit
-        if explicit is not None
-        else source._artifact  # noqa: SLF001 - source compatibility boundary
-        if isinstance(source, _Template)
-        else _recover_template(name, source, char, settings)
+    settings = effective_settings(name, template, settings)
+    dialect_options(name, settings)
+    check_width(width)
+    body = (
+        template.source
+        if isinstance(template, (ProgramArtifact, TemplateArtifact))
+        else template
     )
+    if isinstance(body, Raster):
+        raise with_hint(
+            TemplateError(
+                f"{name} source is a Raster, and raster programs read their "
+                "inputs rather than embedding them, so there is nothing to instantiate"
+            ),
+            "run the raster with stdin=encode_inputs(language, bits)",
+        )
+    if not LANGUAGES[name].parameterized:
+        raise with_hint(
+            TemplateError(
+                f"{name} reads its inputs rather than embedding them, "
+                "so there is nothing to instantiate"
+            ),
+            "run the generated program with stdin=encode_inputs(language, bits)",
+        )
+    if not isinstance(template, TemplateArtifact):
+        raise with_hint(
+            TemplateError(
+                "template must be the TemplateArtifact generate() returned, "
+                f"got {type(template).__name__}"
+            ),
+            "retain generate()'s template or restore it with load_program()",
+        )
+    if template.language != name:
+        raise TemplateError(f"template belongs to {template.language}, not {name}")
+    if truth_table is not None and not _is_template_for(
+        template, name, truth_table, settings
+    ):
+        raise with_hint(
+            TemplateError(
+                f"this is not the template generate({name!r}, {truth_table!r}) "
+                "returns, so filling it would produce a program that "
+                "does not compute that table"
+            ),
+            "regenerate the template from the intended language and truth table",
+        )
+    bits = check_bits(bits, "bits")
+    artifact = template
     inputs = artifact.bindings.inputs
     if len(bits) != inputs:
         given = (
@@ -564,40 +509,6 @@ def instantiate(
     if program is not filled.source or settings is not filled.settings:
         filled = ProgramArtifact(program, name, settings)
     return filled
-
-
-def _recover_template(
-    name: str, template: str, char: str, settings: DialectSettings | None
-) -> TemplateArtifact:
-    """Recover a plain-string template's bindings at the compatibility boundary."""
-    if char not in template:
-        # An ordinary program and an already-filled template look the
-        # same from here, so the message names both.
-        raise with_hint(
-            TemplateError(
-                f"this {name} text has no run of {char!r} to fill: it is either "
-                f"an ordinary program or a template instantiate() has already "
-                f"been applied to, and generate({name!r}, table) returns the "
-                f"template to fill"
-            ),
-            (
-                "keep the original unfilled generate() result "
-                "and instantiate it separately for each row"
-            ),
-        )
-    try:
-        pairs = recover_setters(LANGUAGES[name].id, template)
-    except ValueError as exc:
-        raise with_hint(
-            TemplateError(f"not a {name} template: {exc}"),
-            (
-                "recreate the template with generate(); avoid "
-                "manually editing its placeholder runs"
-            ),
-        ) from exc
-    return TemplateArtifact(
-        str(template), name, TemplateBindings(char, pairs), settings
-    )
 
 
 #: ``run(..., isolated=True)``'s deadline when ``timeout`` is None: the
@@ -661,11 +572,7 @@ def _check_runnable(language: str, program: Program) -> None:
         spec = backend.template
         assert spec is not None  # template_char uses the same declaration
         unfilled = spec.unfilled
-        if (
-            unfilled is not None
-            and not isinstance(program, _Template)
-            and not unfilled(program)
-        ):
+        if unfilled is not None and not unfilled(program):
             return
         raise TemplateError(
             f"{name}'s generator returns a template, and this one still has "
@@ -677,31 +584,27 @@ def _check_runnable(language: str, program: Program) -> None:
 def _read_source(language: str, program: ProgramSource | _FileSource) -> Program:
     """Load source and check its kind and origin, allowing unfilled templates."""
     name = resolve(language)
+
+    def check_origin(source: object) -> None:
+        if isinstance(
+            source, (ProgramArtifact, TemplateArtifact, Raster, CompressedText)
+        ):
+            origin = source.language
+            if origin is not None and origin != name:
+                raise ProgramError(
+                    f"this program was generated for {origin}, so running it as "
+                    f"{name} would read it as {name} source -- which may well run, "
+                    "and answer nonsense"
+                )
+
+    check_origin(program)
     if isinstance(program, (ProgramArtifact, TemplateArtifact)):
-        if program.language != name:
-            raise ProgramError(
-                f"this program was generated for {program.language}, so running it as "
-                f"{name} would read it as {name} source -- which may well run, "
-                "and answer nonsense"
-            )
-        program = (
-            program.source.tagged(name, settings=program.settings, scale=program.scale)
-            if isinstance(program, ProgramArtifact)
-            and isinstance(program.source, Raster)
-            else program.source
-        )
+        program = program.source
+    check_origin(program)
     module = interpreter_module(name)
     loader = getattr(module, "load_source", text_source)
     program = loader(program)
-    origin = getattr(program, "language", None)
-    if origin is not None and origin != name:
-        # The program says where it came from; a plain string does not and
-        # is taken at its word (see :class:`_Tagged`).
-        raise ProgramError(
-            f"this program was generated for {origin}, so running it as "
-            f"{name} would read it as {name} source -- which may well run, "
-            f"and answer nonsense"
-        )
+    check_origin(program)
     return program
 
 
@@ -880,7 +783,9 @@ def _run_result(
     settings: DialectSettings | None = None,
 ) -> ExecutionResult:
     """Execute through one route, retaining its result metadata."""
+    record = isinstance(program, ProgramArtifact)
     settings = effective_settings(language, program, settings)
+    scale = effective_scale(language, program, scale)
     dialect_options(language, settings)  # validate before any route
     check_scale_for(language, scale)
     check_seed(seed)
@@ -931,7 +836,9 @@ def _run_result(
     )
     name = resolve(language)
     program = _check_program(name, program, stdin)
-    settings = effective_settings(name, program, settings)
+    if not record:
+        settings = effective_settings(name, program, settings)
+    scale = effective_scale(language, program, scale)
     entrypoint = LANGUAGES[name].runtime.completion_entrypoint
     run_fn = getattr(interpreter_module(name), entrypoint)
     program_args, options = prepare_call(

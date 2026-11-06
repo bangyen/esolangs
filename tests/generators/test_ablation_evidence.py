@@ -42,14 +42,8 @@ def _cases():
 
 
 @pytest.mark.parametrize("language", list(_cases()))
+@pytest.mark.usefixtures("retired_source_adapters")
 def test_audit_evidence(language: str, tmp_path: Path, monkeypatch) -> None:
-    def forbidden(*_args, **_kwargs):
-        raise AssertionError("audit replay reached a source facade")
-
-    for name in ("generate", "instantiate", "load_program"):
-        monkeypatch.setattr(esolangs.compat, name, forbidden)
-    with pytest.raises(AssertionError, match="source facade"):
-        esolangs.compat.generate(language, "01")
     for group in ablations.GROUPS:
         audit = ablations.load(language, group)
         if group == "ablations" and LANGUAGES[language].backend is not None:
