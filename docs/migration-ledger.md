@@ -678,3 +678,13 @@ storage without relying on output changes. The independent AddSubJump witness
 found writes below −9 retaining unreadable cells; those writes now drop as
 specified. Of 5,200 paired traces (3,217 clean halts; 250,694 states), all 59
 changes consist only of discarded negative cells. Catalog acceptance stays open.
+
+6-5 shares canonical subtree IDs across marker counting, lazy-read counts and
+emission, removing three constant-span indexes and the tree's classifier field.
+Private marker callers now pass IDs; no old-signature adapter remains. Label
+budgets, held-cell arithmetic, positional walks and conditional strides stay
+owned. All 632 corpus requests and 240 larger layouts retain their bytes;
+2,286 paired records preserve 58,808 semantic samples. Another 1,344 private
+candidates retain marker counts and bytes, with 9,104 native rows executed.
+Subtree, stored-input and weighted-lookup queries have live faults. Bounds,
+pins and anchors remain unchanged; catalog acceptance stays open.

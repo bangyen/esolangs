@@ -26,7 +26,6 @@ from typing import NamedTuple
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
-    constant_span_test,
     input_weights,
     permute_truth_table,
     stored_inputs,
@@ -65,25 +64,19 @@ def _six_five_label(value: int) -> str:
     return str(value) if value < 10 else chr(value + ord("A") - 10)
 
 
-def _six_five_markers(table: str) -> int:
-    """How many branch labels the folded decision tree spends on ``table``.
+def _six_five_markers(ids: list[list[int]]) -> int:
+    """Count label-bearing nodes before sharing or ignored-input skips.
 
-    One per internal node the fold leaves; a slice whose characters agree
-    folds to a leaf.  Pass a permuted table for that order's count -- the
-    35-label budget is a per-order gate.  Spans, not slices: O(2**n).  A
-    skip node spends no label but still counts:
-    the gate is a bound, so the tree-or-shared choice is unmoved (counted
-    exactly, one n == 6 table took a tree 341 -> 561).
+    Constant IDs fold. Count both identical nonconstant halves: this gate
+    is a bound; exact skip counts grew one n=6 program from 341 to 561.
     """
-    constant = constant_span_test(table)
 
-    def count(lo: int, hi: int) -> int:
-        if constant(lo, hi):
+    def count(level: int, block: int) -> int:
+        if ids[level][block] < 2:
             return 0
-        mid = (lo + hi) // 2
-        return 1 + count(lo, mid) + count(mid, hi)
+        return 1 + count(level + 1, 2 * block) + count(level + 1, 2 * block + 1)
 
-    return count(0, len(table))
+    return count(0, 0)
 
 
 def six_five(truth_table: str) -> str:
@@ -263,16 +256,16 @@ def _six_five_hoisted(
     position is a function of level alone.
     """
     n = _validate_truth_table(truth_table)
+    ids = subtree_ids(truth_table)
     # The tree is preferred while it fits: it is what every committed size
     # measurement was taken against, and sharing only pays once there are
     # duplicates worth merging.  Past the budget the DAG is tried before
     # the order is given up on.
-    shared = _six_five_markers(truth_table) > _SIX_FIVE_MAX_LABEL
+    shared = _six_five_markers(ids) > _SIX_FIVE_MAX_LABEL
     stored = stored_inputs(truth_table, perm)
-    constant = constant_span_test(truth_table)
     # An input the tree tests at one node alone is normalized there, not at
     # its read: the same three tokens, run only on the paths through it.
-    uses = _six_five_use_counts(truth_table, perm, stored)
+    uses = _six_five_use_counts(ids, perm, stored)
     lazy = set() if shared else {i for i, used in uses.items() if used == 1}
     reads, cell_of, pos, slot = _six_five_reads(n, stored, lazy)
     # A clobbered read leaves 48/49 under the pointer, so the cell the reads
@@ -281,8 +274,7 @@ def _six_five_hoisted(
     # its digit from zero, so it needs a cell no read ever wrote: step one
     # past the shared scratch when the final read clobbered.
     scratch = slot + 1 if n and (n - 1) not in stored else slot
-    ids = subtree_ids(truth_table)  # O(2**n), so a subtree's name is O(1)
-    tree = _Tree(truth_table, perm, constant, cell_of, ids, lazy, scratch)
+    tree = _Tree(truth_table, perm, cell_of, ids, lazy, scratch)
 
     def emit(layout: _Layout) -> str:
         return _NodeEmitter(layout, tree).emit(0, 0, 2 ** len(perm), pos, None)
@@ -402,7 +394,7 @@ class _Layout:
 
 
 def _six_five_node_kind(
-    constant: Callable[[int, int], bool],
+    ids: list[list[int]],
     perm: tuple[int, ...],
     cells: set[int] | dict[int, int],
     level: int,
@@ -419,7 +411,7 @@ def _six_five_node_kind(
     set for counting, the cell map for emitting.
     """
     mid = (lo + hi) // 2
-    if level == len(perm) or constant(lo, hi):
+    if level == len(perm) or ids[level][lo // (hi - lo)] < 2:
         return "leaf", mid
     if perm[level] not in cells:
         return "skip", mid
@@ -427,7 +419,7 @@ def _six_five_node_kind(
 
 
 def _six_five_use_counts(
-    truth_table: str, perm: tuple[int, ...], stored: set[int]
+    ids: list[list[int]], perm: tuple[int, ...], stored: set[int]
 ) -> dict[int, int]:
     """Count the tree paths that test each stored input, to find the lazy ones.
 
@@ -435,11 +427,10 @@ def _six_five_use_counts(
     :func:`_six_five_node_kind`.  A stored input tested on exactly one path
     is normalized at that node rather than at its read.
     """
-    constant = constant_span_test(truth_table)
     uses = dict.fromkeys(stored, 0)
 
     def tally(level: int, lo: int, hi: int) -> None:
-        kind, mid = _six_five_node_kind(constant, perm, stored, level, lo, hi)
+        kind, mid = _six_five_node_kind(ids, perm, stored, level, lo, hi)
         if kind == "leaf":
             return
         if kind == "skip":
@@ -472,7 +463,6 @@ class _Tree(NamedTuple):
 
     truth_table: str
     perm: tuple[int, ...]
-    constant: Callable[[int, int], bool]
     cell_of: dict[int, int]
     ids: list[list[int]]
     lazy: set[int]
@@ -503,7 +493,7 @@ class _NodeEmitter:
         """
         tree = self.tree
         kind, mid = _six_five_node_kind(
-            tree.constant,
+            tree.ids,
             tree.perm,
             tree.cell_of,
             level,

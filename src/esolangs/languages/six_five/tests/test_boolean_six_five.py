@@ -9,7 +9,7 @@ import pytest
 import esolangs
 from esolangs import run as execute
 from esolangs.generation.examples import BOOLEAN_EXAMPLES
-from esolangs.generation.helpers import permute_truth_table
+from esolangs.generation.helpers import permute_truth_table, subtree_ids
 from esolangs.generation.wrap import (
     _six_five,
 )
@@ -59,7 +59,7 @@ def _markers(program: str) -> int:
 
 
 class TestSixFive:
-    def test_branch_structure(self) -> None:
+    def test_branch_structure(self, monkeypatch) -> None:
         """The build reads, normalizes to 31/32, branches on ``7V``, and halts."""
 
         _check_one_input_walk_returns_without_a_home_loop()
@@ -71,6 +71,43 @@ class TestSixFive:
         # The right half is NOT of the last input, with nothing left to
         # read: a node, whose leaves add 18 to the 31 and 16 to the 32.
         assert boolean.six_five("0110").endswith("7V83666A04655A")
+
+        from esolangs.generation.helpers import input_weights, stored_inputs
+
+        assert boolean.subtree_ids is subtree_ids
+        assert boolean.stored_inputs is stored_inputs
+        assert boolean.input_weights is input_weights
+        assert not hasattr(boolean, "constant_span_test")
+        for query, damaged_query in (
+            (
+                "subtree_ids",
+                lambda table: [[0] * len(layer) for layer in subtree_ids(table)],
+            ),
+            ("stored_inputs", lambda _table, _perm: set()),
+        ):
+            with monkeypatch.context() as patch:
+                patch.setattr(boolean, query, damaged_query)
+                damaged = _identity("0110")
+            assert (
+                "".join(
+                    run_six_five(damaged, [str(row >> 1), str(row & 1)])
+                    for row in range(4)
+                )
+                == "0000"
+            )
+
+        def complemented(table: str, n: int):
+            weights, core = input_weights(table, n)
+            return weights, core.translate(str.maketrans("01", "10"))
+
+        monkeypatch.setattr(boolean, "input_weights", complemented)
+        damaged = _six_five_walk("0110")
+        assert (
+            "".join(
+                run_six_five(damaged, [str(row >> 1), str(row & 1)]) for row in range(4)
+            )
+            == "1001"
+        )
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -138,16 +175,20 @@ class TestSixFive:
         """Parity resists folding under every order, and is built anyway."""
         parity = "".join(str((row).bit_count() % 2) for row in range(64))
         for perm in permutations(range(6)):
-            assert _six_five_markers(permute_truth_table(parity, perm)) == 63
+            assert (
+                _six_five_markers(subtree_ids(permute_truth_table(parity, perm))) == 63
+            )
         assert _markers(boolean.six_five(parity)) <= 35
         assert boolean.six_five(parity)
 
     def test_reordering_widens_what_renders(self) -> None:
         """A table that overflows in stream order can fold under another."""
         for table, folded in (("10010110" * 8, 7), (("10" * 64)[:64], 1)):
-            assert _six_five_markers(table) == 63 > 35  # refused in stream order
+            assert (
+                _six_five_markers(subtree_ids(table)) == 63 > 35
+            )  # refused in stream order
             best = min(
-                _six_five_markers(permute_truth_table(table, perm))
+                _six_five_markers(subtree_ids(permute_truth_table(table, perm)))
                 for perm in permutations(range(6))
             )
             assert best == folded <= 35
@@ -163,7 +204,7 @@ class TestSixFive:
         """The alternating table is NOT of its last input: one node carries it."""
         n = 7
         alternating = ("10" * 128)[: 2**n]
-        assert _six_five_markers(alternating) == 2**n - 1 > 35
+        assert _six_five_markers(subtree_ids(alternating)) == 2**n - 1 > 35
         # The identity order no longer returns "": its tree overflows, so
         # the shared build takes it -- this table is NOT of the last input,
         # whose distinct subtrees are a handful whatever the order.
@@ -181,7 +222,7 @@ class TestSixFive:
     def test_parity_is_the_easy_case_once_subtrees_are_shared(self) -> None:
         """Sharing inverts which table is the worst case."""
         parity6 = "".join(str((row).bit_count() % 2) for row in range(64))
-        assert _six_five_markers(parity6) == 63 > 35
+        assert _six_five_markers(subtree_ids(parity6)) == 63 > 35
         assert _markers(boolean.six_five(parity6)) <= 35
         assert boolean.six_five(parity6)
 
@@ -193,7 +234,7 @@ class TestSixFive:
         """The actual layout fits where the retired DAG precheck rejected it."""
         table = _dense(7)
         program = boolean.six_five(table)
-        assert _six_five_markers(table) > 35
+        assert _six_five_markers(subtree_ids(table)) > 35
         assert _markers(program) <= 35
         assert len(program) < len(_six_five_walk(table).removesuffix("0"))
         for row in range(128):
