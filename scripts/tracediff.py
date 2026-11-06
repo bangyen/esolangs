@@ -59,21 +59,30 @@ RANDOM_PROGRAMS = 3000
 SLOWDOWN = 0.10
 _ADDRESS = re.compile(r"<[\w.]+\.(\w+) object at 0x[0-9a-f]+>| at 0x[0-9a-f]+")
 
-#: ``(source, stdin)``; a generated source may be a raster or compressed.
+#: ``(source or runnable artifact, stdin)``; native fixtures stay raw.
 type Program = tuple[Any, str]
 type Event = tuple[object, ...]
 
 
-def _machine(module: ModuleType, source: object, io: ScriptedIO) -> Any:
+def _machine(
+    module: ModuleType, source: object, io: ScriptedIO, *, split: bool = False
+) -> Any:
     """Build ``module``'s machine; one that draws gets a fresh seeded source.
 
     Unseeded, a draw comes from ``secrets``: tracing one INTERCAL ``%50``
     program 20 times gave 20 different traces.
     """
+    options: dict[str, object] = {}
+    if isinstance(source, esolangs.ProgramArtifact):
+        if source.scale is not None:
+            options["scale"] = source.scale
+        source = source.source
+    if split and isinstance(source, str):
+        source = source.splitlines()
     machine = module._Machine  # noqa: SLF001
     if "rng" in inspect.signature(machine).parameters:
-        return machine(source, io, rng=Seeded(0))
-    return machine(source, io)
+        options["rng"] = Seeded(0)
+    return machine(source, io, **options)
 
 
 def _load(path: Path, name: str) -> ModuleType:
@@ -231,8 +240,7 @@ def trace(
     code, stdin = program
     io = ScriptedIO(stdin)
     try:
-        source = code.splitlines() if split and isinstance(code, str) else code
-        machine = _machine(module, source, io)
+        machine = _machine(module, code, io, split=split)
     except Exception as error:
         return [("error", *_error(error))]
     events: list[Event] = []
@@ -282,7 +290,11 @@ def _random_programs(
     language's ``fuzz_max_digits`` caps the digits each one holds.
     """
     rng = random.Random(0)
-    texts = [code for code, _ in corpus if isinstance(code, str) and code.strip()]
+    sources = (
+        code.source if isinstance(code, esolangs.ProgramArtifact) else code
+        for code, _ in corpus
+    )
+    texts = [code for code in sources if isinstance(code, str) and code.strip()]
     inputs = sorted({stdin for _, stdin in corpus}) or [""]
     numbers = [
         [int(token) for token in code.split()]
@@ -338,7 +350,7 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
             for table in map("".join, itertools.product("01", repeat=1 << n)):
                 for width in (None, 8) if n < 3 else (None,):
                     try:
-                        program = esolangs.compat.generate(name, table, width=width)
+                        program = esolangs.generate(name, table, width=width)
                     except GeneratorCapError:
                         continue  # Unary's n=3 programs are too long to build
                     for row in range(1 << n):
@@ -346,7 +358,7 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
                         # Kept as generated: a raster or compressed program
                         # stringified is no longer that program.
                         if parameterized:
-                            code = esolangs.compat.instantiate(name, program, bits)
+                            code = esolangs.instantiate(name, program, bits)
                             programs.append((code, ""))
                         else:
                             stdin = esolangs.encode_inputs(
@@ -394,9 +406,8 @@ def _lap(module: ModuleType, work: list[tuple[Program, int]], *, split: bool) ->
     """Seconds to build each machine and run it its step count."""
     start = time.perf_counter()
     for (code, stdin), steps in work:
-        source = code.splitlines() if split and isinstance(code, str) else code
         with suppress(Exception):  # an error ends the run, as it did when traced
-            machine = _machine(module, source, ScriptedIO(stdin))
+            machine = _machine(module, code, ScriptedIO(stdin), split=split)
             for _ in range(steps):
                 machine.step()
     return time.perf_counter() - start

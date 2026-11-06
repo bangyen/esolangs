@@ -17,16 +17,26 @@ from tests.support.reference import REFERENCE
 _RASTERS = languages(source_kind="raster", boolean_generator=True)
 
 
-@pytest.mark.parametrize("language", [REFERENCE, *_RASTERS])
 # Isolation forwards whatever the container held, so one container covers it;
-# each isolated case spawns a worker.
+# each isolated case spawns a worker. Raster text streams are binary streams;
+# exercise that container once.
 @pytest.mark.parametrize(
-    ("holder", "mode"),
+    ("language", "holder", "mode"),
     [
-        ("bytes", "normal"),
-        ("text_stream", "normal"),
-        ("binary_stream", "normal"),
-        pytest.param("bytes", "isolated", marks=pytest.mark.medium),
+        pytest.param(
+            language,
+            holder,
+            mode,
+            marks=(pytest.mark.medium,) if mode == "isolated" else (),
+        )
+        for language in [REFERENCE, *_RASTERS]
+        for holder, mode in (
+            ("bytes", "normal"),
+            ("text_stream", "normal"),
+            ("binary_stream", "normal"),
+            ("bytes", "isolated"),
+        )
+        if holder != "text_stream" or language == REFERENCE
     ],
 )
 def test_execution_container_parity(language: str, holder: str, mode: str) -> None:

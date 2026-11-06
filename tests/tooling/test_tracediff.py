@@ -1,11 +1,13 @@
 """The refactor trace diff: silent on an identical copy, loud on a mutant."""
 
+import importlib
 import os
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
+import esolangs
 from esolangs.registry import INTERPRETERS, LANGUAGES
 from esolangs.runtime._lifecycle import Completion
 from tests.support.reference import REFERENCE
@@ -16,9 +18,64 @@ _SOURCE = REPO_ROOT / "src/esolangs/languages" / LANGUAGES[REFERENCE].id
 _INTERPRETER = _SOURCE / "interpreter.py"
 
 
-def test_the_reference_is_a_single_file_interpreter() -> None:
-    assert INTERPRETERS[REFERENCE].endswith(".interpreter")
-    assert _INTERPRETER.is_file()
+@pytest.mark.medium
+def test_generated_corpora_retain_artifacts_without_the_facade(monkeypatch):
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("legacy generation")
+
+    for name in ("generate", "instantiate", "source_adapter"):
+        monkeypatch.setattr(esolangs.compat, name, forbidden)
+    with pytest.raises(AssertionError, match="legacy generation"):
+        esolangs.compat.generate(REFERENCE, "01")
+    for name, language in LANGUAGES.items():
+        if language.backend is None:
+            continue
+        programs = tracediff.corpus(name, 0, max_n=1)
+        records = [
+            code for code, _ in programs if isinstance(code, esolangs.ProgramArtifact)
+        ]
+        assert len(records) == 16, name
+        assert all(record.language == name for record in records)
+
+
+def test_random_corpus_reads_artifact_alphabets_and_numeric_tokens():
+    raw = [("12 -7", "1\n"), ("<+>", "0\n")]
+    records = [
+        (esolangs.ProgramArtifact(code, REFERENCE), stdin) for code, stdin in raw
+    ]
+    random = tracediff._random_programs(records, 50)
+    assert random == tracediff._random_programs(raw, 50)
+    assert any(
+        "-" in code and code.split()[0].lstrip("-").isdigit() for code, _ in random
+    )
+    assert any("<" in code or ">" in code for code, _ in random)
+
+
+@pytest.mark.medium
+def test_artifact_and_source_traces_match_for_split_grids():
+    name = next(
+        name
+        for name, language in LANGUAGES.items()
+        if language.runtime.split
+        and language.runtime.capabilities is not None
+        and language.runtime.capabilities.completion is Completion.POST_HALT
+    )
+    declaration = LANGUAGES[name].runtime
+    module = importlib.import_module(INTERPRETERS[name])
+    program, stdin = next(
+        (code, stdin)
+        for code, stdin in tracediff.corpus(name, 0, max_n=1)
+        if isinstance(code, esolangs.ProgramArtifact)
+    )
+    options = {
+        "policy": declaration.capabilities.completion,
+        "split": declaration.split,
+    }
+    events = tracediff.trace(module, (program, stdin), frozenset(), **options)
+    assert tracediff._halts(events)
+    assert events == tracediff.trace(
+        module, (program.source, stdin), frozenset(), **options
+    )
 
 
 def test_a_copy_matches_and_a_mutant_is_caught(tmp_path: Path) -> None:
@@ -190,8 +247,6 @@ def test_declared_completion_finalizes_and_keeps_the_final_state(tmp_path):
 def test_cli_uses_declared_post_halt_policy_for_mutant_controls(
     tmp_path, monkeypatch, capsys
 ):
-    import importlib
-
     name = next(
         name
         for name, lang in LANGUAGES.items()

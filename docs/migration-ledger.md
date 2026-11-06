@@ -126,6 +126,10 @@ controls and speed workloads; final dumps retain their views, state and output.
 Historical class flags no longer select trace completion. Factory/RNG discovery
 and remaining direct-machine completion consumers stay open.
 
+Trace corpora retain generated artifacts through binding. Native trace and speed
+constructors receive explicit source and retained raster scale; random-program
+alphabets read source bodies. Factory/RNG discovery remains open.
+
 The logical-store batch declares fifteen further models, flattening persistent
 RAM and continuation spines and freezing unordered stores. Bitwise Cyclic Tag
 counts live data and its answer, excluding the deleted-prefix storage cursor.
