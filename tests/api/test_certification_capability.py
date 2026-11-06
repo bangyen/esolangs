@@ -101,6 +101,7 @@ def test_clearing_certification_preserves_generated_source(language, monkeypatch
 def test_operational_catalog_and_execution_do_not_import_certification():
     import json
 
+    from tests.support.certification_barrier import WORKER_GUARD
     from tests.support.reference import REFERENCE
     from tests.support.samples import SAMPLES
 
@@ -109,7 +110,6 @@ import importlib.abc
 import json
 import os
 import sys
-from unittest.mock import patch
 class Barrier(importlib.abc.MetaPathFinder):
     def __init__(self):
         self.blocked = []
@@ -123,6 +123,7 @@ class Barrier(importlib.abc.MetaPathFinder):
 barrier = Barrier()
 sys.meta_path.insert(0, barrier)
 import esolangs
+from unittest.mock import patch
 from esolangs.registry import LANGUAGES
 from esolangs.debugger import make_debugger
 samples = json.loads(sys.argv[2])
@@ -226,25 +227,8 @@ assert len(barrier.blocked) == 2, barrier.blocked
     samples = {
         name: SAMPLES[name] for name, lang in LANGUAGES.items() if lang.backend is None
     }
-    worker_guard = (
-        code.split("import esolangs\n", 1)[0]
-        + """
-for module in ('esolangs.registry._certification',
-               'esolangs.languages.brainfuck.proof_formulas'):
-    try:
-        __import__(module)
-    except ImportError as error:
-        assert str(error) == 'certification is not operational'
-    else:
-        raise AssertionError('worker import barrier did not fire')
-assert len(barrier.blocked) == 2
-barrier.blocked.clear()
-# Exit immediately: a caught ImportError must not permit a successful wire result.
-barrier.fatal = True
-"""
-    )
     subprocess.run(
-        [sys.executable, "-c", code, REFERENCE, json.dumps(samples), worker_guard],
+        [sys.executable, "-c", code, REFERENCE, json.dumps(samples), WORKER_GUARD],
         check=True,
         timeout=10,
     )

@@ -386,8 +386,7 @@ the periodic witness reaches the reported boundary without inventing completion.
 Three guarded reference workers cover success, step exhaustion and EOF; both
 failure routes preserve unfinished observations and partial output. Worker guards
 run positive import controls before execution. The wheel passes this witness
-matrix on Python 3.12–3.15. Installed catalog-wide worker,
-failure and accounting acceptance remain open.
+matrix on Python 3.12–3.15.
 
 Smu uses canonical ordered layers; macro ordering, delimiter pricing and
 constant pads remain owned. SwitchCase uses a canonical reduced diagram,
@@ -410,3 +409,12 @@ cases. Source and installed-wheel observations match on Python 3.12–3.15.
 These live execution and JSON witnesses do not close the catalog's independent
 trace, failure or resource audits. No persisted format was superseded, so the
 supported version-1 loader remains canonical.
+
+All 117 native-result cases now guard both native workers and one-step bounded
+workers, without adding collected tests. The shared guard runs two import
+controls in each fresh interpreter. The installed matrix matches all 117 native
+results, including periodic evidence; at one step, 112 witnesses retain exact
+unfinished observations and five complete. Direct bounded execution matches
+the debugger too. All four supported Python versions pass. This is witness
+coverage, not whole-corpus equivalence; exact workspace accounting and broader
+lifecycle acceptance remain open.
