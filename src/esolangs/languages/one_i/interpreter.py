@@ -53,14 +53,18 @@ import re
 from array import array
 from bisect import bisect_left
 from collections import deque
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from fractions import Fraction
+from typing import Any
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.one_i.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
@@ -463,9 +467,24 @@ class _Machine:
             self.io.print_str(out)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind source; each IO-bound construction owns fresh runtime state."""
+    if not isinstance(source, str):
+        raise TypeError("one_i machines require text source")
+    if options:
+        raise TypeError("one_i machines accept no runtime options")
+
+    def build(io: IO) -> _Machine:
+        return _Machine(source, io)
+
+    return build
+
+
 def _execute(code: str, io: IO) -> CompletionReport:
     """Run a 1 + i program."""
-    return drive(_Machine(code, io))
+    return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO) -> None:

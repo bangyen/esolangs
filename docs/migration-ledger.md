@@ -290,3 +290,8 @@ Basicfuck, bit~, Circlefuck, ROTfuck, 6-5, Dimensional, Pointless and What!?
 declare text factories and debugger fields. Tape, compiled cursors, rotating
 programs, hierarchical pointers and call frames remain per-run. ROTfuck dialect
 metadata no longer imports its interpreter.
+
+1 + i, 3x, Aprknia, Fackward, Freestajlo, Eval, Underload and Unsquare declare
+text factories and debugger fields. Function/return frames, operand and inactive
+stacks, variables and growing programs remain per-run; cursor shapes and EOF
+conventions stay explicit.

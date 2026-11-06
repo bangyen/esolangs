@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Fackward."""
 
 from esolangs.generation.wrap import TokenWrapper
+from esolangs.languages.fackward.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -12,7 +13,14 @@ _wrap = TokenWrapper(r"\d+|[\s\S]")
 
 LANGUAGE = Language(
     "Fackward",
-    RuntimeSpec("fackward", category="stack_based", eof="a read at EOF halts the run"),
+    RuntimeSpec(
+        "fackward",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+        category="stack_based",
+        eof="a read at EOF halts the run",
+    ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.fackward.generator", "fackward", ("truth_table",)

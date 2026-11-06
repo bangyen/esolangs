@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Freestajlo."""
 
 from esolangs.generation.wrap import TokenWrapper
+from esolangs.languages.freestajlo.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
@@ -13,6 +14,9 @@ LANGUAGE = Language(
     "Freestajlo",
     RuntimeSpec(
         "freestajlo",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="stack_based",
         eof="an exhausted ',' is the spec's -1, an exhausted ';' its 0",
     ),
