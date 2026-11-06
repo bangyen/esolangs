@@ -39,8 +39,8 @@ barrier.fatal = True
 
 
 @contextmanager
-def guarded_worker():
-    """Require one real worker with live import controls."""
+def guarded_worker(*, expected=1):
+    """Require every expected worker with live import controls."""
     original = _isolated.subprocess.Popen
     launched = []
 
@@ -54,4 +54,4 @@ def guarded_worker():
 
     with patch.object(_isolated.subprocess, "Popen", guarded):
         yield
-    assert len(launched) == 1, launched
+    assert len(launched) == expected, launched

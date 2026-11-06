@@ -2,10 +2,13 @@
 
 import copy
 import json
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 
 import pytest
 
 import esolangs
+from esolangs.debugger import make_debugger
 from esolangs.registry import LANGUAGES
 from esolangs.results import ExecutionResult
 from esolangs.runtime._isolated import _decode, termination_result_isolated
@@ -17,7 +20,8 @@ from esolangs.runtime._result_wire import (
     encode_result,
 )
 from esolangs.runtime._termination import _termination_result
-from esolangs.vm import make_vm
+from esolangs.vm import _capture_observation, make_vm
+from tests.support.certification_barrier import guarded_worker
 from tests.support.reference import REFERENCE
 
 
@@ -31,29 +35,117 @@ def _request(name, bit):
     return source, stdin
 
 
+def _replay_termination(name, source, stdin, result):
+    decision = result.decision
+    assert decision.branches is None
+    assert decision.commands is not None
+    debugger = make_debugger(name, source, stdin=stdin)
+    retained = None
+    for step in range(decision.commands + 1):
+        if decision.cycle is not None and step == decision.cycle.first_pass:
+            retained = debugger.snapshot()
+        if step == decision.commands:
+            break
+        assert not debugger.halted
+        debugger.step()
+    assert debugger.halted is decision.halts
+    assert debugger.result.steps == decision.commands
+    assert _capture_observation(debugger.vm) == result.observation
+    assert result.observation.completion is None
+    if decision.cycle is not None:
+        assert decision.cycle.commands_per_pass == 1
+        assert decision.cycle.repeat_pass == decision.commands
+        assert debugger.snapshot() == retained == decision.cycle.state
+        assert debugger.result.completion is None
+    else:
+        # A halting proof has not requested a post-halt output dump.
+        assert (
+            debugger.result.completion is None
+        ) is debugger.dumps_on_the_post_halt_step
+        native = esolangs.run(name, source, stdin=stdin, timeout=5)
+        debugger.step()
+        completed = debugger.result
+        assert completed == native._replace(steps=decision.commands)
+        debugger.step()
+        assert debugger.result == completed
+
+
 @pytest.mark.medium
 def test_actual_termination_workers_retain_every_halt_and_cycle():
+    cases = []
+    refused = 0
+    coverage = {}
+    tables = [f"{mask:0{1 << n}b}" for n in (1, 2) for mask in range(1 << (1 << n))]
     for name, lang in LANGUAGES.items():
         if lang.contract.answer_mode != "termination":
             continue
-        for bit in (0, 1):
-            source, stdin = _request(name, bit)
-            native = _termination_result(name, source, stdin, None)
-            worker = termination_result_isolated(
-                name, source.source, stdin, 5, settings=source.settings
-            )
-            assert worker == native
-            assert worker.observation.completion is None
-            assert worker.decision.halts is (bit == 0)
-            if worker.decision.cycle is not None:
-                cycle = worker.decision.cycle
-                replay = make_vm(name, source, stdin=stdin)
-                for _ in range(cycle.first_pass):
-                    replay.step()
-                assert replay.snapshot() == cycle.state
-                for _ in range(cycle.repeat_pass - cycle.first_pass):
-                    replay.step()
-                assert replay.snapshot() == cycle.state
+        coverage[name] = [0, 0]
+        for table in tables:
+            try:
+                artifact = esolangs.generate(name, table)
+            except esolangs.GeneratorCapError:
+                refused += len(table)
+                coverage[name][1] += len(table)
+                continue
+            inputs = len(table).bit_length() - 1
+            for row, answer in enumerate(table):
+                bits = [int(bit) for bit in f"{row:0{inputs}b}"]
+                source = (
+                    esolangs.instantiate(name, artifact, bits)
+                    if lang.parameterized
+                    else artifact
+                )
+                stdin = (
+                    ""
+                    if lang.parameterized
+                    else esolangs.encode_inputs(name, bits, truth_table=table)
+                )
+                native = _termination_result(name, source, stdin, 5)
+                assert native.decision.halts is (
+                    lang.contract.answer_values[int(answer)] == "halts"
+                )
+                _replay_termination(name, source, stdin, native)
+                cases.append((name, source, stdin, native))
+                coverage[name][0] += 1
+    assert len(coverage) == 3
+    assert all(
+        admitted > 0 and admitted + capped == 72
+        for admitted, capped in coverage.values()
+    )
+    assert len(cases) == 180
+    assert refused == 36
+    assert sum(case[3].decision.halts for case in cases) == 91
+
+    name, source, stdin, result = next(case for case in cases if case[3].decision.cycle)
+    cycle = result.decision.cycle
+    damaged = result._replace(
+        decision=result.decision._replace(cycle=replace(cycle, state=("wrong",)))
+    )
+    with pytest.raises(AssertionError):
+        _replay_termination(name, source, stdin, damaged)
+    damaged = result._replace(
+        observation=result.observation._replace(
+            input_reads=result.observation.input_reads + 1
+        )
+    )
+    with pytest.raises(AssertionError):
+        _replay_termination(name, source, stdin, damaged)
+    damaged = result._replace(
+        decision=result.decision._replace(commands=result.decision.commands + 1)
+    )
+    with pytest.raises(AssertionError):
+        _replay_termination(name, source, stdin, damaged)
+
+    def check_worker(case):
+        name, source, stdin, native = case
+        worker = termination_result_isolated(
+            name, source.source, stdin, 5, settings=source.settings
+        )
+        assert worker == native, (name, source, stdin)
+        return worker
+
+    with guarded_worker(expected=len(cases)), ThreadPoolExecutor(max_workers=4) as pool:
+        assert len(list(pool.map(check_worker, cases))) == len(cases)
 
 
 @pytest.mark.medium

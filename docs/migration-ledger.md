@@ -488,3 +488,15 @@ controls. The wheel passes the same matrix on Python 3.12–3.15 under the
 certification barrier.
 Existing slow markers and command/wall budgets remain unchanged. This scope
 does not close the remaining periodic, termination, resource or corpus audits.
+
+Termination acceptance covers all 20 one-/two-input tables for three backends:
+216 row requests, with 180 executed (91 halts, 89 cycles) and 36 refused by the
+unchanged table-dependent source cap. Unary's owned test derives the seven
+admitted and nine refused two-input tables from the nine-command budget.
+Manual debugger replay checks command counts, input/output observations and
+both cycle boundaries. Halting proofs retain unfinished observations before
+output finalization; subsequent completion and idle steps match ordinary runs.
+All 180 guarded workers match native proofs. Damaged cycle states, counters and
+command counts are rejected. The same matrix passes installed Python 3.12–3.15
+under the certification barrier. Existing worker deadlines and collected case
+counts remain unchanged; larger, branching and periodic acceptance stays open.

@@ -57,6 +57,25 @@ def test_source_cap_refuses_before_materialization(table: str) -> None:
     with pytest.raises(esolangs.GeneratorCapError, match=r"cap|max-inputs"):
         unary(table)
     assert unary("01")  # Positive control: the cap does not refuse every build.
+    if table == "0110":
+        admitted = refused = 0
+        for entries in itertools.product("01", repeat=4):
+            candidate = "".join(entries)
+            # Constants, a single input (possibly negated), or the AND chain
+            # fit nine commands; a general two-input tree exceeds that budget.
+            fits = (
+                candidate[:2] == candidate[2:]
+                or (candidate[0] == candidate[1] and candidate[2] == candidate[3])
+                or candidate == "0001"
+            )
+            if fits:
+                assert unary(candidate)
+                admitted += 1
+            else:
+                with pytest.raises(esolangs.GeneratorCapError, match="work cap"):
+                    unary(candidate)
+                refused += 1
+        assert (admitted, refused) == (7, 9)
 
 
 @pytest.mark.medium
