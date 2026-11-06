@@ -7,10 +7,15 @@ import pytest
 
 import esolangs
 from esolangs.registry import LANGUAGES
+from esolangs.results import ExecutionResult
 from esolangs.runtime._isolated import _decode, termination_result_isolated
 from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._proof import BranchProof, CycleDecision
-from esolangs.runtime._result_wire import decode_decision, encode_decision
+from esolangs.runtime._result_wire import (
+    decode_decision,
+    encode_decision,
+    encode_result,
+)
 from esolangs.runtime._termination import _termination_result
 from esolangs.vm import make_vm
 from tests.support.reference import REFERENCE
@@ -102,6 +107,35 @@ def test_wire_decisions_require_proof_and_matching_counts():
     for record in records:
         wire = json.loads(json.dumps(encode_decision(record)))
         assert decode_decision(wire) == record
+        packet = {
+            "result": "prefix",
+            "execution": encode_result(ExecutionResult("prefix", 0, 0, 0)),
+            "termination": wire,
+        }
+        streamed = json.dumps({"output": "prefix"}) + "\n"
+        assert _decode(streamed + json.dumps(packet), expired=False).decision == record
+        nested = "cycle" if record.cycle is not None else "branches"
+        for part in (None, nested):
+            target = wire if part is None else wire[part]
+            for key in (*target, "obsolete"):
+                malformed = copy.deepcopy(packet)
+                changed = malformed["termination"]
+                if part is not None:
+                    changed = changed[part]
+                if key == "obsolete":
+                    changed[key] = True
+                else:
+                    del changed[key]
+                with pytest.raises(
+                    ValueError,
+                    match=r"invalid (termination|boundary|branching)",
+                ):
+                    decode_decision(malformed["termination"])
+                with pytest.raises(
+                    esolangs.InterpreterLimitError, match="invalid isolated"
+                ) as caught:
+                    _decode(streamed + json.dumps(malformed), expired=False)
+                assert caught.value.partial_output == "prefix"
         broken = copy.deepcopy(wire)
         broken["cycle"] = broken["branches"] = None
         with pytest.raises(ValueError, match=r"evidence|count"):

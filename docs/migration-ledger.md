@@ -38,6 +38,7 @@ Owners are workstreams, not individual contributors.
 | `FunctionRef.__signature__` proxy | Registry | Retired; recursive declaration checks reject its return in `tests/api/test_descriptor_loading.py` | Explicit callable parameter declarations |
 | Snapshot-as-workspace fallback | Accounting | Retired; VM capture and `WrittenState` require models; missing/invalid adapters and raw values are rejected in runtime/tooling tests | Versioned semantic accounting models |
 | Legacy worker-field defaults | Results | Retired; complete requests and explicit success/error observations; omission controls in `tests/runtime/test_worker_results.py` | Explicit canonical fields, including unavailable observations |
+| Permissive worker envelopes and nested proof fields | Results | Retired; missing/extra fields, unknown error kinds, duplicate terminals and contradictory output fail with retained prefixes | Exact canonical stream, result and evidence schemas |
 | Superseded serialization decoders/converters | Persistence | Persisted data and fixtures, if a format is superseded | One-time data migration, then remove the obsolete code |
 
 For each family, locate consumers before changing it; close the row only after
@@ -395,3 +396,17 @@ subtree ids; its backward-function involution and lexical turns remain owned.
 Rubic retains canonical subtree ids with cube-neutral instructions. These
 four audits preserve source bytes, EOF behavior, bounds and the timing floor,
 with executed shared-analysis fault controls.
+
+Worker transport rejects extra or missing cycle, branch and snapshot-record fields,
+unknown error names and malformed error options. Output frames and terminal
+results require exact envelopes; repeated verdicts, trailing malformed records
+and contradictory output fail while preserving the validated prefix. Deadline
+expiry still retains completed output records. Existing tests exercise valid
+proofs and malformed fields through both direct and parent decoding.
+
+A 117-language witness matrix retains canonical text, PNG and gzip artifacts,
+native/isolated results, bounded periodic observations and six termination-proof
+cases. Source and installed-wheel observations match on Python 3.12–3.15.
+These live execution and JSON witnesses do not close the catalog's independent
+trace, failure or resource audits. No persisted format was superseded, so the
+supported version-1 loader remains canonical.

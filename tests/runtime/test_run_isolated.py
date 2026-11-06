@@ -210,12 +210,13 @@ def protocol_child():
 def test_capped_protocol_truncated_record_retains_prefix(protocol_child) -> None:
     from esolangs.runtime._isolated import _bounded_output
 
-    child = protocol_child(['{"output":"prefix"}\n', '{"output":'])
-    with pytest.raises(esolangs.InterpreterLimitError) as caught:
-        _bounded_output(child, "{}", 1)
-    assert caught.value.partial_output == "prefix"
-    assert child.killed
-    assert child.reaped
+    for malformed in ('{"output":', "null\n", "[]\n"):
+        child = protocol_child(['{"output":"prefix"}\n', malformed])
+        with pytest.raises(esolangs.InterpreterLimitError) as caught:
+            _bounded_output(child, "{}", 1)
+        assert caught.value.partial_output == "prefix"
+        assert child.killed
+        assert child.reaped
 
 
 def test_capped_protocol_verdict_does_not_excuse_a_lingering_worker(

@@ -1,5 +1,6 @@
 """Worker results retain counters and immutable periodic evidence."""
 
+import copy
 import json
 
 import pytest
@@ -7,14 +8,34 @@ import pytest
 import esolangs
 from esolangs.registry import LANGUAGES
 from esolangs.results import ExecutionResult
+from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime._isolated import _decode
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
 from esolangs.runtime._result_wire import decode_result, encode_result
+from esolangs.vm import make_vm
 from tests.support.reference import REFERENCE
 
 
 def test_immutable_cycle_state_survives_json():
-    state = (frozenset({((1, -2), 3), ((4, 5), 6)}), b"\x00\xff", None, True)
+    name = next(
+        name
+        for name, language in LANGUAGES.items()
+        if language.backend is not None
+        and getattr(interpreter_module(name), "SNAPSHOT_RECORDS", ())
+    )
+    program = esolangs.generate(name, "01")
+    if isinstance(program, esolangs.TemplateArtifact):
+        program = esolangs.instantiate(name, program, [1])
+    machine = make_vm(name, program)
+    assert not machine.halted
+    machine.step()
+    state = (
+        frozenset({((1, -2), 3), ((4, 5), 6)}),
+        b"\x00\xff",
+        None,
+        True,
+        machine.snapshot(),
+    )
     result = ExecutionResult(
         "output",
         2,
@@ -27,6 +48,24 @@ def test_immutable_cycle_state_survives_json():
     assert hash(decode_result(result.output, metadata).completion.cycle.state) == hash(
         state
     )
+    record = metadata["completion"]["cycle"]["state"]["tuple"][-1]["record"]
+    for key in (*record, "obsolete"):
+        broken = copy.deepcopy(metadata)
+        changed = broken["completion"]["cycle"]["state"]["tuple"][-1]["record"]
+        if key == "obsolete":
+            changed[key] = True
+        else:
+            del changed[key]
+        with pytest.raises(ValueError, match="snapshot record"):
+            decode_result(result.output, broken)
+        packet = json.dumps({"result": result.output, "execution": broken})
+        with pytest.raises(
+            esolangs.InterpreterLimitError, match="invalid isolated"
+        ) as caught:
+            _decode(
+                json.dumps({"output": result.output}) + "\n" + packet, expired=False
+            )
+        assert caught.value.partial_output == result.output
 
 
 @pytest.mark.parametrize("counter", [-1, True])
@@ -135,6 +174,29 @@ def test_missing_worker_observations_are_rejected_with_the_prefix(failure):
     ) as caught:
         _decode(text, expired=False)
     assert caught.value.partial_output == "prefix"
+    if not failure:
+        execution = encode_result(
+            ExecutionResult("prefix", 0, 0, 0, CompletionReport(Completion.HALTED))
+        )
+        success = {"result": "prefix", "execution": execution}
+        streamed = json.dumps({"output": "prefix"}) + "\n"
+        assert _decode(streamed + json.dumps(success), expired=False).output == "prefix"
+        for malformed in (
+            streamed + json.dumps({**success, "obsolete": True}),
+            streamed + json.dumps({**success, "result": "different"}),
+            streamed + json.dumps(success) + "\n" + json.dumps(success),
+            streamed + json.dumps(success) + '\n{"output":"late"}',
+            streamed + '{"output":"extra","obsolete":true}',
+            streamed + '{"output":3}',
+            streamed + json.dumps(success) + "\n{",
+            streamed + "null",
+            streamed + "[]",
+        ):
+            with pytest.raises(
+                esolangs.InterpreterLimitError, match="invalid isolated"
+            ) as invalid:
+                _decode(malformed, expired=False)
+            assert invalid.value.partial_output == "prefix"
 
 
 def test_worker_requires_the_complete_request(monkeypatch):
@@ -169,9 +231,52 @@ def test_worker_error_requires_explicit_unavailable_observation_and_options():
     assert caught.value.bound == "max_steps"
     assert caught.value.__notes__ == ["row 1"]
     assert caught.value.execution is None
-    for key in ("execution", "notes", "output_limit", "bound"):
+    for key in ("execution", "notes", "output_limit", "bound", "obsolete"):
         with pytest.raises(esolangs.InterpreterLimitError, match="invalid isolated"):
             _decode(
-                json.dumps({k: v for k, v in payload.items() if k != key}),
+                json.dumps(
+                    {**payload, "obsolete": None}
+                    if key == "obsolete"
+                    else {k: v for k, v in payload.items() if k != key}
+                ),
                 expired=False,
             )
+    for field, value in (
+        ("error", "ObsoleteError"),
+        ("error", "__name__"),
+        ("args", "deadline"),
+        ("notes", "row 1"),
+        ("notes", [1]),
+        ("bound", "unknown"),
+        ("output_limit", 1),
+    ):
+        with pytest.raises(esolangs.InterpreterLimitError, match="invalid isolated"):
+            _decode(json.dumps({**payload, field: value}), expired=False)
+    for kind, valid, malformed in (
+        (
+            "UnknownLanguageError",
+            ["missing", ["Brainfuck"]],
+            [[], ["missing"], [3, []], ["missing", [3]], ["missing", [], "extra"]],
+        ),
+        (
+            "InputExhaustedError",
+            [0, 0, "line"],
+            [
+                [],
+                [0, 0],
+                [-1, 0, "line"],
+                [True, 0, "line"],
+                [0, 0, 3],
+                [0, 0, "line", "extra"],
+            ],
+        ),
+    ):
+        envelope = {key: value for key, value in payload.items() if key != "bound"}
+        envelope.update(error=kind, args=valid)
+        with pytest.raises(getattr(esolangs, kind)):
+            _decode(json.dumps(envelope), expired=False)
+        for args in malformed:
+            with pytest.raises(
+                esolangs.InterpreterLimitError, match="invalid isolated"
+            ):
+                _decode(json.dumps({**envelope, "args": args}), expired=False)

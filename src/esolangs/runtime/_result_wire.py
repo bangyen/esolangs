@@ -85,7 +85,11 @@ def _state_from_wire(value: Any) -> Hashable:
         return int(value["int"], 16)
     if "record" in value:
         record = value["record"]
-        if not isinstance(record, dict) or not isinstance(record["fields"], dict):
+        if (
+            not isinstance(record, dict)
+            or set(record) != {"module", "name", "fields"}
+            or not isinstance(record["fields"], dict)
+        ):
             raise ValueError("invalid snapshot record")
         if not isinstance(record["module"], str) or not isinstance(record["name"], str):
             raise ValueError("invalid snapshot record type")
@@ -128,7 +132,12 @@ def _cycle_wire(cycle: BoundaryCycle | None) -> dict[str, Any] | None:
 def _cycle_from_wire(value: Any) -> BoundaryCycle | None:
     if value is None:
         return None
-    if not isinstance(value, dict):
+    if not isinstance(value, dict) or set(value) != {
+        "state",
+        "first_pass",
+        "repeat_pass",
+        "commands_per_pass",
+    }:
         raise ValueError("invalid boundary cycle")
     return BoundaryCycle(
         _state_from_wire(value["state"]),
@@ -211,12 +220,20 @@ def encode_decision(decision: CycleDecision) -> dict[str, Any]:
 
 def decode_decision(metadata: Any) -> CycleDecision:
     """Validate all proof fields before a worker can decide termination."""
-    if not isinstance(metadata, dict) or type(metadata["halts"]) is not bool:
+    if (
+        not isinstance(metadata, dict)
+        or set(metadata) != {"halts", "commands", "cycle", "branches"}
+        or type(metadata["halts"]) is not bool
+    ):
         raise ValueError("invalid termination decision")
     branch = None
     if metadata["branches"] is not None:
         value = metadata["branches"]
-        if not isinstance(value, dict) or not isinstance(value["transitions"], list):
+        if (
+            not isinstance(value, dict)
+            or set(value) != {"root", "transitions", "halts", "terminal"}
+            or not isinstance(value["transitions"], list)
+        ):
             raise ValueError("invalid branching evidence")
         transitions = []
         for row in value["transitions"]:

@@ -26,6 +26,7 @@ from esolangs.runtime._input import InputSource, read_input
 from esolangs.runtime._program import Program
 from esolangs.runtime._proof import TerminationResult
 from esolangs.runtime._result_wire import (
+    _counter,
     decode_result,
     decode_termination,
     encode_decision,
@@ -98,16 +99,71 @@ def _raster_rows(runs: _RasterRuns) -> Rows:
     )
 
 
+def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.EsolangError:
+    """Restore only the canonical error envelope and its explicit observation."""
+    kind = result["error"]
+    cls = getattr(exceptions, kind, None) if isinstance(kind, str) else None
+    if not isinstance(cls, type) or not issubclass(cls, exceptions.EsolangError):
+        raise ValueError("unknown isolated error kind")
+    fields = {"error", "args", "notes", "execution", "output_limit"}
+    if issubclass(cls, exceptions.ExecutionTimeoutError):
+        fields.add("bound")
+    if set(result) != fields or not isinstance(result["args"], list):
+        raise ValueError("invalid isolated error fields")
+    if type(result["output_limit"]) is not bool or not isinstance(
+        result["notes"], list
+    ):
+        raise ValueError("invalid isolated error options")
+    if any(not isinstance(note, str) for note in result["notes"]):
+        raise ValueError("invalid isolated error notes")
+    args = result["args"]
+    # The wire keeps every argument positional; these options are keyword-only.
+    options: dict[str, Any] = {}
+    if kind == "UnknownLanguageError":
+        if (
+            len(args) != 2
+            or not isinstance(args[0], str)
+            or not isinstance(args[1], list)
+            or any(not isinstance(name, str) for name in args[1])
+        ):
+            raise ValueError("invalid unknown-language error arguments")
+        args, options = args[:1], {"suggestions": tuple(args[1])}
+    elif kind == "InputExhaustedError":
+        if len(args) != 3 or not isinstance(args[2], str):
+            raise ValueError("invalid input-exhaustion error arguments")
+        args, options = [_counter(args[0]), _counter(args[1])], {"unit": args[2]}
+    error: exceptions.EsolangError = cls(*args, **options)
+    error.partial_output = partial
+    error.__notes__ = list(result["notes"])
+    if isinstance(error, exceptions.ExecutionTimeoutError):
+        if result["bound"] not in ("timeout", "max_steps"):
+            raise ValueError("invalid timeout bound")
+        error.bound = result["bound"]
+    if result["execution"] is not None:
+        error.execution = decode_result(partial, result["execution"])
+        if error.execution.completion is not None:
+            raise ValueError("failed execution cannot declare completion")
+    return error
+
+
 def _decode(text: str, *, expired: bool) -> _WorkerResult:
     error: exceptions.EsolangError
     output: list[str] = []
     result: dict[str, Any] | None = None
+    malformed = False
     for line in text.splitlines():
         try:
             message = json.loads(line)
         except json.JSONDecodeError:
+            malformed = True
             break  # A killed write may leave only part of its last JSON record.
+        if not isinstance(message, dict) or result is not None:
+            malformed = True
+            break
         if "output" in message:
+            if set(message) != {"output"} or not isinstance(message["output"], str):
+                malformed = True
+                break
             output.append(message["output"])
         else:
             result = message
@@ -118,56 +174,37 @@ def _decode(text: str, *, expired: bool) -> _WorkerResult:
         )
         error.partial_output = partial
         raise error
-    if result is None:
+    if result is None and not malformed:
         error = exceptions.InterpreterLimitError(
             "isolated interpreter exited without a result",
             hint="check the worker exit status and available system resources",
         )
         error.partial_output = partial
         raise error
-    if "error" in result:
-        kind = result["error"]
-        cls = getattr(exceptions, kind, exceptions.InterpreterLimitError)
-        args = result["args"]
-        # The wire keeps every argument positional; the optional ones are
-        # keyword-only on the classes.
-        options: dict[str, Any] = {}
-        if kind == "UnknownLanguageError":
-            args, options = args[:1], {"suggestions": tuple(args[1])}
-        elif kind == "InputExhaustedError":
-            args, options = args[:2], {"unit": args[2]}
-        error = cls(*args, **options)
-        error.partial_output = partial
-        try:
-            if type(result["output_limit"]) is not bool:
-                raise ValueError("invalid output limit flag")
-            error.__notes__ = list(result["notes"])
-            if isinstance(error, exceptions.ExecutionTimeoutError):
-                error.bound = result["bound"]
-            if result["execution"] is not None:
-                error.execution = decode_result(partial, result["execution"])
-                if error.execution.completion is not None:
-                    raise ValueError("failed execution cannot declare completion")
-        except (TypeError, ValueError, KeyError) as cause:
-            invalid = exceptions.InterpreterLimitError(
-                "invalid isolated execution result"
-            )
-            invalid.partial_output = partial
-            raise invalid from cause
-        raise error
     try:
-        if "termination" in result:
-            return decode_termination(
-                result["result"], result["execution"], result["termination"]
-            )
-        execution = decode_result(result["result"], result["execution"])
-        if execution.completion is None:
-            raise ValueError("worker omitted output completion")
-        return execution
+        if malformed or result is None:
+            raise ValueError("invalid isolated stream")
+        if "error" in result:
+            error = _error_from_wire(result, partial)
+        else:
+            fields = {"result", "execution"}
+            if "termination" in result:
+                fields.add("termination")
+            if set(result) != fields or result["result"] != partial:
+                raise ValueError("invalid isolated result fields or output")
+            if "termination" in result:
+                return decode_termination(
+                    result["result"], result["execution"], result["termination"]
+                )
+            execution = decode_result(result["result"], result["execution"])
+            if execution.completion is None:
+                raise ValueError("worker omitted output completion")
+            return execution
     except (TypeError, ValueError, KeyError) as cause:
         error = exceptions.InterpreterLimitError("invalid isolated execution result")
         error.partial_output = partial
         raise error from cause
+    raise error
 
 
 #: The worker's output-cap message, which also tells the parent the cap hit.
@@ -417,7 +454,10 @@ def _bounded_output(
                 raise record
             output.append(record)
             try:
-                limited = bool(json.loads(record).get("output_limit"))
+                message = json.loads(record)
+                limited = (
+                    isinstance(message, dict) and message.get("output_limit") is True
+                )
             except json.JSONDecodeError:
                 break
             if limited:
