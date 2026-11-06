@@ -946,3 +946,19 @@ Generator throughput ratios are 0.980 and 0.985, above 0.9. Installed Python
 3.12–3.15 repeats both default corpora, larger layouts, analysis faults, pins,
 anchors and the independent 3x native oracle against 832 byte-checked modules.
 These two analysis rows are audited; broader acceptance remains open.
+
+Decleq classifies constants through canonical subtree IDs, removing its duplicate
+span index and classifier fields. Zero-selector private builders retain their
+literal base case. Subleq and S*bleq retain canonical branch/packed queries.
+S*bleq's streaming cost census stays owned: a canonical DAG prototype matches
+296 floors but takes 29% more unit time and twice the peak RSS at n=20.
+Six semantic query faults and two executed cost-selection controls remain live.
+
+The audits preserve 1,956 artifact requests, 6,360 paired rows and 548,834
+complete semantic samples. Larger layouts, pins and declared size witnesses
+retain bytes. All 70 S*bleq size families at n=19..25 execute; the largest is
+13,427,166 characters. Original scaling nodes pass through n=25. Subleq's
+n=9 resource node exceeds its unchanged 60 s audit cap; separate full-table
+checks cover all eleven tables and 5,632 rows under that cap, reaching both
+exact bounds. The whole-node timeout remains a finding. Catalog acceptance
+stays open.

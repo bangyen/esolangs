@@ -5,23 +5,22 @@ from itertools import product
 
 import pytest
 
-import esolangs
 from esolangs.generation.wrap import balance_program, balance_score, wrap_program
 from esolangs.languages.decleq import generator as boolean
 from tests.generators.boolean_runners import _runner
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import assert_oisc_constants
 from tests.support.witness_tables import parity as _parity
-from tests.support.witness_tables import row_bits
 
 run_decleq = _runner("decleq")
 
 
 class TestDecleq:
     def test_essential_bits_share_one_pass_loop(self) -> None:
-        """An essential bit is decremented once in the loop, then tested at each node.
+        """Decrement once; ``0110`` tests input 2 under both input-1 arms."""
+        from tests.support.analysis_support import assert_analysis_complement
 
-        ``0110`` tests its second input under both halves of the first.
-        """
+        assert_analysis_complement("Decleq", "read_at")
+        assert_analysis_complement("Decleq", "subtree_ids")
         for table, tests in (("0110", (1, 2)), ("11110000", (1, 0, 0))):
             n = len(table).bit_length() - 1
             program = boolean.decleq(table)
@@ -34,7 +33,6 @@ class TestDecleq:
                 assert decs == (1 + tests[i] if tests[i] else 0), (table, i)
 
     def test_constant_subtrees_fold(self) -> None:
-        """A constant zero side enters its print gadget directly."""
         halves = "1" * 16 + "0" * 16
         parity = "".join(str((row).bit_count() & 1) for row in range(32))
 
@@ -42,16 +40,13 @@ class TestDecleq:
             cells = [int(tok) for tok in boolean.decleq(table).split()]
             return cells.count(-2)
 
-        # Only the two gadgets print, and no operand can be -2 (operands are
-        # addresses, read cells and the two ASCII constants), so every program
-        # carries exactly two.
+        # Addresses and ASCII operands cannot be -2; only the two gadgets print.
         _check_gadgets_and_owner_families()
         assert outputs(halves) == 2
         assert outputs(parity) == 2
         assert len(boolean.decleq(halves)) < len(boolean.decleq(parity))
 
     def test_size_is_linear_in_the_table(self) -> None:
-        """The per-entry cost falls with arity: shared low levels stay narrow."""
         per_entry = [len(boolean.decleq(_parity(n))) / 2**n for n in (8, 10, 12)]
         assert per_entry[0] > per_entry[1] > per_entry[2]
         assert per_entry[2] < 8
@@ -59,22 +54,16 @@ class TestDecleq:
         table = "".join(rng.choice("01") for _ in range(64))
         program = boolean.decleq(table)
         for combo in range(64):
-            bits = [(combo >> (5 - i)) & 1 for i in range(6)]
-            got = run_decleq(program, [str(b) for b in bits])
-            assert got == table[combo], f"inputs {bits}"
+            assert run_decleq(program, list(f"{combo:06b}")) == table[combo]
 
     def test_folded_tables_still_print_correctly(self) -> None:
-        """Every folded table still prints its entry for every input."""
         for table in ("11111111", "11110000", "11001100", "00001111"):
             program = boolean.decleq(table)
             n = len(table).bit_length() - 1
             for combo in range(2**n):
-                bits = row_bits(combo, n)
-                got = run_decleq(program, [str(b) for b in bits])
-                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+                assert run_decleq(program, list(f"{combo:0{n}b}")) == table[combo]
 
     def test_a_repeated_subtree_is_emitted_once(self) -> None:
-        """Two equal quarters share one copy and still print every entry."""
         rng = random.Random(8)
         block, other = ("".join(rng.choice("01") for _ in range(64)) for _ in "ab")
         table = block + other + block + block
@@ -83,14 +72,10 @@ class TestDecleq:
             boolean.decleq(block + other + other[::-1] + block[::-1])
         )
         for combo in rng.sample(range(256), 48):
-            bits = [(combo >> (7 - i)) & 1 for i in range(8)]
-            assert run_decleq(program, [str(b) for b in bits]) == table[combo]
+            assert run_decleq(program, list(f"{combo:08b}")) == table[combo]
 
     def test_untaken_jumps_target_zero(self) -> None:
-        """A jump no run can take is spelt ``0``; I/O targets the next address.
-
-        I/O falls through here but jumps to ``c`` in SUBBIG's reading.
-        """
+        """Untaken jumps target 0; I/O's next-address target also fits SUBBIG."""
         cells = [int(tok) for tok in boolean.decleq("01101001").split()]
         instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
         io = [(3 * i, c) for i, (a, _b, c) in enumerate(instrs) if a in (-1, -2)]
@@ -129,40 +114,15 @@ def test_multiline_source_is_untouched() -> None:
 
 @pytest.mark.medium
 def test_constants_reuse_scratch_and_print_after_every_read() -> None:
-    from esolangs.languages.decleq.interpreter import _Machine
     from esolangs.languages.decleq.proof_formulas import workspace
-    from scripts.benchmark import WrittenState
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Decleq", bit * (1 << n), **options).source
-                cells = list(map(int, program.split()))
-                assert len(cells) == 3 * n + 9
-                assert all(
-                    cells[3 * i : 3 * i + 3] == [-1, 3 * n + 7, 3 * i + 3]
-                    for i in range(n)
-                )
-                assert cells[3 * n : 3 * n + 3] == [-2, 3 * n + 6, 3 * n + 3]
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs("Decleq", row_bits(row, n))
-                    io = ReadFirstIO(stdin + "Q", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps <= n + 2
-                    assert steps == n + 2
-                    assert written.bits == workspace(n, program)
-                    assert io.getvalue() == bit
-                    assert io.input_char() == ord("Q")
+    assert_oisc_constants("Decleq", workspace, decrement=True)
     assert sum(len(boolean.decleq(format(v, "08b"))) for v in range(256)) == 42228
 
 
 def _check_gadgets_and_owner_families() -> None:
+    from unittest.mock import patch
+
     from esolangs.languages.decleq.generator import (
         _CodeBuilder,
         _owner_family,
@@ -173,6 +133,21 @@ def _check_gadgets_and_owner_families() -> None:
     from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
+    table = "".join(str(int(row.bit_count() >= 4)) for row in range(128))
+    original = boolean.decleq(table)
+    with patch.object(boolean, "symmetric_outputs", return_value=None) as disabled:
+        fallback = boolean.decleq(table)
+        assert disabled.called
+    assert len(fallback) > len(original)
+    for row in (0, 1, 127):
+        bits = list(f"{row:07b}")
+        assert run_decleq(original, bits) == run_decleq(fallback, bits) == table[row]
+    for bit in "01":
+        builder = _CodeBuilder(bit, 2, [])
+        assert not hasattr(builder, "is_constant")
+        assert not hasattr(builder, "truth_table")
+        for row in ("00", "11"):
+            assert run_decleq(builder.build(), list(row)) == bit
     for n in range(1, 7):
         table = "0" * ((1 << n) - 1) + "1"
         for case in (table, table.translate(str.maketrans("01", "10"))):

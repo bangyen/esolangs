@@ -1,5 +1,4 @@
-"""Covers :mod:`esolangs.languages.s_bleq.generator`: the shared tree and the
-packed decoder."""
+"""S*bleq shared-tree and packed-decoder tests."""
 
 import random
 
@@ -16,7 +15,7 @@ from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
 from tests.proofs._witnesses import _sbleq_worst
 from tests.proofs.execution import tables as _tables
-from tests.support.event_io import ReadFirstIO
+from tests.support import event_io
 from tests.support.generator_support import assert_parity_at_most_doubles
 
 run_sbleq = _runner("s_bleq")
@@ -26,19 +25,15 @@ run_sbleq = _runner("s_bleq")
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_reads_once_and_falls_off_after_output(n: int, bit: str) -> None:
     if n == 1 and bit == "0":
-        _check_constants()
+        event_io.assert_oisc_constants(
+            "S*bleq",
+            lambda n, _: (3 * n + 3).bit_length() + n.bit_length(),
+            relaxed=True,
+        )
     table = bit * (1 << n)
     for program in (boolean.s_bleq(table), packed_decoder(table)):
         for row in range(1 << n):
-            text = f"{row:0{n}b}"
-            io = ScriptedIO(text + "extra")
-            machine = _Machine(program, io)
-            for _ in range(n + 1):
-                assert not machine.halted
-                machine.step()
-            assert machine.halted
-            assert io.position() == n
-            assert io.getvalue() == bit
+            event_io.assert_falloff(_Machine, program, n, bit, row, n + 1)
 
 
 @pytest.mark.parametrize("n", [3, 8])
@@ -46,28 +41,16 @@ def test_constant_reads_once_and_falls_off_after_output(n: int, bit: str) -> Non
 def test_balanced_constants_read_every_input(n: int, bit: str) -> None:
     program = esolangs.generate("S*bleq", bit * (1 << n), balance=True).source
     for row in range(1 << n):
-        io = ScriptedIO(f"{row:0{n}b}" + "extra")
-        machine = _Machine(str(program), io)
-        for _ in range(n + 3):
-            if machine.halted:
-                break
-            machine.step()
-        assert machine.halted
-        assert io.position() == n
-        assert io.getvalue() == bit
+        event_io.assert_falloff(_Machine, str(program), n, bit, row, n + 3, early=True)
 
 
 class TestSbleq:
-    """The hoisted tree through its sharing, and the packed decoder past it."""
-
     def test_packed_decoder_executes_wide_rows(self) -> None:
-        """Rows on both sides of chunk boundaries decode correctly."""
         n = 6
         table = "".join(str(row.bit_count() & 1) for row in range(2**n))
         program = packed_decoder(table)
         for row in (0, 1, 5, 6, 7, 31, 32, 62, 63):
-            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
-            assert run_sbleq(program, bits) == table[row]
+            assert run_sbleq(program, list(f"{row:0{n}b}")) == table[row]
 
     def test_a_repeated_subtree_is_jumped_to(self) -> None:
         """XOR's second test reaches the leaves already emitted for the first."""
@@ -77,15 +60,13 @@ class TestSbleq:
         assert shared.count("-3") == 2
 
     def test_shared_tree_executes_wide_rows(self) -> None:
-        """A seeded seven-input table, every row, through the shared tree."""
         _check_compacted_trees()
         n = 7
         table = format(random.Random(7).getrandbits(2**n), f"0{2**n}b")
         program = boolean.s_bleq(table)
         assert len(program) < len(packed_decoder(table))
         for row in range(2**n):
-            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
-            assert run_sbleq(program, bits) == table[row]
+            assert run_sbleq(program, list(f"{row:0{n}b}")) == table[row]
 
 
 @pytest.mark.medium
@@ -120,6 +101,30 @@ def test_parity_still_runs_the_race_and_ships_the_tree() -> None:
     assert boolean.s_bleq(table) == _compact_tree(
         hoisted_tree(table, tuple(range(n))), n
     )
+    from unittest.mock import patch
+
+    from tests.generators.generator_sections import named_table
+    from tests.support.analysis_support import assert_analysis_complement
+
+    for query, rule in (
+        ("_sbleq_hoisted", "parity"),
+        ("packed_decoder", "random 1847"),
+    ):
+        assert_analysis_complement(
+            "S*bleq", query, named_table(10, rule), rows=(0, 1, 1023)
+        )
+    table = named_table(10, "parity")
+    original = boolean.s_bleq(table)
+    packed = packed_decoder(table)
+    with patch.object(
+        boolean, "_tree_min_chars", return_value=len(packed) + 1
+    ) as false_floor:
+        assert boolean.s_bleq(table) == packed
+        assert false_floor.called
+    assert len(packed) > len(original)
+    for row in (0, 1, 1023):
+        bits = list(f"{row:010b}")
+        assert run_sbleq(original, bits) == run_sbleq(packed, bits) == table[row]
 
 
 @pytest.mark.parametrize("n", [3, 4, 5, 8, 10])
@@ -139,41 +144,6 @@ def test_flipped_tree_ends_the_and_relay_jumps() -> None:
     assert len(boolean.s_bleq(table)) < 1.2 * len(boolean.s_bleq(nor))
 
 
-def _check_constants() -> None:
-    from esolangs.languages.s_bleq.interpreter import _Machine
-    from scripts.benchmark import WrittenState
-
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("S*bleq", bit * (1 << n), **options).source
-                if not options:
-                    assert len(program) == 7 * n + 7
-                peak = 0
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "S*bleq", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "7", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps < 1000
-                    assert io.getvalue().strip() == bit
-                    assert io.past_end == 0
-                    assert io.input_char() == ord("7")
-                    if not options:
-                        assert steps == n + 1
-                        assert written.bits <= (3 * n + 3).bit_length() + n.bit_length()
-                        peak = max(peak, written.bits)
-                if not options:
-                    assert peak == (3 * n + 3).bit_length() + n.bit_length()
-
-
 def _check_compacted_trees() -> None:
     """Relocated targets stay disjoint from destructive inputs and code."""
     for table in ("0110", "00001100", "01101001", "1101001101101101"):
@@ -186,7 +156,7 @@ def _check_compacted_trees() -> None:
             literal = initial.index(-49)
             assert len(program) < len(old)
             for row in range(1 << n):
-                io = ReadFirstIO(f"{row:0{n}b}!", expected=n)
+                io = event_io.ReadFirstIO(f"{row:0{n}b}!", expected=n)
                 machine = _Machine(program, io)
                 steps = 0
                 while not machine.halted:
@@ -213,11 +183,7 @@ def test_packed_execution_bound_recognizes_the_emitted_cells() -> None:
         for row in rows:
             io = ScriptedIO(f"{row:0{n}b}" + "Q")
             machine = _Machine(program, io)
-            steps = 0
-            while not machine.halted:
-                machine.step()
-                steps += 1
-                assert steps <= bound
+            steps = event_io.count_steps(machine, bound)
             assert io.getvalue() == table[row]
             assert io.reads == n
             assert io.input_char() == ord("Q")

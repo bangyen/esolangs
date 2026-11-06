@@ -20,7 +20,6 @@ from esolangs.generation.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _validate_truth_table,
-    constant_span_test,
     essential_inputs,
     read_at,
     subtree_ids,
@@ -89,10 +88,8 @@ class _CodeBuilder:
     """
 
     def __init__(self, truth_table: str, n: int, routes: list[int]) -> None:
-        self.truth_table = truth_table
         self.routes = routes
         self.m = len(routes)
-        self.is_constant = constant_span_test(truth_table)
         self.read_cells = list(range(_READ_BASE, _READ_BASE + n))
         # The code starts on a multiple of three so wrap_grid's columns are
         # the operand columns; at most two pad cells.
@@ -100,8 +97,8 @@ class _CodeBuilder:
         self.code = -(-(self.counter + 1) // 3) * 3
         self.mem: list[int] = []
         self.ends = [_HALT + 2, _HALT + 8]  # the two END operands, patched last
-        # A constant prints at the root and never looks an id up.
-        self.ids = subtree_ids(truth_table) if self.m else []
+        # A zero-selector builder has one literal leaf; the helper needs n>=1.
+        self.ids = subtree_ids(truth_table) if self.m else [[int(truth_table[0])]]
         self.done: dict[tuple[int, int], int] = {}
 
     def build(self) -> str:
@@ -145,12 +142,13 @@ class _CodeBuilder:
 
     def earlier(self, level: int, row: int) -> int | None:
         """Return a constant gadget or an equal subtree already emitted, if any."""
-        if self.is_constant(row, row + 2 ** (self.m - level)):
+        ident = self.ids[level][row >> (self.m - level)]
+        if ident < 2:
             # [ablations.constant_zero_side_target_20261102]: the skipped
             # jump only decremented negative cell0. Gadgets need that sign,
             # fixed ASCII constants and all reads done.
-            return _OUT_ONE if self.truth_table[row] == "1" else _OUT_ZERO
-        return self.done.get((level, self.ids[level][row >> (self.m - level)]))
+            return _OUT_ONE if ident == 1 else _OUT_ZERO
+        return self.done.get((level, ident))
 
     def node(self, level: int, row: int) -> None:
         """Emit the decision tree at ``level`` covering ``row``'s span."""
@@ -186,9 +184,10 @@ class _OwnerBuilder(_CodeBuilder):
 
         def target(level: int, row: int) -> _Target:
             width = 1 << (self.m - level)
-            if self.is_constant(row, row + width):
-                return _OUT_ONE if self.truth_table[row] == "1" else _OUT_ZERO
-            key = (level, self.ids[level][row >> (self.m - level)])
+            ident = self.ids[level][row >> (self.m - level)]
+            if ident < 2:
+                return _OUT_ONE if ident == 1 else _OUT_ZERO
+            key = (level, ident)
             if key in graph:
                 return key
             order.append(key)

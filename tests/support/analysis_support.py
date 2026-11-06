@@ -3,7 +3,9 @@
 import importlib
 from unittest.mock import patch
 
+import esolangs
 from esolangs.generation.algebraic import affine_form, parity_bias
+from esolangs.generation.branch_decoder import hoisted_tree
 from esolangs.generation.decision import decision_layers, reduced_diagram
 from esolangs.generation.helpers import (
     SubtreeDiagram,
@@ -13,13 +15,20 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.lookup import prefix_counts
+from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.generation.shared_flag import flag_tree_body
 from esolangs.registry import LANGUAGES
 from esolangs.registry._functions import FunctionRef
 from tests.support.generator_support import evaluate_generated
 
 
-def assert_analysis_complement(name: str, attribute: str, table: str = "0011") -> None:
+def assert_analysis_complement(
+    name: str,
+    attribute: str,
+    table: str = "0011",
+    *,
+    rows: tuple[int, ...] | None = None,
+) -> None:
     """Require an injected analysis fault to complement every actual answer."""
     backend = LANGUAGES[name].backend
     assert backend is not None
@@ -28,6 +37,9 @@ def assert_analysis_complement(name: str, attribute: str, table: str = "0011") -
     module = importlib.import_module(reference.module)
     query = {
         "SubtreeDiagram": SubtreeDiagram,
+        "hoisted_tree": hoisted_tree,
+        "_sbleq_hoisted": hoisted_tree,
+        "packed_decoder": packed_decoder,
         "affine_form": affine_form,
         "parity_bias": parity_bias,
         "decision_layers": decision_layers,
@@ -47,7 +59,18 @@ def assert_analysis_complement(name: str, attribute: str, table: str = "0011") -
             table.translate(str.maketrans("01", "10")), *args, **kwargs
         ),
     ) as corrupted:
-        assert evaluate_generated(name, table) == table.translate(
-            str.maketrans("01", "10")
-        )
+        expected = table.translate(str.maketrans("01", "10"))
+        if rows is None:
+            assert evaluate_generated(name, table) == expected
+        else:
+            program = esolangs.generate(name, table)
+            n = len(table).bit_length() - 1
+            for row in rows:
+                bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]
+                assert isinstance(program, esolangs.ProgramArtifact)
+                stdin = esolangs.encode_inputs(name, bits, truth_table=table)
+                result = esolangs.run(name, program, stdin=stdin, max_steps=100000)
+                assert esolangs.read_answer(name, result.output) == expected[row]
+                assert result.input_position == len(stdin)
+                assert result.input_past_end == 0
         assert corrupted.called

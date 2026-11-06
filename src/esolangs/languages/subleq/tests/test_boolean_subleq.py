@@ -7,17 +7,13 @@ from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.languages.subleq.generator import subleq
 from esolangs.languages.subleq.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import assert_falloff, assert_oisc_constants, count_steps
 
 
 def _execute_count(program: str, text: str) -> tuple[str, int, int]:
     io = ScriptedIO(text + "extra")
     machine = _Machine(program, io)
-    steps = 0
-    while not machine.halted:
-        machine.step()
-        steps += 1
-        assert steps < 2_000_000
+    steps = count_steps(machine, 1_999_999)
     return io.getvalue(), io.position(), steps
 
 
@@ -25,19 +21,14 @@ def _execute_count(program: str, text: str) -> tuple[str, int, int]:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_reads_once_and_falls_off_after_output(n: int, bit: str) -> None:
     if n == 1 and bit == "0":
-        _check_constants()
+        from esolangs.languages.subleq.proof_formulas import workspace
+
+        assert_oisc_constants("Subleq", workspace)
     table = bit * (1 << n)
     for width in (None, 1, 20):
         program = esolangs.generate("Subleq", table, width=width).source
         for row in range(1 << n):
-            io = ScriptedIO(f"{row:0{n}b}" + "extra")
-            machine = _Machine(str(program), io)
-            for _ in range(n + 1):
-                assert not machine.halted
-                machine.step()
-            assert machine.halted
-            assert io.position() == n
-            assert io.getvalue() == bit
+            assert_falloff(_Machine, str(program), n, bit, row, n + 1)
 
 
 @pytest.mark.medium
@@ -57,6 +48,13 @@ def test_public_candidate_computes_every_small_table(n) -> None:
 
 @pytest.mark.medium
 def test_shared_parity_uses_direct_jumps_at_sixteen_inputs() -> None:
+    from tests.generators.generator_sections import named_table
+    from tests.support.analysis_support import assert_analysis_complement
+
+    for query, rule in (("hoisted_tree", "parity"), ("packed_decoder", "random 1847")):
+        assert_analysis_complement(
+            "Subleq", query, named_table(10, rule), rows=(0, 1, 1023)
+        )
     n = 16
     table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
     program = subleq(table)
@@ -65,40 +63,6 @@ def test_shared_parity_uses_direct_jumps_at_sixteen_inputs() -> None:
         output, reads, steps = _execute_count(program, f"{row:0{n}b}")
         assert (output, reads) == (table[row], n)
         assert steps <= 5 * n + 3
-
-
-def _check_constants() -> None:
-    from esolangs.languages.subleq.interpreter import _Machine
-    from esolangs.languages.subleq.proof_formulas import workspace
-    from scripts.benchmark import WrittenState
-
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Subleq", bit * (1 << n), **options).source
-                if not options:
-                    assert len(program) == 7 * n + 7
-                peak = 0
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "Subleq", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "7", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps <= n + 1
-                    assert io.getvalue() == bit
-                    assert io.past_end == 0
-                    assert io.input_char() == ord("7")
-                    assert steps == n + 1
-                    assert written.bits <= workspace(n, program)
-                    peak = max(peak, written.bits)
-                assert peak == workspace(n, program)
 
 
 def _check_io_targets() -> None:
@@ -139,12 +103,8 @@ def _check_io_targets() -> None:
     io = ScriptedIO(f"{row:0{n}b}")
     machine = _Machine(program, io)
     written = WrittenState(machine.workspace_snapshot())
-    steps = 0
-    while not machine.halted:
-        machine.step()
-        written.sample(machine.workspace_snapshot())
-        steps += 1
-        assert steps <= 8 * (1 << n) + (7 * n + 5) * ((1 << n) // n - 1) + 23 * n - 8
+    cap = 8 * (1 << n) + (7 * n + 5) * ((1 << n) // n - 1) + 23 * n - 8
+    count_steps(machine, cap, written=written)
     assert io.getvalue() == table[row]
     assert io.reads == n
     assert written.bits == workspace(n, program)
