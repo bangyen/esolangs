@@ -1,5 +1,6 @@
 """Tests for the Chicken interpreter."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,9 @@ import pytest
 from esolangs import run as execute
 from esolangs.exceptions import HaltError, InterpreterLimitError
 from esolangs.languages.chicken.interpreter import run
+from esolangs.runtime._isolated import termination_result_isolated
+from esolangs.runtime._result_wire import decode_decision, encode_decision
+from esolangs.runtime._termination import _termination_result
 from esolangs.runtime.io import ScriptedIO
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
 
@@ -50,6 +54,14 @@ def test_empty_program_prints_the_pad() -> None:
 
     check_raw_chicken()
     assert _go(()) == "0"
+    for prefix in ((), (1, 10, 3)):
+        source = _lines(*prefix, 11, 10, 15, 3, 8)
+        native = _termination_result("Chicken", source, "", 1)
+        assert not native.decision.halts
+        assert native.decision.commands == 12
+        assert termination_result_isolated("Chicken", source, "", 1) == native
+        wire = json.loads(json.dumps(encode_decision(native.decision), allow_nan=False))
+        assert decode_decision(wire) == native.decision
 
 
 @pytest.mark.parametrize(

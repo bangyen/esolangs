@@ -62,6 +62,8 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from dataclasses import dataclass
+from math import isnan
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -88,6 +90,31 @@ class _Self:
 #: empty pop.
 SELF = _Self()
 NAN = float("nan")
+
+
+@dataclass(frozen=True)
+class _SnapshotSentinel:
+    """Transport array identity and normalized NaN without native objects."""
+
+    kind: str
+
+    def __post_init__(self) -> None:
+        if self.kind not in ("self", "nan"):
+            raise ValueError("invalid Chicken snapshot sentinel")
+
+
+SNAPSHOT_RECORDS = (_SnapshotSentinel,)
+_SNAPSHOT_SELF = _SnapshotSentinel("self")
+_SNAPSHOT_NAN = _SnapshotSentinel("nan")
+
+
+def _snapshot_value(value: _Value) -> object:
+    if value is SELF:
+        return _SNAPSHOT_SELF
+    if isinstance(value, float) and isnan(value):
+        return _SNAPSHOT_NAN
+    return value
+
 
 #: A JavaScript value: int or NaN, bool, str, ``undefined``, or the array.
 type _Value = int | float | bool | str | _Self | None
@@ -254,7 +281,11 @@ class _Machine:
         )
 
     def snapshot(self) -> tuple[object, ...]:
-        return (self.pointer, tuple(self.cells), self.io.progress())
+        return (
+            self.pointer,
+            tuple(map(_snapshot_value, self.cells)),
+            self.io.progress(),
+        )
 
     def _pop(self) -> _Value:
         return self.cells.pop() if self.cells else None
