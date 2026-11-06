@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.caballo.interpreter import _Machine, run
+from esolangs.languages.caballo.interpreter import _Machine, prepare_machine, run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
@@ -80,6 +80,32 @@ def test_the_output_is_drawn_by_weight() -> None:
     draws = {_run("(1+qi+qi)", "", seed) for seed in range(20)}
     assert draws == {"[]", "[1]"}
     assert _run("(1+qi+qi)", "", 3) == _run("(1+qi+qi)", "", 3)
+
+    rng = Seeded(7)
+    before = rng._random.getstate()
+    options = {"rng": rng}
+    factory = prepare_machine("(1+qi+qi)", options)
+    options.clear()
+    assert rng._random.getstate() == before
+    first_io, second_io = ScriptedIO("3"), ScriptedIO("5")
+    first, second = factory(first_io), factory(second_io)
+    assert first is not second
+    assert first._rng is second._rng is rng
+    assert rng._random.getstate() == before
+    assert first_io.position() == second_io.position() == 1
+    assert first.memory != second.memory
+    initial = second.snapshot()
+    while not first.halted:
+        assert rng._random.getstate() == before
+        first.step()
+    assert rng._random.getstate() != before
+    assert second.snapshot() == initial
+    assert second_io.getvalue() == ""
+    assert second.stack == ["seq"]
+    with pytest.raises(TypeError, match="text source"):
+        prepare_machine([], {})
+    with pytest.raises(TypeError, match="only the rng"):
+        prepare_machine("", {"unknown": True})
 
 
 class _Fixed:

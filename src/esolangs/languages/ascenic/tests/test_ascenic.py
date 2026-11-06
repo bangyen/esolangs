@@ -5,7 +5,7 @@ import random
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.ascenic.interpreter import _Machine, run
+from esolangs.languages.ascenic.interpreter import _Machine, prepare_machine, run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
 
@@ -101,6 +101,29 @@ def test_rnd_draws_zero_and_one() -> None:
         run(code, io, Seeded(seed))
         seen.add(io.getvalue())
     assert seen == {"0", "1"}
+
+    rng = Seeded(7)
+    before = rng._random.getstate()
+    options = {"rng": rng}
+    factory = prepare_machine(code, options)
+    options.clear()
+    assert rng._random.getstate() == before
+    first_io, second_io = ScriptedIO(""), ScriptedIO("")
+    first, second = factory(first_io), factory(second_io)
+    assert first is not second
+    assert first._rng is second._rng is rng
+    assert rng._random.getstate() == before
+    initial = second.snapshot()
+    while not first.halted:
+        first.step()
+    assert rng._random.getstate() != before
+    assert second.snapshot() == initial
+    assert second_io.getvalue() == ""
+    assert second.stack == []
+    with pytest.raises(TypeError, match="text source"):
+        prepare_machine([], {})
+    with pytest.raises(TypeError, match="only the rng"):
+        prepare_machine("", {"unknown": True})
 
 
 @pytest.mark.parametrize(

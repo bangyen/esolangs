@@ -10,7 +10,7 @@ Algebraic Programming Language,yes,legacy-discovery,not-applicable,legacy-discov
 Alight,yes,declared,declared,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Aprknia,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,aprknia-v1,pending-backend-audit,pending-acceptance-audit,open
 ArrowQueue,yes,declared,not-applicable,declared,owned-adapter,arrowqueue-v1,pending-backend-audit,pending-acceptance-audit,open
-Ascenic,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,ascenic-v1,pending-backend-audit,pending-acceptance-audit,open
+Ascenic,yes,declared,not-applicable,declared,owned-adapter,ascenic-v1,pending-backend-audit,pending-acceptance-audit,open
 B-tapemark,yes,legacy-discovery,declared,legacy-discovery,owned-adapter,b-tapemark-v1,pending-backend-audit,pending-acceptance-audit,open
 Back,yes,declared,not-applicable,declared,owned-adapter,back-v1,pending-backend-audit,pending-acceptance-audit,open
 Balik,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,balik-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -27,7 +27,7 @@ Blindfolded Arithmetic,yes,legacy-discovery,not-applicable,legacy-discovery,owne
 Boolfuck,yes,declared,not-applicable,declared,inherited-adapter,boolfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 brainfuck,yes,declared,not-applicable,declared,owned-adapter,brainfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 BrainIf,yes,declared,not-applicable,declared,owned-adapter,brainif-v1,pending-backend-audit,pending-acceptance-audit,open
-Caballo,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,caballo-v1,pending-backend-audit,pending-acceptance-audit,open
+Caballo,yes,declared,not-applicable,declared,owned-adapter,caballo-v1,pending-backend-audit,pending-acceptance-audit,open
 CARP,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,carp-v1,pending-backend-audit,pending-acceptance-audit,open
 Chicken,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,chicken-v1,pending-backend-audit,pending-acceptance-audit,open
 Circlefuck,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,circlefuck-v1,pending-backend-audit,pending-acceptance-audit,open

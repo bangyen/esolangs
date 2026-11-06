@@ -258,3 +258,7 @@ bindings retain their semantics independently of cycle keys.
 Packlang accounts for live frames, unordered stores and typed suspended
 expressions independently of frame keys and repr. Input progress and successful
 reads remain explicit; the read-only program fingerprint is excluded.
+
+Ascenic and Caballo declare RNG-aware text factories and debug fields.
+Preparation binds options without draws or IO; Caballo still reads its initial
+stack at construction and draws weighted output only on the halting step.

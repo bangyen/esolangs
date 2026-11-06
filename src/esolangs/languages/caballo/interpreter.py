@@ -38,12 +38,16 @@ Decisions:
 
 from __future__ import annotations
 
-from typing import NamedTuple, cast
+from collections.abc import Mapping
+from typing import Any, NamedTuple, cast
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.caballo.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
@@ -334,10 +338,26 @@ class _Machine:
             ticket -= weight
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind text and caller-owned RNG; construct state only when IO is supplied."""
+    if not isinstance(source, str):
+        raise TypeError("caballo machines require text source")
+    if options.keys() - {"rng"}:
+        raise TypeError("caballo machines accept only the rng runtime option")
+    rng = options.get("rng")
+
+    def build(io: IO) -> _Machine:
+        return _Machine(source, io, rng)
+
+    return build
+
+
 def _execute(code: str, io: IO, rng: Randomness | None = None) -> CompletionReport:
     """Run a Caballo program on the input stack and print one result."""
     machine = _Machine(code, io, rng)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO, rng: Randomness | None = None) -> None:

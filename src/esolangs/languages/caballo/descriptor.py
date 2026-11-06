@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Caballo."""
 
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.caballo.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -12,6 +13,9 @@ LANGUAGE = Language(
     RuntimeSpec(
         "caballo",
         category="stack_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         random=True,
         eof="the whole input is read once as the initial stack; no read meets EOF",
     ),

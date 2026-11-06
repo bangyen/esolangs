@@ -205,6 +205,8 @@ def _declared_boolean_models():
         ]
 
 
+# The complete word-store accounting witness takes 2.04 s in a serial run.
+@pytest.mark.medium
 @pytest.mark.parametrize(("name", "model"), _declared_boolean_models())
 def test_declared_models_keep_immutable_accounting_without_cycle_keys(
     name, model, monkeypatch
