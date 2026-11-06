@@ -91,6 +91,13 @@ class TestBfstack:
             body[256 - k] = "1"
         body[255 - ones] = "0"
         table = "".join(body)
+        if ones == 0:
+            from unittest.mock import patch
+
+            with patch.object(boolean, "_start", return_value=0) as corrupted:
+                broken = boolean.bfstack(table)
+                assert run_bfstack(broken, ["0"] * 8) == "0"
+                assert corrupted.called
         program = boolean.bfstack(table)
         assert program.startswith(">>" + "+" * (ones + 1) + ",")
         for row in range(256):
@@ -98,6 +105,11 @@ class TestBfstack:
             assert run_bfstack(program, bits) == table[row], row
 
     def test_generated_structure_and_written_payload(self) -> None:
+        """Program shape and the payload used by workspace proofs."""
+        from tests.support.analysis_support import assert_analysis_complement
+
+        assert_analysis_complement("BFStack", "symmetric_weights", "01101001")
+        assert_analysis_complement("BFStack", "input_weights", "00010011")
         """Program shape and the payload used by workspace proofs."""
         program = boolean.bfstack("1101")  # asymmetric: the weighted encoder
         assert program.startswith(">>+,")  # result cell, accumulator, first input

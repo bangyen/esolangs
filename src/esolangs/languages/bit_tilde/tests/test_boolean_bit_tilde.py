@@ -67,8 +67,26 @@ def test_xor_window_scratch_read_comes_back_eight() -> None:
     walks off the tape.  Each table below is affine with an
     ignored input, so the xor-window form is the shipped one.
     """
-    from tests.generators.boolean_runners import _runner
+    from unittest.mock import patch
 
+    from esolangs.generation.algebraic import affine_form
+    from tests.generators.boolean_runners import _runner
+    from tests.support.analysis_support import assert_analysis_complement
+    from tests.support.generator_support import evaluate_generated
+
+    assert_analysis_complement("bit~", "read_at", "0001")
+    assert boolean.affine_form is affine_form
+    with patch.object(
+        boolean,
+        "affine_form",
+        side_effect=lambda table, n: (
+            None
+            if (form := affine_form(table, n)) is None
+            else form._replace(bias=1 - form.bias)
+        ),
+    ) as corrupted:
+        assert evaluate_generated("bit~", "01101001") == "10010110"
+        assert corrupted.called
     run = _runner("bit_tilde")
     for table in ("0011", "1100", "10100101"):
         n = len(table).bit_length() - 1

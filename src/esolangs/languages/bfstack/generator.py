@@ -82,7 +82,12 @@ def _start(projected: str) -> int:
     """
     if len(projected) < 256:
         return 1
-    return next(start for start in range(256) if projected[(256 - start) % 256] == "0")
+    if projected[0] == "0":
+        return 0
+    last = projected.rfind("0", 1, 256)
+    if last < 0:
+        raise StopIteration
+    return 256 - last
 
 
 def _bfstack_decoder(truth_table: str, start: int = 1) -> str:

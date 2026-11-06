@@ -21,12 +21,11 @@ Raises:
 from __future__ import annotations
 
 from esolangs.exceptions import GeneratorCapError
+from esolangs.generation.decision import decision_layers
 from esolangs.generation.helpers import (
     _validate_truth_table,
-    constant_span_test,
     essential_inputs,
     read_at,
-    subtree_ids,
 )
 from esolangs.languages.carp.descriptor import MAX_INPUTS as MAX_INPUTS
 from esolangs.runtime.source_hints import with_hint
@@ -56,14 +55,11 @@ class _Builder:
     """Emits the diagram as a list of ``[op, register, line]`` instructions."""
 
     def __init__(self, table: str, essential: list[int], n: int) -> None:
-        self.table = table
-        self.m = len(essential)
-        self.is_constant = constant_span_test(table)
-        self.ids = subtree_ids(table)
+        self.diagram = decision_layers(table)
         self.essential = essential
         self.n = n
         self.code: list[list[object]] = []
-        self.done: dict[tuple[int, int], int] = {}
+        self.done: dict[int, int] = {}
         # Lines whose operand is a gadget, patched once the gadgets are placed.
         self.to_one: list[int] = []
         self.to_zero: list[int] = []
@@ -79,16 +75,17 @@ class _Builder:
     def build(self) -> str:
         # Input i goes to the register of the first essential input at or
         # after it; those past the last essential go to r15, then cleared.
+        m = len(self.essential)
         slot = 0
         for i in range(self.n):
-            self.emit("INP", slot + 1 if slot < self.m else _K, 0)
-            if slot < self.m and i == self.essential[slot]:
+            self.emit("INP", slot + 1 if slot < m else _K, 0)
+            if slot < m and i == self.essential[slot]:
                 slot += 1
         if self.essential[-1] < self.n - 1:
             self.emit("CLR", _K, 0)
         for _ in range(15):
             self.emit("INC", _K, 0)
-        self.node(0, 0)
+        self.node(0, self.diagram.root)
         one = self.line()
         for op, reg in (("CLR", _K), ("INC", _K), ("OUT", _K), ("DEC", _K)):
             self.emit(op, reg, 0)
@@ -101,17 +98,16 @@ class _Builder:
             self.code[at][2] = zero
         return "\n".join(f"{op} r{reg} {line}" for op, reg, line in self.code)
 
-    def reference(self, level: int, row: int, at: int, *, jump: bool) -> bool:
+    def reference(self, key: int, at: int, *, jump: bool) -> bool:
         """Point instruction ``at`` (or a new jump) at a known subtree.
 
         Returns whether the span was known; otherwise nothing is emitted.
         """
-        width = 2 ** (self.m - level)
-        if self.is_constant(row, row + width):
-            where = self.to_one if self.table[row] == "1" else self.to_zero
+        if key < 2:
+            where = self.to_one if key else self.to_zero
             line = 0
         else:
-            line = self.done.get((level, self.ids[level][row >> (self.m - level)]), -1)
+            line = self.done.get(key, -1)
             if line < 0:
                 return False
             where = None
@@ -123,14 +119,14 @@ class _Builder:
             self.code[at][2] = line
         return True
 
-    def node(self, level: int, row: int) -> None:
-        """Emit the subtree of ``level`` covering ``row``'s span, here."""
-        if self.reference(level, row, 0, jump=True):
+    def node(self, level: int, key: int) -> None:
+        """Emit the cofactor ``key`` at ``level``, here."""
+        if self.reference(key, 0, jump=True):
             return
-        self.done[level, self.ids[level][row >> (self.m - level)]] = self.line()
+        self.done[key] = self.line()
+        zero, one = self.diagram.children[level][key]
         branch = self.emit("DEC", level + 1, 0)
-        half = 2 ** (self.m - level) // 2
-        self.node(level + 1, row)
-        if not self.reference(level + 1, row + half, branch, jump=False):
+        self.node(level + 1, zero)
+        if not self.reference(one, branch, jump=False):
             self.code[branch][2] = self.line()
-            self.node(level + 1, row + half)
+            self.node(level + 1, one)

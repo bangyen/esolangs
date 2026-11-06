@@ -25,7 +25,7 @@ Decisions:
 """
 
 import re
-from itertools import groupby
+from itertools import groupby, pairwise
 from math import isqrt
 
 from esolangs.generation.helpers import (
@@ -33,6 +33,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.lookup import change_points
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import (
     _DIMENSIONAL_COMMAND,
@@ -83,8 +84,10 @@ def _program(truth_table: str, width: int | None = None) -> str:
     # An ignored input is a bare ``d``: the next read overwrites its byte.
     weights, truth_table = input_weights(truth_table, n)
     index = _index_reads(weights)
-    painted = _paint(truth_table)
-    flipped = _paint(truth_table.translate(_FLIP))
+    # Complementing changes the bits, not their run boundaries.
+    points = [0, *change_points(truth_table), len(truth_table)]
+    painted = _paint(truth_table, points)
+    flipped = _paint(truth_table.translate(_FLIP), points)
     # Zero runs loop and ones do not, so a ones-heavy table is painted as its
     # complement and read out negated ([ablations.complement_paint]).
     if len(flipped) + len(_NEGATE) < len(painted):
@@ -140,7 +143,7 @@ def _packed(truth_table: str, weights: list[int]) -> str | None:
     )
 
 
-def _paint(truth_table: str) -> str:
+def _paint(truth_table: str, points: list[int]) -> str:
     """Write the table along dimension 1 and come back to the origin.
 
     Two characters an entry either way: ``>1`` for a zero, ``+`` and a bare
@@ -149,9 +152,9 @@ def _paint(truth_table: str) -> str:
     as a cell is keyed by every nonzero coordinate, counter included.
     """
     cells = [
-        _advance(len(run)) if bit == "0" else "+>" * len(run)
-        for bit, group in groupby(truth_table)
-        for run in ["".join(group)]
+        _advance(stop - start) if truth_table[start] == "0" else "+>" * (stop - start)
+        for start, stop in pairwise(points)
+        if start < stop
     ]
     return f">{_PLANE}" + "".join(cells) + f"+!{_INDEX}<{_PLANE}"
 

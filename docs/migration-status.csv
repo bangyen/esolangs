@@ -18,17 +18,17 @@ BASICER,yes,declared,not-applicable,declared,owned-adapter,basicer-v1,canonical-
 Basicfuck,yes,declared,not-applicable,declared,owned-adapter,basicfuck-v1,canonical-affine-reduced-diagram;owned-flag-pricing,pending-acceptance-audit,open
 Befunge,yes,declared,not-applicable,declared,owned-adapter,befunge-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
 Between,yes,declared,not-applicable,declared,owned-adapter,between-v1,canonical-reduced-diagram;owned-fallthrough,pending-acceptance-audit,open
-BFStack,yes,declared,not-applicable,declared,owned-adapter,bfstack-v1,pending-backend-audit,pending-acceptance-audit,open
+BFStack,yes,declared,not-applicable,declared,owned-adapter,bfstack-v1,canonical-weighted-symmetric-lookup;owned-byte-decoder,pending-acceptance-audit,open
 Bitdeque,yes,declared,not-applicable,declared,owned-adapter,bitdeque-v1,canonical-decision-layers;owned-deque-placement,pending-acceptance-audit,open
 Bitwise Cyclic Tag,yes,declared,not-applicable,declared,owned-adapter,bitwise-cyclic-tag-v1,canonical-weighted-lookup,pending-acceptance-audit,open
-bit~,yes,declared,not-applicable,declared,owned-adapter,bit-tilde-v1,pending-backend-audit,pending-acceptance-audit,open
+bit~,yes,declared,not-applicable,declared,owned-adapter,bit-tilde-v1,canonical-affine-projection;owned-paired-window-lookup,pending-acceptance-audit,open
 Bleh,yes,declared,not-applicable,declared,owned-adapter,bleh-v1,canonical-decision-layers;owned-function-layout,pending-acceptance-audit,open
 Blindfolded Arithmetic,yes,declared,not-applicable,declared,owned-adapter,blindfolded-arithmetic-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
 Boolfuck,yes,declared,not-applicable,declared,inherited-adapter,boolfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 brainfuck,yes,declared,not-applicable,declared,owned-adapter,brainfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 BrainIf,yes,declared,not-applicable,declared,owned-adapter,brainif-v1,canonical-decision-layers-subtable-fold;owned-spatial-lookup,pending-acceptance-audit,open
 Caballo,yes,declared,not-applicable,declared,owned-adapter,caballo-v1,canonical-subtree-analysis;owned-signed-tree,pending-acceptance-audit,open
-CARP,yes,declared,not-applicable,declared,owned-adapter,carp-v1,pending-backend-audit,pending-acceptance-audit,open
+CARP,yes,declared,not-applicable,declared,owned-adapter,carp-v1,canonical-decision-layers;owned-register-placement,pending-acceptance-audit,open
 Chicken,yes,declared,not-applicable,declared,owned-adapter,chicken-v1,canonical-projection;owned-code-row-lookup,pending-acceptance-audit,open
 Circlefuck,yes,declared,not-applicable,declared,owned-adapter,circlefuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Circuit Diagram,yes,declared,not-applicable,declared,owned-adapter,circuit-diagram-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -43,7 +43,7 @@ Cyclic tag,yes,declared,not-applicable,declared,owned-adapter,cyclic-tag-v1,cano
 Deadfish,no,declared,not-applicable,declared,owned-adapter,deadfish-v1,not-applicable,pending-acceptance-audit,open
 Decleq,yes,declared,not-applicable,declared,owned-adapter,decleq-v1,pending-backend-audit,pending-acceptance-audit,open
 Dig,yes,declared,not-applicable,declared,owned-adapter,dig-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
-Dimensional,yes,declared,not-applicable,declared,owned-adapter,dimensional-v1,pending-backend-audit,pending-acceptance-audit,open
+Dimensional,yes,declared,not-applicable,declared,owned-adapter,dimensional-v1,canonical-weighted-boundaries;owned-axis-pair-encoding,pending-acceptance-audit,open
 DINAC,yes,declared,not-applicable,declared,owned-adapter,dinac-v1,canonical-prefix-counts-projection;owned-prefix-scan,pending-acceptance-audit,open
 EGL,yes,declared,not-applicable,declared,owned-adapter,egl-v1,canonical-projection-symmetry;owned-grid-layout,pending-acceptance-audit,open
 Eval,yes,declared,not-applicable,declared,owned-adapter,eval-v1,pending-backend-audit,pending-acceptance-audit,open

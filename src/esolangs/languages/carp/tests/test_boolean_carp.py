@@ -12,6 +12,9 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     if table == "00":
+        from tests.support.analysis_support import assert_analysis_complement
+
+        assert_analysis_complement("CARP", "decision_layers")
         _check_constants()
     assert_every_row("CARP", table)
 

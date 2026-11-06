@@ -95,6 +95,18 @@ def test_larger_tables_keep_the_established_index(n: int) -> None:
 class TestDimensional:
     def test_a_bare_move_is_the_addressing(self) -> None:
         """A bare >/< takes its dimension from the cell, which is the point."""
+        from tests.support.analysis_support import assert_analysis_complement
+
+        assert_analysis_complement("Dimensional", "input_weights", "0001")
+        from unittest.mock import patch
+
+        from esolangs.generation.lookup import change_points
+        from tests.support.generator_support import evaluate_generated
+
+        assert boolean.change_points is change_points
+        with patch.object(boolean, "change_points", return_value=[]) as corrupted:
+            assert evaluate_generated("Dimensional", "0001") == "0000"
+            assert corrupted.called
         program = boolean.dimensional("0110")
         bare = [
             i

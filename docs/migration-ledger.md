@@ -555,3 +555,17 @@ decoding, retaining validated output prefixes. Actual random-backend witnesses
 require exactly two guarded proofs and ten explicit unforkable-input refusals.
 Installed Python 3.12–3.15 passes the same checks. Larger branching coverage and
 remaining migration acceptance stays open.
+
+CARP consumes canonical decision layers without retaining a table, prefix
+classifier or subtree matrix; register/address placement remains owned.
+BFStack retains canonical weighted/symmetric analysis and derives byte alignment
+from the last zero row without enumerating starts. bit~ retains canonical affine
+and projection queries with native paired windows. Dimensional shares canonical
+change points across both paint polarities; counted movement and physical pair
+encoding remain owned. All four have executed query-fault controls.
+
+All 2,528 standard requests and 960 larger layouts match byte for byte;
+9,144 paired execution records preserve traces and resource peaks. Boundary
+witnesses add 1,283 native and 30 stepped records, including all byte rows for
+five BFStack tables, CARP at fourteen inputs and refusals above its cap.
+Bounds, size pins and anchors remain unchanged; catalog acceptance stays open.
