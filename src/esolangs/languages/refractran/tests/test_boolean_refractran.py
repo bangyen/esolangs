@@ -3,9 +3,12 @@
 from fractions import Fraction
 from itertools import product
 from random import Random
+from unittest.mock import patch
 
 import esolangs
 from esolangs import run
+from esolangs.generation.decision import reduced_diagram
+from esolangs.languages.refractran import generator
 from esolangs.languages.refractran.generator import _swap
 from esolangs.languages.refractran.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
@@ -49,6 +52,23 @@ def test_tables_and_reference() -> None:
     _check_constants()
     _check_controlled_swap()
     _check_pruned_children_and_polarity()
+    with patch.object(
+        generator,
+        "reduced_diagram",
+        side_effect=lambda table, n: reduced_diagram(
+            table.translate(str.maketrans("01", "10")), n
+        ),
+    ) as corrupted:
+        assert evaluate_generated("REFRACTRAN", "0001") == "1110"
+        assert corrupted.called
+    parity = "01101001"
+    compact = esolangs.generate("REFRACTRAN", parity).source
+    with patch.object(generator, "parity_bias", return_value=None) as disabled:
+        expanded = esolangs.generate("REFRACTRAN", parity).source
+        assert len(expanded) > len(compact)
+        assert evaluate_generated("REFRACTRAN", parity) == parity
+        assert disabled.called
+    assert not hasattr(generator, "_is_parity")
     for n in (1, 2, 3):
         for value in range(2**2**n):
             table = format(value, f"0{2**n}b")

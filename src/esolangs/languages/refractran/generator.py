@@ -22,6 +22,8 @@ Size:
 
 from __future__ import annotations
 
+from esolangs.generation.algebraic import parity_bias
+from esolangs.generation.decision import reduced_diagram
 from esolangs.generation.helpers import TEMPLATE_CHAR, _validate_truth_table
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
@@ -49,19 +51,11 @@ def _primes(count: int) -> list[int]:
     raise AssertionError("prime bound exhausted")
 
 
-def _is_parity(table: str) -> bool:
-    """Whether the table is parity or its negation over all inputs."""
-    offset = int(table[0])
-    return all(
-        bit == "01"[(row.bit_count() & 1) ^ offset] for row, bit in enumerate(table)
-    )
-
-
 def _diagram(table: str, n: int) -> tuple[list[tuple[int, int, int]], int]:
     """Return dependency-ordered nodes and root; negative references select NOT."""
     nodes: list[tuple[int, int, int]] = []
     # [ablations.parity_complement]: one XOR chain, with polarity on the root.
-    if _is_parity(table):
+    if parity_bias(table) is not None:
         if not n:
             return [], int(table[0])
         nodes.append((n - 1, 0, 1))
@@ -71,24 +65,21 @@ def _diagram(table: str, n: int) -> tuple[list[tuple[int, int, int]], int]:
         )
         root = n + 1
         return nodes, -root if table[0] == "1" else root
-    seen: dict[tuple[int, int, int], int] = {}
+    diagram, root = reduced_diagram(table, n)
+    rails = {0: 0, 1: 1}
 
-    def walk(depth: int, lo: int, hi: int) -> int:
-        if depth == n:
-            return int(table[lo])
-        mid = (lo + hi) // 2
-        zero, one = walk(depth + 1, lo, mid), walk(depth + 1, mid, hi)
-        # Canonical folds: [ablations.constant_fold], [ablations.ignored_input].
-        if zero == one:
-            return zero
-        key = (depth, zero, one)
-        # Repeated subfunctions share rails: [ablations.subtree_sharing].
-        if key not in seen:
-            seen[key] = len(nodes) + 2
-            nodes.append(key)
-        return seen[key]
+    def place(reference: int) -> int:
+        found = rails.get(reference)
+        if found is not None:
+            return found
+        depth, zero, one = diagram[reference]
+        zero, one = place(zero), place(one)
+        # Rail primes depend on zero-first postorder, not analysis node ids.
+        rails[reference] = placed = len(nodes) + 2
+        nodes.append((depth, zero, one))
+        return placed
 
-    root = walk(0, 0, len(table))
+    root = place(root)
     return nodes, root
 
 

@@ -3,8 +3,8 @@
 from typing import Literal
 from unittest.mock import patch
 
+from esolangs.generation.algebraic import parity_bias
 from esolangs.languages.refractran import generator
-from esolangs.languages.refractran.generator import _is_parity
 
 Rule = Literal["constant_fold", "ignored_input", "subtree_sharing"]
 
@@ -15,7 +15,7 @@ def _diagram(table: str, n: int, rule: Rule) -> tuple[list[tuple[int, int, int]]
     def negate(reference: int) -> int:
         return 1 - reference if reference in (0, 1) else -reference
 
-    complement = _is_parity(table)
+    complement = parity_bias(table) is not None
     nodes: list[tuple[int, int, int]] = []
     seen: dict[tuple[int, int, int], int] = {}
     semantics: dict[tuple[int, int, int], int] = {}

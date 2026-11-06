@@ -7,7 +7,10 @@ from esolangs.generation.lookup import symmetric_outputs
 
 
 def test_symmetry_is_invariant_under_every_input_permutation():
-    assert not {"AffineForm", "affine_form", "symmetric_outputs"} & vars(helpers).keys()
+    assert (
+        not {"AffineForm", "affine_form", "parity_bias", "symmetric_outputs"}
+        & vars(helpers).keys()
+    )
     for n in (1, 2, 3):
         _check_permutations(n)
 

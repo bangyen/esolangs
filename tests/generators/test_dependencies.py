@@ -4,7 +4,7 @@ import random
 from itertools import product
 
 from esolangs.generation import helpers
-from esolangs.generation.algebraic import AffineForm, affine_form
+from esolangs.generation.algebraic import AffineForm, affine_form, parity_bias
 from tests.support.witness_tables import witnesses
 
 
@@ -37,7 +37,11 @@ def test_dependencies_exhaustive() -> None:
         for table in tables:
             dependencies = _oracle(table, n)
             assert helpers.essential_inputs(table, n) == dependencies
-            assert affine_form(table, n) == forms.get(table)
+            form = forms.get(table)
+            assert affine_form(table, n) == form
+            assert parity_bias(table) == (
+                form.bias if form is not None and all(form.coefficients) else None
+            )
             lookup = helpers.input_weights(table, n)
             assert isinstance(lookup, helpers.WeightedLookup)
             for row, bit in zip(product((0, 1), repeat=n), table, strict=True):

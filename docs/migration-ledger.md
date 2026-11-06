@@ -79,6 +79,13 @@ native. The 31 priced cohorts took 29.84 s total, each below its 60 s cap.
 Future storage changes require native, cycle and accounting measurements;
 purity and equivalence gates remain unchanged.
 
+REFRACTRAN uses shared decision reduction and parity analysis. Signed rail
+chains, zero-first rail allocation, controlled swaps and wrapping remain owned;
+their ordering preserves 632 corpus programs byte for byte. Shared-analysis
+faults change executed answers; disabling parity sharing preserves answers and
+increases emitted size. Size pins, the n=10 anchor and declared resource scopes
+remain unchanged. Other backend analysis rows still require their own audits.
+
 All seven dialect schemas now declare choices and defaults. Runtime metadata
 queries and validation no longer inspect signatures or constructors. The other
 110 languages have no dialect settings. All 114 Boolean backends now declare

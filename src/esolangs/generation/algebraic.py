@@ -23,3 +23,12 @@ def affine_form(table: str, n: int) -> AffineForm | None:
     if any(str(value) != bit for value, bit in zip(expected, table, strict=True)):
         return None
     return AffineForm(bias, coefficients)
+
+
+def parity_bias(table: str) -> int | None:
+    """Return full parity's bias for a validated table, or None; no table copy."""
+    bias = int(table[0])
+    for row, bit in enumerate(table):
+        if bit != "01"[(row.bit_count() & 1) ^ bias]:
+            return None
+    return bias
