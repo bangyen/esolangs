@@ -53,15 +53,20 @@ Decisions:
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Any
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.hq9.interpreter import _SONG
+from esolangs.languages.hq9_with_headers.lifecycle import CAPABILITIES
 from esolangs.runtime import persistent
 from esolangs.runtime._digits import digit_limit_for
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
@@ -478,9 +483,24 @@ class _Machine:
             self.io.print_str(out)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind source; each IO-bound construction owns fresh runtime state."""
+    if not isinstance(source, str):
+        raise TypeError("hq9_with_headers machines require text source")
+    if options:
+        raise TypeError("hq9_with_headers machines accept no runtime options")
+
+    def build(io: IO) -> _Machine:
+        return _Machine(source, io)
+
+    return build
+
+
 def _execute(code: str, io: IO) -> CompletionReport:
     """Run an HQ9+ with headers program."""
-    return drive(_Machine(code, io))
+    return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO) -> None:

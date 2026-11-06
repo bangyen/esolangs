@@ -7,12 +7,13 @@ import pytest
 import esolangs
 from esolangs import run as execute
 from esolangs.languages.grapheme import generator as boolean
+from esolangs.languages.grapheme.dialect import GraphemeDialect
 from esolangs.languages.grapheme.generator import (
     _grapheme_literal,
     _grapheme_push65,
     _grapheme_table,
 )
-from esolangs.languages.grapheme.interpreter import GraphemeDialect, run
+from esolangs.languages.grapheme.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_constant_output, evaluate_generated

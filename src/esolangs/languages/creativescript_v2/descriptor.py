@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for CreativeScript v2."""
 
+from esolangs.languages.creativescript_v2.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -10,6 +11,9 @@ LANGUAGE = Language(
     "CreativeScript v2",
     RuntimeSpec(
         "creativescript_v2",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="register_based",
         empty_program="a CreativeScript v2 program needs at least one command",
     ),

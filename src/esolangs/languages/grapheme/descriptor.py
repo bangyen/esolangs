@@ -1,7 +1,8 @@
 """Runtime and compiler capabilities for Grapheme."""
 
 from esolangs.generation.wrap import wrap_chars
-from esolangs.languages.grapheme.interpreter import INTEGER_CONVERSIONS
+from esolangs.languages.grapheme.dialect import INTEGER_CONVERSIONS
+from esolangs.languages.grapheme.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -12,9 +13,12 @@ LANGUAGE = Language(
     "Grapheme",
     RuntimeSpec(
         "grapheme",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="stack_based",
         dialect=FunctionRef(
-            "esolangs.languages.grapheme.interpreter",
+            "esolangs.languages.grapheme.dialect",
             "GraphemeDialect",
             ("integer_conversion",),
         ),

@@ -261,3 +261,9 @@ of its interpreter.
 VM accounting no longer falls back to cycle snapshots. All 117 catalog rows
 require models; the 114 Boolean execution witnesses and three non-Boolean
 checks reject cycle-key use. Storage-policy and full accounting acceptance stay open.
+
+BASICER, Bleh, Chicken, Codesick, Collatz Multiverse, CreativeScript v2, DINAC,
+Grapheme, Sonata and HQ9+ with headers declare text factories and debugger
+fields. Heaps, arrays, scopes, frames and input state remain per-run.
+Grapheme binds integer conversion and keeps dialect metadata independent of
+its interpreter; constructor-time whole-input reads stay intact.

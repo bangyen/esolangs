@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for HQ9+ with headers."""
 
+from esolangs.languages.hq9_with_headers.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
@@ -9,6 +10,9 @@ LANGUAGE = Language(
     "HQ9+ with headers",
     RuntimeSpec(
         "hq9_with_headers",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="other",
         eof="a read at EOF yields 0",
         empty_program=(

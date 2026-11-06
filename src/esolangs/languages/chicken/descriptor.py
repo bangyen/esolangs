@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Chicken."""
 
+from esolangs.languages.chicken.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -10,6 +11,9 @@ LANGUAGE = Language(
     "Chicken",
     RuntimeSpec(
         "chicken",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="stack_based",
         eof="a short input is a shorter string; a missing bit is not 1, so reads 0",
     ),

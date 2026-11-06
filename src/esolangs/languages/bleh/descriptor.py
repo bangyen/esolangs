@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Bleh."""
 
 from esolangs.generation.wrap import TokenWrapper
+from esolangs.languages.bleh.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -14,6 +15,9 @@ LANGUAGE = Language(
     "Bleh",
     RuntimeSpec(
         "bleh",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="other",
         eof="an exhausted io::next() is the empty bitstring",
         underfed_raises=True,

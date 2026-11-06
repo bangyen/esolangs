@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Sonata."""
 
+from esolangs.languages.sonata.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -10,6 +11,9 @@ LANGUAGE = Language(
     "Sonata",
     RuntimeSpec(
         "sonata",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="program_based",
         eof="the input is the initial string, so an empty input is the empty string",
     ),

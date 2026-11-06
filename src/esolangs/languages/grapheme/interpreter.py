@@ -51,39 +51,19 @@ from dataclasses import dataclass
 from itertools import takewhile
 from operator import add, mul, sub
 from types import MappingProxyType
-from typing import Final, Literal
+from typing import Any, Final, Literal
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.grapheme.dialect import DEFAULT_GRAPHEME, GraphemeDialect
+from esolangs.languages.grapheme.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
-
-INTEGER_CONVERSIONS = ("between_letters", "after_each_letter")
-
-
-@dataclass(frozen=True)
-class GraphemeDialect:
-    """Choose when integer conversion multiplies by ten."""
-
-    integer_conversion: str = "between_letters"
-
-    def __post_init__(self) -> None:
-        """Reject an unknown conversion rule."""
-        if self.integer_conversion not in INTEGER_CONVERSIONS:
-            raise ValueError(
-                "integer_conversion must be between_letters or after_each_letter"
-            )
-
-    def finish_integer(self, value: int) -> int:
-        """Apply the selected final multiplication."""
-        return value * 10 if self.integer_conversion == "after_each_letter" else value
-
-
-DEFAULT_GRAPHEME = GraphemeDialect()
-
 
 _FUNC: Final = "func"
 
@@ -709,6 +689,22 @@ class _Machine:
                 self.io.print_value(output)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind source; each IO-bound construction owns fresh runtime state."""
+    if not isinstance(source, str):
+        raise TypeError("grapheme machines require text source")
+    if options.keys() - {"integer_conversion"}:
+        raise TypeError("grapheme machines accept only integer_conversion")
+    integer_conversion = options.get("integer_conversion", "between_letters")
+
+    def build(io: IO) -> _Machine:
+        return _Machine(source, io, integer_conversion=integer_conversion)
+
+    return build
+
+
 def _execute(
     code: str,
     io: IO,
@@ -717,7 +713,7 @@ def _execute(
 ) -> CompletionReport:
     """Run a Grapheme program to completion."""
     machine = _Machine(code, io, integer_conversion=integer_conversion)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(

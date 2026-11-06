@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Codesick."""
 
 from esolangs.generation.wrap import wrap_space_delimited
+from esolangs.languages.codesick.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -11,6 +12,9 @@ LANGUAGE = Language(
     "Codesick",
     RuntimeSpec(
         "codesick",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="other",
         eof="the whole input is read once to replace every `in`; no read meets EOF",
     ),
