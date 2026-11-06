@@ -21,8 +21,10 @@ from itertools import pairwise
 from math import isqrt
 from typing import Literal, NamedTuple
 
+from esolangs.generation.decision import DecisionLayers, decision_layers
 from esolangs.generation.helpers import (
     _validate_truth_table,
+    essential_inputs,
     grid_area,
     grid_rank,
     grid_width,
@@ -252,9 +254,10 @@ class _StripTree(_TreeEmitter):
     def __init__(self, builder: _Builder, table: str, depth: int) -> None:
         super().__init__(builder, table)
         self._depth = depth
+        self._ids = subtree_ids(table) if depth else [[int(table[0])]]
 
-    def _leaf(self, _level: int, lo: int, hi: int) -> bool:
-        return all(bit == self._table[lo] for bit in self._table[lo:hi])
+    def _leaf(self, level: int, lo: int, hi: int) -> bool:
+        return self._ids[level][lo // (hi - lo)] < 2
 
     def _router(self, point: _Point, _context: _Point) -> _Point:
         return (point[0] - 2, point[1])
@@ -494,7 +497,7 @@ def _narrow_tree(truth_table: str, program: str, width: int) -> str:
     # keeps this fallback and the larger linear-area trees uniformly O(T).
     # Counted on the kept inputs: an ignored input only lengthens the loader.
     n = _validate_truth_table(truth_table)
-    if len(_essential(subtree_ids(truth_table), n)) <= 3:
+    if len(essential_inputs(truth_table, n)) <= 3:
         narrow = _strip_tree(truth_table)
         program = narrowest_grid(program, narrow)
     if len(truth_table) <= 4 and grid_width(program) > width:
@@ -541,15 +544,10 @@ def _rotate_tree(program: str) -> str:
     )
 
 
-def _essential(ids: list[list[int]], n: int) -> list[int]:
-    """Return the inputs on whose level some node has unequal halves."""
-    return [i for i in range(n) if ids[i + 1][::2] != ids[i + 1][1::2]]
-
-
 def _strip_tree(truth_table: str) -> str:
     """Build a small-arity vertical decision strip with channel-separated nodes."""
     n = _validate_truth_table(truth_table)
-    essential = _essential(subtree_ids(truth_table), n)
+    essential = essential_inputs(truth_table, n)
     table = read_at(truth_table, essential, n)
     depth = len(essential)
     builder = _Builder()
@@ -581,7 +579,7 @@ def _tree(truth_table: str, *, prune: bool = True, flat: bool = False) -> str:
     order at every node; the root's arms are not swapped.
     """
     n = _validate_truth_table(truth_table)
-    essential = _essential(subtree_ids(truth_table), n) if prune else list(range(n))
+    essential = essential_inputs(truth_table, n) if prune else list(range(n))
     if len(essential) < n:
         truth_table = read_at(truth_table, essential, n)
     return _layout(truth_table, n, essential, prune=prune, flat=flat)
@@ -655,31 +653,27 @@ class _Dag(NamedTuple):
     incoming: dict[tuple[int, int], int]
 
 
-def _build_dag(ids: list[list[int]], m: int) -> _Dag:
-    """Return the shared-subtree DAG."""
-    representatives = {(0, ids[0][0]): 0}
-    pending = [[(0, ids[0][0])]] + [[] for _ in range(m - 1)]
+def _build_dag(diagram: DecisionLayers) -> _Dag:
+    """Plan buses and distinct-parent counts over canonical decision layers."""
+    root = (0, diagram.root)
+    seen = {root}
+    pending = [[root]] + [[] for _ in range(len(diagram.children) - 1)]
     layers = []
     incoming: dict[tuple[int, int], int] = defaultdict(int)
     children = {}
     terminal = set()
-    for level in range(m):
+    for level, under in enumerate(diagram.children):
         layer = pending[level]
         layers.append(layer)
         for key in layer:
-            lo = representatives[key]
-            span = 1 << (m - level)
-            idx = lo // span
-            zero_id, one_id = ids[level + 1][2 * idx : 2 * idx + 2]
+            zero_id, one_id = under[key[1]]
             kids = []
-            for side, (state, row) in enumerate(
-                ((zero_id, lo), (one_id, lo + span // 2))
-            ):
+            for side, state in enumerate((zero_id, one_id)):
                 child = (-1, state) if state < 2 else (level + 1, state)
                 if child[0] < 0:
                     terminal.add(child)
-                elif child not in representatives:
-                    representatives[child] = row
+                elif child not in seen:
+                    seen.add(child)
                     pending[level + 1].append(child)
                 # A node's two arms to one child count once: sharing means
                 # distinct parents, which is what admits a DAG at all.
@@ -803,12 +797,12 @@ def shared_tree(table: str) -> tuple[str, int] | None:
     """Return a shared grid and maximum cycles within the previous area envelope."""
     n = _validate_truth_table(table)
     limit = max(_MIN_NODE_BUDGET, 2 * isqrt(len(table)))
-    ess = _essential(subtree_ids(table), n)
+    ess = essential_inputs(table, n)
     if not ess:
         return None
     table = read_at(table, ess, n)
     m = len(ess)
-    layers, children, terminal, incoming = _build_dag(subtree_ids(table), m)
+    layers, children, terminal, incoming = _build_dag(decision_layers(table))
     if not any(key[0] >= 0 and count > 1 for key, count in incoming.items()):
         return None
     nodes = [key for layer in layers for key in layer] + sorted(terminal)

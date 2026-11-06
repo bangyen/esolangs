@@ -642,3 +642,13 @@ peaks are checked against complete independently predicted components, rather
 than machine state copied into a second model. Ten live component-erasure
 faults preserve execution but fail capture checks. Deadfish/HQ9+ long traces
 remain bounded at 64 commands; this does not close whole-corpus acceptance.
+
+thisthat uses canonical essential-input queries in all four consumers and
+canonical decision layers for its shared DAG. The duplicate dependency detector,
+representative-row map, child reconstruction and strip-span scan are removed.
+The strip uses canonical constant IDs. Distinct-parent counts, terminal buses,
+router placement and the admission envelope remain owned.
+All 632 corpus requests and 240 larger layouts retain their bytes; 4,406 paired
+execution records retain 174,086 semantic samples, including every small strip.
+Dependency, projection, strip and DAG queries have executed fault controls.
+Bounds, pins and anchors remain unchanged; catalog acceptance stays open.

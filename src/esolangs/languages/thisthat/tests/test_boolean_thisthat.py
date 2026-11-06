@@ -49,7 +49,7 @@ def test_constants_test_nothing() -> None:
     assert len(thisthat("0" * 8)) == 11  # 49 before the direct chain
 
 
-def test_every_kept_level_is_tested_at_every_node() -> None:
+def test_every_kept_level_is_tested_at_every_node(monkeypatch) -> None:
     """Only the loader's drop skips a test; agreeing halves are tested too."""
 
     def tests(table: str) -> int:
@@ -66,6 +66,29 @@ def test_every_kept_level_is_tested_at_every_node() -> None:
     for table in ("00110011", "00010101", "01011010"):
         for row, expected in enumerate(table):
             assert _run(table, row) == (expected, 3)
+
+    from esolangs.generation.helpers import essential_inputs, read_at
+    from esolangs.languages.thisthat import generator
+
+    assert generator.essential_inputs is essential_inputs
+    assert generator.read_at is read_at
+    for query, damaged_query, expected in (
+        ("essential_inputs", lambda _table, _n: [], "00000000"),
+        (
+            "read_at",
+            lambda table, used, n: read_at(table, used, n).translate(
+                str.maketrans("01", "10")
+            ),
+            "11101110",
+        ),
+    ):
+        with monkeypatch.context() as patch:
+            patch.setattr(generator, query, damaged_query)
+            source = _tree("00010001")
+        for row, answer in enumerate(expected):
+            io = ScriptedIO(f"{row:03b}\nQ")
+            run(source.splitlines(), io)
+            assert (io.getvalue(), io.reads, io.input_token()) == (answer, 3, "Q")
 
 
 def _check_literal_leaf_outputs() -> None:
@@ -150,7 +173,7 @@ def test_rotated_rendered_area_remains_linear() -> None:
 
 
 @pytest.mark.medium
-def test_narrow_strip_executes_every_small_table() -> None:
+def test_narrow_strip_executes_every_small_table(monkeypatch) -> None:
     """Each narrow branch consumes the same input deque and prints once."""
     for n in range(1, 4):
         for table in witnesses(n):
@@ -163,6 +186,21 @@ def test_narrow_strip_executes_every_small_table() -> None:
     assert max(map(len, thisthat("0110", 1).splitlines())) == 1
     assert len(thisthat("0110", 1)) == 17
     assert sum(len(thisthat(format(v, "04b"), 1)) for v in range(16)) == 764
+
+    from esolangs.generation.helpers import subtree_ids
+    from esolangs.languages.thisthat import generator
+
+    assert generator.subtree_ids is subtree_ids
+    monkeypatch.setattr(
+        generator,
+        "subtree_ids",
+        lambda table: [[0] * len(layer) for layer in subtree_ids(table)],
+    )
+    damaged = generator._strip_tree("0001")
+    for row in range(4):
+        io = ScriptedIO(f"{row:02b}\nQ")
+        run(damaged.splitlines(), io)
+        assert (io.getvalue(), io.reads, io.input_token()) == ("0", 2, "Q")
 
 
 @pytest.mark.parametrize("width", [1, 3, 4, 5, 7, 9, 10, 19, 20, 40])
@@ -215,7 +253,7 @@ def test_xor_has_one_column() -> None:
 
 
 @pytest.mark.medium
-def test_shared_residual_buses_execute_within_ledger() -> None:
+def test_shared_residual_buses_execute_within_ledger(monkeypatch) -> None:
     from esolangs.languages.thisthat.generator import shared_tree
     from tests.support.generator_support import assert_shared_program
 
@@ -258,6 +296,26 @@ def test_shared_residual_buses_execute_within_ledger() -> None:
         io = ScriptedIO(f"{row:08b}")
         run(narrow.splitlines(), io)
         assert (io.getvalue(), io.reads) == (table[row], 8)
+
+    from esolangs.generation.decision import decision_layers
+    from esolangs.languages.thisthat import generator
+
+    assert generator.decision_layers is decision_layers
+    monkeypatch.setattr(
+        generator,
+        "decision_layers",
+        lambda table: decision_layers(table.translate(str.maketrans("01", "10"))),
+    )
+    damaged = shared_tree(table)
+    assert damaged is not None
+    for row in (0, 1, 85, 255):
+        io = ScriptedIO(f"{row:08b}\nQ")
+        run(damaged[0].splitlines(), io)
+        assert (io.getvalue(), io.reads, io.input_token()) == (
+            str(1 - int(table[row])),
+            8,
+            "Q",
+        )
 
 
 @pytest.mark.medium

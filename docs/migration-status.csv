@@ -108,7 +108,7 @@ Suffolk,yes,declared,not-applicable,declared,owned-adapter,suffolk-v1,pending-ba
 Super SNUSP,yes,declared,not-applicable,declared,owned-adapter,super-snusp-v1,pending-backend-audit,pending-acceptance-audit,open
 SwitchCase,yes,declared,not-applicable,declared,owned-adapter,switchcase-v1,canonical-reduced-diagram;owned-case-placement,pending-acceptance-audit,open
 Taglate,yes,declared,not-applicable,declared,owned-adapter,taglate-v1,pending-backend-audit,pending-acceptance-audit,open
-thisthat,yes,declared,not-applicable,declared,owned-adapter,thisthat-v1,pending-backend-audit,pending-acceptance-audit,open
+thisthat,yes,declared,not-applicable,declared,owned-adapter,thisthat-v1,canonical-dependency-decision-layers;owned-planar-buses,pending-acceptance-audit,open
 Thue,yes,declared,not-applicable,declared,owned-adapter,thue-v1,pending-backend-audit,pending-acceptance-audit,open
 Unary,yes,declared,not-applicable,declared,inherited-adapter,brainfuck-v1,canonical-dependency-tree;owned-zero-count-caps,pending-acceptance-audit,open
 Underload,yes,declared,not-applicable,declared,owned-adapter,underload-v1,pending-backend-audit,pending-acceptance-audit,open
