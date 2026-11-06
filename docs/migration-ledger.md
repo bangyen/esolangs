@@ -652,3 +652,20 @@ All 632 corpus requests and 240 larger layouts retain their bytes; 4,406 paired
 execution records retain 174,086 semantic samples, including every small strip.
 Dependency, projection, strip and DAG queries have executed fault controls.
 Bounds, pins and anchors remain unchanged; catalog acceptance stays open.
+
+Forþ, Unlambda, Circlefuck, Eval and Object disoriented retain canonical
+projection, symmetry and subtree analysis. Heap dispatch, promise binding,
+base-128 deletion, Gray stack layout and class pricing remain owned.
+Circlefuck's redundant generator wrapper is removed; Eval's unused stack-role
+constants move to their sole test consumer. Eight live analysis faults change
+executed answers, including false residual sharing and both Eval stack layouts.
+
+The five audits preserve 3,160 artifact requests, 10,600 executed rows and
+2,341,769 complete state samples. Unlambda's rendering-based audit hit 60 s;
+C graph serialization retains every sample and per-step snapshot-isolation
+check, completing within the same cap. Timing preconditions equalize initial
+GC state and include induced cleanup; same-function and double-work controls
+validate the unchanged 0.9 floor. Original resource, scaling, pin and anchor
+scopes remain. Installed Python 3.12–3.15 retains corpus execution, artifact
+round trips, retired-import refusals and guarded workers without certification
+imports. Catalog-wide acceptance remains open.

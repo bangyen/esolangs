@@ -38,6 +38,23 @@ def _forth_plain(table: str) -> str:
 class TestForth:
     def test_leaf_results_are_the_byte(self) -> None:
         """Each leaf pushes 48 + its table entry."""
+        from unittest.mock import patch
+
+        from esolangs.generation.helpers import subtree_ids
+        from tests.support.analysis_support import assert_analysis_complement
+        from tests.support.generator_support import evaluate_generated
+
+        assert_analysis_complement("Forþ", "input_weights")
+        assert boolean.subtree_ids is subtree_ids
+        with patch.object(
+            boolean,
+            "subtree_ids",
+            side_effect=lambda table: [
+                [min(key, 2) for key in level] for level in subtree_ids(table)
+            ],
+        ) as corrupted:
+            assert evaluate_generated("Forþ", "00110110") == "00110011"
+            assert corrupted.called
         program = boolean.for_thorn("0001")
         assert "3F*3+" in program  # '0' leaves push 48 = 3*15+3
         assert "v68*+" in program

@@ -25,7 +25,7 @@ definitions = ["E = (2n+13)T+68n+232+2C from n=3, otherwise (2n+13)T+94n+89+2S; 
 "11111110" = { commands = 626, commands_by_row = { "0" = 572, "1" = 592, "2" = 590, "3" = 610, "4" = 588, "5" = 608, "6" = 606, "7" = 626 }, source_units = 129 }
 
 [catalogue]
-folding_constant_local = "_program"  # read into an executed cell and print the tail
+folding_constant_local = "circlefuck"  # read into an executed cell and print the tail
 
 
 [schemes]

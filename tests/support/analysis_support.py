@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from esolangs.generation.decision import decision_layers, reduced_diagram
 from esolangs.generation.helpers import (
+    SubtreeDiagram,
     input_weights,
     read_at,
     subtree_ids,
@@ -25,6 +26,7 @@ def assert_analysis_complement(name: str, attribute: str, table: str = "0011") -
     assert isinstance(reference, FunctionRef)
     module = importlib.import_module(reference.module)
     query = {
+        "SubtreeDiagram": SubtreeDiagram,
         "decision_layers": decision_layers,
         "reduced_diagram": reduced_diagram,
         "subtree_ids": subtree_ids,

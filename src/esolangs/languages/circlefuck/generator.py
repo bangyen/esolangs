@@ -62,13 +62,7 @@ def _reads(n: int) -> str:
 
 def circlefuck(truth_table: str) -> str:
     """Return a Circlefuck program computing ``truth_table`` (MSB first)."""
-    return _program(truth_table)
-
-
-def _program(truth_table: str) -> str:
-    """Build the deleting index or a read-and-print literal constant."""
-    _validate_truth_table(truth_table)
-    n = len(truth_table).bit_length() - 1
+    n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         # Reads rewrite cell zero; the final < wraps to the literal after @.
         return "," * n + "<.@" + truth_table[0]

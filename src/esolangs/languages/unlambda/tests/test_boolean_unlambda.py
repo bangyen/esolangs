@@ -20,6 +20,9 @@ from tests.support.generator_support import verify_generated
 def test_unlambda_binds_repeated_subtrees_and_skips_equal_halves() -> None:
     """Share-taking nodes cut both totals and lengthen no table."""
 
+    from tests.support.analysis_support import assert_analysis_complement
+
+    assert_analysis_complement("Unlambda", "SubtreeDiagram")
     _check_constants(range(5, 13))
     three = [format(value, "08b") for value in range(256)]
     assert boolean.unlambda("01101001") == (

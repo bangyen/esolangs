@@ -30,7 +30,7 @@ BrainIf,yes,declared,not-applicable,declared,owned-adapter,brainif-v1,canonical-
 Caballo,yes,declared,not-applicable,declared,owned-adapter,caballo-v1,canonical-subtree-analysis;owned-signed-tree,pending-acceptance-audit,open
 CARP,yes,declared,not-applicable,declared,owned-adapter,carp-v1,canonical-decision-layers;owned-register-placement,pending-acceptance-audit,open
 Chicken,yes,declared,not-applicable,declared,owned-adapter,chicken-v1,canonical-projection;owned-code-row-lookup,pending-acceptance-audit,open
-Circlefuck,yes,declared,not-applicable,declared,owned-adapter,circlefuck-v1,pending-backend-audit,pending-acceptance-audit,open
+Circlefuck,yes,declared,not-applicable,declared,owned-adapter,circlefuck-v1,canonical-projection-symmetry;owned-deleting-index,pending-acceptance-audit,open
 Circuit Diagram,yes,declared,not-applicable,declared,owned-adapter,circuit-diagram-v1,pending-backend-audit,pending-acceptance-audit,open
 Clockwise,yes,declared,not-applicable,declared,owned-adapter,clockwise-v1,pending-backend-audit,pending-acceptance-audit,open
 Codesick,yes,declared,not-applicable,declared,owned-adapter,codesick-v1,canonical-decision-layers;owned-marker-layout,pending-acceptance-audit,open
@@ -46,14 +46,14 @@ Dig,yes,declared,not-applicable,declared,owned-adapter,dig-v1,canonical-parity;p
 Dimensional,yes,declared,not-applicable,declared,owned-adapter,dimensional-v1,canonical-weighted-boundaries;owned-axis-pair-encoding,pending-acceptance-audit,open
 DINAC,yes,declared,not-applicable,declared,owned-adapter,dinac-v1,canonical-prefix-counts-projection;owned-prefix-scan,pending-acceptance-audit,open
 EGL,yes,declared,not-applicable,declared,owned-adapter,egl-v1,canonical-projection-symmetry;owned-grid-layout,pending-acceptance-audit,open
-Eval,yes,declared,not-applicable,declared,owned-adapter,eval-v1,pending-backend-audit,pending-acceptance-audit,open
+Eval,yes,declared,not-applicable,declared,owned-adapter,eval-v1,canonical-projection;owned-gray-stack-lookup,pending-acceptance-audit,open
 Fackward,yes,declared,not-applicable,declared,owned-adapter,fackward-v1,canonical-subtable-fold,pending-acceptance-audit,open
 FALSE,yes,declared,not-applicable,declared,owned-adapter,false-v1,pending-backend-audit,pending-acceptance-audit,open
 Fargo,yes,declared,not-applicable,declared,owned-adapter,fargo-v1,pending-backend-audit,pending-acceptance-audit,open
 Fish,yes,declared,not-applicable,declared,owned-adapter,fish-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
 Flowchart,yes,declared,not-applicable,declared,owned-adapter,flowchart-v1,pending-backend-audit,pending-acceptance-audit,open
 Forbin,yes,declared,not-applicable,declared,owned-adapter,forbin-v1,pending-backend-audit,pending-acceptance-audit,open
-Forþ,yes,declared,not-applicable,declared,owned-adapter,for-thorn-v1,pending-backend-audit,pending-acceptance-audit,open
+Forþ,yes,declared,not-applicable,declared,owned-adapter,for-thorn-v1,canonical-projection-subtrees;owned-heap-dispatch,pending-acceptance-audit,open
 FRACTRAN,yes,declared,not-applicable,declared,owned-adapter,fractran-v1,pending-backend-audit,pending-acceptance-audit,open
 Freestajlo,yes,declared,not-applicable,declared,owned-adapter,freestajlo-v1,canonical-projection-symmetry;owned-packed-literals,pending-acceptance-audit,open
 Grapheme,yes,declared,declared,declared,owned-adapter,grapheme-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -78,7 +78,7 @@ Nandypants,yes,declared,not-applicable,declared,owned-adapter,nandypants-v1,pend
 Nope.,no,declared,not-applicable,declared,owned-adapter,nope-v1,not-applicable,pending-acceptance-audit,open
 NOR machine,yes,declared,not-applicable,declared,owned-adapter,nor-machine-v1,pending-backend-audit,pending-acceptance-audit,open
 NQ,yes,declared,declared,declared,owned-adapter,nq-v1,canonical-subtree-parity,pending-acceptance-audit,open
-Object disoriented,yes,declared,not-applicable,declared,owned-adapter,object-disoriented-v1,pending-backend-audit,pending-acceptance-audit,open
+Object disoriented,yes,declared,not-applicable,declared,owned-adapter,object-disoriented-v1,canonical-subtree-analysis;owned-class-pricing,pending-acceptance-audit,open
 Packlang,yes,declared,declared,declared,owned-adapter,packlang-v1,pending-backend-audit,pending-acceptance-audit,open
 Painfuck,yes,declared,not-applicable,declared,owned-adapter,painfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Parenthesys,yes,declared,not-applicable,declared,owned-adapter,parenthesys-v1,canonical-validation;owned-packed-lookup,pending-acceptance-audit,open
@@ -112,7 +112,7 @@ thisthat,yes,declared,not-applicable,declared,owned-adapter,thisthat-v1,canonica
 Thue,yes,declared,not-applicable,declared,owned-adapter,thue-v1,pending-backend-audit,pending-acceptance-audit,open
 Unary,yes,declared,not-applicable,declared,inherited-adapter,brainfuck-v1,canonical-dependency-tree;owned-zero-count-caps,pending-acceptance-audit,open
 Underload,yes,declared,not-applicable,declared,owned-adapter,underload-v1,pending-backend-audit,pending-acceptance-audit,open
-Unlambda,yes,declared,not-applicable,declared,owned-adapter,unlambda-v1,pending-backend-audit,pending-acceptance-audit,open
+Unlambda,yes,declared,not-applicable,declared,owned-adapter,unlambda-v1,canonical-subtree-diagram;owned-promise-sharing,pending-acceptance-audit,open
 Unsquare,yes,declared,not-applicable,declared,owned-adapter,unsquare-v1,canonical-input-weights;owned-branch-pop-lookup,pending-acceptance-audit,open
 What!?,yes,declared,not-applicable,declared,owned-adapter,what-v1,canonical-change-points;owned-block-lookup,pending-acceptance-audit,open
 Whitespace,yes,declared,not-applicable,declared,owned-adapter,whitespace-v1,canonical-projection;owned-power-lookup,pending-acceptance-audit,open

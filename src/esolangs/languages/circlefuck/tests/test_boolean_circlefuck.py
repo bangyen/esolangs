@@ -91,6 +91,12 @@ class TestCirclefuck:
 
     def test_an_inessential_input_is_read_but_not_tabulated(self) -> None:
         """A degenerate table is the smaller table it really is."""
+        from tests.support.analysis_support import assert_analysis_complement
+
+        assert_analysis_complement("Circlefuck", "read_at")
+        assert_analysis_complement(
+            "Circlefuck", "symmetric_weights", "0110100110010110"
+        )
         assert len(boolean.circlefuck("11111111")) < len(
             boolean.circlefuck("10101010"),
         )

@@ -4,11 +4,11 @@ from functools import cache
 from math import factorial
 
 from esolangs.generation.helpers import _validate_truth_table, essential_inputs
-from esolangs.languages.eval.generator import (
-    _EVAL_READ_STACK,
-    _EVAL_TREE_STACK,
-    _ordered,
-)
+from esolangs.languages.eval.generator import _ordered
+
+# ``~`` swaps the active stack, ``*`` reverses it, ``=`` pops it onto the
+# other. Moving values across reverses them.
+_EVAL_TREE_STACK, _EVAL_READ_STACK = 0, 1
 
 
 def _eval_ordered(truth_table: str, ops: str) -> str:

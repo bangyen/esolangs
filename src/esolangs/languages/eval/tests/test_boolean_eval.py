@@ -31,6 +31,12 @@ class TestEvalBoolean:
 
     def test_ignored_inputs_shrink_the_lookup(self) -> None:
         """A constant table pushes one result; its staged inputs never drain."""
+        from tests.support.analysis_support import assert_analysis_complement
+        from tests.support.witness_tables import parity
+
+        assert not {"_EVAL_TREE_STACK", "_EVAL_READ_STACK"} & vars(boolean).keys()
+        assert_analysis_complement("Eval", "read_at")
+        assert_analysis_complement("Eval", "read_at", parity(6))
         _check_constants()
         full = boolean.eval("10010110")
         folded = boolean.eval("11111111")

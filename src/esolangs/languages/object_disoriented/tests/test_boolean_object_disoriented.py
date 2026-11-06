@@ -14,6 +14,9 @@ def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     if table == "00":
         _check_native_constants()
+        from tests.support.analysis_support import assert_analysis_complement
+
+        assert_analysis_complement("Object disoriented", "subtree_ids")
     from esolangs.languages.object_disoriented.interpreter import run
 
     program = esolangs.generate("Object disoriented", table).source
