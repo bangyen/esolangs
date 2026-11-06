@@ -1,13 +1,17 @@
 """Public results preserve output, input accounting and completion across routes."""
 
 import pickle
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 
 import pytest
 
 import esolangs
+from esolangs.debugger import make_debugger
 from esolangs.registry import LANGUAGES
 from esolangs.results import Completion, CompletionReport, ExecutionResult
 from esolangs.runtime.io import ScriptedIO
+from tests.support.certification_barrier import guarded_worker
 from tests.support.pick import first, one_where
 from tests.support.reference import REFERENCE
 
@@ -91,19 +95,79 @@ def test_post_halt_result_includes_the_final_dump(name):
         assert results[0][1:4] == (0, 0, 0)
 
 
-def test_periodic_result_retains_cycle_evidence_in_a_worker():
-    name = first(boolean_generator=True, steppable_to_answer=False)
-    template = esolangs.generate(name, "01")
-    source = (
-        esolangs.instantiate(name, template, [1])
-        if LANGUAGES[name].parameterized
-        else template
-    )
-    stdin = "" if LANGUAGES[name].parameterized else esolangs.encode_inputs(name, [1])
-    native = esolangs.run(name, source, stdin=stdin)
+def _replay_periodic(name, source, stdin, native):
     assert native.completion.kind is Completion.PERIODIC
-    assert native.completion.cycle is not None
-    assert esolangs.run(name, source, stdin=stdin, isolated=True) == native
+    cycle = native.completion.cycle
+    assert cycle is not None
+    debugger = make_debugger(name, source, stdin=stdin)
+    end = cycle.repeat_pass * cycle.commands_per_pass
+    first_command = cycle.first_pass * cycle.commands_per_pass
+    first_state = None
+    for command in range(end + 1):
+        if command == first_command:
+            first_state = debugger.snapshot()
+        if command == end:
+            break
+        debugger.step()
+    assert debugger.snapshot() == first_state == cycle.state
+    assert not debugger.halted
+    assert debugger.result == native._replace(output="", completion=None, steps=end)
+    assert native.output
+
+
+def test_periodic_result_retains_cycle_evidence_in_a_worker():
+    names = [
+        name
+        for name, language in LANGUAGES.items()
+        if language.runtime.capabilities.completion is Completion.PERIODIC
+    ]
+    assert len(names) == 1
+    cases = []
+    for name in names:
+        for inputs in (1, 2):
+            for mask in range(1 << (1 << inputs)):
+                table = f"{mask:0{1 << inputs}b}"
+                artifact = esolangs.generate(name, table)
+                for row, expected in enumerate(table):
+                    bits = [int(bit) for bit in f"{row:0{inputs}b}"]
+                    source = (
+                        esolangs.instantiate(name, artifact, bits)
+                        if LANGUAGES[name].parameterized
+                        else artifact
+                    )
+                    stdin = (
+                        ""
+                        if LANGUAGES[name].parameterized
+                        else esolangs.encode_inputs(name, bits, truth_table=table)
+                    )
+                    native = esolangs.run(name, source, stdin=stdin, timeout=5)
+                    assert esolangs.read_answer(name, native.output) == expected
+                    _replay_periodic(name, source, stdin, native)
+                    cases.append((name, source, stdin, native))
+    assert len(cases) == 72
+    for name in names:
+        source = esolangs.ProgramArtifact("", name)
+        native = esolangs.run(name, source, timeout=5)
+        assert native.completion.cycle.commands_per_pass == 0
+        _replay_periodic(name, source, "", native)
+        cases.append((name, source, "", native))
+    assert len(cases) == 73
+    name, source, stdin, native = cases[-1]
+    bad = native._replace(
+        completion=replace(
+            native.completion, cycle=replace(native.completion.cycle, state=("wrong",))
+        )
+    )
+    with pytest.raises(AssertionError):
+        _replay_periodic(name, source, stdin, bad)
+
+    def check_worker(case):
+        name, source, stdin, native = case
+        assert esolangs.run(name, source, stdin=stdin, isolated=True) == native
+        return name
+
+    with guarded_worker(expected=len(cases)), ThreadPoolExecutor(max_workers=4) as pool:
+        assert len(list(pool.map(check_worker, cases))) == len(cases)
 
 
 @pytest.mark.parametrize("route", _ROUTES)

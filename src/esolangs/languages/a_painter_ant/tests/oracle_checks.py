@@ -10,19 +10,35 @@ from esolangs.runtime.io import ScriptedIO
 _DIRECTIONS = dict(zip("eswn", (1, 1j, -1, -1j), strict=True))
 
 
-def _check(factory, source):
-    commands = source.split()
+def _check(factory, source, *, passes=4, cycle=None, output=None):
+    commands = "".join(source.split())
     io = ScriptedIO("unused")
     machine = factory(source, io)
     ant = 0j
     white = set()
+    painted = {}
     visited = {ant}
 
-    for command in commands * 4:
+    def snapshot(instruction):
+        cells = frozenset(
+            ((int(cell.real), int(cell.imag)), colour)
+            for cell, colour in painted.items()
+        )
+        return (cells, int(ant.real), int(ant.imag), instruction)
+
+    saved = machine.workspace_snapshot()
+    retained = {saved}
+    first = snapshot(0) if cycle is not None and cycle.first_pass == 0 else None
+    if cycle is not None:
+        assert cycle.commands_per_pass == len(commands)
+        assert passes == cycle.repeat_pass
+    for step, command in enumerate(commands * passes, 1):
         if command == "P":
             white.add(ant)
+            painted[ant] = 1
         elif command == "p":
             white.discard(ant)
+            painted[ant] = 0
         else:
             destination = ant + _DIRECTIONS[command.lower()]
             if (destination in white) == command.isupper():
@@ -34,6 +50,12 @@ def _check(factory, source):
             complex(*cell) for cell, value in machine.grid.items() if value
         } == white
         assert {complex(*cell) for cell in machine.visited} == visited
+        expected = snapshot(step % len(commands))
+        assert machine.snapshot() == expected
+        assert machine.workspace_snapshot().parts == expected
+        assert saved in retained
+        if cycle is not None and step == cycle.first_pass * len(commands):
+            first = expected
         assert not machine.halted
         assert io.position() == 0
         assert io.getvalue() == ""
@@ -47,10 +69,17 @@ def _check(factory, source):
             cell = complex(x, y)
             row.append((".#", "o@")[cell == ant][cell in white])
         picture.append("".join(row))
+    if cycle is not None:
+        assert snapshot(0) == first == cycle.state
+    rendered = "\n".join(picture)
+    if output is not None:
+        assert rendered == output
+    before_dump = machine.workspace_snapshot()
     machine.interrupt()
     for _ in range(3):
         machine.step()
-        assert io.getvalue() == "\n".join(picture)
+        assert io.getvalue() == rendered
+        assert machine.workspace_snapshot() == before_dump
 
 
 def check_raw_a_painter_ant():

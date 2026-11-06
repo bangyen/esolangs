@@ -1,7 +1,10 @@
 """Unit tests for the A Painter Ant interpreter."""
 
+from dataclasses import replace
+
 import pytest
 
+import esolangs
 from esolangs.languages.a_painter_ant.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import EmptyProgramContract
@@ -49,6 +52,61 @@ class TestPaintingAndLoop:
         run("NPsP", io)
         assert io.getvalue() == run_program("NPsP", 2)
         assert io.getvalue() != run_program("NPsP", 1)
+
+        from .oracle_checks import _check
+
+        empty = esolangs.run("A Painter Ant", "", timeout=5)
+        _check(
+            _Machine,
+            "",
+            passes=empty.completion.cycle.repeat_pass,
+            cycle=empty.completion.cycle,
+            output=empty.output,
+        )
+
+        checked = 0
+        sample = None
+        for inputs in (1, 2):
+            for mask in range(1 << (1 << inputs)):
+                table = f"{mask:0{1 << inputs}b}"
+                template = esolangs.generate("A Painter Ant", table)
+                for row in range(len(table)):
+                    bits = [int(bit) for bit in f"{row:0{inputs}b}"]
+                    source = esolangs.instantiate("A Painter Ant", template, bits)
+                    native = esolangs.run("A Painter Ant", source, timeout=5)
+                    cycle = native.completion.cycle
+                    _check(
+                        _Machine,
+                        source.source,
+                        passes=cycle.repeat_pass,
+                        cycle=cycle,
+                        output=native.output,
+                    )
+                    sample = source, native
+                    checked += 1
+        assert checked == 72
+        source, native = sample
+        cycle = native.completion.cycle
+        for damaged in (
+            replace(cycle, state=("wrong",)),
+            replace(cycle, commands_per_pass=cycle.commands_per_pass + 1),
+        ):
+            with pytest.raises(AssertionError):
+                _check(
+                    _Machine,
+                    source.source,
+                    passes=damaged.repeat_pass,
+                    cycle=damaged,
+                    output=native.output,
+                )
+        with pytest.raises(AssertionError):
+            _check(
+                _Machine,
+                source.source,
+                passes=cycle.repeat_pass,
+                cycle=cycle,
+                output=native.output + "!",
+            )
 
 
 class TestFormat:

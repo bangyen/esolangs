@@ -532,3 +532,14 @@ and the 0.9 timing floor hold, including block-boundary timings. Installed
 Python 3.12–3.15 passes the admitted corpus, six live fault controls and isolated
 route comparisons. README and usage guidance no longer advertise the retired
 source facade. Catalog-wide acceptance remains open.
+
+Periodic acceptance covers all 72 one-/two-input rows plus the valid empty
+program: 73 guarded workers match native results, including zero-stride
+completion. Debugger replay reaches both cycle boundaries without publishing
+completed output. The independent complex-coordinate model checks grid,
+position, instruction, workspace components, visited extent and rendered output;
+repeated dumping preserves workspace and output. Damaged states, strides and
+pictures have live controls. The matrix passes installed Python 3.12–3.15.
+Together the small-table route audits account for all 8,208 row requests across
+114 Boolean backends: 8,172 executed and 36 capped. The matrices are repeated against the current operational implementations. Larger-corpus, branching and
+remaining semantic-resource acceptance stays open.
