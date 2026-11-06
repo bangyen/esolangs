@@ -48,6 +48,7 @@ Owners are workstreams, not individual contributors.
 | Permissive worker envelopes and nested proof fields | Results | Retired; missing/extra fields, unknown error kinds, duplicate terminals and contradictory output fail with retained prefixes | Exact canonical stream, result and evidence schemas |
 | Normalized worker hex spellings and duplicate snapshot-set members | Results | Retired; request, result and parent-decoder refusals retain signed huge integers, byte snapshots and partial output | Encoder spellings and distinct immutable members |
 | Malformed PNG metadata version downgrade | Persistence | Retired; missing, mistyped and nonpositive versions fail with live controls in `tests/runtime/raster/test_png.py` | Plain PNG, valid v1 provenance and future positive-integer versions |
+| Absent gzip member accepted as an empty program | Persistence | Retired; constructor, portable and worker refusals retain actual empty members and explicit unavailable execution | Valid UTF-8 gzip members, including empty and concatenated streams |
 | Superseded serialization decoders/converters | Persistence | Not applicable: no persisted format was superseded; version-1 JSON/PNG and unlabelled native files remain supported | Retain canonical decoders; convert only after a format cutover |
 
 For each family, locate consumers before changing it; close the row only after
@@ -888,3 +889,14 @@ the three interpreter-only languages: VM and debugger retain 1,747 boundaries
 each, with transported history unchanged by later steps. The CSV records runtime
 import isolation separately from pending certification claims; bounded route
 parity does not complete independent accounting or whole-language acceptance.
+
+Compressed source requires an actual gzip member. Zero-byte payloads no longer
+masquerade as valid empty programs through constructors, version-1 documents
+or workers; failures precede execution. Valid empty, padded and concatenated
+members retain their bytes and UTF-8 behavior. Before/after portable records
+and executed results match for all 117 languages, including 115 gzip-wrapped
+text executions and 345 empty-member documents with present, null or omitted
+limits. Supported version-1 settings and limit forms remain unchanged.
+Installed Python 3.12–3.15 repeats these checks with the image extra and all
+115 text languages without it; PNG still requires the extra. All 832 packaged
+Python modules match source bytes.

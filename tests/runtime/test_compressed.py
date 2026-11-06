@@ -23,6 +23,12 @@ def test_streaming_text_round_trip_and_size(tmp_path: Path) -> None:
     program.save(path)
     assert text_source(path) == source.removesuffix("\n")
     assert program.to_gzip() == CompressedText.from_chunks((source,)).to_gzip()
+    empty = CompressedText.from_chunks(("",))
+    assert len(empty) == 0
+    assert str(empty) == ""
+    assert empty.data
+    with pytest.raises(esolangs.ProgramError, match="no gzip member"):
+        CompressedText(b"")
 
 
 @pytest.mark.parametrize(

@@ -30,6 +30,17 @@ def test_default_settings_distinction(choices) -> None:
     restored = esolangs.load_program(REFERENCE, document)
     assert restored.settings == choices
     assert esolangs.run("Brainfuck", restored).output == "\x01"
+    empty = ProgramArtifact(
+        esolangs.CompressedText.from_chunks(("",)), REFERENCE, choices
+    )
+    document = esolangs.dump_program(REFERENCE, empty)
+    restored = esolangs.load_program(REFERENCE, document)
+    assert restored == empty
+    assert esolangs.run(REFERENCE, restored).output == ""
+    damaged = json.loads(document)
+    damaged["source"] = ""
+    with pytest.raises(esolangs.ProgramError, match="no gzip member"):
+        esolangs.load_program(REFERENCE, json.dumps(damaged))
 
 
 @pytest.mark.parametrize(

@@ -392,6 +392,17 @@ def test_worker_requires_the_complete_request(monkeypatch, capsys):
             REFERENCE, source, "A", max_steps=2, max_output=1
         )
         assert serve(valid) == "A"
+    empty = _isolated._request_wire(
+        REFERENCE, esolangs.CompressedText.from_chunks(("",)), ""
+    )
+    assert serve(empty) == ""
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({**empty, "program": ""})))
+    _isolated._worker()
+    reply = json.loads(capsys.readouterr().out.splitlines()[-1])
+    assert reply["error"] == "ProgramError"
+    assert reply["execution"] is None
+    with pytest.raises(esolangs.ProgramError, match="no gzip member"):
+        _decode(json.dumps(reply), expired=False)
     huge = 1 << 15000
     for predicate in (
         lambda lang: lang.runtime.random,

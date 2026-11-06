@@ -96,6 +96,8 @@ class CompressedText:
 
     def chunks(self) -> Iterator[str]:
         """Yield decoded text in bounded chunks, validating gzip and UTF-8."""
+        if not self.data:
+            raise ProgramError("gzip source contains no gzip member")
         try:
             decoder = codecs.getincrementaldecoder("utf-8")()
             with gzip.GzipFile(fileobj=io.BytesIO(self.data)) as stream:
