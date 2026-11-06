@@ -249,7 +249,7 @@ Package : IO, outer {
 """
         assert _run(code) == "1"
 
-    def test_io_inside_a_called_function_works(self) -> None:
+    def test_io_inside_a_called_function_works(self, monkeypatch) -> None:
         """A callee's ``charPut`` reaches the shell, in call order."""
         code = """
 Dependency {
@@ -266,6 +266,50 @@ Package : IO, d {
 } p;
 """
         assert _run(code) == "A1"
+
+        from dataclasses import replace
+
+        from esolangs.languages.packlang.interpreter import _Frame
+        from esolangs.languages.packlang.interpreter._workspace import _term
+        from esolangs.runtime._state import WorkspaceVariant
+        from scripts.benchmark import state_bits
+
+        def forbidden(*_args):
+            raise AssertionError("cycle serializer reached accounting")
+
+        machine = _Machine(code, ScriptedIO())
+        saved = machine.workspace_snapshot()
+        retained = {saved}
+        machine._program_key = (("poisoned",),)
+        monkeypatch.setattr(_Frame, "key", forbidden)
+        monkeypatch.setattr(_Machine, "snapshot", forbidden)
+        assert machine.workspace_snapshot() == saved
+        pending = returned = called = False
+        while not machine.halted:
+            machine.step()
+            current = machine.workspace_snapshot()
+            frames = machine.frames
+            machine.frames = tuple(replace(f, store=f.store[::-1]) for f in frames)
+            assert machine.workspace_snapshot() == current
+            machine.frames = frames
+            pending |= any(f.pending is not None for f in frames)
+            returned |= any(f.returned is not None for f in frames)
+            called |= len(frames) > 1
+            assert saved in retained
+        assert pending
+        assert returned
+        assert called
+        assert machine.io.getvalue() == "A1"
+        term, expected = ("lit", 1), WorkspaceVariant("lit", (1,))
+        for _ in range(5000):
+            term = ("not", term)
+            expected = WorkspaceVariant("not", (expected,))
+        observed = _term(term)
+        assert observed == expected
+        assert hash(observed) == hash(expected)
+        assert state_bits(observed, {}) == 1
+        assert _term(("lit", 1)) != _term(("done", 1))
+        assert _term(None) != _term(())
 
     def test_input_inside_a_called_function_works(self) -> None:
         """The read port reaches a callee too, not only the entry function."""

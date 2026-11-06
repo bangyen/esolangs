@@ -79,7 +79,7 @@ Nope.,no,declared,not-applicable,declared,owned-adapter,nope-v1,not-applicable,p
 NOR machine,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,nor-machine-v1,pending-backend-audit,pending-acceptance-audit,open
 NQ,yes,declared,declared,declared,owned-adapter,nq-v1,pending-backend-audit,pending-acceptance-audit,open
 Object disoriented,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,object-disoriented-v1,pending-backend-audit,pending-acceptance-audit,open
-Packlang,yes,legacy-discovery,declared,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+Packlang,yes,legacy-discovery,declared,legacy-discovery,owned-adapter,packlang-v1,pending-backend-audit,pending-acceptance-audit,open
 Painfuck,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,painfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Parenthesys,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,parenthesys-v1,pending-backend-audit,pending-acceptance-audit,open
 Piet,yes,declared,not-applicable,declared,owned-adapter,piet-v1,pending-backend-audit,pending-acceptance-audit,open

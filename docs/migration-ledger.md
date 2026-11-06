@@ -107,7 +107,7 @@ acceptance audit after the active separation work lands. Storage policy needs
 its priced comparison and explicit decision. These remain open even where an
 implementation pilot already passed.
 
-Accounting now has 113 explicit or inherited semantic adapters; 4 language
+Accounting now has 114 explicit or inherited semantic adapters; 3 language
 rows still use snapshot accounting. Declarations do not close lifecycle,
 storage-policy or catalog-wide acceptance requirements.
 
@@ -245,3 +245,7 @@ physical cache partitions and spare capacity are excluded.
 Fargo declares typed numeric, array, callable and continuation values. Accounting
 no longer renders values with repr; callable arity/raw arguments and unordered
 bindings retain their semantics independently of cycle keys.
+
+Packlang accounts for live frames, unordered stores and typed suspended
+expressions independently of frame keys and repr. Input progress and successful
+reads remain explicit; the read-only program fingerprint is excluded.

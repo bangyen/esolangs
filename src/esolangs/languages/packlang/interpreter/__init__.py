@@ -101,8 +101,10 @@ from esolangs.languages.packlang.interpreter._values import (
     _set,
     _truth,
 )
+from esolangs.languages.packlang.interpreter._workspace import _WORKSPACE_MODEL, _term
 from esolangs.runtime._drive import drive
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 
 # There is no recursion ceiling.  A call pushes a frame rather than
@@ -591,6 +593,36 @@ class _Machine:
         entry is the statement its caller is waiting on.
         """
         return [frame.pc for frame in self.frames[:-1]]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture live frames and values independently of cycle serialization."""
+        return _WORKSPACE_MODEL.capture(
+            frames=tuple(
+                WorkspaceVariant(
+                    "frame",
+                    (
+                        frame.func.package,
+                        frame.func.name,
+                        frame.pc,
+                        frozenset(
+                            (
+                                slot,
+                                tuple(_int(cell) for cell in value)
+                                if isinstance(value, tuple)
+                                else _int(value),
+                            )
+                            for slot, value in frame.store
+                        ),
+                        frame.result,
+                        _term(frame.pending),
+                        frame.returned,
+                    ),
+                )
+                for frame in self.frames
+            ),
+            input_cursor=self.io.progress(),
+            input_reads=self._input_reads,
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
