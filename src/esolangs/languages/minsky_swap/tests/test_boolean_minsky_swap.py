@@ -5,7 +5,6 @@ from itertools import pairwise
 import pytest
 
 import esolangs
-from esolangs import compat
 from tests.support.generator_support import measure_run
 from tests.support.witness_tables import witnesses
 
@@ -43,28 +42,31 @@ class TestParameterizedMinskySwap:
         assert example.fill is not None
         for n in (1, 2, 3, 5):
             table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
-            template = compat.generate("Minsky Swap", table, width=width)
-            pairs = minsky_swap_setters(template, n)
+            template = esolangs.generate("Minsky Swap", table, width=width)
+            pairs = minsky_swap_setters(template.source, n)
             assert len(set(pairs)) == 1
             assert len(pairs[0][0]) == len(pairs[0][1])
-            assert max(map(len, template.splitlines())) <= max(
+            assert max(map(len, template.source.splitlines())) <= max(
                 width, 8 + len(str(2 ** (n + 1) + 7 * n + 6))
             )
             for row in range(1 << n):
                 bits = list(map(int, f"{row:0{n}b}"))
-                program = compat.instantiate("Minsky Swap", str(template), bits)
-                assert self.run_minsky_swap(program) == table[row]
-                assert self.run_minsky_swap(example.fill(template, bits)) == table[row]
+                program = esolangs.instantiate("Minsky Swap", template, bits)
+                assert self.run_minsky_swap(program.source) == table[row]
+                assert (
+                    self.run_minsky_swap(example.fill(template.source, bits))
+                    == table[row]
+                )
 
     def test_short_rmsn_public_floor(self) -> None:
 
-        template = compat.generate("Minsky Swap", "0110", width=1)
-        assert template.setters == (("decnz(2);", "inc();   "),) * 2
-        assert max(map(len, template.splitlines())) == 9
+        template = esolangs.generate("Minsky Swap", "0110", width=1)
+        assert template.bindings.setters == (("decnz(2);", "inc();   "),) * 2
+        assert max(map(len, template.source.splitlines())) == 9
         for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
-            program = compat.instantiate("Minsky Swap", template, bits)
-            assert max(map(len, program.splitlines())) == 9
-            assert self.run_minsky_swap(program) == str(bits[0] ^ bits[1])
+            program = esolangs.instantiate("Minsky Swap", template, bits)
+            assert max(map(len, program.source.splitlines())) == 9
+            assert self.run_minsky_swap(program.source) == str(bits[0] ^ bits[1])
 
     @pytest.mark.parametrize("n", [1, 2])
     def test_single_digit_router_for_every_small_table(self, n: int) -> None:
@@ -72,20 +74,26 @@ class TestParameterizedMinskySwap:
 
         for table in witnesses(n):
             for width in (1, 8, 9, 10, 15):
-                tagged = compat.generate("Minsky Swap", table, width=width)
-                assert tagged.setters is not None
-                assert len(tagged.setters) == n
-                assert len(set(tagged.setters)) == 1
-                assert len(tagged.setters[0][0]) == len(tagged.setters[0][1])
-                for template in (tagged, str(tagged)):
+                generated = esolangs.generate("Minsky Swap", table, width=width)
+                assert len(generated.bindings.setters) == n
+                assert len(set(generated.bindings.setters)) == 1
+                assert len(generated.bindings.setters[0][0]) == len(
+                    generated.bindings.setters[0][1]
+                )
+                for template in (
+                    generated,
+                    esolangs.load_program(
+                        "Minsky Swap", esolangs.dump_program("Minsky Swap", generated)
+                    ),
+                ):
                     for row in range(1 << n):
                         bits = list(map(int, f"{row:0{n}b}"))
-                        program = compat.instantiate(
+                        program = esolangs.instantiate(
                             "Minsky Swap", template, bits, truth_table=table
                         )
-                        assert self.run_minsky_swap(program) == table[row]
+                        assert self.run_minsky_swap(program.source) == table[row]
                     with pytest.raises(esolangs.TemplateError):
-                        compat.instantiate(
+                        esolangs.instantiate(
                             "Minsky Swap",
                             template,
                             [0] * n,
@@ -108,7 +116,7 @@ class TestParameterizedMinskySwap:
     def test_examples_fill_sets_either_bit_in_either_position(
         self, bits: tuple[int, int]
     ) -> None:
-        """``_fill_minsky_swap`` spells a set bit above the LSB too."""
+        """Native setters preserve set bits above the least significant one."""
         from esolangs.generation.examples import AND2
         from esolangs.languages.minsky_swap.generator import minsky_swap
 
@@ -126,11 +134,11 @@ class TestParameterizedMinskySwap:
         _check_pair_leaves()
         for table in ("1010", "0011", "0101", "01010000", "00001111"):
             n = len(table).bit_length() - 1
-            template = compat.generate("Minsky Swap", table)
+            template = esolangs.generate("Minsky Swap", table)
             for row in range(1 << n):
                 bits = list(map(int, f"{row:0{n}b}"))
-                program = compat.instantiate("Minsky Swap", str(template), bits)
-                assert self.run_minsky_swap(program) == table[row]
+                program = esolangs.instantiate("Minsky Swap", template, bits)
+                assert self.run_minsky_swap(program.source) == table[row]
 
 
 def _check_constant_templates() -> None:
@@ -144,19 +152,19 @@ def _check_constant_templates() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = compat.generate("Minsky Swap", bit * (1 << n), **options)
-                pairs = minsky_swap_setters(template, n)
+                template = esolangs.generate("Minsky Swap", bit * (1 << n), **options)
+                pairs = minsky_swap_setters(template.source, n)
                 assert len(set(pairs)) == 1
                 assert len(pairs[0][0]) == len(pairs[0][1])
-                assert len(runs(template, TEMPLATE_CHAR, pairs)) == n
+                assert len(runs(template.source, TEMPLATE_CHAR, pairs)) == n
                 sizes = set()
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    program = compat.instantiate(
-                        "Minsky Swap", str(template), list(map(int, f"{row:0{n}b}"))
+                    program = esolangs.instantiate(
+                        "Minsky Swap", template, list(map(int, f"{row:0{n}b}"))
                     )
-                    sizes.add(len(program))
+                    sizes.add(len(program.source))
                     io = ScriptedIO()
-                    machine = _Machine(program, io)
+                    machine = _Machine(program.source, io)
                     written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
@@ -173,7 +181,9 @@ def _check_constant_templates() -> None:
                     ).bit_length() + 3 * int(bit)
                 assert len(sizes) == 1
     assert (
-        sum(len(compat.generate("Minsky Swap", f"{v:08b}")) for v in range(256))
+        sum(
+            len(esolangs.generate("Minsky Swap", f"{v:08b}").source) for v in range(256)
+        )
         == 21396
     )
 
@@ -189,13 +199,13 @@ def _check_pair_leaves() -> None:
     for table in ("00011011", "0000001100111111", "0000000011111111"):
         n = len(table).bit_length() - 1
         for width in (None, 1, 10):
-            template = compat.generate("Minsky Swap", table, width=width)
-            assert len(set(minsky_swap_setters(str(template), n))) == 1
+            template = esolangs.generate("Minsky Swap", table, width=width)
+            assert len(set(minsky_swap_setters(template.source, n))) == 1
             for row in range(1 << n):
                 bits = list(map(int, f"{row:0{n}b}"))
-                code = compat.instantiate("Minsky Swap", str(template), bits)
+                code = esolangs.instantiate("Minsky Swap", template, bits)
                 io = ScriptedIO("sentinel\n")
-                machine = _Machine(code, io)
+                machine = _Machine(code.source, io)
                 while not machine.halted:
                     machine.step()
                 assert io.getvalue() == ""

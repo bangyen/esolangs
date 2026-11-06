@@ -6,7 +6,6 @@ from itertools import product
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.languages.a_painter_ant.descriptor import PAIR
 from esolangs.languages.a_painter_ant.generator import a_painter_ant
@@ -109,7 +108,7 @@ def test_constant_roots_keep_one_origin(bit: str) -> None:
     table = bit * 8
     assert a_painter_ant(table) == "P" + "$S" * 3 + ("p" if bit == "0" else "")
     for options in ({}, {"width": 40}, {"balance": True}):
-        program = compat.generate("A Painter Ant", table, **options)
+        program = esolangs.generate("A Painter Ant", table, **options)
         assert _evaluate("A Painter Ant", program, inputs=3) == table
 
 
@@ -168,12 +167,12 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = compat.generate("A Painter Ant", bit * (1 << n), **options)
-                assert template.count("$") == n
+                template = esolangs.generate("A Painter Ant", bit * (1 << n), **options)
+                assert template.source.count("$") == n
                 for bits in ([0] * n, [1] * n):
-                    program = compat.instantiate("A Painter Ant", template, bits)
+                    program = esolangs.instantiate("A Painter Ant", template, bits)
                     io = ScriptedIO("7")
-                    machine = _Machine(program, io)
+                    machine = _Machine(program.source, io)
                     for _ in machine.prog:
                         machine.step()
                     after = machine.snapshot()
@@ -198,13 +197,13 @@ def _check_near_unanimity() -> None:
         plain = "".join(str(int(row.bit_count() >= n - 1)) for row in range(1 << n))
         for table in (plain, plain.translate(str.maketrans("01", "10"))):
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = compat.generate("A Painter Ant", table, **options)
-                assert template.count("$") == n
+                template = esolangs.generate("A Painter Ant", table, **options)
+                assert template.source.count("$") == n
                 for row in range(1 << n):
                     bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-                    source = compat.instantiate("A Painter Ant", template, bits)
+                    source = esolangs.instantiate("A Painter Ant", template, bits)
                     io = ScriptedIO("Q")
-                    machine = _Machine(source, io)
+                    machine = _Machine(source.source, io)
                     written = WrittenState(machine.snapshot()) if row == 0 else None
                     for _ in machine.prog:
                         machine.step()
@@ -218,7 +217,10 @@ def _check_near_unanimity() -> None:
                     assert machine.snapshot() == after
                     if written:
                         bound = 2 * (n + 1) * (1 << n) + 3
-                        assert written.bits <= bound + (len(source) - 1).bit_length()
+                        assert (
+                            written.bits
+                            <= bound + (len(source.source) - 1).bit_length()
+                        )
                     machine.interrupt()
                     machine.step()
                     assert (

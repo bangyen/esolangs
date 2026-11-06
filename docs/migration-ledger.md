@@ -58,12 +58,12 @@ converts artifacts into tagged source.
 
 Shared generation, VM-row and proof-measurement helpers retain artifacts through
 execution. Size callbacks and native sample fixtures read explicit source after
-binding. Shared support modules no longer call the source facade; remaining
-owned test callers still require migration.
+binding. Shared support and owned language tests no longer call the source facade;
+other repository callers still require migration.
 
 Owned source-inspection tests for 91 text backends use explicit artifact source
-for native machines, layout checks and size pins. Other owned template callers
-remain open.
+for native machines, layout checks and size pins. Other repository callers remain
+open.
 
 Owned Boolean tests for Underload, Eval, Cyclic tag, Bitwise Cyclic Tag, Stisp
 and FRACTRAN retain template bindings. Persistence checks restore artifacts;
@@ -86,6 +86,10 @@ scaled-Piet execution and native Line persistence retain artifact metadata.
 
 Owned `///` callers retain templates through evaluation and portable round trips.
 Native recognition, source bounds and workspace checks read explicit bodies.
+
+All owned template callers retain bindings through public execution. Their test
+fixture rejects source-facade calls and plain-text binding recovery, including
+captured aliases. Native fixtures declare setters explicitly.
 
 Accounting and analysis rows require owned witnesses, not just a declared hook
 or a recognized helper name. Certification needs an installed-package/lazy-import

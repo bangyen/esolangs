@@ -5,7 +5,6 @@ from itertools import pairwise
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs import run as execute
 from esolangs.generation.helpers import TEMPLATE_CHAR, permute_truth_table, runs
 from esolangs.languages.back.generator import _back_ordered
@@ -48,37 +47,39 @@ class TestParameterizedBack:
         for n in (1, 2, 3, 6, 9, 12):
             for bit in "01":
                 for width in (None, 1):
-                    template = generate("Back", bit * (1 << n), width=width).source
+                    template = generate("Back", bit * (1 << n), width=width)
                     sizes = set()
                     for row in range(1 << n) if n <= 3 else (0, (1 << n) - 1):
-                        source = instantiate("Back", template, row_bits(row, n)).source
-                        sizes.add(len(source))
+                        source = instantiate("Back", template, row_bits(row, n))
+                        sizes.add(len(source.source))
                         machine = make_vm("Back", source)
                         written = WrittenState(_capture_workspace(machine))
                         steps = run_to_answer(
-                            machine, cap=execution(n, template), sample=written.sample
+                            machine,
+                            cap=execution(n, template.source),
+                            sample=written.sample,
                         )
                         assert steps is not None
                         machine.step()  # Back dumps on the post-halt step.
                         written.sample(_capture_workspace(machine))
                         assert read_answer("Back", machine.output) == bit
-                        assert written.bits <= workspace(n, template)
+                        assert written.bits <= workspace(n, template.source)
                         if width is None:
                             if row == 0:
-                                assert steps + 1 == execution(n, template)
-                            assert written.bits == workspace(n, template)
+                                assert steps + 1 == execution(n, template.source)
+                            assert written.bits == workspace(n, template.source)
                     assert len(sizes) == 1
 
         table = "0" * 63 + "1"
-        template = generate("Back", table).source
-        assert "\\" in template  # a nonconstant beam layout, not a flat constant
+        template = generate("Back", table)
+        assert "\\" in template.source  # a nonconstant beam layout, not a flat constant
         commands = bits = 0
         for row, expected in enumerate(table):
-            source = instantiate("Back", template, row_bits(row, 6)).source
+            source = instantiate("Back", template, row_bits(row, 6))
             machine = make_vm("Back", source)
             written = WrittenState(_capture_workspace(machine))
             steps = run_to_answer(
-                machine, cap=execution(6, template), sample=written.sample
+                machine, cap=execution(6, template.source), sample=written.sample
             )
             assert steps is not None
             machine.step()
@@ -87,8 +88,8 @@ class TestParameterizedBack:
             commands = max(commands, steps)
             bits = max(bits, written.bits)
         assert (commands, bits) == (52, 24)
-        assert commands <= execution(6, template)
-        assert bits <= workspace(6, template)
+        assert commands <= execution(6, template.source)
+        assert bits <= workspace(6, template.source)
         _check_exact_preload_bounds()
 
     def test_a_falling_beam_reuses_the_next_zero_subtree(self) -> None:
@@ -151,17 +152,17 @@ class TestParameterizedBack:
         for n in range(1, 13):
             for bit in "01":
                 for options in ({}, {"width": 1}, {"balance": True}):
-                    template = compat.generate("Back", bit * (1 << n), **options)
-                    assert template.count(TEMPLATE_CHAR) == n
+                    template = esolangs.generate("Back", bit * (1 << n), **options)
+                    assert template.source.count(TEMPLATE_CHAR) == n
                     if not options:
-                        assert len(template) == 3 * n + 1 + int(bit)
+                        assert len(template.source) == 3 * n + 1 + int(bit)
                     rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
                     for row in rows:
                         bits = list(map(int, format(row, f"0{n}b")))
-                        program = compat.instantiate("Back", str(template), bits)
-                        assert len(program) == len(template)
+                        program = esolangs.instantiate("Back", template, bits)
+                        assert len(program.source) == len(template.source)
                         io = ScriptedIO()
-                        machine = _Machine(program.splitlines(), io)
+                        machine = _Machine(program.source.splitlines(), io)
                         written = WrittenState(machine.workspace_snapshot())
                         steps = 0
                         while not machine.halted and steps < 3 * n + 4:
@@ -183,7 +184,10 @@ class TestParameterizedBack:
                                 + n.bit_length()
                             )
         assert (
-            sum(len(compat.generate("Back", format(v, "08b"))) for v in range(256))
+            sum(
+                len(esolangs.generate("Back", format(v, "08b")).source)
+                for v in range(256)
+            )
             == 61542
         )
 
@@ -273,16 +277,16 @@ def test_descending_loader_preserves_inputs_and_answers(width: int) -> None:
     runner = TestParameterizedBack()
     for n in range(1, 7):
         table = "".join(str((row * 73 + row // 3) & 1) for row in range(1 << n))
-        plain = compat.generate("Back", table)
-        template = compat.generate("Back", table, width=width)
-        floor = max(map(len, plain.splitlines())) - 2
-        assert max(map(len, template.splitlines())) <= max(width, floor)
+        plain = esolangs.generate("Back", table)
+        template = esolangs.generate("Back", table, width=width)
+        floor = max(map(len, plain.source.splitlines())) - 2
+        assert max(map(len, template.source.splitlines())) <= max(width, floor)
         sizes = set()
         for row, expected in enumerate(table):
             bits = list(map(int, f"{row:0{n}b}"))
-            program = compat.instantiate("Back", str(template), bits, truth_table=table)
-            sizes.add(len(program))
-            assert runner.run_back(program, n) == expected
+            program = esolangs.instantiate("Back", template, bits, truth_table=table)
+            sizes.add(len(program.source))
+            assert runner.run_back(program.source, n) == expected
         assert len(sizes) == 1
 
 
@@ -319,15 +323,19 @@ def test_vertical_leaf_finish_preserves_every_small_table() -> None:
     runner = TestParameterizedBack()
     for n in range(1, 4):
         for table in witnesses(n):
-            template = compat.generate("back", table, width=1)
+            template = esolangs.generate("back", table, width=1)
             for row, expected in enumerate(table):
                 bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]
-                code = compat.instantiate(
-                    "back", str(template), bits, truth_table=table
-                )
-                assert runner.run_back(code, n) == expected
-    assert max(map(len, compat.generate("back", "0110", width=1).splitlines())) == 1
-    assert max(map(len, compat.generate("back", "0110", width=8).splitlines())) == 5
+                code = esolangs.instantiate("back", template, bits, truth_table=table)
+                assert runner.run_back(code.source, n) == expected
+    assert (
+        max(map(len, esolangs.generate("back", "0110", width=1).source.splitlines()))
+        == 1
+    )
+    assert (
+        max(map(len, esolangs.generate("back", "0110", width=8).source.splitlines()))
+        == 5
+    )
 
 
 @pytest.mark.parametrize("width", [1, 4, 7, 10, 80])
@@ -339,27 +347,37 @@ def test_parity_accumulator_keeps_public_slots_and_provenance(
 
     table = "".join(str((row.bit_count() & 1) ^ bias) for row in range(1 << n))
     runner = TestParameterizedBack()
-    tagged = compat.generate("Back", table, width=width)
-    assert tagged.setters == (("-", "+"),) * n
-    for template in (tagged, str(tagged)):
+    generated = esolangs.generate("Back", table, width=width)
+    assert generated.bindings.setters == (("-", "+"),) * n
+    for template in (
+        generated,
+        esolangs.load_program("Back", esolangs.dump_program("Back", generated)),
+    ):
         for row, expected in enumerate(table):
             bits = list(map(int, f"{row:0{n}b}"))
-            program = compat.instantiate("Back", template, bits, truth_table=table)
-            assert runner.run_back(program, n) == expected
-            assert len(program) == len(tagged)
+            program = esolangs.instantiate("Back", template, bits, truth_table=table)
+            assert runner.run_back(program.source, n) == expected
+            assert len(program.source) == len(generated.source)
             if width == 1:
-                assert max(map(len, program.splitlines())) == 1
+                assert max(map(len, program.source.splitlines())) == 1
         with pytest.raises(esolangs.TemplateError):
-            compat.instantiate("Back", template, [0] * n, truth_table="0" * len(table))
-    assert max(map(len, compat.generate("Back", table, width=1).splitlines())) == 1
+            esolangs.instantiate(
+                "Back", template, [0] * n, truth_table="0" * len(table)
+            )
+    assert (
+        max(map(len, esolangs.generate("Back", table, width=1).source.splitlines()))
+        == 1
+    )
 
 
 @pytest.mark.medium
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """Borrowed loads preserve all three physical positions around the held bit."""
+    from esolangs.languages.back.descriptor import PAIR
     from esolangs.languages.back.generator import back
 
     n = 6
+    bindings = esolangs.TemplateBindings(setters=(PAIR,) * (n + 1))
     inner = "".join(str(int(row.bit_count() == 1)) for row in range(1 << n))
     for at, cost in ((0, 209), (3, 117), (6, 117)):
         low = n - at
@@ -369,7 +387,8 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
         )
         program = back(table)
         assert len(program) - len(back(inner)) == cost
-        assert _evaluate("Back", program, inputs=n + 1) == table
+        template = esolangs.TemplateArtifact(program, "Back", bindings)
+        assert _evaluate("Back", template, inputs=n + 1) == table
 
 
 @pytest.mark.slow  # builds every permuting generator over several tables
@@ -500,9 +519,9 @@ def test_balance_races_the_folded_tree(n: int, side: int) -> None:
     from esolangs.generation.wrap import balance_score
 
     table = format(random.Random(131 * 0 + n).getrandbits(1 << n), f"0{1 << n}b")
-    comb = compat.generate("Back", table)
-    balanced = compat.generate("Back", table, balance=True)
-    assert balance_score(balanced)[0] == side < balance_score(comb)[0]
+    comb = esolangs.generate("Back", table)
+    balanced = esolangs.generate("Back", table, balance=True)
+    assert balance_score(balanced.source)[0] == side < balance_score(comb.source)[0]
     assert _evaluate("Back", balanced, inputs=n) == table
 
 
@@ -519,11 +538,11 @@ def _check_held_input_and_dump() -> None:
             for row in range(1 << n)
         )
         for options in ({}, {"width": 1}, {"balance": True}):
-            template = compat.generate("Back", table, **options)
+            template = esolangs.generate("Back", table, **options)
             for row in (0, (1 << n) // 3, (1 << n) - 1):
-                source = compat.instantiate("Back", template, row_bits(row, n))
+                source = esolangs.instantiate("Back", template, row_bits(row, n))
                 io = ScriptedIO("Q")
-                machine = _Machine(source.splitlines(), io)
+                machine = _Machine(source.source.splitlines(), io)
                 steps = 0
                 while not machine.halted:
                     machine.step()
@@ -535,8 +554,8 @@ def _check_held_input_and_dump() -> None:
                 assert io.position() == 0
                 assert io.input_char() == ord("Q")
     # Non-answer cells are storage/scratch; only cell n is the answer contract.
-    template = compat.generate("Back", "0001")
-    source = compat.instantiate("Back", template, [1, 0])
+    template = esolangs.generate("Back", "0001")
+    source = esolangs.instantiate("Back", template, [1, 0])
     assert execute("Back", source).output == "0 0 0"
 
 
@@ -554,17 +573,17 @@ def _check_exact_preload_bounds() -> None:
 
     for n in (1, 2, 3, 4, 5, 6, 7, 8, 9):
         area_table = witness(n)
-        template = compat.generate("Back", area_table)
-        assert grid_area(template) == _cells(n, template)
+        template = esolangs.generate("Back", area_table)
+        assert grid_area(template.source) == _cells(n, template.source)
         table = execution_witness(n)
-        template = compat.generate("Back", table)
-        source = compat.instantiate("Back", template, [1] * n)
+        template = esolangs.generate("Back", table)
+        source = esolangs.instantiate("Back", template, [1] * n)
         machine = make_vm("Back", source)
-        assert run_to_answer(machine) == execution(n, template)
+        assert run_to_answer(machine) == execution(n, template.source)
         machine.step()
         assert esolangs.read_answer("Back", machine.output) == table[-1]
         if n in (3, 6):
             machine = make_vm("Back", source)
             state = WrittenState(_capture_workspace(machine))
             run_to_answer(machine, sample=state.sample)
-            assert state.bits == workspace(n, template)
+            assert state.bits == workspace(n, template.source)

@@ -6,7 +6,6 @@ from itertools import pairwise, product
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.exceptions import TruthTableError
 from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.languages.crement.generator import (
@@ -116,22 +115,22 @@ class TestCrementTree:
         for n in range(1, 13):
             for bit in "01":
                 for options in ({}, {"width": 1}, {"balance": True}):
-                    template = compat.generate("Crement", bit * (1 << n), **options)
+                    template = esolangs.generate("Crement", bit * (1 << n), **options)
                     for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                         bits = list(map(int, f"{row:0{n}b}"))
-                        program = compat.instantiate("Crement", template, bits)
-                        assert len(program.split()) == 3 * (n + 1)
-                        assert program.split()[3:] == [
+                        program = esolangs.instantiate("Crement", template, bits)
+                        assert len(program.source.split()) == 3 * (n + 1)
+                        assert program.source.split()[3:] == [
                             v for b in bits for v in ("+J", "0", str(b))
                         ]
-                        machine = _Machine(program)
+                        machine = _Machine(program.source)
                         before = machine.snapshot()
                         written = WrittenState(machine.workspace_snapshot())
                         machine.step()
                         written.sample(machine.workspace_snapshot())
                         assert machine.halted == (bit == "0")
                         assert (machine.snapshot() == before) == (bit == "1")
-                        assert written.bits == workspace(n, template)
+                        assert written.bits == workspace(n, template.source)
 
     def test_constant_subtrees_fold(self) -> None:
         """A one-dependency table is one node; parity is five, shared."""
@@ -228,17 +227,17 @@ class TestCrementSharing:
 @pytest.mark.parametrize("table", ["00", "0011"])
 def test_narrow_balance_regime_edge_executes(table) -> None:
     """The smallest tables reaching an otherwise-untaken balance arm."""
-    balanced = compat.generate("Crement", table, balance=True)
+    balanced = esolangs.generate("Crement", table, balance=True)
     assert _evaluate("Crement", balanced, inputs=len(table).bit_length() - 1) == table
 
 
 def test_balanced_packed_template_instantiates_for_its_table() -> None:
     """A balanced, line-packed template still fills for its own table."""
     table = "0001011000111110"
-    template = str(compat.generate("Crement", table, balance=True))
+    template = esolangs.generate("Crement", table, balance=True)
     for row, expected in enumerate(table):
         bits = [int(c) for c in format(row, "04b")]
-        source = compat.instantiate("Crement", template, bits, truth_table=table)
+        source = esolangs.instantiate("Crement", template, bits, truth_table=table)
         assert diverges("Crement", source, "") is (expected == "1")
 
 
@@ -296,13 +295,11 @@ class TestCrementSweepPins:
         assert len(runs(generic, TEMPLATE_CHAR, (PAIR,) * 3)) == 3
 
     def test_balanced_shape_is_pinned(self) -> None:
-        program = str(
-            compat.generate(
-                "Crement",
-                "00110000000011001001110100010000100110101010000001010110001111101001100110011110110101110001100000010010000001011100101111111101110011100010100111011100000001011101100110110011011101101010000100100011111100001011001111010011100110000101101111010100000110110110110001000100100111100010010101101001000010010101110001011101001100111011101011110000100001000001101011101001110011100001101010101110101010101100011101010111010010110110010010010011010010100011011001000100100010110011101110000110011111010111100001010011",
-                balance=True,
-            )
-        )
+        program = esolangs.generate(
+            "Crement",
+            "00110000000011001001110100010000100110101010000001010110001111101001100110011110110101110001100000010010000001011100101111111101110011100010100111011100000001011101100110110011011101101010000100100011111100001011001111010011100110000101101111010100000110110110110001000100100111100010010101101001000010010101110001011101001100111011101011110000100001000001101011101001110011100001101010101110101010101100011101010111010010110110010010010011010010100011011001000100100010110011101110000110011111010111100001010011",
+            balance=True,
+        ).source
         assert (
             len(program),
             program.count("\n") + 1,

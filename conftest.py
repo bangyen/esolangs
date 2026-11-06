@@ -124,6 +124,30 @@ def _repair_coverage_lock() -> Generator[None, None, None]:
             lock.release()
 
 
+@pytest.fixture(autouse=True)
+def _owned_template_boundaries(
+    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Keep owned execution cases off the retired source/template protocols."""
+    if not request.node.nodeid.startswith("src/esolangs/languages/"):
+        return
+    import esolangs
+
+    def forbidden(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("owned tests reached legacy source/template adaptation")
+
+    for module, names in (
+        (esolangs, ("_recover_template",)),
+        (
+            getattr(esolangs, "compat", None),
+            ("generate", "instantiate", "load_program", "source_adapter"),
+        ),
+    ):
+        for name in names:
+            if hasattr(module, name):
+                monkeypatch.setattr(module, name, forbidden)
+
+
 @pytest.fixture
 def spawned(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
     """Every worker process the isolated runner starts, in order."""

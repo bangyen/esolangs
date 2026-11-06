@@ -5,7 +5,6 @@ import random
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.languages.arrowqueue.descriptor import PAIR
 from tests.support.witness_tables import row_bits
@@ -116,10 +115,10 @@ def test_constant_balance_and_setters_off_path(bit: str) -> None:
         _check_constants()
     n = 8
     table = bit * (1 << n)
-    template = compat.generate("ArrowQueue", table)
-    assert template.count(TEMPLATE_CHAR) == n
+    template = esolangs.generate("ArrowQueue", table)
+    assert template.source.count(TEMPLATE_CHAR) == n
     for options in ({}, {"width": 1}, {"width": 5}, {"width": 6}, {"balance": True}):
-        program = compat.generate("ArrowQueue", table, **options)
+        program = esolangs.generate("ArrowQueue", table, **options)
         assert _evaluate("ArrowQueue", program, inputs=n) == table
 
 
@@ -177,9 +176,9 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             table = bit * (1 << n)
-            default = compat.generate("ArrowQueue", table)
-            span = max(map(len, default.splitlines()))
-            assert compat.generate("ArrowQueue", table, width=span) == default
+            default = esolangs.generate("ArrowQueue", table)
+            span = max(map(len, default.source.splitlines()))
+            assert esolangs.generate("ArrowQueue", table, width=span) == default
             for options in (
                 {},
                 {"width": 1},
@@ -187,8 +186,8 @@ def _check_constants() -> None:
                 {"width": 7},
                 {"balance": True},
             ):
-                template = compat.generate("ArrowQueue", table, **options)
-                rows = template.splitlines()
+                template = esolangs.generate("ArrowQueue", table, **options)
+                rows = template.source.splitlines()
                 slots = {
                     (r, c)
                     for r, row in enumerate(rows)
@@ -200,8 +199,8 @@ def _check_constants() -> None:
                     assert max(map(len, rows)) <= max(4, options["width"])
                 for bits in ([0] * n, [1] * n):
                     io = ScriptedIO("7")
-                    program = compat.instantiate("ArrowQueue", template, bits)
-                    machine = _Machine(program.splitlines(), io)
+                    program = esolangs.instantiate("ArrowQueue", template, bits)
+                    machine = _Machine(program.source.splitlines(), io)
                     seen = set()
                     for _ in range(32):
                         if machine.halted or machine.snapshot() in seen:

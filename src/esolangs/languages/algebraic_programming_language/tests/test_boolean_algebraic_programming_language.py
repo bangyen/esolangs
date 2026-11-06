@@ -355,21 +355,19 @@ def test_xor_arithmetic_family_reaches_four_columns() -> None:
         algebraic_programming_language,
     )
 
-    program = esolangs.generate(
-        "Algebraic Programming Language", "0110", width=1
-    ).source
-    assert max(map(len, program.splitlines())) == 4
-    assert len(program) == 49
+    program = esolangs.generate("Algebraic Programming Language", "0110", width=1)
+    assert max(map(len, program.source.splitlines())) == 4
+    assert len(program.source) == 49
     for row, expected in enumerate("0110"):
         stdin = "\n".join(format(row, "02b"))
-        for source in (program, str(program)):
+        for source in (program, program.source):
             assert (
                 execute_program(
                     "Algebraic Programming Language", source, stdin=stdin
                 ).output
                 == expected + "\n"
             )
-    assert algebraic_programming_language("0110", 4) == program
+    assert algebraic_programming_language("0110", 4) == program.source
     assert max(map(len, algebraic_programming_language("0110", 5).splitlines())) == 5
 
 
