@@ -9,7 +9,6 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.cli import main
 from esolangs.cli.io import _write_output
 from tests.support.cli_support import _failure, _refused, call_both, call_main
@@ -42,12 +41,12 @@ class TestSmallerReportsFromRoundFifteen:
     def test_a_bad_truth_table_echoes_the_argument(self) -> None:
         """It printed ``sorted(set(...))``: "nonsense" came back as "enos"."""
         with pytest.raises(esolangs.TruthTableError, match="got 'nonsense'"):
-            compat.generate(REFERENCE, "nonsense")
+            esolangs.generate(REFERENCE, "nonsense")
 
     def test_it_also_names_the_offending_character(self) -> None:
         """So a long table does not have to be diffed by eye."""
         with pytest.raises(esolangs.TruthTableError, match="at position 2"):
-            compat.generate(REFERENCE, "01x1")
+            esolangs.generate(REFERENCE, "01x1")
 
     @pytest.mark.parametrize(
         ("name", "phrase"),
@@ -87,7 +86,7 @@ class TestRoundSixQol:
     ) -> None:
         """The pipeline the help now recommends, at an odd arity."""
         path = tmp_path / "tg.txt"
-        path.write_text(compat.generate(stream, "10010110"))
+        esolangs.save_program(esolangs.generate(stream, "10010110"), path)
         got = ""
         for row in range(8):
             stdin = call_main(["encode", stream, f"{row:03b}"], capsys)

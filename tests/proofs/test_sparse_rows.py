@@ -16,7 +16,6 @@ empty checks answers only, for a route with no bound yet.
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.debugger import make_vm
 from esolangs.registry import LANGUAGES
 from esolangs.vm import _capture_workspace
@@ -44,7 +43,7 @@ def _cases(column: str) -> list[object]:
 
 
 def _step_row(
-    name: str, program: esolangs.Program, table: str, row: int, *, written: bool
+    name: str, program: esolangs.Artifact, table: str, row: int, *, written: bool
 ) -> tuple[int, int]:
     """Steps and written bits for one named row, on a freshly parsed VM."""
     facts = esolangs.describe(name)
@@ -55,7 +54,7 @@ def _step_row(
     n = len(table).bit_length() - 1
     bits = row_bits(row, n)
     if facts["parameterized"]:
-        source, stdin = compat.instantiate(name, program, bits), ""
+        source, stdin = esolangs.instantiate(name, program, bits), ""
     else:
         source, stdin = program, esolangs.encode_inputs(name, bits, truth_table=table)
     machine = make_vm(name, source, stdin=stdin)
@@ -81,8 +80,8 @@ def test_sparse_execution_rows(name: str, n: int) -> None:
     """Named rows answer correctly; the witness row attains E exactly."""
     checked = "execution" in _SPARSE_ROWS[name][2]
     for spec in _specs(name, n):
-        program = compat.generate(name, spec.table)
-        claim = EXECUTION_FORMULAS[name][0](n, program) if checked else None
+        program = esolangs.generate(name, spec.table)
+        claim = EXECUTION_FORMULAS[name][0](n, program.source) if checked else None
         for row in spec.rows:
             steps, _ = _step_row(name, program, spec.table, row, written=False)
             if claim is not None:
@@ -95,8 +94,8 @@ def test_sparse_execution_rows(name: str, n: int) -> None:
 def test_sparse_workspace_rows(name: str, n: int) -> None:
     """The sampled witness row attains W exactly."""
     for spec in _specs(name, n):
-        program = compat.generate(name, spec.table)
-        claim = WORKSPACE_FORMULAS[name][0](n, program)
+        program = esolangs.generate(name, spec.table)
+        claim = WORKSPACE_FORMULAS[name][0](n, program.source)
         row = spec.witness if spec.ws_witness is None else spec.ws_witness
         _, bits = _step_row(name, program, spec.table, row, written=True)
         assert bits == claim, f"{name} n={n}: {bits} != {claim}"

@@ -9,7 +9,6 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.cli import main
 from esolangs.registry import LANGUAGES
 from tests.support.cli_support import _program, _refused, call_main, run_cli
@@ -113,7 +112,7 @@ class TestInProcess:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         program = tmp_path / "prog.txt"
-        program.write_text(compat.generate(REFERENCE, "1101"))
+        esolangs.save_program(esolangs.generate(REFERENCE, "1101"), program)
         stdin = esolangs.encode_inputs(REFERENCE, [1, 0])
         out = call_main(["run", REFERENCE, str(program)], capsys, stdin=stdin)
         assert esolangs.read_answer(REFERENCE, out) == "0"
@@ -222,7 +221,7 @@ class TestProgramFailuresAreReported:
         path.write_text(generated.stdout.rstrip("\n"))
         result = run_cli("run", name, str(path))
         assert result.returncode == 2
-        char = compat.generate(name, "0110").char
+        char = esolangs.generate(name, "0110").bindings.char
         assert f"unfilled runs of {char!r}" in result.stderr
         assert "Traceback" not in result.stderr
 
@@ -257,7 +256,7 @@ class TestGenerateArgumentTypes:
     def test_a_non_integer_width_from_the_api_is_refused(self) -> None:
         """The CLI parses its width; a Python caller can pass anything."""
         with pytest.raises(ValueError, match="width must be an integer"):
-            compat.generate(REFERENCE, "0110", width="80")
+            esolangs.generate(REFERENCE, "0110", width="80")
 
 
 #: Commands refused with exit code 2, and what stderr must say.

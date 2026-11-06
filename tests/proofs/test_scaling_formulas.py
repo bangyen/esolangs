@@ -12,7 +12,7 @@ bounds were false while nothing measured them: one 14T where parity reaches
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.generation.helpers import grid_area
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES
@@ -63,14 +63,14 @@ def test_size_formulas_hold(name: str, n: int) -> None:
     formula, exact, _ = FORMULAS[name]
     reached = False
     for table in _tables(name, n):
-        program = compat.generate(name, table)
-        text = str(program)
+        program = esolangs.generate(name, table)
+        text = str(program.source)
         size = (
             len(text)
             if _UNIT[name] == "characters"
             else grid_area(text)
             if _UNIT[name] == "cells"
-            else _raster_area(program)
+            else _raster_area(program.source)
             if _UNIT[name] in _RASTER
             else text.count("\n") + 1
         )

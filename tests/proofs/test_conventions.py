@@ -7,7 +7,7 @@ import re
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.generation.examples import BooleanExample
 from tests.proofs.conventions import _embedding, _tables
 
@@ -73,9 +73,11 @@ def test_the_structural_conventions_hold_where_the_template_is_made() -> None:
     for name in _embedding():
         for n in _ARITIES:
             for table in _tables(n):
-                template = compat.generate(name, table)
-                assert template.inputs == n
-                assert all(len(zero) == len(one) for zero, one in template.setters)
+                template = esolangs.generate(name, table)
+                assert template.bindings.inputs == n
+                assert all(
+                    len(zero) == len(one) for zero, one in template.bindings.setters
+                )
 
 
 @pytest.mark.slow  # builds and fills every embedding generator at n=2, 3 and 5

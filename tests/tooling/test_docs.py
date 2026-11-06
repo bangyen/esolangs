@@ -15,9 +15,8 @@ from urllib.parse import unquote
 import pytest
 
 import esolangs
-from esolangs import encode_inputs
+from esolangs import encode_inputs, generate
 from esolangs.cli import HELP, USAGE
-from esolangs.compat import generate
 from esolangs.registry import LANGUAGES
 
 ROOT = pathlib.Path(__file__).parents[2]
@@ -272,7 +271,7 @@ def _readme_program() -> str:
 
 
 def test_readme_program_is_what_the_generator_emits() -> None:
-    assert _readme_program() == generate(_readme_language(), _TABLE)
+    assert _readme_program() == generate(_readme_language(), _TABLE).source
 
 
 def test_readme_program_computes_xor_on_every_row() -> None:

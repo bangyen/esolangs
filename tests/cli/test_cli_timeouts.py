@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import cli, compat
+from esolangs import cli
 from esolangs.cli import HELP
 from tests.support.cli_support import _LOOPS, _program, _refused, call_both, call_main
 from tests.support.generator_support import evaluate_generated
@@ -39,7 +39,7 @@ class TestTimeoutValuesAreCheckedOnce:
     ) -> None:
         """Between the floor and the ceiling, nothing changes."""
         path = tmp_path / "p.txt"
-        path.write_text(compat.generate(REFERENCE, "0110"))
+        esolangs.save_program(esolangs.generate(REFERENCE, "0110"), path)
         out = call_main(
             ["run", "--timeout", "100000", REFERENCE, str(path)],
             capsys,

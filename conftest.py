@@ -129,9 +129,7 @@ def _owned_template_boundaries(
     request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Keep migrated execution cases off legacy source/template adaptation."""
-    if not request.node.nodeid.startswith(
-        ("src/esolangs/languages/", "tests/generators/", "tests/runtime/", "tests/api/")
-    ):
+    if not request.node.nodeid.startswith(("src/esolangs/languages/", "tests/")):
         return
     import esolangs
 

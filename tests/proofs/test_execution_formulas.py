@@ -10,7 +10,7 @@ import tomllib
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.registry import LANGUAGES
 from scripts.docs.resource_evidence import PACKAGES, parse_bounds
 from tests.proofs._ledger import load as load_ledger
@@ -55,7 +55,7 @@ def test_every_formula_cell_is_checked() -> None:
     broken = copy.deepcopy(data)
     broken["execution"]["expression"] = "0"
     bound = parse_bounds(REFERENCE, broken)["execution"]
-    program = compat.generate(REFERENCE, "0110")
+    program = esolangs.generate(REFERENCE, "0110")
     commands, _ = measure(REFERENCE, "0110", program=program)
     with pytest.raises(AssertionError, match="bound"):
-        assert commands <= bound.formula(2, program), "mutated execution bound"
+        assert commands <= bound.formula(2, program.source), "mutated execution bound"

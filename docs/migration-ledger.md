@@ -110,6 +110,10 @@ Public API tests use canonical generation, filling and loading, including lazy
 subprocesses and documented-error witnesses. The facade/recovery guard covers
 the API group; record immutability and retained settings replace string tags.
 
+CLI, proof, purity and documentation callers retain artifacts. Native size and
+formula inputs read explicit source; execution retains bindings. The test guard
+covers all groups; remaining facade calls are live fault controls or surface pins.
+
 Accounting and analysis rows require owned witnesses, not just a declared hook
 or a recognized helper name. Certification needs an installed-package/lazy-import
 acceptance audit after the active separation work lands. Storage policy needs
