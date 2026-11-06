@@ -6,6 +6,8 @@ from unittest.mock import patch
 import pytest
 
 from checks import verify_no_exception_leaks as leaks
+from esolangs.runtime._capabilities import MachineCapabilities
+from esolangs.runtime._definition import RuntimeSpec
 
 
 @pytest.fixture
@@ -179,7 +181,18 @@ def test_language_corpus_is_independent_of_other_examples(monkeypatch) -> None:
     monkeypatch.setattr(
         leaks,
         "LANGUAGES",
-        {name: Language(name) for name in ("before", "fixture")},
+        {
+            name: Language(
+                name,
+                runtime=RuntimeSpec(
+                    "fixture",
+                    machine_preparation="prepare_machine",
+                    completion_entrypoint="_execute",
+                    capabilities=MachineCapabilities(),
+                ),
+            )
+            for name in ("before", "fixture")
+        },
     )
     monkeypatch.setattr(
         leaks, "load_certification", lambda _lang: CertificationSpec(fuzz_max_digits=0)

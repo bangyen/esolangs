@@ -17,6 +17,8 @@ from unittest import mock
 import pytest
 
 from esolangs.registry._backend import BooleanBackend
+from esolangs.runtime._capabilities import MachineCapabilities
+from esolangs.runtime._definition import RuntimeSpec
 from tests.tooling.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -451,7 +453,15 @@ def test_generator_scope_keeps_transitive_dependents(
         build.__module__ = f"esolangs.languages.{name}.generator"
         build.__name__ = name
         languages[name] = registry.Language(
-            name, id=name, backend=BooleanBackend(entrypoint=build)
+            name,
+            runtime=RuntimeSpec(
+                name,
+                machine_preparation="prepare_machine",
+                completion_entrypoint="_execute",
+                capabilities=MachineCapabilities(),
+            ),
+            id=name,
+            backend=BooleanBackend(entrypoint=build),
         )
     monkeypatch.setattr(registry, "LANGUAGES", languages)
     consumer = (
@@ -907,7 +917,15 @@ def colocated_scope(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Any:
 
         generate.__module__ = f"esolangs.languages.{slug}.generator"
         languages[slug] = registry.Language(
-            slug, id=slug, backend=BooleanBackend(entrypoint=generate)
+            slug,
+            runtime=RuntimeSpec(
+                slug,
+                machine_preparation="prepare_machine",
+                completion_entrypoint="_execute",
+                capabilities=MachineCapabilities(),
+            ),
+            id=slug,
+            backend=BooleanBackend(entrypoint=generate),
         )
         for relative in (
             f"src/esolangs/languages/{slug}/generator.py",

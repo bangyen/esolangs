@@ -517,5 +517,6 @@ class TestViews:
             def broken(self) -> int:
                 raise RuntimeError("no")
 
-        for names in (None, ("broken", "fine")):
-            assert machine_views(_Machine(), names) == (("fine", "7"),)
+        assert machine_views(_Machine(), ("broken", "fine")) == (("fine", "7"),)
+        with pytest.raises(TypeError):
+            machine_views(_Machine())

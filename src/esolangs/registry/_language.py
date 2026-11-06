@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._slug import canonical_id
+from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._definition import RuntimeSpec, SourceKind
 
 
@@ -35,7 +36,7 @@ class Language:
 
     # Identity.  ``id`` defaults to :func:`canonical_id` of the name.
     name: str
-    runtime: RuntimeSpec = field(default_factory=RuntimeSpec)
+    runtime: RuntimeSpec
     id: str = ""
     #: Other names :func:`~esolangs.registry.resolve` accepts.
     aliases: tuple[str, ...] = ()
@@ -46,7 +47,9 @@ class Language:
     example: Example = field(default_factory=Example)
 
     def __post_init__(self) -> None:
-        """Fill the id from the name when none is given."""
+        """Validate assembled capabilities and fill an absent canonical id."""
+        if not isinstance(self.runtime.capabilities, MachineCapabilities):
+            raise TypeError("runtime capabilities must be declared")
         if not self.id:
             object.__setattr__(self, "id", canonical_id(self.name))
 

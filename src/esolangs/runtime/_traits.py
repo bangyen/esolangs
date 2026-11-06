@@ -1,35 +1,25 @@
-"""Driving trait defaults shared by interpreter wrappers and runners."""
+"""Driving traits from explicit runtime capabilities."""
 
 from esolangs.runtime._capabilities import MachineCapabilities
-from esolangs.runtime._lifecycle import Completion, completion
+from esolangs.runtime._lifecycle import Completion
 
-_DEFAULTS = {
-    "self_halts": True,
-    "dumps_on_the_post_halt_step": False,
-    "steppable_to_answer": True,
-    "eof_is_a_value": False,
-}
+_TRAITS = (
+    "self_halts",
+    "dumps_on_the_post_halt_step",
+    "steppable_to_answer",
+    "eof_is_a_value",
+)
 
 
-def trait(
-    machine: object, name: str, capabilities: MachineCapabilities | None = None
-) -> bool:
-    """Read a driving trait from a machine class or instance."""
-    if capabilities is not None:
-        if name == "dumps_on_the_post_halt_step":
-            return capabilities.completion is Completion.POST_HALT
-        if name == "steppable_to_answer":
-            return capabilities.completion is not Completion.PERIODIC
-        return bool(getattr(capabilities, name))
+def trait(capabilities: MachineCapabilities, name: str) -> bool:
+    """Return one declared or completion-derived driving trait."""
     if name == "dumps_on_the_post_halt_step":
-        return completion(machine) is Completion.POST_HALT
+        return capabilities.completion is Completion.POST_HALT
     if name == "steppable_to_answer":
-        return completion(machine) is not Completion.PERIODIC
-    return bool(getattr(machine, name, _DEFAULTS[name]))
+        return capabilities.completion is not Completion.PERIODIC
+    return bool(getattr(capabilities, name))
 
 
-def traits(
-    machine: object, capabilities: MachineCapabilities | None = None
-) -> dict[str, bool]:
-    """Return the driving traits with their shared defaults."""
-    return {name: trait(machine, name, capabilities) for name in _DEFAULTS}
+def traits(capabilities: MachineCapabilities) -> dict[str, bool]:
+    """Return the runtime's declared driving traits."""
+    return {name: trait(capabilities, name) for name in _TRAITS}

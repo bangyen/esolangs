@@ -41,6 +41,7 @@ def test_consecutive_rotations_compose(count) -> None:
 def test_batched_run_matches_single_steps(seed, commands, stdin, monkeypatch) -> None:
     from esolangs.languages.taglate import interpreter as taglate
     from esolangs.runtime._drive import drive
+    from esolangs.runtime._lifecycle import Completion
     from esolangs.runtime.io import ScriptedIO
 
     original = taglate._Machine
@@ -56,7 +57,7 @@ def test_batched_run_matches_single_steps(seed, commands, stdin, monkeypatch) ->
     reference = original([seed, commands], ports[0])
     errors = []
     for execute in (
-        lambda: drive(reference),
+        lambda: drive(reference, policy=Completion.HALTED),
         lambda: taglate.run([seed, commands], ports[1]),
     ):
         try:

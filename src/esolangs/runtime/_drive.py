@@ -9,7 +9,6 @@ from esolangs.runtime._lifecycle import (
     BoundaryCycle,
     Completion,
     CompletionReport,
-    completion,
 )
 from esolangs.runtime._validate import check_whole
 
@@ -35,11 +34,11 @@ def finalize(
     machine: Machine,
     *,
     cycle: BoundaryCycle | None = None,
-    policy: Completion | None = None,
+    policy: Completion,
 ) -> None:
     """Write final output after a halt or an evidenced boundary repetition."""
-    if policy is None:
-        policy = completion(machine)
+    if not isinstance(policy, Completion):
+        raise TypeError("completion must be a Completion policy")
     if policy is Completion.PERIODIC:
         if cycle is None:
             raise ValueError("periodic completion needs boundary-cycle evidence")
@@ -58,12 +57,12 @@ def finalize(
             machine.step()
 
 
-def drive(machine: Machine, *, policy: Completion | None = None) -> CompletionReport:
+def drive(machine: Machine, *, policy: Completion) -> CompletionReport:
     """Run to halt, including a language's declared final output step."""
+    if not isinstance(policy, Completion):
+        raise TypeError("completion must be a Completion policy")
     while not machine.halted:
         machine.step()
-    if policy is None:
-        policy = completion(machine)
     finalize(machine, policy=policy)
     return POST_HALT_REPORT if policy is Completion.POST_HALT else HALTED_REPORT
 
@@ -72,11 +71,11 @@ def drive_periodic(
     machine: PeriodicMachine,
     commands_per_pass: int,
     *,
-    policy: Completion | None = None,
+    policy: Completion,
 ) -> BoundaryCycle:
     """Detect a boundary cycle with Brent's rule; the stride is one whole pass."""
     check_whole(commands_per_pass, "commands_per_pass")
-    if (completion(machine) if policy is None else policy) is not Completion.PERIODIC:
+    if policy is not Completion.PERIODIC:
         raise ValueError("periodic driving requires periodic completion")
     anchor = machine.snapshot()
     first_pass = 0

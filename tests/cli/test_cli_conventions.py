@@ -11,6 +11,7 @@ import esolangs
 from esolangs.cli import HELP, USAGE
 from esolangs.registry import wiki_url
 from esolangs.registry._backend import BooleanBackend
+from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._definition import RuntimeSpec
 from tests.support.cli_support import call_main
 from tests.support.pick import first
@@ -29,7 +30,12 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
     languages = {
         "Template Choice": Language(
             "Template Choice",
-            RuntimeSpec("template_choice"),
+            RuntimeSpec(
+                "template_choice",
+                machine_preparation="prepare_machine",
+                completion_entrypoint="_execute",
+                capabilities=MachineCapabilities(),
+            ),
             backend=BooleanBackend(
                 entrypoint=build, template=TemplateSpec(pair=("0", "1"))
             ),
@@ -38,6 +44,9 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
             "Dialect Choice",
             RuntimeSpec(
                 "dialect_choice",
+                machine_preparation="prepare_machine",
+                completion_entrypoint="_execute",
+                capabilities=MachineCapabilities(),
                 dialect=lambda mode="plain": mode,
                 dialect_values={"mode": ("plain", "with spaces")},
                 dialect_defaults={"mode": "plain"},
@@ -56,7 +65,12 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
     languages.clear()
     languages["Capped"] = Language(
         "Capped",
-        RuntimeSpec("capped"),
+        RuntimeSpec(
+            "capped",
+            machine_preparation="prepare_machine",
+            completion_entrypoint="_execute",
+            capabilities=MachineCapabilities(),
+        ),
         backend=BooleanBackend(entrypoint=build, max_inputs=1),
     )
     assert help_module._capability_examples() == ("", "")

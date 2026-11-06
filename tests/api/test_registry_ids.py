@@ -7,6 +7,8 @@ import pytest
 from esolangs.registry import LANGUAGES, resolve
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._slug import canonical_id
+from esolangs.runtime._capabilities import MachineCapabilities
+from esolangs.runtime._definition import RuntimeSpec
 
 
 def test_catalog_identifiers_resolve_and_keep_their_owned_namespace() -> None:
@@ -56,6 +58,12 @@ def test_a_language_cannot_both_wrap_and_refuse_to() -> None:
     with pytest.raises(ValueError, match="exclude each other"):
         Language(
             "X",
+            runtime=RuntimeSpec(
+                "fixture",
+                machine_preparation="prepare_machine",
+                completion_entrypoint="_execute",
+                capabilities=MachineCapabilities(),
+            ),
             backend=BooleanBackend(
                 entrypoint=str, wrap=wrap_chars, no_wrap="a break changes it"
             ),
@@ -70,9 +78,24 @@ def test_parameterized_follows_the_backend_independently_of_examples() -> None:
 
     embedded = Language(
         "X",
+        runtime=RuntimeSpec(
+            "fixture",
+            machine_preparation="prepare_machine",
+            completion_entrypoint="_execute",
+            capabilities=MachineCapabilities(),
+        ),
         backend=BooleanBackend(entrypoint=str, template=TemplateSpec(pair=("a", "b"))),
     )
     assert embedded.parameterized
     assert replace(embedded, example=Example(table="01", bits=(1,))).parameterized
-    reader = Language("X", example=Example(table="01", bits=(1,)))
+    reader = Language(
+        "X",
+        runtime=RuntimeSpec(
+            "fixture",
+            machine_preparation="prepare_machine",
+            completion_entrypoint="_execute",
+            capabilities=MachineCapabilities(),
+        ),
+        example=Example(table="01", bits=(1,)),
+    )
     assert not reader.parameterized

@@ -105,10 +105,18 @@ _DESCRIPTOR = '''"""Runtime and compiler capabilities for {name}."""
 from esolangs.registry._language import Language
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._functions import FunctionRef
+from esolangs.runtime._capabilities import DebugSpec, MachineCapabilities
+from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime._definition import RuntimeSpec
 
 LANGUAGE = Language(
-    "{name}", RuntimeSpec("{slug}", category="{category}"),
+    "{name}", RuntimeSpec(
+        "{slug}", category="{category}",
+        machine_preparation="prepare_machine", completion_entrypoint="_execute",
+        capabilities=MachineCapabilities(
+            completion=Completion.HALTED, debug=DebugSpec(ip="ind")
+        ),
+    ),
     backend=BooleanBackend(entrypoint=FunctionRef(
         "esolangs.languages.{slug}.generator", "{slug}", ("truth_table",)
     )),
@@ -118,9 +126,17 @@ LANGUAGE = Language(
 _INTERPRETER_DESCRIPTOR = '''"""Runtime capabilities for {name}."""
 
 from esolangs.registry._language import Language
+from esolangs.runtime._capabilities import DebugSpec, MachineCapabilities
+from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime._definition import RuntimeSpec
 
-LANGUAGE = Language("{name}", RuntimeSpec("{slug}", category="{category}"))
+LANGUAGE = Language("{name}", RuntimeSpec(
+        "{slug}", category="{category}",
+        machine_preparation="prepare_machine", completion_entrypoint="_execute",
+        capabilities=MachineCapabilities(
+            completion=Completion.HALTED, debug=DebugSpec(ip="ind")
+        ),
+    ))
 '''
 
 _GENERATOR_TEST = '''"""Tests for the {name} Boolean generator."""
@@ -234,7 +250,9 @@ def _unregistered(name: str, slug: str) -> list[Gap]:
     return [
         Gap(
             descriptor,
-            f'declare LANGUAGE = Language("{name}", RuntimeSpec("{slug}")); '
+            f'declare LANGUAGE = Language("{name}", '
+            f'runtime=RuntimeSpec("{slug}", ...)) with explicit '
+            "machine_preparation, completion_entrypoint and capabilities; "
             "add a BooleanBackend with a FunctionRef entrypoint for a generator, "
             "split=True only when run() takes source lines, "
             "and the Boolean I/O contract; "

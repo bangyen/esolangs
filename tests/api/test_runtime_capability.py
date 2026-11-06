@@ -53,7 +53,11 @@ class Barrier(importlib.abc.MetaPathFinder):
 
 sys.meta_path.insert(0, Barrier())
 schema = runpy.run_path(sys.argv[1])
-record = schema[sys.argv[2]]()
+options = {}
+if sys.argv[2] == 'RuntimeSpec':
+    options = dict(machine_preparation='prepare_machine',
+                   completion_entrypoint='_execute', capabilities=object())
+record = schema[sys.argv[2]](**options)
 assert is_dataclass(record)
 field = fields(record)[0]
 try:

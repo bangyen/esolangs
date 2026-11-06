@@ -54,11 +54,3 @@ class CompletionReport:
 
 HALTED_REPORT = CompletionReport(Completion.HALTED)
 POST_HALT_REPORT = CompletionReport(Completion.POST_HALT)
-
-
-def completion(machine: object) -> Completion:
-    """Read a declared policy; ordinary machines complete at halt."""
-    policy = getattr(machine, "completion", Completion.HALTED)
-    if not isinstance(policy, Completion):
-        raise TypeError("completion must be a Completion policy")
-    return policy

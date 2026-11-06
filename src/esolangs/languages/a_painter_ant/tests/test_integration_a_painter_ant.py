@@ -90,11 +90,12 @@ def test_unsupported_stepping_candidate_is_bounded() -> None:
 def test_periodic_completion_renders_at_the_repeated_pass_boundary(source, expected):
     from esolangs.languages.a_painter_ant.interpreter import _Machine
     from esolangs.runtime._drive import drive_periodic
+    from esolangs.runtime._lifecycle import Completion
     from esolangs.runtime.io import ScriptedIO
 
     io = ScriptedIO()
     machine = _Machine(source, io)
-    cycle = drive_periodic(machine, len(machine.prog))
+    cycle = drive_periodic(machine, len(machine.prog), policy=Completion.PERIODIC)
     assert cycle.state == machine.snapshot()
     assert machine.ip == 0
     assert io.getvalue() == expected

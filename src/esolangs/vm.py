@@ -277,12 +277,8 @@ class _DelegatingVM:
             ),
         )
         preparation = LANGUAGES[language].runtime.machine_preparation
-        if preparation is not None:
-            prepare = cast(MachinePreparation, getattr(module, preparation))
-            self._machine = prepare(code, options)(self._io)
-            return
-        state = module._Machine  # noqa: SLF001 - legacy interpreter adapter
-        self._machine = state(code, self._io, **options)
+        prepare = cast(MachinePreparation, getattr(module, preparation))
+        self._machine = prepare(code, options)(self._io)
 
     @property
     def output(self) -> str:
@@ -331,20 +327,15 @@ class _DelegatingVM:
     # position is a plain ``ind`` need not repeat it as ``ip``.
 
     def _view(self, name: str, default: object) -> Any:
-        """Read an explicit debug attribute, retaining legacy conventional names."""
-        if self._capabilities is None:
-            return getattr(self._machine, name, default)
+        """Read the declared debug attribute, or the absent-view default."""
         debug = self._capabilities.debug
         attribute = getattr(debug, name) if debug is not None else None
         return getattr(self._machine, attribute) if attribute is not None else default
 
     @property
     def ip(self) -> int | tuple[int, ...] | None:
-        """The current code position: ``ip``, else ``ind``, else ``None``."""
-        if self._capabilities is not None:
-            return cast("int | tuple[int, ...] | None", self._view("ip", None))
-        machine = self._machine
-        return getattr(machine, "ip", getattr(machine, "ind", None))
+        """The declared current code position, or ``None``."""
+        return cast("int | tuple[int, ...] | None", self._view("ip", None))
 
     @property
     def memory(self) -> list[int]:
@@ -369,39 +360,31 @@ class _DelegatingVM:
         """The stack, or empty where the language has none."""
         return list(self._view("stack", ()))
 
-    # Declared capabilities take precedence over legacy machine conventions.
-
     @property
     def self_halts(self) -> bool:
-        return trait(self._machine, "self_halts", self._capabilities)
+        return trait(self._capabilities, "self_halts")
 
     @property
     def ip_shape(self) -> IpShape:
-        if self._capabilities is not None:
-            debug = self._capabilities.debug
-            return debug.ip_shape if debug is not None else "offset"
-        return cast(IpShape, getattr(self._machine, "ip_shape", "offset"))
+        debug = self._capabilities.debug
+        return debug.ip_shape if debug is not None else "offset"
 
     @property
     def views(self) -> tuple[tuple[str, str], ...]:
-        if self._capabilities is not None:
-            debug = self._capabilities.debug
-            return machine_views(
-                self._machine, debug.views if debug is not None else ()
-            )
-        return machine_views(self._machine)
+        debug = self._capabilities.debug
+        return machine_views(self._machine, debug.views if debug is not None else ())
 
     @property
     def dumps_on_the_post_halt_step(self) -> bool:
-        return trait(self._machine, "dumps_on_the_post_halt_step", self._capabilities)
+        return trait(self._capabilities, "dumps_on_the_post_halt_step")
 
     @property
     def steppable_to_answer(self) -> bool:
-        return trait(self._machine, "steppable_to_answer", self._capabilities)
+        return trait(self._capabilities, "steppable_to_answer")
 
     @property
     def eof_is_a_value(self) -> bool:
-        return trait(self._machine, "eof_is_a_value", self._capabilities)
+        return trait(self._capabilities, "eof_is_a_value")
 
 
 def _capture_result(vm: VM) -> ExecutionResult:
@@ -440,16 +423,9 @@ def _capture_workspace(vm: VM) -> WorkspaceSnapshot:
 
 @cache
 def machine_traits(language: str) -> dict[str, bool]:
-    """Return ``language``'s driving traits without running anything.
-
-    Read off the state *class*, so :func:`esolangs.describe` needs no program.
-    """
+    """Return the language's declared driving traits without loading execution."""
     name = resolve(language)
-    capabilities = LANGUAGES[name].runtime.capabilities
-    if capabilities is not None:
-        return traits(None, capabilities)
-    state = interpreter_module(name)._Machine  # noqa: SLF001 - traits need no instance
-    return traits(state)
+    return traits(LANGUAGES[name].runtime.capabilities)
 
 
 @runtime_checkable

@@ -41,6 +41,25 @@ def test_scaffold_creates_source_generator_and_tests() -> None:
     stub = source.read_text()
     assert stub.startswith('"""Interpreter for Tiny Lang.')
     assert "<Language>" not in stub
+    declaration, implementation = {}, {}
+    exec(compile(descriptor.read_text(), str(descriptor), "exec"), declaration)
+    exec(compile(stub, str(source), "exec"), implementation)
+    runtime = declaration["LANGUAGE"].runtime
+    from esolangs.runtime.io import ScriptedIO
+
+    factory = implementation[runtime.machine_preparation]("+.", {})
+    first_io, second_io = ScriptedIO(), ScriptedIO()
+    first, second = factory(first_io), factory(second_io)
+    retained = second.snapshot()
+    first.step()
+    first.step()
+    assert first_io.getvalue() == "\x01"
+    assert second.snapshot() == retained
+    assert second_io.getvalue() == ""
+    native_io = ScriptedIO()
+    report = implementation[runtime.completion_entrypoint]("+.", native_io)
+    assert runtime.capabilities.accepts_native(report.kind)
+    assert native_io.getvalue() == first_io.getvalue()
     assert new_language.PLACEHOLDER in stub
     assert "def tiny_lang(truth_table: str) -> str:" in generator.read_text()
     assert "LANGUAGE" not in generator.read_text()

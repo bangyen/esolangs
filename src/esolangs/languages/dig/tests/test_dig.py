@@ -228,17 +228,18 @@ class TestStepMachine:
 def test_repeated_runs_keep_stores_private() -> None:
     from esolangs.languages.dig.interpreter import _Machine, prepare_machine
     from esolangs.runtime._drive import drive
+    from esolangs.runtime._lifecycle import Completion
 
     rows = [">$3~;:@"]
     factory = prepare_machine(rows, {})
     first = factory(ScriptedIO("12\n"))
     second = factory(ScriptedIO("7\n"))
     before = second.snapshot()
-    drive(first)
+    drive(first, policy=Completion.HALTED)
     assert first.code[0][4] == 12
     assert second.code[0][4] == ";"
     assert second.snapshot() == before
-    drive(second)
+    drive(second, policy=Completion.HALTED)
     assert second.code[0][4] == 7
     assert first.code[0][4] == 12
     assert _Machine(rows, ScriptedIO("")).code[0][4] == ";"

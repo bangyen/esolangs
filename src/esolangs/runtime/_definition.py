@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
@@ -43,17 +43,23 @@ class RuntimeSpec:
     empty_program: str = ""
     category: str = "other"
     #: Native entry point returning a CompletionReport.
-    completion_entrypoint: str = "_execute"
-    #: Typed preparation hook in the interpreter module; legacy discovery if absent.
-    machine_preparation: str | None = None
+    completion_entrypoint: str = field(kw_only=True)
+    #: Typed preparation hook in the interpreter module.
+    machine_preparation: str = field(kw_only=True)
     #: Defaults for every dialect choice; absent only without a dialect.
     dialect_defaults: Mapping[str, int | str] | None = None
 
-    #: Explicit machine traits and optional debug surface; legacy discovery if absent.
-    capabilities: MachineCapabilities | None = None
+    #: Explicit machine traits and optional debug surface.
+    capabilities: MachineCapabilities = field(kw_only=True)
 
     def __post_init__(self) -> None:
-        """Require declared defaults to cover exactly the dialect's choices."""
+        """Require lifecycle declarations and exact dialect defaults."""
+        if self.capabilities is None:
+            raise TypeError("runtime capabilities must be declared")
+        for name in ("machine_preparation", "completion_entrypoint"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value.isidentifier():
+                raise ValueError(f"runtime {name} must name a declared entry point")
         choices = self.dialect_values or {}
         if self.dialect is None:
             if self.dialect_defaults is not None or choices:

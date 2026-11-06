@@ -8,6 +8,7 @@ import esolangs
 from esolangs import _check_program, debugger
 from esolangs.exceptions import EsolangError, UnknownLanguageError
 from esolangs.registry import LANGUAGES
+from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._definition import RuntimeSpec
 from esolangs.runtime._validate import (
@@ -36,11 +37,22 @@ def test_seed_hint_tracks_registered_random_languages(monkeypatch) -> None:
         REFERENCE: LANGUAGES[REFERENCE],
         "Draws": Language(
             "Draws",
-            RuntimeSpec("draws", random=True),
+            RuntimeSpec(
+                "draws",
+                machine_preparation="prepare_machine",
+                completion_entrypoint="_execute",
+                capabilities=MachineCapabilities(),
+                random=True,
+            ),
         ),
         "Quiet": Language(
             "Quiet",
-            RuntimeSpec("quiet"),
+            RuntimeSpec(
+                "quiet",
+                machine_preparation="prepare_machine",
+                completion_entrypoint="_execute",
+                capabilities=MachineCapabilities(),
+            ),
         ),
     }
     monkeypatch.setattr(_execution, "LANGUAGES", registered)

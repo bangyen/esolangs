@@ -18,7 +18,6 @@ from esolangs.runtime._lifecycle import (
     HALTED_REPORT,
     BoundaryCycle,
     Completion,
-    completion,
 )
 from tests.support.samples import SAMPLES
 
@@ -49,7 +48,7 @@ class _Periodic:
 
 def test_periodic_completion_excludes_the_transient_and_keeps_pass_boundaries():
     machine = _Periodic()
-    cycle = drive_periodic(machine, 2)
+    cycle = drive_periodic(machine, 2, policy=Completion.PERIODIC)
     assert cycle.first_pass >= 1
     assert cycle.repeat_pass - cycle.first_pass == 3
     assert machine.steps == cycle.repeat_pass * cycle.commands_per_pass
@@ -61,7 +60,7 @@ def test_periodic_completion_excludes_the_transient_and_keeps_pass_boundaries():
 
 def test_an_empty_pass_still_renders_the_initial_state():
     machine = _Periodic()
-    cycle = drive_periodic(machine, 0)
+    cycle = drive_periodic(machine, 0, policy=Completion.PERIODIC)
     assert cycle == BoundaryCycle(10, 0, 1, 0)
     assert machine.steps == 0
     assert machine.output == "10"
@@ -70,9 +69,9 @@ def test_an_empty_pass_still_renders_the_initial_state():
 def test_periodic_completion_refuses_missing_or_stale_evidence():
     machine = _Periodic()
     with pytest.raises(ValueError, match="needs boundary-cycle evidence"):
-        finalize(machine)
+        finalize(machine, policy=Completion.PERIODIC)
     with pytest.raises(ValueError, match="no longer matches"):
-        finalize(machine, cycle=BoundaryCycle(0, 0, 1, 2))
+        finalize(machine, cycle=BoundaryCycle(0, 0, 1, 2), policy=Completion.PERIODIC)
     assert not machine.interrupted
     assert machine.steps == 0
     assert machine.output == ""
@@ -83,12 +82,12 @@ def test_halt_completion_never_executes_an_active_machine(policy):
     machine = _Periodic()
     machine.completion = policy
     with pytest.raises(ValueError, match="requires a halted machine"):
-        finalize(machine)
+        finalize(machine, policy=policy)
     with pytest.raises(ValueError, match="requires periodic completion"):
-        finalize(machine, cycle=BoundaryCycle(10, 0, 1, 2))
+        finalize(machine, cycle=BoundaryCycle(10, 0, 1, 2), policy=policy)
     assert machine.steps == 0
     with pytest.raises(ValueError, match="requires periodic completion"):
-        drive_periodic(machine, 2)
+        drive_periodic(machine, 2, policy=policy)
 
 
 def test_declared_post_halt_output_remains_available():
@@ -106,9 +105,12 @@ def test_declared_post_halt_output_remains_available():
                 self.halted = True
 
     machine = PostHalt()
-    drive(machine)
+    drive(machine, policy=Completion.POST_HALT)
     assert machine.output == "done"
-    assert completion(machine) is Completion.POST_HALT
+    with pytest.raises(TypeError, match="policy"):
+        drive(machine)
+    with pytest.raises(TypeError, match="Completion policy"):
+        drive(machine, policy=None)
 
 
 @pytest.mark.parametrize(
@@ -126,7 +128,7 @@ def test_a_timeout_does_not_finalize_periodic_output():
 
     machine = TimedOut()
     with pytest.raises(ExecutionTimeoutError, match="test deadline"):
-        drive_periodic(machine, 2)
+        drive_periodic(machine, 2, policy=Completion.PERIODIC)
     assert not machine.interrupted
     assert machine.output == ""
 
@@ -134,7 +136,7 @@ def test_a_timeout_does_not_finalize_periodic_output():
 @pytest.mark.parametrize("name", sorted(LANGUAGES))
 def test_interpreter_completion_has_one_declaration(name):
     machine = interpreter_module(name)._Machine
-    assert isinstance(completion(machine), Completion)
+    assert isinstance(LANGUAGES[name].runtime.capabilities.completion, Completion)
     assert "dumps_on_the_post_halt_step" not in vars(machine)
     assert "steppable_to_answer" not in vars(machine)
 
@@ -245,7 +247,7 @@ def test_native_completion_sets_preserve_the_stepped_policy():
     assert dynamic.accepts_native(Completion.PERIODIC)
     assert not dynamic.accepts_native(Completion.POST_HALT)
     assert dynamic.completion is Completion.HALTED
-    assert traits(None, dynamic)["steppable_to_answer"]
+    assert traits(dynamic)["steppable_to_answer"]
 
 
 @pytest.mark.medium
@@ -386,8 +388,26 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
 
 
 def test_every_runtime_declares_preparation_and_capabilities():
+    from dataclasses import replace
+
+    from esolangs.registry._language import Language
+    from esolangs.runtime import _lifecycle
+    from esolangs.runtime._definition import RuntimeSpec
+
+    assert not hasattr(_lifecycle, "completion")
+    with pytest.raises(TypeError, match="runtime"):
+        Language("undeclared")
+    with pytest.raises(TypeError, match="required keyword-only"):
+        RuntimeSpec("undeclared")
     for language in LANGUAGES.values():
         runtime = language.runtime
         assert runtime.machine_preparation
         assert runtime.completion_entrypoint
         assert runtime.capabilities is not None
+        with pytest.raises(TypeError, match="capabilities must be declared"):
+            replace(runtime, capabilities=None)
+        with pytest.raises(TypeError, match="capabilities must be declared"):
+            replace(language, runtime=replace(runtime, capabilities=object()))
+        for field in ("machine_preparation", "completion_entrypoint"):
+            with pytest.raises(ValueError, match="declared entry point"):
+                replace(runtime, **{field: ""})

@@ -1,26 +1,6 @@
-"""Discovery and compact rendering of interpreter-specific VM state."""
+"""Compact rendering of declared interpreter-specific VM state."""
 
 from __future__ import annotations
-
-_NOT_A_VIEW = frozenset(
-    {
-        "ip",
-        "memory",
-        "stack",
-        "output",
-        "halted",
-        "snapshot",
-        "branching_snapshot",
-        "branching_halted",
-        "branching_successors",
-        "frame_entry_key",
-        "self_halts",
-        "steppable_to_answer",
-        "dumps_on_the_post_halt_step",
-        "eof_is_a_value",
-        "ip_shape",
-    }
-)
 
 _VIEW_ITEMS = 8
 
@@ -43,17 +23,9 @@ def _read_view(machine: object, name: str) -> str | None:
 
 
 def machine_views(
-    machine: object, names: tuple[str, ...] | None = None
+    machine: object, names: tuple[str, ...]
 ) -> tuple[tuple[str, str], ...]:
-    """Render declared attributes, or discover legacy public properties."""
-    if names is None:
-        names = tuple(
-            name
-            for name, attribute in sorted(vars(type(machine)).items())
-            if not name.startswith("_")
-            and name not in _NOT_A_VIEW
-            and isinstance(attribute, property)
-        )
+    """Render only the declared attributes."""
     found = []
     for name in names:
         text = _read_view(machine, name)
