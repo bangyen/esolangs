@@ -5,7 +5,21 @@ from itertools import product
 import pytest
 
 from esolangs.languages.hot.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import missing_workspace, workspace_view
+
+_WORKSPACE = WorkspaceModel(
+    "hot-v1",
+    (
+        "expression",
+        "pending_bit",
+        "input_ended",
+        "output_odd",
+        "stopped",
+        "input_cursor",
+    ),
+)
 
 _ARITY = dict(zip("KSFABCD01", (2, 3, 1, 1, 1, 1, 1, 2, 0), strict=True))
 
@@ -119,10 +133,23 @@ def _model(source, stdin):
 
 
 def _check(factory, code, stdin):
+    expected = _model(code, stdin)
+
     def state(machine):
         return machine.stack, machine.pending, machine.ended, machine.odd
 
-    assert observed(factory, code, stdin, state, cap=16) == _model(code, stdin)
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (
+            (row[0][0][0], tuple(row[0][0][1:])),
+            *row[0][1:],
+            row[1],
+            row[-1],
+        ),
+        state,
+    )
+    assert observed(factory, code, stdin, checked, cap=16) == expected
 
 
 def check_raw_hot():
@@ -149,3 +176,6 @@ def check_raw_hot():
 
     with pytest.raises(AssertionError):
         _check(MissingMarker, "A K", "0")
+    for component in _WORKSPACE.components:
+        with pytest.raises(AssertionError):
+            _check(missing_workspace(_Machine, component), "A K", "0")

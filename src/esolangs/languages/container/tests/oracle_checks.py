@@ -10,6 +10,11 @@ from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed, stalled
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
+_WORKSPACE = WorkspaceModel(
+    "container-v1",
+    ("variables", "exit_code", "input_cursor", "input_reads"),
+)
+
 
 def _source(network):
     lines = []
@@ -67,29 +72,15 @@ def _check(factory, network, stdin):
     def state(machine):
         return machine.var, machine.exit_code, machine.tick, machine.state[3]
 
-    assert (
-        observed(
-            factory,
-            _source(network),
-            stdin,
-            workspace_view(
-                expected[1],
-                WorkspaceModel(
-                    "container-v1",
-                    ("variables", "exit_code", "input_cursor", "input_reads"),
-                ),
-                lambda row: (
-                    frozenset(row[0][0].items()),
-                    row[0][1],
-                    row[-1],
-                    row[0][3],
-                ),
-                state,
-            ),
-            cap=8,
-        )
-        == expected
-    ), network
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (frozenset(row[0][0].items()), row[0][1], row[-1], row[0][3]),
+        state,
+    )
+    assert observed(factory, _source(network), stdin, checked, cap=8) == expected, (
+        network
+    )
 
 
 def check_raw_container():
@@ -108,7 +99,7 @@ def check_raw_container():
 
     with pytest.raises(AssertionError):
         _check(stalled(_Machine), {"OUT": (0, ((1, "OUT", ">=", 0),))}, "")
-    for component in ("variables", "exit_code", "input_cursor", "input_reads"):
+    for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _check(
                 missing_workspace(_Machine, component),

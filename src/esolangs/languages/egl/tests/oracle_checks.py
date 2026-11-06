@@ -7,7 +7,22 @@ from decimal import Decimal
 import pytest
 
 from esolangs.languages.egl.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import missing_workspace, workspace_view
+
+_WORKSPACE = WorkspaceModel(
+    "egl-v1",
+    (
+        "instruction",
+        "row",
+        "column",
+        "cells",
+        "loops",
+        "input_cursor",
+        "input_reads",
+    ),
+)
 
 
 def _parse(source):
@@ -111,15 +126,13 @@ def _model(source, stdin):
 
 def _agrees(factory, source, stdin):
     expected = _model(source, stdin)
-    assert (
-        observed(
-            factory,
-            source,
-            stdin,
-            lambda m: (*m.state, tuple(m.memory), m.ip, m.snapshot()[-1]),
-        )
-        == expected
-    ), (source, stdin)
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (*row[0][:5], row[-1], row[0][-1]),
+        lambda m: (*m.state, tuple(m.memory), m.ip, m.snapshot()[-1]),
+    )
+    assert observed(factory, source, stdin, checked) == expected, (source, stdin)
     return expected
 
 
@@ -228,4 +241,7 @@ def check_raw_egl():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    return len(results), len(controls)
+    for component in _WORKSPACE.components:
+        with pytest.raises(AssertionError):
+            _agrees(missing_workspace(_Machine, component), "2,3:+", "")
+    return len(results), len(controls) + 7

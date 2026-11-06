@@ -6,7 +6,25 @@ import random
 import pytest
 
 from esolangs.languages.decleq.interpreter import _Machine, run
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.memory_oracles import agrees_memory, decleq
+from tests.support.workspace_oracle import missing_workspace
+
+_WORKSPACE = WorkspaceModel("decleq-v1", ("memory", "instruction", "input_cursor"))
+
+
+def _agrees(factory, oracle, code, stdin="", **options):
+    return agrees_memory(
+        factory,
+        oracle,
+        code,
+        stdin,
+        workspace=(
+            _WORKSPACE,
+            lambda row: (row.memory, row.cursor[0], row.consumed),
+        ),
+        **options,
+    )
 
 
 def check_raw_decleq():
@@ -52,7 +70,7 @@ def check_raw_decleq():
         )
     final = []
     final.extend(
-        agrees_memory(_Machine, decleq, source, stdin, runner=run)[-1]
+        _agrees(_Machine, decleq, source, stdin, runner=run)[-1]
         for source in corpus
         for stdin in ("", "\0Z", "λ\n")
     )
@@ -64,7 +82,7 @@ def check_raw_decleq():
     assert changed.cursor == (9,)  # jump was fetched before its cell was rewritten
     assert decleq("-1 5 0 -2 5", "Z")[-1].output == "Z"
 
-    loop = agrees_memory(_Machine, decleq, "6 7 0 0 0 0 0 0")
+    loop = _agrees(_Machine, decleq, "6 7 0 0 0 0 0 0")
     assert len(loop) == 33
     assert not loop[-1].halted
     assert loop[-1].error is None
@@ -79,4 +97,8 @@ def check_raw_decleq():
             return self.pc < 0 or self.pc >= self.old_end
 
     with pytest.raises(AssertionError):
-        agrees_memory(OldEnd, decleq, "-1 3 99", "\0")
+        _agrees(OldEnd, decleq, "-1 3 99", "\0")
+
+    for component in _WORKSPACE.components:
+        with pytest.raises(AssertionError):
+            _agrees(missing_workspace(_Machine, component), decleq, "0 0 -1")

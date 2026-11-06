@@ -14,6 +14,10 @@ from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
+_WORKSPACE = WorkspaceModel(
+    "between-v1", ("instruction", "variables", "exited", "input_cursor")
+)
+
 
 def _argument(value):
     if type(value) is bool:
@@ -122,23 +126,16 @@ def _check(factory, program, stdin="unused"):
     def state(machine):
         return tuple(sorted(machine.variables.items())), machine.ind, machine.exited
 
-    assert (
-        observed(
-            factory,
-            _source(program),
-            stdin,
-            workspace_view(
-                expected[1],
-                WorkspaceModel(
-                    "between-v1", ("instruction", "variables", "exited", "input_cursor")
-                ),
-                lambda row: (row[0][1], frozenset(row[0][0]), row[0][2], row[-1]),
-                state,
-            ),
-            cap=16,
-        )
-        == expected
-    ), (program, stdin)
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (row[0][1], frozenset(row[0][0]), row[0][2], row[-1]),
+        state,
+    )
+    assert observed(factory, _source(program), stdin, checked, cap=16) == expected, (
+        program,
+        stdin,
+    )
 
 
 def check_raw_between():
@@ -207,7 +204,7 @@ def check_raw_between():
     ):
         with pytest.raises(AssertionError):
             _check(factory, program, "1\n0\n")
-    for component in ("instruction", "variables", "exited", "input_cursor"):
+    for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _check(
                 missing_workspace(_Machine, component),

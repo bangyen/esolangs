@@ -12,6 +12,8 @@ from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
+_WORKSPACE = WorkspaceModel("taglate-v1", ("queue", "instruction", "input_cursor"))
+
 _ARITHMETIC = dict(zip("abcd", (add, sub, mul, floordiv), strict=True))
 
 
@@ -88,21 +90,17 @@ def _model(seed, tokens, stdin):
 def _check(factory, seed, tokens, stdin):
     expected = _model(seed, tokens, stdin)
     code = [seed, "g?qq".join(tokens)]
-    assert (
-        observed(
-            factory,
-            code,
-            stdin,
-            workspace_view(
-                expected[1],
-                WorkspaceModel("taglate-v1", ("queue", "instruction", "input_cursor")),
-                lambda row: (*row[0], row[-1]),
-                lambda m: (m.queue, m.ind),
-            ),
-            cap=16,
-        )
-        == expected
-    ), (seed, tokens, stdin)
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (*row[0], row[-1]),
+        lambda m: (m.queue, m.ind),
+    )
+    assert observed(factory, code, stdin, checked, cap=16) == expected, (
+        seed,
+        tokens,
+        stdin,
+    )
 
 
 def check_raw_taglate():
@@ -123,6 +121,6 @@ def check_raw_taglate():
 
     with pytest.raises(AssertionError):
         _check(MissingInput, "", ("h", "i"), "x")
-    for component in ("queue", "instruction", "input_cursor"):
+    for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _check(missing_workspace(_Machine, component), "A", ("a", "i"), "")

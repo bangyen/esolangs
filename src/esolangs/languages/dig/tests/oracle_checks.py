@@ -10,7 +10,23 @@ from itertools import product
 import pytest
 
 from esolangs.languages.dig.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.support.workspace_oracle import missing_workspace, workspace_view
+
+_WORKSPACE = WorkspaceModel(
+    "dig-v1",
+    (
+        "row",
+        "column",
+        "direction",
+        "mole",
+        "number",
+        "grid",
+        "input_cursor",
+        "input_reads",
+    ),
+)
 
 
 def _adjacent(cells, point):
@@ -77,13 +93,19 @@ def _model(lines, stdin):
         for x, c in enumerate(line.ljust(width))
     }
     point, direction, mole, underground = 0j, 1, 0, 0
-    done, cursor, output, trace = False, 0, "", []
+    done, cursor, reads, output, trace = False, 0, 0, "", []
 
     def row():
         grid = tuple(
             tuple(cells[x + y * 1j] for x in range(width)) for y in range(len(lines))
         )
-        return (grid, point, direction, mole, underground), done, output, cursor, cursor
+        return (
+            (grid, point, direction, mole, underground, reads),
+            done,
+            output,
+            cursor,
+            cursor,
+        )
 
     for tick in range(49):
         trace.append(row())
@@ -96,6 +118,7 @@ def _model(lines, stdin):
             if underground:
                 if command in ("=", "~"):
                     value, cursor, error = _read(command, stdin, cursor)
+                    reads += error != "input"
                     if error:
                         return error, [*trace, row()]
                     mole = value
@@ -129,14 +152,28 @@ def _view(machine):
         (-1j, 1, 1j, -1)[machine.move],
         machine.mole,
         machine.num,
+        machine._input_reads,
     )
 
 
 def _check(factory, lines, stdin="unused"):
-    assert observed(factory, lines, stdin, _view, cap=48) == _model(lines, stdin), (
-        lines,
-        stdin,
+    expected = _model(lines, stdin)
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (
+            int(row[0][1].imag),
+            int(row[0][1].real),
+            (-1j, 1, 1j, -1).index(row[0][2]),
+            row[0][3],
+            row[0][4],
+            row[0][0],
+            row[-1],
+            row[0][5],
+        ),
+        _view,
     )
+    assert observed(factory, lines, stdin, checked, cap=48) == expected, (lines, stdin)
 
 
 def check_raw_dig():
@@ -179,3 +216,6 @@ def check_raw_dig():
     for factory in (stalled(_Machine), WrongValue, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, [">$2:@", " 2"])
+    for component in _WORKSPACE.components:
+        with pytest.raises(AssertionError):
+            _check(missing_workspace(_Machine, component), [">$2:@", " 2"])

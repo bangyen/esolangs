@@ -10,6 +10,19 @@ from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
+_WORKSPACE = WorkspaceModel(
+    "back-v1",
+    (
+        "row",
+        "column",
+        "direction_row",
+        "direction_column",
+        "tape",
+        "cell",
+        "input_cursor",
+    ),
+)
+
 
 def _model(lines):
     if not lines or not any(line.strip() for line in lines):
@@ -63,31 +76,13 @@ def _model(lines):
 
 def _agrees(factory, lines):
     expected = _model(lines)
-    assert (
-        observed(
-            factory,
-            lines,
-            "unused λ",
-            workspace_view(
-                expected[1],
-                WorkspaceModel(
-                    "back-v1",
-                    (
-                        "row",
-                        "column",
-                        "direction_row",
-                        "direction_column",
-                        "tape",
-                        "cell",
-                        "input_cursor",
-                    ),
-                ),
-                lambda row: (*row[0][:6], row[-1]),
-                lambda m: (*m.state, m.dumped, tuple(m.memory), m.ip),
-            ),
-        )
-        == expected
-    ), lines
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (*row[0][:6], row[-1]),
+        lambda m: (*m.state, m.dumped, tuple(m.memory), m.ip),
+    )
+    assert observed(factory, lines, "unused λ", checked) == expected, lines
     return expected
 
 
@@ -158,15 +153,7 @@ def check_raw_back():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, lines)
-    for component in (
-        "row",
-        "column",
-        "direction_row",
-        "direction_column",
-        "tape",
-        "cell",
-        "input_cursor",
-    ):
+    for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _agrees(missing_workspace(_Machine, component), [">-* "])
     return len(results), len(controls) + 7

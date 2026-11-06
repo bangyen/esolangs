@@ -15,6 +15,8 @@ from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from tests.interpreters.oracle_support import observed, overread, stalled
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
+_WORKSPACE = WorkspaceModel("dinac-v1", ("frames", "input_cursor"))
+
 
 def _source(expr):
     if isinstance(expr, str):
@@ -187,10 +189,7 @@ def _check(factory, statements, stdin="unused"):
                 names.append(name)
     expected = _model(statements, stdin)
     checked = workspace_view(
-        expected[1],
-        WorkspaceModel("dinac-v1", ("frames", "input_cursor")),
-        lambda row: _frame_parts(names, row),
-        _view,
+        expected[1], _WORKSPACE, lambda row: _frame_parts(names, row), _view
     )
     assert observed(factory, code, stdin, checked, cap=48) == expected, (code, stdin)
 
@@ -270,7 +269,7 @@ def check_raw_dinac():
         with pytest.raises(AssertionError):
             _check(factory, (("out", ("wubyte", 1)),))
 
-    for component in ("frames", "input_cursor"):
+    for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _check(missing_workspace(_Machine, component), (("out", ("wubyte", 1)),))
 

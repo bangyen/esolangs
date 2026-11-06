@@ -5,6 +5,7 @@ from struct import calcsize
 
 from esolangs.exceptions import ArgumentError, HaltError, InterpreterLimitError
 from esolangs.runtime.io import ScriptedIO
+from tests.support.workspace_oracle import WorkspaceWitness
 
 
 @dataclass(frozen=True)
@@ -292,7 +293,9 @@ class _Directions:
         return value
 
 
-def observed_memory(machine_type, code, stdin, steps, *, grid=False, first=0):
+def observed_memory(
+    machine_type, code, stdin, steps, *, grid=False, first=0, workspace=None
+):
     io, rng = ScriptedIO(stdin), _Directions(first)
     try:
         machine = machine_type(code, io, rng=rng) if grid else machine_type(code, io)
@@ -303,6 +306,8 @@ def observed_memory(machine_type, code, stdin, steps, *, grid=False, first=0):
 
     def snapshot():
         nonlocal prior_grid, flat
+        if workspace is not None:
+            workspace(machine)
         if grid:
             state = machine.state
             if state.grid is not prior_grid:
@@ -385,11 +390,35 @@ def checked_run(runner, code, stdin, expected, *, grid=False, first=0):
 
 
 def agrees_memory(
-    machine_type, oracle, code, stdin="", *, grid=False, first=0, runner=None
+    machine_type,
+    oracle,
+    code,
+    stdin="",
+    *,
+    grid=False,
+    first=0,
+    runner=None,
+    workspace=None,
 ):
     expected = oracle(code, stdin, first=first) if grid else oracle(code, stdin)
+    capture = None
+    if workspace is not None:
+        model, project = workspace
+        witness, predictions = WorkspaceWitness(model), iter(expected)
+
+        def capture(machine):
+            predicted = next(predictions)
+            assert predicted.cursor
+            witness.sample(machine.workspace_snapshot(), project(predicted))
+
     actual = observed_memory(
-        machine_type, code, stdin, len(expected) - 1, grid=grid, first=first
+        machine_type,
+        code,
+        stdin,
+        len(expected) - 1,
+        grid=grid,
+        first=first,
+        workspace=capture,
     )
     assert actual == expected, (code, stdin, actual, expected)
     if runner is not None:

@@ -11,6 +11,11 @@ from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
+_WORKSPACE = WorkspaceModel(
+    "blindfolded-arithmetic-v1",
+    ("configuration", "stopped", "input_cursor"),
+)
+
 
 def _parse(source):
     program, offsets, start = [], [], 0
@@ -96,24 +101,16 @@ def _model(source, stdin):
 
 def _agrees(factory, source, stdin):
     expected = _model(source, stdin)
-    assert (
-        observed(
-            factory,
-            source,
-            stdin,
-            workspace_view(
-                expected[1],
-                WorkspaceModel(
-                    "blindfolded-arithmetic-v1",
-                    ("configuration", "stopped", "input_cursor"),
-                ),
-                lambda row: ((row[0][0], row[0][1]), row[1], row[-1]),
-                lambda m: (*m.state, tuple(m.memory), m.ip),
-            ),
-            cap=16,
-        )
-        == expected
-    ), (source, stdin)
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: ((row[0][0], row[0][1]), row[1], row[-1]),
+        lambda m: (*m.state, tuple(m.memory), m.ip),
+    )
+    assert observed(factory, source, stdin, checked, cap=16) == expected, (
+        source,
+        stdin,
+    )
     return expected
 
 
@@ -219,7 +216,7 @@ def check_raw_blindfolded_arithmetic():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    for component in ("configuration", "stopped", "input_cursor"):
+    for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _agrees(missing_workspace(_Machine, component), "i=i/i", "1")
     return len(results), len(controls) + 3

@@ -12,7 +12,14 @@ from itertools import product
 import pytest
 
 from esolangs.languages.cvnc.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.support.workspace_oracle import missing_workspace, workspace_view
+
+_WORKSPACE = WorkspaceModel(
+    "cvnc-v1",
+    ("instruction", "accumulator", "deque", "function", "input_cursor"),
+)
 
 _SYMBOLS = {"d": "a", "b": "+", "t": "-", "ɡ": "×", "q": "÷", "ʔ": "(", "ʡ": ")"}
 
@@ -185,10 +192,24 @@ def _view(machine):
 
 
 def _check(factory, syllables, stdin="unused"):
+    expected = _model(syllables, stdin)
     source = "\n".join("".join(s) for s in syllables)
-    assert observed(factory, source, stdin, _view, cap=48) == _model(
-        syllables, stdin
-    ), (syllables, stdin)
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (
+            row[0][0],
+            row[0][1],
+            row[0][2],
+            tuple(token.replace("×", "*").replace("÷", "/") for token in row[0][3]),
+            row[-1],
+        ),
+        _view,
+    )
+    assert observed(factory, source, stdin, checked, cap=48) == expected, (
+        syllables,
+        stdin,
+    )
 
 
 def check_raw_cvnc():
@@ -264,3 +285,10 @@ def check_raw_cvnc():
     for factory in (stalled(_Machine), WrongFunction, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, (("d", "u"), ("b", "u"), ("d", "u")))
+    for component in _WORKSPACE.components:
+        with pytest.raises(AssertionError):
+            _check(
+                missing_workspace(_Machine, component),
+                (("s", "u"), ("c", "i", "n")),
+                "3",
+            )

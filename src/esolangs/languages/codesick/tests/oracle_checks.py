@@ -10,6 +10,8 @@ from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
+_WORKSPACE = WorkspaceModel("codesick-v1", ("instruction", "variables", "input_cursor"))
+
 
 def _tokens(source):
     at = 0
@@ -141,23 +143,13 @@ def _model(source, stdin):
 
 def _agrees(factory, source, stdin):
     expected = _model(source, stdin)
-    assert (
-        observed(
-            factory,
-            source,
-            stdin,
-            workspace_view(
-                expected[1],
-                WorkspaceModel(
-                    "codesick-v1", ("instruction", "variables", "input_cursor")
-                ),
-                lambda row: (row[0][0], frozenset(row[0][1]), row[-1]),
-                lambda m: (m.pc, tuple(sorted(m.memory.items())), m.ip),
-            ),
-            cap=8,
-        )
-        == expected
-    ), (source, stdin)
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (row[0][0], frozenset(row[0][1]), row[-1]),
+        lambda m: (m.pc, tuple(sorted(m.memory.items())), m.ip),
+    )
+    assert observed(factory, source, stdin, checked, cap=8) == expected, (source, stdin)
     return expected
 
 
@@ -263,7 +255,7 @@ def check_raw_codesick():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    for component in ("instruction", "variables", "input_cursor"):
+    for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _agrees(missing_workspace(_Machine, component), 'codesick out "x" * *;', "")
     return len(results), len(controls) + 3

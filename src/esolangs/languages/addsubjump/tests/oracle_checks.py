@@ -9,6 +9,19 @@ from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
+_WORKSPACE = WorkspaceModel(
+    "addsubjump-v1",
+    (
+        "cells",
+        "extent",
+        "instruction",
+        "zero",
+        "negative",
+        "flag_update",
+        "input_cursor",
+    ),
+)
+
 
 def _model(words, stdin):
     memory = list(words)
@@ -78,15 +91,7 @@ def check_raw_addsubjump():
         checked = _workspace_view(expected[1], state)
         assert observed(_Machine, code, stdin, checked, cap=16) == expected
 
-    for component in (
-        "cells",
-        "extent",
-        "instruction",
-        "zero",
-        "negative",
-        "flag_update",
-        "input_cursor",
-    ):
+    for component in _WORKSPACE.components:
         words = [-9, -6, 4, -7, -1, 8, -1, -8, 3]
         expected = _model(words, "A")
         with pytest.raises(AssertionError):
@@ -118,18 +123,7 @@ def check_raw_addsubjump():
 def _workspace_view(trace, view):
     return workspace_view(
         trace,
-        WorkspaceModel(
-            "addsubjump-v1",
-            (
-                "cells",
-                "extent",
-                "instruction",
-                "zero",
-                "negative",
-                "flag_update",
-                "input_cursor",
-            ),
-        ),
+        _WORKSPACE,
         lambda row: (
             frozenset((i, value) for i, value in enumerate(row[0][1]) if value),
             len(row[0][1]),

@@ -11,7 +11,23 @@ from itertools import product
 import pytest
 
 from esolangs.languages.freestajlo.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.support.workspace_oracle import missing_workspace, workspace_view
+
+_WORKSPACE = WorkspaceModel(
+    "freestajlo-v1",
+    (
+        "instruction",
+        "stack",
+        "transfer",
+        "calls",
+        "functions",
+        "index",
+        "other_stacks",
+        "input_cursor",
+    ),
+)
 
 
 def _cells(cells):
@@ -29,6 +45,7 @@ def _view(machine):
         machine.index,
         tuple(sorted((i, _cells(s[1])) for i, s in machine.others.items() if s[0])),
         _cells(machine.state.transfer[1]),
+        machine.state.ip,
     )
 
 
@@ -107,6 +124,7 @@ def _model(source, stdin):
                     sorted((i, tuple(s)) for i, s in stacks.items() if i != index and s)
                 ),
                 tuple(transfer),
+                at,
             ),
             at == len(tokens),
             output,
@@ -157,8 +175,28 @@ def _model(source, stdin):
                 output += chr(point)
 
 
+def _workspace_parts(row):
+    _offset, values, index, others, transfer, instruction = row[0]
+
+    def stack(items):
+        return len(items), tuple(reversed(items))
+
+    return (
+        instruction,
+        stack(values),
+        stack(transfer),
+        (),
+        (-1,) * 52,
+        index,
+        frozenset((key, stack(items)) for key, items in others),
+        row[-1],
+    )
+
+
 def _check(factory, source, stdin="unused"):
-    assert observed(factory, source, stdin, _view, cap=64) == _model(source, stdin), (
+    expected = _model(source, stdin)
+    checked = workspace_view(expected[1], _WORKSPACE, _workspace_parts, _view)
+    assert observed(factory, source, stdin, checked, cap=64) == expected, (
         source,
         stdin,
     )
@@ -200,3 +238,6 @@ def check_raw_freestajlo():
     ):
         with pytest.raises(AssertionError):
             _check(factory, code, "ab")
+    for component in _WORKSPACE.components:
+        with pytest.raises(AssertionError):
+            _check(missing_workspace(_Machine, component), "1 2 + :")

@@ -9,6 +9,11 @@ from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed, stalled
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
+_WORKSPACE = WorkspaceModel(
+    "circlefuck-v1",
+    ("cells", "instruction", "pointer", "input_cursor", "stopped"),
+)
+
 
 def _branch(ring, pc, token):
     stride = 1 if token == "[" else -1
@@ -70,24 +75,16 @@ def _model(initial, stdin):
 def _check(factory, initial, stdin):
     expected = _model(initial, stdin)
     source = "".join(f"\\x{byte:02x}" for byte in initial)
-    assert (
-        observed(
-            factory,
-            source,
-            stdin,
-            workspace_view(
-                expected[1],
-                WorkspaceModel(
-                    "circlefuck-v1",
-                    ("cells", "instruction", "pointer", "input_cursor", "stopped"),
-                ),
-                lambda row: (row[0][2], row[0][0], row[0][1], row[-1], row[0][3]),
-                lambda vm: vm.state,
-            ),
-            cap=24,
-        )
-        == expected
-    ), (initial, stdin)
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (row[0][2], row[0][0], row[0][1], row[-1], row[0][3]),
+        lambda vm: vm.state,
+    )
+    assert observed(factory, source, stdin, checked, cap=24) == expected, (
+        initial,
+        stdin,
+    )
 
 
 def check_raw_circlefuck():
@@ -101,6 +98,6 @@ def check_raw_circlefuck():
 
     with pytest.raises(AssertionError):
         _check(stalled(_Machine), b"@", "")
-    for component in ("cells", "instruction", "pointer", "input_cursor", "stopped"):
+    for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _check(missing_workspace(_Machine, component), b"+.@", "")

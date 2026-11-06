@@ -9,6 +9,8 @@ from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
+_WORKSPACE = WorkspaceModel("crement-v1", ("configuration", "input_cursor"))
+
 
 def _source(program):
     return "\n".join(
@@ -52,10 +54,7 @@ def _check(factory, program):
 
     expected = _model(program)
     checked = workspace_view(
-        expected[1],
-        WorkspaceModel("crement-v1", ("configuration", "input_cursor")),
-        lambda row: (row[0], row[-1]),
-        state,
+        expected[1], _WORKSPACE, lambda row: (row[0], row[-1]), state
     )
     assert observed(factory, _source(program), "unused", checked, cap=16) == expected
 
@@ -74,6 +73,6 @@ def check_raw_crement():
     with pytest.raises(AssertionError):
         _check(SkippedWrite, (("D", 1, 0, 0),))
 
-    for component in ("configuration", "input_cursor"):
+    for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _check(missing_workspace(_Machine, component), (("D", 1, 0, 0),))

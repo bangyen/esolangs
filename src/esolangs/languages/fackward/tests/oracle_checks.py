@@ -7,7 +7,21 @@ from operator import add, floordiv, mul, neg
 import pytest
 
 from esolangs.languages.fackward.interpreter import Block, _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed, stalled
+from tests.support.workspace_oracle import missing_workspace, workspace_view
+
+_WORKSPACE = WorkspaceModel(
+    "fackward-v1",
+    (
+        "forward",
+        "backward",
+        "active",
+        "swapped",
+        "stopped",
+        "input_cursor",
+    ),
+)
 
 _MATH = {"+": add, "-": neg, "*": mul, "/": floordiv, "%": lambda n: int(not n)}
 _ARITY = dict(
@@ -103,13 +117,19 @@ def _value(item):
 
 
 def _check(factory, program, stdin):
+    expected = _model(program, stdin)
+
     def state(machine):
         front, rear, active, swapped, *_ = machine.snapshot()
         return tuple(map(_value, front)), tuple(map(_value, rear)), active, swapped
 
-    assert observed(factory, _source(program), stdin, state, cap=24) == _model(
-        program, stdin
-    ), (program, stdin)
+    checked = workspace_view(
+        expected[1], _WORKSPACE, lambda row: (*row[0], row[1], row[-1]), state
+    )
+    assert observed(factory, _source(program), stdin, checked, cap=24) == expected, (
+        program,
+        stdin,
+    )
 
 
 def check_raw_fackward():
@@ -122,3 +142,6 @@ def check_raw_fackward():
 
     with pytest.raises(AssertionError):
         _check(stalled(_Machine), ("H",), "")
+    for component in _WORKSPACE.components:
+        with pytest.raises(AssertionError):
+            _check(missing_workspace(_Machine, component), (1, 2, "+"), "")

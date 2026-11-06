@@ -764,3 +764,18 @@ cap. Original resource, size, pin and anchor scopes pass; all 60 generation
 timings pass the 0.9 floor. Installed Python 3.12–3.15 preserves round trips,
 execution, live faults, retired imports and guarded isolated workers.
 Catalog-wide acceptance remains open.
+
+Eleven more independent models predict complete workspace payloads and peaks:
+CreativeScript v2, CVNC, Decleq, DIG, EGL, Fackward, Freestajlo's linear
+fragment, Grapheme, Home Row, Hot and IEBEL. Fifty-seven component-erasure
+controls preserve execution but reject incomplete captures. DIG models read
+operations before numeric conversion; Freestajlo predicts token positions,
+stack orientation and inactive stores. Decleq's memory observer accepts an
+explicit independent resource projection. IEBEL reuses immutable views of equal
+register maps; 2,735 before/after model comparisons and a live comparison fault
+retain the corpus while meeting the fast band. Existing caps and broader
+acceptance remain open; Dimensional still needs allocated-hierarchy modeling.
+Shared immutable model declarations compact 39 owned resource fixtures without
+changing cases: before/after digests retain 414,385 captures, 310 refusals and
+101,919 observed records; an altered-width control is detected. The existing
+source/test line budget remains enforced.

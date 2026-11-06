@@ -7,7 +7,11 @@ import re
 import pytest
 
 from esolangs.languages.iebel.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import missing_workspace, workspace_view
+
+_WORKSPACE = WorkspaceModel("iebel-v1", ("instruction", "registers", "input_cursor"))
 
 
 def _integer(text):
@@ -43,8 +47,14 @@ def _model(source, stdin):
         return "syntax", [(None, False, "", 0, 0)]
     pc, registers, consumed, output, error = 0, {}, 0, "", None
 
+    # Reuse immutable views of equal maps; the full oracle took 1.34s.
+    memories = {}
+
     def view():
-        memory = tuple(registers.get(i, 0) for i in range(256))
+        key = frozenset(registers.items())
+        memory = memories.get(key)
+        if memory is None:
+            memory = memories[key] = tuple(registers.get(i, 0) for i in range(256))
         ip = (ops[pc][3],) if pc < len(ops) else (ops[-1][3] + 1 if ops else 0,)
         return ((pc, memory, ip), pc == len(ops), output, consumed, consumed)
 
@@ -87,10 +97,13 @@ def _model(source, stdin):
 
 def _agrees(factory, source, stdin):
     expected = _model(source, stdin)
-    assert observed(factory, source, stdin, lambda m: (*m.state, m.ip)) == expected, (
-        source,
-        stdin,
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (row[0][0], row[0][1], row[-1]),
+        lambda m: (*m.state, m.ip),
     )
+    assert observed(factory, source, stdin, checked) == expected, (source, stdin)
     return expected
 
 
@@ -201,4 +214,7 @@ def check_raw_iebel():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    return len(results), len(controls)
+    for component in _WORKSPACE.components:
+        with pytest.raises(AssertionError):
+            _agrees(missing_workspace(_Machine, component), "", "")
+    return len(results), len(controls) + 3

@@ -10,6 +10,11 @@ from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
+_WORKSPACE = WorkspaceModel(
+    "balik-v1",
+    ("row", "column", "heading", "pointer", "tape", "input_cursor"),
+)
+
 
 def _model(source, stdin):
     lines = source.split("\n")
@@ -78,23 +83,13 @@ def _model(source, stdin):
 
 def _agrees(factory, source, stdin):
     expected = _model(source, stdin)
-    assert (
-        observed(
-            factory,
-            source,
-            stdin,
-            workspace_view(
-                expected[1],
-                WorkspaceModel(
-                    "balik-v1",
-                    ("row", "column", "heading", "pointer", "tape", "input_cursor"),
-                ),
-                lambda row: (*row[0][:5], row[-1]),
-                lambda m: (*m.state, tuple(m.memory), m.ip),
-            ),
-        )
-        == expected
-    ), (source, stdin)
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (*row[0][:5], row[-1]),
+        lambda m: (*m.state, tuple(m.memory), m.ip),
+    )
+    assert observed(factory, source, stdin, checked) == expected, (source, stdin)
     return expected
 
 
@@ -207,7 +202,7 @@ def check_raw_balik():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    for component in ("row", "column", "heading", "pointer", "tape", "input_cursor"):
+    for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _agrees(missing_workspace(_Machine, component), "+>+", "")
     return len(results), len(controls) + 6

@@ -10,6 +10,11 @@ from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
+_WORKSPACE = WorkspaceModel(
+    "collatz-multiverse-v1",
+    ("registers", "arrays", "instruction", "input_cursor"),
+)
+
 
 def _source(program):
     return "\n\n".join(
@@ -100,32 +105,23 @@ def _check(factory, program, stdin):
     def state(machine):
         return machine.ip, machine.registers, machine.arrays
 
-    assert (
-        observed(
-            factory,
-            _source(program),
-            stdin,
-            workspace_view(
-                expected[1],
-                WorkspaceModel(
-                    "collatz-multiverse-v1",
-                    ("registers", "arrays", "instruction", "input_cursor"),
-                ),
-                lambda row: (
-                    frozenset(row[0][1].items()),
-                    frozenset(
-                        (name, frozenset(cells.items()))
-                        for name, cells in row[0][2].items()
-                    ),
-                    row[0][0],
-                    row[-1],
-                ),
-                state,
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (
+            frozenset(row[0][1].items()),
+            frozenset(
+                ((name, frozenset(cells.items())) for name, cells in row[0][2].items())
             ),
-            cap=16,
-        )
-        == expected
-    ), (program, stdin)
+            row[0][0],
+            row[-1],
+        ),
+        state,
+    )
+    assert observed(factory, _source(program), stdin, checked, cap=16) == expected, (
+        program,
+        stdin,
+    )
 
 
 def check_raw_collatz_multiverse():
@@ -147,7 +143,7 @@ def check_raw_collatz_multiverse():
 
     with pytest.raises(AssertionError):
         _check(OmittedRead, (("x", "x", "input", True),), "42")
-    for component in ("registers", "arrays", "instruction", "input_cursor"):
+    for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _check(
                 missing_workspace(_Machine, component),

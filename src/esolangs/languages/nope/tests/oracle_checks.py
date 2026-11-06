@@ -9,13 +9,15 @@ from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
 from tests.support.workspace_oracle import WorkspaceWitness, missing_workspace
 
+_WORKSPACE = WorkspaceModel("nope-v1", ("emitted", "input_cursor"))
+
 
 def _agrees(factory, source, stdin):
     initial = ((False, 0), False, "", 0, 0)
     final = ((True, 1), True, "Nope.", 0, 0)
     expected = None, [initial, *([final] * 4)]
     views = iter(expected[1])
-    witness = WorkspaceWitness(WorkspaceModel("nope-v1", ("emitted", "input_cursor")))
+    witness = WorkspaceWitness(_WORKSPACE)
 
     def state(m):
         view, _halted, _output, _position, progress = next(views)
@@ -63,7 +65,7 @@ def check_raw_nope():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, "", "unused")
-    for component in ("emitted", "input_cursor"):
+    for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _agrees(missing_workspace(_Machine, component), "", "unused")
     return len(sources) * len(inputs), 7
