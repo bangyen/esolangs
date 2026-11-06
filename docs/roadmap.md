@@ -92,8 +92,9 @@ require a versioned cutover and caller migration; moving adapters into
 3. **Semantic accounting and storage:** extend versioned workspace models to all
    117 interpreters, separating logical resource state from cycle snapshots and
    Python storage. Preserve input progress, snapshot isolation and independent
-   semantics; remove snapshot-as-accounting fallbacks. Decide storage policy from
-   priced immutable/mutable pilots without weakening purity gates. Done when
+   semantics; remove snapshot-as-accounting fallbacks. The priced
+   [storage decision](migration-ledger.md) keeps immutable transition boundaries
+   and captures, with backing stores chosen per interpreter. Done when
    every interpreter has exact resource witnesses and trace-equivalence checks.
 4. **Generator analysis rollout:** audit all 114 Boolean backends for duplicated
    validation and decision, algebraic or lookup analysis. Use canonical analyses

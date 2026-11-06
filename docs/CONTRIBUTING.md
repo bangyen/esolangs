@@ -162,12 +162,14 @@ Start from `src/esolangs/runtime/_template.py`. Every interpreter:
   the input cursor. Diff snapshots directly without normalizing changes away.
   A declared `workspace_snapshot()` projects versioned semantic components for
   written-bit proofs; storage and cycle snapshots do not define its grouping.
-  Legacy accounting still uses snapshot grouping: preserve it until migrated.
 - Treats public `_Machine` properties as debugger views. Declare `ip`,
   `memory` and `stack` only when meaningful; defaults are `ind`, empty, empty.
 - Uses a pure `_advance` transition over immutable state, with `step` doing
   I/O. Stores too expensive to thread may return effects instead
   (`grapheme/interpreter.py`).
+  Choose backing storage per interpreter. Require equivalent traces, isolated
+  captures and resource peaks, plus native, cycle-snapshot and accounting
+  timings under the existing gates; see the [storage decision](migration-ledger.md).
 - Follows explicit spec rules. Examples resolve omissions only consistently
   with those rules; internal consistency does not establish author intent.
   Record contradictions, justify interpretations of conflicting rules, and

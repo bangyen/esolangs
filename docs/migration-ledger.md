@@ -61,14 +61,23 @@ metadata operations remain native-container APIs.
 
 Accounting and analysis rows require owned witnesses, not just a declared hook
 or a recognized helper name. Certification needs an installed-package/lazy-import
-acceptance audit after the active separation work lands. Storage policy needs
-its priced comparison and explicit decision. These remain open even where an
-implementation pilot already passed.
+acceptance audit after the active separation work lands. Catalog-wide acceptance
+remains open even where an implementation pilot already passed.
 
 Accounting now has 117 explicit or inherited semantic adapters. VM capture and
 the meter reject missing models instead of using cycle snapshots. Proof drivers
 use declared captures; synthetic and regrouping controls name their models.
-Declarations do not close lifecycle, storage-policy or catalog-wide acceptance.
+Declarations do not close lifecycle or catalog-wide acceptance.
+
+Storage decision: retain immutable transition boundaries and semantic captures;
+choose backing stores per interpreter. Keep Brainfuck's tuple and Boolfuck's
+mutable set. Across 4,332 pilot cases and 694,932 samples, alternatives preserve
+traces, resource peaks and purity but fail the existing 0.9 timing gate:
+Brainfuck's mutable shell reaches 2.382 native throughput but 0.543 with cycle
+snapshots; Boolfuck's immutable set reaches 3.739 with cycle snapshots but 0.474
+native. The 31 priced cohorts took 29.84 s total, each below its 60 s cap.
+Future storage changes require native, cycle and accounting measurements;
+purity and equivalence gates remain unchanged.
 
 All seven dialect schemas now declare choices and defaults. Runtime metadata
 queries and validation no longer inspect signatures or constructors. The other
@@ -261,7 +270,7 @@ of its interpreter.
 
 VM accounting no longer falls back to cycle snapshots. All 117 catalog rows
 require models; the 114 Boolean execution witnesses and three non-Boolean
-checks reject cycle-key use. Storage-policy and full accounting acceptance stay open.
+checks reject cycle-key use. Full accounting acceptance stays open.
 
 BASICER, Bleh, Chicken, Codesick, Collatz Multiverse, CreativeScript v2, DINAC,
 Grapheme, Sonata and HQ9+ with headers declare text factories and debugger
