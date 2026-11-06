@@ -16,6 +16,9 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 
 def test_constants_consume_the_queue_then_print_once() -> None:
+    from tests.support.analysis_support import assert_analysis_complement
+
+    assert_analysis_complement("NOR machine", "read_at")
     _check_single_accumulator_boundaries()
 
     from esolangs.languages.nor_machine.interpreter import _Machine

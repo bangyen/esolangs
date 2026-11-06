@@ -22,7 +22,7 @@ from collections import Counter
 from math import isqrt
 from typing import NamedTuple
 
-from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.helpers import _validate_truth_table, short_name, subtree_ids
 from esolangs.generation.token_balance import CELL_ASPECT, balanced_token_width
 from esolangs.generation.wrap import wrap_space_delimited
 
@@ -35,17 +35,6 @@ class _Node(NamedTuple):
 
 # Exclude code separators/brackets, helper-name '_' and reserved [Whitespace].
 _ALPHABET = "".join(chr(i) for i in range(33, 127) if chr(i) not in "?[]_W")
-
-
-def _short_name(index: int) -> str:
-    """Return the indexed nonempty bijective-base name."""
-    digits: list[str] = []
-    while True:
-        index, digit = divmod(index, len(_ALPHABET))
-        digits.append(_ALPHABET[digit])
-        if not index:
-            return "".join(reversed(digits))
-        index -= 1
 
 
 def _graph(table: str, n: int) -> dict[str, _Node]:
@@ -86,7 +75,7 @@ def _dense_names(nodes: dict[str, _Node]) -> dict[str, str]:
     for node in nodes.values():
         counts.update(node.children)
     return {
-        key: _short_name(rank)
+        key: short_name(rank, _ALPHABET)
         for rank, key in enumerate(sorted(nodes, key=lambda key: -counts[key]))
     }
 

@@ -51,6 +51,9 @@ def test_fractran_answers_every_table_to_three_inputs() -> None:
 
 def test_fractran_shares_equal_subtables() -> None:
     """No ``p^1``; parity at five inputs needs only 2n - 1 nodes, not 2**n - 1."""
+    from tests.support.analysis_support import assert_analysis_complement
+
+    assert_analysis_complement("FRACTRAN", "reduced_diagram")
     parity = str(boolean.fractran("".join(str(r.bit_count() & 1) for r in range(32))))
     assert "^1 " not in parity
     assert "^1*" not in parity

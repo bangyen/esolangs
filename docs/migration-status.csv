@@ -54,7 +54,7 @@ Fish,yes,declared,not-applicable,declared,owned-adapter,fish-v1,canonical-parity
 Flowchart,yes,declared,not-applicable,declared,owned-adapter,flowchart-v1,pending-backend-audit,pending-acceptance-audit,open
 Forbin,yes,declared,not-applicable,declared,owned-adapter,forbin-v1,pending-backend-audit,pending-acceptance-audit,open
 Forþ,yes,declared,not-applicable,declared,owned-adapter,for-thorn-v1,canonical-projection-subtrees;owned-heap-dispatch,pending-acceptance-audit,open
-FRACTRAN,yes,declared,not-applicable,declared,owned-adapter,fractran-v1,pending-backend-audit,pending-acceptance-audit,open
+FRACTRAN,yes,declared,not-applicable,declared,owned-adapter,fractran-v1,canonical-reduced-diagram;owned-prime-postorder-layout,pending-acceptance-audit,open
 Freestajlo,yes,declared,not-applicable,declared,owned-adapter,freestajlo-v1,canonical-projection-symmetry;owned-packed-literals,pending-acceptance-audit,open
 Grapheme,yes,declared,declared,declared,owned-adapter,grapheme-v1,canonical-projection;owned-four-packings-decimal-lift,pending-acceptance-audit,open
 Home Row,yes,declared,not-applicable,declared,owned-adapter,home-row-v1,canonical-projection;owned-pair-run-lookup,pending-acceptance-audit,open
@@ -71,12 +71,12 @@ Line,yes,declared,not-applicable,declared,owned-adapter,line-v1,pending-backend-
 lol waht i cant edit talk pages,yes,declared,not-applicable,declared,owned-adapter,lol-waht-i-cant-edit-talk-pages-v1,canonical-subtable-fold,pending-acceptance-audit,open
 Malbolge,yes,declared,not-applicable,declared,owned-adapter,malbolge-v1,pending-backend-audit,pending-acceptance-audit,open
 Minsky Swap,yes,declared,not-applicable,declared,owned-adapter,minsky-swap-v1,pending-backend-audit,pending-acceptance-audit,open
-Modulous,yes,declared,not-applicable,declared,owned-adapter,modulous-v1,pending-backend-audit,pending-acceptance-audit,open
+Modulous,yes,declared,not-applicable,declared,owned-adapter,modulous-v1,canonical-weighted-symmetric-lookup;owned-pair-counter-layout,pending-acceptance-audit,open
 Monotonic Boolfuck,yes,declared,not-applicable,declared,inherited-adapter,monotonic-boolfuck-v1,canonical-subtree-analysis;owned-pointer-tree,pending-acceptance-audit,open
 Movesum,yes,declared,not-applicable,declared,owned-adapter,movesum-v1,canonical-validation;owned-halting-rung-lookup,pending-acceptance-audit,open
-Nandypants,yes,declared,not-applicable,declared,owned-adapter,nandypants-v1,pending-backend-audit,pending-acceptance-audit,open
+Nandypants,yes,declared,not-applicable,declared,owned-adapter,nandypants-v1,canonical-subtree-analysis;owned-forward-chain-labels,pending-acceptance-audit,open
 Nope.,no,declared,not-applicable,declared,owned-adapter,nope-v1,not-applicable,pending-acceptance-audit,open
-NOR machine,yes,declared,not-applicable,declared,owned-adapter,nor-machine-v1,pending-backend-audit,pending-acceptance-audit,open
+NOR machine,yes,declared,not-applicable,declared,owned-adapter,nor-machine-v1,canonical-projection;owned-single-accumulator-mux,pending-acceptance-audit,open
 NQ,yes,declared,declared,declared,owned-adapter,nq-v1,canonical-subtree-parity,pending-acceptance-audit,open
 Object disoriented,yes,declared,not-applicable,declared,owned-adapter,object-disoriented-v1,canonical-subtree-analysis;owned-class-pricing,pending-acceptance-audit,open
 Packlang,yes,declared,declared,declared,owned-adapter,packlang-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -87,7 +87,7 @@ Pilas,yes,declared,not-applicable,declared,owned-adapter,pilas-v1,canonical-subt
 Pointless,yes,declared,not-applicable,declared,owned-adapter,pointless-v1,canonical-subtree-analysis;owned-function-inlining,pending-acceptance-audit,open
 Qoibl,yes,declared,not-applicable,declared,owned-adapter,qoibl-v1,pending-backend-audit,pending-acceptance-audit,open
 Qrain,yes,declared,not-applicable,declared,owned-adapter,qrain-v1,canonical-subtree-flag;owned-queue-costs,pending-acceptance-audit,open
-Quassaunt,yes,declared,not-applicable,declared,owned-adapter,quassaunt-v1,pending-backend-audit,pending-acceptance-audit,open
+Quassaunt,yes,declared,not-applicable,declared,owned-adapter,quassaunt-v1,canonical-subtree-short-name;owned-read-depth-store-loop,pending-acceptance-audit,open
 RAM0,yes,declared,not-applicable,declared,owned-adapter,ram0-v1,canonical-subtree-analysis;owned-unary-nand-lowering,pending-acceptance-audit,open
 REFRACTRAN,yes,declared,not-applicable,declared,owned-adapter,refractran-v1,canonical-decision-parity,pending-acceptance-audit,open
 Retrograde,yes,declared,not-applicable,declared,owned-adapter,retrograde-v1,canonical-subtree-analysis;owned-reversal-involution,pending-acceptance-audit,open

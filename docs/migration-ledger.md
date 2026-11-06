@@ -30,6 +30,7 @@ Owners are workstreams, not individual contributors.
 | Helpers' `AffineForm`, `affine_form`, `symmetric_outputs` re-exports | Analysis | Retired; callers migrated; negative export check in `tests/generators/test_symmetry.py` | `generation.algebraic` / `generation.lookup` |
 | Helpers' `_parity_bias` and duplicate parity recognizers | Analysis | Retired; audited backends and REFRACTRAN ablations use canonical analysis; independent affine oracle and removed-export checks | `generation.algebraic.parity_bias` |
 | `brainfuck.bf_tree` and Grapheme's `_program` wrapper | Registry | Retired; owned tests and installed-package checks reject both imports | Owned `brainfuck` / `grapheme` entrypoints |
+| Quassaunt's `_short_name` clone | Analysis | Retired; size provider uses the canonical helper; owned and installed-package import refusals | `generation.helpers.short_name` |
 | `runtime._result.ExecutionResult` shim | Results | Retired; imports migrated; negative import check in `tests/api/test_run_results.py` | `esolangs.results.ExecutionResult` |
 | Private cycle helpers/protocols re-exported by `vm` | Registry | Retired; five caller files use their owner; 16 actual import refusals in `tests/api/test_run_results.py` | `esolangs._cycles`; public VM detector imports remain supported |
 | `_Machine` / `_for_run` discovery | Lifecycle | Retired; runtime and verification drivers use declared factories; raw native machines remain independent oracles | Declared preparation/factories and capabilities |
@@ -745,3 +746,21 @@ records preserve 1,138,437 semantic samples. All sixteen normalized gate words
 execute across 8,192 nine-input rows with matching bytes and answers; timed
 programs add 165 sampled native rows through twelve inputs. Original bounds,
 pins and anchors remain unchanged; catalog acceptance stays open.
+
+FRACTRAN uses canonical decision reduction, retaining first-encounter postorder
+for state-prime assignment. Quassaunt's duplicate name encoder is removed;
+its size provider uses the canonical helper. Modulous, NOR machine and
+Nandypants retain canonical projection, symmetry or subtree analysis. Pair
+walks, accumulator muxes, read-depth ladders and forward-label layout remain
+owned. Eight live query faults alter executed answers, including leaf-name
+collisions and Modulous's paired counter path.
+
+The five audits preserve 3,260 artifacts, 16,960 rows and 1,575,849 complete
+state samples, including narrow Modulous and FRACTRAN layouts. Another 875
+layouts and every declared size witness retain bytes and paired execution.
+Quassaunt retains all size arities through 21: executed witnesses reach
+28,512,257 characters and 5,119,370 commands, each below its unchanged 60 s
+cap. Original resource, size, pin and anchor scopes pass; all 60 generation
+timings pass the 0.9 floor. Installed Python 3.12–3.15 preserves round trips,
+execution, live faults, retired imports and guarded isolated workers.
+Catalog-wide acceptance remains open.

@@ -50,6 +50,14 @@ class TestModulous:
 @pytest.mark.medium
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """``[INP INT][POP]``."""
+    from tests.generators.generator_sections import named_table
+    from tests.support.analysis_support import assert_analysis_complement
+
+    assert_analysis_complement("Modulous", "input_weights")
+    assert_analysis_complement(
+        "Modulous", "input_weights", named_table(6, "random 1847")
+    )
+    assert_analysis_complement("Modulous", "symmetric_weights", "0110100110010110")
     _check_pair_resources()
     assert_an_ignored_input_costs("Modulous", 6, 14)
 

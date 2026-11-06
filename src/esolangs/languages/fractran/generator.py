@@ -21,12 +21,12 @@ from itertools import islice
 from typing import Any
 
 from esolangs.factor_primes import prime_segments
+from esolangs.generation.decision import reduced_diagram
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     layout_width,
     same_tokens,
-    subtree_ids,
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import (
@@ -65,31 +65,23 @@ def _primes(count: int) -> list[int]:
 
 def _tree(truth_table: str, n: int) -> list[_Leaf | _Node]:
     """Return the decision diagram, post-order, root last."""
-    ids = subtree_ids(truth_table)
-    seen: dict[tuple[int, int], int] = {}
+    diagram, root = reduced_diagram(truth_table, n)
+    seen: dict[int, int] = {}
     nodes: list[_Leaf | _Node] = []
 
-    def walk(depth: int, lo: int, hi: int) -> int:
-        # Equal subtables at one depth share one state: a DAG, not a tree.
-        key = (depth, ids[depth][lo >> (n - depth)])
+    def walk(key: int) -> int:
         if key not in seen:
-            if depth == n:
-                # No early exit on a constant span: the halves-agree skip
-                # collapses one to a single shared leaf, while an early
-                # leaf per depth cost size on AND ([ablations.constant_fold]).
-                nodes.append(_Leaf(truth_table[lo], depth))
+            if key < 2:
+                nodes.append(_Leaf(str(key), n))
             else:
-                mid = (lo + hi) // 2
-                zero = walk(depth + 1, lo, mid)
-                one = walk(depth + 1, mid, hi)
-                if zero == one:
-                    seen[key] = zero  # halves agree: this input is never read
-                    return zero
-                nodes.append(_Node(depth, zero, one))
+                entry = diagram[key]
+                zero, one = walk(entry.zero), walk(entry.one)
+                nodes.append(_Node(entry.level, zero, one))
             seen[key] = len(nodes) - 1
         return seen[key]
 
-    walk(0, 0, len(truth_table))
+    # First-encounter postorder keeps native state-prime assignment stable.
+    walk(root)
     return nodes
 
 

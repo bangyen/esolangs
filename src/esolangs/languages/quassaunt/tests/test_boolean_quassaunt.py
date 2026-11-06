@@ -22,6 +22,24 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 
 def test_equal_subtables_share_one_node() -> None:
+    from unittest.mock import patch
+
+    from esolangs.generation.helpers import short_name
+    from esolangs.languages.quassaunt import generator
+    from tests.support.analysis_support import assert_analysis_complement
+    from tests.support.generator_support import evaluate_generated
+
+    assert_analysis_complement("Quassaunt", "subtree_ids")
+    assert generator.short_name is short_name
+    with patch.object(
+        generator,
+        "short_name",
+        side_effect=lambda index, alphabet: short_name(min(index, 3), alphabet),
+    ) as aliased:
+        assert evaluate_generated("Quassaunt", "0011") == "0000"
+        assert aliased.called
+    with pytest.raises(ImportError):
+        exec("from esolangs.languages.quassaunt.generator import _short_name")
     # Parity: one node per (level, parity), not one per row prefix.
     assert quassaunt("0110100110010110").count("%%Ifdisjoint") == 8
     _check_store_loop()
