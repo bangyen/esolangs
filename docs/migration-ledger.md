@@ -197,3 +197,7 @@ Unlambda captures typed logical terms and captured continuations without cached
 depths. Constructor tags preserve value identity but carry no payload bits; deep
 term hashing, comparison and accounting use iterative traversals. Constant-program
 workspace is 32n+17+bl(n); the general bound retains its conservative allowance.
+
+Dig and Flowchart declare split-grid preparation and debug fields. Mutable
+stores, pointer/deque state, bit buffers and read counters remain per-run;
+self-modification and final partial-byte flushing remain unchanged.

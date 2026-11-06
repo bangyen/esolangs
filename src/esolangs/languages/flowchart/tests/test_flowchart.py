@@ -447,7 +447,7 @@ class TestPureTransition:
     """``_advance`` owns the pointers, deques and output; ``step`` is the shell."""
 
     def test_advance_is_pure_and_repeatable(self) -> None:
-        from esolangs.languages.flowchart.interpreter import _advance
+        from esolangs.languages.flowchart.interpreter import _advance, prepare_machine
 
         machine = _Machine(TRUTH_MACHINE, ScriptedIO("0"))
         before = machine.snapshot()
@@ -461,6 +461,29 @@ class TestPureTransition:
         # Same arguments, same result.
         assert first == second
         assert first[0] != run
+
+        rows = [r"( )─/ /─\ \─(( ))"]
+        factory = prepare_machine(rows, {})
+        first, second = factory(ScriptedIO("A")), factory(ScriptedIO("B"))
+        rows.clear()
+        assert first.nodes is not second.nodes
+        before = second.snapshot()
+        first.step()
+        assert first._input_reads == 1
+        assert second._input_reads == 0
+        assert second.snapshot() == before
+        while not first.halted:
+            first.step()
+        assert first.io.getvalue() == "\x01"
+        first.nodes.clear()
+        while not second.halted:
+            second.step()
+        assert second.io.getvalue() == "\0"
+        assert factory(ScriptedIO()).snapshot() == before
+        with pytest.raises(TypeError, match="split text"):
+            prepare_machine("( )", {})
+        with pytest.raises(TypeError, match="no runtime options"):
+            prepare_machine([], {"unexpected": True})
 
     def test_a_read_is_requested_rather_than_performed(self) -> None:
         from esolangs.languages.flowchart.interpreter import _advance, _NeedBitError

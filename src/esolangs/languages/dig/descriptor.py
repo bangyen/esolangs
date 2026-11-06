@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Dig."""
 
+from esolangs.languages.dig.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
@@ -10,6 +11,9 @@ LANGUAGE = Language(
     RuntimeSpec(
         "dig",
         category="grid_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         split=True,
         empty_program="Dig program cannot be empty",
     ),

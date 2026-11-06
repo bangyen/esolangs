@@ -226,21 +226,32 @@ class TestStepMachine:
 
 
 def test_repeated_runs_keep_stores_private() -> None:
-    from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.languages.dig.interpreter import _Machine, prepare_machine
     from esolangs.runtime._drive import drive
 
     rows = [">$3~;:@"]
-    first = _Machine(rows, ScriptedIO("12\n"))
-    second = _Machine(rows, ScriptedIO("7\n"))
+    factory = prepare_machine(rows, {})
+    first = factory(ScriptedIO("12\n"))
+    second = factory(ScriptedIO("7\n"))
+    before = second.snapshot()
     drive(first)
     assert first.code[0][4] == 12
     assert second.code[0][4] == ";"
+    assert second.snapshot() == before
     drive(second)
     assert second.code[0][4] == 7
     assert first.code[0][4] == 12
     assert _Machine(rows, ScriptedIO("")).code[0][4] == ";"
     rows[0] = "@"
     assert _Machine(rows, ScriptedIO("")).code == (("@",),)
+
+    third = factory(ScriptedIO("9"))
+    assert third.code[0][4] == ";"
+    assert third.snapshot() == before
+    with pytest.raises(TypeError, match="split text"):
+        prepare_machine("@", {})
+    with pytest.raises(TypeError, match="no runtime options"):
+        prepare_machine(["@"], {"unexpected": True})
 
 
 def test_overground_data_steps_follow_the_heading() -> None:

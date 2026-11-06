@@ -34,13 +34,16 @@ Decisions:
       included); division rounds down. The page leaves both details open.
 """
 
-from collections.abc import Callable
-from typing import NamedTuple
+from collections.abc import Callable, Mapping
+from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.dig.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer, parse_integer
@@ -463,13 +466,29 @@ class _Machine:
         self._restore(_advance(self._state, self.size, value))
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind source while giving each grid run private state."""
+    if not isinstance(source, list):
+        raise TypeError("dig machines require split text source")
+    if options:
+        raise TypeError("dig machines accept no runtime options")
+    code = tuple(source)
+
+    def build(io: IO) -> _Machine:
+        return _Machine(list(code), io)
+
+    return build
+
+
 def _execute(
     code: list[str],
     io: IO,
 ) -> CompletionReport:
     """Execute a Dig program with mole movement and underground work commands."""
     machine = _Machine(code, io)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(

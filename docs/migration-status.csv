@@ -42,7 +42,7 @@ CV(N)(C),yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,cvnc
 Cyclic tag,yes,declared,not-applicable,declared,owned-adapter,cyclic-tag-v1,pending-backend-audit,pending-acceptance-audit,open
 Deadfish,no,declared,not-applicable,declared,owned-adapter,deadfish-v1,not-applicable,pending-acceptance-audit,open
 Decleq,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,decleq-v1,pending-backend-audit,pending-acceptance-audit,open
-Dig,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,dig-v1,pending-backend-audit,pending-acceptance-audit,open
+Dig,yes,declared,not-applicable,declared,owned-adapter,dig-v1,pending-backend-audit,pending-acceptance-audit,open
 Dimensional,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,dimensional-v1,pending-backend-audit,pending-acceptance-audit,open
 DINAC,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,dinac-v1,pending-backend-audit,pending-acceptance-audit,open
 EGL,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,egl-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -51,7 +51,7 @@ Fackward,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,fack
 FALSE,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,false-v1,pending-backend-audit,pending-acceptance-audit,open
 Fargo,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Fish,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,fish-v1,pending-backend-audit,pending-acceptance-audit,open
-Flowchart,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,flowchart-v1,pending-backend-audit,pending-acceptance-audit,open
+Flowchart,yes,declared,not-applicable,declared,owned-adapter,flowchart-v1,pending-backend-audit,pending-acceptance-audit,open
 Forbin,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Forþ,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,for-thorn-v1,pending-backend-audit,pending-acceptance-audit,open
 FRACTRAN,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
