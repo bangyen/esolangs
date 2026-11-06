@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from esolangs import compat, run
+import esolangs
+from esolangs import run
 from esolangs.languages.line.generator import line_boolean
 from esolangs.languages.line.generator.layout import Node
 from esolangs.languages.line.generator.render import render
@@ -178,7 +179,7 @@ def test_line_generator_entry_points() -> None:
     source = generate("01", scale=2)
     assert _evaluate("Line", source, inputs=1) == "01"
     balanced = balance("01", generate("01"))
-    assert balanced.rows == compat.generate("Line", "01", balance=True).rows
+    assert balanced.rows == esolangs.generate("Line", "01", balance=True).source.rows
     assert _evaluate("Line", balanced.to_png(), inputs=1) == "01"
 
 
@@ -188,7 +189,7 @@ def test_six_inputs_keep_the_rendered_layout() -> None:
 
     table = "0110100110010110" * 4
     for balanced in (False, True):
-        program = compat.generate("Line", table, balance=balanced)
+        program = esolangs.generate("Line", table, balance=balanced).source
         assert _evaluate("Line", program.to_png(), inputs=6) == table
 
 
@@ -204,7 +205,7 @@ def test_forward_entry_lanes_land_two_units_per_lane() -> None:
     import hashlib
 
     table = "1100001100110000111111001111001100111111000000110000001100111111"
-    program = compat.generate("Line", table)
+    program = esolangs.generate("Line", table).source
     assert (len(program.rows[0]), len(program.rows)) == (920, 4360)
     pixels = bytes(c for row in program.rows for pixel in row for c in pixel)
     assert hashlib.sha256(pixels).hexdigest() == (
@@ -307,13 +308,13 @@ def test_shorter_stems_balance_keeps_the_area_ceiling(table: str) -> None:
         for reverse in (False, True)
     ]
     old = min(previous, key=lambda c: (abs(c.width - c.height), c.width * c.height))
-    image = compat.generate("Line", table, balance=True)
+    image = esolangs.generate("Line", table, balance=True).source
     assert len(image.rows[0]) * len(image.rows) <= old.width * old.height
     assert _evaluate("Line", image.to_png(), inputs=3) == table
 
     if table == "00010111":
         witness = "00011100"
-        image = compat.generate("Line", witness, balance=True)
+        image = esolangs.generate("Line", witness, balance=True).source
         assert len(image.rows) * len(image.rows[0]) == 248087
         assert _evaluate("Line", image.to_png(), inputs=3) == witness
 
@@ -341,7 +342,7 @@ def test_tighter_lattice_balance_keeps_the_area_ceiling() -> None:
         ),
     )
     assert ceiling.width * ceiling.height == 14_160_000
-    image = compat.generate("Line", table, balance=True)
+    image = esolangs.generate("Line", table, balance=True).source
     assert len(image.rows) * len(image.rows[0]) <= ceiling.width * ceiling.height
     assert _evaluate("Line", image.to_png(), inputs=6) == table
 
@@ -364,7 +365,7 @@ def test_balanced_choice_scores_the_drawn_extent(
     table: str, size: tuple[int, int]
 ) -> None:
     """A balanced non-small tree is picked on its true width by height."""
-    image = compat.generate("Line", table, balance=True)
+    image = esolangs.generate("Line", table, balance=True).source
     assert (len(image.rows[0]), len(image.rows)) == size
     for row in (0, 5, 33, 63):
         stdin = "\n".join(f"{row:06b}") + "\n"
@@ -434,13 +435,13 @@ def test_balance_keeps_the_shared_graph_when_it_is_squarer_and_smaller() -> None
         "01100010101011101011101110010000101110111001000010111011100100000110001010101110101110111001000001100010101011101011101110010000"
         "01100010101011101011101110010000011000101010111010111011100100001011101110010000011000101010111001100010101011101011101110010000"
     )
-    default = compat.generate("Line", table)
-    assert compat.generate("Line", table, balance=True).rows == default.rows
+    default = esolangs.generate("Line", table).source
+    assert esolangs.generate("Line", table, balance=True).source.rows == default.rows
 
 
 def test_balanced_or_keeps_the_skipped_tree_past_five_inputs() -> None:
     """Eight-input OR balances to 900x1880; the tested tree alone gives 3480x4440."""
     table = "0" + "1" * 255
-    balanced = compat.generate("Line", table, balance=True)
+    balanced = esolangs.generate("Line", table, balance=True).source
     assert (len(balanced.rows[0]), len(balanced.rows)) == (900, 1880)
     assert _evaluate("Line", balanced, inputs=8) == table

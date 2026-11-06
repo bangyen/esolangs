@@ -61,8 +61,8 @@ binding. Shared support modules no longer call the source facade; remaining
 owned test callers still require migration.
 
 Owned source-inspection tests for 91 text backends use explicit artifact source
-for native machines, layout checks and size pins. Template, raster, compressed
-and metadata-sensitive owned callers remain open.
+for native machines, layout checks and size pins. Other owned template callers
+remain open.
 
 Owned Boolean tests for Underload, Eval, Cyclic tag, Bitwise Cyclic Tag, Stisp
 and FRACTRAN retain template bindings. Persistence checks restore artifacts;
@@ -75,6 +75,9 @@ portable templates; independent native models inspect filled source.
 Owned integration callers now retain artifacts through execution, debugging,
 pickle and portable round trips, including raster and compressed source.
 Native-file fixtures unwrap explicitly; modified templates retain bindings.
+
+Native Line, Piet and NQ construction tests read explicit source bodies. Public
+scaled-Piet execution and native Line persistence retain artifact metadata.
 
 Accounting and analysis rows require owned witnesses, not just a declared hook
 or a recognized helper name. Certification needs an installed-package/lazy-import

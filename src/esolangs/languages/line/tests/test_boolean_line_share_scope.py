@@ -6,7 +6,7 @@ import random
 
 import pytest
 
-from esolangs import compat
+import esolangs
 from esolangs.languages.line.generator.layout import _has_goto
 from esolangs.languages.line.tests.test_boolean_line_projection import _execute
 from tests.support.witness_tables import parity
@@ -29,7 +29,7 @@ class TestLineReturnScope:
         """Streaming stems admit parity at n=5 and majority at n=6."""
         for build in (parity, _majority):
             for n in range(5, 9):
-                payload = compat.generate("Line", build(n))._payload
+                payload = esolangs.generate("Line", build(n)).source._payload
                 assert _has_goto(payload) == (n >= (5 if build is parity else 6)), (
                     build.__name__,
                     n,
@@ -56,7 +56,7 @@ class TestLineReturnScope:
         tables = _sample(n, 200, seed=11 + n)[start : start + 50]
         gotos = 0
         for table in tables:
-            generated = compat.generate("Line", table)
+            generated = esolangs.generate("Line", table).source
             if _has_goto(generated._payload):
                 _execute(table, generated, range(1 << n))
                 gotos += 1

@@ -6,7 +6,7 @@ from itertools import pairwise, product
 import pytest
 
 import esolangs
-from esolangs import compat, run
+from esolangs import run
 from esolangs.generation.helpers import essential_inputs, read_at
 from esolangs.generation.raster_lookup.balance import _bounded_operations
 from esolangs.languages.piet.generator import piet as generate
@@ -40,7 +40,7 @@ def test_the_generator_scale_upscales_and_executes() -> None:
 
 @pytest.mark.parametrize("balanced", [False, True])
 def test_and_uses_two_reads_multiply_and_output(*, balanced: bool) -> None:
-    program = compat.generate("Piet", "0001", balance=balanced)
+    program = esolangs.generate("Piet", "0001", balance=balanced).source
     assert isinstance(program, Raster)
     assert (len(program.rows[0]), len(program.rows)) == (6, 3)
     assert _evaluate("Piet", Raster.from_png(program.to_png()), inputs=2) == "0001"
@@ -103,7 +103,7 @@ def test_larger_functions_execute_through_png() -> None:
             tables.extend((table, table.translate(str.maketrans("01", "10"))))
         for table in tables:
             for balanced in (False, True):
-                image = compat.generate("Piet", table, balance=balanced)
+                image = esolangs.generate("Piet", table, balance=balanced).source
                 decoded = Raster.from_png(image.to_png())
                 assert _evaluate("Piet", decoded, inputs=inputs) == table
 
@@ -112,7 +112,7 @@ def test_larger_functions_execute_through_png() -> None:
 @pytest.mark.parametrize("balanced", [False, True])
 def test_larger_asymmetric_function_executes_through_png(*, balanced: bool) -> None:
     table = "".join(str(int(row in (0, 7, 31, 63))) for row in range(64))
-    image = compat.generate("Piet", table, balance=balanced)
+    image = esolangs.generate("Piet", table, balance=balanced).source
     assert _evaluate("Piet", Raster.from_png(image.to_png()), inputs=6) == table
 
 
@@ -192,8 +192,8 @@ def test_balance_raster_retains_layout(monkeypatch: pytest.MonkeyPatch) -> None:
             LANGUAGES["Piet"], backend=replace(LANGUAGES["Piet"].backend, balance=None)
         ),
     )
-    default = compat.generate("Piet", "0110")
-    balanced = compat.generate("Piet", "0110", balance=True)
+    default = esolangs.generate("Piet", "0110").source
+    balanced = esolangs.generate("Piet", "0110", balance=True).source
     assert isinstance(default, esolangs.Raster)
     assert isinstance(balanced, esolangs.Raster)
     assert balanced.to_png() == default.to_png()
@@ -203,9 +203,9 @@ def test_balance_raster_retains_layout(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.mark.parametrize("table", [*TABLES, "10010110", "00000001", "01011010"])
 def test_piet_balance_matches_rendered_width_oracle(table: str) -> None:
     operations = _bounded_operations(table)
-    candidates = [compat.generate("Piet", table)]
+    candidates = [esolangs.generate("Piet", table).source]
     for width in range(13, sum(op.size for op in operations) + 7):
-        image = compat.generate("Piet", table, width=width)
+        image = esolangs.generate("Piet", table, width=width).source
         assert isinstance(image, Raster)
         candidates.append(image)
         assert (
@@ -216,7 +216,7 @@ def test_piet_balance_matches_rendered_width_oracle(table: str) -> None:
             ).output
             == table[0]
         )
-    balanced = compat.generate("Piet", table, balance=True)
+    balanced = esolangs.generate("Piet", table, balance=True).source
     assert isinstance(balanced, Raster)
     old = min(candidates, key=score)
     assert score(balanced) <= score(old) or score(balanced)[1] < score(old)[1]
@@ -234,7 +234,7 @@ def test_piet_balance_matches_rendered_width_oracle(table: str) -> None:
 def test_piet_keeps_an_already_better_layout() -> None:
     from esolangs.generation.raster_lookup.balance import balance
 
-    source = compat.generate("Piet", "0001", balance=True)
+    source = esolangs.generate("Piet", "0001", balance=True).source
     assert isinstance(source, Raster)
     assert balance("0001", source) is source
     assert _evaluate("Piet", Raster.from_png(source.to_png()), inputs=2) == "0001"
@@ -251,7 +251,7 @@ def test_compact_folds_execute_without_growing() -> None:
             default = generate(table)
             old = _balanced_plan(_bounded_operations(table), default, compact=False)
             ceiling = min(old.score(), score(default))[1]
-            image = compat.generate("Piet", table, balance=True)
+            image = esolangs.generate("Piet", table, balance=True).source
             assert score(image)[1] <= ceiling
             assert (
                 _evaluate("Piet", Raster.from_png(image.to_png()), inputs=inputs)
@@ -267,12 +267,12 @@ def test_compact_folds_execute_without_growing() -> None:
 @pytest.mark.parametrize("width", [13, 19, 30])
 def test_compact_turns_and_halt_execute(width: int) -> None:
     table = "00010111"
-    image = compat.generate("Piet", table, width=width)
+    image = esolangs.generate("Piet", table, width=width).source
     assert _evaluate("Piet", Raster.from_png(image.to_png()), inputs=3) == table
 
 
 def test_compact_majority_is_smaller() -> None:
-    image = compat.generate("Piet", "00010111", balance=True)
+    image = esolangs.generate("Piet", "00010111", balance=True).source
     assert (len(image.rows[0]), len(image.rows)) == (13, 3)
 
 
@@ -288,7 +288,7 @@ def _check_majority() -> None:
                 str(int((row.bit_count() > n // 2) ^ inverted)) for row in range(1 << n)
             )
             for options in ({}, {"width": 13}, {"balance": True}, {"scale": 3}):
-                image = compat.generate("Piet", table, **options)
+                image = esolangs.generate("Piet", table, **options).source
                 assert isinstance(image, Raster)
                 image = Raster.from_png(image.to_png())
                 scale = 3 if options == {"scale": 3} else 1
@@ -316,7 +316,7 @@ def _check_majority() -> None:
         str(int(sum((row >> (8 - i)) & 1 for i in selected) > 2)) for row in range(512)
     )
     for options in ({}, {"width": 13}, {"balance": True}):
-        image = compat.generate("Piet", table, **options)
+        image = esolangs.generate("Piet", table, **options).source
         assert isinstance(image, Raster)
         for row in (0, 1, 170, 511):
 
@@ -345,7 +345,7 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                program = compat.generate("Piet", bit * (1 << n), **options)
+                program = esolangs.generate("Piet", bit * (1 << n), **options).source
                 if not options:
                     assert len(program.rows) * len(
                         program.rows[0]
@@ -387,9 +387,9 @@ def _check_constants() -> None:
                     )
 
                 if not options:
-                    scaled = compat.generate("Piet", bit * (1 << n), scale=3)
-                    assert len(scaled.rows) == 3 * len(program.rows)
-                    assert len(scaled.rows[0]) == 3 * len(program.rows[0])
+                    scaled = esolangs.generate("Piet", bit * (1 << n), scale=3)
+                    assert len(scaled.source.rows) == 3 * len(program.rows)
+                    assert len(scaled.source.rows[0]) == 3 * len(program.rows[0])
                     assert run("Piet", scaled, stdin="1\n" * n).output == bit
 
 
@@ -415,7 +415,7 @@ def _check_triples() -> None:
             cases.append("".join(table[row & 127] for row in range(256)))
         for truth_table in cases:
             for options in ({}, {"width": 15}, {"balance": True}):
-                image = compat.generate("Piet", truth_table, **options)
+                image = esolangs.generate("Piet", truth_table, **options).source
                 assert isinstance(image, Raster)
                 image = Raster.from_png(image.to_png())
                 for row in (0, (1 << n) // 3, (1 << n) - 1):

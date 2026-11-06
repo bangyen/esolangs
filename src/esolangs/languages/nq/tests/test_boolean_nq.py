@@ -6,7 +6,6 @@ from random import Random
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.debugger import make_vm
 from esolangs.languages.nq.generator import nq
 from esolangs.languages.nq.tests.ablations import ablate
@@ -76,7 +75,7 @@ def _check_constants() -> None:
         for bit in "01":
             for binding in ("opcode", "recursive"):
                 for options in ({}, {"width": 1}, {"balance": True}):
-                    source = compat.generate("NQ", bit * (1 << n), **options)
+                    source = esolangs.generate("NQ", bit * (1 << n), **options).source
                     for bits in ([0] * n, [1] * n):
                         io = ReadFirstIO("".join(map(str, bits)) + "7", expected=n)
                         machine = _Machine(source, io, guard_binding=binding)

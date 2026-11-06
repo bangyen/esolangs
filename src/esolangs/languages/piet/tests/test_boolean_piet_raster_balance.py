@@ -2,7 +2,8 @@
 
 import pytest
 
-from esolangs import compat, run
+import esolangs
+from esolangs import run
 from esolangs.generation.raster_lookup.balance import (
     _bounded_operations,
     _emit,
@@ -128,7 +129,7 @@ def test_white_bridge_turn_colors_and_halt_execute(table: str) -> None:
     from esolangs.languages.piet.interpreter import BLACK, WHITE
 
     operations = _bounded_operations(table)
-    default = compat.generate("Piet", table)
+    default = esolangs.generate("Piet", table).source
     old = _emit(operations, _balanced_plan(operations, default, compact=True))
     program = Raster.from_png(pack(operations, old).to_png())
     assert any(pixel == WHITE for row in program.rows for pixel in row)

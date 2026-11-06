@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import compat, run
+from esolangs import run
 from esolangs.languages.line.generator import line_boolean
 from esolangs.languages.line.generator.render import render
 from esolangs.languages.line.interpreter import run as run_line
@@ -60,18 +60,20 @@ def test_line_consumes_the_public_raster() -> None:
 
 
 def test_line_is_a_public_raster_language() -> None:
-    program = compat.generate("Line", "01")
-    assert isinstance(program, Raster)
+    program = esolangs.generate("Line", "01")
+    assert isinstance(program, esolangs.ProgramArtifact)
+    assert isinstance(program.source, Raster)
     assert esolangs.describe("Line")["source_kind"] == "raster"
     assert run("Line", program, stdin="1\n").output == "1"
 
 
 @pytest.mark.slow
 def test_public_run_loads_line_png(tmp_path: Path) -> None:
-    program = compat.generate("Line", "01")
-    assert isinstance(program, Raster)
+    program = esolangs.generate("Line", "01")
+    assert isinstance(program, esolangs.ProgramArtifact)
+    assert isinstance(program.source, Raster)
     path = tmp_path / "line.png"
-    path.write_bytes(program.to_png())
+    esolangs.save_program(program, path)
     assert run("Line", path, stdin="0\n").output == "0"
 
 
