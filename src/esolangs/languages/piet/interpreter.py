@@ -67,6 +67,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import raster_source as load_source
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.codels import (
     BLACK,
     COLOURS,
@@ -225,6 +226,20 @@ def _advance(
     return (target, (dp + turn) % 4, cc, stack, False), effect
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "piet-v1",
+    (
+        "position",
+        "direction",
+        "chooser",
+        "stack",
+        "input_cursor",
+        "stopped",
+        "input_reads",
+    ),
+)
+
+
 class _Machine:
     """A Piet run: one immutable state rebound after each pure transition."""
 
@@ -309,6 +324,18 @@ class _Machine:
             None
             if self.halted
             else (self.current[1], self.current[0], self.dp, self.cc)
+        )
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            position=self.current,
+            direction=self.dp,
+            chooser=self.cc,
+            stack=self.stack,
+            input_cursor=self.io.progress(),
+            stopped=self.halted,
+            input_reads=self._input_reads,
         )
 
     def snapshot(self) -> tuple[object, ...]:

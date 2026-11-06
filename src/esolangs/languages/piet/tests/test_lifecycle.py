@@ -27,6 +27,12 @@ def test_factory_shares_rows_with_private_stack_and_read_count():
     assert first.rows is second.rows
     before = second.snapshot()
     first.step()
+    saved = first.workspace_snapshot()
+    retained = {saved}
+    first._program_key = ()
+    first.snapshot = lambda: ("unrelated cycle key",)
+    assert first.workspace_snapshot() == saved
+    assert saved in retained
     assert first.stack == (65,)
     assert first._input_reads == 1
     assert second.snapshot() == before

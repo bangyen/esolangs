@@ -261,11 +261,11 @@ def _check_emitted_resource_routes() -> None:
                 program = layout.replace(TEMPLATE_CHAR * 2, PAIR[bit])
                 io = ScriptedIO("Q")
                 machine = _Machine(program, io)
-                written = WrittenState(machine.snapshot())
+                written = WrittenState(machine.workspace_snapshot())
                 steps = 0
                 while not machine.halted:
                     machine.step()
-                    written.sample(machine.snapshot())
+                    written.sample(machine.workspace_snapshot())
                     steps += 1
                     assert steps < 1000
                 assert io.getvalue() == "I\n"

@@ -218,7 +218,12 @@ class TestSurvivorGaps:
         while not machine.halted:
             machine.step()
         assert io_obj.getvalue() == ""  # nothing until the step past the halt
+        saved = machine.workspace_snapshot()
+        retained = {saved}
+        machine.snapshot = lambda: ("unrelated cycle key",)
         machine.step()
+        assert machine.workspace_snapshot() == saved
+        assert saved in retained
         first = io_obj.getvalue()
         assert first  # the dump actually produced something to repeat
         for _ in range(3):

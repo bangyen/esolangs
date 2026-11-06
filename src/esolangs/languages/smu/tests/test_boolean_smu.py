@@ -2,6 +2,8 @@
 
 import random
 
+import pytest
+
 import esolangs
 from esolangs.languages.smu import generator as tools
 from esolangs.languages.smu.interpreter import run
@@ -25,6 +27,7 @@ def test_every_three_input_table_runs_every_row() -> None:
             assert execute(program, row, 3) == (table[row], 3), (table, row)
 
 
+@pytest.mark.medium  # constants through n=12 plus terminal witnesses: 1.02s alone
 def test_sharing_totals() -> None:
     """A macro is kept only where it is shorter; the totals pin the rule."""
     _check_constants()
@@ -98,12 +101,12 @@ def _check_terminal_leaves() -> None:
             for row in (0, (1 << n) // 3, (1 << n) - 1):
                 io = ReadFirstIO(f"{row:0{n}b}", expected=n)
                 machine = _Machine(program, io)
-                written = WrittenState(machine.snapshot())
+                written = WrittenState(machine.workspace_snapshot())
                 steps = runs = 0
                 while not machine.halted:
                     runs += machine.fresh
                     machine.step()
-                    written.sample(machine.snapshot())
+                    written.sample(machine.workspace_snapshot())
                     if "" in machine.values:
                         # A terminal dead store must never precede another run.
                         assert not machine.fresh
@@ -142,11 +145,11 @@ def _check_constants() -> None:
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     io = ReadFirstIO(f"{row:0{n}b}", expected=n)
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                         assert steps <= 55 * n + 5
                     assert steps == 55 * n + 5

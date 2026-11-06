@@ -295,11 +295,11 @@ def _check_majority() -> None:
                 for row in (0, 1, (1 << n) // 3, (1 << n) - 1):
                     io = ReadFirstIO("\n".join(f"{row:0{n}b}") + "\n7\n", expected=n)
                     machine = _Machine(image, io, scale=scale)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                         assert steps < 10_000
                     assert io.getvalue() == table[row]
@@ -357,11 +357,11 @@ def _check_constants() -> None:
                     )
                     io = ReadFirstIO(stdin + "\n7\n", expected=n)
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                         assert steps < 1000
                     assert io.getvalue() == bit
@@ -421,11 +421,11 @@ def _check_triples() -> None:
                 for row in (0, (1 << n) // 3, (1 << n) - 1):
                     io = ScriptedIO("\n".join(f"{row:0{n}b}") + "\n7\n")
                     machine = _Machine(image, io, scale=1)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                         assert steps < 10_000
                     assert io.getvalue() == truth_table[row]

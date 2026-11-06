@@ -101,7 +101,7 @@ acceptance audit after the active separation work lands. Storage policy needs
 its priced comparison and explicit decision. These remain open even where an
 implementation pilot already passed.
 
-Accounting now has 105 explicit or inherited semantic adapters; 12 language
+Accounting now has 110 explicit or inherited semantic adapters; 7 language
 rows still use snapshot accounting. Declarations do not close lifecycle,
 storage-policy or catalog-wide acceptance requirements.
 
@@ -207,3 +207,9 @@ Dialect constants and validators live outside the interpreter package, so
 registry, trait and dialect queries no longer load Alight’s machine.
 Walkers and lists stay per-run.
 Native trace construction also retains artifact dialect choices.
+
+
+
+The raster/store batch declares five more models. Logical cells, array dimensions,
+stashed values, beam/tape state and bit buffers exclude persistent-map buckets,
+chunk boundaries, immutable program fingerprints and final-dump guards.

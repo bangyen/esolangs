@@ -38,6 +38,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.persistent import (
     Chunked,
@@ -197,6 +198,22 @@ def _advance(
     return (tape, ptr, lsrs, (ind + 1) % len(lsrs), jmp, pos)
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "laserfuck-v1",
+    (
+        "pointer",
+        "tape",
+        "jumps",
+        "beam_cursor",
+        "beams",
+        "input_cursor",
+        "input_reads",
+        "random_draws",
+        "second_start",
+    ),
+)
+
+
 class _Machine:
     """A LaserFuck run: the grid, the live lasers, and the tape."""
 
@@ -292,6 +309,20 @@ class _Machine:
     def memory(self) -> list[int]:
         """The tape's cell values, without their paint flags."""
         return [v for v, _ in flatten(self.tape)]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            pointer=self.ptr,
+            tape=tuple(flatten(self.tape)),
+            jumps=self.jmp,
+            beam_cursor=self.ind,
+            beams=tuple(self.lsrs),
+            input_cursor=self.io.progress(),
+            input_reads=self._input_reads,
+            random_draws=self._draws,
+            second_start=self._second_start,
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

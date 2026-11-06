@@ -34,6 +34,7 @@ from esolangs.runtime._lifecycle import HALTED_REPORT, CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import raster_source as load_source
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 
 from .extract import extract_mask
@@ -117,6 +118,11 @@ def _compiled(program: Raster, scale: int | None = None) -> _Compiled:
     )
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "line-v1", ("node", "instruction", "pointer", "cells", "input_cursor")
+)
+
+
 class _Machine:
     """A Line run: immutable code and state with I/O handled by the shell."""
 
@@ -152,6 +158,17 @@ class _Machine:
         return tuple(
             tape.get(i, 0)
             for i in range(min(tape, default=0), max(tape, default=0) + 1)
+        )
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        node, instruction, pointer, tape = self.state
+        return _WORKSPACE_MODEL.capture(
+            node=node,
+            instruction=instruction,
+            pointer=pointer,
+            cells=frozenset((cell, value) for cell, value in tape if value),
+            input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:

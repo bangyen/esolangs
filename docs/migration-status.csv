@@ -63,11 +63,11 @@ HQ9+,no,declared,not-applicable,declared,owned-adapter,hq9-v1,not-applicable,pen
 HQ9+ with headers,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,hq9-with-headers-v1,pending-backend-audit,pending-acceptance-audit,open
 IEBEL,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,iebel-v1,pending-backend-audit,pending-acceptance-audit,open
 Inject,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,inject-v1,pending-backend-audit,pending-acceptance-audit,open
-INTERCAL,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+INTERCAL,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,intercal-v1,pending-backend-audit,pending-acceptance-audit,open
 Interprogck8,yes,declared,not-applicable,declared,owned-adapter,interprogck8-v1,pending-backend-audit,pending-acceptance-audit,open
 Kiss,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,kiss-v1,pending-backend-audit,pending-acceptance-audit,open
-LaserFuck,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-Line,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+LaserFuck,yes,declared,not-applicable,declared,owned-adapter,laserfuck-v1,pending-backend-audit,pending-acceptance-audit,open
+Line,yes,declared,not-applicable,declared,owned-adapter,line-v1,pending-backend-audit,pending-acceptance-audit,open
 lol waht i cant edit talk pages,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,lol-waht-i-cant-edit-talk-pages-v1,pending-backend-audit,pending-acceptance-audit,open
 Malbolge,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Minsky Swap,yes,declared,not-applicable,declared,owned-adapter,minsky-swap-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -82,7 +82,7 @@ Object disoriented,yes,legacy-discovery,not-applicable,legacy-discovery,owned-ad
 Packlang,yes,legacy-discovery,declared,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Painfuck,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,painfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Parenthesys,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,parenthesys-v1,pending-backend-audit,pending-acceptance-audit,open
-Piet,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+Piet,yes,declared,not-applicable,declared,owned-adapter,piet-v1,pending-backend-audit,pending-acceptance-audit,open
 Pilas,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,pilas-v1,pending-backend-audit,pending-acceptance-audit,open
 Pointless,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,pointless-v1,pending-backend-audit,pending-acceptance-audit,open
 Qoibl,yes,declared,not-applicable,declared,owned-adapter,qoibl-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -98,7 +98,7 @@ SendStuff,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,sen
 Shakespeare,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,shakespeare-v1,pending-backend-audit,pending-acceptance-audit,open
 SLOW ACV MAMMALIAN,yes,legacy-discovery,declared,legacy-discovery,owned-adapter,slow-acv-mammalian-v1,pending-backend-audit,pending-acceptance-audit,open
 Smallfuck,yes,declared,not-applicable,declared,owned-adapter,smallfuck-v1,pending-backend-audit,pending-acceptance-audit,open
-Smu,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+Smu,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,smu-v1,pending-backend-audit,pending-acceptance-audit,open
 Sonata,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,sonata-v1,pending-backend-audit,pending-acceptance-audit,open
 SStack,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,sstack-v1,pending-backend-audit,pending-acceptance-audit,open
 Stisp,yes,declared,not-applicable,declared,owned-adapter,stisp-v1,pending-backend-audit,pending-acceptance-audit,open

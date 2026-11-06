@@ -99,8 +99,25 @@ from esolangs.languages.intercal.interpreter._semantics import (
 from esolangs.runtime._drive import drive
 from esolangs.runtime._fault import _Fault
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
+
+_WORKSPACE_MODEL = WorkspaceModel(
+    "intercal-v1",
+    (
+        "instruction",
+        "scalars",
+        "arrays",
+        "ignored",
+        "stashes",
+        "abstentions",
+        "returns",
+        "last_input",
+        "last_output",
+        "input_cursor",
+    ),
+)
 
 
 class _Machine:
@@ -162,6 +179,35 @@ class _Machine:
     @property
     def stack(self) -> list[object]:
         return [resume for resume, _origin in self.state.nexts]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        s = self.state
+
+        def array(value: int | tuple[tuple[int, ...], _PMap[int, int]]) -> Hashable:
+            if isinstance(value, int):
+                return value
+            dimensions, data = value
+            return dimensions, frozenset(data.items())
+
+        return _WORKSPACE_MODEL.capture(
+            instruction=s.ind,
+            scalars=frozenset(s.scalars.items()),
+            arrays=frozenset(
+                (key, dimensions, frozenset(data.items()))
+                for key, (dimensions, data) in s.arrays.items()
+            ),
+            ignored=s.ignored,
+            stashes=frozenset(
+                (key, tuple(array(value) for value in values))
+                for key, values in s.stashes.items()
+            ),
+            abstentions=s.abstained,
+            returns=s.nexts,
+            last_input=s.last_in,
+            last_output=s.last_out,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[Any, ...]:
         """Return the complete internal state, hashable for cycle detection."""

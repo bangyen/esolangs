@@ -54,6 +54,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.bits import flush_byte, put_bit, take_bit
 from esolangs.runtime.brackets import unmatched
 from esolangs.runtime.io import IO
@@ -138,6 +139,24 @@ def _advance(
     return pc + 1, 2, (joined,), None
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "smu-v1",
+    (
+        "code",
+        "instruction",
+        "fresh",
+        "stopped",
+        "stack",
+        "variables",
+        "incoming",
+        "remaining",
+        "outgoing",
+        "used",
+        "input_cursor",
+    ),
+)
+
+
 class _Machine:
     """One run's program and counter, the shared stack and variables, bit buffers."""
 
@@ -165,6 +184,22 @@ class _Machine:
     @property
     def stack(self) -> list[object]:
         return list(self._stack)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical workspace independently of cycle keys and backing storage."""
+        return _WORKSPACE_MODEL.capture(
+            code=self.code,
+            instruction=self.pc,
+            fresh=self.fresh,
+            stopped=self.done,
+            stack=tuple(self._stack),
+            variables=frozenset(self.values.items()),
+            incoming=self.incoming,
+            remaining=self.remaining,
+            outgoing=self.outgoing,
+            used=self.used,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         return (

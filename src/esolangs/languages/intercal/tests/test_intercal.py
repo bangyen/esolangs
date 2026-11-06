@@ -73,6 +73,16 @@ def test_next_and_resume_return() -> None:
 def test_vm_views_are_copies() -> None:
     machine = _Machine("PLEASE .1 <- #1\nDO GIVE UP\nDO GIVE UP", ScriptedIO(""))
     machine.step()
+    saved = machine.workspace_snapshot()
+    retained = {saved}
+    store = machine.state.scalars
+    buckets = [{} for _ in range(8)]
+    for key, value in store.items():
+        buckets[hash(key) & 7][key] = value
+    store._buckets = tuple(buckets)
+    machine.snapshot = lambda: ("unrelated cycle key",)
+    assert machine.workspace_snapshot() == saved
+    assert saved in retained
     memory = machine.memory
     memory.append(9)
     assert machine.memory == [1]
@@ -541,7 +551,7 @@ def test_only_a_tail_array_element_overflows_at_sixteen_bits() -> None:
 
 def test_retrieve_restores_an_array_but_not_an_ignored_scalar() -> None:
     """Manual s7.4: C-INTERCAL treats a retrieval like an assignment."""
-    out = _program(
+    statements = (
         "PLEASE ,1 <- #1",
         "DO ,1 SUB #1 <- #5",
         "DO .1 <- #7",
@@ -553,7 +563,25 @@ def test_retrieve_restores_an_array_but_not_an_ignored_scalar() -> None:
         "DO READ OUT ,1 SUB #1 + .1",
         "DO GIVE UP",
     )
-    assert out == "V\nVIII\n"
+    machine = _Machine("\n".join(statements), ScriptedIO())
+    machine.snapshot = lambda: ("unrelated cycle key",)
+    retained = {machine.workspace_snapshot()}
+    for index in range(len(statements)):
+        machine.step()
+        captured = machine.workspace_snapshot()
+        assert all(saved in retained for saved in tuple(retained))
+        retained.add(captured)
+        if index == 3:
+            components = dict(
+                zip(captured.model.components, captured.parts, strict=True)
+            )
+            array = ((1,), frozenset({(0, 5)}))
+            assert components["arrays"] == frozenset({((",", 1), *array)})
+            assert components["stashes"] == frozenset(
+                {((",", 1), (array,)), ((".", 1), (7,))}
+            )
+    assert machine.halted
+    assert machine.io.getvalue() == "V\nVIII\n"
 
 
 @pytest.mark.parametrize(
