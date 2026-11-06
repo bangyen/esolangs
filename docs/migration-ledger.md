@@ -34,7 +34,7 @@ Owners are workstreams, not individual contributors.
 | Dialect metadata signature/default inspection | Lifecycle | Retired; all seven schemas declared; constructor/default and no-discovery checks in `tests/api/test_dialects.py` | Declared dialect schemas and defaults |
 | Generator callable-option signature inference | Analysis | Retired; all 114 backends use declared options; independent signature oracle and no-discovery checks in `tests/api/test_artifact_defaults.py` and `tests/api/test_api_contracts.py` | Declared backend option capabilities |
 | `FunctionRef.__signature__` proxy | Registry | Retired; recursive declaration checks reject its return in `tests/api/test_descriptor_loading.py` | Explicit callable parameter declarations |
-| Snapshot-as-workspace fallback | Accounting | Benchmarking, proof drivers and custom VM callers | Versioned semantic accounting adapters |
+| Snapshot-as-workspace fallback | Accounting | Retired; all registered VMs require models; missing/invalid adapters and snapshot-only callers are rejected in `tests/runtime/test_workspace_model.py` | Versioned semantic accounting models |
 | Legacy worker-field defaults | Results | Retired; complete requests and explicit success/error observations; omission controls in `tests/runtime/test_worker_results.py` | Explicit canonical fields, including unavailable observations |
 | Superseded serialization decoders/converters | Persistence | Persisted data and fixtures, if a format is superseded | One-time data migration, then remove the obsolete code |
 
@@ -244,7 +244,7 @@ conventions stay explicit.
 Algebraic Programming Language declares typed numeric/function values and
 source-relative continuation locations. Retained definitions survive redefinition;
 immutable code sharing and cycle serials do not determine workspace. All 117
-languages now declare accounting; fallback retirement and acceptance stay open.
+languages now declare accounting; catalog-wide acceptance stays open.
 
 AddSubJump, Between, Blindfolded Arithmetic, CARP, CV(N)(C), Decleq, IEBEL,
 Rubic, Subleq and S*bleq declare text factories and debugger fields.
@@ -257,3 +257,7 @@ Quassaunt and SStack declare text factories and debugger fields.
 Grids/markers, tapes/queues, output buffers, environments and stacks remain
 per-run. B-tapemark binds swap behavior and keeps dialect metadata independent
 of its interpreter.
+
+VM accounting no longer falls back to cycle snapshots. All 117 catalog rows
+require models; the 114 Boolean execution witnesses and three non-Boolean
+checks reject cycle-key use. Storage-policy and full accounting acceptance stay open.

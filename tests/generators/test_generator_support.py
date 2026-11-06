@@ -77,6 +77,10 @@ def test_constant_oracle_retains_the_next_record_and_rejects_wrong_output():
 
 
 def test_measurement_keeps_transient_workspace_and_the_existing_step_cutoff():
+    from esolangs.runtime._state import WorkspaceModel
+
+    model = WorkspaceModel("transient-test-v1", ("value",))
+
     class Machine:
         at = 0
         states = (0, 1 << 100, 0)
@@ -86,7 +90,10 @@ def test_measurement_keeps_transient_workspace_and_the_existing_step_cutoff():
             return self.at == len(self.states) - 1
 
         def snapshot(self):
-            return (self.states[self.at],)
+            raise AssertionError("cycle snapshot reached accounting")
+
+        def workspace_snapshot(self):
+            return model.capture(value=self.states[self.at])
 
         def step(self):
             self.at += 1

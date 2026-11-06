@@ -189,20 +189,60 @@ def test_input_progress_and_failed_reads_are_observed():
 
 
 def test_an_invalid_owned_adapter_cannot_fall_back(monkeypatch):
-    monkeypatch.setattr(_Machine, "workspace_snapshot", lambda self: self.snapshot())
-    with pytest.raises(TypeError, match="WorkspaceSnapshot"):
-        _capture_workspace(make_vm("Brainfuck", "+."))
+    def forbidden(*_args):
+        raise AssertionError("cycle snapshot reached accounting")
+
+    non_boolean = 0
+    for language in LANGUAGES.values():
+        if language.backend is not None:
+            continue
+        artifact = esolangs.ProgramArtifact("", language.name)
+        vm = make_vm(language.name, artifact)
+        saved = _capture_workspace(vm)
+        retained = {saved}
+        monkeypatch.setattr(vm._machine, "snapshot", forbidden)
+        complete_vm(vm, max_steps=2)
+        assert isinstance(_capture_workspace(vm), WorkspaceSnapshot)
+        assert saved in retained
+        assert vm.output == esolangs.run(language.name, artifact).output
+        non_boolean += 1
+    assert non_boolean > 0
+    vm = make_vm("Brainfuck", "+.")
+    monkeypatch.setattr(_Machine, "snapshot", forbidden)
+    with monkeypatch.context() as patch:
+        patch.setattr(_Machine, "workspace_snapshot", lambda _self: ())
+        with pytest.raises(TypeError, match="WorkspaceSnapshot"):
+            _capture_workspace(vm)
+    with monkeypatch.context() as patch:
+        patch.delattr(_Machine, "workspace_snapshot")
+        with pytest.raises(TypeError, match="requires workspace_snapshot"):
+            _capture_workspace(vm)
+    with monkeypatch.context() as patch:
+        patch.setattr(_Machine, "workspace_snapshot", None)
+        with pytest.raises(TypeError, match="requires workspace_snapshot"):
+            _capture_workspace(vm)
+
+    class SnapshotOnly:
+        snapshot = forbidden
+
+    with pytest.raises(TypeError, match="registered VM"):
+        _capture_workspace(SnapshotOnly())
 
 
 def _declared_boolean_models():
     ledger = Path(__file__).resolve().parents[2] / "docs/migration-status.csv"
     with ledger.open() as source:
-        return [
-            (row["language"], row["workspace_model"])
-            for row in csv.DictReader(source)
-            if row["workspace"] != "snapshot-fallback"
-            and row["boolean_backend"] == "yes"
-        ]
+        rows = list(csv.DictReader(source))
+    assert {row["language"] for row in rows} == LANGUAGES.keys()
+    assert len(rows) == len(LANGUAGES)
+    for row in rows:
+        assert row["workspace"] in {"owned-adapter", "inherited-adapter"}, row
+        assert row["workspace_model"] not in {"", "needs-review"}, row
+    return [
+        (row["language"], row["workspace_model"])
+        for row in rows
+        if row["boolean_backend"] == "yes"
+    ]
 
 
 # The complete word-store accounting witness takes 2.04 s in a serial run.

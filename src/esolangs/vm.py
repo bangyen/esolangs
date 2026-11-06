@@ -424,17 +424,18 @@ def _capture_observation(
     return ExecutionResult(vm.output, None, None, None, report)
 
 
-def _capture_workspace(vm: VM) -> Hashable:
-    """Project owned semantic accounting state, retaining legacy snapshot models."""
-    if isinstance(vm, _DelegatingVM):
-        machine = vm._machine  # noqa: SLF001 - owned adapter
-        capture = getattr(type(machine), "workspace_snapshot", None)
-        if capture is not None:
-            state = capture(machine)
-            if not isinstance(state, WorkspaceSnapshot):
-                raise TypeError("workspace_snapshot must return a WorkspaceSnapshot")
-            return state
-    return cast(SnapshotVM, vm).snapshot()
+def _capture_workspace(vm: VM) -> WorkspaceSnapshot:
+    """Require a registered interpreter's declared semantic accounting model."""
+    if not isinstance(vm, _DelegatingVM):
+        raise TypeError("workspace accounting requires a registered VM")
+    machine = vm._machine  # noqa: SLF001 - owned adapter
+    capture = getattr(type(machine), "workspace_snapshot", None)
+    if not callable(capture):
+        raise TypeError("workspace accounting requires workspace_snapshot")
+    state = capture(machine)
+    if not isinstance(state, WorkspaceSnapshot):
+        raise TypeError("workspace_snapshot must return a WorkspaceSnapshot")
+    return state
 
 
 @cache
