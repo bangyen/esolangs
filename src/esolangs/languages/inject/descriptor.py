@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Inject."""
 
+from esolangs.languages.inject.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -10,6 +11,9 @@ LANGUAGE = Language(
     "Inject",
     RuntimeSpec(
         "inject",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="program_based",
         # The wiki cat's only clean exit is a ``readto`` that gets no line.
         eof="an exhausted readto empties the block",

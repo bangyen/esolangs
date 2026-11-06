@@ -6,7 +6,7 @@ from typing import Any, ClassVar
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.inject.interpreter import _Machine, run
+from esolangs.languages.inject.interpreter import _Machine, prepare_machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
@@ -75,6 +75,17 @@ class TestWikiExamples:
     def test_hello_world(self) -> None:
         """The block is sent, then skipped over rather than executed."""
         assert _run(HELLO_WORLD) == "Hello, world!\n"
+        source = HELLO_WORLD.splitlines()
+        factory = prepare_machine(source, {})
+        source.clear()
+        first_io, second_io = ScriptedIO(), ScriptedIO()
+        first, second = factory(first_io), factory(second_io)
+        untouched = second.snapshot()
+        while not first.halted:
+            first.step()
+        assert first_io.getvalue() == "Hello, world!\n"
+        assert second.snapshot() == untouched
+        assert second_io.getvalue() == ""
 
     def test_cat_preserves_line_content_and_order(self) -> None:
         for first in ["", "a b", "loop;", "λ", "\tword", "ab"]:

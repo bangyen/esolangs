@@ -44,11 +44,15 @@ Decisions:
 import re
 from collections.abc import Mapping
 from types import MappingProxyType
+from typing import Any
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.inject.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
@@ -394,10 +398,26 @@ class _Machine:
             self.io.print_str(text)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind source; each IO-bound construction owns fresh runtime state."""
+    if not isinstance(source, (str, list)):
+        raise TypeError("inject machines require text or split text source")
+    code = tuple(source) if isinstance(source, list) else source
+    if options:
+        raise TypeError("inject machines accept no runtime options")
+
+    def build(io: IO) -> _Machine:
+        return _Machine(list(code) if isinstance(code, tuple) else code, io)
+
+    return build
+
+
 def _execute(code: str | list[str], io: IO) -> CompletionReport:
     """Run an Inject program to completion."""
     machine = _Machine(code, io)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(code: str | list[str], io: IO) -> None:

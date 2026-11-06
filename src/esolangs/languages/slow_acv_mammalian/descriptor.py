@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for SLOW ACV MAMMALIAN."""
 
-from esolangs.languages.slow_acv_mammalian.interpreter import LEAPFROG_RESUMES, MODULI
+from esolangs.languages.slow_acv_mammalian.dialect import LEAPFROG_RESUMES, MODULI
+from esolangs.languages.slow_acv_mammalian.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -11,9 +12,12 @@ LANGUAGE = Language(
     "SLOW ACV MAMMALIAN",
     RuntimeSpec(
         "slow_acv_mammalian",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="tape_based",
         dialect=FunctionRef(
-            "esolangs.languages.slow_acv_mammalian.interpreter",
+            "esolangs.languages.slow_acv_mammalian.dialect",
             "MammalianModuli",
             ("cell_modulus", "io_modulus", "leapfrog_resume"),
         ),

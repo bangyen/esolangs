@@ -11,7 +11,8 @@ from esolangs.languages.slow_acv_mammalian._sums import (
     _read_seeds,
     _seeds_onto,
 )
-from esolangs.languages.slow_acv_mammalian.interpreter import _ARRAYS, MammalianModuli
+from esolangs.languages.slow_acv_mammalian.dialect import ARRAYS as _ARRAYS
+from esolangs.languages.slow_acv_mammalian.dialect import MammalianModuli
 
 
 @dataclass

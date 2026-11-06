@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for FALSE."""
 
 from esolangs.generation.wrap import _false
+from esolangs.languages.false.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -10,7 +11,12 @@ from esolangs.runtime._definition import RuntimeSpec
 LANGUAGE = Language(
     "FALSE",
     RuntimeSpec(
-        "false", category="stack_based", eof="an exhausted '^' is the spec's -1"
+        "false",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+        category="stack_based",
+        eof="an exhausted '^' is the spec's -1",
     ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(

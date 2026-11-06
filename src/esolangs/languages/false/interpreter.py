@@ -42,14 +42,19 @@ Decisions:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from operator import add, and_, mul, or_, sub
 from string import ascii_lowercase
+from typing import Any
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.false.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import trunc_div, wrap_int32
@@ -552,10 +557,25 @@ class _Machine:
             self.io.print_str(str(value))
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind source; each IO-bound construction owns fresh runtime state."""
+    if not isinstance(source, str):
+        raise TypeError("false machines require text source")
+    if options:
+        raise TypeError("false machines accept no runtime options")
+
+    def build(io: IO) -> _Machine:
+        return _Machine(source, io)
+
+    return build
+
+
 def _execute(code: str, io: IO) -> CompletionReport:
     """Run a FALSE program."""
     machine = _Machine(code, io)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO) -> None:

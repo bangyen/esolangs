@@ -272,13 +272,11 @@ class TestSlowAcvMammalian:
     ) -> None:
         """Every jump target is preceded by a no-op, so the reading is moot."""
         from esolangs.languages.slow_acv_mammalian import interpreter
-        from esolangs.languages.slow_acv_mammalian.interpreter import (
-            DEFAULT_MODULI,
-            _Machine,
-        )
+        from esolangs.languages.slow_acv_mammalian.dialect import DEFAULT_MODULI
         from esolangs.languages.slow_acv_mammalian.interpreter import (
             _advance as advance,
         )
+        from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
 
         def at_target(state, n, byte=None, *, moduli=DEFAULT_MODULI):
             out = advance(state, n, byte, moduli=moduli)
@@ -307,13 +305,11 @@ class TestSlowAcvMammalian:
     ) -> None:
         """The decision tree and the compact chain guard their targets too."""
         from esolangs.languages.slow_acv_mammalian import interpreter
-        from esolangs.languages.slow_acv_mammalian.interpreter import (
-            DEFAULT_MODULI,
-            _Machine,
-        )
+        from esolangs.languages.slow_acv_mammalian.dialect import DEFAULT_MODULI
         from esolangs.languages.slow_acv_mammalian.interpreter import (
             _advance as advance,
         )
+        from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
 
         def at_target(state, n, byte=None, *, moduli=DEFAULT_MODULI):
             out = advance(state, n, byte, moduli=moduli)

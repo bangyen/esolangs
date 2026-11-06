@@ -10,7 +10,8 @@ arithmetic, so a finished build is correct by construction.
 
 from collections.abc import Iterable, Sequence
 
-from esolangs.languages.slow_acv_mammalian.interpreter import _ARRAYS, MammalianModuli
+from esolangs.languages.slow_acv_mammalian.dialect import ARRAYS as _ARRAYS
+from esolangs.languages.slow_acv_mammalian.dialect import MammalianModuli
 
 #: The weight array, tracked as head plus non-head sum (like array 0)
 #: because the construction only ever reads it through ``DIGEST``.

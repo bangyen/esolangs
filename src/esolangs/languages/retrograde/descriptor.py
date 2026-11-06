@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Retrograde."""
 
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.retrograde.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -12,7 +13,13 @@ PAIR = ("\\", "*")
 
 LANGUAGE = Language(
     "Retrograde",
-    RuntimeSpec("retrograde", category="tape_based"),
+    RuntimeSpec(
+        "retrograde",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+        category="tape_based",
+    ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.retrograde.generator", "retrograde", ("truth_table",)

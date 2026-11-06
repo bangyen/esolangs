@@ -277,3 +277,9 @@ Grapheme, Sonata and HQ9+ with headers declare text factories and debugger
 fields. Heaps, arrays, scopes, frames and input state remain per-run.
 Grapheme binds integer conversion and keeps dialect metadata independent of
 its interpreter; constructor-time whole-input reads stay intact.
+
+Crement, FALSE, Forþ, Inject, lol waht i cant edit talk pages, Parenthesys,
+Retrograde, SendStuff, SLOW ACV MAMMALIAN and SwitchCase declare factories
+and debugger fields. Instructions, lambdas/scopes, macros and buffers remain
+per-run. Inject freezes split text; Mammalian binds all dialect fields and
+loads dialect metadata independently of its interpreter.

@@ -33,46 +33,24 @@ Decisions:
       page says EXCRETE and PRONOUNCE are "modulo 255").
 """
 
-from dataclasses import dataclass
+from collections.abc import Mapping
 from itertools import chain
+from typing import Any
 
+from esolangs.languages.slow_acv_mammalian.dialect import ARRAYS as _ARRAYS
+from esolangs.languages.slow_acv_mammalian.dialect import (
+    DEFAULT_MODULI,
+    MammalianModuli,
+)
+from esolangs.languages.slow_acv_mammalian.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
-
-MODULI = (255, 256)
-
-#: Where execution resumes after a LEAPFROG: after the target instruction
-#: (the default) or at it.
-LEAPFROG_RESUMES = ("after", "at")
-
-#: How many arrays the machine has; ``SPRINT`` moves the pointer mod this.
-_ARRAYS = 23
-
-
-@dataclass(frozen=True)
-class MammalianModuli:
-    """The dialect settings: moduli, and where a LEAPFROG resumes."""
-
-    cell_modulus: int = 256
-    io_modulus: int = 255
-    leapfrog_resume: str = "after"
-
-    def __post_init__(self) -> None:
-        """Reject unsupported cell and I/O moduli and resume readings."""
-        if type(self.cell_modulus) is not int or self.cell_modulus not in MODULI:
-            raise ValueError("Mammalian cell_modulus must be 255 or 256")
-        if type(self.io_modulus) is not int or self.io_modulus not in MODULI:
-            raise ValueError("Mammalian io_modulus must be 255 or 256")
-        if self.leapfrog_resume not in LEAPFROG_RESUMES:
-            raise ValueError("Mammalian leapfrog_resume must be after or at")
-
-
-DEFAULT_MODULI = MammalianModuli()
-
 
 #: One instant of a run: ``(arrays, ptr, acc, ind, halted)`` -- the 23
 #: arrays, the pointer that picks the current one, the accumulator, the
@@ -336,6 +314,30 @@ class _Machine:
         self._restore(_advance(self._state, n, byte, moduli=self.moduli))
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind source; each IO-bound construction owns fresh runtime state."""
+    if not isinstance(source, str):
+        raise TypeError("slow_acv_mammalian machines require text source")
+    if options.keys() - {"cell_modulus", "io_modulus", "leapfrog_resume"}:
+        raise TypeError("Mammalian machines accept only declared dialect options")
+    cell_modulus = options.get("cell_modulus", DEFAULT_MODULI.cell_modulus)
+    io_modulus = options.get("io_modulus", DEFAULT_MODULI.io_modulus)
+    leapfrog_resume = options.get("leapfrog_resume", DEFAULT_MODULI.leapfrog_resume)
+
+    def build(io: IO) -> _Machine:
+        return _Machine(
+            source,
+            io,
+            cell_modulus=cell_modulus,
+            io_modulus=io_modulus,
+            leapfrog_resume=leapfrog_resume,
+        )
+
+    return build
+
+
 def _execute(
     code: str,
     io: IO,
@@ -352,7 +354,8 @@ def _execute(
             cell_modulus=cell_modulus,
             io_modulus=io_modulus,
             leapfrog_resume=leapfrog_resume,
-        )
+        ),
+        policy=CAPABILITIES.completion,
     )
 
 

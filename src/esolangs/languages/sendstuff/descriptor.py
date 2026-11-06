@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for SendStuff."""
 
 from esolangs.generation.wrap import TokenWrapper
+from esolangs.languages.sendstuff.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -14,6 +15,9 @@ LANGUAGE = Language(
     "SendStuff",
     RuntimeSpec(
         "sendstuff",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="other",
         eof="an exhausted Input or InputNumber sends nothing, as the spec says",
     ),

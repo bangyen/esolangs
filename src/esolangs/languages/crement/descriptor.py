@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Crement."""
 
+from esolangs.languages.crement.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -8,7 +9,13 @@ from esolangs.runtime._definition import RuntimeSpec
 
 LANGUAGE = Language(
     "Crement",
-    RuntimeSpec("crement", category="program_based"),
+    RuntimeSpec(
+        "crement",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+        category="program_based",
+    ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.crement.generator", "crement", ("truth_table", "width")
