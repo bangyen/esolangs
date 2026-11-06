@@ -64,7 +64,7 @@ HQ9+ with headers,yes,legacy-discovery,not-applicable,legacy-discovery,owned-ada
 IEBEL,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,iebel-v1,pending-backend-audit,pending-acceptance-audit,open
 Inject,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 INTERCAL,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-Interprogck8,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,interprogck8-v1,pending-backend-audit,pending-acceptance-audit,open
+Interprogck8,yes,declared,not-applicable,declared,owned-adapter,interprogck8-v1,pending-backend-audit,pending-acceptance-audit,open
 Kiss,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 LaserFuck,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Line,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open

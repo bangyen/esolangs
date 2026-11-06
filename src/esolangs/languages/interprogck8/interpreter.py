@@ -60,14 +60,18 @@ Decisions:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from functools import cache, lru_cache
-from typing import cast
+from functools import cache, lru_cache, partial
+from typing import Any, cast
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.interprogck8.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
@@ -702,11 +706,23 @@ class _Machine:
             self.io.print_str(out)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh program state and the caller's random source without drawing."""
+    if not isinstance(source, (str, list)):
+        raise TypeError("interprogck8 machines require text or split text source")
+    if options.keys() - {"rng"}:
+        raise TypeError("interprogck8 machines accept only the rng runtime option")
+    code = source if isinstance(source, str) else list(source)
+    return partial(_Machine, code, rng=options.get("rng"))
+
+
 def _execute_program(
     code: str | list[str], io: IO, rng: Randomness | None = None
 ) -> CompletionReport:
     """Run ``code`` to its halt; ``rng`` pins ``[a b]`` and ``~``."""
-    return drive(_Machine(code, io, rng))
+    return drive(_Machine(code, io, rng), policy=CAPABILITIES.completion)
 
 
 def run(code: str | list[str], io: IO, rng: Randomness | None = None) -> None:

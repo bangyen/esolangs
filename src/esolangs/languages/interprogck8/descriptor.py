@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Interprogck8."""
 
+from esolangs.languages.interprogck8.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
@@ -13,6 +14,8 @@ LANGUAGE = Language(
     RuntimeSpec(
         "interprogck8",
         completion_entrypoint="_execute_program",
+        machine_preparation="prepare_machine",
+        capabilities=CAPABILITIES,
         category="register_based",
         split=True,
         random=True,

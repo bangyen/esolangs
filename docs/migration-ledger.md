@@ -148,3 +148,7 @@ batching and partial fault state remain unchanged.
 Malbolge declares cached-image preparation, opaque instruction positions and
 ordinary completion. Mutable memory and dirty snapshot chunks stay per-run;
 EOF remains 59048.
+
+Interprogck8 declares cached program preparation, caller-owned RNG binding and
+line/stack debug fields. Preparation draws nothing; captures, call frames and
+`z` reloads remain per-run.
