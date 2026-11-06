@@ -25,12 +25,16 @@ Decisions:
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from functools import lru_cache
+from collections.abc import Mapping, Sequence
+from functools import lru_cache, partial
+from typing import Any
 
+from esolangs.languages.malbolge.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime.io import IO
 from esolangs.runtime.persistent import CHUNK, chunked
 from esolangs.runtime.source_hints import syntax_error
@@ -225,10 +229,21 @@ class _Machine:
             self.io.print_char(chr(effect))
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh mutable memory from the cached immutable initial image."""
+    if not isinstance(source, str):
+        raise TypeError("malbolge machines require text source")
+    if options:
+        raise TypeError("malbolge machines accept no runtime options")
+    return partial(_Machine, source)
+
+
 def _execute(code: str, io: IO) -> CompletionReport:
     """Execute a Malbolge program."""
     machine = _Machine(code, io)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO) -> None:

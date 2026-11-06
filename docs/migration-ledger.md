@@ -139,3 +139,7 @@ model records write-epoch equality, preserving behavior under epoch renumbering.
 Taglate declares cached token preparation, queue debug fields and ordinary
 completion. Machines retain private token/pair copies; native rotation/pop
 batching and partial fault state remain unchanged.
+
+Malbolge declares cached-image preparation, opaque instruction positions and
+ordinary completion. Mutable memory and dirty snapshot chunks stay per-run;
+EOF remains 59048.

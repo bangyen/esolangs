@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Malbolge."""
 
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.malbolge.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -16,6 +17,9 @@ LANGUAGE = Language(
     RuntimeSpec(
         "malbolge",
         category="program_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         eof="an exhausted read is the value 59048, not an error",
     ),
     backend=BooleanBackend(
