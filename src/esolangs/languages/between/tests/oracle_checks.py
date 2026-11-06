@@ -10,7 +10,9 @@ from itertools import product
 import pytest
 
 from esolangs.languages.between.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import missing_workspace, workspace_view
 
 
 def _argument(value):
@@ -115,11 +117,27 @@ def _model(program, stdin):
 
 
 def _check(factory, program, stdin="unused"):
+    expected = _model(program, stdin)
+
     def state(machine):
         return tuple(sorted(machine.variables.items())), machine.ind, machine.exited
 
-    assert observed(factory, _source(program), stdin, state, cap=16) == _model(
-        program, stdin
+    assert (
+        observed(
+            factory,
+            _source(program),
+            stdin,
+            workspace_view(
+                expected[1],
+                WorkspaceModel(
+                    "between-v1", ("instruction", "variables", "exited", "input_cursor")
+                ),
+                lambda row: (row[0][1], frozenset(row[0][0]), row[0][2], row[-1]),
+                state,
+            ),
+            cap=16,
+        )
+        == expected
     ), (program, stdin)
 
 
@@ -189,3 +207,9 @@ def check_raw_between():
     ):
         with pytest.raises(AssertionError):
             _check(factory, program, "1\n0\n")
+    for component in ("instruction", "variables", "exited", "input_cursor"):
+        with pytest.raises(AssertionError):
+            _check(
+                missing_workspace(_Machine, component),
+                (("declare", "x"), ("assign", "x", 3)),
+            )

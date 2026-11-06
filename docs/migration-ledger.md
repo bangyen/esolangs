@@ -688,3 +688,11 @@ owned. All 632 corpus requests and 240 larger layouts retain their bytes;
 candidates retain marker counts and bytes, with 9,104 native rows executed.
 Subtree, stored-input and weighted-lookup queries have live faults. Bounds,
 pins and anchors remain unchanged; catalog acceptance stays open.
+
+Ten more owned models predict complete workspace captures and charged peaks:
+B-tapemark, Balik, Between, Bit~, Bitdeque, Bitwise Cyclic Tag, BrainIf, CARP,
+Cyclic Tag and Taglate. Reference payloads retain marker-grid coordinates,
+rebased tape extents, live tag suffixes, answer latches, variables and input
+progress. Thirty-eight live component-erasure controls preserve execution but
+fail resource checks. Failed and post-halt boundaries remain covered at each
+model's existing step cap; whole-corpus and catalog acceptance stays open.

@@ -7,7 +7,9 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.bitdeque.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from esolangs.runtime.io import ScriptedIO
+from tests.support.workspace_oracle import WorkspaceWitness, missing_workspace
 
 _CAP = 64
 
@@ -71,14 +73,24 @@ def _model(code):
     return error, trace
 
 
-def _observed(machine_type, code):
+def _observed(machine_type, code, predicted):
     io = ScriptedIO("λ\nunused")
     try:
         machine = machine_type(code, io)
     except ValueError:
         return "syntax", []
 
+    expected = iter(predicted)
+    witness = WorkspaceWitness(
+        WorkspaceModel(
+            "bitdeque-v1", ("instruction", "register", "deque", "input_cursor")
+        )
+    )
+
     def view():
+        assert predicted
+        row = next(expected)
+        witness.sample(machine.workspace_snapshot(), (*row[:3], row[-1]))
         return (
             machine.ind,
             machine.reg,
@@ -112,7 +124,7 @@ def _observed(machine_type, code):
 
 def _agrees(machine_type, code):
     expected = _model(code)
-    assert _observed(machine_type, code) == expected, code
+    assert _observed(machine_type, code, expected[1]) == expected, code
     return expected
 
 
@@ -205,4 +217,7 @@ def check_raw_bitdeque():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, code)
-    return len(corpus), len(controls)
+    for component in ("instruction", "register", "deque", "input_cursor"):
+        with pytest.raises(AssertionError):
+            _agrees(missing_workspace(_Machine, component), "INVERT PUSH")
+    return len(corpus), len(controls) + 4

@@ -5,7 +5,9 @@ from itertools import product
 import pytest
 
 from esolangs.languages.brainif.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import missing_workspace, workspace_view
 
 
 def _parse(line):
@@ -73,10 +75,28 @@ def _model(lines, stdin):
 
 
 def _check(factory, lines, stdin):
+    expected = _model(lines, stdin)
+
     def state(machine):
         return machine.ind, machine.ptr, machine.cells
 
-    assert observed(factory, lines, stdin, state, cap=32) == _model(lines, stdin), lines
+    assert (
+        observed(
+            factory,
+            lines,
+            stdin,
+            workspace_view(
+                expected[1],
+                WorkspaceModel(
+                    "brainif-v1", ("cells", "instruction", "pointer", "input_cursor")
+                ),
+                lambda row: (row[0][2], row[0][0], row[0][1], row[-1]),
+                state,
+            ),
+            cap=32,
+        )
+        == expected
+    ), lines
 
 
 def check_raw_brainif():
@@ -103,3 +123,8 @@ def check_raw_brainif():
 
     with pytest.raises(AssertionError):
         _check(StaleGuard, ["if 0 inc", "if 1 output"], "")
+    for component in ("cells", "instruction", "pointer", "input_cursor"):
+        with pytest.raises(AssertionError):
+            _check(
+                missing_workspace(_Machine, component), ["if 0 inc", "if 1 right"], ""
+            )

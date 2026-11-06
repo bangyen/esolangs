@@ -7,7 +7,9 @@ import re
 import pytest
 
 from esolangs.languages.carp.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import missing_workspace, workspace_view
 
 
 def _parse(source):
@@ -96,7 +98,17 @@ def _model(source, stdin):
 def _agrees(factory, source, stdin):
     expected = _model(source, stdin)
     assert (
-        observed(factory, source, stdin, lambda m: (*m.state, tuple(m.registers)))
+        observed(
+            factory,
+            source,
+            stdin,
+            workspace_view(
+                expected[1],
+                WorkspaceModel("carp-v1", ("instruction", "registers", "input_cursor")),
+                lambda row: (row[0][0], row[0][1], row[-1]),
+                lambda m: (*m.state, tuple(m.registers)),
+            ),
+        )
         == expected
     ), (source, stdin)
     return expected
@@ -193,4 +205,7 @@ def check_raw_carp():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    return len(results), len(controls)
+    for component in ("instruction", "registers", "input_cursor"):
+        with pytest.raises(AssertionError):
+            _agrees(missing_workspace(_Machine, component), "INC r1 0", "")
+    return len(results), len(controls) + 3

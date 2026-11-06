@@ -8,7 +8,9 @@ from string import ascii_letters, digits
 import pytest
 
 from esolangs.languages.taglate.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import missing_workspace, workspace_view
 
 _ARITHMETIC = dict(zip("abcd", (add, sub, mul, floordiv), strict=True))
 
@@ -84,9 +86,22 @@ def _model(seed, tokens, stdin):
 
 
 def _check(factory, seed, tokens, stdin):
+    expected = _model(seed, tokens, stdin)
     code = [seed, "g?qq".join(tokens)]
-    assert observed(factory, code, stdin, lambda m: (m.queue, m.ind), cap=16) == _model(
-        seed, tokens, stdin
+    assert (
+        observed(
+            factory,
+            code,
+            stdin,
+            workspace_view(
+                expected[1],
+                WorkspaceModel("taglate-v1", ("queue", "instruction", "input_cursor")),
+                lambda row: (*row[0], row[-1]),
+                lambda m: (m.queue, m.ind),
+            ),
+            cap=16,
+        )
+        == expected
     ), (seed, tokens, stdin)
 
 
@@ -108,3 +123,6 @@ def check_raw_taglate():
 
     with pytest.raises(AssertionError):
         _check(MissingInput, "", ("h", "i"), "x")
+    for component in ("queue", "instruction", "input_cursor"):
+        with pytest.raises(AssertionError):
+            _check(missing_workspace(_Machine, component), "A", ("a", "i"), "")

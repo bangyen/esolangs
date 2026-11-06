@@ -6,7 +6,9 @@ import random
 import pytest
 
 from esolangs.languages.balik.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import missing_workspace, workspace_view
 
 
 def _model(source, stdin):
@@ -77,7 +79,20 @@ def _model(source, stdin):
 def _agrees(factory, source, stdin):
     expected = _model(source, stdin)
     assert (
-        observed(factory, source, stdin, lambda m: (*m.state, tuple(m.memory), m.ip))
+        observed(
+            factory,
+            source,
+            stdin,
+            workspace_view(
+                expected[1],
+                WorkspaceModel(
+                    "balik-v1",
+                    ("row", "column", "heading", "pointer", "tape", "input_cursor"),
+                ),
+                lambda row: (*row[0][:5], row[-1]),
+                lambda m: (*m.state, tuple(m.memory), m.ip),
+            ),
+        )
         == expected
     ), (source, stdin)
     return expected
@@ -192,4 +207,7 @@ def check_raw_balik():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    return len(results), len(controls)
+    for component in ("row", "column", "heading", "pointer", "tape", "input_cursor"):
+        with pytest.raises(AssertionError):
+            _agrees(missing_workspace(_Machine, component), "+>+", "")
+    return len(results), len(controls) + 6
