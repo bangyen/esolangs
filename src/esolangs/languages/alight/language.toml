@@ -94,7 +94,7 @@ first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.alight.generator:alight"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, n in 2..25", formula = "72n + 762 + bl(6n+12) + bl(n)" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, n in 1..25", formula = "15n + 19 + bl(L-4) + 2bl(n)" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.alight.tests.formulas:_chars"

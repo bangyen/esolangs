@@ -54,6 +54,8 @@ from esolangs.languages.alight.interpreter._walk import (
     _scan,
     _turned,
 )
+from esolangs.languages.alight.interpreter._workspace import _Graph
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
@@ -639,6 +641,11 @@ def _advance(
     return next_core, output
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "alight-v1", ("walkers", "heap", "stopped", "input_cursor", "input_reads")
+)
+
+
 class _Machine:
     """Per-run Alight shell around the pure :func:`_advance`.
 
@@ -710,6 +717,18 @@ class _Machine:
     def halted(self) -> bool:
         """Whether the program has reached its outer ``end``."""
         return self.core.halted
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture semantic walkers and reachable lists without cycle serializers."""
+        graph = _Graph()
+        walkers = tuple(graph.walker(walker) for walker in self.walkers)
+        return _WORKSPACE_MODEL.capture(
+            walkers=walkers,
+            heap=graph.heap(),
+            stopped=self.halted,
+            input_cursor=self.io.progress(),
+            input_reads=self._input_reads,
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

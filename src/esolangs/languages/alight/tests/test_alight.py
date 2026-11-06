@@ -341,7 +341,7 @@ class TestSnapshot(SnapshotContract):
         positions = {snap[-1] for snap in seen}
         assert len(positions) > 1
 
-    def test_a_banked_snapshot_survives_list_mutation(self) -> None:
+    def test_a_banked_snapshot_survives_list_mutation(self, monkeypatch) -> None:
         """An in-place ``at`` must not alter a banked snapshot."""
         machine = _Machine(
             ['begin;var l;set l "A";set l at{l,0.5,66};end;'], ScriptedIO()
@@ -359,6 +359,54 @@ class TestSnapshot(SnapshotContract):
         assert banked is not None, "the run never held a non-empty list"
         assert banked == copy
         assert banked != machine.snapshot()
+
+        from fractions import Fraction
+
+        from esolangs.languages.alight.interpreter import _machine as owned
+        from esolangs.languages.alight.interpreter._parse import _Not
+        from esolangs.languages.alight.interpreter._workspace import _Graph
+        from esolangs.runtime._state import WorkspaceVariant
+        from scripts.benchmark import state_bits
+
+        def forbidden(*_args):
+            raise AssertionError("cycle serializer reached accounting")
+
+        first = _Machine(["begin;end;"], ScriptedIO("x"))
+        cyclic = []
+        cyclic.append(cyclic)
+        first.vars.update(a=cyclic, b=cyclic, r=Fraction(1))
+        first.walker.pending = _Val("val", cyclic)
+        saved = first.workspace_snapshot()
+        retained = {saved}
+        monkeypatch.setattr(owned, "_freeze", forbidden)
+        monkeypatch.setattr(owned._Walker, "key", forbidden)
+        monkeypatch.setattr(owned._Machine, "snapshot", forbidden)
+        assert first.workspace_snapshot() == saved
+        second = _Machine(["begin;end;"], ScriptedIO("x"))
+        other = []
+        other.append(other)
+        second.vars.update(r=1, b=other, a=other)
+        second.walker.pending = _Val("val", other)
+        assert second.workspace_snapshot() == saved
+        split = []
+        split.append(split)
+        second.vars["b"] = split
+        assert second.workspace_snapshot() != saved
+        cyclic.append(Fraction(2))
+        assert first.workspace_snapshot() != saved
+        assert saved in retained
+        before_read = first.workspace_snapshot()
+        assert first.io.input_char() == ord("x")
+        assert first.workspace_snapshot() != before_read
+        term = _Num("num", 1)
+        expected = WorkspaceVariant("num", (WorkspaceVariant("number", (1, 1)),))
+        for _ in range(5000):
+            term = _Not("not", term)
+            expected = WorkspaceVariant("not", (expected,))
+        observed = _Graph().expression(term)
+        assert observed == expected
+        assert hash(observed) == hash(expected)
+        assert state_bits(observed, {}) == 2
 
 
 class TestCycles(CycleContract):

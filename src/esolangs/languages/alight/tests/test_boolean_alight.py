@@ -283,11 +283,11 @@ def _check_native_constants(syntax: str, update: str, bit: str) -> None:
                 machine = _Machine(
                     program, io, expression_syntax=syntax, list_update=update
                 )
-                written = WrittenState(machine.snapshot())
+                written = WrittenState(machine.workspace_snapshot())
                 steps = 0
                 while not machine.halted:
                     machine.step()
-                    written.sample(machine.snapshot())
+                    written.sample(machine.workspace_snapshot())
                     steps += 1
                     assert steps <= 1000
                 assert io.getvalue() == bit
