@@ -476,3 +476,15 @@ layouts, literal packing and arithmetic selection. These eight audits retain
 bytes and resource scopes with executed analysis faults. The shared-prefix
 change preserves all 6,840 catalog artifact requests and declared refusals;
 its fingerprint fault control changes all 60 injected requests.
+
+Native, raw-step and debugger parity compares execution observations over all 20
+one- and two-input tables for 110 steppable output/dump backends: 7,920 rows,
+7,272 ordinary completions and 648 post-halt dumps. Each answer is checked
+against its truth table; seeded routes use the same declared seed. Raw active
+commands match debugger counts at the exact completion budget, excluding dump
+calls. Exhausted budgets fail; idle-step checks cannot skip unfinished runs. All 109 eligible machines preserve observations through three idle steps.
+Counter corruption, incorrect source counts and a nonhalting drive have live
+controls. The wheel passes the same matrix on Python 3.12–3.15 under the
+certification barrier.
+Existing slow markers and command/wall budgets remain unchanged. This scope
+does not close the remaining periodic, termination, resource or corpus audits.

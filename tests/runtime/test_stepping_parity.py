@@ -3,13 +3,20 @@
 from __future__ import annotations
 
 import pathlib
+import sys
 from importlib.resources import files
 
 import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs.vm import machine_traits, run_until_halt
+from esolangs.registry import LANGUAGES
+from esolangs.runtime._lifecycle import Completion
+from esolangs.vm import (
+    _capture_result,
+    machine_traits,
+    run_until_halt,
+)
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
 from tests.support.vm_support import _STEP_BUDGET, _row
@@ -18,12 +25,56 @@ from tests.support.vm_support import _STEP_BUDGET, _row
 #: slowest needs a few hundred thousand.
 
 
-def _drive(vm: debugger_api.VM) -> str:
-    """Step ``vm`` to its answer, honouring the two traits that say how."""
-    run_until_halt(vm, _STEP_BUDGET)
+def _drive_steps(vm: debugger_api.VM) -> int:
+    """Count active commands; the completion dump is outside the count."""
+    steps = 0
+
+    def before_step():
+        nonlocal steps
+        steps += 1
+        return False
+
+    assert run_until_halt(vm, _STEP_BUDGET, stop=before_step), (
+        "stepping exhausted its command budget"
+    )
     if vm.dumps_on_the_post_halt_step:
         vm.step()
+    return steps
+
+
+def _drive(vm: debugger_api.VM) -> str:
+    """Step to a finalized answer, refusing exhausted budgets."""
+    _drive_steps(vm)
     return vm.output
+
+
+def _check_row(name: str, artifact: esolangs.Artifact, table: str, row: int) -> None:
+    inputs = len(table).bit_length() - 1
+    bits = [int(bit) for bit in f"{row:0{inputs}b}"]
+    if LANGUAGES[name].parameterized:
+        program = esolangs.instantiate(name, artifact, bits)
+        stdin = ""
+    else:
+        program = artifact
+        stdin = esolangs.encode_inputs(name, bits, truth_table=table)
+    runtime = LANGUAGES[name].runtime
+    seed = runtime.reproducible_seed if runtime.random else None
+    want = esolangs.run(name, program, stdin=stdin, seed=seed, timeout=30)
+    vm = debugger_api.make_vm(name, program, stdin=stdin, seed=seed)
+    steps = _drive_steps(vm)
+    got = _capture_result(vm)
+    assert got == want, ("execution observations", name, table, row, got, want)
+    debugger = debugger_api.make_debugger(name, program, stdin=stdin, seed=seed)
+    assert debugger.run(max_steps=steps) == "halted", (name, table, row, steps)
+    assert debugger.result == want._replace(steps=steps), (
+        "source steps",
+        name,
+        table,
+        row,
+        debugger.result,
+        steps,
+    )
+    assert esolangs.read_answer(name, got.output) == table[row], (name, table, row)
 
 
 class TestTheTraitsAreReportedBeforeAMachineExists:
@@ -65,31 +116,53 @@ class TestSteppingReachesTheSameAnswer:
     """The sweep that would have caught all seven at once."""
 
     @pytest.mark.slow
-    def test_every_steppable_language_agrees_with_run(self) -> None:
+    def test_every_steppable_language_agrees_with_run(self, monkeypatch) -> None:
         """58/65 was six refused dump steps and one raise, not seven wrong bits."""
-        table = "0110"
-        disagreed = []
         # Counted, because a filter that quietly excluded everything would
         # leave this passing on nothing at all.
         checked = 0
         languages = _steppable_languages()
         assert len(languages) >= _MIN_STEPPABLE, languages
+        assert set(languages) == {
+            name
+            for name, language in LANGUAGES.items()
+            if language.backend is not None
+            and language.runtime.capabilities.completion is not Completion.PERIODIC
+            and language.contract.answer_mode != "termination"
+        }
+        tables = [f"{mask:0{1 << n}b}" for n in (1, 2) for mask in range(1 << (1 << n))]
         for name in languages:
-            for row, bits in enumerate(([0, 0], [0, 1], [1, 0], [1, 1])):
-                program, stdin = _row(name, table, bits)
-                want = esolangs.run(name, program, stdin=stdin, timeout=30).output
-                try:
-                    got = _drive(debugger_api.make_vm(name, program, stdin=stdin))
-                except esolangs.EsolangError as exc:
-                    disagreed.append(f"{name} row {row}: stepping raised {exc!r}")
-                    continue
-                checked += 1
-                if got != want:
-                    disagreed.append(f"{name} row {row}: stepped {got!r} ran {want!r}")
-        assert not disagreed, "\n".join(disagreed)
-        # Every admitted language on every row: anything that raised took
-        # the ``except`` above and is missing from the count.
-        assert checked == len(languages) * 4, checked
+            for table in tables:
+                artifact = esolangs.generate(name, table)
+                for row in range(len(table)):
+                    _check_row(name, artifact, table, row)
+                    checked += 1
+        # Count every admitted row; an unfinished drive cannot count as success.
+        assert checked == len(languages) * sum(map(len, tables)), checked
+        capture = _capture_result
+
+        def corrupt_reads(vm):
+            result = capture(vm)
+            return result._replace(input_reads=(result.input_reads or 0) + 1)
+
+        with monkeypatch.context() as control:
+            control.setattr(sys.modules[__name__], "_capture_result", corrupt_reads)
+            with pytest.raises(AssertionError, match="execution observations"):
+                _check_row(REFERENCE, esolangs.generate(REFERENCE, "01"), "01", 1)
+        result_property = debugger_api.Debugger.result
+
+        def corrupt_steps(debugger):
+            result = result_property.__get__(debugger)
+            return result._replace(steps=result.steps + 1)
+
+        with monkeypatch.context() as control:
+            control.setattr(debugger_api.Debugger, "result", property(corrupt_steps))
+            with pytest.raises(AssertionError, match="source steps"):
+                _check_row(REFERENCE, esolangs.generate(REFERENCE, "01"), "01", 1)
+        with monkeypatch.context() as control:
+            control.setattr(sys.modules[__name__], "_STEP_BUDGET", 1)
+            with pytest.raises(AssertionError, match="command budget"):
+                _drive(debugger_api.make_vm(REFERENCE, "+[]"))
 
 
 class TestStepPastHaltIsSafeEverywhere:
@@ -99,6 +172,7 @@ class TestStepPastHaltIsSafeEverywhere:
     def test_no_language_faults_when_stepped_past_its_halt(self) -> None:
         """``Debugger.step`` now delegates always, so this must hold for all."""
         broke = []
+        checked = eligible = 0
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
             if not facts["boolean_generator"]:
@@ -107,21 +181,22 @@ class TestStepPastHaltIsSafeEverywhere:
                 continue
             if facts["answer_mode"] == "termination":
                 continue
+            eligible += 1
             program, stdin = _row(name, "0110", [0, 1])
             vm = debugger_api.make_vm(name, program, stdin=stdin)
-            run_until_halt(vm, _STEP_BUDGET)
-            if not vm.halted:
-                continue
-            settled = vm.output if not vm.dumps_on_the_post_halt_step else None
+            _drive(vm)
+            settled = _capture_result(vm)
             try:
                 for _ in range(3):
                     vm.step()
             except Exception as exc:
                 broke.append(f"{name}: {type(exc).__name__}: {exc}")
                 continue
-            if settled is not None and vm.output != settled:
-                broke.append(f"{name}: output changed past the halt")
+            if _capture_result(vm) != settled:
+                broke.append(f"{name}: execution observations changed past the halt")
+            checked += 1
         assert not broke, "\n".join(broke)
+        assert checked == eligible > 0
 
 
 class TestTheConstructorsTakeWhatRunTakes:
