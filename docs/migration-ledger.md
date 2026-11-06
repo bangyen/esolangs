@@ -275,3 +275,8 @@ exact default workspace formula counts logical payloads and both input cursors.
 Modulous and Painfuck declare RNG-aware text factories and debug fields.
 Preparation binds options without drawing; variables, tape, loop/repeat state,
 input progress and draw counts remain per-run.
+
+INTERCAL and Thue declare RNG-aware text factories and debug fields.
+Preparation binds options without drawing; return/stash/abstention state and
+rewrite text/match indexes remain per-run. Output-before-request flushing stays
+in the interpreter shells.

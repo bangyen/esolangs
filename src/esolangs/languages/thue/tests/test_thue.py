@@ -9,6 +9,7 @@ from esolangs.languages.thue.interpreter import (
     _Machine,
     _matches,
     _parse,
+    prepare_machine,
     run,
 )
 from esolangs.runtime.io import ScriptedIO
@@ -60,6 +61,27 @@ def test_a_seeded_run_repeats_itself() -> None:
     program = "b::=~1\nab::=~2\n::=\naab"
     first = [run_program(run, program, rng=Seeded(5)) for _ in range(5)]
     assert len(set(first)) == 1
+
+    rng = Seeded(7)
+    before = rng._random.getstate()
+    options = {"rng": rng}
+    factory = prepare_machine(program, options)
+    options.clear()
+    first_machine, second = factory(ScriptedIO()), factory(ScriptedIO())
+    assert first_machine is not second
+    assert first_machine._rng is second._rng is rng
+    assert first_machine._text is not second._text
+    assert rng._random.getstate() == before
+    initial = second.snapshot()
+    first_machine.step()
+    assert rng._random.getstate() != before
+    assert second.snapshot() == initial
+    assert second.state == "aab"
+    assert first_machine.state != second.state
+    with pytest.raises(TypeError, match="text source"):
+        prepare_machine([], {})
+    with pytest.raises(TypeError, match="only the rng"):
+        prepare_machine("", {"unknown": True})
 
 
 def test_input_is_substituted_by_the_triple_colon() -> None:

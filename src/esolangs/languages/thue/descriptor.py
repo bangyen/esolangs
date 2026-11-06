@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Thue."""
 
+from esolangs.languages.thue.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -11,6 +12,9 @@ LANGUAGE = Language(
     RuntimeSpec(
         "thue",
         category="program_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         random=True,
         empty_program=(
             "a Thue program needs a '::=' line with nothing but whitespace on "

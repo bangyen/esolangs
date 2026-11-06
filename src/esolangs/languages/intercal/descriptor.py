@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for INTERCAL."""
 
+from esolangs.languages.intercal.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -17,6 +18,9 @@ LANGUAGE = Language(
     RuntimeSpec(
         "intercal",
         category="variable_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         random=True,
         empty_program="INTERCAL program is insufficiently or excessively polite (E099)",
     ),

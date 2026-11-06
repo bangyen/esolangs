@@ -63,7 +63,7 @@ HQ9+,no,declared,not-applicable,declared,owned-adapter,hq9-v1,not-applicable,pen
 HQ9+ with headers,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,hq9-with-headers-v1,pending-backend-audit,pending-acceptance-audit,open
 IEBEL,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,iebel-v1,pending-backend-audit,pending-acceptance-audit,open
 Inject,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,inject-v1,pending-backend-audit,pending-acceptance-audit,open
-INTERCAL,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,intercal-v1,pending-backend-audit,pending-acceptance-audit,open
+INTERCAL,yes,declared,not-applicable,declared,owned-adapter,intercal-v1,pending-backend-audit,pending-acceptance-audit,open
 Interprogck8,yes,declared,not-applicable,declared,owned-adapter,interprogck8-v1,pending-backend-audit,pending-acceptance-audit,open
 Kiss,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,kiss-v1,pending-backend-audit,pending-acceptance-audit,open
 LaserFuck,yes,declared,not-applicable,declared,owned-adapter,laserfuck-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -109,7 +109,7 @@ Super SNUSP,yes,declared,not-applicable,declared,owned-adapter,super-snusp-v1,pe
 SwitchCase,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,switchcase-v1,pending-backend-audit,pending-acceptance-audit,open
 Taglate,yes,declared,not-applicable,declared,owned-adapter,taglate-v1,pending-backend-audit,pending-acceptance-audit,open
 thisthat,yes,declared,not-applicable,declared,owned-adapter,thisthat-v1,pending-backend-audit,pending-acceptance-audit,open
-Thue,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,thue-v1,pending-backend-audit,pending-acceptance-audit,open
+Thue,yes,declared,not-applicable,declared,owned-adapter,thue-v1,pending-backend-audit,pending-acceptance-audit,open
 Unary,yes,declared,not-applicable,declared,inherited-adapter,brainfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Underload,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,underload-v1,pending-backend-audit,pending-acceptance-audit,open
 Unlambda,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,unlambda-v1,pending-backend-audit,pending-acceptance-audit,open
