@@ -130,7 +130,7 @@ def _owned_template_boundaries(
 ) -> None:
     """Keep migrated execution cases off legacy source/template adaptation."""
     if not request.node.nodeid.startswith(
-        ("src/esolangs/languages/", "tests/generators/", "tests/runtime/")
+        ("src/esolangs/languages/", "tests/generators/", "tests/runtime/", "tests/api/")
     ):
         return
     import esolangs

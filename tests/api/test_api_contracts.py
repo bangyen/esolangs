@@ -13,7 +13,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import _check_program, compat
+from esolangs import _check_program
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -41,7 +41,7 @@ class TestNameResolution:
         """A misspelling is a spelling problem; answer it with the spelling."""
         name = max(esolangs.list_languages(), key=len)
         with pytest.raises(UnknownLanguageError) as exc:
-            compat.generate(name[:-1], XOR)
+            esolangs.generate(name[:-1], XOR)
         assert f"did you mean {name}" in str(exc.value)
 
 
@@ -50,7 +50,7 @@ class TestParameterizedTemplates:
 
     def test_a_reader_has_nothing_to_instantiate(self) -> None:
         with pytest.raises(TemplateError, match="reads its inputs"):
-            compat.instantiate(REFERENCE, compat.generate(REFERENCE, XOR), [0])
+            esolangs.instantiate(REFERENCE, esolangs.generate(REFERENCE, XOR), [0])
 
 
 class TestErrorsAreCatchable:
@@ -63,7 +63,7 @@ class TestErrorsAreCatchable:
                 lambda: esolangs.run(REFERENCE, ",.", stdin="").output,
                 InputExhaustedError,
             ),
-            (lambda: compat.generate(REFERENCE, "0121"), TruthTableError),
+            (lambda: esolangs.generate(REFERENCE, "0121"), TruthTableError),
             (lambda: esolangs.run(REFERENCE, 42).output, ProgramError),
             # A bad stdin is an ArgumentError, not a ProgramError: the stdin
             # is not the program.  Either way it is an EsolangError, which is
@@ -94,7 +94,7 @@ class TestDebuggerResume:
 
     def _debugger(self) -> debugger_api.Debugger:
         return debugger_api.make_debugger(
-            REFERENCE, compat.generate(REFERENCE, XOR), stdin="10"
+            REFERENCE, esolangs.generate(REFERENCE, XOR), stdin="10"
         )
 
     def test_output_breakpoint_does_not_deadlock(self) -> None:
@@ -356,7 +356,7 @@ class TestTheThreadRefusalNamesAWayThrough:
     def test_the_debugger_route_bounds_a_diverging_program(self) -> None:
         """The one that matters: a program that never halts, on a thread."""
         name = languages(answer_mode="termination", parameterized=True)[0]
-        program = compat.instantiate(name, compat.generate(name, "0110"), [0, 1])
+        program = esolangs.instantiate(name, esolangs.generate(name, "0110"), [0, 1])
 
         def work() -> object:
             return debugger_api.make_debugger(name, program, stdin="").run(timeout=0.01)

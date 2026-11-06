@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
 
@@ -16,7 +15,7 @@ from tests.support.reference import REFERENCE
         lambda huge: (
             esolangs.run(REFERENCE, "", isolated=True, max_output=-huge).output
         ),
-        lambda huge: compat.generate(REFERENCE, "01", width=-huge),
+        lambda huge: esolangs.generate(REFERENCE, "01", width=-huge),
         lambda huge: esolangs.encode_inputs(REFERENCE, [huge]),
         lambda huge: esolangs.encode_inputs(REFERENCE, [True, huge]),
         lambda huge: (

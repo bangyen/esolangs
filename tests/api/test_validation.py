@@ -6,7 +6,6 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import compat
 from esolangs.debugger import STOP_REASONS
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
@@ -45,7 +44,7 @@ class TestTheNamespaceIsTheSurface:
     def test_a_bad_table_names_the_bad_character(self) -> None:
         """``01a`` was answered with a complaint about its *length*."""
         with pytest.raises(esolangs.TruthTableError, match="only '0' and '1'"):
-            compat.generate(REFERENCE, "01a")
+            esolangs.generate(REFERENCE, "01a")
 
 
 class TestTheChecksAreSymmetric:

@@ -7,12 +7,11 @@ from dataclasses import FrozenInstanceError
 import pytest
 
 import esolangs
-from esolangs import DialectSettings, Raster, compat
+from esolangs import DialectSettings, Raster
 from esolangs import settings as settings_api
 from esolangs.registry import LANGUAGES
 from esolangs.registry._functions import FunctionRef
 from esolangs.runtime import _execution
-from esolangs.tagged import _Tagged
 from esolangs.vm import make_vm
 from tests.support.cli_support import call_both
 from tests.support.dialect_support import (
@@ -88,7 +87,7 @@ def test_invalid_settings_fail_before_reading(language, settings, options) -> No
     with pytest.raises(esolangs.ArgumentError):
         make_vm(language, Unreadable(), stdin=Unreadable(), settings=settings)
     with pytest.raises(esolangs.ArgumentError):
-        compat.generate(language, "01", settings=settings)
+        esolangs.generate(language, "01", settings=settings)
 
 
 @pytest.mark.parametrize("operation", [esolangs.run, esolangs.generate])
@@ -116,20 +115,25 @@ def test_omission_policies_are_not_public_choices(key) -> None:
 
 
 @pytest.mark.parametrize("balance", [False, True])
-def test_raster_scaling_retains_settings(balance) -> None:
+def test_raster_scaling_retains_settings(balance, native_png) -> None:
     raster, other = languages(source_kind="raster", boolean_generator=True)[:2]
     settings = DialectSettings()
-    source = compat.generate(raster, "01", scale=2, balance=balance, settings=settings)
+    source = esolangs.generate(
+        raster, "01", scale=2, balance=balance, settings=settings
+    )
     assert source.settings is settings
-    assert source.tagged(source.language).settings is settings
-    assert source.upscaled(1).settings is settings
-    assert source.upscaled(2).settings is settings
-    assert Raster.from_png(source.to_png()).settings == settings
-    assert source.tagged(other).settings is None
+    pixels = Raster.from_png(native_png(source))
+    assert pixels.settings == settings
+    retained = pixels.settings
+    assert pixels.tagged(source.language).settings is retained
+    assert pixels.upscaled(1).settings is retained
+    assert pixels.upscaled(2).settings is retained
+    assert pixels.tagged(other).settings is None
 
 
 def test_inherited_choices_are_checked_before_input() -> None:
-    source = _Tagged("+.", REFERENCE, foreign_settings())
+    source = esolangs.ProgramArtifact("+.", REFERENCE)
+    object.__setattr__(source, "settings", foreign_settings())
     with pytest.raises(esolangs.ArgumentError, match="dialect settings"):
         esolangs.run(REFERENCE, source, stdin=Unreadable())
 
@@ -148,7 +152,7 @@ def test_settings_are_immutable_and_repr_rebuilds_them(
 
 
 def test_default_pickle_has_no_retained_choices() -> None:
-    source = compat.generate(REFERENCE, "01")
+    source = esolangs.generate(REFERENCE, "01")
     restored = pickle.loads(pickle.dumps(source))
     assert restored.settings is None
     assert esolangs.run(REFERENCE, restored, stdin="1").output == "1"

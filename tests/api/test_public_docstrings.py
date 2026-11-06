@@ -16,7 +16,6 @@ import pytest
 
 import esolangs
 import esolangs.raster.png as png
-from esolangs import compat
 from esolangs import exceptions as x
 from esolangs.registry._describe import interpreter_module
 from tests.interpreters.spec_sections import section
@@ -78,13 +77,13 @@ def _halting_trigger() -> str:
     return run_trigger(name, trigger)
 
 
-def _template() -> esolangs.Program:
-    return compat.generate(_first("parameterized"), "0110")
+def _template() -> esolangs.Artifact:
+    return esolangs.generate(_first("parameterized"), "0110")
 
 
 def _raster_png() -> bytes:
-    raster = compat.generate(_first("raster"), "01")
-    return raster.to_png()  # type: ignore[union-attr]
+    raster = esolangs.generate(_first("raster"), "01")
+    return raster.source.to_png()  # type: ignore[union-attr]
 
 
 def _without_pillow(call: Callable[[], object]) -> object:
@@ -133,7 +132,7 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
         x.MissingDependencyError,
         lambda: _without_pillow(
             lambda: esolangs.save_program(
-                compat.generate(_first("raster"), "01"), _MISSING
+                esolangs.generate(_first("raster"), "01"), _MISSING
             )
         ),
         None,
@@ -141,51 +140,51 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     (
         "generate",
         x.UnknownLanguageError,
-        lambda: compat.generate("Nolang", "01"),
+        lambda: esolangs.generate("Nolang", "01"),
         None,
     ),
-    ("generate", x.TruthTableError, lambda: compat.generate(R, "012"), None),
+    ("generate", x.TruthTableError, lambda: esolangs.generate(R, "012"), None),
     (
         "generate",
         x.ArgumentError,
-        lambda: compat.generate(R, "01", balance=True, width=5),
-        None,
-    ),
-    (
-        "generate",
-        x.ArgumentError,
-        lambda: compat.generate(R, "01", scale=2),
+        lambda: esolangs.generate(R, "01", balance=True, width=5),
         None,
     ),
     (
         "generate",
         x.ArgumentError,
-        lambda: compat.generate(_first("no generator"), "01"),
+        lambda: esolangs.generate(R, "01", scale=2),
+        None,
+    ),
+    (
+        "generate",
+        x.ArgumentError,
+        lambda: esolangs.generate(_first("no generator"), "01"),
         None,
     ),
     ("generate", x.GeneratorCapError, _over_cap, None),
     (
         "instantiate",
         x.UnknownLanguageError,
-        lambda: compat.instantiate("Nolang", "x", [1]),
+        lambda: esolangs.instantiate("Nolang", "x", [1]),
         None,
     ),
     (
         "instantiate",
         x.TemplateError,
-        lambda: compat.instantiate(R, compat.generate(R, "01"), [1]),
+        lambda: esolangs.instantiate(R, esolangs.generate(R, "01"), [1]),
         None,
     ),
     (
         "instantiate",
         x.TemplateError,
-        lambda: compat.instantiate(_first("parameterized"), _template(), [1]),
+        lambda: esolangs.instantiate(_first("parameterized"), _template(), [1]),
         None,
     ),
     (
         "instantiate",
         x.ArgumentError,
-        lambda: compat.instantiate(_first("parameterized"), _template(), [1, 2]),
+        lambda: esolangs.instantiate(_first("parameterized"), _template(), [1, 2]),
         None,
     ),
     ("run", x.UnknownLanguageError, lambda: esolangs.run("Nolang", "").output, None),
@@ -296,7 +295,7 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
         x.MissingDependencyError,
         lambda: _without_pillow(
             lambda: esolangs.dump_program(
-                _first("raster"), compat.generate(_first("raster"), "01")
+                _first("raster"), esolangs.generate(_first("raster"), "01")
             )
         ),
         None,
@@ -304,25 +303,25 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     (
         "load_program",
         x.UnknownLanguageError,
-        lambda: compat.load_program("Nolang", "{}"),
+        lambda: esolangs.load_program("Nolang", "{}"),
         None,
     ),
     (
         "load_program",
         x.ArgumentError,
-        lambda: compat.load_program(R, b"{}"),  # type: ignore[arg-type]
+        lambda: esolangs.load_program(R, b"{}"),  # type: ignore[arg-type]
         None,
     ),
     (
         "load_program",
         x.ProgramError,
-        lambda: compat.load_program(R, "{}"),
+        lambda: esolangs.load_program(R, "{}"),
         None,
     ),
     (
         "load_program",
         x.ProgramError,
-        lambda: compat.load_program(R, _portable({"nonsense_key": 1})),
+        lambda: esolangs.load_program(R, _portable({"nonsense_key": 1})),
         None,
     ),
     ("load_program", x.MissingDependencyError, _load_png_without_pillow, None),

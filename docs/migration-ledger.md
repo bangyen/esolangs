@@ -106,6 +106,10 @@ The same facade/recovery guard covers the runtime group. Native PNG fixtures
 preserve record metadata through `save_program`; worker requests pass explicit
 source, settings and scale.
 
+Public API tests use canonical generation, filling and loading, including lazy
+subprocesses and documented-error witnesses. The facade/recovery guard covers
+the API group; record immutability and retained settings replace string tags.
+
 Accounting and analysis rows require owned witnesses, not just a declared hook
 or a recognized helper name. Certification needs an installed-package/lazy-import
 acceptance audit after the active separation work lands. Storage policy needs

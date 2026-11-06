@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 import esolangs
-from esolangs import _check_program, compat, debugger
+from esolangs import _check_program, debugger
 from esolangs.exceptions import EsolangError, UnknownLanguageError
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._context import ExecutionContext
@@ -56,7 +56,7 @@ def test_seed_hint_tracks_registered_random_languages(monkeypatch) -> None:
 @pytest.mark.parametrize(
     "call",
     [
-        lambda name: compat.generate(name, "x"),
+        lambda name: esolangs.generate(name, "x"),
         lambda name: esolangs.run(name, "x").output,
         lambda name: debugger.make_debugger(name, "+"),
         # Naming the language it refused is the whole use of the message to
@@ -192,14 +192,14 @@ def test_shape_is_the_generator_axis() -> None:
 @pytest.mark.parametrize("table", ["", "0120", "010", "1"])
 def test_truth_table_hint(table: str) -> None:
     with pytest.raises(esolangs.TruthTableError) as caught:
-        compat.generate(REFERENCE, table)
+        esolangs.generate(REFERENCE, table)
     assert caught.value.__notes__[0].startswith("hint:")
     assert error_text(caught.value).startswith(str(caught.value) + "\nhint:")
 
 
 @pytest.mark.parametrize("table", ["00", "11"])
 def test_truth_table_examples_execute(table: str) -> None:
-    program = compat.generate(REFERENCE, table)
+    program = esolangs.generate(REFERENCE, table)
     inputs = len(table).bit_length() - 1
     for row, expected in enumerate(table):
         bits = [(row >> shift) & 1 for shift in reversed(range(inputs))]

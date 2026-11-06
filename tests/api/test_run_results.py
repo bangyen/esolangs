@@ -5,7 +5,6 @@ import pickle
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.registry import LANGUAGES
 from esolangs.results import Completion, CompletionReport, ExecutionResult
 from esolangs.runtime.io import ScriptedIO
@@ -45,7 +44,7 @@ def test_result_retains_a_caught_eof(route, monkeypatch):
         source_kind="text",
         input_shape="char_stream",
     )
-    source = compat.generate(name, "01")
+    source = esolangs.generate(name, "01")
     attempts = []
 
     class ObservedIO(ScriptedIO):
@@ -74,9 +73,9 @@ def test_result_retains_a_caught_eof(route, monkeypatch):
     ),
 )
 def test_post_halt_result_includes_the_final_dump(name):
-    template = compat.generate(name, "01")
+    template = esolangs.generate(name, "01")
     source = (
-        compat.instantiate(name, template, [1])
+        esolangs.instantiate(name, template, [1])
         if LANGUAGES[name].parameterized
         else template
     )
@@ -94,9 +93,9 @@ def test_post_halt_result_includes_the_final_dump(name):
 
 def test_periodic_result_retains_cycle_evidence_in_a_worker():
     name = first(boolean_generator=True, steppable_to_answer=False)
-    template = compat.generate(name, "01")
+    template = esolangs.generate(name, "01")
     source = (
-        compat.instantiate(name, template, [1])
+        esolangs.instantiate(name, template, [1])
         if LANGUAGES[name].parameterized
         else template
     )
@@ -137,7 +136,7 @@ def test_public_record_is_immutable_and_the_old_import_is_retired():
     assert esolangs.ExecutionResult is ExecutionResult
     assert not hasattr(esolangs, "run_result")
     assert not hasattr(esolangs.Language, "run_result")
-    assert not hasattr(compat, "run")
+    assert not hasattr(esolangs.compat, "run")
     with pytest.raises(ModuleNotFoundError) as missing:
         import_module("esolangs.runtime._result")
     assert missing.value.name == "esolangs.runtime._result"

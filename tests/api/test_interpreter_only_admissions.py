@@ -5,7 +5,6 @@ from datetime import datetime
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.registry import LANGUAGES
 from esolangs.vm import make_vm
 from scripts.docs.curation import FAME_BACKLINKS
@@ -66,4 +65,4 @@ def test_api_and_vm(language: str) -> None:
     assert vm.snapshot() == final
     assert esolangs.describe(language)["boolean_generator"] is False
     with pytest.raises(ValueError, match="no boolean generator"):
-        compat.generate(language, "01")
+        esolangs.generate(language, "01")
