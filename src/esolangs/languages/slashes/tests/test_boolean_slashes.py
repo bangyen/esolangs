@@ -2,7 +2,8 @@
 
 import pytest
 
-from esolangs import compat, run
+import esolangs
+from esolangs import run
 from esolangs.debugger import make_vm
 from esolangs.exceptions import TemplateError
 from esolangs.generation.wrap import wrap_program
@@ -26,11 +27,11 @@ def test_source_length_is_the_documented_formula(n: int) -> None:
     if n == 1:
         _check_run_macros()
     for table in witnesses(n):
-        assert len(str(compat.generate("///", table))) <= _scaling(n, ""), table
+        assert len(esolangs.generate("///", table).source) <= _scaling(n, ""), table
     table = (
         "10" if n == 1 else "10111011" if n == 3 else "10" * (2 ** (n - 1) - 1) + "11"
     )
-    assert len(str(compat.generate("///", table))) == _scaling(n, "")
+    assert len(esolangs.generate("///", table).source) == _scaling(n, "")
 
 
 @pytest.mark.medium
@@ -40,17 +41,17 @@ def test_constant_root_parses_inputs_without_selecting_a_table(inputs, bit) -> N
     if inputs == 1 and bit == "0":
         _check_constants()
     table = bit * (1 << inputs)
-    template = compat.generate("///", table)
-    assert len(template) == inputs + 4
-    assert template.count("$") == inputs
+    template = esolangs.generate("///", table)
+    assert len(template.source) == inputs + 4
+    assert template.source.count("$") == inputs
     assert _evaluate("///", template, inputs=inputs) == table
-    assert _is_unfilled_template(str(template))
+    assert _is_unfilled_template(template.source)
     with pytest.raises(TemplateError, match="unfilled"):
-        run("///", str(template))
+        run("///", template.source)
     for row in (0, (1 << inputs) - 1):
         bits = [int(c) for c in format(row, f"0{inputs}b")]
-        program = compat.instantiate("///", template, bits)
-        assert not _is_unfilled_template(str(program))
+        program = esolangs.instantiate("///", template, bits)
+        assert not _is_unfilled_template(program.source)
         vm = make_vm("///", program)
         state = WrittenState(vm.snapshot())
         commands = 0
@@ -90,10 +91,10 @@ def test_more_ignored_slots_than_slots_is_a_program_not_a_template() -> None:
 
 
 def test_ignored_input_template_is_recognized_only_while_canonical() -> None:
-    template = compat.generate("///", "0011")  # slots "$X$": one ignored
-    assert template.endswith("$X$>qAqB")
-    assert _is_unfilled_template(template)
-    body = template.removesuffix("$X$>qAqB")
+    template = esolangs.generate("///", "0011")  # slots "$X$": one ignored
+    assert template.source.endswith("$X$>qAqB")
+    assert _is_unfilled_template(template.source)
+    body = template.source.removesuffix("$X$>qAqB")
     assert not _is_unfilled_template(body + "$X1>qAqB")  # a filled slot
     assert not _is_unfilled_template(body + "$X$>qAXB")  # a foreign cell
 
@@ -115,9 +116,9 @@ def test_balanced_program_folds_behind_the_newline_rule(table: str) -> None:
     from esolangs.generation.wrap import balance_score
 
     n = len(table).bit_length() - 1
-    plain = str(compat.generate("///", table))
-    balanced = str(compat.generate("///", table, balance=True))
-    assert balance_score(balanced) <= balance_score(plain)
+    plain = esolangs.generate("///", table)
+    balanced = esolangs.generate("///", table, balance=True)
+    assert balance_score(balanced.source) <= balance_score(plain.source)
     assert _evaluate("///", balanced, inputs=n) == table
     assert _evaluate("///", balanced, inputs=n) != table[:-1] + str(1 - int(table[-1]))
 
@@ -129,9 +130,9 @@ def test_balanced_side_is_square_at_n8() -> None:
     from esolangs.generation.wrap import balance_score
 
     table = format(random.Random(8).getrandbits(256), "0256b")
-    balanced = str(compat.generate("///", table, balance=True))
-    assert balance_score(balanced)[0] == 38
-    assert balanced.startswith("/\n//")
+    balanced = esolangs.generate("///", table, balance=True)
+    assert balance_score(balanced.source)[0] == 38
+    assert balanced.source.startswith("/\n//")
 
 
 def _check_run_macros() -> None:
@@ -148,14 +149,14 @@ def _check_run_macros() -> None:
     for table in ("1011", "10111011", "00010100", "0101101000011010"):
         n = len(table).bit_length() - 1
         for balanced in (False, True):
-            template = compat.generate("///", table, balance=balanced)
-            assert balanced or _is_unfilled_template(str(template))
+            template = esolangs.generate("///", table, balance=balanced)
+            assert balanced or _is_unfilled_template(template.source)
             for row in range(1 << n):
-                program = compat.instantiate(
+                program = esolangs.instantiate(
                     "///", template, [int(c) for c in f"{row:0{n}b}"]
                 )
                 io = ScriptedIO("Q")
-                machine = _Machine(str(program), io)
+                machine = _Machine(program.source, io)
                 written = WrittenState(machine.snapshot())
                 while not machine.halted:
                     machine.step()
@@ -164,9 +165,9 @@ def _check_run_macros() -> None:
                 assert io.reads == 0
                 assert io.input_char() == ord("Q")
                 if not balanced:
-                    assert written.bits <= workspace(n, str(template))
+                    assert written.bits <= workspace(n, template.source)
                     if row == (1 << n) - 1:
-                        assert written.bits == workspace(n, str(template))
+                        assert written.bits == workspace(n, template.source)
 
 
 def _check_constants() -> None:
@@ -176,11 +177,11 @@ def _check_constants() -> None:
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
-                template = compat.generate("///", bit * (1 << n), **options)
+                template = esolangs.generate("///", bit * (1 << n), **options)
                 for bits in ([0] * n, [1] * n):
-                    program = compat.instantiate("///", template, bits)
+                    program = esolangs.instantiate("///", template, bits)
                     io = ScriptedIO("7")
-                    machine = _Machine(program, io)
+                    machine = _Machine(program.source, io)
                     pattern = "".join("ab"[b] for b in bits)
                     parsed = False
                     for _ in range(20):

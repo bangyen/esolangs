@@ -4,7 +4,8 @@ import random
 
 import pytest
 
-from esolangs import compat, run
+import esolangs
+from esolangs import run
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.slashes.generator import slashes
 from esolangs.languages.slashes.interpreter import _Machine as SlashMachine
@@ -82,9 +83,11 @@ def test_slashes_literal_dollar_and_serialized_template() -> None:
 
     assert run("///", "/a/$/a").output == "$"
     assert run("Slashalash", "$", max_steps=20).output == "$"
-    with pytest.raises(TemplateError, match="unfilled"):
-        run("///", str(compat.generate("///", "01")))
-    partial = str(compat.generate("///", "0110")).replace("$", "a", 1)
+    template = esolangs.generate("///", "01")
+    restored = esolangs.load_program("///", esolangs.dump_program("///", template))
+    with pytest.raises(TemplateError, match="fill the template"):
+        run("///", restored)
+    partial = esolangs.generate("///", "0110").source.replace("$", "a", 1)
     with pytest.raises(TemplateError, match="unfilled"):
         run("///", partial)
 

@@ -79,6 +79,9 @@ Native-file fixtures unwrap explicitly; modified templates retain bindings.
 Native Line, Piet and NQ construction tests read explicit source bodies. Public
 scaled-Piet execution and native Line persistence retain artifact metadata.
 
+Owned `///` callers retain templates through evaluation and portable round trips.
+Native recognition, source bounds and workspace checks read explicit bodies.
+
 Accounting and analysis rows require owned witnesses, not just a declared hook
 or a recognized helper name. Certification needs an installed-package/lazy-import
 acceptance audit after the active separation work lands. Storage policy needs
