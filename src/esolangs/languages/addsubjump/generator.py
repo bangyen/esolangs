@@ -20,7 +20,6 @@ from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _residual_ids,
     _validate_truth_table,
-    constant_span_test,
     input_weights,
     stored_inputs,
 )
@@ -358,17 +357,12 @@ def _addsubjump_ordered(
         emit(bit, bit, "next", _ADD)  # double
         emit(bit, bit, "next", _ADD)  # double -> {0, 4}
 
-    # Rows split most significant first, so the span a node covers is the
-    # contiguous ``truth_table[lo:hi]`` and its two halves are that slice cut
-    # in two.  The fold test is O(1) on the span, so the tree is O(2**n).
-    constant = constant_span_test(truth_table)
-
     # IDs retain depth, so each row visits a self-modified branch at most once.
-    levels, children, _constants = _residual_ids(truth_table, n)
+    levels, children, constants = _residual_ids(truth_table, n)
     root = levels[0][0]
     seen: dict[int, str] = {}
 
-    def build(level: int, lo: int, hi: int, residual: int) -> None:
+    def build(level: int, residual: int) -> None:
         if shared:
             if residual in seen:
                 emit(u_cell, u_cell, seen[residual], _ADD)
@@ -376,17 +370,17 @@ def _addsubjump_ordered(
             label = f"R{residual}"
             seen[residual] = label
             targets[label] = len(instructions)
-        if constant(lo, hi):
+        value = constants[residual]
+        if value is not None:
             # Every read already happened up front, so a folded leaf prints
             # and halts with nothing to drain.
-            emit(-1, _cell(1, _A_OPERAND) + int(truth_table[lo]), -8, _ADD)
+            emit(-1, _cell(1, _A_OPERAND) + value, -8, _ADD)
             return
-        half = (hi - lo) // 2
         if perm[level] not in stored or (
             shared and children[residual][0] == children[residual][1]
         ):
             # Reads already happened; this residual does not depend on the bit.
-            build(level + 1, lo, lo + half, children[residual][0])
+            build(level + 1, children[residual][0])
             return
         base = len(instructions)
         bit = f"B{perm[level]}"
@@ -403,10 +397,10 @@ def _addsubjump_ordered(
         emit(u_cell, u_cell, ztarget, _ADD)  # zero trampoline
         emit(u_cell, u_cell, otarget, _ADD)  # one trampoline
         targets[ztarget] = len(instructions)
-        build(level + 1, lo, lo + half, children[residual][0])
+        build(level + 1, children[residual][0])
         targets[otarget] = len(instructions)
-        build(level + 1, lo + half, hi, children[residual][1])
+        build(level + 1, children[residual][1])
 
-    build(0, 0, 2**n, root)
+    build(0, root)
 
     return " ".join(map(str, _memory(instructions, values, targets, [*named, *values])))

@@ -569,3 +569,11 @@ All 2,528 standard requests and 960 larger layouts match byte for byte;
 witnesses add 1,283 native and 30 stepped records, including all byte rows for
 five BFStack tables, CARP at fourteen inputs and refusals above its cap.
 Bounds, size pins and anchors remain unchanged; catalog acceptance stays open.
+
+AddSubJump consumes canonical residual constants instead of building a second
+constant-span index; recursive emission no longer retains redundant row spans.
+Self-modifying branch placement, shared labels and packed selection remain
+owned. All 632 corpus requests and 240 larger layouts retain their bytes;
+2,286 native/stepped records retain 77,350 resource and snapshot samples.
+A live constant-map fault complements the executed tree. Bounds, size pins and
+anchors remain unchanged; catalog-wide acceptance stays open.

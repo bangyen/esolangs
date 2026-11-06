@@ -102,12 +102,37 @@ def test_packed_projection_indexes_nonadjacent_coordinates(essential) -> None:
 
 
 class TestAddSubJump:
-    def test_branch_normalizes_ascii_bits(self) -> None:
+    def test_branch_normalizes_ascii_bits(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Each ASCII input contributes its zero-or-one value to the index."""
         program = boolean.addsubjump("0110")
         assert "48" in program
         assert run_addsubjump(program, ["0", "1"]) == "1"
         assert run_addsubjump(program, ["1", "0"]) == "1"
+
+        analyze = boolean._residual_ids
+
+        def flipped_constants(table: str, n: int):
+            levels, children, constants = analyze(table, n)
+            return (
+                levels,
+                children,
+                {
+                    key: None if value is None else 1 - value
+                    for key, value in constants.items()
+                },
+            )
+
+        monkeypatch.setattr(boolean, "_residual_ids", flipped_constants)
+        damaged = _addsubjump_ordered("0110", (0, 1), shared=True)
+        assert (
+            "".join(
+                run_addsubjump(damaged, [str(row >> 1), str(row & 1)])
+                for row in range(4)
+            )
+            == "1001"
+        )
 
     @pytest.mark.medium
     def test_all_three_input_tables(self) -> None:
