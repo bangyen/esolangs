@@ -31,12 +31,16 @@ import functools
 import re
 from collections.abc import Callable, Mapping, Sequence
 from types import MappingProxyType
+from typing import Any
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.qoibl.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._fault import _Fault
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
@@ -574,12 +578,24 @@ class _Machine:
         self._flush(effects, flushed)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh variables and statements over the shared parser cache."""
+    if not isinstance(source, (str, list)):
+        raise TypeError("qoibl machines require text or split text source")
+    if options:
+        raise TypeError("qoibl machines accept no runtime options")
+    code = source if isinstance(source, str) else list(source)
+    return functools.partial(_Machine, code)
+
+
 def _execute(code: list[str] | str, io: IO) -> CompletionReport:
     """Execute Qoibl program code.
 
     Lines or one string; the program is one character stream.
     """
-    return drive(_Machine(code, io))
+    return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 
 
 def run(code: list[str] | str, io: IO) -> None:

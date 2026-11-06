@@ -85,7 +85,7 @@ Parenthesys,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallba
 Piet,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Pilas,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,pilas-v1,pending-backend-audit,pending-acceptance-audit,open
 Pointless,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,pointless-v1,pending-backend-audit,pending-acceptance-audit,open
-Qoibl,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,qoibl-v1,pending-backend-audit,pending-acceptance-audit,open
+Qoibl,yes,declared,not-applicable,declared,owned-adapter,qoibl-v1,pending-backend-audit,pending-acceptance-audit,open
 Qrain,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,qrain-v1,pending-backend-audit,pending-acceptance-audit,open
 Quassaunt,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,quassaunt-v1,pending-backend-audit,pending-acceptance-audit,open
 RAM0,yes,declared,not-applicable,declared,owned-adapter,ram0-v1,pending-backend-audit,pending-acceptance-audit,open

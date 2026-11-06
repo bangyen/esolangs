@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Qoibl."""
 
+from esolangs.languages.qoibl.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -8,7 +9,14 @@ from esolangs.runtime._definition import RuntimeSpec
 
 LANGUAGE = Language(
     "Qoibl",
-    RuntimeSpec("qoibl", category="register_based", split=True),
+    RuntimeSpec(
+        "qoibl",
+        category="register_based",
+        split=True,
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+    ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.qoibl.generator", "qoibl", ("truth_table", "width")

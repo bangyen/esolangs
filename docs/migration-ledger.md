@@ -152,3 +152,7 @@ EOF remains 59048.
 Interprogck8 declares cached program preparation, caller-owned RNG binding and
 line/stack debug fields. Preparation draws nothing; captures, call frames and
 `z` reloads remain per-run.
+
+Qoibl declares cached parser preparation, variable debug fields and ordinary
+completion. Statement lists and variables remain private; malformed-source
+diagnostics and output flushed before reads/faults remain unchanged.
