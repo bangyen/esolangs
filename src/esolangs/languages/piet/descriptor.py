@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Piet."""
 
+from esolangs.languages.piet.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -11,6 +12,9 @@ LANGUAGE = Language(
     RuntimeSpec(
         "piet",
         category="stack_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         source_kind=SourceKind.RASTER,
         eof="an exhausted input command is ignored, as the spec requires",
     ),

@@ -82,7 +82,7 @@ Object disoriented,yes,legacy-discovery,not-applicable,legacy-discovery,owned-ad
 Packlang,yes,legacy-discovery,declared,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Painfuck,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,painfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Parenthesys,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,parenthesys-v1,pending-backend-audit,pending-acceptance-audit,open
-Piet,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+Piet,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Pilas,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,pilas-v1,pending-backend-audit,pending-acceptance-audit,open
 Pointless,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,pointless-v1,pending-backend-audit,pending-acceptance-audit,open
 Qoibl,yes,declared,not-applicable,declared,owned-adapter,qoibl-v1,pending-backend-audit,pending-acceptance-audit,open

@@ -173,3 +173,7 @@ input and clock-read progress remain explicit.
 
 Trace-speed comparisons warm both copies on the sized workload before timing.
 An inherited warm prefix can no longer give the baseline a cheaper first lap.
+
+Piet declares raster/scale preparation and grid/stack debug fields, completing
+both raster factories. Normalized rows stay shared; stack, ports and successful
+read counts stay per-run. EOF commands remain ignored.

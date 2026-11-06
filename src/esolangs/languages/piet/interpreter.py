@@ -54,13 +54,18 @@ from __future__ import annotations
 
 import operator
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from contextlib import suppress
+from functools import partial
+from typing import Any
 
+from esolangs.languages.piet.lifecycle import CAPABILITIES
 from esolangs.raster import Raster
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import raster_source as load_source
 from esolangs.runtime.codels import (
     BLACK,
@@ -328,10 +333,21 @@ class _Machine:
         self.state = (current, dp, cc, stack, halted)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh run state over normalized raster rows and requested scale."""
+    if not isinstance(source, Raster):
+        raise TypeError("piet machines require raster source")
+    if options.keys() - {"scale"}:
+        raise TypeError("piet machines accept only the scale runtime option")
+    return partial(_Machine, source, scale=options.get("scale"))
+
+
 def _execute(program: Raster, io: IO, *, scale: int | None = None) -> CompletionReport:
     """Execute a Piet image, detecting its codel scale."""
     machine = _Machine(program, io, scale=scale)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(program: Raster, io: IO, *, scale: int | None = None) -> None:
