@@ -43,6 +43,22 @@ class TestBrainIf:
             boolean.brainif("10010110", width=1000)
         )
 
+        from unittest.mock import patch
+
+        from esolangs.generation.decision import fold_subtables
+        from tests.support.generator_support import evaluate_generated
+
+        assert boolean.fold_subtables is fold_subtables
+        with patch.object(
+            boolean,
+            "fold_subtables",
+            side_effect=lambda table, terminals, branch: fold_subtables(
+                table.translate(str.maketrans("01", "10")), terminals, branch
+            ),
+        ) as corrupted:
+            assert evaluate_generated("BrainIf", "0001", width=1000) == "1110"
+            assert corrupted.called
+
     @staticmethod
     def _tests(program: str) -> int:
         """Count branch tests: an ``if 49 goto`` straight after a read."""

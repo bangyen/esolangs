@@ -1,13 +1,15 @@
 """Executed controls for BrainIf's research track: residual DAG and selection."""
 
 import random
+from unittest.mock import patch
 
 import pytest
 
+from esolangs.generation.decision import decision_layers
+from esolangs.languages.brainif import generator
 from esolangs.languages.brainif.generator import (
     _brainif_dag,
     _brainif_tree,
-    _residual_layers,
     brainif,
 )
 from esolangs.languages.brainif.interpreter import _Machine as BrainIf
@@ -15,13 +17,14 @@ from esolangs.runtime.io import ScriptedIO
 
 
 def test_residual_dag_worst_case_width_and_size() -> None:
+    assert not hasattr(generator, "_residual_layers")
     for n in range(4, 17):
         r = 0
         while 2 ** (r + 1) + r + 1 <= n:
             r += 1
         width = 2 ** (r + 1)
         table = "".join(format(i, f"0{width}b") for i in range(2**n // width))
-        layers = _residual_layers(table)
+        layers = decision_layers(table).children[::-1]
         assert len(layers[r]) == 2**n // width
         assert 2**n / (2 * n) <= len(layers[r])
         assert sum(map(len, layers)) <= 12 * 2**n / n
@@ -86,3 +89,16 @@ def test_dag_forgets_the_previous_input_before_reuse() -> None:
             steps += 1
         assert boundaries == [(0, (49,)), (0, (49,))]
         assert steps <= 4 * 3 + 50
+
+    from tests.support.generator_support import evaluate_generated
+
+    assert generator.decision_layers is decision_layers
+    with patch.object(
+        generator,
+        "decision_layers",
+        side_effect=lambda table: decision_layers(
+            table.translate(str.maketrans("01", "10"))
+        ),
+    ) as corrupted:
+        assert evaluate_generated("BrainIf", "0001") == "1110"
+        assert corrupted.called

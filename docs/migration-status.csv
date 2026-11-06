@@ -26,7 +26,7 @@ Bleh,yes,declared,not-applicable,declared,owned-adapter,bleh-v1,canonical-decisi
 Blindfolded Arithmetic,yes,declared,not-applicable,declared,owned-adapter,blindfolded-arithmetic-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
 Boolfuck,yes,declared,not-applicable,declared,inherited-adapter,boolfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 brainfuck,yes,declared,not-applicable,declared,owned-adapter,brainfuck-v1,pending-backend-audit,pending-acceptance-audit,open
-BrainIf,yes,declared,not-applicable,declared,owned-adapter,brainif-v1,pending-backend-audit,pending-acceptance-audit,open
+BrainIf,yes,declared,not-applicable,declared,owned-adapter,brainif-v1,canonical-decision-layers-subtable-fold;owned-spatial-lookup,pending-acceptance-audit,open
 Caballo,yes,declared,not-applicable,declared,owned-adapter,caballo-v1,canonical-subtree-analysis;owned-signed-tree,pending-acceptance-audit,open
 CARP,yes,declared,not-applicable,declared,owned-adapter,carp-v1,pending-backend-audit,pending-acceptance-audit,open
 Chicken,yes,declared,not-applicable,declared,owned-adapter,chicken-v1,pending-backend-audit,pending-acceptance-audit,open

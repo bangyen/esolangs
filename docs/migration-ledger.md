@@ -436,3 +436,12 @@ mutable payloads have live refusal controls. Installed Python 3.12–3.15 matche
 input counters, source steps and output, under the certification import barrier.
 An altered baseline is rejected. These are executed witness traces; independent
 language-owned component semantics and whole-corpus acceptance remain open.
+
+BrainIf uses canonical decision layers for the default DAG and memoized subtable
+folding for width-constrained trees. Local residual interning and string-span
+sharing are deleted; jump placement, unconditional reads, spatial markers and
+width selection remain owned. All 632 corpus requests and 300 larger layouts
+match byte for byte. Both analysis queries have executed fault controls;
+2,938 paired rows retain traces and resource peaks, including both width paths.
+Bounds, size pins and anchors remain unchanged. Installed witnesses match on
+Python 3.12–3.15; catalog acceptance stays open.

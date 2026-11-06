@@ -20,10 +20,6 @@ qualification = "equal cofactors share a layered DAG; OR uses a known-zero entry
 "1101001101101101" = { commands = 13, commands_by_row = { "0" = 13, "1" = 14, "2" = 62, "3" = 13, "4" = 62, "5" = 63, "6" = 13, "7" = 14, "8" = 62, "9" = 13, "10" = 13, "11" = 63, "12" = 13, "13" = 14, "14" = 62, "15" = 13 }, source_units = 1273 }
 "11111110" = { commands = 60, commands_by_row = { "0" = 9, "1" = 10, "2" = 9, "3" = 10, "4" = 10, "5" = 11, "6" = 10, "7" = 60 }, source_units = 1035 }
 
-[catalogue]
-sharing_local = "_brainif_dag"  # residual states emitted once
-folding_constant_local = "_brainif_dag"  # constant residual output tail
-
 [ablations]
 archive_refs = [
     "residual_dag_sharing",

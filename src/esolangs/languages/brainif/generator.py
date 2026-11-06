@@ -21,7 +21,9 @@ Decisions:
 
 from collections.abc import Iterable
 from itertools import count, pairwise
+from typing import NamedTuple
 
+from esolangs.generation.decision import decision_layers, fold_subtables
 from esolangs.generation.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -182,22 +184,6 @@ def _brainif_zero_jumps(table: str) -> str:
     return _resolve(out.lines)
 
 
-def _residual_layers(table: str) -> list[list[tuple[int, int]]]:
-    """Return distinct cofactor pairs, bottom layer first; leaves are 0/1."""
-    _validate_truth_table(table)
-    values = [int(bit) for bit in table]
-    layers = []
-    while len(values) > 1:
-        names: dict[tuple[int, int], int] = {}
-        following = []
-        for i in range(0, len(values), 2):
-            pair = (values[i], values[i + 1])
-            following.append(names.setdefault(pair, len(names)))
-        layers.append(list(names))
-        values = following
-    return layers
-
-
 def _brainif_dag(table: str) -> str:
     """Emit every ordered read, discarding the prior bit before the next.
 
@@ -220,7 +206,8 @@ def _brainif_dag(table: str) -> str:
     )
     if not or_family and trailing:
         projected = read_at(table, kept, n)
-    layers = _residual_layers(projected)
+    diagram = decision_layers(projected)
+    layers = diagram.children[::-1]
     # Layer ``depth`` reads kept input ``kept[-1 - depth]``, after the
     # dropped ones between it and the kept input before it.
     skips = [b - a - 1 for a, b in pairwise([-1, *kept])][::-1]
@@ -235,7 +222,7 @@ def _brainif_dag(table: str) -> str:
         pair = [f"if {_ASCII_ZERO} increment", f"if {_ASCII_ONE} input"]
         first = ["if 0 input"] if depth == top else pair
         reads = first + pair * skips[depth]
-        for node, children in enumerate(layers[depth]):
+        for node, children in layers[depth].items():
             label = name(depth, node)
             blocks[label] = [f"@{label}", *reads]
             kids[label] = (name(depth - 1, children[0]), name(depth - 1, children[1]))
@@ -262,7 +249,7 @@ def _brainif_dag(table: str) -> str:
             f"if {_ASCII_ONE} output",
         ]
     lines: list[str] = []
-    for label, follows in _chains(name(top, 0), kids):
+    for label, follows in _chains(name(top, diagram.root), kids):
         lines.extend(blocks[label])
         if label in kids:
             for char, child in zip((_ASCII_ZERO, _ASCII_ONE), kids[label], strict=True):
@@ -318,66 +305,76 @@ def _chains(root: str, kids: dict[str, tuple[str, str]]) -> list[tuple[str, str]
     return order
 
 
+class _Span(NamedTuple):
+    """Emitter cofactor: a constant bit when uniform, and its two child ids."""
+
+    bit: int | None
+    zero: int
+    one: int
+
+
 class _SpanBuilder:
     """Recursive tree spans for one table, sharing equal spans at a level.
 
-    ``shared`` maps each span already emitted at a level to its label
-    number, assigned in first-emission order; ``labels`` numbers the
-    branch labels in the order spans split.
+    ``shared`` maps each emitted cofactor to its label number, assigned
+    in first-emission order; ``labels`` numbers the branches as they split.
     """
 
     def __init__(self, truth_table: str, n: int, *, prune: bool) -> None:
-        self.truth_table = truth_table
+        self.nodes = [_Span(0, 0, 0), _Span(1, 1, 1)]
+        self.root = fold_subtables(truth_table, {"0": 0, "1": 1}, self.branch)
         self.n = n
         self.prune = prune
         self.labels = count()
-        self.shared: dict[tuple[int, str], int] = {}
+        self.shared: dict[int, int] = {}
 
-    def build(self, lo: int, hi: int, k: int) -> list[str]:
+    def branch(self, zero: int, one: int) -> int:
+        """Retain one cofactor per canonical fold call, before assigning labels."""
+        bit = self.nodes[zero].bit if zero == one else None
+        self.nodes.append(_Span(bit, zero, one))
+        return len(self.nodes) - 1
+
+    def build(self, node: int, k: int) -> list[str]:
         """Emit a table span, entered with the pointer on cell n-k+1."""
         rest = self.n - (k - 1)
-        span = (k, self.truth_table[lo:hi])
         # Entered on an unread cell (0), or on the answer byte (48) once
         # every input is read, so one guarded jump reuses an equal span.
-        if self.prune and span in self.shared:
+        if self.prune and node in self.shared:
             return [
-                f"if {_ASCII_ZERO if rest == 0 else 0} goto @out_{self.shared[span]}"
+                f"if {_ASCII_ZERO if rest == 0 else 0} goto @out_{self.shared[node]}"
             ]
-        body = self.span(lo, hi, k, rest)
+        body = self.span(self.nodes[node], k, rest)
         if self.prune and len(body) > 1:
-            self.shared[span] = len(self.shared) + 1
-            body.insert(0, f"@out_{self.shared[span]}")
+            self.shared[node] = len(self.shared) + 1
+            body.insert(0, f"@out_{self.shared[node]}")
         return body
 
-    def span(self, lo: int, hi: int, k: int, rest: int) -> list[str]:
+    def span(self, node: _Span, k: int, rest: int) -> list[str]:
         """Emit one span's own lines, before any shared-label prefix."""
         if rest == 0:
             # The answer byte is 48: add one iff the entry is a 1 and jump to
             # the output tail.
-            if self.truth_table[lo] == "0":
+            if node.bit == 0:
                 return [f"if {_ASCII_ZERO} goto @out_0"]
             return [
                 f"if {_ASCII_ZERO} increment",
                 f"if {_ASCII_ONE} goto @out_0",
             ]
-        middle = (lo + hi) // 2
-        if self.truth_table[lo:middle] == self.truth_table[middle:hi] and (
-            self.prune or self.truth_table[lo:hi] == self.truth_table[lo] * (hi - lo)
-        ):
+        if node.zero == node.one and (self.prune or node.bit is not None):
             # The halves agree, so this input cannot change the answer: read
             # it, step past it and build the one half both values share.
             return [
                 "if 0 input",
                 f"if {_ASCII_ZERO} move left",
                 f"if {_ASCII_ONE} move left",
-                *self.build(lo, middle, k + 1),
+                *self.build(node.zero, k + 1),
             ]
         # Level ``k`` reads input ``k - 1`` into cell ``n - k + 1``, so the
         # bit it selects is the table's usual most-significant-first one --
         # the reads are in input order even though the pointer walks down.
         label = next(self.labels)
-        sub0 = self.build(lo, middle, k + 1)
-        sub1 = self.build(middle, hi, k + 1)
+        sub0 = self.build(node.zero, k + 1)
+        sub1 = self.build(node.one, k + 1)
         return [
             "if 0 input",
             f"if {_ASCII_ONE} goto @branch_{label}",
@@ -397,7 +394,8 @@ def _brainif_tree_entries(truth_table: str, n: int, *, prune: bool) -> list[str]
     entries.append(f"if {_ASCII_ZERO} move right")
     entries += ["if 0 move right" for _ in range(n - 1)]
 
-    entries += _SpanBuilder(truth_table, n, prune=prune).build(0, len(truth_table), 1)
+    builder = _SpanBuilder(truth_table, n, prune=prune)
+    entries += builder.build(builder.root, 1)
     # One shared tail: the answer cell already holds the byte to print, so
     # this is two lines rather than a climb per digit.
     entries.append("@out_0")
