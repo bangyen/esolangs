@@ -11,12 +11,9 @@ Size:
     written bits are loaded-image bits + 4 + bl(3n+3) + bl(n).
 """
 
-from typing import Any
-
 from esolangs.generation.branch_decoder import hoisted_tree
 from esolangs.generation.helpers import _validate_truth_table, in_input_order
 from esolangs.generation.packed_decoder import packed_decoder
-from esolangs.registry._certification import Payload
 
 
 def subleq(truth_table: str) -> str:
@@ -31,9 +28,3 @@ def subleq(truth_table: str) -> str:
 def _subleq_shared(table: str, perm: tuple[int, ...]) -> str:
     """Fold constants and equal halves; emit each residual once."""
     return hoisted_tree(table, perm, direct=True)
-
-
-def _payload(state: Any) -> Payload:
-    """Split out memory, mutable code included, and pc; no control stack."""
-    data, pc, _cursor = state
-    return data, (), pc, 0

@@ -24,8 +24,6 @@ Decisions:
     it must be a zero row ([ablations.eighth_input]).
 """
 
-from typing import Any
-
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -34,7 +32,6 @@ from esolangs.generation.helpers import (
     input_weights,
     symmetric_weights,
 )
-from esolangs.registry._certification import Payload
 
 
 def _bfstack_encoder(weights: list[int], start: int = 1) -> str:
@@ -178,9 +175,3 @@ def _bfstack_plain(truth_table: str) -> str:
         return ">+," + "-" * _ASCII_ZERO + "[<-" + one + ">]<[<" + zero + ">]<"
 
     return build(0, 0, len(truth_table))
-
-
-def _payload(state: Any) -> Payload:
-    """Split out the data stack, loop stack and pc; the cursor is I/O state."""
-    data, control, pc, _cursor = state
-    return data, control, pc, 0

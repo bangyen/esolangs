@@ -23,10 +23,14 @@ def test_certification_facts_have_one_owner(monkeypatch):
     assert names.isdisjoint(field.name for field in fields(Language))
     assert names.isdisjoint(field.name for field in fields(RuntimeSpec))
     assert "certification" not in {field.name for field in fields(Language)}
-    assert all(
-        isinstance(load_certification(lang), CertificationSpec)
-        for lang in LANGUAGES.values()
-    )
+    for lang in LANGUAGES.values():
+        record = load_certification(lang)
+        assert isinstance(record, CertificationSpec)
+        if record.payload is not None:
+            assert (
+                record.payload.__module__
+                == f"esolangs.languages.{lang.id}.certification"
+            )
 
     from types import SimpleNamespace
 
@@ -94,8 +98,20 @@ class Barrier(importlib.abc.MetaPathFinder):
 barrier = Barrier()
 sys.meta_path.insert(0, barrier)
 import esolangs
+from esolangs.registry import LANGUAGES
+generated = 0
 for name in esolangs.list_languages():
     esolangs.describe(name)
+    language = LANGUAGES[name]
+    if language.backend is None:
+        continue
+    artifact = esolangs.generate(name, '01')
+    restored = esolangs.load_program(name, esolangs.dump_program(name, artifact))
+    assert restored == artifact, name
+    if language.parameterized:
+        esolangs.instantiate(name, restored, [1])
+    generated += 1
+assert generated == sum(lang.backend is not None for lang in LANGUAGES.values()) > 0
 program = esolangs.generate(sys.argv[1], '01')
 assert esolangs.run(sys.argv[1], program, stdin='1').output == '1'
 try:

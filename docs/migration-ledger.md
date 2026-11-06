@@ -283,3 +283,11 @@ Retrograde, SendStuff, SLOW ACV MAMMALIAN and SwitchCase declare factories
 and debugger fields. Instructions, lambdas/scopes, macros and buffers remain
 per-run. Inject freezes split text; Mammalian binds all dialect fields and
 loads dialect metadata independently of its interpreter.
+
+Certification payloads for BFStack and Subleq live in their certification
+modules; generators no longer import certification types. The live import
+barrier covers catalog queries and artifact generation/round trips for all
+114 backends, plus template filling where applicable. Payload ownership checks
+reject a return to generator-owned certification. The installed wheel passes
+this barrier on Python 3.12–3.15 with image support. Catalog-wide execution
+and full installed-package acceptance remain open.

@@ -1,8 +1,14 @@
 """Language-owned verification policy."""
 
-from esolangs.registry._certification import CertificationSpec
-from esolangs.registry._functions import FunctionRef
+from typing import Any
 
-CERTIFICATION = CertificationSpec(
-    payload=FunctionRef("esolangs.languages.bfstack.generator", "_payload", ("state",)),
-)
+from esolangs.registry._certification import CertificationSpec, Payload
+
+
+def _payload(state: Any) -> Payload:
+    """Split out the data stack, loop stack and pc; the cursor is I/O state."""
+    data, control, pc, _cursor = state
+    return data, control, pc, 0
+
+
+CERTIFICATION = CertificationSpec(payload=_payload)
