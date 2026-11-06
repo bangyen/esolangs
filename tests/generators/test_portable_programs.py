@@ -5,8 +5,7 @@ import json
 import pytest
 
 import esolangs
-from esolangs import DialectSettings, compat
-from esolangs.tagged import _Tagged
+from esolangs import DialectSettings, ProgramArtifact
 from tests.support.dialect_support import CASES
 from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
@@ -16,8 +15,8 @@ from tests.support.reference import REFERENCE
 @pytest.mark.parametrize("language", [name for name, _ in CASES])
 def test_restored_isolated_execution(language) -> None:
     choices = dict(CASES)[language]
-    source = esolangs.generate_artifact(language, "01", settings=choices)
-    restored = esolangs.load_artifact(language, esolangs.dump_program(language, source))
+    source = esolangs.generate(language, "01", settings=choices)
+    restored = esolangs.load_program(language, esolangs.dump_program(language, source))
     assert restored.settings == source.settings == choices
     assert _evaluate(language, restored, inputs=1, isolated=True) == "01"
 
@@ -25,8 +24,10 @@ def test_restored_isolated_execution(language) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("choices", [None, DialectSettings()])
 def test_default_settings_distinction(choices) -> None:
-    document = esolangs.dump_program("Brainfuck", _Tagged("+.", REFERENCE, choices))
-    restored = compat.load_program(REFERENCE, document)
+    document = esolangs.dump_program(
+        REFERENCE, ProgramArtifact("+.", REFERENCE, choices)
+    )
+    restored = esolangs.load_program(REFERENCE, document)
     assert restored.settings == choices
     assert esolangs.run("Brainfuck", restored).output == "\x01"
 
@@ -36,7 +37,7 @@ def test_default_settings_distinction(choices) -> None:
 )
 def test_invalid_json(document) -> None:
     with pytest.raises(esolangs.ProgramError):
-        compat.load_program("Brainfuck", document)
+        esolangs.load_program("Brainfuck", document)
 
 
 @pytest.mark.parametrize(
@@ -58,12 +59,12 @@ def test_invalid_fields(field, value) -> None:
     document = json.loads(esolangs.dump_program("Brainfuck", "+."))
     document[field] = value
     with pytest.raises(esolangs.ProgramError):
-        compat.load_program("Brainfuck", json.dumps(document))
+        esolangs.load_program("Brainfuck", json.dumps(document))
 
 
 def test_document_argument_and_invalid_settings() -> None:
     with pytest.raises(esolangs.ArgumentError, match="JSON string"):
-        compat.load_program("Brainfuck", b"{}")
+        esolangs.load_program("Brainfuck", b"{}")
     with pytest.raises(esolangs.ArgumentError):
         esolangs.dump_program("Brainfuck", "+.", settings={})
 
@@ -72,4 +73,4 @@ def test_template_kind_requires_parameterized_language() -> None:
     document = json.loads(esolangs.dump_program("Brainfuck", "+."))
     document.update(kind="template", char="$", setters=[])
     with pytest.raises(esolangs.ProgramError, match="template char does not match"):
-        compat.load_program("Brainfuck", json.dumps(document))
+        esolangs.load_program("Brainfuck", json.dumps(document))

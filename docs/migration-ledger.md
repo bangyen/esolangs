@@ -61,6 +61,10 @@ execution. Size callbacks and native sample fixtures read explicit source after
 binding. Shared support and owned language tests no longer call the source facade;
 other repository callers still require migration.
 
+Shared generator binding, run-width, round-trip, native-container and portable
+document tests retain artifacts. Raster streams save records before encoding and
+check metadata and foreign-language rejection. Other generator callers remain open.
+
 Owned source-inspection tests for 91 text backends use explicit artifact source
 for native machines, layout checks and size pins. Other repository callers remain
 open.

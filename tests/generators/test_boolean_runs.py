@@ -3,9 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.exceptions import TemplateError
-from esolangs.registry import recover_setters, render_template
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
 from tests.support.witness_tables import row_bits
@@ -17,15 +15,20 @@ _PARAMETERIZED = languages(parameterized=True, boolean_generator=True)
 @pytest.mark.parametrize("table", ["00", "0000", "0110"])
 def test_the_template_is_every_programs_length(language: str, table: str) -> None:
     """Filling a run with either setter leaves the length alone."""
-    template = compat.generate(language, table)
-    n = template.inputs
+    template = esolangs.generate(language, table)
+    assert isinstance(template, esolangs.TemplateArtifact)
+    n = template.bindings.inputs
     assert n == len(table).bit_length() - 1
-    assert all(len(zero) == len(one) for zero, one in template.setters)
+    assert all(len(zero) == len(one) for zero, one in template.bindings.setters)
     for row in range(2**n):
         bits = row_bits(row, n)
-        program = compat.instantiate(language, template, bits)
-        assert len(program) == len(template), ("fill width", language, bits)
-        assert template.char not in program
+        program = esolangs.instantiate(language, template, bits)
+        assert len(program.source) == len(template.source), (
+            "fill width",
+            language,
+            bits,
+        )
+        assert template.bindings.char not in program.source
 
 
 @pytest.mark.parametrize("language", _PARAMETERIZED)
@@ -50,8 +53,6 @@ def test_length_check_rejects_unequal_fills(language: str, table: str, monkeypat
 
 
 def test_a_language_that_reads_its_inputs_has_no_runs() -> None:
-    """Rendering or recovering for a stdin language refuses, not asserts."""
+    """A stdin reader has no input bindings to instantiate."""
     with pytest.raises(TemplateError, match="reads its inputs"):
-        render_template(REFERENCE, "$", 1)
-    with pytest.raises(TemplateError, match="reads its inputs"):
-        recover_setters(REFERENCE, "$")
+        esolangs.instantiate(REFERENCE, esolangs.generate(REFERENCE, "01"), [0])

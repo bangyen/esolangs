@@ -5,7 +5,6 @@ import re
 import pytest
 
 import esolangs
-from esolangs import compat
 from esolangs.generation.helpers import runs
 from esolangs.registry import LANGUAGES
 from tests.support.pick import languages
@@ -23,10 +22,13 @@ def test_generators_spell_their_own_runs(language: str, gen) -> None:
     for table in ("01", "0110", "01101001"):
         raw = gen(table)
         assert "{X" not in raw, (language, table)
-        template = compat.generate(language, table)
-        assert str(template) == raw, (language, table)
-        assert template.count(template.char) == sum(len(z) for z, _ in template.setters)
-        assert template.inputs == len(table).bit_length() - 1
+        template = esolangs.generate(language, table)
+        assert isinstance(template, esolangs.TemplateArtifact)
+        assert template.source == raw, (language, table)
+        assert template.source.count(template.bindings.char) == sum(
+            len(z) for z, _ in template.bindings.setters
+        )
+        assert template.bindings.inputs == len(table).bit_length() - 1
 
 
 @pytest.mark.parametrize(("language", "gen"), _PARAMETERIZED)

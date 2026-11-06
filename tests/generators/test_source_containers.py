@@ -8,13 +8,31 @@ from typing import Any
 import pytest
 
 import esolangs
-from esolangs import _check_program, compat
+from esolangs import _check_program
 from esolangs.debugger import make_debugger
 from tests.support.evaluation import _evaluate
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
 
 _RASTERS = languages(source_kind="raster", boolean_generator=True)
+
+
+def _native_bytes(program, tmp_path: Path) -> bytes:
+    if isinstance(program.source, esolangs.Raster):
+        path = tmp_path / "source.png"
+        esolangs.save_program(program, path)
+        restored = esolangs.Language(program.language).from_file(path)
+        assert (restored.language, restored.settings, restored.scale) == (
+            program.language,
+            program.settings,
+            program.scale,
+        )
+        for other in _RASTERS:
+            if other != program.language:
+                with pytest.raises(esolangs.ProgramError, match="generated for"):
+                    esolangs.Language(other).from_file(path)
+        return path.read_bytes()
+    return program.source.encode()
 
 
 # Isolation forwards whatever the container held, so one container covers it;
@@ -39,25 +57,19 @@ _RASTERS = languages(source_kind="raster", boolean_generator=True)
         if holder != "text_stream" or language == REFERENCE
     ],
 )
-def test_execution_container_parity(language: str, holder: str, mode: str) -> None:
-    program = compat.generate(language, "01")
-    data = (
-        program.to_png() if isinstance(program, esolangs.Raster) else program.encode()
-    )
+def test_execution_container_parity(
+    language: str, holder: str, mode: str, tmp_path: Path
+) -> None:
+    program = esolangs.generate(language, "01")
+    data = _native_bytes(program, tmp_path)
     source: Any = data
     if holder == "text_stream":
-        source = (
-            io.BytesIO(data)
-            if isinstance(program, esolangs.Raster)
-            else io.StringIO(program)
-        )
+        source = io.StringIO(program.source)
     elif holder == "binary_stream":
         source = io.BytesIO(data)
     stdin = io.BytesIO(b"1")
     bounds: dict[str, Any] = {}
-    if mode == "steps":
-        bounds["max_steps"] = 10000
-    elif mode == "isolated":
+    if mode == "isolated":
         bounds["isolated"] = True
     assert esolangs.run(language, source, stdin=stdin, **bounds).output == "1"
     assert stdin.tell() == 1
@@ -67,12 +79,12 @@ def test_execution_container_parity(language: str, holder: str, mode: str) -> No
 
 
 @pytest.mark.parametrize("language", [REFERENCE, *_RASTERS])
-def test_streams_work_with_bound_api_debugging_and_evaluation(language: str) -> None:
+def test_streams_work_with_bound_api_debugging_and_evaluation(
+    language: str, tmp_path: Path
+) -> None:
     api = esolangs.Language(language)
-    program = api.generate("01").source
-    data = (
-        program.to_png() if isinstance(program, esolangs.Raster) else program.encode()
-    )
+    program = api.generate("01")
+    data = _native_bytes(program, tmp_path)
     assert _evaluate(api.name, io.BytesIO(data), inputs=1) == "01"
     debugger = make_debugger(language, io.BytesIO(data), stdin=io.StringIO("1"))
     assert debugger.run(max_steps=10000) == "halted"
