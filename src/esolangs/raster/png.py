@@ -461,9 +461,12 @@ def read_metadata(data: bytes) -> dict[str, Any] | None:
         if not isinstance(decoded, dict):
             raise ValueError("esolangs PNG metadata must be an object")
         found = decoded
-    if found is None or type(found.get("version")) is not int or found["version"] != 1:
+    if found is None:
         return None
-    return found
+    version = found.get("version")
+    if type(version) is not int or version < 1:
+        raise ValueError("invalid esolangs PNG metadata version")
+    return found if version == 1 else None
 
 
 def write_metadata(data: bytes, metadata: dict[str, Any]) -> bytes:

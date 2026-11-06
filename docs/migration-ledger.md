@@ -44,6 +44,7 @@ Owners are workstreams, not individual contributors.
 | Disconnected, mutable or draw-dependent branch verdicts | Results | Retired; constructor, wire and parent-decoder refusal controls preserve partial output | Immutable root-reachable graphs; run-specific termination decisions |
 | Legacy worker-field defaults | Results | Retired; complete typed requests and explicit success/error observations; omission, flag, integer-tag and raster-run controls in `tests/runtime/test_worker_results.py` | Explicit canonical fields, including unavailable observations |
 | Permissive worker envelopes and nested proof fields | Results | Retired; missing/extra fields, unknown error kinds, duplicate terminals and contradictory output fail with retained prefixes | Exact canonical stream, result and evidence schemas |
+| Malformed PNG metadata version downgrade | Persistence | Retired; missing, mistyped and nonpositive versions fail with live controls in `tests/runtime/raster/test_png.py` | Plain PNG, valid v1 provenance and future positive-integer versions |
 | Superseded serialization decoders/converters | Persistence | Not applicable: no persisted format was superseded; version-1 JSON/PNG and unlabelled native files remain supported | Retain canonical decoders; convert only after a format cutover |
 
 For each family, locate consumers before changing it; close the row only after
@@ -822,3 +823,11 @@ counts. Live refusal controls retain text, gzip and raster requests, signed
 seeds and limits beyond the decimal-rendering cap. No persisted format changes;
 canonical version-1 artifacts remain supported. Final tree-wide retirement and
 catalog acceptance remain open.
+
+
+Owned PNG metadata requires a positive integer version; malformed or missing
+versions no longer discard provenance by falling back to plain pixels.
+Eleven refusal controls retain plain PNG, optional v1 metadata and future
+integer-version pixel readability. Both raster backends retain portable
+bytes and four executed answers. No supported persisted format is retired.
+Broader compatibility and catalog acceptance remain open.

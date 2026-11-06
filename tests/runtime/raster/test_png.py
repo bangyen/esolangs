@@ -547,13 +547,17 @@ def test_bad_source_metadata_is_a_program_error(fields) -> None:
 
 
 def test_future_metadata_versions_leave_pixels_readable() -> None:
-    from esolangs.raster import Raster
+    from esolangs import ProgramError, Raster
 
     data = png.write_rgb((((1, 2, 3),),))
     tagged = png.write_metadata(data, {"version": 2, "language": True})
     restored = Raster.from_png(tagged)
     assert restored.rows == (((1, 2, 3),),)
     assert restored.language is None
+    versions = (None, True, False, 0, -1, 1.0, 2.0, "1", [], {})
+    for fields in ({}, *({"version": v} for v in versions)):
+        with pytest.raises(ProgramError, match="invalid esolangs PNG metadata version"):
+            Raster.from_png(png.write_metadata(data, fields))
 
 
 def test_duplicate_source_metadata_is_refused() -> None:
