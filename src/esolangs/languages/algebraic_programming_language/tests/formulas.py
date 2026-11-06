@@ -20,7 +20,9 @@ def execution(n: int, program: str) -> int:
 
 
 def workspace(n: int, program: str) -> int:
-    """Count serials, typed values and function metadata in the snapshot."""
+    """Bound typed values, source locations and pending operands."""
+    # Retain the previous generous ceilings: code locations and small
+    # numeric payloads fit within their serial/value allowances.
     bl = int.bit_length
     if program.count("=") == program.startswith(_NOT_TIGHT):
         f = 2 * n + 7

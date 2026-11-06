@@ -74,8 +74,18 @@ class _Definition:
     syntactic because the false case never *evaluates* the ``$``.
     """
 
-    def __init__(self, name: str, params: list[str], body: list[_Node]) -> None:
+    def __init__(
+        self,
+        name: str,
+        params: list[str],
+        body: list[_Node],
+        *,
+        site: int | None = None,
+    ) -> None:
         self.name = name
+        # Logical source-block identity survives aliases and redefinition.
+        self.site = site
+        self.workspace_nodes: dict[int, int] | None = None
         self.params = params
         self.body = body
         self.control = [_contains_return(node) for node in body]

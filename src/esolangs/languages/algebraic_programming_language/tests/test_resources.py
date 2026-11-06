@@ -57,15 +57,19 @@ def test_shared_expressions_obey_bounds_for_every_small_table(
             bits = [row >> shift & 1 for shift in range(n - 1, -1, -1)]
             machine = _Machine(source, ScriptedIO(esolangs.encode_inputs(NAME, bits)))
             calls.clear()
-            state = WrittenState(machine.snapshot())
+            # Keep the native cycle-serial capacity control live.
+            machine.snapshot()
+            state = WrittenState(machine.workspace_snapshot())
             steps = 0
             while not machine.halted:
                 machine.step()
                 steps += 1
-                state.sample(machine.snapshot())
+                machine.snapshot()
+                state.sample(machine.workspace_snapshot())
                 assert len(machine.frames) <= 4 * n + 3
                 assert sum(len(frame.work) for frame in machine.frames) <= 6 * n + 5
                 assert len(machine._serials) <= 2 * len(source) + 2
+            assert machine._serials
             assert read_answer(NAME, machine.io.getvalue()) == expected
             assert len(calls) == len(set(calls))
             assert len(calls) <= 3 * n + 1

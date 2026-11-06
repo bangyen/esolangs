@@ -535,12 +535,58 @@ def test_the_evaluation_budget_resets_each_line() -> None:
     assert machine_.io.getvalue() == "10\n" * 3
 
 
-def test_snapshot_distinguishes_a_float_input_by_its_bits() -> None:
+def test_snapshot_distinguishes_a_float_input_by_its_bits(monkeypatch) -> None:
     """A read ``1.0`` and a read ``1`` are different states."""
     one, other = machine("x + 0", "1\n"), machine("x + 0", "1.0\n")
     one.step()
     other.step()
     assert one.snapshot() != other.snapshot()
+
+    from ..interpreter._workspace import (
+        _locations,
+        _value,
+    )
+
+    def forbidden(*_args):
+        raise AssertionError("cycle serializer reached accounting")
+
+    assert one.workspace_snapshot() != other.workspace_snapshot()
+    saved = other.workspace_snapshot()
+    retained = {saved}
+    other._serials.clear()
+    for frame in other.frames:
+        frame.fn.workspace_nodes = None
+    for name in ("snapshot", "_serial", "_key"):
+        monkeypatch.setattr(other, name, forbidden)
+    assert other.workspace_snapshot() == saved
+    while not other.halted:
+        other.step()
+        other.workspace_snapshot()
+        assert saved in retained
+    assert other.io.getvalue() == "1\n"
+    alias = machine("F()=1\na=F\nG(f)=f()\nF()=G(a)\nF()")
+    observed = set()
+    while not alias.halted:
+        alias.step()
+        observed.add(alias.workspace_snapshot())
+    assert alias.io.getvalue() == "1\n"
+    assert len(observed) > 5
+    assert alias.globals["a"].site != alias.defs["F"].site
+    leaf_parts = ["lit", 1]
+    first, second = tuple(leaf_parts), tuple(leaf_parts)
+    assert first is not second
+    shared = ("lit", 1)
+    separate_tree = ("bin", "+", first, second)
+    shared_tree = ("bin", "+", shared, shared)
+    separate, joined = _locations([separate_tree]), _locations([shared_tree])
+    assert separate[id(separate_tree)] == joined[id(shared_tree)]
+    assert separate[id(first)] == separate[id(second)]
+    assert _value(-0.0) != _value(0.0)
+    assert _value(1) != _value(1.0)
+    deep = ("lit", 1)
+    for _ in range(5000):
+        deep = ("neg", deep)
+    assert _locations([deep])[id(deep)] == 5000
 
 
 @pytest.mark.medium

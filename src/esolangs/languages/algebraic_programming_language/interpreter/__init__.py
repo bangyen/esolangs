@@ -94,8 +94,13 @@ from esolangs.languages.algebraic_programming_language.interpreter._parse import
     _split_definition,
     _tokens,
 )
+from esolangs.languages.algebraic_programming_language.interpreter._workspace import (
+    _frame,
+    _value,
+)
 from esolangs.runtime._drive import drive
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -164,6 +169,11 @@ class _State:
     frames: tuple[_Frame, ...]
     line: int
     steps: int = 0
+
+
+_WORKSPACE_MODEL = WorkspaceModel(
+    "algebraic-programming-language-v1", ("line", "globals", "frames", "input_cursor")
+)
 
 
 class _Machine:
@@ -239,6 +249,20 @@ class _Machine:
     def stack(self) -> list[object]:
         """The live call stack, outermost first."""
         return list(self.state.frames)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture live values and continuations independently of cycle keys."""
+        # Definition installation is determined by source and the line cursor.
+        # Its compiled code and location tables are read-only schema, not payload.
+        # Evaluation-budget ticks belong to the shell, like VM step limits.
+        return _WORKSPACE_MODEL.capture(
+            line=self.line,
+            globals=frozenset(
+                (key, _value(value)) for key, value in self.state.globals.items()
+            ),
+            frames=tuple(_frame(frame) for frame in self.state.frames),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
@@ -409,7 +433,7 @@ def _start_line(
     if split is None:
         node = _Parser(_tokens(text), state.defs).parse()
         globals_ = _bind_inputs(node, state.globals, inputs)
-        definition = _Definition("", [], [node])
+        definition = _Definition("", [], [node], site=state.line)
         frame = _Frame(
             fn=definition,
             locals=MappingProxyType({}),
@@ -434,7 +458,7 @@ def _start_line(
         # prints and takes no input, so its body runs in a frame
         # flagged to assign the result instead of printing it.
         body = _body(rhs, state.defs)
-        definition = _Definition("", [], body)
+        definition = _Definition("", [], body, site=state.line)
         frame = _Frame(
             fn=definition,
             locals=MappingProxyType({}),
@@ -455,7 +479,7 @@ def _start_line(
     # pre-registration entry is a body-less stub; the definition is
     # constructed once its body is known.
     parse_defs = _frozen({**state.defs, name: _Definition(name, params, [])})
-    definition = _Definition(name, params, _body(rhs, parse_defs))
+    definition = _Definition(name, params, _body(rhs, parse_defs), site=state.line)
     defs = _frozen({**state.defs, name: definition})
     return replace(state, defs=defs, line=line, steps=0), None
 

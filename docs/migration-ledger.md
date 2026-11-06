@@ -120,8 +120,8 @@ acceptance audit after the active separation work lands. Storage policy needs
 its priced comparison and explicit decision. These remain open even where an
 implementation pilot already passed.
 
-Accounting now has 116 explicit or inherited semantic adapters; 1 language
-still uses snapshot accounting. Declarations do not close lifecycle,
+Accounting now has 117 explicit or inherited semantic adapters; no language
+uses snapshot accounting. Declarations do not close lifecycle,
 storage-policy or catalog-wide acceptance requirements.
 
 All seven dialect schemas now declare choices and defaults. Runtime metadata
@@ -295,3 +295,8 @@ metadata no longer imports its interpreter.
 text factories and debugger fields. Function/return frames, operand and inactive
 stacks, variables and growing programs remain per-run; cursor shapes and EOF
 conventions stay explicit.
+
+Algebraic Programming Language declares typed numeric/function values and
+source-relative continuation locations. Retained definitions survive redefinition;
+immutable code sharing and cycle serials do not determine workspace. All 117
+languages now declare accounting; fallback retirement and acceptance stay open.
