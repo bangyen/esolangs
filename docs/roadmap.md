@@ -132,6 +132,27 @@ require a versioned cutover and caller migration; moving adapters into
    returning; verify the installed package on supported Python versions. Finish
    with corpus, execution, timing, size/resource and required referee gates.
 
+Remaining closure work (track evidence in the ledger and CSV, not declarations alone):
+
+- [ ] Finish every pending Boolean-backend analysis audit; delete duplicate analysis
+  or record why the construction must remain target-specific.
+- [ ] Complete lifecycle and exact accounting acceptance for all 117 languages:
+  native, stepped and isolated traces, input progress, workspace witnesses,
+  snapshot isolation, errors and completion evidence.
+- [ ] Complete installed certification/import isolation and runtime acceptance on
+  Python 3.12–3.15, including stepped execution, failures and accounting.
+- [ ] Audit worker envelopes, nested evidence and persisted fixtures for obsolete
+  or permissive protocol forms; reject retired forms with live negative controls.
+  Retain supported canonical formats; version 1 alone does not imply obsolescence.
+- [ ] Audit the final source tree, public exports, docs, tests and installed wheel
+  for compatibility modules, aliases, defaults, constructor adapters and import
+  re-exports. Migrate any remaining consumers, then delete the layers and any
+  one-time converters whose data migration is complete.
+- [ ] Reconcile every retirement family and all 117 language / 114 backend rows
+  with current evidence. Close the eight workstreams only after corpus,
+  execution, timing, resource/size and referee gates pass; leave unresolved
+  acceptance rows open.
+
 ## Engineering
 
 Next experiments; budgets are wall time, not permission for an unpriced search.
