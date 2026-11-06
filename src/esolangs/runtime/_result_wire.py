@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Hashable
 from dataclasses import fields, is_dataclass
+from fractions import Fraction
 from functools import cache
 from importlib import import_module
 from math import isfinite
@@ -19,6 +20,7 @@ from esolangs.runtime._proof import (
     checked_decision,
     checked_termination,
 )
+from esolangs.runtime._snapshot import SnapshotCodec
 
 
 @cache
@@ -43,6 +45,23 @@ def _record_type(module_name: str, name: str) -> type[Any]:
     raise ValueError("undeclared immutable snapshot record")
 
 
+@cache
+def _owned_codec(module_name: str, name: str) -> SnapshotCodec[Any]:
+    """Resolve an explicitly declared codec from a registered interpreter."""
+    from esolangs.registry import INTERPRETERS
+
+    if module_name not in INTERPRETERS.values():
+        raise ValueError("unregistered snapshot codec module")
+    for codec in getattr(import_module(module_name), "SNAPSHOT_CODECS", ()):
+        if (
+            isinstance(codec, SnapshotCodec)
+            and codec.cls.__module__ == module_name
+            and codec.cls.__qualname__ == name
+        ):
+            return codec
+    raise ValueError("undeclared snapshot codec")
+
+
 def _state_wire(state: Hashable) -> Any:
     """Tag immutable containers so JSON cannot turn snapshots into lists."""
     if type(state) is float and not isfinite(state):
@@ -52,6 +71,8 @@ def _state_wire(state: Hashable) -> Any:
         return {"int": hex(state)}
     if state is None or type(state) in (str, int, bool, float):
         return state
+    if type(state) is Fraction:
+        return {"fraction": [hex(state.numerator), hex(state.denominator)]}
     if isinstance(state, bytes):
         return {"bytes": state.hex()}
     if isinstance(state, tuple):
@@ -70,7 +91,48 @@ def _state_wire(state: Hashable) -> Any:
                 },
             }
         }
-    raise ValueError(f"unsupported cycle state: {type(state).__name__}")
+    codec = _owned_codec(type(state).__module__, type(state).__qualname__)
+    return {
+        "owned": {
+            "module": codec.cls.__module__,
+            "name": codec.cls.__qualname__,
+            "value": _state_wire(codec.encode(state)),
+        }
+    }
+
+
+def _fraction_from_wire(pair: Any) -> Fraction:
+    """Require the reduced positive-denominator representation from Fraction."""
+    if not isinstance(pair, list) or len(pair) != 2:
+        raise ValueError("invalid snapshot fraction")
+    numerator, denominator = map(canonical_integer, pair)
+    if denominator <= 0:
+        raise ValueError("invalid snapshot denominator")
+    fraction = Fraction(numerator, denominator)
+    if (fraction.numerator, fraction.denominator) != (numerator, denominator):
+        raise ValueError("noncanonical snapshot fraction")
+    return fraction
+
+
+def _owned_from_wire(owned: Any) -> Hashable:
+    """Restore declared owned values, normalizing malformed payload failures."""
+    if (
+        not isinstance(owned, dict)
+        or set(owned) != {"module", "name", "value"}
+        or not isinstance(owned["module"], str)
+        or not isinstance(owned["name"], str)
+    ):
+        raise ValueError("invalid owned snapshot")
+    codec = _owned_codec(owned["module"], owned["name"])
+    payload = _state_from_wire(owned["value"])
+    try:
+        decoded_value = codec.decode(payload)
+    except TypeError as error:
+        raise ValueError("invalid owned snapshot payload") from error
+    if type(decoded_value) is not codec.cls or codec.encode(decoded_value) != payload:
+        raise ValueError("noncanonical owned snapshot")
+    hash(decoded_value)
+    return cast("Hashable", decoded_value)
 
 
 def _state_from_wire(value: Any) -> Hashable:
@@ -88,6 +150,10 @@ def _state_from_wire(value: Any) -> Hashable:
         return decoded
     if "int" in value:
         return canonical_integer(value["int"])
+    if "fraction" in value:
+        return _fraction_from_wire(value["fraction"])
+    if "owned" in value:
+        return _owned_from_wire(value["owned"])
     if "record" in value:
         record = value["record"]
         if (

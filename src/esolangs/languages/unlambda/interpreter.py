@@ -47,6 +47,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._snapshot import SnapshotCodec
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
@@ -574,6 +575,44 @@ def _execute(code: str, io: IO) -> CompletionReport:
 def run(code: str, io: IO) -> None:
     """Run an Unlambda program."""
     _execute(code, io)
+
+
+SNAPSHOT_RECORDS = (
+    _Cmd,
+    _Print,
+    _Query,
+    _Partial,
+    _Promise,
+    _Cont,
+    _App,
+    _Val,
+    _Arg,
+    _Fun,
+    _Eval,
+    _Apply,
+    _Ret,
+)
+
+
+def _kont_payload(kont: _Kont) -> Hashable:
+    return kont.frames()
+
+
+def _kont_restore(payload: Hashable) -> _Kont:
+    if (
+        not isinstance(payload, tuple)
+        or not payload
+        or any(not isinstance(frame, (_Arg, _Fun)) for frame in payload)
+    ):
+        raise TypeError("invalid continuation snapshot")
+    kont: _Kont | None = None
+    for frame in payload:
+        kont = _Kont(frame, kont)
+    assert kont is not None
+    return kont
+
+
+SNAPSHOT_CODECS = (SnapshotCodec(_Kont, _kont_payload, _kont_restore),)
 
 
 if __name__ == "__main__":

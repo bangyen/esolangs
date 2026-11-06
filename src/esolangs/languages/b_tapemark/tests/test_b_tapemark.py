@@ -9,6 +9,7 @@ from esolangs.languages.b_tapemark.interpreter import (
     _Machine,
     run,
 )
+from esolangs.runtime._result_wire import _state_from_wire, _state_wire
 from esolangs.runtime.io import ScriptedIO
 
 
@@ -90,6 +91,19 @@ class TestTheGridIsAMapOfPoints:
         """A write returns a new grid; the old one is what a cycle compares."""
         grid = _Grid({(0, 0): "A"})
         assert grid.marked((0, 0), "Z").at((0, 0)) == "Z"
+        restored = _state_from_wire(_state_wire(grid))
+        assert restored == grid
+        assert hash(restored) == hash(grid)
+        for payload in (
+            (),
+            frozenset({((0, 0), "a"), ((0, 0), "b")}),
+            frozenset({((True, 0), "a")}),
+        ):
+            packet = _state_wire(grid)
+            packet["owned"]["value"] = _state_wire(payload)
+            with pytest.raises(ValueError, match="snapshot"):
+                _state_from_wire(packet)
+        assert grid.marked((0, 0), "Z") != restored
         assert grid.at((0, 0)) == "A"
 
     def test_a_missing_point_reads_blank(self) -> None:

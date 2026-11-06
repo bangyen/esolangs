@@ -2,6 +2,7 @@
 
 import copy
 import json
+from fractions import Fraction
 
 import pytest
 
@@ -16,14 +17,45 @@ from esolangs.vm import make_vm
 from tests.support.reference import REFERENCE
 
 
+def _assert_catalog_snapshot_round_trips(result):
+    for name, spec in LANGUAGES.items():
+        if spec.backend is None:
+            continue
+        artifact = esolangs.generate(name, "01")
+        for row in (0, 1):
+            source = (
+                esolangs.instantiate(name, artifact, [row])
+                if spec.parameterized
+                else artifact
+            )
+            stdin = "" if spec.parameterized else esolangs.encode_inputs(name, [row])
+            vm = make_vm(
+                name, source, stdin=stdin, seed=7 if spec.runtime.random else None
+            )
+            for step in range(9):
+                cycle = BoundaryCycle(vm.snapshot(), 0, 1, step)
+                observed = result._replace(
+                    completion=CompletionReport(Completion.PERIODIC, cycle)
+                )
+                restored = decode_result(
+                    observed.output, json.loads(json.dumps(encode_result(observed)))
+                )
+                assert restored == observed
+                assert hash(restored.completion.cycle.state) == hash(cycle.state)
+                if vm.halted:
+                    break
+                vm.step()
+
+
+@pytest.mark.medium
 def test_immutable_cycle_state_survives_json():
-    def record_at(value):
+    def record_at(value, tag="record"):
         pending = [value]
         while pending:
             node = pending.pop()
             if isinstance(node, dict):
-                if "record" in node:
-                    return node["record"]
+                if tag in node:
+                    return node[tag]
                 pending.extend(node.values())
             elif isinstance(node, list):
                 pending.extend(node)
@@ -46,6 +78,8 @@ def test_immutable_cycle_state_survives_json():
         b"\x00\xff",
         1 << 15000,
         -(1 << 15000),
+        Fraction(2, 3),
+        Fraction(-(1 << 15000), 3),
         None,
         True,
         1.5,
@@ -70,6 +104,8 @@ def test_immutable_cycle_state_survives_json():
     assert (
         decode_result(zero.output, json.loads(json.dumps(encode_result(zero)))) == zero
     )
+
+    _assert_catalog_snapshot_round_trips(result)
 
     def refuses(broken, match):
         with pytest.raises(ValueError, match=match):
@@ -105,6 +141,35 @@ def test_immutable_cycle_state_survives_json():
         broken = copy.deepcopy(metadata)
         broken["completion"]["cycle"]["state"] = state_tag
         refuses(broken, "noncanonical|duplicate")
+    for fraction in (
+        None,
+        [],
+        ["0x1"],
+        [True, "0x1"],
+        ["0x2", "0x4"],
+        ["0x1", "0x0"],
+        ["0x1", "-0x1"],
+    ):
+        broken = copy.deepcopy(metadata)
+        broken["completion"]["cycle"]["state"] = {"fraction": fraction}
+        refuses(broken, "snapshot|integer")
+    owned = record_at(metadata, "owned")
+    for key in (*owned, "obsolete"):
+        broken = copy.deepcopy(metadata)
+        changed = record_at(broken, "owned")
+        if key == "obsolete":
+            changed[key] = True
+        else:
+            del changed[key]
+        refuses(broken, "owned snapshot")
+    for key, invalid in (
+        ("module", "fractions"),
+        ("name", "_Machine"),
+        ("value", {"tuple": []}),
+    ):
+        broken = copy.deepcopy(metadata)
+        record_at(broken, "owned")[key] = invalid
+        refuses(broken, "snapshot|codec")
     record = record_at(metadata)
     for key in (*record, "obsolete"):
         broken = copy.deepcopy(metadata)

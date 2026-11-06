@@ -34,7 +34,7 @@ Decisions:
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Hashable, Iterator, Mapping
 from dataclasses import dataclass
 from operator import add, mul, sub
 from typing import Any, NamedTuple, final
@@ -46,6 +46,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._snapshot import SnapshotCodec
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import trunc_div, trunc_mod, wrap_int32
@@ -601,6 +602,28 @@ def _execute(code: str, io: IO) -> CompletionReport:
 def run(code: str, io: IO) -> None:
     """Run a Forþ program."""
     _execute(code, io)
+
+
+def _scope_payload(scopes: _Scopes) -> Hashable:
+    return frozenset(scopes.items())
+
+
+def _scope_restore(payload: Hashable) -> _Scopes:
+    if not isinstance(payload, frozenset) or any(
+        not isinstance(item, tuple)
+        or len(item) != 2
+        or type(item[0]) is not int
+        or not isinstance(item[1], str)
+        for item in payload
+    ):
+        raise TypeError("invalid scope snapshot")
+    scopes = _Scopes()
+    for key, code in payload:
+        scopes = scopes.store(key, code)
+    return scopes
+
+
+SNAPSHOT_CODECS = (SnapshotCodec(_Scopes, _scope_payload, _scope_restore),)
 
 
 if __name__ == "__main__":

@@ -36,7 +36,7 @@ Decisions:
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Hashable, Mapping
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
@@ -48,6 +48,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._snapshot import SnapshotCodec
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
@@ -77,6 +78,10 @@ class _Grid:
         """Take ownership of ``cells``; callers must not keep a reference."""
         self._cells = cells
         self._digest: int | None = None
+
+    def snapshot_items(self) -> frozenset[tuple[_Point, str]]:
+        """Project marks for transport without exposing the owned dictionary."""
+        return frozenset(self._cells.items())
 
     def at(self, point: tuple[int, int]) -> str:
         """Return the symbol at ``point``, or a blank where there is none."""
@@ -343,6 +348,27 @@ def _execute(source: str, io: IO, *, swap_marker: str = "new") -> CompletionRepo
 def run(source: str, io: IO, *, swap_marker: str = "new") -> None:
     """Run a B-tapemark program until ``!`` executes."""
     _execute(source, io, swap_marker=swap_marker)
+
+
+SNAPSHOT_RECORDS = (_State,)
+
+
+def _grid_restore(payload: Hashable) -> _Grid:
+    if not isinstance(payload, frozenset) or any(
+        not isinstance(item, tuple)
+        or len(item) != 2
+        or not isinstance(item[0], tuple)
+        or len(item[0]) != 2
+        or any(type(index) is not int for index in item[0])
+        or not isinstance(item[1], str)
+        or len(item[1]) != 1
+        for item in payload
+    ):
+        raise TypeError("invalid grid snapshot")
+    return _Grid(dict(payload))
+
+
+SNAPSHOT_CODECS = (SnapshotCodec(_Grid, _Grid.snapshot_items, _grid_restore),)
 
 
 if __name__ == "__main__":

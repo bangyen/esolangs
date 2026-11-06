@@ -857,5 +857,19 @@ Unrelated acceptance remains open.
 Worker hexadecimal scalars use their encoder spelling; byte tags no longer
 accept whitespace or uppercase, and snapshot sets reject duplicate/equal members
 instead of discarding evidence. The bounded 114-backend probe retains 1,584
-supported snapshots and 86 halts with matching baseline records. It also finds
-ten unsupported snapshot families; this probe is not full lifecycle acceptance.
+supported snapshots and 86 halts with matching baseline records. It exposed
+ten unsupported snapshot families, addressed by the following batch. This probe
+is not full lifecycle acceptance.
+
+Snapshot transport retains exact rational numerators/denominators and declared
+frozen records. Three owned codecs project persistent grid marks, scope bindings
+and continuation frames without changing native structures. Malformed fractions,
+unknown codecs and lossy container payloads fail with retained output prefixes.
+All 114 Boolean backends round-trip 1,734 bounded snapshots; the ten repaired
+families additionally execute 1,482 corpus programs (1,469 clean halts and
+65,801 observations), checking successful snapshots through JSON. Native and
+worker termination evidence agrees on nine cycles and thisthat’s closed graph.
+Seven changed native interpreters retain 53,492 matching observations and
+throughput ratios 0.996–1.002, with live output-fault controls for each.
+The CSV’s `snapshot_transport` column records this bounded evidence separately
+from whole-language acceptance; interpreter-only rows remain pending.

@@ -583,5 +583,12 @@ def run(code: str, io: IO) -> None:
     _execute(code, io)
 
 
+SNAPSHOT_RECORDS = (
+    _Lambda,
+    _Frame,
+    _Loop,
+)
+
+
 if __name__ == "__main__":
     script_main(run)

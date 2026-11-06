@@ -345,5 +345,8 @@ def run(code: str, io: IO) -> None:
     _execute(code, io)
 
 
+SNAPSHOT_RECORDS = (Block,)
+
+
 if __name__ == "__main__":
     script_main(run)

@@ -898,5 +898,8 @@ def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
     _execute(code, io, rng)
 
 
+SNAPSHOT_RECORDS = (_Pointer,)
+
+
 if __name__ == "__main__":
     script_main(run, shape="keep")

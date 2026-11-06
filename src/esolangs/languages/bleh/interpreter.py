@@ -840,5 +840,28 @@ def run(code: str, io: IO) -> None:
     _execute(code, io)
 
 
+SNAPSHOT_RECORDS = (
+    _Bits,
+    _Ref,
+    _Join,
+    _Seq,
+    _Call,
+    _Slot,
+    _Lazy,
+    _PLit,
+    _PAny,
+    _PVar,
+    _PRest,
+    _PSplit,
+    _Eval,
+    _Ret,
+    _Try,
+    _Do,
+    _Update,
+    _Part,
+    _Arg,
+)
+
+
 if __name__ == "__main__":
     script_main(run)

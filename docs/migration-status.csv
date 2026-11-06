@@ -1,118 +1,118 @@
-language,boolean_backend,preparation,dialect_defaults,capabilities,workspace,workspace_model,analysis,certification,completion
-///,yes,declared,not-applicable,declared,owned-adapter,slashes-v1,canonical-input-weights;owned-directional-sweeps,pending-acceptance-audit,open
-1 + i,yes,declared,not-applicable,declared,owned-adapter,one-i-v1,canonical-parity-subtree;owned-complex-arithmetic,pending-acceptance-audit,open
-3x,yes,declared,not-applicable,declared,owned-adapter,three-x-v1,pending-backend-audit,pending-acceptance-audit,open
-6-5,yes,declared,not-applicable,declared,owned-adapter,six-five-v1,canonical-subtree-weighted-analysis;owned-label-layout,pending-acceptance-audit,open
-A Painter Ant,yes,declared,not-applicable,declared,owned-adapter,a-painter-ant-v1,pending-backend-audit,pending-acceptance-audit,open
-ABCDirection,yes,declared,not-applicable,declared,owned-adapter,abcdirection-v1,canonical-dependency-projection;owned-byte-tape-helix,pending-acceptance-audit,open
-AddSubJump,yes,declared,not-applicable,declared,owned-adapter,addsubjump-v1,canonical-residual-constants-weighted-lookup;owned-self-modifying-layout,pending-acceptance-audit,open
-Algebraic Programming Language,yes,declared,not-applicable,declared,owned-adapter,algebraic-programming-language-v1,pending-backend-audit,pending-acceptance-audit,open
-Alight,yes,declared,declared,declared,owned-adapter,alight-v1,canonical-weighted-projection;owned-notation-pair-layout,pending-acceptance-audit,open
-Aprknia,yes,declared,not-applicable,declared,owned-adapter,aprknia-v1,canonical-subtree-analysis;owned-zero-exit,pending-acceptance-audit,open
-ArrowQueue,yes,declared,not-applicable,declared,owned-adapter,arrowqueue-v1,pending-backend-audit,pending-acceptance-audit,open
-Ascenic,yes,declared,not-applicable,declared,owned-adapter,ascenic-v1,canonical-parity-projection;owned-threshold-scan,pending-acceptance-audit,open
-B-tapemark,yes,declared,declared,declared,owned-adapter,b-tapemark-v1,pending-backend-audit,pending-acceptance-audit,open
-Back,yes,declared,not-applicable,declared,owned-adapter,back-v1,canonical-parity;canonical-subtree-parity-weighted-lookup;owned-beam-layout,pending-acceptance-audit,open
-Balik,yes,declared,not-applicable,declared,owned-adapter,balik-v1,canonical-constant-projection;owned-spatial-boxes,pending-acceptance-audit,open
-BASICER,yes,declared,not-applicable,declared,owned-adapter,basicer-v1,canonical-decision-layers,pending-acceptance-audit,open
-Basicfuck,yes,declared,not-applicable,declared,owned-adapter,basicfuck-v1,canonical-affine-reduced-diagram;owned-flag-pricing,pending-acceptance-audit,open
-Befunge,yes,declared,not-applicable,declared,owned-adapter,befunge-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
-Between,yes,declared,not-applicable,declared,owned-adapter,between-v1,canonical-reduced-diagram;owned-fallthrough,pending-acceptance-audit,open
-BFStack,yes,declared,not-applicable,declared,owned-adapter,bfstack-v1,canonical-weighted-symmetric-lookup;owned-byte-decoder,pending-acceptance-audit,open
-Bitdeque,yes,declared,not-applicable,declared,owned-adapter,bitdeque-v1,canonical-decision-layers;owned-deque-placement,pending-acceptance-audit,open
-Bitwise Cyclic Tag,yes,declared,not-applicable,declared,owned-adapter,bitwise-cyclic-tag-v1,canonical-weighted-lookup,pending-acceptance-audit,open
-bit~,yes,declared,not-applicable,declared,owned-adapter,bit-tilde-v1,canonical-affine-projection;owned-paired-window-lookup,pending-acceptance-audit,open
-Bleh,yes,declared,not-applicable,declared,owned-adapter,bleh-v1,canonical-decision-layers;owned-function-layout,pending-acceptance-audit,open
-Blindfolded Arithmetic,yes,declared,not-applicable,declared,owned-adapter,blindfolded-arithmetic-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
-Boolfuck,yes,declared,not-applicable,declared,inherited-adapter,boolfuck-v1,canonical-affine-symmetry-subtree-projection;owned-two-bit-gates,pending-acceptance-audit,open
-brainfuck,yes,declared,not-applicable,declared,owned-adapter,brainfuck-v1,canonical-affine-shared-flag;owned-input-budget-print-polarity,pending-acceptance-audit,open
-BrainIf,yes,declared,not-applicable,declared,owned-adapter,brainif-v1,canonical-decision-layers-subtable-fold;owned-spatial-lookup,pending-acceptance-audit,open
-Caballo,yes,declared,not-applicable,declared,owned-adapter,caballo-v1,canonical-subtree-analysis;owned-signed-tree,pending-acceptance-audit,open
-CARP,yes,declared,not-applicable,declared,owned-adapter,carp-v1,canonical-decision-layers;owned-register-placement,pending-acceptance-audit,open
-Chicken,yes,declared,not-applicable,declared,owned-adapter,chicken-v1,canonical-projection;owned-code-row-lookup,pending-acceptance-audit,open
-Circlefuck,yes,declared,not-applicable,declared,owned-adapter,circlefuck-v1,canonical-projection-symmetry;owned-deleting-index,pending-acceptance-audit,open
-Circuit Diagram,yes,declared,not-applicable,declared,owned-adapter,circuit-diagram-v1,pending-backend-audit,pending-acceptance-audit,open
-Clockwise,yes,declared,not-applicable,declared,owned-adapter,clockwise-v1,pending-backend-audit,pending-acceptance-audit,open
-Codesick,yes,declared,not-applicable,declared,owned-adapter,codesick-v1,canonical-decision-layers;owned-marker-layout,pending-acceptance-audit,open
-Collatz Multiverse,yes,declared,not-applicable,declared,owned-adapter,collatz-multiverse-v1,pending-backend-audit,pending-acceptance-audit,open
-Container,yes,declared,not-applicable,declared,owned-adapter,container-v1,canonical-subtree-weighted-boundaries;owned-tick-rule-layout,pending-acceptance-audit,open
-CreativeScript v2,yes,declared,not-applicable,declared,owned-adapter,creativescript-v2-v1,canonical-dependency-projection;owned-arithmetic-lookup,pending-acceptance-audit,open
-Crement,yes,declared,not-applicable,declared,owned-adapter,crement-v1,pending-backend-audit,pending-acceptance-audit,open
-CV(N)(C),yes,declared,not-applicable,declared,owned-adapter,cvnc-v1,pending-backend-audit,pending-acceptance-audit,open
-Cyclic tag,yes,declared,not-applicable,declared,owned-adapter,cyclic-tag-v1,canonical-weighted-lookup,pending-acceptance-audit,open
-Deadfish,no,declared,not-applicable,declared,owned-adapter,deadfish-v1,not-applicable,pending-acceptance-audit,open
-Decleq,yes,declared,not-applicable,declared,owned-adapter,decleq-v1,pending-backend-audit,pending-acceptance-audit,open
-Dig,yes,declared,not-applicable,declared,owned-adapter,dig-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
-Dimensional,yes,declared,not-applicable,declared,owned-adapter,dimensional-v1,canonical-weighted-boundaries;owned-axis-pair-encoding,pending-acceptance-audit,open
-DINAC,yes,declared,not-applicable,declared,owned-adapter,dinac-v1,canonical-prefix-counts-projection;owned-prefix-scan,pending-acceptance-audit,open
-EGL,yes,declared,not-applicable,declared,owned-adapter,egl-v1,canonical-projection-symmetry;owned-grid-layout,pending-acceptance-audit,open
-Eval,yes,declared,not-applicable,declared,owned-adapter,eval-v1,canonical-projection;owned-gray-stack-lookup,pending-acceptance-audit,open
-Fackward,yes,declared,not-applicable,declared,owned-adapter,fackward-v1,canonical-subtable-fold,pending-acceptance-audit,open
-FALSE,yes,declared,not-applicable,declared,owned-adapter,false-v1,pending-backend-audit,pending-acceptance-audit,open
-Fargo,yes,declared,not-applicable,declared,owned-adapter,fargo-v1,pending-backend-audit,pending-acceptance-audit,open
-Fish,yes,declared,not-applicable,declared,owned-adapter,fish-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
-Flowchart,yes,declared,not-applicable,declared,owned-adapter,flowchart-v1,canonical-projection-subtree-spans;owned-deque-grid-layout,pending-acceptance-audit,open
-Forbin,yes,declared,not-applicable,declared,owned-adapter,forbin-v1,pending-backend-audit,pending-acceptance-audit,open
-Forþ,yes,declared,not-applicable,declared,owned-adapter,for-thorn-v1,canonical-projection-subtrees;owned-heap-dispatch,pending-acceptance-audit,open
-FRACTRAN,yes,declared,not-applicable,declared,owned-adapter,fractran-v1,canonical-reduced-diagram;owned-prime-postorder-layout,pending-acceptance-audit,open
-Freestajlo,yes,declared,not-applicable,declared,owned-adapter,freestajlo-v1,canonical-projection-symmetry;owned-packed-literals,pending-acceptance-audit,open
-Grapheme,yes,declared,declared,declared,owned-adapter,grapheme-v1,canonical-projection;owned-four-packings-decimal-lift,pending-acceptance-audit,open
-Home Row,yes,declared,not-applicable,declared,owned-adapter,home-row-v1,canonical-projection;owned-pair-run-lookup,pending-acceptance-audit,open
-Hot,yes,declared,not-applicable,declared,owned-adapter,hot-v1,canonical-subtree-symmetry,pending-acceptance-audit,open
-HQ9+,no,declared,not-applicable,declared,owned-adapter,hq9-v1,not-applicable,pending-acceptance-audit,open
-HQ9+ with headers,yes,declared,not-applicable,declared,owned-adapter,hq9-with-headers-v1,canonical-validation;owned-integer-lookup,pending-acceptance-audit,open
-IEBEL,yes,declared,not-applicable,declared,owned-adapter,iebel-v1,canonical-decision-layers;owned-fallthrough-layout,pending-acceptance-audit,open
-Inject,yes,declared,not-applicable,declared,owned-adapter,inject-v1,pending-backend-audit,pending-acceptance-audit,open
-INTERCAL,yes,declared,not-applicable,declared,owned-adapter,intercal-v1,pending-backend-audit,pending-acceptance-audit,open
-Interprogck8,yes,declared,not-applicable,declared,owned-adapter,interprogck8-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
-Kiss,yes,declared,not-applicable,declared,owned-adapter,kiss-v1,canonical-subtree-analysis,pending-acceptance-audit,open
-LaserFuck,yes,declared,not-applicable,declared,owned-adapter,laserfuck-v1,pending-backend-audit,pending-acceptance-audit,open
-Line,yes,declared,not-applicable,declared,owned-adapter,line-v1,pending-backend-audit,pending-acceptance-audit,open
-lol waht i cant edit talk pages,yes,declared,not-applicable,declared,owned-adapter,lol-waht-i-cant-edit-talk-pages-v1,canonical-subtable-fold,pending-acceptance-audit,open
-Malbolge,yes,declared,not-applicable,declared,owned-adapter,malbolge-v1,pending-backend-audit,pending-acceptance-audit,open
-Minsky Swap,yes,declared,not-applicable,declared,owned-adapter,minsky-swap-v1,pending-backend-audit,pending-acceptance-audit,open
-Modulous,yes,declared,not-applicable,declared,owned-adapter,modulous-v1,canonical-weighted-symmetric-lookup;owned-pair-counter-layout,pending-acceptance-audit,open
-Monotonic Boolfuck,yes,declared,not-applicable,declared,inherited-adapter,monotonic-boolfuck-v1,canonical-subtree-analysis;owned-pointer-tree,pending-acceptance-audit,open
-Movesum,yes,declared,not-applicable,declared,owned-adapter,movesum-v1,canonical-validation;owned-halting-rung-lookup,pending-acceptance-audit,open
-Nandypants,yes,declared,not-applicable,declared,owned-adapter,nandypants-v1,canonical-subtree-analysis;owned-forward-chain-labels,pending-acceptance-audit,open
-Nope.,no,declared,not-applicable,declared,owned-adapter,nope-v1,not-applicable,pending-acceptance-audit,open
-NOR machine,yes,declared,not-applicable,declared,owned-adapter,nor-machine-v1,canonical-projection;owned-single-accumulator-mux,pending-acceptance-audit,open
-NQ,yes,declared,declared,declared,owned-adapter,nq-v1,canonical-subtree-parity,pending-acceptance-audit,open
-Object disoriented,yes,declared,not-applicable,declared,owned-adapter,object-disoriented-v1,canonical-subtree-analysis;owned-class-pricing,pending-acceptance-audit,open
-Packlang,yes,declared,declared,declared,owned-adapter,packlang-v1,pending-backend-audit,pending-acceptance-audit,open
-Painfuck,yes,declared,not-applicable,declared,owned-adapter,painfuck-v1,canonical-affine-flag-banks;owned-command-cycle-codec,pending-acceptance-audit,open
-Parenthesys,yes,declared,not-applicable,declared,owned-adapter,parenthesys-v1,canonical-validation;owned-packed-lookup,pending-acceptance-audit,open
-Piet,yes,declared,not-applicable,declared,owned-adapter,piet-v1,pending-backend-audit,pending-acceptance-audit,open
-Pilas,yes,declared,not-applicable,declared,owned-adapter,pilas-v1,canonical-subtree-analysis;owned-inline-flags,pending-acceptance-audit,open
-Pointless,yes,declared,not-applicable,declared,owned-adapter,pointless-v1,canonical-subtree-analysis;owned-function-inlining,pending-acceptance-audit,open
-Qoibl,yes,declared,not-applicable,declared,owned-adapter,qoibl-v1,pending-backend-audit,pending-acceptance-audit,open
-Qrain,yes,declared,not-applicable,declared,owned-adapter,qrain-v1,canonical-subtree-flag;owned-queue-costs,pending-acceptance-audit,open
-Quassaunt,yes,declared,not-applicable,declared,owned-adapter,quassaunt-v1,canonical-subtree-short-name;owned-read-depth-store-loop,pending-acceptance-audit,open
-RAM0,yes,declared,not-applicable,declared,owned-adapter,ram0-v1,canonical-subtree-analysis;owned-unary-nand-lowering,pending-acceptance-audit,open
-REFRACTRAN,yes,declared,not-applicable,declared,owned-adapter,refractran-v1,canonical-decision-parity,pending-acceptance-audit,open
-Retrograde,yes,declared,not-applicable,declared,owned-adapter,retrograde-v1,canonical-subtree-analysis;owned-reversal-involution,pending-acceptance-audit,open
-ROTfuck,yes,declared,declared,declared,owned-adapter,rotfuck-v1,pending-backend-audit,pending-acceptance-audit,open
-Rubic,yes,declared,not-applicable,declared,owned-adapter,rubic-v1,canonical-subtree-analysis;owned-cube-layout,pending-acceptance-audit,open
-S*bleq,yes,declared,not-applicable,declared,owned-adapter,s-bleq-v1,pending-backend-audit,pending-acceptance-audit,open
-SendStuff,yes,declared,not-applicable,declared,owned-adapter,sendstuff-v1,canonical-decision-layers;owned-macro-layout,pending-acceptance-audit,open
-Shakespeare,yes,declared,not-applicable,declared,owned-adapter,shakespeare-v1,canonical-parity-projection;owned-naf-packing,pending-acceptance-audit,open
-SLOW ACV MAMMALIAN,yes,declared,declared,declared,owned-adapter,slow-acv-mammalian-v1,pending-backend-audit,pending-acceptance-audit,open
-Smallfuck,yes,declared,not-applicable,declared,owned-adapter,smallfuck-v1,pending-backend-audit,pending-acceptance-audit,open
-Smu,yes,declared,not-applicable,declared,owned-adapter,smu-v1,canonical-decision-layers;owned-macro-placement,pending-acceptance-audit,open
-Sonata,yes,declared,not-applicable,declared,owned-adapter,sonata-v1,canonical-projection-symmetry;owned-rewrite-lookup,pending-acceptance-audit,open
-SStack,yes,declared,not-applicable,declared,owned-adapter,sstack-v1,pending-backend-audit,pending-acceptance-audit,open
-Stisp,yes,declared,not-applicable,declared,owned-adapter,stisp-v1,canonical-decision-layers;owned-bounded-literals,pending-acceptance-audit,open
-Streetcode,yes,declared,not-applicable,declared,owned-adapter,streetcode-v1,pending-backend-audit,pending-acceptance-audit,open
-Subleq,yes,declared,not-applicable,declared,owned-adapter,subleq-v1,pending-backend-audit,pending-acceptance-audit,open
-Suffolk,yes,declared,not-applicable,declared,owned-adapter,suffolk-v1,pending-backend-audit,pending-acceptance-audit,open
-Super SNUSP,yes,declared,not-applicable,declared,owned-adapter,super-snusp-v1,pending-backend-audit,pending-acceptance-audit,open
-SwitchCase,yes,declared,not-applicable,declared,owned-adapter,switchcase-v1,canonical-reduced-diagram;owned-case-placement,pending-acceptance-audit,open
-Taglate,yes,declared,not-applicable,declared,owned-adapter,taglate-v1,pending-backend-audit,pending-acceptance-audit,open
-thisthat,yes,declared,not-applicable,declared,owned-adapter,thisthat-v1,canonical-dependency-decision-layers;owned-planar-buses,pending-acceptance-audit,open
-Thue,yes,declared,not-applicable,declared,owned-adapter,thue-v1,pending-backend-audit,pending-acceptance-audit,open
-Unary,yes,declared,not-applicable,declared,inherited-adapter,brainfuck-v1,canonical-dependency-tree;owned-zero-count-caps,pending-acceptance-audit,open
-Underload,yes,declared,not-applicable,declared,owned-adapter,underload-v1,canonical-subtree-diagram;owned-carry-terminal-pricing,pending-acceptance-audit,open
-Unlambda,yes,declared,not-applicable,declared,owned-adapter,unlambda-v1,canonical-subtree-diagram;owned-promise-sharing,pending-acceptance-audit,open
-Unsquare,yes,declared,not-applicable,declared,owned-adapter,unsquare-v1,canonical-input-weights;owned-branch-pop-lookup,pending-acceptance-audit,open
-What!?,yes,declared,not-applicable,declared,owned-adapter,what-v1,canonical-change-points;owned-block-lookup,pending-acceptance-audit,open
-Whitespace,yes,declared,not-applicable,declared,owned-adapter,whitespace-v1,canonical-projection;owned-power-lookup,pending-acceptance-audit,open
+language,boolean_backend,preparation,dialect_defaults,capabilities,workspace,workspace_model,analysis,certification,snapshot_transport,completion
+///,yes,declared,not-applicable,declared,owned-adapter,slashes-v1,canonical-input-weights;owned-directional-sweeps,pending-acceptance-audit,bounded-first-eight-steps,open
+1 + i,yes,declared,not-applicable,declared,owned-adapter,one-i-v1,canonical-parity-subtree;owned-complex-arithmetic,pending-acceptance-audit,bounded-first-eight-steps;corpus-n2;native-worker-cycle,open
+3x,yes,declared,not-applicable,declared,owned-adapter,three-x-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps;corpus-n2;native-worker-cycle,open
+6-5,yes,declared,not-applicable,declared,owned-adapter,six-five-v1,canonical-subtree-weighted-analysis;owned-label-layout,pending-acceptance-audit,bounded-first-eight-steps,open
+A Painter Ant,yes,declared,not-applicable,declared,owned-adapter,a-painter-ant-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+ABCDirection,yes,declared,not-applicable,declared,owned-adapter,abcdirection-v1,canonical-dependency-projection;owned-byte-tape-helix,pending-acceptance-audit,bounded-first-eight-steps,open
+AddSubJump,yes,declared,not-applicable,declared,owned-adapter,addsubjump-v1,canonical-residual-constants-weighted-lookup;owned-self-modifying-layout,pending-acceptance-audit,bounded-first-eight-steps,open
+Algebraic Programming Language,yes,declared,not-applicable,declared,owned-adapter,algebraic-programming-language-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Alight,yes,declared,declared,declared,owned-adapter,alight-v1,canonical-weighted-projection;owned-notation-pair-layout,pending-acceptance-audit,bounded-first-eight-steps;corpus-n2;native-worker-cycle,open
+Aprknia,yes,declared,not-applicable,declared,owned-adapter,aprknia-v1,canonical-subtree-analysis;owned-zero-exit,pending-acceptance-audit,bounded-first-eight-steps,open
+ArrowQueue,yes,declared,not-applicable,declared,owned-adapter,arrowqueue-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Ascenic,yes,declared,not-applicable,declared,owned-adapter,ascenic-v1,canonical-parity-projection;owned-threshold-scan,pending-acceptance-audit,bounded-first-eight-steps,open
+B-tapemark,yes,declared,declared,declared,owned-adapter,b-tapemark-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps;corpus-n2;native-worker-cycle,open
+Back,yes,declared,not-applicable,declared,owned-adapter,back-v1,canonical-parity;canonical-subtree-parity-weighted-lookup;owned-beam-layout,pending-acceptance-audit,bounded-first-eight-steps,open
+Balik,yes,declared,not-applicable,declared,owned-adapter,balik-v1,canonical-constant-projection;owned-spatial-boxes,pending-acceptance-audit,bounded-first-eight-steps,open
+BASICER,yes,declared,not-applicable,declared,owned-adapter,basicer-v1,canonical-decision-layers,pending-acceptance-audit,bounded-first-eight-steps,open
+Basicfuck,yes,declared,not-applicable,declared,owned-adapter,basicfuck-v1,canonical-affine-reduced-diagram;owned-flag-pricing,pending-acceptance-audit,bounded-first-eight-steps,open
+Befunge,yes,declared,not-applicable,declared,owned-adapter,befunge-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Between,yes,declared,not-applicable,declared,owned-adapter,between-v1,canonical-reduced-diagram;owned-fallthrough,pending-acceptance-audit,bounded-first-eight-steps,open
+BFStack,yes,declared,not-applicable,declared,owned-adapter,bfstack-v1,canonical-weighted-symmetric-lookup;owned-byte-decoder,pending-acceptance-audit,bounded-first-eight-steps,open
+Bitdeque,yes,declared,not-applicable,declared,owned-adapter,bitdeque-v1,canonical-decision-layers;owned-deque-placement,pending-acceptance-audit,bounded-first-eight-steps,open
+Bitwise Cyclic Tag,yes,declared,not-applicable,declared,owned-adapter,bitwise-cyclic-tag-v1,canonical-weighted-lookup,pending-acceptance-audit,bounded-first-eight-steps,open
+bit~,yes,declared,not-applicable,declared,owned-adapter,bit-tilde-v1,canonical-affine-projection;owned-paired-window-lookup,pending-acceptance-audit,bounded-first-eight-steps,open
+Bleh,yes,declared,not-applicable,declared,owned-adapter,bleh-v1,canonical-decision-layers;owned-function-layout,pending-acceptance-audit,bounded-first-eight-steps;corpus-n2;native-worker-cycle,open
+Blindfolded Arithmetic,yes,declared,not-applicable,declared,owned-adapter,blindfolded-arithmetic-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Boolfuck,yes,declared,not-applicable,declared,inherited-adapter,boolfuck-v1,canonical-affine-symmetry-subtree-projection;owned-two-bit-gates,pending-acceptance-audit,bounded-first-eight-steps,open
+brainfuck,yes,declared,not-applicable,declared,owned-adapter,brainfuck-v1,canonical-affine-shared-flag;owned-input-budget-print-polarity,pending-acceptance-audit,bounded-first-eight-steps,open
+BrainIf,yes,declared,not-applicable,declared,owned-adapter,brainif-v1,canonical-decision-layers-subtable-fold;owned-spatial-lookup,pending-acceptance-audit,bounded-first-eight-steps,open
+Caballo,yes,declared,not-applicable,declared,owned-adapter,caballo-v1,canonical-subtree-analysis;owned-signed-tree,pending-acceptance-audit,bounded-first-eight-steps,open
+CARP,yes,declared,not-applicable,declared,owned-adapter,carp-v1,canonical-decision-layers;owned-register-placement,pending-acceptance-audit,bounded-first-eight-steps,open
+Chicken,yes,declared,not-applicable,declared,owned-adapter,chicken-v1,canonical-projection;owned-code-row-lookup,pending-acceptance-audit,bounded-first-eight-steps,open
+Circlefuck,yes,declared,not-applicable,declared,owned-adapter,circlefuck-v1,canonical-projection-symmetry;owned-deleting-index,pending-acceptance-audit,bounded-first-eight-steps,open
+Circuit Diagram,yes,declared,not-applicable,declared,owned-adapter,circuit-diagram-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Clockwise,yes,declared,not-applicable,declared,owned-adapter,clockwise-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Codesick,yes,declared,not-applicable,declared,owned-adapter,codesick-v1,canonical-decision-layers;owned-marker-layout,pending-acceptance-audit,bounded-first-eight-steps,open
+Collatz Multiverse,yes,declared,not-applicable,declared,owned-adapter,collatz-multiverse-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Container,yes,declared,not-applicable,declared,owned-adapter,container-v1,canonical-subtree-weighted-boundaries;owned-tick-rule-layout,pending-acceptance-audit,bounded-first-eight-steps,open
+CreativeScript v2,yes,declared,not-applicable,declared,owned-adapter,creativescript-v2-v1,canonical-dependency-projection;owned-arithmetic-lookup,pending-acceptance-audit,bounded-first-eight-steps,open
+Crement,yes,declared,not-applicable,declared,owned-adapter,crement-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+CV(N)(C),yes,declared,not-applicable,declared,owned-adapter,cvnc-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Cyclic tag,yes,declared,not-applicable,declared,owned-adapter,cyclic-tag-v1,canonical-weighted-lookup,pending-acceptance-audit,bounded-first-eight-steps,open
+Deadfish,no,declared,not-applicable,declared,owned-adapter,deadfish-v1,not-applicable,pending-acceptance-audit,pending-acceptance-audit,open
+Decleq,yes,declared,not-applicable,declared,owned-adapter,decleq-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Dig,yes,declared,not-applicable,declared,owned-adapter,dig-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Dimensional,yes,declared,not-applicable,declared,owned-adapter,dimensional-v1,canonical-weighted-boundaries;owned-axis-pair-encoding,pending-acceptance-audit,bounded-first-eight-steps,open
+DINAC,yes,declared,not-applicable,declared,owned-adapter,dinac-v1,canonical-prefix-counts-projection;owned-prefix-scan,pending-acceptance-audit,bounded-first-eight-steps,open
+EGL,yes,declared,not-applicable,declared,owned-adapter,egl-v1,canonical-projection-symmetry;owned-grid-layout,pending-acceptance-audit,bounded-first-eight-steps,open
+Eval,yes,declared,not-applicable,declared,owned-adapter,eval-v1,canonical-projection;owned-gray-stack-lookup,pending-acceptance-audit,bounded-first-eight-steps,open
+Fackward,yes,declared,not-applicable,declared,owned-adapter,fackward-v1,canonical-subtable-fold,pending-acceptance-audit,bounded-first-eight-steps;corpus-n2;native-worker-cycle,open
+FALSE,yes,declared,not-applicable,declared,owned-adapter,false-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps;corpus-n2;native-worker-cycle,open
+Fargo,yes,declared,not-applicable,declared,owned-adapter,fargo-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Fish,yes,declared,not-applicable,declared,owned-adapter,fish-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Flowchart,yes,declared,not-applicable,declared,owned-adapter,flowchart-v1,canonical-projection-subtree-spans;owned-deque-grid-layout,pending-acceptance-audit,bounded-first-eight-steps,open
+Forbin,yes,declared,not-applicable,declared,owned-adapter,forbin-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Forþ,yes,declared,not-applicable,declared,owned-adapter,for-thorn-v1,canonical-projection-subtrees;owned-heap-dispatch,pending-acceptance-audit,bounded-first-eight-steps;corpus-n2;native-worker-cycle,open
+FRACTRAN,yes,declared,not-applicable,declared,owned-adapter,fractran-v1,canonical-reduced-diagram;owned-prime-postorder-layout,pending-acceptance-audit,bounded-first-eight-steps,open
+Freestajlo,yes,declared,not-applicable,declared,owned-adapter,freestajlo-v1,canonical-projection-symmetry;owned-packed-literals,pending-acceptance-audit,bounded-first-eight-steps,open
+Grapheme,yes,declared,declared,declared,owned-adapter,grapheme-v1,canonical-projection;owned-four-packings-decimal-lift,pending-acceptance-audit,bounded-first-eight-steps,open
+Home Row,yes,declared,not-applicable,declared,owned-adapter,home-row-v1,canonical-projection;owned-pair-run-lookup,pending-acceptance-audit,bounded-first-eight-steps,open
+Hot,yes,declared,not-applicable,declared,owned-adapter,hot-v1,canonical-subtree-symmetry,pending-acceptance-audit,bounded-first-eight-steps,open
+HQ9+,no,declared,not-applicable,declared,owned-adapter,hq9-v1,not-applicable,pending-acceptance-audit,pending-acceptance-audit,open
+HQ9+ with headers,yes,declared,not-applicable,declared,owned-adapter,hq9-with-headers-v1,canonical-validation;owned-integer-lookup,pending-acceptance-audit,bounded-first-eight-steps,open
+IEBEL,yes,declared,not-applicable,declared,owned-adapter,iebel-v1,canonical-decision-layers;owned-fallthrough-layout,pending-acceptance-audit,bounded-first-eight-steps,open
+Inject,yes,declared,not-applicable,declared,owned-adapter,inject-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+INTERCAL,yes,declared,not-applicable,declared,owned-adapter,intercal-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Interprogck8,yes,declared,not-applicable,declared,owned-adapter,interprogck8-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Kiss,yes,declared,not-applicable,declared,owned-adapter,kiss-v1,canonical-subtree-analysis,pending-acceptance-audit,bounded-first-eight-steps,open
+LaserFuck,yes,declared,not-applicable,declared,owned-adapter,laserfuck-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Line,yes,declared,not-applicable,declared,owned-adapter,line-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+lol waht i cant edit talk pages,yes,declared,not-applicable,declared,owned-adapter,lol-waht-i-cant-edit-talk-pages-v1,canonical-subtable-fold,pending-acceptance-audit,bounded-first-eight-steps,open
+Malbolge,yes,declared,not-applicable,declared,owned-adapter,malbolge-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Minsky Swap,yes,declared,not-applicable,declared,owned-adapter,minsky-swap-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Modulous,yes,declared,not-applicable,declared,owned-adapter,modulous-v1,canonical-weighted-symmetric-lookup;owned-pair-counter-layout,pending-acceptance-audit,bounded-first-eight-steps,open
+Monotonic Boolfuck,yes,declared,not-applicable,declared,inherited-adapter,monotonic-boolfuck-v1,canonical-subtree-analysis;owned-pointer-tree,pending-acceptance-audit,bounded-first-eight-steps,open
+Movesum,yes,declared,not-applicable,declared,owned-adapter,movesum-v1,canonical-validation;owned-halting-rung-lookup,pending-acceptance-audit,bounded-first-eight-steps,open
+Nandypants,yes,declared,not-applicable,declared,owned-adapter,nandypants-v1,canonical-subtree-analysis;owned-forward-chain-labels,pending-acceptance-audit,bounded-first-eight-steps,open
+Nope.,no,declared,not-applicable,declared,owned-adapter,nope-v1,not-applicable,pending-acceptance-audit,pending-acceptance-audit,open
+NOR machine,yes,declared,not-applicable,declared,owned-adapter,nor-machine-v1,canonical-projection;owned-single-accumulator-mux,pending-acceptance-audit,bounded-first-eight-steps,open
+NQ,yes,declared,declared,declared,owned-adapter,nq-v1,canonical-subtree-parity,pending-acceptance-audit,bounded-first-eight-steps,open
+Object disoriented,yes,declared,not-applicable,declared,owned-adapter,object-disoriented-v1,canonical-subtree-analysis;owned-class-pricing,pending-acceptance-audit,bounded-first-eight-steps,open
+Packlang,yes,declared,declared,declared,owned-adapter,packlang-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Painfuck,yes,declared,not-applicable,declared,owned-adapter,painfuck-v1,canonical-affine-flag-banks;owned-command-cycle-codec,pending-acceptance-audit,bounded-first-eight-steps,open
+Parenthesys,yes,declared,not-applicable,declared,owned-adapter,parenthesys-v1,canonical-validation;owned-packed-lookup,pending-acceptance-audit,bounded-first-eight-steps,open
+Piet,yes,declared,not-applicable,declared,owned-adapter,piet-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Pilas,yes,declared,not-applicable,declared,owned-adapter,pilas-v1,canonical-subtree-analysis;owned-inline-flags,pending-acceptance-audit,bounded-first-eight-steps,open
+Pointless,yes,declared,not-applicable,declared,owned-adapter,pointless-v1,canonical-subtree-analysis;owned-function-inlining,pending-acceptance-audit,bounded-first-eight-steps,open
+Qoibl,yes,declared,not-applicable,declared,owned-adapter,qoibl-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Qrain,yes,declared,not-applicable,declared,owned-adapter,qrain-v1,canonical-subtree-flag;owned-queue-costs,pending-acceptance-audit,bounded-first-eight-steps,open
+Quassaunt,yes,declared,not-applicable,declared,owned-adapter,quassaunt-v1,canonical-subtree-short-name;owned-read-depth-store-loop,pending-acceptance-audit,bounded-first-eight-steps,open
+RAM0,yes,declared,not-applicable,declared,owned-adapter,ram0-v1,canonical-subtree-analysis;owned-unary-nand-lowering,pending-acceptance-audit,bounded-first-eight-steps,open
+REFRACTRAN,yes,declared,not-applicable,declared,owned-adapter,refractran-v1,canonical-decision-parity,pending-acceptance-audit,bounded-first-eight-steps,open
+Retrograde,yes,declared,not-applicable,declared,owned-adapter,retrograde-v1,canonical-subtree-analysis;owned-reversal-involution,pending-acceptance-audit,bounded-first-eight-steps,open
+ROTfuck,yes,declared,declared,declared,owned-adapter,rotfuck-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Rubic,yes,declared,not-applicable,declared,owned-adapter,rubic-v1,canonical-subtree-analysis;owned-cube-layout,pending-acceptance-audit,bounded-first-eight-steps,open
+S*bleq,yes,declared,not-applicable,declared,owned-adapter,s-bleq-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+SendStuff,yes,declared,not-applicable,declared,owned-adapter,sendstuff-v1,canonical-decision-layers;owned-macro-layout,pending-acceptance-audit,bounded-first-eight-steps,open
+Shakespeare,yes,declared,not-applicable,declared,owned-adapter,shakespeare-v1,canonical-parity-projection;owned-naf-packing,pending-acceptance-audit,bounded-first-eight-steps,open
+SLOW ACV MAMMALIAN,yes,declared,declared,declared,owned-adapter,slow-acv-mammalian-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Smallfuck,yes,declared,not-applicable,declared,owned-adapter,smallfuck-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Smu,yes,declared,not-applicable,declared,owned-adapter,smu-v1,canonical-decision-layers;owned-macro-placement,pending-acceptance-audit,bounded-first-eight-steps,open
+Sonata,yes,declared,not-applicable,declared,owned-adapter,sonata-v1,canonical-projection-symmetry;owned-rewrite-lookup,pending-acceptance-audit,bounded-first-eight-steps,open
+SStack,yes,declared,not-applicable,declared,owned-adapter,sstack-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Stisp,yes,declared,not-applicable,declared,owned-adapter,stisp-v1,canonical-decision-layers;owned-bounded-literals,pending-acceptance-audit,bounded-first-eight-steps,open
+Streetcode,yes,declared,not-applicable,declared,owned-adapter,streetcode-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Subleq,yes,declared,not-applicable,declared,owned-adapter,subleq-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Suffolk,yes,declared,not-applicable,declared,owned-adapter,suffolk-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Super SNUSP,yes,declared,not-applicable,declared,owned-adapter,super-snusp-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+SwitchCase,yes,declared,not-applicable,declared,owned-adapter,switchcase-v1,canonical-reduced-diagram;owned-case-placement,pending-acceptance-audit,bounded-first-eight-steps,open
+Taglate,yes,declared,not-applicable,declared,owned-adapter,taglate-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+thisthat,yes,declared,not-applicable,declared,owned-adapter,thisthat-v1,canonical-dependency-decision-layers;owned-planar-buses,pending-acceptance-audit,bounded-first-eight-steps;corpus-n2;native-worker-branch,open
+Thue,yes,declared,not-applicable,declared,owned-adapter,thue-v1,pending-backend-audit,pending-acceptance-audit,bounded-first-eight-steps,open
+Unary,yes,declared,not-applicable,declared,inherited-adapter,brainfuck-v1,canonical-dependency-tree;owned-zero-count-caps,pending-acceptance-audit,bounded-first-eight-steps,open
+Underload,yes,declared,not-applicable,declared,owned-adapter,underload-v1,canonical-subtree-diagram;owned-carry-terminal-pricing,pending-acceptance-audit,bounded-first-eight-steps,open
+Unlambda,yes,declared,not-applicable,declared,owned-adapter,unlambda-v1,canonical-subtree-diagram;owned-promise-sharing,pending-acceptance-audit,bounded-first-eight-steps;corpus-n2;native-worker-cycle,open
+Unsquare,yes,declared,not-applicable,declared,owned-adapter,unsquare-v1,canonical-input-weights;owned-branch-pop-lookup,pending-acceptance-audit,bounded-first-eight-steps,open
+What!?,yes,declared,not-applicable,declared,owned-adapter,what-v1,canonical-change-points;owned-block-lookup,pending-acceptance-audit,bounded-first-eight-steps,open
+Whitespace,yes,declared,not-applicable,declared,owned-adapter,whitespace-v1,canonical-projection;owned-power-lookup,pending-acceptance-audit,bounded-first-eight-steps,open

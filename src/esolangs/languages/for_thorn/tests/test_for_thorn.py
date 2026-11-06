@@ -7,6 +7,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.for_thorn.interpreter import _Machine as Forth
 from esolangs.languages.for_thorn.interpreter import run
+from esolangs.runtime._result_wire import _state_from_wire, _state_wire
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_ancestor
 from tests.interpreters.contract import (
@@ -171,11 +172,21 @@ def test_workspace_scope_values_survive_backing_root_moves():
     machine.step()
     first_table = machine.table
     saved = machine.workspace_snapshot()
+    restored = _state_from_wire(_state_wire(first_table))
+    assert restored == first_table
+    assert hash(restored) == hash(first_table)
+    for payload in ((), frozenset({(1, "a"), (1, "b")}), frozenset({(True, "a")})):
+        packet = _state_wire(first_table)
+        packet["owned"]["value"] = _state_wire(payload)
+        with pytest.raises(ValueError, match="snapshot"):
+            _state_from_wire(packet)
     retained = {saved}
     for _ in range(4):
         machine.step()
         assert dict(first_table.items()) == {1: "a"}
         assert saved in retained
+        assert restored == first_table
+        assert hash(restored) == hash(first_table)
     assert dict(machine.table.items()) == {1: "x", 2: "b"}
     assert machine.workspace_snapshot().parts[1] == frozenset({(1, "x"), (2, "b")})
     assert saved.parts[1] == frozenset({(1, "a")})

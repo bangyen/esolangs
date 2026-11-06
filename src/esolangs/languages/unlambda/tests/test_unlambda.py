@@ -13,6 +13,7 @@ from esolangs.languages.unlambda.interpreter import (
     _Promise,
     run,
 )
+from esolangs.runtime._result_wire import _state_from_wire, _state_wire
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_rejected_with_hint
@@ -204,9 +205,18 @@ def test_snapshots_compare_continuations_by_their_frames() -> None:
     same, twin, other = (machine.snapshot() for machine in runs)
     assert same == twin
     assert hash(same) == hash(twin)
+    for snapshot in (same, twin, other):
+        restored = _state_from_wire(_state_wire(snapshot))
+        assert restored == snapshot
+        assert hash(restored) == hash(snapshot)
     assert same != other
     kont = runs[0].state[1]
     assert kont is not None
+    for payload in ((), (1,)):
+        packet = _state_wire(kont)
+        packet["owned"]["value"] = _state_wire(payload)
+        with pytest.raises(ValueError, match="snapshot"):
+            _state_from_wire(packet)
     assert kont != kont.rest
     assert kont != kont.frames()
 
