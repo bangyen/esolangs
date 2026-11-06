@@ -19,7 +19,7 @@ Size:
 
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
-from itertools import count, pairwise
+from itertools import count
 from math import isqrt
 from string import ascii_letters
 from typing import NamedTuple
@@ -32,6 +32,7 @@ from esolangs.generation.helpers import (
     short_name,
     subtree_ids,
 )
+from esolangs.generation.lookup import change_points
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 
@@ -76,7 +77,6 @@ class _TreePlanner:
     """
 
     def __init__(self, truth_table: str, n: int, *, prune: bool, share: bool) -> None:
-        self.truth_table = truth_table
         self.n = n
         self.prune = prune
         self.share = share
@@ -85,7 +85,7 @@ class _TreePlanner:
         self.parents: dict[int, list[int]] = {}
         self.relays: dict[int, int] = {}
         self.levels: list[list[_Node]] = [[] for _ in range(n + 1)]
-        self.ids = subtree_ids(truth_table) if share else []
+        self.ids = subtree_ids(truth_table) if prune or share else []
         self.first: dict[tuple[int, int, int], int] = {}
         self.either: dict[tuple[int, int], int] = {}
 
@@ -95,8 +95,8 @@ class _TreePlanner:
         while (
             self.prune
             and depth < self.n
-            and self.truth_table[lo : lo + span // 2]
-            == self.truth_table[lo + span // 2 : lo + span]
+            and self.ids[depth + 1][2 * (lo // span)]
+            == self.ids[depth + 1][2 * (lo // span) + 1]
         ):
             depth += 1
             span //= 2
@@ -345,17 +345,6 @@ class _TreeEmitter:
         return "\n".join(lines)
 
 
-def _threshold_deltas(truth_table: str) -> list[int]:
-    """Return the step deltas of the table under the plain input-weight order.
-
-    Input ``i`` carries weight ``2**(n-1-i)``.  Entry ``r`` is
-    ``row[r] - row[r-1]``, with entry 0 the base value, so the table
-    is the prefix sum and only the nonzero entries cost a line.
-    """
-    values = [int(bit) for bit in truth_table]
-    return [values[0], *(b - a for a, b in pairwise(values))]
-
-
 def _container_threshold(truth_table: str) -> str:
     """Build a threshold-sum Container program for the given truth table.
 
@@ -374,7 +363,7 @@ def _container_threshold(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     weights, truth_table = input_weights(truth_table, n)
-    deltas, steps = _threshold_steps(truth_table)
+    base, steps = _threshold_steps(truth_table)
 
     identifiers = _free_names(_RESERVED)
     counter, gate = next(identifiers), next(identifiers)
@@ -384,17 +373,18 @@ def _container_threshold(truth_table: str) -> str:
     lines = _threshold_pulse_lines(n)
     lines += _threshold_window_lines(windows, latches, n)
     lines += _threshold_counter_lines(gate, counter, weights, latches, n)
-    lines += _threshold_output_lines(counter, deltas, steps, n)
+    lines += _threshold_output_lines(counter, base, steps, n)
     return "\n".join(lines)
 
 
 def _threshold_steps(
     truth_table: str,
-) -> tuple[list[int], list[tuple[int, int]]]:
-    """Return the plain order's step deltas and their nonzero steps."""
-    deltas = _threshold_deltas(truth_table)
-    steps = [(row, delta) for row, delta in enumerate(deltas) if row and delta]
-    return deltas, steps
+) -> tuple[int, list[tuple[int, int]]]:
+    """Return the base bit and signed canonical change points."""
+    return int(truth_table[0]), [
+        (row, 1 if truth_table[row] == "1" else -1)
+        for row in change_points(truth_table)
+    ]
 
 
 def _threshold_pulse_lines(n: int) -> list[str]:
@@ -454,10 +444,10 @@ def _threshold_counter_lines(
 
 
 def _threshold_output_lines(
-    counter: str, deltas: list[int], steps: list[tuple[int, int]], n: int
+    counter: str, base: int, steps: list[tuple[int, int]], n: int
 ) -> list[str]:
     """Return ``OUT`` with its step rules, then ``PRINT`` and ``EXIT``."""
-    lines = [f"OUT={_ASCII_ZERO + deltas[0]}:"]
+    lines = [f"OUT={_ASCII_ZERO + base}:"]
     lines.extend(f"{delta} {counter}>={row}" for row, delta in steps)
     lines.extend(("PRINT:", f"1 T>={2 * n + 1}", "EXIT=1:", f"-1 T>={2 * n + 1}"))
     return lines

@@ -595,3 +595,12 @@ worker frames retaining their output prefix. Installed Python 3.12–3.15 passes
 these checks plus the 73-case periodic and 180-row termination matrices.
 Canonical fields and generation/resource budgets are unchanged. Remaining
 larger-corpus, branching and semantic-resource acceptance stays open.
+
+Container uses canonical subtree IDs to skip equal halves, without retaining
+or slicing a second truth table in its planner. Threshold emission uses canonical
+change points and a base bit, removing the full integer/delta arrays. Tick pulses,
+shared-parent relays, names, signed rules and block encoding remain owned.
+All 632 corpus requests and 240 larger layouts retain their bytes; 2,286 paired
+execution records retain 20,988 semantic samples. Live query faults damage both
+executed constructions. Bounds, size pins and anchors remain unchanged;
+catalog-wide acceptance stays open.

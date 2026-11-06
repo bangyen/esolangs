@@ -156,7 +156,9 @@ class TestContainer:
                 assert run_container(program, bits) == table[0]
         assert len(boolean.container("0" * 8)) == 88  # 856 unpruned
 
-    def test_only_dependent_levels_are_tested(self) -> None:
+    def test_only_dependent_levels_are_tested(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """A level whose halves agree is read but never tested."""
 
         from esolangs.languages.container.generator import _container_tree
@@ -173,6 +175,25 @@ class TestContainer:
             for combo in range(8):
                 bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
                 assert run_container(boolean.container(table), bits) == table[combo]
+
+        analyze = boolean.subtree_ids
+        monkeypatch.setattr(
+            boolean,
+            "subtree_ids",
+            lambda table: [[0] * len(layer) for layer in analyze(table)],
+        )
+        monkeypatch.setattr(boolean, "change_points", lambda _table: [])
+        for program in (
+            _container_tree("0001", share=True),
+            boolean._container_threshold("0001"),
+        ):
+            assert (
+                "".join(
+                    run_container(program, [str(row >> 1), str(row & 1)])
+                    for row in range(4)
+                )
+                == "0000"
+            )
 
     def test_pruning_never_grows_a_table(self) -> None:
         """No table up to three inputs comes out longer than its full tree."""

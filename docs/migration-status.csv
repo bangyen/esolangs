@@ -35,7 +35,7 @@ Circuit Diagram,yes,declared,not-applicable,declared,owned-adapter,circuit-diagr
 Clockwise,yes,declared,not-applicable,declared,owned-adapter,clockwise-v1,pending-backend-audit,pending-acceptance-audit,open
 Codesick,yes,declared,not-applicable,declared,owned-adapter,codesick-v1,canonical-decision-layers;owned-marker-layout,pending-acceptance-audit,open
 Collatz Multiverse,yes,declared,not-applicable,declared,owned-adapter,collatz-multiverse-v1,pending-backend-audit,pending-acceptance-audit,open
-Container,yes,declared,not-applicable,declared,owned-adapter,container-v1,pending-backend-audit,pending-acceptance-audit,open
+Container,yes,declared,not-applicable,declared,owned-adapter,container-v1,canonical-subtree-weighted-boundaries;owned-tick-rule-layout,pending-acceptance-audit,open
 CreativeScript v2,yes,declared,not-applicable,declared,owned-adapter,creativescript-v2-v1,canonical-dependency-projection;owned-arithmetic-lookup,pending-acceptance-audit,open
 Crement,yes,declared,not-applicable,declared,owned-adapter,crement-v1,pending-backend-audit,pending-acceptance-audit,open
 CV(N)(C),yes,declared,not-applicable,declared,owned-adapter,cvnc-v1,pending-backend-audit,pending-acceptance-audit,open
