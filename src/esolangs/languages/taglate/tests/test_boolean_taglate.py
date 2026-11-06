@@ -87,6 +87,9 @@ class TestTaglate:
 
     def test_gapped_dependencies_reduce_without_reordering_inputs(self) -> None:
         """Every n=3 function of inputs 0 and 2 uses the small program."""
+        from tests.support.analysis_support import assert_analysis_complement
+
+        assert_analysis_complement("Taglate", "read_at")
         tables = (
             "00000101",
             "00001010",

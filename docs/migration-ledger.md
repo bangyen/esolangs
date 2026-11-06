@@ -900,3 +900,20 @@ limits. Supported version-1 settings and limit forms remain unchanged.
 Installed Python 3.12–3.15 repeats these checks with the image extra and all
 115 text languages without it; PNG still requires the extra. All 832 packaged
 Python modules match source bytes.
+
+Qoibl and Taglate use canonical input projection; live complemented-analysis
+controls change every executed answer. Packed-literal polarity/Horner layout
+and 16-bit nibble/queue selection remain emitter-owned: the shared OISC decoder
+emits different instructions. All 2,760 programs through n=3 retain bytes across
+default, widths 1/3/20 and balanced layouts; 21,200 rows execute correctly with
+19,087,176 command boundaries checked against raw-state widths and proof bounds.
+All 16 existing size/command pins retain 152 executed rows; measured generator
+throughput ratios are 0.987 and 1.000. The emitters and size anchors are unchanged.
+Qoibl bounds now count actual assignment markers and Horner scratch/cursors.
+Width-1 `01` needs 40 commands and 35 bits, versus the prior 7 and 24; default
+n=10 parity reaches 2,072 bits, exceeding 2,071. The corrected default-layout
+formula, generated proof table and n=10 regression retain exact witnesses.
+These two analysis rows are audited; broader lifecycle/accounting acceptance
+and the remaining backend rows stay open.
+Installed Python 3.12–3.15 repeats both default corpora, raw-language oracles,
+analysis faults, narrow layouts and n=10 bounds against byte-checked modules.

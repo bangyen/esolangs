@@ -85,7 +85,7 @@ Parenthesys,yes,declared,not-applicable,declared,owned-adapter,parenthesys-v1,ca
 Piet,yes,declared,not-applicable,declared,owned-adapter,piet-v1,pending-backend-audit,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 Pilas,yes,declared,not-applicable,declared,owned-adapter,pilas-v1,canonical-subtree-analysis;owned-inline-flags,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 Pointless,yes,declared,not-applicable,declared,owned-adapter,pointless-v1,canonical-subtree-analysis;owned-function-inlining,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
-Qoibl,yes,declared,not-applicable,declared,owned-adapter,qoibl-v1,pending-backend-audit,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
+Qoibl,yes,declared,not-applicable,declared,owned-adapter,qoibl-v1,canonical-input-weights;owned-packed-polarity-horner-layout,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 Qrain,yes,declared,not-applicable,declared,owned-adapter,qrain-v1,canonical-subtree-flag;owned-queue-costs,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 Quassaunt,yes,declared,not-applicable,declared,owned-adapter,quassaunt-v1,canonical-subtree-short-name;owned-read-depth-store-loop,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 RAM0,yes,declared,not-applicable,declared,owned-adapter,ram0-v1,canonical-subtree-analysis;owned-unary-nand-lowering,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
@@ -107,7 +107,7 @@ Subleq,yes,declared,not-applicable,declared,owned-adapter,subleq-v1,pending-back
 Suffolk,yes,declared,not-applicable,declared,owned-adapter,suffolk-v1,pending-backend-audit,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 Super SNUSP,yes,declared,not-applicable,declared,owned-adapter,super-snusp-v1,pending-backend-audit,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 SwitchCase,yes,declared,not-applicable,declared,owned-adapter,switchcase-v1,canonical-reduced-diagram;owned-case-placement,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
-Taglate,yes,declared,not-applicable,declared,owned-adapter,taglate-v1,pending-backend-audit,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
+Taglate,yes,declared,not-applicable,declared,owned-adapter,taglate-v1,canonical-essential-inputs-projection;owned-affine-nibble-queue-layout,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 thisthat,yes,declared,not-applicable,declared,owned-adapter,thisthat-v1,canonical-dependency-decision-layers;owned-planar-buses,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;corpus-n2;native-worker-branch;vm-debugger-history,open
 Thue,yes,declared,not-applicable,declared,owned-adapter,thue-v1,pending-backend-audit,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 Unary,yes,declared,not-applicable,declared,inherited-adapter,brainfuck-v1,canonical-dependency-tree;owned-zero-count-caps,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open

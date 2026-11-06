@@ -82,22 +82,22 @@ version = 1
 [resource_evidence.execution]
 provider = "esolangs.languages.qoibl.proof_formulas:execution"
 exact = true
-arities = [1, 2, 3, 6]
+arities = [1, 2, 3, 6, 10]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.qoibl.generator:qoibl"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, one statement per input", formula = "n + 6" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} in default layout, one statement per input", formula = "n + 6" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.qoibl.proof_formulas:workspace"
 exact = true
-arities = [1, 2, 3, 6]
+arities = [1, 2, 3, 6, 10]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.qoibl.generator:qoibl"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the row, its half, two digit cells", formula = "2T + 19 + bl(n)" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} in default layout: row/half, digit cells and cursors", formula = "max(T+18,2T+15) + bl(n+6) + bl(n)" }
 
 [resource_evidence.scaling]
 expression = "T+35n+94"

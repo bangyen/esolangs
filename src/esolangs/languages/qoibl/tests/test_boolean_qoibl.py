@@ -20,11 +20,30 @@ run_qoibl = _runner("qoibl", lines=True)
 class TestQoibl:
     @pytest.mark.parametrize("width", [1, 3, 80])
     def test_narrow_horner_literals_execute_small_tables(self, width: int) -> None:
-        for table in witnesses(3):
-            program = esolangs.generate("Qoibl", table, width=width).source
-            assert max(map(len, program.splitlines())) <= max(width, 2)
-            for row in range(8):
-                assert run_qoibl(program, list(format(row, "03b"))) == table[row]
+        from esolangs.languages.qoibl.interpreter import _Machine
+        from esolangs.languages.qoibl.proof_formulas import execution, workspace
+        from esolangs.runtime.io import ScriptedIO
+        from scripts.benchmark import WrittenState
+
+        for n in (1, 2, 3):
+            for table in witnesses(n):
+                program = esolangs.generate("Qoibl", table, width=width).source
+                assert max(map(len, program.splitlines())) <= max(width, 2)
+                for row in range(1 << n):
+                    io = ScriptedIO(f"{row:0{n}b}Q")
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.workspace_snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.workspace_snapshot())
+                        steps += 1
+                    assert io.getvalue() == table[row]
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_char() == ord("Q")
+                    assert steps == execution(n, program)
+                    assert written.bits <= workspace(n, program)
 
     @pytest.mark.medium
     @pytest.mark.parametrize(
@@ -95,6 +114,9 @@ def test_constant_table_reads_cost_one_line_each() -> None:
 @pytest.mark.medium
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """One read into a register the next write clears."""
+    from tests.support.analysis_support import assert_analysis_complement
+
+    assert_analysis_complement("Qoibl", "input_weights")
     assert_an_ignored_input_costs("Qoibl", 6, 13)
     _check_compact_input_tokens()
 
@@ -203,12 +225,16 @@ def _check_compact_input_tokens() -> None:
     from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
-    for value in range(256):
-        table = f"{value:08b}"
-        program = boolean.qoibl(table)
-        assert tokenize(program) == tokenize(_source(table))
-        for row in range(8):
-            io = ScriptedIO(f"{row:03b}Q")
+    cases = [(3, f"{value:08b}", None) for value in range(256)]
+    parity = "".join(str(row.bit_count() & 1) for row in range(1 << 10))
+    cases += [(10, parity, None), (10, parity, 80)]
+    for n, table, width in cases:
+        program = boolean.qoibl(table, width)
+        if width is None:
+            assert tokenize(program) == tokenize(_source(table))
+        rows = range(8) if n == 3 else (0, (1 << n) - 1)
+        for row in rows:
+            io = ScriptedIO(f"{row:0{n}b}Q")
             machine = _Machine(program, io)
             written = WrittenState(machine.workspace_snapshot())
             steps = 0
@@ -217,9 +243,9 @@ def _check_compact_input_tokens() -> None:
                 written.sample(machine.workspace_snapshot())
                 steps += 1
                 if io.getvalue():
-                    assert io.reads == 3
+                    assert io.reads == n
             assert io.getvalue() == table[row]
-            assert io.reads == 3
+            assert io.reads == n
             assert io.input_char() == ord("Q")
-            assert steps <= execution(3, program)
-            assert written.bits <= workspace(3, program)
+            assert steps == execution(n, program)
+            assert written.bits <= workspace(n, program)
