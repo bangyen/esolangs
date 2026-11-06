@@ -971,3 +971,18 @@ all executed answers. All 652 corpus artifacts, 2,120 paired rows and 48,262
 semantic samples match; another 175 layouts and 57 size witnesses retain
 bytes and paired execution. Pins, resource/scaling/anchor scopes and twelve
 balanced timings pass unchanged. Catalog acceptance remains open.
+
+INTERCAL and SStack retain canonical decision, subtree and repeat queries.
+Mux frames, selector aliases, array spill, guarded labels and binary-bank
+prices remain owned constructions. Two semantic query faults change executed
+answers; disabling SStack's repeat query grows an executed bank from 19,879
+to 22,097 characters. INTERCAL's generator `TEMPLATE_CHAR` re-export is removed
+in 2.0; its sole test consumer imports the descriptor declaration.
+
+The audits preserve 1,304 artifact requests, 4,240 paired rows and 54,420
+semantic samples. Set captures compare canonically across hash seeds; an
+erased-component control changes traces while preserving source and results.
+Another 350 layouts and all declared size families retain bytes and execute.
+All 87 INTERCAL families at n=17..24 execute, reaching 16,504,601 characters;
+all original scaling arities through 24 pass. Pins, resource/anchor scopes and
+24 balanced timing comparisons pass unchanged. Catalog acceptance stays open.

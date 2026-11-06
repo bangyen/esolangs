@@ -11,10 +11,11 @@ from esolangs.generation.helpers import (
     constant_span_test,
 )
 from esolangs.languages.intercal import generator
-from esolangs.languages.intercal.descriptor import PAIR
-from esolangs.languages.intercal.generator import TEMPLATE_CHAR, _Expr, intercal
+from esolangs.languages.intercal.descriptor import PAIR, TEMPLATE_CHAR
+from esolangs.languages.intercal.generator import _Expr, intercal
 from esolangs.languages.intercal.interpreter import run
 from tests.proofs._witnesses import _intercal_worst
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.evaluation import _evaluate
 from tests.support.generator_support import measure_run, run_filled
 
@@ -51,6 +52,7 @@ def test_constant_mux_folds_preserve_assignments_and_execute(
 
 def test_setters_are_equal_width_and_embedded_once() -> None:
     _check_select_bits()
+    assert not hasattr(generator, "TEMPLATE_CHAR")
     assert len(PAIR[0]) == len(PAIR[1]) == 2
     for n in range(1, 8):
         template = intercal("01" * (1 << (n - 1)))
@@ -78,12 +80,10 @@ def _unshared(table: str) -> str:
 
 
 def test_repeated_subexpressions_are_assigned_once() -> None:
-    """Repeated expressions are named once; the tree stays in input order."""
+    assert_analysis_complement("INTERCAL", "reduced_diagram")
     parity = "01101001100101101001011001101001"
     template = intercal(parity)
-    assert [f".{name} <- " in template for name in range(7, 14)] == [True] * 2 + [
-        False
-    ] * 5
+    assert [k for k in range(7, 14) if f".{k} <- " in template] == [7, 8]
     assert (len(template), len(_unshared(parity))) == (345, 583)
     for tables, pinned in (
         ([f"{value:08b}" for value in range(256)], (37487, 34795)),

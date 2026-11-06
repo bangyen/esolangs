@@ -30,7 +30,7 @@ from esolangs.generation.helpers import (
     in_input_order,
 )
 from esolangs.generation.wrap import _join_tokens, balance_score
-from esolangs.languages.intercal.descriptor import TEMPLATE_CHAR as TEMPLATE_CHAR
+from esolangs.languages.intercal import descriptor
 
 _VARIABLE_MAX = 65535  # the largest INTERCAL variable number
 
@@ -88,7 +88,7 @@ def intercal(truth_table: str, width: int | None = None) -> str:
         # [ablations.constant_table_audit_20261101]: all setters overwrite .1.
         natural = _polite(
             [
-                *[f".1 <- {TEMPLATE_CHAR * 2}"] * n,
+                *[f".1 <- {descriptor.TEMPLATE_CHAR * 2}"] * n,
                 f"READ OUT #{truth_table[0]}",
                 "GIVE UP",
             ]
@@ -394,7 +394,7 @@ def _program(
     n: int, assigned: list[tuple[int | str, _Expr]], result: _Expr, width: int = 0
 ) -> str:
     """Return the polite template: inputs, arrays, shared names, result, output."""
-    statements = [f".{n - i} <- {TEMPLATE_CHAR * 2}" for i in range(n)]
+    statements = [f".{n - i} <- {descriptor.TEMPLATE_CHAR * 2}" for i in range(n)]
     if width:
         last = max(name for name, _ in assigned if isinstance(name, int))
         arrays = (last - _VARIABLE_MAX - 1) // width + 1

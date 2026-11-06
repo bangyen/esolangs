@@ -10,6 +10,7 @@ from esolangs.languages.sstack import generator as boolean
 from esolangs.vm import _capture_workspace
 from scripts import new_language
 from tests.generators.boolean_runners import _runner
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_constant_output, measure_run
 
@@ -17,11 +18,9 @@ run_sstack = _runner("sstack")
 
 
 def test_screen_sharing_potential_is_mostly_below_the_label_reach() -> None:
-    """The screen's n=5 sharing potential is 82% size-2 repeats.
+    """At n=5, 82% of repeats have two rows; labels need two unread inputs.
 
-    A deferral needs two unread inputs, so subtables of size 2 (the deepest
-    level) cannot be labeled; the screen counts them anyway. The constructs
-    reach the size >= 4 repeats and save 4.0% of the plain tree.
+    The size>=4 repeats save 4.0% of the plain tree.
     """
     from esolangs.languages.sstack.generator import _sstack_tree, sstack
     from tests.generators.sample_tables import five_input_sample
@@ -69,6 +68,7 @@ def test_dispatch_prices_single_reachable_path_classes(table, shared) -> None:
 
 
 def test_every_two_input_table_on_every_row() -> None:
+    assert_analysis_complement("SStack", "subtree_ids", "10")
     for code in range(16):
         table = f"{code:04b}"
         program = boolean.sstack(table)
