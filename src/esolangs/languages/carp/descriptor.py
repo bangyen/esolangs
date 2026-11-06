@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for CARP."""
 
+from esolangs.languages.carp.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
@@ -12,6 +13,9 @@ LANGUAGE = Language(
     "CARP",
     RuntimeSpec(
         "carp",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="register_based",
         empty_program="a program needs at least one instruction",
     ),

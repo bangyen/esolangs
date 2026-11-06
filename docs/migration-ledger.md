@@ -300,3 +300,9 @@ Algebraic Programming Language declares typed numeric/function values and
 source-relative continuation locations. Retained definitions survive redefinition;
 immutable code sharing and cycle serials do not determine workspace. All 117
 languages now declare accounting; fallback retirement and acceptance stay open.
+
+AddSubJump, Between, Blindfolded Arithmetic, CARP, CV(N)(C), Decleq, IEBEL,
+Rubic, Subleq and S*bleq declare text factories and debugger fields.
+Stores, flags, registers, cube/loop state and input progress remain per-run.
+Blindfolded Arithmetic still reads initial input at construction; S*bleq binds
+its native store/indirection options without shared memory.

@@ -40,11 +40,15 @@ Decisions:
       the generator's constant programs open with it.
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
+from esolangs.languages.s_bleq.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime._validate import check_address
 from esolangs.runtime.io import IO
@@ -264,6 +268,23 @@ class _Machine:
             self.mem[addr] = value
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind source; each IO-bound construction owns fresh runtime state."""
+    if not isinstance(source, str):
+        raise TypeError("s_bleq machines require text source")
+    if options.keys() - {"store", "indirect"}:
+        raise TypeError("s_bleq machines accept only store and indirect options")
+    store = options.get("store", "a")
+    indirect = options.get("indirect", False)
+
+    def build(io: IO) -> _Machine:
+        return _Machine(source, io, store=store, indirect=indirect)
+
+    return build
+
+
 def _execute(
     code: str, io: IO, store: str = "a", *, indirect: bool = False
 ) -> CompletionReport:
@@ -272,7 +293,10 @@ def _execute(
     ``store`` is ``"a"`` (base), ``"ab"`` (S*bl*q) or ``"b"`` (Subl*q);
     ``indirect`` gives S**bleq, S**bl**q and Subl**q respectively.
     """
-    return drive(_Machine(code, io, store=store, indirect=indirect))
+    return drive(
+        _Machine(code, io, store=store, indirect=indirect),
+        policy=CAPABILITIES.completion,
+    )
 
 
 def run(code: str, io: IO, store: str = "a", *, indirect: bool = False) -> None:

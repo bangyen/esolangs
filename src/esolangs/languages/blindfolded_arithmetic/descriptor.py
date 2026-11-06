@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Blindfolded Arithmetic."""
 
+from esolangs.languages.blindfolded_arithmetic.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -10,6 +11,9 @@ LANGUAGE = Language(
     "Blindfolded Arithmetic",
     RuntimeSpec(
         "blindfolded_arithmetic",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="register_based",
         empty_program="a Blindfolded Arithmetic program needs at least one instruction",
     ),

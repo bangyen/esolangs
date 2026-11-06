@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs.languages.s_bleq.interpreter import _Machine, run
+from esolangs.languages.s_bleq.interpreter import _Machine, prepare_machine, run
 from esolangs.languages.s_bleq.interpreter import _Machine as Sbleq
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
@@ -99,6 +99,19 @@ class TestVariants:
         assert run_bounded(program) == "\x03"
         assert run_bounded(program, store="b") == "\x02"
 
+        options = {"store": "b", "indirect": False}
+        factory = prepare_machine(program, options)
+        options.clear()
+        io = ScriptedIO("")
+        first, second = factory(io), factory(ScriptedIO(""))
+        assert first is not second
+        assert first.mem is not second.mem
+        retained = second.snapshot()
+        while not first.halted:
+            first.step()
+        assert io.getvalue() == "\x02"
+        assert second.snapshot() == retained
+
     @pytest.mark.parametrize("store", ["A", "AB", "B", "c", "", "bb", "abc"])
     def test_unknown_store_target_is_rejected(self, store: str) -> None:
         """A store outside the three variants raises rather than running."""
@@ -134,7 +147,10 @@ class TestIndirectFamily:
     """S**bleq and kin: ``a`` and ``b`` become ``*a`` and ``*b``."""
 
     def test_s_star_star_bleq_subtracts_through_the_named_cells(self) -> None:
-        machine = _Machine("3 4 8 5 6 10 3 0 9", ScriptedIO(""), indirect=True)
+        options = {"indirect": True}
+        factory = prepare_machine("3 4 8 5 6 10 3 0 9", options)
+        options.clear()
+        machine = factory(ScriptedIO(""))
         while not machine.halted:
             machine.step()
         assert machine.mem[5] == 7

@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for CV(N)(C)."""
 
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.cvnc.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
@@ -8,7 +9,14 @@ from esolangs.runtime._definition import RuntimeSpec
 
 LANGUAGE = Language(
     "CV(N)(C)",
-    RuntimeSpec("cvnc", category="other", empty_program="program is empty"),
+    RuntimeSpec(
+        "cvnc",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+        category="other",
+        empty_program="program is empty",
+    ),
     # The parentheses mark optional slots; the language is written as one word.
     id="cvnc",
     backend=BooleanBackend(

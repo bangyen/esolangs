@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for S*bleq."""
 
 from esolangs.generation.wrap import wrap_grid
+from esolangs.languages.s_bleq.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -11,6 +12,9 @@ LANGUAGE = Language(
     "S*bleq",
     RuntimeSpec(
         "s_bleq",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="tape_based",
         eof="a failed read leaves the cell alone and the program runs on",
     ),
