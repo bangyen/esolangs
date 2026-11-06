@@ -25,11 +25,14 @@ Decisions:
 
 from __future__ import annotations
 
-from functools import lru_cache
-from typing import TYPE_CHECKING, cast
+from collections.abc import Mapping
+from functools import lru_cache, partial
+from typing import TYPE_CHECKING, Any, cast
 
 from esolangs.raster import Pixel, Raster, Rows
 from esolangs.runtime._lifecycle import HALTED_REPORT, CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import raster_source as load_source
 from esolangs.runtime.io import IO
 
@@ -163,6 +166,17 @@ class _Machine:
         self.state, output = _advance(self.state, self.program, value)
         if output is not None:
             self.io.print_num(output)
+
+
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind fresh state over cached raster geometry and the requested scale."""
+    if not isinstance(source, Raster):
+        raise TypeError("line machines require raster source")
+    if options.keys() - {"scale"}:
+        raise TypeError("line machines accept only the scale runtime option")
+    return partial(_Machine, source, scale=options.get("scale"))
 
 
 def _execute(program: Raster, io: IO, *, scale: int | None = None) -> CompletionReport:

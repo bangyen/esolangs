@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Line."""
 
+from esolangs.languages.line.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
@@ -10,6 +11,9 @@ LANGUAGE = Language(
     RuntimeSpec(
         "line",
         category="tape_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         source_kind=SourceKind.RASTER,
         empty_program="image contains no ink",
     ),

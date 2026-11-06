@@ -163,3 +163,7 @@ diagnostics and output flushed before reads/faults remain unchanged.
 The register/rewriting batch declares twenty models, including typed call frames,
 self-modifying instructions and nested block values. Grid hash caches and
 read-only dialect names are excluded; the corresponding bit bound is tightened.
+
+Line declares raster preparation, scale binding and grid debug fields. Cached
+geometry, fresh step state and both native execution paths remain unchanged.
+Ordinary lifecycle checks now cover raster sources.

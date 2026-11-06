@@ -67,7 +67,7 @@ INTERCAL,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,
 Interprogck8,yes,declared,not-applicable,declared,owned-adapter,interprogck8-v1,pending-backend-audit,pending-acceptance-audit,open
 Kiss,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,kiss-v1,pending-backend-audit,pending-acceptance-audit,open
 LaserFuck,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-Line,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+Line,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 lol waht i cant edit talk pages,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,lol-waht-i-cant-edit-talk-pages-v1,pending-backend-audit,pending-acceptance-audit,open
 Malbolge,yes,declared,not-applicable,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Minsky Swap,yes,declared,not-applicable,declared,owned-adapter,minsky-swap-v1,pending-backend-audit,pending-acceptance-audit,open

@@ -249,7 +249,9 @@ def test_native_completion_sets_preserve_the_stepped_policy():
 
 
 @pytest.mark.medium
-def test_declared_ordinary_text_factories_and_routes(monkeypatch):
+def test_declared_ordinary_factories_and_routes(monkeypatch):
+    import base64
+
     from esolangs.runtime._lifecycle import POST_HALT_REPORT
 
     selected = {
@@ -258,7 +260,6 @@ def test_declared_ordinary_text_factories_and_routes(monkeypatch):
         if lang.runtime.capabilities is not None
         and lang.runtime.capabilities.completion is Completion.HALTED
         and lang.runtime.capabilities.self_halts
-        and lang.runtime.source_kind.value == "text"
     }
     assert selected
     subprocess.run(
@@ -266,7 +267,8 @@ def test_declared_ordinary_text_factories_and_routes(monkeypatch):
             sys.executable,
             "-c",
             """
-import json, sys
+import base64, json, sys
+from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES
 from esolangs.vm import machine_traits, make_vm
 samples = json.loads(sys.argv[1])
@@ -278,10 +280,22 @@ for name in samples:
     assert not traits['dumps_on_the_post_halt_step']
 assert not modules.intersection(sys.modules)
 for name, (source, stdin) in samples.items():
+    if LANGUAGES[name].runtime.source_kind.value == 'raster':
+        source = Raster.from_png(base64.b64decode(source))
     make_vm(name, source, stdin=stdin)
 assert modules <= sys.modules.keys(), 'loading control did not fire'
 """,
-            json.dumps({name: SAMPLES[name] for name in selected}),
+            json.dumps(
+                {
+                    name: (
+                        base64.b64encode(SAMPLES[name][0].to_png()).decode("ascii")
+                        if isinstance(SAMPLES[name][0], esolangs.Raster)
+                        else SAMPLES[name][0],
+                        SAMPLES[name][1],
+                    )
+                    for name in selected
+                }
+            ),
         ],
         check=True,
         timeout=10,
