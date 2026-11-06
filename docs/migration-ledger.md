@@ -330,3 +330,9 @@ decision graph. Both use canonical validation. Kiss uses canonical subtree
 ids without duplicate validation, retaining SK emission and draining reads.
 These four backend audits preserve source, execution and resource bounds;
 catalog-wide runtime and certification acceptance remain open.
+
+BASICER uses shared ordered decision layers, preserving constant-input menus
+and leaf numbering. Fackward uses the shared memoized subtable fold; its native
+terminals, draining reads and copied block syntax remain emitter-owned.
+Each retains all 632 corpus programs byte for byte, with executed shared-analysis
+fault controls. Size pins, anchors and declared exact resource scopes are unchanged.

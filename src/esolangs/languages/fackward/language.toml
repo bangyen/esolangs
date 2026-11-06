@@ -21,8 +21,8 @@ qualification = "a level is a block whose quiet pass reads the bit; `/ c 49` mak
 
 [catalogue]
 sharing_exempt = "a block nests its subtrees, so a repeated subtable is copied"
-folding_ignored_local = "_skip"  # equal halves drop their bit unread by a swap
-folding_constant_local = "_skip"  # n bit-dropping levels, then a literal leaf
+folding_ignored_local = "_skip"  # equal halves still consume their input
+folding_constant_local = "_skip"  # one draining read per remaining level
 
 [ablations]
 archive_refs = [

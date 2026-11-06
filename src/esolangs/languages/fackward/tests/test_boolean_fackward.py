@@ -1,10 +1,14 @@
 """Tests for the Fackward Boolean generator."""
 
+from unittest.mock import patch
+
 import pytest
 
 import esolangs
+from esolangs.generation.decision import fold_subtables
+from esolangs.languages.fackward import generator
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_native_rows
+from tests.support.generator_support import assert_native_rows, evaluate_generated
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -22,6 +26,17 @@ def test_every_row_prints_its_answer(table: str) -> None:
 def _check_constants() -> None:
     from esolangs.languages.fackward.interpreter import _Machine
     from scripts.benchmark import WrittenState
+
+    with patch.object(
+        generator,
+        "fold_subtables",
+        side_effect=lambda table, terminals, branch: fold_subtables(
+            table.translate(str.maketrans("01", "10")), terminals, branch
+        ),
+    ) as corrupted:
+        assert evaluate_generated("Fackward", "0001") == "1110"
+        assert corrupted.called
+    assert not hasattr(generator, "_contents")
 
     for n in range(1, 13):
         for bit in "01":

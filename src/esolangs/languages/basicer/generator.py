@@ -17,20 +17,15 @@ Decisions:
     them, so the interpreter's positional reading would carry the program.
 """
 
-from esolangs.generation.helpers import subtree_ids
+from esolangs.generation.decision import decision_layers
 
 
 def basicer(truth_table: str) -> str:
     """Build a BASICER program printing ``truth_table[row]`` for the inputs."""
-    ids = subtree_ids(truth_table)
-    n = len(ids) - 1
-    # Each level's ids, in first-seen order, mapped to their first subtable.
-    first: list[dict[int, int]] = [{} for _ in range(n)]
-    for d in range(n):
-        for k, i in enumerate(ids[d]):
-            first[d].setdefault(i, k)
-    order = [(d, i) for d in range(n) for i in first[d]]
-    used = sorted(set(ids[n]))
+    layers = decision_layers(truth_table).children
+    n = len(layers)
+    order = [(depth, node) for depth, layer in enumerate(layers) for node in layer]
+    used = sorted({child for pair in layers[-1].values() for child in pair})
     line = {key: num for num, key in enumerate(order, 1)}
     leaf = len(order) + 1
     for bit in used:
@@ -38,8 +33,7 @@ def basicer(truth_table: str) -> str:
         leaf += 2 if bit < used[-1] else 1
     rows = []
     for d, i in order:
-        k = first[d][i]
-        zero, one = ids[d + 1][2 * k], ids[d + 1][2 * k + 1]
+        zero, one = layers[d][i]
         rows.append(f"GOTO {line[d + 1, zero]} {line[d + 1, one]}")
     for bit in used:
         rows.append(f"PRINT {bit}")

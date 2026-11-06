@@ -14,7 +14,7 @@ Ascenic,yes,declared,not-applicable,declared,owned-adapter,ascenic-v1,pending-ba
 B-tapemark,yes,declared,declared,declared,owned-adapter,b-tapemark-v1,pending-backend-audit,pending-acceptance-audit,open
 Back,yes,declared,not-applicable,declared,owned-adapter,back-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
 Balik,yes,declared,not-applicable,declared,owned-adapter,balik-v1,pending-backend-audit,pending-acceptance-audit,open
-BASICER,yes,declared,not-applicable,declared,owned-adapter,basicer-v1,pending-backend-audit,pending-acceptance-audit,open
+BASICER,yes,declared,not-applicable,declared,owned-adapter,basicer-v1,canonical-decision-layers,pending-acceptance-audit,open
 Basicfuck,yes,declared,not-applicable,declared,owned-adapter,basicfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Befunge,yes,declared,not-applicable,declared,owned-adapter,befunge-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
 Between,yes,declared,not-applicable,declared,owned-adapter,between-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -47,7 +47,7 @@ Dimensional,yes,declared,not-applicable,declared,owned-adapter,dimensional-v1,pe
 DINAC,yes,declared,not-applicable,declared,owned-adapter,dinac-v1,pending-backend-audit,pending-acceptance-audit,open
 EGL,yes,declared,not-applicable,declared,owned-adapter,egl-v1,pending-backend-audit,pending-acceptance-audit,open
 Eval,yes,declared,not-applicable,declared,owned-adapter,eval-v1,pending-backend-audit,pending-acceptance-audit,open
-Fackward,yes,declared,not-applicable,declared,owned-adapter,fackward-v1,pending-backend-audit,pending-acceptance-audit,open
+Fackward,yes,declared,not-applicable,declared,owned-adapter,fackward-v1,canonical-subtable-fold,pending-acceptance-audit,open
 FALSE,yes,declared,not-applicable,declared,owned-adapter,false-v1,pending-backend-audit,pending-acceptance-audit,open
 Fargo,yes,declared,not-applicable,declared,owned-adapter,fargo-v1,pending-backend-audit,pending-acceptance-audit,open
 Fish,yes,declared,not-applicable,declared,owned-adapter,fish-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open

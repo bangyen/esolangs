@@ -1,9 +1,10 @@
 """Ordered decision layers and reduced Shannon diagrams."""
 
+from collections.abc import Callable, Mapping
 from itertools import pairwise
 from typing import NamedTuple
 
-from esolangs.generation.helpers import subtree_ids
+from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 
 
 class DecisionLayers(NamedTuple):
@@ -33,6 +34,29 @@ def decision_layers(truth_table: str) -> DecisionLayers:
         layers.append(layer)
         frontier = following
     return DecisionLayers(ids[0][0], layers)
+
+
+def fold_subtables[V](
+    truth_table: str,
+    terminals: Mapping[str, V],
+    branch: Callable[[V, V], V],
+) -> V:
+    """Fold distinct subtables once, using emitter-owned terminals and branches."""
+    _validate_truth_table(truth_table)
+    if "0" not in terminals or "1" not in terminals:
+        raise ValueError("subtable folding requires both Boolean leaves")
+    return _fold_subtable(truth_table, dict(terminals), branch)
+
+
+def _fold_subtable[V](table: str, memo: dict[str, V], branch: Callable[[V, V], V]) -> V:
+    """Resolve one subtable without retaining a recursive closure after the fold."""
+    if table not in memo:
+        half = len(table) // 2
+        memo[table] = branch(
+            _fold_subtable(table[:half], memo, branch),
+            _fold_subtable(table[half:], memo, branch),
+        )
+    return memo[table]
 
 
 class DecisionNode(NamedTuple):

@@ -16,7 +16,7 @@ Size:
     Constants use 7n+6 chars and 8n+4 steps.
 """
 
-from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.decision import fold_subtables
 
 
 def _node(zero: str, one: str) -> str:
@@ -39,25 +39,17 @@ def _skip(child: str) -> str:
 _LAST = {"01": ")[[H])]", "10": ")[2352/[H])]"}
 
 
-def _contents(table: str, memo: dict[str, str]) -> str:
-    """The block contents of ``table``'s level, leaves printing and halting."""
-    if table not in memo:
-        if len(table) == 1:
-            memo[table] = f"H{48 + int(table)}"
-        elif table in _LAST:
-            memo[table] = _LAST[table]
-        else:
-            half = len(table) // 2
-            zero = _contents(table[:half], memo)
-            one = _contents(table[half:], memo)
-            memo[table] = _skip(zero) if zero == one else _node(zero, one)
-    return memo[table]
+def _branch(zero: str, one: str) -> str:
+    """Render a draining read or a two-arm block."""
+    return _skip(zero) if zero == one else _node(zero, one)
 
 
 def fackward(truth_table: str) -> str:
     """Build a Fackward program printing ``truth_table[row]`` for the inputs."""
-    _validate_truth_table(truth_table)
-    return f")[{_contents(truth_table, {})}]"
+    # Numeric layers cost 14.7x on n=12 parity; keep one-input forms terminal.
+    terminals = {"0": "H48", "1": "H49", **_LAST}
+    contents = fold_subtables(truth_table, terminals, _branch)
+    return f")[{contents}]"
 
 
 #: Break anywhere but inside a number, which a newline would split.

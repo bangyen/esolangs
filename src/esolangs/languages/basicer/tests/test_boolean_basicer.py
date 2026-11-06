@@ -1,10 +1,14 @@
 """Tests for the BASICER Boolean generator."""
 
+from unittest.mock import patch
+
 import pytest
 
 import esolangs
+from esolangs.generation.decision import decision_layers
+from esolangs.languages.basicer import generator
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_every_row
+from tests.support.generator_support import assert_every_row, evaluate_generated
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -19,6 +23,16 @@ def test_every_row_prints_its_answer(table: str) -> None:
 def _check_constants() -> None:
     from esolangs.languages.basicer.interpreter import _Machine
     from scripts.benchmark import WrittenState
+
+    with patch.object(
+        generator,
+        "decision_layers",
+        side_effect=lambda table: decision_layers(
+            table.translate(str.maketrans("01", "10"))
+        ),
+    ) as corrupted:
+        assert evaluate_generated("BASICER", "0001") == "1110"
+        assert corrupted.called
 
     for n in range(1, 13):
         for bit in "01":
