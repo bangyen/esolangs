@@ -48,7 +48,7 @@ from esolangs.generation.helpers import _validate_truth_table
 from esolangs.registry import LANGUAGES, resolve
 from esolangs.registry._certification import load as load_certification
 from esolangs.registry._describe import LanguageInfo
-from esolangs.runtime._state import WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime._validate import check_timeout
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import (
@@ -61,7 +61,7 @@ from esolangs.vm import (
 
 _TEXT_TYPES = (str, bytes, bytearray)
 _CONTAINER_TYPES = (tuple, list, frozenset, set)
-_MEMO_TYPES = (tuple, frozenset, Fraction)
+_MEMO_TYPES = (tuple, frozenset, Fraction, WorkspaceVariant)
 MAX_RECORD_CHARS = 1024 * 1024
 
 
@@ -179,7 +179,9 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
     hit = memo.get(id(value))
     if hit is not None and hit[0] is value:
         return hit[1]
-    if isinstance(value, Fraction):
+    if isinstance(value, WorkspaceVariant):
+        total = _variant_bits(value, memo)
+    elif isinstance(value, Fraction):
         total = state_bits(value.numerator, memo) + state_bits(value.denominator, memo)
     elif isinstance(value, dict):
         total = sum(state_bits(k, memo) + state_bits(v, memo) for k, v in value.items())
@@ -229,6 +231,29 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
     if isinstance(value, _MEMO_TYPES) or getattr(value, "snapshot_immutable", False):
         memo[id(value)] = (value, total)
     return total
+
+
+def _variant_bits(value: WorkspaceVariant, memo: dict[int, tuple[object, int]]) -> int:
+    """Count typed payloads iteratively; constructor kinds are schema metadata."""
+    pending = [(value, False)]
+    while pending:
+        node, ready = pending.pop()
+        hit = memo.get(id(node))
+        if hit is not None and hit[0] is node:
+            continue
+        if ready:
+            memo[id(node)] = (
+                node,
+                sum(state_bits(part, memo) for part in node.values),
+            )
+        else:
+            pending.append((node, True))
+            pending.extend(
+                (part, False)
+                for part in node.values
+                if isinstance(part, WorkspaceVariant)
+            )
+    return memo[id(value)][1]
 
 
 class WrittenState:

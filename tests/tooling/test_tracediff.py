@@ -106,6 +106,7 @@ def test_a_copy_matches_and_a_mutant_is_caught(tmp_path: Path) -> None:
     assert tracediff._plain(float("nan"), {}) != tracediff._plain(-float("nan"), {})
 
 
+@pytest.mark.medium  # warmed/sized laps and two rounds take 1.06s alone
 def test_speed_sees_a_slowed_copy(tmp_path: Path) -> None:
     """Deadfish's rewrite lost a third of its step rate and nothing said so."""
     programs = tracediff.corpus(REFERENCE, 50, max_n=1)

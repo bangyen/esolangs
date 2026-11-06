@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.debugger import make_vm
+from esolangs.vm import _capture_workspace
 from scripts.benchmark import WrittenState
 from tests.proofs.deep.execution import run_to_answer
 from tests.proofs.workspace import FORMULAS
@@ -37,9 +38,10 @@ def test_unlambda_workspace_is_not_linear() -> None:
         bits = row_bits(row, n)
         stdin = esolangs.encode_inputs("Unlambda", bits, truth_table=table)
         machine = make_vm("Unlambda", program, stdin=stdin)
-        state = WrittenState(machine.snapshot())
+        state = WrittenState(_capture_workspace(machine))
         run_to_answer(machine, sample=state.sample)
         assert state.bits <= formula(n, program)
+        assert machine.output == table[row]
         per_char.append(state.bits / len(program))
-    # Measured 7.58 then 16.60; a linear workspace would hold it flat.
+    # Measured 7.39 then 14.61; a linear workspace would hold it flat.
     assert per_char[1] > 1.5 * per_char[0], per_char

@@ -110,6 +110,21 @@ def test_a_read_and_a_test_on_the_character() -> None:
     assert run_program(run, program, "0\n") == "z"
     assert run_program(run, program, "1\n") == ""
 
+    from esolangs.languages.unlambda import interpreter
+    from esolangs.runtime._lifecycle import Completion
+    from scripts import tracediff
+
+    source = "``cd``d`@|`cd"
+    program = next(
+        item for item in tracediff.corpus("Unlambda", 0, max_n=0) if item[0] == source
+    )
+    assert program == (source, "cat\n")
+    events = tracediff.trace(
+        interpreter, program, frozenset(), policy=Completion.HALTED
+    )
+    assert tracediff._halts(events)
+    assert events[-1][2] == "cat\n"
+
 
 #: ``\b. ((b (`d `.Xi)) v)``: ``k`` keeps the promise and ``v`` swallows it,
 #: so forcing the survivor with ``i`` prints X only on ``@``'s success branch.
@@ -146,10 +161,26 @@ def test_a_malformed_program_is_refused(program: str, message: str) -> None:
 
 
 def test_the_parser_is_iterative_over_a_long_chain() -> None:
-    """A deep application chain must not exhaust the recursion limit."""
+    """Parsing and logical projection preserve deep terms and DAG multiplicity."""
+    from collections import OrderedDict
+
+    from esolangs.languages.unlambda.interpreter import _Cmd, _workspace_value
+    from scripts.benchmark import state_bits
+
     depth = 5000
     term = _parse("`" * depth + "i" * (depth + 1))
     assert isinstance(term, _App)
+    left, right = _workspace_value(term), _workspace_value(term)
+    assert hash(left) == hash(right)
+    assert left == right
+    cache = OrderedDict()
+    assert _workspace_value(term, cache) == left
+    assert len(cache) == 2048
+    assert state_bits(left, {}) == 8 * (depth + 1)
+    shared = _Cmd("i")
+    for _ in range(16):
+        shared = _App(shared, shared)
+    assert state_bits(_workspace_value(shared), {}) == 8 * 2**16
 
 
 def test_the_continuation_is_the_stack_the_vm_shows() -> None:
@@ -178,6 +209,30 @@ def test_snapshots_compare_continuations_by_their_frames() -> None:
     assert kont is not None
     assert kont != kont.rest
     assert kont != kont.frames()
+
+    from esolangs.languages.unlambda.interpreter import (
+        _Arg,
+        _Cmd,
+        _Cont,
+        _Ret,
+    )
+    from scripts.benchmark import state_bits
+
+    continuation = _Kont(_Arg(_Cmd("i")), None)
+    machine = _Machine("i", ScriptedIO())
+    machine.state = (_Ret(_Cont(continuation)), continuation, None, False)
+    saved = machine.workspace_snapshot()
+    retained = {saved}
+    before = state_bits(saved.parts, {})
+    continuation.depth = 10**9
+    machine.snapshot = lambda: ("unrelated cycle key",)
+    machine._workspace_cache.clear()
+    assert machine.workspace_snapshot() == saved
+    assert state_bits(machine.workspace_snapshot().parts, {}) == before
+    assert saved in retained
+    machine.step()
+    assert machine.workspace_snapshot() != saved
+    assert saved in retained
 
 
 def test_continuations_of_different_lengths_are_unequal() -> None:

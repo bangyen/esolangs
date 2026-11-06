@@ -36,11 +36,14 @@ Decisions:
 
 from __future__ import annotations
 
+from collections import OrderedDict
+from collections.abc import Hashable
 from dataclasses import dataclass
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -397,6 +400,82 @@ def _advance(
     return (_Apply(frame.value, task.value), rest, char, False), None
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "unlambda-v1", ("task", "continuation", "character", "stopped", "input_cursor")
+)
+
+
+def _workspace_fields(value: object) -> tuple[str, tuple[object, ...]]:
+    """Describe logical constructors without continuation depth caches."""
+    match value:
+        case _Cmd(name):
+            return "Cmd", (name,)
+        case _Print(char):
+            return "Print", (char,)
+        case _Query(char):
+            return "Query", (char,)
+        case _Partial(name, args):
+            return "Partial", (name, args)
+        case _Promise(term):
+            return "Promise", (term,)
+        case _Cont(kont):
+            return "Cont", (kont,)
+        case _App(function, argument):
+            return "App", (function, argument)
+        case _Val(item):
+            return "Val", (item,)
+        case _Arg(term):
+            return "Arg", (term,)
+        case _Fun(item):
+            return "Fun", (item,)
+        case _Eval(term):
+            return "Evaluate", (term,)
+        case _Apply(function, argument):
+            return "Apply", (function, argument)
+        case _Ret(item):
+            return "Ret", (item,)
+        case _Kont():
+            return "Kont", value.frames()
+        case tuple():
+            return "tuple", value
+        case _:
+            raise TypeError("unsupported Unlambda workspace value")
+
+
+def _workspace_value(
+    value: object, cache: OrderedDict[int, tuple[object, Hashable]] | None = None
+) -> Hashable:
+    """Freeze a term DAG iteratively; captured continuations keep logical frames."""
+    frozen: dict[int, Hashable] = {}
+    pending = [(value, False)]
+    while pending:
+        node, ready = pending.pop()
+        if id(node) in frozen:
+            continue
+        if node is None or isinstance(node, (str, bool)):
+            frozen[id(node)] = node
+            continue
+        hit = cache.get(id(node)) if cache is not None else None
+        if hit is not None and hit[0] is node:
+            frozen[id(node)] = hit[1]
+            assert cache is not None
+            cache.move_to_end(id(node))
+            continue
+        kind, parts = _workspace_fields(node)
+        if ready:
+            frozen[id(node)] = WorkspaceVariant(
+                kind, tuple(frozen[id(part)] for part in parts)
+            )
+            if cache is not None:
+                cache[id(node)] = (node, frozen[id(node)])
+                if len(cache) > 2048:
+                    cache.popitem(last=False)
+        else:
+            pending.append((node, True))
+            pending.extend((part, False) for part in parts)
+    return frozen[id(value)]
+
+
 class _Machine:
     """The run state: one task, the continuation, and the character read."""
 
@@ -408,6 +487,8 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
         self.state: _State = (_Eval(_parse(code)), None, None, False)
+        # A 200-command counter rebuilt 17,743 views; cap reuse at 2,048 nodes.
+        self._workspace_cache: OrderedDict[int, tuple[object, Hashable]] = OrderedDict()
 
     @property
     def halted(self) -> bool:
@@ -429,6 +510,17 @@ class _Machine:
         """The continuation, outermost frame first: what waits on a value."""
         kont = self.state[1]
         return list(kont.frames()) if kont is not None else []
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical terms and continuations, excluding cached depths."""
+        task, continuation, character, stopped = self.state
+        return _WORKSPACE_MODEL.capture(
+            task=_workspace_value(task, self._workspace_cache),
+            continuation=_workspace_value(continuation, self._workspace_cache),
+            character=character,
+            stopped=stopped,
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

@@ -1,4 +1,4 @@
-"""Unlambda's workspace: program weight, bound-share copies, frame depths."""
+"""Unlambda's logical workspace: weighted terms and bound-share copies."""
 
 from esolangs.languages.unlambda.interpreter import _App, _Cmd, _parse, _Term
 
@@ -40,10 +40,9 @@ def _workspace(n: int, program: str) -> int:
     bl = int.bit_length
     if program.replace("\n", "") in ("`@`d" * n + ".0", "`@`d" * n + ".1"):
         # Task: 16n+8; character/done/input: 9+bl(n). At continuation
-        # depth d>=2: 16n+16-8d+sum(bl(i), i=1..d). Its increments
-        # bl(d)-8 increase, so the maximum is at depth 2 or n+1.
-        depths = sum(bl(i) for i in range(1, n + 2))
-        return 16 * n + 17 + max(16 * n + 3, 8 * n + 8 + depths) + bl(n)
+        # depth d>=2, live terms cost 16n+16-8d, maximized at d=2.
+        # Cached continuation depths do not belong to logical workspace.
+        return 32 * n + 17 + bl(n)
     term = _parse(program)
     frames = 3 * n + 9
     return (

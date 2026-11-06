@@ -97,7 +97,7 @@ acceptance audit after the active separation work lands. Storage policy needs
 its priced comparison and explicit decision. These remain open even where an
 implementation pilot already passed.
 
-Accounting now has 104 explicit or inherited semantic adapters; 13 language
+Accounting now has 105 explicit or inherited semantic adapters; 12 language
 rows still use snapshot accounting. Declarations do not close lifecycle,
 storage-policy or catalog-wide acceptance requirements.
 
@@ -185,3 +185,11 @@ read counts stay per-run. EOF commands remain ignored.
 BrainIf and Container declare split-text preparation with private line lists and
 debug fields. Guarded reads, left-growing tape, zero-valued Container EOF and
 the legacy Container EXIT return remain unchanged.
+
+
+
+
+Unlambda captures typed logical terms and captured continuations without cached
+depths. Constructor tags preserve value identity but carry no payload bits; deep
+term hashing, comparison and accounting use iterative traversals. Constant-program
+workspace is 32n+17+bl(n); the general bound retains its conservative allowance.

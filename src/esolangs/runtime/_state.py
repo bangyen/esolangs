@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Hashable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,3 +49,58 @@ class WorkspaceSnapshot:
         ):
             raise ValueError("workspace snapshot does not match its model")
         hash(self.parts)
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class WorkspaceVariant:
+    """Typed logical fields; the kind and cached hash are schema, not payload."""
+
+    kind: str
+    values: tuple[Hashable, ...]
+    _hash: int = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        """Validate the variant and hash children once, including shared subterms."""
+        if not isinstance(self.kind, str) or not self.kind.isidentifier():
+            raise ValueError("workspace variants need an identifier kind")
+        if not isinstance(self.values, tuple):
+            raise TypeError("workspace variant fields must be a tuple")
+        object.__setattr__(self, "_hash", hash((self.kind, self.values)))
+
+    def __hash__(self) -> int:
+        """Return the construction-time hash without recursing down a term."""
+        return self._hash
+
+    def __reduce__(
+        self,
+    ) -> tuple[type[WorkspaceVariant], tuple[str, tuple[Hashable, ...]]]:
+        """Recompute salted hashes when the value crosses a process boundary."""
+        return type(self), (self.kind, self.values)
+
+    def __eq__(self, other: object) -> bool:
+        """Compare typed content iteratively, visiting shared pairs once."""
+        if not isinstance(other, WorkspaceVariant):
+            return NotImplemented
+        if self._hash != other._hash:
+            return False
+        pending: list[tuple[object, object]] = [(self, other)]
+        seen = set()
+        while pending:
+            left, right = pending.pop()
+            if left is right:
+                continue
+            pair = (id(left), id(right))
+            if pair in seen:
+                continue
+            seen.add(pair)
+            if isinstance(left, WorkspaceVariant):
+                if not isinstance(right, WorkspaceVariant) or left.kind != right.kind:
+                    return False
+                pending.append((left.values, right.values))
+            elif isinstance(left, tuple):
+                if not isinstance(right, tuple) or len(left) != len(right):
+                    return False
+                pending.extend(zip(left, right, strict=True))
+            elif left != right:
+                return False
+        return True

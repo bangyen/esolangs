@@ -9,10 +9,10 @@ import esolangs
 from esolangs.languages.brainfuck.interpreter import _WORKSPACE_MODEL, _Machine
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._lifecycle import Completion
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace, complete_vm, make_vm
-from scripts.benchmark import WrittenState
+from scripts.benchmark import WrittenState, state_bits
 from tests.interpreters.semantic_oracles import brainfuck
 
 
@@ -38,6 +38,43 @@ def test_model_components_are_named_complete_and_immutable():
     for components in ((), ("cursor", "cursor"), ("bad name",)):
         with pytest.raises(ValueError, match="distinct components"):
             WorkspaceModel("bad-v1", components)
+
+    variants = [
+        WorkspaceVariant(kind, ("i",)) for kind in ("command", "print", "query")
+    ]
+    assert len(set(variants)) == 3
+    assert [state_bits(value, {}) for value in variants] == [8, 8, 8]
+    model = WorkspaceModel("typed-v1", ("value",))
+    meter = WrittenState(model.capture(value=variants[0]))
+    meter.sample(model.capture(value=variants[1]))
+    assert meter.bits == 8
+    with pytest.raises(ValueError, match="identifier"):
+        WorkspaceVariant("bad kind", ())
+    with pytest.raises(TypeError, match="tuple"):
+        WorkspaceVariant("valid", [])
+    with pytest.raises(TypeError, match="unhashable"):
+        WorkspaceVariant("valid", ([],))
+
+    import os
+    import pickle
+    import subprocess
+    import sys
+
+    value = WorkspaceVariant("Print", ("i",))
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import pickle, sys; "
+            "from esolangs.runtime._state import WorkspaceVariant; "
+            "value = pickle.loads(sys.stdin.buffer.read()); "
+            "expected = WorkspaceVariant('Print', ('i',)); "
+            "assert value == expected and hash(value) == hash(expected)",
+        ],
+        input=pickle.dumps(value),
+        env={**os.environ, "PYTHONHASHSEED": "73"},
+        check=True,
+    )
 
 
 def test_accounting_refuses_a_mid_run_model_change():

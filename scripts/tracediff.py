@@ -340,7 +340,7 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
         programs.extend(
             (
                 _example_text(path, example, "source"),
-                _example_text(path, example, "input"),
+                _example_text(path, example, "stdin"),
             )
             for example in tomllib.loads(path.read_text()).get("examples", [])
         )
