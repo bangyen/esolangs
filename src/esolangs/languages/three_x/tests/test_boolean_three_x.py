@@ -10,8 +10,9 @@ from esolangs.languages.three_x import generator as boolean
 from esolangs.languages.three_x.generator import _constant, _gain
 from esolangs.languages.three_x.tests.formulas import _key
 from scripts.benchmark import state_bits
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output
+from tests.support.generator_support import assert_constant_output, evaluate_generated
 
 
 def _grammar_level(length: int, memo: dict[int, dict[Fraction, str]]) -> dict:
@@ -57,9 +58,12 @@ def _evaluate(code: str) -> Fraction:
 class TestThreeX:
     def test_identity_program_structure(self) -> None:
         """The 01 table reads a bit and stores it before printing."""
-        program = boolean.three_x("01")
-        assert program.startswith("?")
-        assert program.endswith("!")
+        assert_analysis_complement("3x", "read_at")
+        for table in ("01", "0110"):
+            program = boolean.three_x(table)
+            assert program.startswith("?")
+            assert program.endswith("!")
+            assert ("(" in program) == (table == "0110")
 
     def test_reordering_only_shrinks(self) -> None:
         """No table comes out longer than the identity order's program."""
@@ -126,18 +130,7 @@ class TestThreeX:
         _check_constants()
         assert "(" not in boolean.three_x("0" * 4)
         assert "(" not in boolean.three_x("1" * 4)
-
-    def test_majority_default_handles_zero_row(self) -> None:
-        """A zero row differing from a majority-1 default still overrides it."""
-        program = boolean.three_x("0110")  # XOR: two 1s, two 0s
-        assert program.startswith("?")
-        assert program.endswith("!")
-        assert "(" in program  # the zero row needs an override block
-
-    def test_scales_to_more_inputs(self) -> None:
-        """The generator handles n beyond the built-in constants."""
-        program = boolean.three_x("0" * (2**7))
-        assert program.count("?") == 7
+        assert boolean.three_x("0" * (2**7)).count("?") == 7
 
     def test_shared_tree_prefix_sharing(self) -> None:
         """Differing combos share prefix guards instead of repeating them."""
@@ -251,11 +244,15 @@ def _check_constants() -> None:
                     assert io.input_num() == 7
 
 
-def test_initial_shared_block_and_ignored_inputs_execute() -> None:
+def test_initial_shared_block_and_ignored_inputs_execute(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from esolangs.generation.helpers import subtree_ids
     from esolangs.languages.three_x.generator import _shared_blocks, _three_x_emit
     from esolangs.languages.three_x.interpreter import run
 
     core = "01101001" * 3 + "00000000"
+    assert boolean.subtree_ids is subtree_ids
     shares = _shared_blocks(core, 5)
     assert shares == (core[:8],)
     for n, used in ((5, list(range(5))), (6, list(range(5))), (8, list(range(3, 8)))):
@@ -273,3 +270,13 @@ def test_initial_shared_block_and_ignored_inputs_execute() -> None:
                 io = ReadFirstIO(esolangs.encode_inputs("3x", bits) + "7\n", expected=n)
                 run(program, io)
                 assert (io.getvalue(), io.reads, io.input_num()) == (expected, n, 7)
+
+    shared = boolean.three_x(core)
+    monkeypatch.setattr(
+        boolean,
+        "subtree_ids",
+        lambda table: [[0] * (1 << d) for d in range(len(table).bit_length())],
+    )
+    assert boolean._shared_blocks(core, 5) == ()
+    assert len(boolean.three_x(core)) > len(shared)
+    assert evaluate_generated("3x", core) == core

@@ -6,13 +6,16 @@ from itertools import pairwise
 import pytest
 
 import esolangs
+from esolangs.generation.helpers import read_at
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.inject import generator as boolean
 from tests.generators.boolean_runners import _runner
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
     assert_parity_at_most_doubles,
+    evaluate_generated,
     measure_run,
 )
 
@@ -30,6 +33,7 @@ class TestInject:
 
     def test_constant_subtrees_are_folded(self) -> None:
         """A table ignoring its later inputs costs one test, not ``n``."""
+        assert_analysis_complement("Inject", "subtree_ids", "00010111")
         one_dependency = len(boolean.inject("00001111"))
         parity = len(boolean.inject("01101001"))
         assert one_dependency < parity * 3 / 4
@@ -55,6 +59,7 @@ class TestInject:
                 if line.endswith(";")
             )
             assert all(v == 2 for v in counts.values()), (table, counts)
+            assert all(len(label) == 2 for label in counts)
 
     def test_an_input_block_starts_empty(self) -> None:
         """An empty block is two *adjacent* delimiters, after all executed code."""
@@ -64,17 +69,9 @@ class TestInject:
             assert all(tail[2 * d] == tail[2 * d + 1] for d in range(n))
             assert len(set(tail[::2])) == n
 
-    def test_small_tree_uses_one_character_labels(self) -> None:
-        """Inputs, branches, leaves, and constants share the short namespace."""
-        labels = [
-            line[:-1]
-            for line in boolean.inject("01101001").splitlines()
-            if line.endswith(";")
-        ]
-        assert all(len(label) == 1 for label in labels)
-
     def test_halving_lookup_executes_wide_rows(self) -> None:
         """Regex halves return sampled six-input rows."""
+        assert_analysis_complement("Inject", "input_weights", "0011" * 8)
         n = 6
         table = "".join(str(row.bit_count() & 1) for row in range(2**n))
         program = boolean.inject(table)
@@ -97,7 +94,9 @@ class TestInject:
             for row in range(1 << n):
                 assert run_inject(program, list(f"{row:0{n}b}")) == table[row] + "\n"
 
-    def test_chunked_lookup_drops_ignored_inputs(self) -> None:
+    def test_chunked_lookup_drops_ignored_inputs(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Input 2 of 7 is read and never tested; the table is indexed without it."""
         small = "".join(str((row * 73 + row // 3) & 1) for row in range(64))
         table = "".join(small[r >> 1 & 32 | r & 31] for r in range(128))
@@ -108,6 +107,17 @@ class TestInject:
         )
         for row in range(128):
             assert run_inject(program, list(f"{row:07b}")) == table[row] + "\n"
+        assert boolean.read_at is read_at
+        monkeypatch.setattr(
+            boolean,
+            "read_at",
+            lambda table, order, n: read_at(
+                table.translate(str.maketrans("01", "10")), order, n
+            ),
+        )
+        assert evaluate_generated("Inject", table, width=1) == table.translate(
+            str.maketrans("01", "10")
+        )
 
     def test_chunked_source_growth_is_linear(self) -> None:
         sizes = [

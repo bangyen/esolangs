@@ -1,7 +1,7 @@
 language,boolean_backend,preparation,dialect_defaults,capabilities,workspace,workspace_model,analysis,certification,snapshot_transport,completion
 ///,yes,declared,not-applicable,declared,owned-adapter,slashes-v1,canonical-input-weights;owned-directional-sweeps,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 1 + i,yes,declared,not-applicable,declared,owned-adapter,one-i-v1,canonical-parity-subtree;owned-complex-arithmetic,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;corpus-n2;native-worker-cycle;vm-debugger-history,open
-3x,yes,declared,not-applicable,declared,owned-adapter,three-x-v1,pending-backend-audit,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;corpus-n2;native-worker-cycle;vm-debugger-history,open
+3x,yes,declared,not-applicable,declared,owned-adapter,three-x-v1,canonical-projection-span-subtree;owned-gain-flag-layout,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;corpus-n2;native-worker-cycle;vm-debugger-history,open
 6-5,yes,declared,not-applicable,declared,owned-adapter,six-five-v1,canonical-subtree-weighted-analysis;owned-label-layout,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 A Painter Ant,yes,declared,not-applicable,declared,owned-adapter,a-painter-ant-v1,pending-backend-audit,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 ABCDirection,yes,declared,not-applicable,declared,owned-adapter,abcdirection-v1,canonical-dependency-projection;owned-byte-tape-helix,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
@@ -62,7 +62,7 @@ Hot,yes,declared,not-applicable,declared,owned-adapter,hot-v1,canonical-subtree-
 HQ9+,no,declared,not-applicable,declared,owned-adapter,hq9-v1,not-applicable,runtime-isolation-py312-315;claims-pending,sample-first-eight-steps;vm-debugger-history,open
 HQ9+ with headers,yes,declared,not-applicable,declared,owned-adapter,hq9-with-headers-v1,canonical-validation;owned-integer-lookup,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 IEBEL,yes,declared,not-applicable,declared,owned-adapter,iebel-v1,canonical-decision-layers;owned-fallthrough-layout,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
-Inject,yes,declared,not-applicable,declared,owned-adapter,inject-v1,pending-backend-audit,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
+Inject,yes,declared,not-applicable,declared,owned-adapter,inject-v1,canonical-projection-subtree;owned-regex-chunk-layout,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 INTERCAL,yes,declared,not-applicable,declared,owned-adapter,intercal-v1,pending-backend-audit,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 Interprogck8,yes,declared,not-applicable,declared,owned-adapter,interprogck8-v1,canonical-parity;pending-backend-audit,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 Kiss,yes,declared,not-applicable,declared,owned-adapter,kiss-v1,canonical-subtree-analysis,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open

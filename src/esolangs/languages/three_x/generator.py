@@ -31,6 +31,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     in_input_order,
     read_at,
+    subtree_ids,
 )
 
 __all__ = ["three_x"]
@@ -176,20 +177,29 @@ def _shared_blocks(table: str, width: int) -> tuple[str, ...]:
     rows and seen twice.  Candidates are taken once, in order of gain, and
     count only the uses not already inside a taken block's uses.
     """
-    at: dict[str, list[int]] = {}
+    if width <= _SHARE_MIN.bit_length() - 1:
+        return ()
+    ids = subtree_ids(table)
+    at: dict[int, list[int]] = {}
+    blocks: dict[int, str] = {}
     for rows in (2**k for k in range(_SHARE_MIN.bit_length() - 1, width)):
-        for lo in range(0, 2**width, rows):
-            block = table[lo : lo + rows]
-            if "0" in block and "1" in block:
-                at.setdefault(block, []).append(lo)
+        depth = width - rows.bit_length() + 1
+        for offset, key in enumerate(ids[depth]):
+            if key >= 2:
+                lo = offset * rows
+                if key not in at:
+                    at[key] = []
+                    blocks[key] = table[lo : lo + rows]
+                at[key].append(lo)
     taken: list[str] = []
     covered = bytearray(len(table))
-    for block in sorted(
-        (block for block, los in at.items() if len(los) > 1),
-        key=lambda block: -_gain(len(block), len(at[block])),
+    for key in sorted(
+        (key for key, los in at.items() if len(los) > 1),
+        key=lambda key: -_gain(len(blocks[key]), len(at[key])),
     ):
+        block = blocks[key]
         rows = len(block)
-        free = [lo for lo in at[block] if not any(covered[lo : lo + rows])]
+        free = [lo for lo in at[key] if not any(covered[lo : lo + rows])]
         if _gain(rows, len(free)) > 0:
             taken.append(block)
             for lo in free:

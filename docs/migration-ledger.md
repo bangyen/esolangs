@@ -930,3 +930,19 @@ character anchors retain executed witnesses. Generator throughput ratio is
 3.12–3.15 repeats the corpus, projection/subtree faults and pins against all
 832 byte-checked Python modules. Only this backend's analysis row is closed;
 catalog lifecycle, accounting and certification acceptance remain open.
+
+3x groups repeated blocks by canonical subtree IDs, replacing its duplicate
+string recognizer. Gain, overlap selection, flags, key allocation and emission
+order remain owned. Disabling shared analysis removes an executed size saving;
+projection faults change answers. Inject retains canonical projection/subtree
+analysis; complemented tree, halving and narrow-chunk controls change answers.
+Forward escapes, regex spelling and chunk/width selection remain owned.
+All 2,890 programs retain bytes across default, widths 1/3/20 and balanced
+layouts: exhaustive n=1..3 and structured witnesses through n=10. All 22,690
+selected rows execute correctly over 3,037,934 command boundaries. Default
+resource/size bounds hold within declared scopes; exact n=5 resource witnesses,
+16 size/command pins and six executed size anchors remain unchanged.
+Generator throughput ratios are 0.980 and 0.985, above 0.9. Installed Python
+3.12–3.15 repeats both default corpora, larger layouts, analysis faults, pins,
+anchors and the independent 3x native oracle against 832 byte-checked modules.
+These two analysis rows are audited; broader acceptance remains open.
