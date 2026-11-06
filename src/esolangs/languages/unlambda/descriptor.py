@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Unlambda."""
 
 from esolangs.generation.wrap import _unlambda
+from esolangs.languages.unlambda.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -11,6 +12,9 @@ LANGUAGE = Language(
     "Unlambda",
     RuntimeSpec(
         "unlambda",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="other",
         eof="an exhausted '@' hands its argument v, the spec's branch",
         empty_program="an Unlambda program cannot be empty",

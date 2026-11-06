@@ -291,3 +291,7 @@ barrier covers catalog queries and artifact generation/round trips for all
 reject a return to generator-owned certification. The installed wheel passes
 this barrier on Python 3.12–3.15 with image support. Catalog-wide execution
 and full installed-package acceptance remain open.
+
+Hot, Kiss, Smu and Unlambda declare factories and debugger fields. Term graphs,
+continuations, variables and input/output buffers remain per-run. Kiss keeps
+its native exit-code result and declares completion on both native routes.

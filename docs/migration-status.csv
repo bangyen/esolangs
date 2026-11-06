@@ -58,14 +58,14 @@ FRACTRAN,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,frac
 Freestajlo,yes,declared,not-applicable,declared,owned-adapter,freestajlo-v1,pending-backend-audit,pending-acceptance-audit,open
 Grapheme,yes,declared,declared,declared,owned-adapter,grapheme-v1,pending-backend-audit,pending-acceptance-audit,open
 Home Row,yes,declared,not-applicable,declared,owned-adapter,home-row-v1,pending-backend-audit,pending-acceptance-audit,open
-Hot,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,hot-v1,pending-backend-audit,pending-acceptance-audit,open
+Hot,yes,declared,not-applicable,declared,owned-adapter,hot-v1,pending-backend-audit,pending-acceptance-audit,open
 HQ9+,no,declared,not-applicable,declared,owned-adapter,hq9-v1,not-applicable,pending-acceptance-audit,open
 HQ9+ with headers,yes,declared,not-applicable,declared,owned-adapter,hq9-with-headers-v1,pending-backend-audit,pending-acceptance-audit,open
 IEBEL,yes,declared,not-applicable,declared,owned-adapter,iebel-v1,pending-backend-audit,pending-acceptance-audit,open
 Inject,yes,declared,not-applicable,declared,owned-adapter,inject-v1,pending-backend-audit,pending-acceptance-audit,open
 INTERCAL,yes,declared,not-applicable,declared,owned-adapter,intercal-v1,pending-backend-audit,pending-acceptance-audit,open
 Interprogck8,yes,declared,not-applicable,declared,owned-adapter,interprogck8-v1,pending-backend-audit,pending-acceptance-audit,open
-Kiss,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,kiss-v1,pending-backend-audit,pending-acceptance-audit,open
+Kiss,yes,declared,not-applicable,declared,owned-adapter,kiss-v1,pending-backend-audit,pending-acceptance-audit,open
 LaserFuck,yes,declared,not-applicable,declared,owned-adapter,laserfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Line,yes,declared,not-applicable,declared,owned-adapter,line-v1,pending-backend-audit,pending-acceptance-audit,open
 lol waht i cant edit talk pages,yes,declared,not-applicable,declared,owned-adapter,lol-waht-i-cant-edit-talk-pages-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -98,7 +98,7 @@ SendStuff,yes,declared,not-applicable,declared,owned-adapter,sendstuff-v1,pendin
 Shakespeare,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,shakespeare-v1,pending-backend-audit,pending-acceptance-audit,open
 SLOW ACV MAMMALIAN,yes,declared,declared,declared,owned-adapter,slow-acv-mammalian-v1,pending-backend-audit,pending-acceptance-audit,open
 Smallfuck,yes,declared,not-applicable,declared,owned-adapter,smallfuck-v1,pending-backend-audit,pending-acceptance-audit,open
-Smu,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,smu-v1,pending-backend-audit,pending-acceptance-audit,open
+Smu,yes,declared,not-applicable,declared,owned-adapter,smu-v1,pending-backend-audit,pending-acceptance-audit,open
 Sonata,yes,declared,not-applicable,declared,owned-adapter,sonata-v1,pending-backend-audit,pending-acceptance-audit,open
 SStack,yes,declared,not-applicable,declared,owned-adapter,sstack-v1,pending-backend-audit,pending-acceptance-audit,open
 Stisp,yes,declared,not-applicable,declared,owned-adapter,stisp-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -112,7 +112,7 @@ thisthat,yes,declared,not-applicable,declared,owned-adapter,thisthat-v1,pending-
 Thue,yes,declared,not-applicable,declared,owned-adapter,thue-v1,pending-backend-audit,pending-acceptance-audit,open
 Unary,yes,declared,not-applicable,declared,inherited-adapter,brainfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Underload,yes,declared,not-applicable,declared,owned-adapter,underload-v1,pending-backend-audit,pending-acceptance-audit,open
-Unlambda,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,unlambda-v1,pending-backend-audit,pending-acceptance-audit,open
+Unlambda,yes,declared,not-applicable,declared,owned-adapter,unlambda-v1,pending-backend-audit,pending-acceptance-audit,open
 Unsquare,yes,declared,not-applicable,declared,owned-adapter,unsquare-v1,pending-backend-audit,pending-acceptance-audit,open
 What!?,yes,declared,not-applicable,declared,owned-adapter,what-v1,pending-backend-audit,pending-acceptance-audit,open
 Whitespace,yes,declared,not-applicable,declared,owned-adapter,whitespace-v1,pending-backend-audit,pending-acceptance-audit,open

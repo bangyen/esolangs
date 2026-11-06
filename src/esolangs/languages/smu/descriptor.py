@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Smu."""
 
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.smu.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -11,6 +12,9 @@ LANGUAGE = Language(
     "Smu",
     RuntimeSpec(
         "smu",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="stack_based",
         # Every run pushes its input bit, and the spec's EOF bit is ``=``.
         eof="an exhausted read pushes the spec's '=' bit",
