@@ -12,6 +12,7 @@ from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Any
 
 from esolangs.exceptions import MissingDependencyError
+from esolangs.runtime._json import unique_object
 from esolangs.runtime.source_hints import syntax_error
 
 if TYPE_CHECKING:
@@ -456,7 +457,7 @@ def read_metadata(data: bytes) -> dict[str, Any] | None:
             continue
         if found is not None or len(body) > _METADATA_LIMIT:
             raise ValueError("duplicate or oversized esolangs PNG metadata")
-        decoded = json.loads(body)
+        decoded = json.loads(body, object_pairs_hook=unique_object)
         if not isinstance(decoded, dict):
             raise ValueError("esolangs PNG metadata must be an object")
         found = decoded

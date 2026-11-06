@@ -18,6 +18,7 @@ from esolangs.cli.hints import _cli_error_text, _did_you_mean
 from esolangs.exceptions import EsolangError
 from esolangs.generation.wrap import DEFAULT_WIDTH
 from esolangs.registry import resolve
+from esolangs.runtime._json import unique_object
 from esolangs.runtime._validate import check_scale, check_timeout
 from esolangs.settings import DialectSettings, dialect_choices
 
@@ -407,7 +408,7 @@ def _settings_of(
     values: dict[str, object] = {}
     if "--settings" in options:
         try:
-            parsed = json.loads(options["--settings"])
+            parsed = json.loads(options["--settings"], object_pairs_hook=unique_object)
         except ValueError as exc:
             _fail(f"--settings is not valid JSON ({exc}); pass a JSON object")
         if not isinstance(parsed, dict):

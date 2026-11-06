@@ -214,6 +214,21 @@ def test_missing_worker_observations_are_rejected_with_the_prefix(failure):
             streamed + json.dumps(success) + "\n{",
             streamed + "null",
             streamed + "[]",
+            streamed + '{"output":"hidden","output":"prefix"}',
+            streamed
+            + json.dumps(success).replace(
+                '"result":', '"result":"hidden","result":', 1
+            ),
+            streamed
+            + json.dumps(success).replace(
+                '"result":', r'"\u0072esult":"hidden","result":', 1
+            ),
+            streamed
+            + json.dumps(success).replace('"steps": null', '"steps":0,"steps":null'),
+            streamed
+            + json.dumps(success).replace(
+                '"kind": "halted"', '"kind":"periodic","kind":"halted"'
+            ),
         ):
             with pytest.raises(
                 esolangs.InterpreterLimitError, match="invalid isolated"
@@ -237,6 +252,17 @@ def test_worker_requires_the_complete_request(monkeypatch):
         )
         monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(broken)))
         with pytest.raises(ValueError, match="invalid worker request fields"):
+            _isolated._worker()
+    encoded = json.dumps(request)
+    for malformed in (
+        encoded.replace('"language":', '"language":"ignored","language":', 1),
+        json.dumps({**request, "settings": {"key": 1}}).replace(
+            '"key": 1', '"key":1,"key":2'
+        ),
+    ):
+        assert malformed != encoded
+        monkeypatch.setattr(sys, "stdin", io.StringIO(malformed))
+        with pytest.raises(ValueError, match="duplicate field"):
             _isolated._worker()
 
 

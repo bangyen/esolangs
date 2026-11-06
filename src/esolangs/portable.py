@@ -21,6 +21,7 @@ from esolangs.compressed import CompressedText, TextLimits
 from esolangs.exceptions import ArgumentError, ProgramError
 from esolangs.raster import Raster, png
 from esolangs.registry import LANGUAGES, resolve, template_char
+from esolangs.runtime._json import unique_object
 from esolangs.runtime._program import Program
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 
@@ -152,16 +153,6 @@ def dump_program(
     )
 
 
-def _object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    """Build a JSON object, refusing a duplicate field."""
-    result: dict[str, Any] = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError(f"duplicate field: {key}")
-        result[key] = value
-    return result
-
-
 def _settings(value: Any, language: str) -> DialectSettings | None:
     """Restore saved dialect settings, validated for ``language``."""
     settings = decode_settings(value)
@@ -273,7 +264,7 @@ def load_program(language: str, document: str) -> Artifact:
     if not isinstance(document, str):
         raise ArgumentError("document must be a JSON string")
     try:
-        value = json.loads(document, object_pairs_hook=_object)
+        value = json.loads(document, object_pairs_hook=unique_object)
         if not isinstance(value, dict):
             raise ValueError("document must be an object")
         fields = {"format", "version", "language", "settings", "kind", "source"}

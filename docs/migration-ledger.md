@@ -627,3 +627,11 @@ combinations cover all small tables and larger layouts through ten inputs,
 including packed pairs; ABCDirection's byte progress and final cycle agree.
 Emitter source, bounds, pins and anchors remain unchanged; catalog acceptance
 stays open.
+
+Operational JSON objects now reject duplicate fields, including nested and
+Unicode-escaped equivalent names. One parser hook covers portable programs,
+PNG source metadata, CLI settings, registry scaling data and worker requests
+and responses. Malformed worker frames retain only the validated output prefix;
+capped streams still kill and reap their child. Existing tests include equal
+repeated values and preserve separate CLI overrides and future PNG versions.
+Canonical version-1 formats remain supported; catalog acceptance stays open.

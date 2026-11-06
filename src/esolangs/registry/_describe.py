@@ -24,12 +24,14 @@ from esolangs.registry._contracts import (
     WidthEffect,
 )
 from esolangs.runtime._execution import interpreter_module
+from esolangs.runtime._json import unique_object
 from esolangs.settings import DialectOption, dialect_choices
 from esolangs.vm import machine_traits
 
 #: Generated from the language-owned proof ledger by ``just docs``.
 _SCALING: dict[str, str] = json.loads(
-    pathlib.Path(__file__).with_name("scaling.json").read_text(encoding="utf-8")
+    pathlib.Path(__file__).with_name("scaling.json").read_text(encoding="utf-8"),
+    object_pairs_hook=unique_object,
 )
 
 #: The committed examples, inside the package so the wheel ships them.

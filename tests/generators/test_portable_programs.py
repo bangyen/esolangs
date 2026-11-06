@@ -38,6 +38,9 @@ def test_default_settings_distinction(choices) -> None:
 def test_invalid_json(document) -> None:
     with pytest.raises(esolangs.ProgramError):
         esolangs.load_program("Brainfuck", document)
+    for duplicated in ('{"format":1,"format":1}', '{"settings":{"key":1,"key":2}}'):
+        with pytest.raises(esolangs.ProgramError, match="duplicate field"):
+            esolangs.load_program("Brainfuck", duplicated)
 
 
 @pytest.mark.parametrize(

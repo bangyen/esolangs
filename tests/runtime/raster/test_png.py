@@ -565,6 +565,14 @@ def test_duplicate_source_metadata_is_refused() -> None:
     data = png.write_metadata(data, {"version": 1})
     with pytest.raises(ProgramError, match="duplicate"):
         Raster.from_png(data)
+    for body in (
+        b'{"version":1,"version":1}',
+        b'{"version":1,"settings":{"cell_modulus":2,"cell_modulus":2}}',
+    ):
+        plain = png.write_rgb((((1, 2, 3),),))
+        duplicate = plain[:-12] + _chunk(b"esOL", body) + plain[-12:]
+        with pytest.raises(ProgramError, match="duplicate field"):
+            Raster.from_png(duplicate)
 
 
 @pytest.mark.parametrize("body", [b"[]", b"broken-json", b"x" * 16_385])

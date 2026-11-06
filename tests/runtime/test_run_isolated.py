@@ -210,7 +210,13 @@ def protocol_child():
 def test_capped_protocol_truncated_record_retains_prefix(protocol_child) -> None:
     from esolangs.runtime._isolated import _bounded_output
 
-    for malformed in ('{"output":', "null\n", "[]\n"):
+    for malformed in (
+        '{"output":',
+        "null\n",
+        "[]\n",
+        '{"output":"hidden","output":"prefix"}\n',
+        '{"output_limit":true,"output_limit":false}\n',
+    ):
         child = protocol_child(['{"output":"prefix"}\n', malformed])
         with pytest.raises(esolangs.InterpreterLimitError) as caught:
             _bounded_output(child, "{}", 1)

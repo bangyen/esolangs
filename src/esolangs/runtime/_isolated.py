@@ -23,6 +23,7 @@ from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry import resolve
 from esolangs.results import ExecutionResult
 from esolangs.runtime._input import InputSource, read_input
+from esolangs.runtime._json import unique_object
 from esolangs.runtime._program import Program
 from esolangs.runtime._proof import TerminationResult
 from esolangs.runtime._result_wire import (
@@ -153,8 +154,8 @@ def _decode(text: str, *, expired: bool) -> _WorkerResult:
     malformed = False
     for line in text.splitlines():
         try:
-            message = json.loads(line)
-        except json.JSONDecodeError:
+            message = json.loads(line, object_pairs_hook=unique_object)
+        except ValueError:
             malformed = True
             break  # A killed write may leave only part of its last JSON record.
         if not isinstance(message, dict) or result is not None:
@@ -454,11 +455,11 @@ def _bounded_output(
                 raise record
             output.append(record)
             try:
-                message = json.loads(record)
+                message = json.loads(record, object_pairs_hook=unique_object)
                 limited = (
                     isinstance(message, dict) and message.get("output_limit") is True
                 )
-            except json.JSONDecodeError:
+            except ValueError:
                 break
             if limited:
                 break
@@ -606,7 +607,7 @@ def _worker() -> None:
 
 def _read_request(stream: TextIO) -> dict[str, Any]:
     """Decode the canonical request; omitted options are protocol errors."""
-    request = json.load(stream)
+    request = json.load(stream, object_pairs_hook=unique_object)
     if not isinstance(request, dict) or set(request) != _REQUEST_FIELDS:
         raise ValueError("invalid worker request fields")
     if request["integer_max_output"]:

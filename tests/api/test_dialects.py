@@ -91,9 +91,20 @@ def test_invalid_settings_fail_before_reading(language, settings, options) -> No
 
 
 @pytest.mark.parametrize("operation", [esolangs.run, esolangs.generate])
-def test_settings_require_the_public_object(operation) -> None:
+def test_settings_require_the_public_object(operation, capsys) -> None:
     with pytest.raises(esolangs.ArgumentError, match="DialectSettings"):
         operation(REFERENCE, Unreadable(), settings={})
+    from esolangs.cli.args import _settings_of
+
+    for value in (2, 3):
+        document = '{"cell_modulus":2,"cell_modulus":' + str(value) + "}"
+        with pytest.raises(SystemExit) as caught:
+            _settings_of({"--settings": document})
+        assert caught.value.code == 2
+        assert "duplicate field" in capsys.readouterr().err
+    assert _settings_of(
+        {"--settings": '{"cell_modulus":255}'}, ["cell_modulus=256"]
+    ) == esolangs.DialectSettings(cell_modulus=256)
 
 
 def test_cli_help_shows_literal_settings_json(capsys) -> None:
