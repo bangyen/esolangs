@@ -107,7 +107,7 @@ acceptance audit after the active separation work lands. Storage policy needs
 its priced comparison and explicit decision. These remain open even where an
 implementation pilot already passed.
 
-Accounting now has 112 explicit or inherited semantic adapters; 5 language
+Accounting now has 113 explicit or inherited semantic adapters; 4 language
 rows still use snapshot accounting. Declarations do not close lifecycle,
 storage-policy or catalog-wide acceptance requirements.
 
@@ -241,3 +241,7 @@ transfer cells and input-set state remain per-run.
 Malbolge accounts for its finite 59,049-word store and registers independently
 of cycle-cache chunks. Canonical accounting pages retain immutable captures;
 physical cache partitions and spare capacity are excluded.
+
+Fargo declares typed numeric, array, callable and continuation values. Accounting
+no longer renders values with repr; callable arity/raw arguments and unordered
+bindings retain their semantics independently of cycle keys.

@@ -49,7 +49,7 @@ EGL,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,egl-v1,pe
 Eval,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,eval-v1,pending-backend-audit,pending-acceptance-audit,open
 Fackward,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,fackward-v1,pending-backend-audit,pending-acceptance-audit,open
 FALSE,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,false-v1,pending-backend-audit,pending-acceptance-audit,open
-Fargo,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+Fargo,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,fargo-v1,pending-backend-audit,pending-acceptance-audit,open
 Fish,yes,declared,not-applicable,declared,owned-adapter,fish-v1,pending-backend-audit,pending-acceptance-audit,open
 Flowchart,yes,declared,not-applicable,declared,owned-adapter,flowchart-v1,pending-backend-audit,pending-acceptance-audit,open
 Forbin,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open

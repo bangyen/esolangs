@@ -306,7 +306,7 @@ class TestMachine:
             machine.step()
         return seen
 
-    def test_snapshot_separates_the_state_it_claims_to_carry(self) -> None:
+    def test_snapshot_separates_the_state_it_claims_to_carry(self, monkeypatch) -> None:
         """Each field matters, so a run's states are all distinct."""
         assert self._states("f x | x 0\nf 1\n$\n") != self._states(
             "f x | x 0\nf 0\n$\n"
@@ -317,6 +317,57 @@ class TestMachine:
         assert self._states("g | 1 0\n% 0 : 1 g\n$\n") != self._states(
             "g | 0 0\n% 0 : 1 g\n$\n"
         ), "a frame's result does not reach the snapshot"
+
+        from dataclasses import replace
+
+        from esolangs.languages.fargo.interpreter import _Func, _workspace_value
+        from esolangs.runtime._state import WorkspaceVariant
+        from scripts.benchmark import WrittenState, state_bits
+
+        def forbidden(*_args):
+            raise AssertionError("cycle rendering reached accounting")
+
+        machine = _Machine("$", ScriptedIO("0\n"))
+        fn = _Func("f", 2, (1,))
+        array = (0, (1, fn))
+        frame = _Frame(
+            ("$",),
+            pending=((fn, (array,)),),
+            binds=(("b", array), ("a", 7)),
+            result=array,
+        )
+        machine.state = replace(machine.state, frames=(frame,))
+        saved = machine.workspace_snapshot()
+        retained = {saved}
+        monkeypatch.setattr(_Func, "__repr__", forbidden)
+        monkeypatch.setattr(_Machine, "snapshot", forbidden)
+        assert machine.workspace_snapshot() == saved
+        machine.state = replace(
+            machine.state, frames=(replace(frame, binds=frame.binds[::-1]),)
+        )
+        assert machine.workspace_snapshot() == saved
+        for changed in (_Func("f", 1, (1,)), _Func("f", 2, ()), _Func("g", 2, (1,))):
+            machine.state = replace(
+                machine.state, frames=(replace(frame, pending=((changed, (array,)),)),)
+            )
+            assert machine.workspace_snapshot() != saved
+        assert saved in retained
+        assert _workspace_value(0, {}) != _workspace_value((), {})
+        deep, expected = 1, 1
+        for _ in range(5000):
+            deep = (deep,)
+            expected = WorkspaceVariant("array", (expected,))
+        observed = _workspace_value(deep, {})
+        assert observed == expected
+        assert hash(observed) == hash(expected)
+        assert state_bits(observed, {}) == 1
+        literal = _Machine("$", ScriptedIO("0\n"))
+        measured = WrittenState(literal.workspace_snapshot())
+        while not literal.halted:
+            literal.step()
+            measured.sample(literal.workspace_snapshot())
+        assert literal.io.getvalue() == "0"
+        assert measured.bits == 11
 
     def test_frame_entry_key_separates_differing_bindings(self) -> None:
         """Two calls of one function with different arguments differ."""

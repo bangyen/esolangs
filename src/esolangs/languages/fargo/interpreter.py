@@ -52,6 +52,7 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -232,6 +233,35 @@ class _State:
     frames: tuple[_Frame, ...]
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "fargo-v1",
+    ("instruction", "input_number", "output_number", "frames", "input_cursor"),
+)
+
+
+def _workspace_value(value: _Value, frozen: dict[int, Hashable]) -> Hashable:
+    """Freeze nested arrays and callables without repr or recursive traversal."""
+    pending = [(value, False)]
+    while pending:
+        node, ready = pending.pop()
+        if id(node) in frozen:
+            continue
+        if isinstance(node, int):
+            frozen[id(node)] = node
+        elif isinstance(node, _Func):
+            frozen[id(node)] = WorkspaceVariant(
+                "callable", (node.name, node.arity, node.raw)
+            )
+        elif ready:
+            frozen[id(node)] = WorkspaceVariant(
+                "array", tuple(frozen[id(v)] for v in node)
+            )
+        else:
+            pending.append((node, True))
+            pending.extend((v, False) for v in node)
+    return frozen[id(value)]
+
+
 class _Machine:
     """One Fargo run: the definitions, the two numbers, and the call stack.
 
@@ -308,6 +338,39 @@ class _Machine:
     def stack(self) -> list[object]:
         """The stack."""
         return list(self.state.frames)
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture logical values and continuations independently of cycle rendering."""
+        frozen: dict[int, Hashable] = {}
+        return _WORKSPACE_MODEL.capture(
+            instruction=self.ind,
+            input_number=self.number,
+            output_number=self.output,
+            frames=tuple(
+                WorkspaceVariant(
+                    "frame",
+                    (
+                        frame.tokens,
+                        frame.pos,
+                        frame.fn_name,
+                        _workspace_value(frame.result, frozen),
+                        tuple(
+                            (
+                                _workspace_value(fn, frozen),
+                                tuple(_workspace_value(arg, frozen) for arg in args),
+                            )
+                            for fn, args in frame.pending
+                        ),
+                        frozenset(
+                            (key, _workspace_value(value, frozen))
+                            for key, value in frame.binds
+                        ),
+                    ),
+                )
+                for frame in self.state.frames
+            ),
+            input_cursor=self.io.progress(),
+        )
 
     def snapshot(self) -> Hashable:
         """Return the complete internal state, hashable for cycle detection.
