@@ -40,11 +40,6 @@ from esolangs.generation.shared_block import (
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.sstack.generator._binary import _PROLOGUE, best_binary_bank
 from esolangs.languages.sstack.generator._walk import _Hooks, _TreeWalk
-from esolangs.languages.sstack.proof_formulas import workspace
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
 
 _LEAF = {"0": ":c:", "1": ":b:"}
 

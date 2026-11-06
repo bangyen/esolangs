@@ -61,11 +61,6 @@ from esolangs.languages.circuit_diagram.generator.layout import (
     _layout_area,
     _resolve_order,
 )
-from esolangs.languages.circuit_diagram.proof_formulas import workspace
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.runtime._definition import RuntimeSpec
 
 # Gate characters used by muxes and the two self-fed constant forms.
 _GateGlyph = Literal["a", "o", "A", "O", "x", "X"]

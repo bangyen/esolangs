@@ -34,11 +34,6 @@ from __future__ import annotations
 from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.wrap import wrap_chars
-from esolangs.languages.malbolge.proof_formulas import execution, workspace
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
 from esolangs.runtime.source_hints import with_hint
 
 from .constant import _constant_program

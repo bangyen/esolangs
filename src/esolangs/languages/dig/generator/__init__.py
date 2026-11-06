@@ -61,10 +61,6 @@ from esolangs.languages.dig.generator._leaf import (
     _render,
 )
 from esolangs.languages.dig.generator._shared import _dig_indexed_shared
-from esolangs.languages.dig.proof_formulas import execution, workspace
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec
 
 # Dig blocks for one level of the decision tree.  ``$`` takes its count
 # from the digit beside it and looks up, right, down, left for one, so the

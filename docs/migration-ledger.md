@@ -31,6 +31,7 @@ Owners are workstreams, not individual contributors.
 | Helpers' `_parity_bias` and duplicate parity recognizers | Analysis | Retired; eight backends and REFRACTRAN ablations use canonical analysis; independent affine oracle and removed-export checks | `generation.algebraic.parity_bias` |
 | `runtime._result.ExecutionResult` shim | Results | Retired; imports migrated; negative import check in `tests/api/test_run_results.py` | `esolangs.results.ExecutionResult` |
 | `_Machine` / `_for_run` discovery | Lifecycle | Retired; runtime and verification drivers use declared factories; raw native machines remain independent oracles | Declared preparation/factories and capabilities |
+| Generator proof-function re-exports | Certification | Retired; five package generators dropped unused imports; all-backend import barrier rejects proof loading | Explicit owned proof providers |
 | Implicit completion entrypoint defaults | Lifecycle | Retired; required declaration fields and explicit driver policies; rejection controls in `tests/runtime/test_lifecycle.py` | Explicit completion declarations |
 | Dialect metadata signature/default inspection | Lifecycle | Retired; all seven schemas declared; constructor/default and no-discovery checks in `tests/api/test_dialects.py` | Declared dialect schemas and defaults |
 | Generator callable-option signature inference | Analysis | Retired; all 114 backends use declared options; independent signature oracle and no-discovery checks in `tests/api/test_artifact_defaults.py` and `tests/api/test_api_contracts.py` | Declared backend option capabilities |
@@ -369,3 +370,12 @@ Bleh and Codesick retain canonical layers with native names, polarity and
 input ordering. Constant fast paths keep validation ahead of decision analysis.
 All eight have executed canonical-analysis fault controls, unchanged corpus
 bytes, size/resource scopes and passing generation-timing comparisons.
+
+Dig, Line, SStack, Circuit Diagram and Malbolge generators no longer import
+unused proof functions or metadata types. Bounds remain owned by their explicit
+proof providers. The all-backend barrier rejects proof-formula imports as well
+as certification imports; unused metadata re-exports are checked across all
+114 backends. The wheel passes generation/round trips and native execution for
+all 117 runtimes with both import controls on Python 3.12–3.15, using cached
+ABI-matched Pillow 13.0. Installed stepped, failure and accounting acceptance
+remain open.

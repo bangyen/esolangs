@@ -47,11 +47,7 @@ from esolangs.languages.line.generator.render import _UNIT, Canvas, _check_unit
 from esolangs.languages.line.generator.shared import CanvasPlan
 from esolangs.languages.line.generator.small_tree import small_tree_canvas
 from esolangs.languages.line.generator.tree_layout import tree_extents
-from esolangs.languages.line.proof_formulas import execution, workspace
 from esolangs.raster import Pixel, Raster, Rows, lazy_raster
-from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._language import Language
-from esolangs.runtime._definition import RuntimeSpec, SourceKind
 
 
 def line_boolean(
