@@ -47,31 +47,20 @@ class TestEveryLanguageIsSteppable:
 
     def test_every_random_machine_implements_the_branching_protocol(self) -> None:
         """Randomness no longer costs a language its hang proof."""
-        import importlib
-        import inspect
+        from esolangs._cycles import _BranchingStepMachine
+        from esolangs.registry import LANGUAGES
+        from tests.support.samples import SAMPLES
 
-        from esolangs.registry import INTERPRETERS
-
-        methods = (
-            "branching_snapshot",
-            "branching_halted",
-            "branching_successors",
-        )
-
-        random_languages: set[str] = set()
-        missing: dict[str, list[str]] = {}
-        for language, module_path in sorted(INTERPRETERS.items()):
-            module = importlib.import_module(module_path)
-            state = module._Machine
-            if "rng" not in inspect.signature(state.__init__).parameters:
+        observed = set()
+        for name, language in LANGUAGES.items():
+            if not language.runtime.random:
                 continue
-            random_languages.add(language)
-            absent = [name for name in methods if not hasattr(state, name)]
-            if absent:
-                missing[language] = absent
-
-        assert missing == {}
-        assert random_languages == set(languages(random=True))
+            source, stdin = SAMPLES[name]
+            vm = debugger_api.make_vm(name, source, stdin=stdin)
+            assert isinstance(vm._machine, _BranchingStepMachine), name
+            observed.add(name)
+        assert observed == set(languages(random=True))
+        assert observed
 
     def test_the_stub_sources_reject_an_empty_range(self) -> None:
         """``randbelow`` checks its bound instead of ignoring it."""

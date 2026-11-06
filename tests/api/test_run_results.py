@@ -148,6 +148,30 @@ def test_public_record_is_immutable_and_the_old_import_is_retired():
         with pytest.raises(ModuleNotFoundError) as missing:
             import_module(retired)
         assert missing.value.name == retired
+    from esolangs import _cycles, vm
+
+    for retired in (
+        "_AffineMachine",
+        "_branch_search",
+        "_BranchingStepMachine",
+        "_checked_unwrap",
+        "_clamps_hold",
+        "_climbs_forever",
+        "_FramedMachine",
+        "_grows_forever",
+        "_GrowthVisit",
+        "_refuse_random",
+        "_Snapshot",
+        "_StepMachine",
+        "_SteppableMachine",
+        "_TapeMachine",
+        "_unwrap",
+        "_Visit",
+    ):
+        assert getattr(_cycles, retired) is not None
+        assert not hasattr(vm, retired), retired
+        with pytest.raises(ImportError, match=retired):
+            exec(f"from esolangs.vm import {retired}", {})
     result = ExecutionResult("custom", None, None, None)
     assert result.completion is None
     assert pickle.loads(pickle.dumps(result)) == result

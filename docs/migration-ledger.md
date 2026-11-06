@@ -30,6 +30,7 @@ Owners are workstreams, not individual contributors.
 | Helpers' `AffineForm`, `affine_form`, `symmetric_outputs` re-exports | Analysis | Retired; callers migrated; negative export check in `tests/generators/test_symmetry.py` | `generation.algebraic` / `generation.lookup` |
 | Helpers' `_parity_bias` and duplicate parity recognizers | Analysis | Retired; eight backends and REFRACTRAN ablations use canonical analysis; independent affine oracle and removed-export checks | `generation.algebraic.parity_bias` |
 | `runtime._result.ExecutionResult` shim | Results | Retired; imports migrated; negative import check in `tests/api/test_run_results.py` | `esolangs.results.ExecutionResult` |
+| Private cycle helpers/protocols re-exported by `vm` | Registry | Retired; five caller files use their owner; 16 actual import refusals in `tests/api/test_run_results.py` | `esolangs._cycles`; public VM detector imports remain supported |
 | `_Machine` / `_for_run` discovery | Lifecycle | Retired; runtime and verification drivers use declared factories; raw native machines remain independent oracles | Declared preparation/factories and capabilities |
 | Generator proof-function re-exports | Certification | Retired; five package generators dropped unused imports; all-backend import barrier rejects proof loading | Explicit owned proof providers |
 | Implicit completion entrypoint defaults | Lifecycle | Retired; required declaration fields and explicit driver policies; rejection controls in `tests/runtime/test_lifecycle.py` | Explicit completion declarations |
@@ -445,3 +446,13 @@ match byte for byte. Both analysis queries have executed fault controls;
 2,938 paired rows retain traces and resource peaks, including both width paths.
 Bounds, size pins and anchors remain unchanged. Installed witnesses match on
 Python 3.12–3.15; catalog acceptance stays open.
+
+The VM no longer re-exports 16 private cycle names. Its annotation uses the
+owner module; executable function bodies are identical. The random-machine
+protocol check now constructs declared factories instead of inspecting private
+class names and constructor signatures. Across 117 runtimes, 16,623 cases and
+1,097,759 states match, including 15,647 clean halts, 960 bounded cases and 16
+matching runtime faults. Each runtime has output/view fault controls; all timing
+ratios pass 0.9. Scope: n<=2, Malbolge n=1, at most 400 steps per case.
+The wheel rejects all 16 retired imports on Python 3.12–3.15 while preserving
+13,778 accounting observations. Broader semantic/corpus acceptance remains open.

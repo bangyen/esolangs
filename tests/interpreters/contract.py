@@ -144,8 +144,8 @@ class CycleContract:
 
     def test_loop_is_detected_as_a_cycle(self) -> None:
         """A program that revisits a snapshot is proven to hang."""
+        from esolangs._cycles import _BranchingStepMachine
         from esolangs.vm import (
-            _BranchingStepMachine,
             run_until_halt_or_all_branches_cycle,
             run_until_halt_or_cycle,
         )

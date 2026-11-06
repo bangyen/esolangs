@@ -22,54 +22,7 @@ from collections.abc import Hashable
 from functools import cache
 from typing import Any, Protocol, cast, runtime_checkable
 
-from esolangs._cycles import (
-    _AffineMachine as _AffineMachine,
-)
-from esolangs._cycles import (
-    _branch_search as _branch_search,
-)
-from esolangs._cycles import (
-    _BranchingStepMachine as _BranchingStepMachine,
-)
-from esolangs._cycles import (
-    _checked_unwrap as _checked_unwrap,
-)
-from esolangs._cycles import (
-    _clamps_hold as _clamps_hold,
-)
-from esolangs._cycles import (
-    _climbs_forever as _climbs_forever,
-)
-from esolangs._cycles import (
-    _FramedMachine as _FramedMachine,
-)
-from esolangs._cycles import (
-    _grows_forever as _grows_forever,
-)
-from esolangs._cycles import (
-    _GrowthVisit as _GrowthVisit,
-)
-from esolangs._cycles import (
-    _refuse_random as _refuse_random,
-)
-from esolangs._cycles import (
-    _Snapshot as _Snapshot,
-)
-from esolangs._cycles import (
-    _StepMachine as _StepMachine,
-)
-from esolangs._cycles import (
-    _SteppableMachine as _SteppableMachine,
-)
-from esolangs._cycles import (
-    _TapeMachine as _TapeMachine,
-)
-from esolangs._cycles import (
-    _unwrap as _unwrap,
-)
-from esolangs._cycles import (
-    _Visit as _Visit,
-)
+import esolangs._cycles as _cycles
 from esolangs._cycles import (
     run_until_halt as run_until_halt,
 )
@@ -253,7 +206,7 @@ class VM(Protocol):
 class _DelegatingVM:
     """Wrap a registered interpreter, copying its exposed memory and stack."""
 
-    _machine: _StepMachine
+    _machine: _cycles._StepMachine
 
     def __init__(
         self,

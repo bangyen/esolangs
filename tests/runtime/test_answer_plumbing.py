@@ -308,7 +308,7 @@ class TestSnapshotSaysItIsOpaque:
 
     def test_the_docstring_says_so(self) -> None:
         """A reader asked what the fields were; there are no fields."""
-        from esolangs.vm import _StepMachine
+        from esolangs._cycles import _StepMachine
 
         doc = _StepMachine.snapshot.__doc__
         assert doc is not None

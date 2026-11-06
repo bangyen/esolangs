@@ -190,7 +190,7 @@ class _Machine:
         return self.state[2]
 
     # The growth detector's view.  The pointer is ``cell`` here, so it is
-    # aliased to the name ``esolangs.vm._TapeMachine`` asks for.  6-5
+    # aliased to the name ``esolangs._cycles._TapeMachine`` asks for.  6-5
     # qualifies for that protocol: ``3`` at cell 0 prepends a zero and
     # leaves the pointer at index 0, so ``ptr`` counts from the leftmost
     # cell and a period that grows left passes ``ptr == 0``, which the
