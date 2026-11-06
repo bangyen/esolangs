@@ -13,10 +13,11 @@ from esolangs.languages.thisthat.interpreter import (
     _NeedDrawError,
     _NeedInputError,
     _Pointer,
+    prepare_machine,
     run,
 )
 from esolangs.runtime.io import ScriptedIO
-from esolangs.runtime.randomness import FirstDraw, draw
+from esolangs.runtime.randomness import FirstDraw, Seeded, draw
 from tests.interpreters.oracle_support import check_terminal
 from tests.support.paths import ROOT
 
@@ -282,6 +283,34 @@ def test_random_merge_selects_one_pointer_and_nands_data() -> None:
     machine.step()
     assert len(machine.pointers) == 1
     assert machine.pointers[0].value == 0
+
+    source = ["▣═◘═◇"]
+    rng = Seeded(7)
+    before = rng._random.getstate()
+    options = {"rng": rng}
+    factory = prepare_machine(source, options)
+    source[0] = "▣"
+    options.clear()
+    first, second = factory(ScriptedIO()), factory(ScriptedIO())
+    assert first is not second
+    assert first.rng is second.rng is rng
+    assert rng._random.getstate() == before
+    initial = second.snapshot()
+    first.pointers = (
+        _Pointer((2, 0), (1, 0), "data", 1),
+        _Pointer((2, 0), (3, 0), "data", 1),
+    )
+    first.cells = {(0, 0): 1}
+    first.step()
+    assert rng._random.getstate() != before
+    assert len(first.pointers) == 1
+    assert first.pointers[0].value == 0
+    assert second.snapshot() == initial
+    assert second.memory == []
+    with pytest.raises(TypeError, match="split text"):
+        prepare_machine("invalid", {})
+    with pytest.raises(TypeError, match="only the rng"):
+        prepare_machine(["▣"], {"unknown": True})
 
 
 @pytest.mark.parametrize(

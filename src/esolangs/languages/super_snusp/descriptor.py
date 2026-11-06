@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Super SNUSP."""
 
+from esolangs.languages.super_snusp.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -11,6 +12,9 @@ LANGUAGE = Language(
     RuntimeSpec(
         "super_snusp",
         category="grid_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         random=True,
         split=True,
         empty_program="Super SNUSP program cannot be empty",

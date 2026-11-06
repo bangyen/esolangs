@@ -23,14 +23,17 @@ Errors:
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from operator import add, and_, mul, or_, sub, xor
-from typing import NamedTuple, cast
+from typing import Any, NamedTuple, cast
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.super_snusp.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
@@ -556,12 +559,29 @@ class _Machine:
                 self.io.print_num(value)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind source and caller-owned RNG without drawing from it."""
+    if not isinstance(source, list):
+        raise TypeError("super_snusp machines require split text source")
+    if options.keys() - {"rng"}:
+        raise TypeError("super_snusp machines accept only the rng runtime option")
+    code = tuple(source)
+    rng = options.get("rng")
+
+    def build(io: IO) -> _Machine:
+        return _Machine(list(code), io, rng)
+
+    return build
+
+
 def _execute(
     code: list[str], io: IO, rng: Randomness | None = None
 ) -> CompletionReport:
     """Execute a Super SNUSP grid."""
     machine = _Machine(code, io, rng)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:

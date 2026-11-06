@@ -6,9 +6,15 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.super_snusp.generator import super_snusp
-from esolangs.languages.super_snusp.interpreter import _advance, _floor_root, run
+from esolangs.languages.super_snusp.interpreter import (
+    _advance,
+    _floor_root,
+    prepare_machine,
+    run,
+)
 from esolangs.languages.super_snusp.interpreter import _Machine as SuperSnusp
 from esolangs.runtime.io import IO, ScriptedIO
+from esolangs.runtime.randomness import Seeded
 from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_halts_with_hint
@@ -248,6 +254,30 @@ def test_super_snusp_forks_every_value_equals_could_store() -> None:
     assert at_equals is not None
     stored = sorted(_read_cell(nxt) for nxt in at_equals)
     assert stored == [2, 3], "both ends of the span are reachable"
+
+    source = ['"3{(=']
+    rng = Seeded(7)
+    before = rng._random.getstate()
+    options = {"rng": rng}
+    factory = prepare_machine(source, options)
+    source[0] = " "
+    options.clear()
+    first, second = factory(ScriptedIO()), factory(ScriptedIO())
+    assert first is not second
+    assert first._rng is second._rng is rng
+    assert rng._random.getstate() == before
+    initial = second.snapshot()
+    for _ in range(4):
+        first.step()
+    assert rng._random.getstate() == before
+    first.step()
+    assert rng._random.getstate() != before
+    assert second.snapshot() == initial
+    assert second.memory == second.stack == []
+    with pytest.raises(TypeError, match="split text"):
+        prepare_machine("invalid", {})
+    with pytest.raises(TypeError, match="only the rng"):
+        prepare_machine(['"'], {"unknown": True})
 
 
 def test_super_snusp_declines_input_and_caps_a_wide_span() -> None:

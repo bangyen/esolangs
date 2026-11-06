@@ -233,3 +233,7 @@ RNG and own their codebox, stack and register state.
 FRACTRAN records its chosen logical numeric representation explicitly: integer
 registers or sparse prime exponents. Mutable cursors and immutable scans share
 the exponent model; zero entries, guard indexes and selection caches are excluded.
+
+Super SNUSP and thisthat declare RNG-aware split-grid factories and debug fields.
+Preparation freezes source/options without drawing; tape, values, pointers,
+transfer cells and input-set state remain per-run.

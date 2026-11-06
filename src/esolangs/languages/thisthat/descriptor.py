@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for thisthat."""
 
+from esolangs.languages.thisthat.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -11,6 +12,9 @@ LANGUAGE = Language(
     RuntimeSpec(
         "thisthat",
         category="grid_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         random=True,
         split=True,
         eof="an exhausted '◇' sends the spec's empty transfer",
