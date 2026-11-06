@@ -91,6 +91,23 @@ def test_a_possible_branching_halt_is_not_this_runs_verdict():
 def test_an_open_branch_graph_cannot_claim_divergence():
     with pytest.raises(ValueError, match="closed graph"):
         BranchProof(0, ((0, (1,)),), halts=False)
+    for transitions, halts, terminal in (
+        (((9, (10,)),), True, 10),
+        (((0, (0,)), (9, (10,))), True, 10),
+        (((0, (0,)), (9, (9,))), False, None),
+        (((0, (1,)), (1, (1,))), True, 1),
+        ([(0, (0,))], False, None),
+        (([0, (0,)],), False, None),
+        (((0, [0]),), False, None),
+    ):
+        with pytest.raises(ValueError, match=r"unreachable|outgoing|containers"):
+            BranchProof(0, transitions, halts=halts, terminal=terminal)
+    # DFS may stop with an unexplored sibling when it reaches the terminal.
+    partial = BranchProof(0, ((0, (1, 2)), (2, (3,))), halts=True, terminal=3)
+    assert partial.states_examined == 3
+    with pytest.raises(ValueError, match="draws"):
+        checked_decision(CycleDecision(halts=True, commands=None, branches=partial))
+    assert BranchProof(None, (), halts=True).states_examined == 1
 
 
 @pytest.mark.parametrize(

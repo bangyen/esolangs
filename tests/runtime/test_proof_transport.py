@@ -150,30 +150,35 @@ def test_actual_termination_workers_retain_every_halt_and_cycle():
 
 @pytest.mark.medium
 def test_actual_branch_workers_retain_the_complete_graph():
-    reached = 0
+    reached = refused = 0
     for name, lang in LANGUAGES.items():
         if not lang.runtime.random:
             continue
         source, stdin = _request(name, 1)
         try:
-            native = _termination_result(name, source, stdin, None)
-        except (TimeoutError, TypeError):
-            continue  # Unforkable input or draw-dependent halting remains undecided.
-        if native.decision.branches is None:
+            native = _termination_result(name, source, stdin, 5)
+        except TimeoutError as error:
+            if "cannot be safely forked" not in str(error):
+                raise
+            refused += 1
             continue
-        worker = termination_result_isolated(
-            name, source.source, stdin, 5, settings=source.settings
-        )
+        assert native.decision.branches is not None
+        with guarded_worker():
+            worker = termination_result_isolated(
+                name, source.source, stdin, 5, settings=source.settings
+            )
         assert worker == native
         assert worker.decision.branches.states_examined > 0
         model = make_vm(name, source, stdin=stdin)._machine
+        assert worker.decision.branches.root == model.branching_snapshot()
         for state, outcomes in worker.decision.branches.transitions:
             assert tuple(model.branching_successors(state, 10_000)) == outcomes
             assert not model.branching_halted(state)
         if worker.decision.halts:
             assert model.branching_halted(worker.decision.branches.terminal)
         reached += 1
-    assert reached > 0
+    assert reached == 2
+    assert refused == 10
 
 
 @pytest.mark.medium
@@ -194,6 +199,11 @@ def test_wire_decisions_require_proof_and_matching_counts():
             halts=False,
             commands=None,
             branches=BranchProof(0, ((0, (0,)),), halts=False),
+        ),
+        CycleDecision(
+            halts=True,
+            commands=None,
+            branches=BranchProof(0, ((0, (1,)), (1, (2,))), halts=True, terminal=2),
         ),
     ]
     for record in records:
@@ -236,6 +246,36 @@ def test_wire_decisions_require_proof_and_matching_counts():
     broken["commands"] = 2
     with pytest.raises(ValueError, match="evidence"):
         decode_decision(broken)
+    for transitions, halts, terminal in (
+        ([[9, [10]]], True, 10),
+        ([[0, [0]], [9, [10]]], True, 10),
+        ([[0, [0]], [9, [9]]], False, None),
+        ([[0, [1]], [1, [1]]], True, 1),
+        ([[0, [1, 2]]], True, 2),
+    ):
+        broken = {
+            "halts": halts,
+            "commands": None,
+            "cycle": None,
+            "branches": {
+                "root": 0,
+                "transitions": transitions,
+                "halts": halts,
+                "terminal": terminal,
+            },
+        }
+        with pytest.raises(ValueError, match=r"unreachable|outgoing|draws"):
+            decode_decision(broken)
+        packet = {
+            "result": "prefix",
+            "execution": encode_result(ExecutionResult("prefix", 0, 0, 0)),
+            "termination": broken,
+        }
+        with pytest.raises(
+            esolangs.InterpreterLimitError, match="invalid isolated"
+        ) as caught:
+            _decode(streamed + json.dumps(packet), expired=False)
+        assert caught.value.partial_output == "prefix"
 
 
 def test_a_plain_worker_result_cannot_become_a_verdict():

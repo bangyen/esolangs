@@ -38,6 +38,7 @@ Owners are workstreams, not individual contributors.
 | Generator callable-option signature inference | Analysis | Retired; all 114 backends use declared options; independent signature oracle and no-discovery checks in `tests/api/test_artifact_defaults.py` and `tests/api/test_api_contracts.py` | Declared backend option capabilities |
 | `FunctionRef.__signature__` proxy | Registry | Retired; recursive declaration checks reject its return in `tests/api/test_descriptor_loading.py` | Explicit callable parameter declarations |
 | Snapshot-as-workspace fallback | Accounting | Retired; VM capture and `WrittenState` require models; missing/invalid adapters and raw values are rejected in runtime/tooling tests | Versioned semantic accounting models |
+| Disconnected, mutable or draw-dependent branch verdicts | Results | Retired; constructor, wire and parent-decoder refusal controls preserve partial output | Immutable root-reachable graphs; run-specific termination decisions |
 | Legacy worker-field defaults | Results | Retired; complete requests and explicit success/error observations; omission controls in `tests/runtime/test_worker_results.py` | Explicit canonical fields, including unavailable observations |
 | Permissive worker envelopes and nested proof fields | Results | Retired; missing/extra fields, unknown error kinds, duplicate terminals and contradictory output fail with retained prefixes | Exact canonical stream, result and evidence schemas |
 | Superseded serialization decoders/converters | Persistence | Persisted data and fixtures, if a format is superseded | One-time data migration, then remove the obsolete code |
@@ -543,3 +544,14 @@ pictures have live controls. The matrix passes installed Python 3.12–3.15.
 Together the small-table route audits account for all 8,208 row requests across
 114 Boolean backends: 8,172 executed and 36 capped. The matrices are repeated against the current operational implementations. Larger-corpus, branching and
 remaining semantic-resource acceptance stays open.
+
+Branch evidence requires immutable transition containers and root reachability
+for every recorded state and halting endpoint. A terminal cannot be recorded
+as an expanded nonhalting state. Partial exploration remains valid evidence of
+an any-path halt, but a forked halt cannot decide this run; native and wire
+validation now agree. Existing tests reject disconnected graphs, mutable rows,
+expanded terminals and unsupported decisions through constructors and worker
+decoding, retaining validated output prefixes. Actual random-backend witnesses
+require exactly two guarded proofs and ten explicit unforkable-input refusals.
+Installed Python 3.12–3.15 passes the same checks. Larger branching coverage and
+remaining migration acceptance stays open.

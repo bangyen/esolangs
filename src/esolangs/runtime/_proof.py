@@ -20,16 +20,29 @@ class BranchProof:
     terminal: Hashable | None = None
 
     def __post_init__(self) -> None:
-        """Require a witnessed endpoint or closure over every recorded outcome."""
+        """Require immutable, root-reachable evidence and a valid endpoint/closure."""
+        if not isinstance(self.transitions, tuple) or any(
+            not isinstance(row, tuple) or len(row) != 2 or not isinstance(row[1], tuple)
+            for row in self.transitions
+        ):
+            raise ValueError("invalid branching evidence containers")
         graph = dict(self.transitions)
         if len(graph) != len(self.transitions) or type(self.halts) is not bool:
             raise ValueError("invalid branching evidence")
+        reachable: set[Hashable] = set()
+        pending = [self.root]
+        while pending:
+            state = pending.pop()
+            if state not in reachable:
+                reachable.add(state)
+                pending.extend(graph.get(state, ()))
+        if graph.keys() - reachable:
+            raise ValueError("branching evidence contains unreachable states")
         if self.halts:
-            reached = self.terminal == self.root or any(
-                self.terminal in successors for successors in graph.values()
-            )
-            if not reached:
+            if self.terminal not in reachable:
                 raise ValueError("branching halt needs a reached endpoint")
+            if self.terminal in graph:
+                raise ValueError("branching terminal cannot have outgoing transitions")
         elif (
             self.terminal is not None
             or self.root not in graph
@@ -71,6 +84,8 @@ def checked_decision(value: object) -> CycleDecision:
             or value.commands is not None
         ):
             raise ValueError("invalid branching decision")
+        if value.halts and value.branches.forked:
+            raise ValueError("branching halt depends on this run's draws")
     elif type(value.commands) is not int or value.commands < 0:
         raise ValueError("a deterministic decision needs its command count")
     elif value.halts:
