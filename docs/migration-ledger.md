@@ -120,8 +120,8 @@ acceptance audit after the active separation work lands. Storage policy needs
 its priced comparison and explicit decision. These remain open even where an
 implementation pilot already passed.
 
-Accounting now has 115 explicit or inherited semantic adapters; 2 language
-rows still use snapshot accounting. Declarations do not close lifecycle,
+Accounting now has 116 explicit or inherited semantic adapters; 1 language
+still uses snapshot accounting. Declarations do not close lifecycle,
 storage-policy or catalog-wide acceptance requirements.
 
 All seven dialect schemas now declare choices and defaults. Runtime metadata
@@ -280,3 +280,8 @@ INTERCAL and Thue declare RNG-aware text factories and debug fields.
 Preparation binds options without drawing; return/stash/abstention state and
 rewrite text/match indexes remain per-run. Output-before-request flushing stays
 in the interpreter shells.
+
+Forbin declares source-located function references and canonical live lexical
+environments, preserving closure capture, parent links and loop phase without
+rendering or first-sight serials. Unreachable scope history and inactive loop
+storage are excluded; its exact workspace bounds count one copy of bindings.

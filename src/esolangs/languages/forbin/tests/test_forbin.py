@@ -205,8 +205,10 @@ class TestSnapshotWithoutTheCycleDetector:
         read = "main {\n a,b,c,d,e,f,g,h = (in 0);\n}\n"
         assert at(read, 0, "HH") != at(read, 1, "HH")
 
-    def test_scope_keys_are_first_sight_serials_that_survive_a_binding(self) -> None:
-        """The scope keys count in the workspace formula, so numbering is fixed.
+    def test_scope_keys_are_first_sight_serials_that_survive_a_binding(
+        self, monkeypatch
+    ) -> None:
+        """Native cycle keys retain first-sight scope identity across bindings.
 
         Each scope is keyed by a first-sight serial of its scope id (the
         global scope first).  Keyed by its locals' ``id`` instead, a binding
@@ -223,6 +225,76 @@ class TestSnapshotWithoutTheCycleDetector:
         rebound = machine.snapshot()[5]
         assert [key for key, _locals in rebound] == [1, 2]
         assert rebound[-1][1] == (("x", "0"),)
+
+        from dataclasses import replace
+        from types import MappingProxyType
+
+        from esolangs.languages.forbin.interpreter._scope import _Closure
+
+        def forbidden(*_args):
+            raise AssertionError("cycle serializer reached accounting")
+
+        code = (
+            "maker { x=0; bump { x=!x; out 0,1,0,0,0,0,0,x; } "
+            "self=bump; return bump; } main { f=(maker 0); g=f; f 0; g 0; }"
+        )
+        probe = Forbin(code, ScriptedIO())
+        probe.step()
+        probe.step()
+        saved = probe.workspace_snapshot()
+        retained = {saved}
+        for name in ("snapshot", "_scopes", "_serial", "_render"):
+            monkeypatch.setattr(probe, name, forbidden)
+        monkeypatch.setattr(_Closure, "__repr__", forbidden)
+        probe._serials.clear()
+        probe._next_serial = 10000
+        assert probe.workspace_snapshot() == saved
+        ids = {key: 1000 + 17 * i for i, key in enumerate(reversed(probe.state.scopes))}
+
+        def moved(value):
+            return (
+                replace(value, scope=ids[value.scope])
+                if isinstance(value, _Closure)
+                else value
+            )
+
+        scopes = {
+            ids[key]: replace(
+                scope,
+                parent=None if scope.parent is None else ids[scope.parent],
+                locals=MappingProxyType(
+                    {k: moved(v) for k, v in reversed(tuple(scope.locals.items()))}
+                ),
+            )
+            for key, scope in reversed(tuple(probe.state.scopes.items()))
+        }
+        scopes[90000] = next(iter(scopes.values()))
+        frames = tuple(replace(f, scope=ids[f.scope]) for f in probe.state.frames)
+        probe.state = replace(
+            probe.state, scopes=MappingProxyType(scopes), frames=frames
+        )
+        probe._global_scope = ids[probe._global_scope]
+        assert probe.workspace_snapshot() == saved
+        while not probe.halted:
+            probe.step()
+            probe.workspace_snapshot()
+            assert saved in retained
+        assert probe.io.getvalue() == "A@"
+        separate = Forbin("main { f={return 0;}; g={return 0;}; }", ScriptedIO())
+        separate.step()
+        separate.step()
+        locals_ = separate.state.scopes[separate.state.frames[0].scope].locals
+        assert locals_["f"].fn.site != locals_["g"].fn.site
+        loop = Forbin("main { for i:0..1 { } }", ScriptedIO())
+        loop.step()
+        before_phase = loop.workspace_snapshot()
+        frame = loop.state.frames[0]
+        loop.state = replace(loop.state, frames=(replace(frame, for_body_pos=999999),))
+        assert loop.workspace_snapshot() == before_phase
+        loop.state = replace(
+            loop.state, frames=(replace(frame, for_started=not frame.for_started),)
+        )
+        assert loop.workspace_snapshot() != before_phase
 
     def test_an_anonymous_function_is_named_by_the_empty_string(self) -> None:
         """``""`` is a real value here, not a placeholder nobody reads."""

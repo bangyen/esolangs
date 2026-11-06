@@ -63,12 +63,13 @@ from esolangs.languages.forbin.interpreter._scope import (
     _State,
 )
 from esolangs.languages.forbin.interpreter._step import _advance, _run_block
+from esolangs.languages.forbin.interpreter._workspace import _Scopes
 from esolangs.runtime._drive import drive
 from esolangs.runtime._fault import _Fault
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
-
 
 # ``_Machine`` runs on an explicit stack of :class:`_Frame` values (one per
 # statement-position call in progress -- ``main`` initially, one more per
@@ -89,6 +90,11 @@ from esolangs.runtime.source_hints import syntax_error
 # narrower scope fixes the depth cap for the pattern the language is
 # actually written in without the larger risk of converting expression
 # evaluation itself into an explicit continuation stack.
+_WORKSPACE_MODEL = WorkspaceModel(
+    "forbin-v1", ("frames", "scopes", "input_cursor", "buffered_bits", "input_reads")
+)
+
+
 class _Machine:
     """One Forbin run: an explicit stack of resumable call frames.
 
@@ -236,6 +242,20 @@ class _Machine:
             self.io.progress(),
             self.state.bits,
             self.state.reads,
+        )
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture live lexical state without rendering or cycle-key serials."""
+        graph = _Scopes(self.state.scopes, self._global_scope)
+        for frame in self.state.frames:
+            graph.reference(frame.scope)
+        frames = tuple(graph.frame(frame) for frame in self.state.frames)
+        return _WORKSPACE_MODEL.capture(
+            frames=frames,
+            scopes=graph.environments(),
+            input_cursor=self.io.progress(),
+            buffered_bits=self.state.bits,
+            input_reads=self.state.reads,
         )
 
     def snapshot(self) -> tuple[object, ...]:

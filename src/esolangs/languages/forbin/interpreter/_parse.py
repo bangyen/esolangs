@@ -39,10 +39,12 @@ _Statement = _Return | _Assign | _CallNode | _For
 class _Function:
     """A parsed function: name, parameter names, body, nested definitions."""
 
-    __slots__ = ("args", "body", "name", "nested")
+    __slots__ = ("args", "body", "name", "nested", "site")
 
-    def __init__(self, name: str, args: list[str]) -> None:
+    def __init__(self, name: str, args: list[str], *, site: int | None = None) -> None:
         self.name = name
+        # The source cursor after the header identifies a read-only definition.
+        self.site = site
         self.args = args
         self.body: list[_Statement] = []
         self.nested: dict[str, _Function] = {}
@@ -145,7 +147,7 @@ class _Parser:
 
     def _function(self, name: str, params: list[str]) -> _Function:
         """Parse the ``{...}`` body of a function named ``name``."""
-        fn = _Function(name, params)
+        fn = _Function(name, params, site=self.pos)
         fn.body, fn.nested = self._block()
         return fn
 

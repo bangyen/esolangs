@@ -256,11 +256,11 @@ def test_constants_read_whole_bytes_then_print_inline() -> None:
                 for row in rows:
                     io = ReadFirstIO(format(row, f"0{n}b") + "Q", expected=n)
                     machine = _Machine(program, io)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(machine.workspace_snapshot())
                     steps = 0
                     while not machine.halted and steps < 4:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(machine.workspace_snapshot())
                         steps += 1
                     assert machine.halted
                     assert machine.state.reads == 8 * n

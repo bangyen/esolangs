@@ -52,7 +52,7 @@ FALSE,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,false-v
 Fargo,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,fargo-v1,pending-backend-audit,pending-acceptance-audit,open
 Fish,yes,declared,not-applicable,declared,owned-adapter,fish-v1,pending-backend-audit,pending-acceptance-audit,open
 Flowchart,yes,declared,not-applicable,declared,owned-adapter,flowchart-v1,pending-backend-audit,pending-acceptance-audit,open
-Forbin,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+Forbin,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,forbin-v1,pending-backend-audit,pending-acceptance-audit,open
 Forþ,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,for-thorn-v1,pending-backend-audit,pending-acceptance-audit,open
 FRACTRAN,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,fractran-v1,pending-backend-audit,pending-acceptance-audit,open
 Freestajlo,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,freestajlo-v1,pending-backend-audit,pending-acceptance-audit,open
