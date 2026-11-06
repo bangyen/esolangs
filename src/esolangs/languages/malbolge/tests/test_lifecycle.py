@@ -33,10 +33,12 @@ def test_factory_reuses_image_with_private_memory_and_chunks():
     assert first.state[0] == 59048
     assert first.memory[0] != ord("u")
     assert first._dirty
+    cycle_dirty = set(first._dirty)
     first._dirty.clear()
     assert first.workspace_snapshot() != saved
     assert saved in retained
     assert second.workspace_snapshot() == second_saved
+    first._dirty.update(cycle_dirty)
     first.snapshot()
     assert not first._dirty
     assert second.snapshot() == before
