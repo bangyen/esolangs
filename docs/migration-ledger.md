@@ -986,3 +986,19 @@ Another 350 layouts and all declared size families retain bytes and execute.
 All 87 INTERCAL families at n=17..24 execute, reaching 16,504,601 characters;
 all original scaling arities through 24 pass. Pins, resource/anchor scopes and
 24 balanced timing comparisons pass unchanged. Catalog acceptance stays open.
+
+APL's complemented decision indexing moves to canonical analysis; selector
+names, arithmetic twins and width/balance prices remain owned. Its `_Key`,
+`_Ref` and `subtree_ids` exports disappear. Blindfolded Arithmetic and Minsky
+Swap retain canonical parity, projection and weight queries; signed octal
+register construction, held-input cascades and setter bindings remain owned.
+Five query faults change executed answers. Disabling the arithmetic parity
+query grows an executed program from 1,415 to 1,709 characters.
+
+All 1,956 corpus artifacts, 6,360 paired rows and 210,047 semantic samples
+match. Captures omit only the salted workspace hash cache; an integer-payload
+fault changes traces while preserving results and counters. Another 525
+layouts retain bytes and execute; all declared size, resource, scaling and
+anchor scopes pass. Pins and 36 default timing comparisons pass unchanged;
+eight APL balance trials retain a 0.996 speed ratio. Catalog acceptance
+remains open.

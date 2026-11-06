@@ -7,7 +7,11 @@ import esolangs
 from esolangs.generation.algebraic import affine_form, parity_bias
 from esolangs.generation.anf import anf_coefficients
 from esolangs.generation.branch_decoder import hoisted_tree
-from esolangs.generation.decision import decision_layers, reduced_diagram
+from esolangs.generation.decision import (
+    complemented_diagram,
+    decision_layers,
+    reduced_diagram,
+)
 from esolangs.generation.helpers import (
     SubtreeDiagram,
     input_weights,
@@ -29,6 +33,7 @@ def assert_analysis_complement(
     table: str = "0011",
     *,
     rows: tuple[int, ...] | None = None,
+    width: int | None = None,
 ) -> None:
     """Require an injected analysis fault to complement every actual answer."""
     backend = LANGUAGES[name].backend
@@ -40,6 +45,7 @@ def assert_analysis_complement(
     module = getattr(module, owner) if owner else module
     query = {
         "anf_coefficients": anf_coefficients,
+        "complemented_diagram": complemented_diagram,
         "SubtreeDiagram": SubtreeDiagram,
         "hoisted_tree": hoisted_tree,
         "_sbleq_hoisted": hoisted_tree,
@@ -65,9 +71,9 @@ def assert_analysis_complement(
     ) as corrupted:
         expected = table.translate(str.maketrans("01", "10"))
         if rows is None:
-            assert evaluate_generated(name, table) == expected
+            assert evaluate_generated(name, table, width=width) == expected
         else:
-            program = esolangs.generate(name, table)
+            program = esolangs.generate(name, table, width=width)
             n = len(table).bit_length() - 1
             for row in rows:
                 bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]

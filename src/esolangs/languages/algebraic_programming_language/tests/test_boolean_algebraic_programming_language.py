@@ -13,6 +13,7 @@ from esolangs.languages.algebraic_programming_language.interpreter import _Machi
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
 from tests.generators.sample_tables import five_input_sample
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_constant_output,
@@ -21,9 +22,7 @@ from tests.support.generator_support import (
 )
 from tests.support.witness_tables import witnesses
 
-run_algebraic_programming_language = _runner(
-    "algebraic_programming_language", newline=True
-)
+_run_apl = _runner("algebraic_programming_language", newline=True)
 
 
 class TestAlgebraicProgrammingLanguage:
@@ -31,11 +30,15 @@ class TestAlgebraicProgrammingLanguage:
 
     @staticmethod
     def _run(program: str, n: int, combo: int) -> str:
-        bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-        return run_algebraic_programming_language(program, bits)
+        return _run_apl(program, list(f"{combo:0{n}b}"))
 
     def test_every_one_and_two_input_table(self) -> None:
         """All 4 one-input and 16 two-input tables build and compute."""
+        assert_analysis_complement(
+            "Algebraic Programming Language", "decision.complemented_diagram"
+        )
+        assert_analysis_complement("Algebraic Programming Language", "read_at", width=1)
+        assert {"_Key", "_Ref", "subtree_ids"}.isdisjoint(vars(boolean))
         for n in (1, 2):
             for table in ("".join(t) for t in itertools.product("01", repeat=2**n)):
                 program = boolean.algebraic_programming_language(table)
@@ -177,7 +180,7 @@ class TestAlgebraicProgrammingLanguageShapes:
         program = boolean.algebraic_programming_language(table)
         for combo in range(2**n):
             bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-            got = run_algebraic_programming_language(program, bits)
+            got = _run_apl(program, bits)
             assert got == table[combo] + "\n", f"{table} inputs {bits}"
 
     def test_the_all_zero_table(self) -> None:
@@ -270,9 +273,7 @@ def test_apl_elementary_definitions_compute_every_small_table(width: int) -> Non
             ).source
             for row, expected in enumerate(table):
                 bits = list(format(row, f"0{n}b"))
-                assert (
-                    run_algebraic_programming_language(program, bits) == expected + "\n"
-                )
+                assert _run_apl(program, bits) == expected + "\n"
 
 
 def test_apl_elementary_floor_and_corpus_size() -> None:

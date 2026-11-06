@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import assert_every_row, measure_run
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
@@ -18,6 +19,7 @@ def test_the_input_is_the_row_number() -> None:
     assert esolangs.describe("Blindfolded Arithmetic")["input_shape"] == "row_number"
     assert esolangs.encode_inputs("Blindfolded Arithmetic", [0, 0]) == "1\n"
     assert esolangs.encode_inputs("Blindfolded Arithmetic", [1, 0]) == "3\n"
+    assert_analysis_complement("Blindfolded Arithmetic", "read_at")
     _check_alternating_rounds()
     from esolangs.vm import make_vm
 

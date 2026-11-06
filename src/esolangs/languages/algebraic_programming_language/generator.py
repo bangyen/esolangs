@@ -25,6 +25,7 @@ Decisions:
 from collections.abc import Callable
 from string import ascii_uppercase
 
+from esolangs.generation import decision
 from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -33,7 +34,6 @@ from esolangs.generation.helpers import (
     in_input_order,
     read_at,
     short_name,
-    subtree_ids,
 )
 from esolangs.generation.wrap import balance_score
 
@@ -216,11 +216,6 @@ def _apl_tree_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     return "".join(pieces)
 
 
-_Key = tuple[int, int]
-#: A half as a node reached through it and whether it arrives complemented.
-_Ref = tuple[_Key, bool]
-
-
 def _apl_reduced_ordered(
     truth_table: str, perm: tuple[int, ...], *, lean: bool = False
 ) -> str:
@@ -230,42 +225,20 @@ def _apl_reduced_ordered(
     agree is that half -- the reads prefix binds every input, so dropping a
     test drops no read -- and a node that complements one already built at
     its level is ``!`` of it.  Nodes are interned bottom-up from
-    :func:`~esolangs.generation.helpers.subtree_ids`, a dict lookup a node, and
+    :func:`~esolangs.generation.decision.complemented_diagram`;
     each piece is emitted once per use as the inline tree emits it: O(T).
     """
     n = _validate_truth_table(truth_table)
-    ids = subtree_ids(truth_table)
+    graph, root_ref = decision.complemented_diagram(truth_table)
     reads = _reads(n, " & ")
-    # A node's (test, zero half, one half); ``ref`` sends every subtable to
-    # the node that spells it, and ``made`` finds a node by its halves.
-    split: dict[_Key, tuple[str, _Ref, _Ref]] = {}
-    ref: dict[_Key, _Ref] = {}
-    made: dict[tuple[int, _Ref, _Ref], _Key] = {}
+    split = {
+        key: (_NAMES[perm[level]], zero, one)
+        for key, (level, zero, one) in graph.items()
+    }
 
-    def resolve(key: _Key) -> _Ref:
-        return (key, False) if key[1] < 2 else ref[key]
-
-    def flip(half: _Ref) -> _Ref:
-        (level, node), negated = half
-        return ((level, 1 - node), False) if node < 2 else (half[0], not negated)
-
-    for depth in range(n - 1, -1, -1):
-        for place, node in enumerate(ids[depth]):
-            key = (depth, node)
-            if node < 2 or key in ref:
-                continue
-            zero = resolve((depth + 1, ids[depth + 1][2 * place]))
-            one = resolve((depth + 1, ids[depth + 1][2 * place + 1]))
-            if zero == one:
-                ref[key] = zero
-            elif (twin := made.get((depth, flip(zero), flip(one)))) is not None:
-                ref[key] = (twin, True)
-            else:
-                ref[key] = (key, False)
-                made[depth, zero, one] = key
-                split[key] = (_NAMES[perm[depth]], zero, one)
-
-    def emit(half: _Ref, out: list[str], *, tight: bool = False) -> None:
+    def emit(
+        half: decision.DecisionRef, out: list[str], *, tight: bool = False
+    ) -> None:
         """Append a half's text: the inline tree's shapes, ``!`` if flipped.
 
         ``lean`` drops spaces and every parenthesis ``&``'s precedence makes
@@ -291,7 +264,7 @@ def _apl_reduced_ordered(
             out.append(f"{lit}{op}" if lean else f"{lit} {op} ")
             emit(one if high >= 2 else zero, out, tight=lean and op == "&")
             out.append(")" * wrap)
-        elif lean and one == flip(zero):
+        elif lean and one == decision.complement_ref(zero):
             # [ablations.arithmetic_xor_twin_20261102]: one child, no old-build race.
             # Boolean children need grouping under +; emit into the flat list.
             _, child_zero, child_one = split[zero[0]]
@@ -299,7 +272,7 @@ def _apl_reduced_ordered(
             arithmetic = (
                 child_zero[0][1] >= 2
                 and child_one[0][1] >= 2
-                and child_one == flip(child_zero)
+                and child_one == decision.complement_ref(child_zero)
             )
             grouped = not (zero[1] or literal or arithmetic)
             out.append(f"({name}+")
@@ -323,7 +296,7 @@ def _apl_reduced_ordered(
             out.append("))")
 
     root: list[str] = []
-    emit(resolve((0, ids[0][0])), root)
+    emit(root_ref, root)
     if lean:
         return f"{_NOT_TIGHT}\n{_reads(n, '&')}|{''.join(root)}"
     return f"{_NOT}\n({reads}) | {''.join(root)}"

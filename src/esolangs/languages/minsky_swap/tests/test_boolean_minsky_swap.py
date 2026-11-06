@@ -5,6 +5,7 @@ from itertools import pairwise
 import pytest
 
 import esolangs
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import measure_run
 from tests.support.witness_tables import witnesses
 
@@ -131,6 +132,8 @@ class TestParameterizedMinskySwap:
         a drift of one lands each later skip a command too far.
         """
 
+        assert_analysis_complement("Minsky Swap", "input_weights")
+        assert_analysis_complement("Minsky Swap", "symmetric_weights", "0001")
         _check_pair_leaves()
         for table in ("1010", "0011", "0101", "01010000", "00001111"):
             n = len(table).bit_length() - 1

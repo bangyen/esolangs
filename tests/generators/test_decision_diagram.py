@@ -4,6 +4,7 @@ import itertools
 
 import pytest
 
+from esolangs.generation import decision
 from esolangs.generation.decision import reduced_diagram
 
 
@@ -25,3 +26,14 @@ def test_reduced_diagram_preserves_every_truth_row(n):
                 level, zero, one = nodes[key]
                 key = one if row & (1 << (n - 1 - level)) else zero
             assert str(key) == expected
+
+        if n:
+            folded, head = decision.complemented_diagram(table)
+            for inverted, ref in enumerate((head, decision.complement_ref(head))):
+                for row, expected in enumerate(table):
+                    key, flipped = ref
+                    while key[1] >= 2:
+                        level, zero, one = folded[key]
+                        key, flag = one if row & (1 << (n - 1 - level)) else zero
+                        flipped ^= flag
+                    assert str(key[1] ^ flipped ^ inverted) == expected

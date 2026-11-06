@@ -91,3 +91,55 @@ def reduced_diagram(truth_table: str, n: int) -> tuple[list[DecisionNode], int]:
                 nodes.append(DecisionNode(*key))
             ids.append(found)
     return nodes, ids[0]
+
+
+type DecisionKey = tuple[int, int]
+type DecisionRef = tuple[DecisionKey, bool]
+
+
+class ComplementedDiagram(NamedTuple):
+    """Level/subtree keys and references carrying an output-complement bit."""
+
+    nodes: dict[DecisionKey, tuple[int, DecisionRef, DecisionRef]]
+    root: DecisionRef
+
+
+def complement_ref(half: DecisionRef) -> DecisionRef:
+    """Complement a reference, normalizing constant leaves to unflipped 0/1."""
+    (level, node), negated = half
+    return ((level, node ^ negated ^ 1), False) if node < 2 else (half[0], not negated)
+
+
+def complemented_diagram(truth_table: str) -> ComplementedDiagram:
+    """Fold equal/complementary halves in O(T), retaining first-seen level keys.
+
+    Constant keys retain their level. Selector spelling, input order and
+    whether to materialize a complemented edge belong to the emitter.
+    """
+    ids = subtree_ids(truth_table)
+    n = len(ids) - 1
+    nodes: dict[DecisionKey, tuple[int, DecisionRef, DecisionRef]] = {}
+    refs: dict[DecisionKey, DecisionRef] = {}
+    made: dict[tuple[int, DecisionRef, DecisionRef], DecisionKey] = {}
+
+    def resolve(key: DecisionKey) -> DecisionRef:
+        return (key, False) if key[1] < 2 else refs[key]
+
+    for depth in range(n - 1, -1, -1):
+        for place, node in enumerate(ids[depth]):
+            key = (depth, node)
+            if node < 2 or key in refs:
+                continue
+            zero = resolve((depth + 1, ids[depth + 1][2 * place]))
+            one = resolve((depth + 1, ids[depth + 1][2 * place + 1]))
+            if zero == one:
+                refs[key] = zero
+            elif (
+                twin := made.get((depth, complement_ref(zero), complement_ref(one)))
+            ) is not None:
+                refs[key] = (twin, True)
+            else:
+                refs[key] = (key, False)
+                made[depth, zero, one] = key
+                nodes[key] = (depth, zero, one)
+    return ComplementedDiagram(nodes, resolve((0, ids[0][0])))
