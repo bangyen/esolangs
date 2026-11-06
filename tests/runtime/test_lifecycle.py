@@ -328,10 +328,30 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
                 raising=False,
             )
             preparation = language.runtime.machine_preparation
-            declared = SimpleNamespace(**{preparation: getattr(module, preparation)})
+            prepared = []
+
+            actual_prepare = getattr(module, preparation)
+
+            def bind(source, options, prepare=actual_prepare, saved=prepared):
+                copied = dict(options)
+                factory = prepare(source, copied)
+                copied.clear()
+                saved.append(factory)
+                return factory
+
+            declared = SimpleNamespace(**{preparation: bind})
             control.setattr(
                 vm, "interpreter_module", lambda _name, proxy=declared: proxy
             )
+            make_debugger(name, source, stdin=stdin, seed=seed)
+            from esolangs.runtime.io import ScriptedIO
+
+            left = prepared[-1](ScriptedIO(stdin))
+            right = prepared[-1](ScriptedIO(stdin))
+            assert left is not right
+            retained = right.snapshot()
+            left.step()
+            assert right.snapshot() == retained
             debug = make_debugger(name, source, stdin=stdin, seed=seed)
             assert debug.ip_shape == caps.debug.ip_shape
             assert debug.eof_is_a_value == caps.eof_is_a_value

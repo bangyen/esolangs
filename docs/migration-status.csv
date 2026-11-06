@@ -2,7 +2,7 @@ language,boolean_backend,preparation,dialect_defaults,capabilities,workspace,wor
 ///,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,slashes-v1,pending-backend-audit,pending-acceptance-audit,open
 1 + i,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,one-i-v1,pending-backend-audit,pending-acceptance-audit,open
 3x,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,three-x-v1,pending-backend-audit,pending-acceptance-audit,open
-6-5,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,six-five-v1,pending-backend-audit,pending-acceptance-audit,open
+6-5,yes,declared,not-applicable,declared,owned-adapter,six-five-v1,pending-backend-audit,pending-acceptance-audit,open
 A Painter Ant,yes,declared,not-applicable,declared,owned-adapter,a-painter-ant-v1,pending-backend-audit,pending-acceptance-audit,open
 ABCDirection,yes,declared,not-applicable,declared,owned-adapter,abcdirection-v1,pending-backend-audit,pending-acceptance-audit,open
 AddSubJump,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,addsubjump-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -15,13 +15,13 @@ B-tapemark,yes,legacy-discovery,declared,legacy-discovery,owned-adapter,b-tapema
 Back,yes,declared,not-applicable,declared,owned-adapter,back-v1,pending-backend-audit,pending-acceptance-audit,open
 Balik,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,balik-v1,pending-backend-audit,pending-acceptance-audit,open
 BASICER,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,basicer-v1,pending-backend-audit,pending-acceptance-audit,open
-Basicfuck,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,basicfuck-v1,pending-backend-audit,pending-acceptance-audit,open
+Basicfuck,yes,declared,not-applicable,declared,owned-adapter,basicfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Befunge,yes,declared,not-applicable,declared,owned-adapter,befunge-v1,pending-backend-audit,pending-acceptance-audit,open
 Between,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,between-v1,pending-backend-audit,pending-acceptance-audit,open
 BFStack,yes,declared,not-applicable,declared,owned-adapter,bfstack-v1,pending-backend-audit,pending-acceptance-audit,open
 Bitdeque,yes,declared,not-applicable,declared,owned-adapter,bitdeque-v1,pending-backend-audit,pending-acceptance-audit,open
 Bitwise Cyclic Tag,yes,declared,not-applicable,declared,owned-adapter,bitwise-cyclic-tag-v1,pending-backend-audit,pending-acceptance-audit,open
-bit~,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,bit-tilde-v1,pending-backend-audit,pending-acceptance-audit,open
+bit~,yes,declared,not-applicable,declared,owned-adapter,bit-tilde-v1,pending-backend-audit,pending-acceptance-audit,open
 Bleh,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,bleh-v1,pending-backend-audit,pending-acceptance-audit,open
 Blindfolded Arithmetic,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,blindfolded-arithmetic-v1,pending-backend-audit,pending-acceptance-audit,open
 Boolfuck,yes,declared,not-applicable,declared,inherited-adapter,boolfuck-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -30,7 +30,7 @@ BrainIf,yes,declared,not-applicable,declared,owned-adapter,brainif-v1,pending-ba
 Caballo,yes,declared,not-applicable,declared,owned-adapter,caballo-v1,pending-backend-audit,pending-acceptance-audit,open
 CARP,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,carp-v1,pending-backend-audit,pending-acceptance-audit,open
 Chicken,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,chicken-v1,pending-backend-audit,pending-acceptance-audit,open
-Circlefuck,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,circlefuck-v1,pending-backend-audit,pending-acceptance-audit,open
+Circlefuck,yes,declared,not-applicable,declared,owned-adapter,circlefuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Circuit Diagram,yes,declared,not-applicable,declared,owned-adapter,circuit-diagram-v1,pending-backend-audit,pending-acceptance-audit,open
 Clockwise,yes,declared,not-applicable,declared,owned-adapter,clockwise-v1,pending-backend-audit,pending-acceptance-audit,open
 Codesick,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,codesick-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -43,7 +43,7 @@ Cyclic tag,yes,declared,not-applicable,declared,owned-adapter,cyclic-tag-v1,pend
 Deadfish,no,declared,not-applicable,declared,owned-adapter,deadfish-v1,not-applicable,pending-acceptance-audit,open
 Decleq,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,decleq-v1,pending-backend-audit,pending-acceptance-audit,open
 Dig,yes,declared,not-applicable,declared,owned-adapter,dig-v1,pending-backend-audit,pending-acceptance-audit,open
-Dimensional,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,dimensional-v1,pending-backend-audit,pending-acceptance-audit,open
+Dimensional,yes,declared,not-applicable,declared,owned-adapter,dimensional-v1,pending-backend-audit,pending-acceptance-audit,open
 DINAC,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,dinac-v1,pending-backend-audit,pending-acceptance-audit,open
 EGL,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,egl-v1,pending-backend-audit,pending-acceptance-audit,open
 Eval,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,eval-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -84,14 +84,14 @@ Painfuck,yes,declared,not-applicable,declared,owned-adapter,painfuck-v1,pending-
 Parenthesys,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,parenthesys-v1,pending-backend-audit,pending-acceptance-audit,open
 Piet,yes,declared,not-applicable,declared,owned-adapter,piet-v1,pending-backend-audit,pending-acceptance-audit,open
 Pilas,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,pilas-v1,pending-backend-audit,pending-acceptance-audit,open
-Pointless,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,pointless-v1,pending-backend-audit,pending-acceptance-audit,open
+Pointless,yes,declared,not-applicable,declared,owned-adapter,pointless-v1,pending-backend-audit,pending-acceptance-audit,open
 Qoibl,yes,declared,not-applicable,declared,owned-adapter,qoibl-v1,pending-backend-audit,pending-acceptance-audit,open
 Qrain,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,qrain-v1,pending-backend-audit,pending-acceptance-audit,open
 Quassaunt,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,quassaunt-v1,pending-backend-audit,pending-acceptance-audit,open
 RAM0,yes,declared,not-applicable,declared,owned-adapter,ram0-v1,pending-backend-audit,pending-acceptance-audit,open
 REFRACTRAN,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,refractran-v1,pending-backend-audit,pending-acceptance-audit,open
 Retrograde,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,retrograde-v1,pending-backend-audit,pending-acceptance-audit,open
-ROTfuck,yes,legacy-discovery,declared,legacy-discovery,owned-adapter,rotfuck-v1,pending-backend-audit,pending-acceptance-audit,open
+ROTfuck,yes,declared,declared,declared,owned-adapter,rotfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Rubic,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,rubic-v1,pending-backend-audit,pending-acceptance-audit,open
 S*bleq,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,s-bleq-v1,pending-backend-audit,pending-acceptance-audit,open
 SendStuff,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,sendstuff-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -114,5 +114,5 @@ Unary,yes,declared,not-applicable,declared,inherited-adapter,brainfuck-v1,pendin
 Underload,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,underload-v1,pending-backend-audit,pending-acceptance-audit,open
 Unlambda,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,unlambda-v1,pending-backend-audit,pending-acceptance-audit,open
 Unsquare,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,unsquare-v1,pending-backend-audit,pending-acceptance-audit,open
-What!?,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,what-v1,pending-backend-audit,pending-acceptance-audit,open
+What!?,yes,declared,not-applicable,declared,owned-adapter,what-v1,pending-backend-audit,pending-acceptance-audit,open
 Whitespace,yes,declared,not-applicable,declared,owned-adapter,whitespace-v1,pending-backend-audit,pending-acceptance-audit,open

@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Dimensional."""
 
 from esolangs.generation.wrap import _dimensional
+from esolangs.languages.dimensional.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
@@ -8,7 +9,13 @@ from esolangs.runtime._definition import RuntimeSpec
 
 LANGUAGE = Language(
     "Dimensional",
-    RuntimeSpec("dimensional", category="tape_based"),
+    RuntimeSpec(
+        "dimensional",
+        category="tape_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+    ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.dimensional.generator",

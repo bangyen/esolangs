@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Basicfuck."""
 
+from esolangs.languages.basicfuck.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -10,6 +11,9 @@ LANGUAGE = Language(
     "Basicfuck",
     RuntimeSpec(
         "basicfuck",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="tape_based",
         empty_program="missing directive or #allocate",
         eof="`read` at EOF raises: the page's cat covers three EOF conventions",

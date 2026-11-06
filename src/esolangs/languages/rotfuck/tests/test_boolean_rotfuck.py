@@ -38,8 +38,8 @@ class TestRotfuck:
 
     def test_the_rotation_cycle_is_the_interpreters_default(self) -> None:
         """The prose's ``+-><,.[]`` turned backward, and it is a cycle."""
+        from esolangs.languages.rotfuck.dialect import ROTFUCK_CYCLES as CYCLES
         from esolangs.languages.rotfuck.generator import _ROTFUCK_CHAIN, _rotfuck_rot
-        from esolangs.languages.rotfuck.interpreter import ROTFUCK_CYCLES as CYCLES
 
         assert _ROTFUCK_CHAIN == "+][.,<>-" == CYCLES["backward"]
         assert CYCLES["forward"] == "+-><,.[]"
@@ -61,8 +61,8 @@ class TestRotfuck:
         self, rotation: str
     ) -> None:
         """A command's rotation, seen from a seek's, must not be a bracket."""
+        from esolangs.languages.rotfuck.dialect import ROTFUCK_CYCLES as CYCLES
         from esolangs.languages.rotfuck.generator import _rotfuck_rot, _shows
-        from esolangs.languages.rotfuck.interpreter import ROTFUCK_CYCLES as CYCLES
 
         cycle = CYCLES[rotation]
         for seek in range(8):
@@ -99,7 +99,7 @@ class TestRotfuck:
         hidden and net zero.
         """
         from esolangs.languages.rotfuck import generator as gen
-        from esolangs.languages.rotfuck.interpreter import ROTFUCK_CYCLES
+        from esolangs.languages.rotfuck.dialect import ROTFUCK_CYCLES
 
         # Open phases are pairwise 0, 3, 4 or 5 apart, so a set never has three.
         stacks = {()}

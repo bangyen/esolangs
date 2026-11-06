@@ -1,6 +1,6 @@
 """Executed command and snapshot-bit bounds."""
 
-from esolangs.languages.rotfuck.interpreter import ROTFUCK_CYCLES
+from esolangs.languages.rotfuck.dialect import ROTFUCK_CYCLES
 
 
 def _constant_details(n: int, p: str) -> tuple[str, int, int] | None:

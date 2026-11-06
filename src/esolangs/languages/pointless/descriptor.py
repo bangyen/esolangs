@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Pointless."""
 
 from esolangs.generation.wrap import TokenWrapper
+from esolangs.languages.pointless.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -12,7 +13,13 @@ _wrap = TokenWrapper(r'"[^"]*"|[\s\S]')
 
 LANGUAGE = Language(
     "Pointless",
-    RuntimeSpec("pointless", category="tape_based"),
+    RuntimeSpec(
+        "pointless",
+        category="tape_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+    ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.pointless.generator", "pointless", ("truth_table",)

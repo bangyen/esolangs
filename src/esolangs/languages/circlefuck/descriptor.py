@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Circlefuck."""
 
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.circlefuck.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -11,6 +12,9 @@ LANGUAGE = Language(
     "Circlefuck",
     RuntimeSpec(
         "circlefuck",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="tape_based",
         eof="its input command is a no-op at EOF, as the spec says",
         empty_program="Circlefuck program cannot be empty",

@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for What!?."""
 
 from esolangs.generation.wrap import TokenWrapper
+from esolangs.languages.what.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
@@ -11,7 +12,14 @@ _wrap = TokenWrapper(r'\[(?:\d+>|"[01]+":)|\d+|[?!]+|[\s\S]')
 
 LANGUAGE = Language(
     "What!?",
-    RuntimeSpec("what", category="tape_based", eof="a read at EOF yields 0"),
+    RuntimeSpec(
+        "what",
+        category="tape_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+        eof="a read at EOF yields 0",
+    ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.what.generator", "what", ("truth_table",)

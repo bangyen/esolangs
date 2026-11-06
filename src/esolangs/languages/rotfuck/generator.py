@@ -42,7 +42,7 @@ from esolangs.generation.helpers import (
     read_at,
     symmetric_weights,
 )
-from esolangs.languages.rotfuck.interpreter import (
+from esolangs.languages.rotfuck.dialect import (
     ROTFUCK_CYCLES,
     validate_rotation,
 )

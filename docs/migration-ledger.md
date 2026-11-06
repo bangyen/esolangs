@@ -285,3 +285,8 @@ Forbin declares source-located function references and canonical live lexical
 environments, preserving closure capture, parent links and loop phase without
 rendering or first-sight serials. Unreachable scope history and inactive loop
 storage are excluded; its exact workspace bounds count one copy of bindings.
+
+Basicfuck, bit~, Circlefuck, ROTfuck, 6-5, Dimensional, Pointless and What!?
+declare text factories and debugger fields. Tape, compiled cursors, rotating
+programs, hierarchical pointers and call frames remain per-run. ROTfuck dialect
+metadata no longer imports its interpreter.

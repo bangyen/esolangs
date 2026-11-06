@@ -30,25 +30,19 @@ Decisions:
       allowed).
 """
 
+from collections.abc import Mapping
+from typing import Any
+
 from esolangs.exceptions import HaltError
+from esolangs.languages.rotfuck.dialect import ROTFUCK_CYCLES, validate_rotation
+from esolangs.languages.rotfuck.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
-
-#: The rotation cycle per direction, each read as "turns into the next":
-#: backward is the prose's ``+-><,.[]`` reversed.
-ROTFUCK_CYCLES = {"backward": "+][.,<>-", "forward": "+-><,.[]"}
-ROTATIONS = tuple(ROTFUCK_CYCLES)
-
-
-def validate_rotation(value: str) -> str:
-    """Validate which way the command cycle turns."""
-    if value not in ROTATIONS:
-        raise ValueError("rotation must be backward or forward")
-    return value
-
 
 _COMMANDS = frozenset(ROTFUCK_CYCLES["forward"])
 
@@ -275,9 +269,25 @@ class _Machine:
         self._restore(_advance(self._state, self.prog.chars(), byte, self.prog.cycle))
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind source; each IO-bound construction owns fresh runtime state."""
+    if not isinstance(source, str):
+        raise TypeError("rotfuck machines require text source")
+    if options.keys() - {"rotation"}:
+        raise TypeError("rotfuck machines accept only the rotation runtime option")
+    rotation = options.get("rotation", "backward")
+
+    def build(io: IO) -> _Machine:
+        return _Machine(source, io, rotation=rotation)
+
+    return build
+
+
 def _execute(code: str, io: IO, *, rotation: str = "backward") -> CompletionReport:
     """Run a ROTfuck program through its pure transition."""
-    return drive(_Machine(code, io, rotation=rotation))
+    return drive(_Machine(code, io, rotation=rotation), policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO, *, rotation: str = "backward") -> None:
