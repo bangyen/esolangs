@@ -9,6 +9,7 @@ import esolangs
 from esolangs.languages.rotfuck import generator as boolean
 from tests.generators.boolean_runners import _runner
 from tests.interpreters.runner import run_program
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import row_bits
 
@@ -18,6 +19,13 @@ class TestRotfuck:
 
     def test_program_round_trips_every_table_at_n_2(self) -> None:
         """Every two-input table produces the right result."""
+        assert_analysis_complement("ROTfuck", "read_at", "00100010")
+        assert_analysis_complement(
+            "ROTfuck",
+            "symmetric_weights",
+            "".join(str(row.bit_count() % 2) for row in range(256)),
+            rows=(0, 1, 255),
+        )
         for table_int in range(2 ** (2**2)):
             table = format(table_int, "04b")
             program = boolean.rotfuck(table)
@@ -39,13 +47,16 @@ class TestRotfuck:
     def test_the_rotation_cycle_is_the_interpreters_default(self) -> None:
         """The prose's ``+-><,.[]`` turned backward, and it is a cycle."""
         from esolangs.languages.rotfuck.dialect import ROTFUCK_CYCLES as CYCLES
-        from esolangs.languages.rotfuck.generator import _ROTFUCK_CHAIN, _rotfuck_rot
+        from esolangs.languages.rotfuck.generator import _rotfuck_rot
 
-        assert _ROTFUCK_CHAIN == "+][.,<>-" == CYCLES["backward"]
+        chain = CYCLES["backward"]
+        assert not hasattr(boolean, "_ROTFUCK_CHAIN")
+
+        assert chain == "+][.,<>-" == CYCLES["backward"]
         assert CYCLES["forward"] == "+-><,.[]"
-        assert "+" + "+-><,.[]"[:0:-1] == _ROTFUCK_CHAIN
-        for i, char in enumerate(_ROTFUCK_CHAIN):
-            forward = _ROTFUCK_CHAIN[(i + 1) % 8]
+        assert "+" + "+-><,.[]"[:0:-1] == chain
+        for i, char in enumerate(chain):
+            forward = chain[(i + 1) % 8]
             assert _rotfuck_rot(char, 1) == forward, char
             assert _rotfuck_rot(forward, -1) == char, char
             assert _rotfuck_rot(char, 8) == char, char

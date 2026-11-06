@@ -1019,3 +1019,22 @@ The eight-input B-tapemark resource aggregate hits its unchanged 60-second
 cap; all ten full-table checks pass separately, retaining all 2,560 rows and
 both exact maxima. Other resource arities pass, including FALSE at nine.
 Catalog acceptance remains open.
+
+Interprogck8 retains canonical subtree/parity queries and native flight windows.
+Its cap moves to `descriptor.MAX_INPUTS`; both old `_MAX_INPUTS` exports vanish.
+ROTfuck retains canonical dependency/projection/symmetry queries and native
+rotation, seek padding and radix choices; `_ROTFUCK_CHAIN` disappears.
+Super SNUSP derives its four intrinsic gates without `_TWO_INPUT_SHORT`;
+its test owns independent spellings. General projection remains canonical.
+Canonical queries made two-input projection generation 5.47 times slower;
+the native operator rule passes all sixteen timing cases, minimum ratio 0.9385.
+
+All 2,608 artifacts, 8,480 paired rows and 2,430,158 semantic samples match.
+Six query-fault contexts change answers; four cost controls enlarge executed
+programs. All 700 larger layouts and 318 size witnesses retain bytes and run,
+including both rotations and the sixteen-input decimal literals. Pins,
+scaling/anchor scopes and 48 larger-input timing comparisons pass unchanged.
+The ten-input Interprogck8 resource aggregate hits its unchanged 60-second
+cap; all twelve full families pass separately, retaining all 12,288 rows and
+the exact 18,878-command maximum. Other resource arities pass. Catalog
+acceptance remains open.

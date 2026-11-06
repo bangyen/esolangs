@@ -49,9 +49,6 @@ from esolangs.languages.rotfuck.dialect import (
 
 __all__ = ["rotfuck"]
 
-#: The default (backward) cycle: ``+ -> ] -> [ -> . -> , -> < -> > -> - -> +``.
-_ROTFUCK_CHAIN = ROTFUCK_CYCLES["backward"]
-
 #: Net-zero pairs, tried in this order.  Every pad is a chain of these, a pair
 #: wrapped in its own inverse move or cell step, so a pad is net zero by
 #: construction.
@@ -73,13 +70,15 @@ _RAW_FROM = 7
 type _Tree = list[str | _Tree]
 
 
-def _rotfuck_rot(char: str, steps: int, cycle: str = _ROTFUCK_CHAIN) -> str:
+def _rotfuck_rot(char: str, steps: int, cycle: str = ROTFUCK_CYCLES["backward"]) -> str:
     """Advance ``char`` ``steps`` steps along the ROTfuck rotation cycle."""
     index = cycle.index(char)
     return cycle[(index + steps) % 8]
 
 
-def _shows(cmd: str, seek: int, rot: int, cycle: str = _ROTFUCK_CHAIN) -> bool:
+def _shows(
+    cmd: str, seek: int, rot: int, cycle: str = ROTFUCK_CYCLES["backward"]
+) -> bool:
     """Whether ``cmd``, executing at ``rot``, reads as a bracket at ``seek``.
 
     A seek reads the whole program at one rotation, so a command that
@@ -109,7 +108,7 @@ def _parse(text: str) -> _Tree:
 class _Builder:
     """Emitted source, the rotation it has reached, and the open seeks' phases."""
 
-    def __init__(self, cycle: str = _ROTFUCK_CHAIN) -> None:
+    def __init__(self, cycle: str = ROTFUCK_CYCLES["backward"]) -> None:
         """Start empty, at rotation zero, inside no loop, against ``cycle``."""
         self.src: list[str] = []
         self.rot = 0

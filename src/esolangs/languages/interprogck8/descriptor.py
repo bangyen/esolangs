@@ -6,7 +6,7 @@ from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
 from esolangs.runtime._definition import RuntimeSpec
 
-_MAX_INPUTS = 40
+MAX_INPUTS = 40
 
 
 LANGUAGE = Language(
@@ -22,7 +22,7 @@ LANGUAGE = Language(
     ),
     backend=BooleanBackend(
         restrictions=(
-            f"at most {_MAX_INPUTS} inputs, past any table that fits in memory"
+            f"at most {MAX_INPUTS} inputs, past any table that fits in memory"
         ),
         entrypoint=FunctionRef(
             "esolangs.languages.interprogck8.generator",

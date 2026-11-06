@@ -32,16 +32,6 @@ from esolangs.generation.wrap import balance_score
 __all__ = ["super_snusp"]
 
 
-_TWO_INPUT_SHORT = {
-    # These n=2 forms decode both inputs and print without retaining a
-    # bottom-of-stack literal ([ablations.two_input_short_forms]).
-    "0011": "48{,-> ,-<^.",
-    "0101": "48{,-> ,-<>^.",
-    "0110": "48{,-> ,-<^{>^.",
-    "0111": "48{,-> ,-<^{>|.",
-}
-
-
 def _decimal(value: int, width: int = 0) -> str:
     """Return ``value`` in decimal, zero-padded to ``width``.
 
@@ -122,10 +112,14 @@ def _super_snusp_flat(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     if truth_table.count(truth_table[0]) == len(truth_table):
         return '"' + "," * n + f"{48 + int(truth_table[0])}."
-    if n == 2 and truth_table in _TWO_INPUT_SHORT:
-        # An explicit START marker removes the spec's undocumented default
-        # heading from generated programs; it is a no-op once execution begins.
-        return '"' + _TWO_INPUT_SHORT[truth_table]
+    if n == 2:
+        # Native projections (3/5) and XOR/OR (6/7); explicit START pins heading.
+        # Compile-time pieces avoid allocation ([ablations.two_input_short_forms]).
+        word = int(truth_table, 2)
+        if word in (3, 5):
+            return '"48{,-> ,-<' + "^." if word == 3 else '"48{,-> ,-<' + ">^."
+        if word in (6, 7):
+            return '"48{,-> ,-<^{>' + "|." if word == 7 else '"48{,-> ,-<^{>' + "^."
     return _emit_lookup(truth_table)
 
 

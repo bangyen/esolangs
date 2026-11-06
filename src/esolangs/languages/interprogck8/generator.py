@@ -48,7 +48,7 @@ Decisions:
 from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.languages.interprogck8.descriptor import _MAX_INPUTS as _MAX_INPUTS
+from esolangs.languages.interprogck8 import descriptor
 from esolangs.runtime.source_hints import with_hint
 
 #: The rung.  ``DownAccLines`` jumps to ``ip + 1 + acc``.
@@ -211,11 +211,11 @@ def interprogck8(truth_table: str) -> str:
     Reads ``n`` digits, one per line, and prints ``0`` or ``1``.
     """
     n = _validate_truth_table(truth_table)
-    if n > _MAX_INPUTS:
+    if n > descriptor.MAX_INPUTS:
         raise with_hint(
             GeneratorCapError(
                 f"Interprogck8 keeps its flights under the printers for at most "
-                f"{_MAX_INPUTS} inputs, not {n}"
+                f"{descriptor.MAX_INPUTS} inputs, not {n}"
             ),
             "a table past forty inputs is a terabyte; no width enlarges the columns",
         )

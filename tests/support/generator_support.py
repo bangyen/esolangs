@@ -238,7 +238,7 @@ def assert_constant_output(run, code, io, expected, reads, **run_kwargs):
     assert io.past_end == 0
 
 
-def assert_constant_roots(language, run):
+def assert_constant_roots(language, run, *, split=False):
     """Check character-input constants, all reads and the following record."""
     for n in range(1, 13):
         for bit in "01":
@@ -246,7 +246,9 @@ def assert_constant_roots(language, run):
                 program = esolangs.generate(language, bit * (1 << n), **options).source
                 for row in ("0" * n, "1" * n):
                     io = ReadFirstIO(row + "7", expected=n)
-                    assert_constant_output(run, program, io, bit, n)
+                    assert_constant_output(
+                        run, program.splitlines() if split else program, io, bit, n
+                    )
                     assert io.input_char() == ord("7")
 
 

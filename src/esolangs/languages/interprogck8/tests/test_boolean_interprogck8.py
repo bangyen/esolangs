@@ -8,7 +8,8 @@ import pytest
 import esolangs
 from esolangs import run as execute
 from esolangs.exceptions import GeneratorCapError
-from esolangs.languages.interprogck8 import generator
+from esolangs.languages.interprogck8 import descriptor, generator
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
@@ -59,6 +60,8 @@ def test_flights_land_on_their_stops_across_windows(seed: int) -> None:
 
 def test_three_input_program_keeps_its_measured_length() -> None:
     """Three inputs take one cluster window and a tail: 472 lines."""
+    assert_analysis_complement("Interprogck8", "subtree_ids")
+    assert "_MAX_INPUTS" not in vars(generator) | vars(descriptor)
     table = "00011110"
     program = esolangs.generate("Interprogck8", table).source
     assert len(str(program).split("\n")) == 472
@@ -120,7 +123,7 @@ def test_flight_columns_keep_the_stop_in_the_cursors_window() -> None:
     The scaling bound's window recursion needs the stop (column + 1) past a
     cursor that sits at line 41 at most; flights live at height >= 3.
     """
-    for n in range(4, generator._MAX_INPUTS + 1):
+    for n in range(4, descriptor.MAX_INPUTS + 1):
         assert min(generator._columns(n)[: n - 2]) >= 40, n
     for n in range(4, 32):
         columns = generator._columns(n, 52)

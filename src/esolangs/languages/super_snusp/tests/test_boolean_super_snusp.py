@@ -6,8 +6,8 @@ import esolangs
 from esolangs import run as execute
 from esolangs.languages.super_snusp import generator as boolean
 from esolangs.languages.super_snusp.generator import balance_super_snusp
-from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output, measure_run
+from tests.support.analysis_support import assert_analysis_complement
+from tests.support.generator_support import assert_constant_roots, measure_run
 
 
 class TestSuperSNUSPWidth:
@@ -137,15 +137,20 @@ class TestSuperSNUSP:
         assert super_snusp(table).startswith('"')
 
     def test_the_short_forms_are_what_the_generator_emits(self) -> None:
-        """The four hand-written nonconstant two-input forms are used verbatim."""
-        from esolangs.languages.super_snusp.generator import (
-            _TWO_INPUT_SHORT,
-            super_snusp,
-        )
+        """The four intrinsic two-input forms retain their independent spellings."""
+        from esolangs.languages.super_snusp.generator import super_snusp
+        from esolangs.languages.super_snusp.interpreter import run
 
-        _check_constants()
+        assert_analysis_complement("Super SNUSP", "input_weights", "00100010")
+        assert_constant_roots("Super SNUSP", run, split=True)
+        assert not hasattr(boolean, "_TWO_INPUT_SHORT")
         _check_stacked_operands()
-        for table, form in _TWO_INPUT_SHORT.items():
+        for table, form in {
+            "0011": "48{,-> ,-<^.",
+            "0101": "48{,-> ,-<>^.",
+            "0110": "48{,-> ,-<^{>^.",
+            "0111": "48{,-> ,-<^{>|.",
+        }.items():
             assert super_snusp(table) == '"' + form
 
     @pytest.mark.parametrize(
@@ -274,18 +279,3 @@ def _check_stacked_operands() -> None:
         )
         == 11236
     )
-
-
-def _check_constants() -> None:
-    from esolangs.languages.super_snusp.interpreter import run
-
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "Super SNUSP", bit * (1 << n), **options
-                ).source
-                for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row + "7", expected=n)
-                    assert_constant_output(run, program.splitlines(), io, bit, n)
-                    assert io.input_char() == ord("7")
