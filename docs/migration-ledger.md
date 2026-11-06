@@ -359,3 +359,13 @@ Cyclic tag use canonical weighted lookup; seven-character cells, production
 markers and embedded inputs remain owned. Their unused `_program` wrappers
 are removed. These four backend audits retain source and resource bounds;
 catalog-wide runtime and certification acceptance remain open.
+
+IEBEL, SendStuff and Stisp use canonical ordered decision layers; duplicate
+reachable-node discovery is deleted. Fallthrough paths, macro spelling and
+cost-bounded literal inlining remain owned. Aprknia reuses validated arity;
+its zero-exit stack analysis remains owned. Caballo and Monotonic Boolfuck
+retain canonical subtree ids with signed-sum and pointer-divergence emission.
+Bleh and Codesick retain canonical layers with native names, polarity and
+input ordering. Constant fast paths keep validation ahead of decision analysis.
+All eight have executed canonical-analysis fault controls, unchanged corpus
+bytes, size/resource scopes and passing generation-timing comparisons.

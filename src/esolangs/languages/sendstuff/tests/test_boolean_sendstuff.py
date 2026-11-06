@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 from esolangs.languages.sendstuff.generator import sendstuff
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row, measure_run
 
@@ -14,6 +15,8 @@ TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(1, 2**2**n - 1)]
 @pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
+    if table == "01":
+        assert_analysis_complement("SendStuff", "decision_layers")
     assert_every_row("SendStuff", table)
 
 

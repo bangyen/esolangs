@@ -19,7 +19,8 @@ Decisions:
     one-child blocks first: a path cover that drops most ``1 3 c`` lines.
 """
 
-from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.decision import decision_layers
+from esolangs.generation.helpers import _validate_truth_table
 
 #: Register 1 holds '1' (49), register 3 holds '0' (48).
 _SETUP = ["1 49 0", "3 48 0"]
@@ -37,26 +38,20 @@ def iebel(truth_table: str) -> str:
             # The read also initializes r0; later equal loads restore that same literal.
             return "\n".join([*[f"0 {value} -3"] * n, "0 1 -2"])
         return "\n".join([*["0 0 -3"] * n, f"1 {value} 0", "1 2 -2"])
-    ids = subtree_ids(truth_table)
-    n = len(ids) - 1
-    root: _Node = (0, ids[0][0])
-    rep: dict[_Node, int] = {root: 0}  # reachable node -> one position of it
-    kids: dict[_Node, tuple[_Node, _Node]] = {}
-    by_level: list[list[_Node]] = [[root]]
-    for level in range(n):
-        below: list[_Node] = []
-        for parent in by_level[level]:
-            k = rep[parent]
-            pair = (
-                (level + 1, ids[level + 1][2 * k]),
-                (level + 1, ids[level + 1][2 * k + 1]),
-            )
-            kids[parent] = pair
-            for j, child in enumerate(pair):
-                if child not in rep:
-                    rep[child] = 2 * k + j
-                    below.append(child)
-        by_level.append(below)
+    diagram = decision_layers(truth_table)
+    by_level = [
+        [(depth, node) for node in layer]
+        for depth, layer in enumerate(diagram.children)
+    ]
+    kids = {
+        (depth, node): ((depth + 1, zero), (depth + 1, one))
+        for depth, layer in enumerate(diagram.children)
+        for node, (zero, one) in layer.items()
+    }
+    leaves = dict.fromkeys(
+        child for pair in diagram.children[-1].values() for child in pair
+    )
+    by_level.append([(n, leaf) for leaf in leaves])
     # Greedy path cover: a block falls into a child no other block falls into.
     fall: dict[_Node, _Node] = {}
     for level in range(n):

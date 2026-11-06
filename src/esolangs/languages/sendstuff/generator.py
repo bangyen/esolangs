@@ -18,7 +18,8 @@ Size:
     Last-input identity/negation: 8n+9 / 8n+30 chars.
 """
 
-from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.decision import decision_layers
+from esolangs.generation.helpers import _validate_truth_table
 
 _MACROS = "@o(>(Subtract 49>%))@z(>(Divide 48>(Subtract 1>%)))@y(Input!o %)"
 
@@ -38,35 +39,31 @@ def sendstuff(truth_table: str) -> str:
             else f"(Constant {48 + int(truth_table[0])}>(Output))"
         )
         return ">" + "(Input>" * n + tail + ")" * n
-    ids = subtree_ids(truth_table)
+    diagram = decision_layers(truth_table)
 
-    def name(depth: int, k: int) -> str:
-        sub = ids[depth][k]
-        return "zo"[sub] + str(depth) if sub < 2 else str(sub)
+    def name(depth: int, node: int) -> str:
+        return "zo"[node] + str(depth) if node < 2 else str(node)
 
-    # Reachable nodes, deepest first so every reference is already defined.
-    levels: list[dict[str, str]] = [{} for _ in range(n + 1)]
-    frontier = {0}
-    for depth in range(n + 1):
-        below: set[int] = set()
-        for k in sorted(frontier):
-            sub, here = ids[depth][k], name(depth, k)
-            if here in levels[depth]:
-                continue
-            if depth == n:
-                body = f"Constant {48 + sub}>(Output)"
-            elif sub < 2 or ids[depth + 1][2 * k] == ids[depth + 1][2 * k + 1]:
-                body = f"Input>{name(depth + 1, 2 * k)}"
-                below.add(2 * k)
+    # Definitions precede users, retaining the analysis's leftmost order.
+    levels: list[list[str]] = []
+    for depth, layer in enumerate(diagram.children):
+        level = []
+        for node, (zero, one) in layer.items():
+            here = name(depth, node)
+            if zero == one:
+                body = f"Input>{name(depth + 1, zero)}"
             else:
-                body = f"!y {name(depth + 1, 2 * k + 1)} !z {name(depth + 1, 2 * k)}"
-                below |= {2 * k, 2 * k + 1}
-            levels[depth][here] = f"|{here}({body})"
-        frontier = below
-    nodes = [node for level in reversed(levels) for node in level.values()]
+                body = f"!y {name(depth + 1, one)} !z {name(depth + 1, zero)}"
+            level.append(f"|{here}({body})")
+        levels.append(level)
+    leaves = dict.fromkeys(
+        child for pair in diagram.children[-1].values() for child in pair
+    )
+    levels.append([f"|{name(n, bit)}(Constant {48 + bit}>(Output))" for bit in leaves])
+    nodes = [node for level in reversed(levels) for node in level]
     # The root has one reference and is already last in parser order.
     root = nodes.pop()
-    body = root[len(name(0, 0)) + 2 : -1]
+    body = root[len(name(0, diagram.root)) + 2 : -1]
     return "".join([_MACROS, *nodes, ">(", body, ")"])
 
 

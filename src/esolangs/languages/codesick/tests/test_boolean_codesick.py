@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 from esolangs.languages.codesick.generator import codesick
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_constant_output, assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -36,6 +37,7 @@ def test_only_a_constant_table_spends_the_missing_test(table: str) -> None:
 
 
 def _check_constants() -> None:
+    assert_analysis_complement("Codesick", "decision_layers")
     from esolangs.languages.codesick.interpreter import run
 
     for n in range(1, 13):

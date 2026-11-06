@@ -39,8 +39,7 @@ _LEAF = {"0": "11*!!!~,", "1": "11*~*!!!,"}
 
 def aprknia(truth_table: str) -> str:
     """Build an Aprknia program printing ``truth_table[row]`` for the inputs."""
-    _validate_truth_table(truth_table)
-    n = len(truth_table).bit_length() - 1
+    n = _validate_truth_table(truth_table)
     if truth_table.count(truth_table[0]) == len(truth_table):
         # The final read leaves 2, 0, 1, 1 below its byte: reuse the selector.
         return _SKIP * n + ("!!!~," if truth_table[0] == "0" else "!!~!~,")

@@ -26,10 +26,10 @@ Decisions:
 
 from collections import Counter
 
+from esolangs.generation.decision import decision_layers
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
-    subtree_ids,
 )
 
 #: Each input is one atom, ``0`` or ``1``, inside its frame.
@@ -46,13 +46,14 @@ def stisp(truth_table: str) -> str:
     if len(set(truth_table)) == 1:
         head = TEMPLATE_CHAR if n == 1 else "(" + " ".join(TEMPLATE_CHAR * n) + ")"
         return f"x->s[]={truth_table[0]};{head}->s[]"
-    ids = subtree_ids(truth_table)
-    nodes: dict[int, tuple[int, int]] = {}
-    for level in range(n):
-        for k, node in enumerate(ids[level]):
-            if node >= 2 and node not in nodes:
-                nodes[node] = ids[level + 1][2 * k], ids[level + 1][2 * k + 1]
-    uses = Counter({ids[0][0]: 1})
+    diagram = decision_layers(truth_table)
+    nodes = {
+        node: pair
+        for layer in diagram.children
+        for node, pair in layer.items()
+        if node >= 2
+    }
+    uses = Counter({diagram.root: 1})
     for lo, hi in nodes.values():
         uses[lo] += 1
         if lo != hi:
@@ -87,4 +88,4 @@ def stisp(truth_table: str) -> str:
     prefix = _CONS if len(named) != len(nodes) else ""
     equations = "".join(definitions[node] for node in nodes if node in named)
     frames = f"->s[{TEMPLATE_CHAR}]" * n
-    return prefix + equations + _DRAIN + heads[ids[0][0]] + frames
+    return prefix + equations + _DRAIN + heads[diagram.root] + frames

@@ -8,6 +8,7 @@ from esolangs.languages.stisp.interpreter import _Machine
 from esolangs.languages.stisp.proof_formulas import workspace
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from tests.support.analysis_support import assert_analysis_complement
 
 #: Every one- and two-input table; a diagram's folding bugs show here first.
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -57,6 +58,7 @@ def test_an_ignored_input_still_selects_one_of_two_identical_children() -> None:
 
 
 def _check_constants() -> None:
+    assert_analysis_complement("Stisp", "decision_layers")
     from esolangs.languages.stisp.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState

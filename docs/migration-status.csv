@@ -8,7 +8,7 @@ ABCDirection,yes,declared,not-applicable,declared,owned-adapter,abcdirection-v1,
 AddSubJump,yes,declared,not-applicable,declared,owned-adapter,addsubjump-v1,pending-backend-audit,pending-acceptance-audit,open
 Algebraic Programming Language,yes,declared,not-applicable,declared,owned-adapter,algebraic-programming-language-v1,pending-backend-audit,pending-acceptance-audit,open
 Alight,yes,declared,declared,declared,owned-adapter,alight-v1,pending-backend-audit,pending-acceptance-audit,open
-Aprknia,yes,declared,not-applicable,declared,owned-adapter,aprknia-v1,pending-backend-audit,pending-acceptance-audit,open
+Aprknia,yes,declared,not-applicable,declared,owned-adapter,aprknia-v1,canonical-subtree-analysis;owned-zero-exit,pending-acceptance-audit,open
 ArrowQueue,yes,declared,not-applicable,declared,owned-adapter,arrowqueue-v1,pending-backend-audit,pending-acceptance-audit,open
 Ascenic,yes,declared,not-applicable,declared,owned-adapter,ascenic-v1,pending-backend-audit,pending-acceptance-audit,open
 B-tapemark,yes,declared,declared,declared,owned-adapter,b-tapemark-v1,pending-backend-audit,pending-acceptance-audit,open
@@ -22,18 +22,18 @@ BFStack,yes,declared,not-applicable,declared,owned-adapter,bfstack-v1,pending-ba
 Bitdeque,yes,declared,not-applicable,declared,owned-adapter,bitdeque-v1,pending-backend-audit,pending-acceptance-audit,open
 Bitwise Cyclic Tag,yes,declared,not-applicable,declared,owned-adapter,bitwise-cyclic-tag-v1,canonical-weighted-lookup,pending-acceptance-audit,open
 bit~,yes,declared,not-applicable,declared,owned-adapter,bit-tilde-v1,pending-backend-audit,pending-acceptance-audit,open
-Bleh,yes,declared,not-applicable,declared,owned-adapter,bleh-v1,pending-backend-audit,pending-acceptance-audit,open
+Bleh,yes,declared,not-applicable,declared,owned-adapter,bleh-v1,canonical-decision-layers;owned-function-layout,pending-acceptance-audit,open
 Blindfolded Arithmetic,yes,declared,not-applicable,declared,owned-adapter,blindfolded-arithmetic-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
 Boolfuck,yes,declared,not-applicable,declared,inherited-adapter,boolfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 brainfuck,yes,declared,not-applicable,declared,owned-adapter,brainfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 BrainIf,yes,declared,not-applicable,declared,owned-adapter,brainif-v1,pending-backend-audit,pending-acceptance-audit,open
-Caballo,yes,declared,not-applicable,declared,owned-adapter,caballo-v1,pending-backend-audit,pending-acceptance-audit,open
+Caballo,yes,declared,not-applicable,declared,owned-adapter,caballo-v1,canonical-subtree-analysis;owned-signed-tree,pending-acceptance-audit,open
 CARP,yes,declared,not-applicable,declared,owned-adapter,carp-v1,pending-backend-audit,pending-acceptance-audit,open
 Chicken,yes,declared,not-applicable,declared,owned-adapter,chicken-v1,pending-backend-audit,pending-acceptance-audit,open
 Circlefuck,yes,declared,not-applicable,declared,owned-adapter,circlefuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Circuit Diagram,yes,declared,not-applicable,declared,owned-adapter,circuit-diagram-v1,pending-backend-audit,pending-acceptance-audit,open
 Clockwise,yes,declared,not-applicable,declared,owned-adapter,clockwise-v1,pending-backend-audit,pending-acceptance-audit,open
-Codesick,yes,declared,not-applicable,declared,owned-adapter,codesick-v1,pending-backend-audit,pending-acceptance-audit,open
+Codesick,yes,declared,not-applicable,declared,owned-adapter,codesick-v1,canonical-decision-layers;owned-marker-layout,pending-acceptance-audit,open
 Collatz Multiverse,yes,declared,not-applicable,declared,owned-adapter,collatz-multiverse-v1,pending-backend-audit,pending-acceptance-audit,open
 Container,yes,declared,not-applicable,declared,owned-adapter,container-v1,pending-backend-audit,pending-acceptance-audit,open
 CreativeScript v2,yes,declared,not-applicable,declared,owned-adapter,creativescript-v2-v1,canonical-dependency-projection;owned-arithmetic-lookup,pending-acceptance-audit,open
@@ -61,7 +61,7 @@ Home Row,yes,declared,not-applicable,declared,owned-adapter,home-row-v1,pending-
 Hot,yes,declared,not-applicable,declared,owned-adapter,hot-v1,canonical-subtree-symmetry,pending-acceptance-audit,open
 HQ9+,no,declared,not-applicable,declared,owned-adapter,hq9-v1,not-applicable,pending-acceptance-audit,open
 HQ9+ with headers,yes,declared,not-applicable,declared,owned-adapter,hq9-with-headers-v1,pending-backend-audit,pending-acceptance-audit,open
-IEBEL,yes,declared,not-applicable,declared,owned-adapter,iebel-v1,pending-backend-audit,pending-acceptance-audit,open
+IEBEL,yes,declared,not-applicable,declared,owned-adapter,iebel-v1,canonical-decision-layers;owned-fallthrough-layout,pending-acceptance-audit,open
 Inject,yes,declared,not-applicable,declared,owned-adapter,inject-v1,pending-backend-audit,pending-acceptance-audit,open
 INTERCAL,yes,declared,not-applicable,declared,owned-adapter,intercal-v1,pending-backend-audit,pending-acceptance-audit,open
 Interprogck8,yes,declared,not-applicable,declared,owned-adapter,interprogck8-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
@@ -72,7 +72,7 @@ lol waht i cant edit talk pages,yes,declared,not-applicable,declared,owned-adapt
 Malbolge,yes,declared,not-applicable,declared,owned-adapter,malbolge-v1,pending-backend-audit,pending-acceptance-audit,open
 Minsky Swap,yes,declared,not-applicable,declared,owned-adapter,minsky-swap-v1,pending-backend-audit,pending-acceptance-audit,open
 Modulous,yes,declared,not-applicable,declared,owned-adapter,modulous-v1,pending-backend-audit,pending-acceptance-audit,open
-Monotonic Boolfuck,yes,declared,not-applicable,declared,inherited-adapter,monotonic-boolfuck-v1,pending-backend-audit,pending-acceptance-audit,open
+Monotonic Boolfuck,yes,declared,not-applicable,declared,inherited-adapter,monotonic-boolfuck-v1,canonical-subtree-analysis;owned-pointer-tree,pending-acceptance-audit,open
 Movesum,yes,declared,not-applicable,declared,owned-adapter,movesum-v1,canonical-validation;owned-halting-rung-lookup,pending-acceptance-audit,open
 Nandypants,yes,declared,not-applicable,declared,owned-adapter,nandypants-v1,pending-backend-audit,pending-acceptance-audit,open
 Nope.,no,declared,not-applicable,declared,owned-adapter,nope-v1,not-applicable,pending-acceptance-audit,open
@@ -94,14 +94,14 @@ Retrograde,yes,declared,not-applicable,declared,owned-adapter,retrograde-v1,pend
 ROTfuck,yes,declared,declared,declared,owned-adapter,rotfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Rubic,yes,declared,not-applicable,declared,owned-adapter,rubic-v1,pending-backend-audit,pending-acceptance-audit,open
 S*bleq,yes,declared,not-applicable,declared,owned-adapter,s-bleq-v1,pending-backend-audit,pending-acceptance-audit,open
-SendStuff,yes,declared,not-applicable,declared,owned-adapter,sendstuff-v1,pending-backend-audit,pending-acceptance-audit,open
+SendStuff,yes,declared,not-applicable,declared,owned-adapter,sendstuff-v1,canonical-decision-layers;owned-macro-layout,pending-acceptance-audit,open
 Shakespeare,yes,declared,not-applicable,declared,owned-adapter,shakespeare-v1,pending-backend-audit,pending-acceptance-audit,open
 SLOW ACV MAMMALIAN,yes,declared,declared,declared,owned-adapter,slow-acv-mammalian-v1,pending-backend-audit,pending-acceptance-audit,open
 Smallfuck,yes,declared,not-applicable,declared,owned-adapter,smallfuck-v1,pending-backend-audit,pending-acceptance-audit,open
 Smu,yes,declared,not-applicable,declared,owned-adapter,smu-v1,pending-backend-audit,pending-acceptance-audit,open
 Sonata,yes,declared,not-applicable,declared,owned-adapter,sonata-v1,pending-backend-audit,pending-acceptance-audit,open
 SStack,yes,declared,not-applicable,declared,owned-adapter,sstack-v1,pending-backend-audit,pending-acceptance-audit,open
-Stisp,yes,declared,not-applicable,declared,owned-adapter,stisp-v1,pending-backend-audit,pending-acceptance-audit,open
+Stisp,yes,declared,not-applicable,declared,owned-adapter,stisp-v1,canonical-decision-layers;owned-bounded-literals,pending-acceptance-audit,open
 Streetcode,yes,declared,not-applicable,declared,owned-adapter,streetcode-v1,pending-backend-audit,pending-acceptance-audit,open
 Subleq,yes,declared,not-applicable,declared,owned-adapter,subleq-v1,pending-backend-audit,pending-acceptance-audit,open
 Suffolk,yes,declared,not-applicable,declared,owned-adapter,suffolk-v1,pending-backend-audit,pending-acceptance-audit,open

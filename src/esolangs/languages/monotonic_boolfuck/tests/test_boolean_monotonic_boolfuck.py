@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_native_rows
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -20,6 +21,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 
 def _check_constants() -> None:
+    assert_analysis_complement("Monotonic Boolfuck", "subtree_ids")
     from esolangs.languages.monotonic_boolfuck.interpreter import _Machine
     from scripts.benchmark import WrittenState
 

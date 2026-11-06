@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 from esolangs import run
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row, measure_run
 
@@ -12,6 +13,7 @@ TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(1, 2**2**n - 1)]
 
 
 def test_every_row_prints_its_answer() -> None:
+    assert_analysis_complement("Bleh", "decision_layers")
     for table in [*TABLES, "00010111", "01101001", "11101000"]:
         from esolangs.languages.bleh.tests.ablations import ablate
 

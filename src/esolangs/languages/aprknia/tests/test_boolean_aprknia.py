@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_constant_output,
@@ -27,6 +28,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 
 def _check_constants() -> None:
+    assert_analysis_complement("Aprknia", "subtree_ids")
     from esolangs.languages.aprknia.interpreter import run
 
     for n in range(1, 13):
