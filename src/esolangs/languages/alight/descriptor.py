@@ -1,15 +1,16 @@
 """Runtime and compiler capabilities for Alight."""
 
-from esolangs.languages.alight.interpreter._dialect import (
+from esolangs.languages.alight.dialect import (
     EXPRESSION_SYNTAXES,
     LIST_UPDATES,
 )
-from esolangs.languages.alight.interpreter._dialect import (
+from esolangs.languages.alight.dialect import (
     expression_syntax as validate_expression_syntax,
 )
-from esolangs.languages.alight.interpreter._dialect import (
+from esolangs.languages.alight.dialect import (
     list_update as validate_list_update,
 )
+from esolangs.languages.alight.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -28,6 +29,9 @@ LANGUAGE = Language(
     RuntimeSpec(
         "alight",
         category="grid_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         dialect=_dialect,
         dialect_values={
             "expression_syntax": EXPRESSION_SYNTAXES,

@@ -77,6 +77,17 @@ def test_artifact_and_source_traces_match_for_split_grids():
         module, (program.source, stdin), frozenset(), **options
     )
 
+    name = next(name for name, lang in LANGUAGES.items() if lang.runtime.dialect_values)
+    runtime = LANGUAGES[name].runtime
+    key, values = next(iter(runtime.dialect_values.items()))
+    choice = next(value for value in values if value != runtime.dialect_defaults[key])
+    settings = esolangs.DialectSettings(**{key: choice})
+    record = esolangs.ProgramArtifact("source", name, settings=settings)
+    capture = SimpleNamespace(_Machine=lambda source, _io, **bound: (source, bound))
+    body, bound = tracediff._machine(capture, record, tracediff.ScriptedIO())
+    assert body == record.source
+    assert bound == settings.options(name)
+
 
 def test_a_copy_matches_and_a_mutant_is_caught(tmp_path: Path) -> None:
     programs = tracediff.corpus(REFERENCE, 200, max_n=1)

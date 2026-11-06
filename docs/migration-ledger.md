@@ -201,3 +201,9 @@ workspace is 32n+17+bl(n); the general bound retains its conservative allowance.
 Dig and Flowchart declare split-grid preparation and debug fields. Mutable
 stores, pointer/deque state, bit buffers and read counters remain per-run;
 self-modification and final partial-byte flushing remain unchanged.
+
+Alight declares dialect-aware preparation and grid/namespace debug fields.
+Dialect constants and validators live outside the interpreter package, so
+registry, trait and dialect queries no longer load Alight’s machine.
+Walkers and lists stay per-run.
+Native trace construction also retains artifact dialect choices.

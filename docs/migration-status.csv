@@ -7,7 +7,7 @@ A Painter Ant,yes,declared,not-applicable,declared,owned-adapter,a-painter-ant-v
 ABCDirection,yes,declared,not-applicable,declared,owned-adapter,abcdirection-v1,pending-backend-audit,pending-acceptance-audit,open
 AddSubJump,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,addsubjump-v1,pending-backend-audit,pending-acceptance-audit,open
 Algebraic Programming Language,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
-Alight,yes,legacy-discovery,declared,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+Alight,yes,declared,declared,declared,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Aprknia,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,aprknia-v1,pending-backend-audit,pending-acceptance-audit,open
 ArrowQueue,yes,declared,not-applicable,declared,owned-adapter,arrowqueue-v1,pending-backend-audit,pending-acceptance-audit,open
 Ascenic,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,ascenic-v1,pending-backend-audit,pending-acceptance-audit,open

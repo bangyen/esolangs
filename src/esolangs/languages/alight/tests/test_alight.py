@@ -618,6 +618,38 @@ def test_at_list_update_and_aliases(
     )
     assert _run([program], "", list_update) == expected
 
+    from esolangs.languages.alight.interpreter import prepare_machine
+
+    source = [program]
+    options = {"list_update": list_update}
+    factory = prepare_machine(source, options)
+    first, second = factory(ScriptedIO()), factory(ScriptedIO())
+    source.clear()
+    options["list_update"] = "invalid"
+    before = second.snapshot()
+    assert first.walkers is not second.walkers
+    while not first.halted:
+        first.step()
+    assert first.io.getvalue() == expected
+    from esolangs import DialectSettings
+    from esolangs import run as run_api
+    from esolangs.debugger import make_debugger
+
+    settings = DialectSettings(list_update=list_update)
+    native = run_api("Alight", program, settings=settings)
+    assert native.output == expected
+    debug = make_debugger("Alight", program, settings=settings)
+    assert debug.run(max_steps=100) == "halted"
+    assert debug.result == native._replace(steps=debug.result.steps)
+    assert run_api("Alight", program, settings=settings, isolated=True) == native
+    assert second.snapshot() == before
+    assert second.vars == {}
+    assert factory(ScriptedIO()).snapshot() == before
+    with pytest.raises(TypeError, match="text or split text"):
+        prepare_machine(None, {})
+    with pytest.raises(TypeError, match="only expression_syntax"):
+        prepare_machine([], {"unexpected": True})
+
 
 @pytest.mark.medium
 def test_bad_programs_carry_a_repair_hint() -> None:
@@ -643,6 +675,18 @@ def test_alight_notation(source, syntax) -> None:
     else:
         run(f"begin;var a;set a {source};out a;end;", io, expression_syntax=syntax)
         assert io.getvalue() == "B"
+
+    if syntax != "bad":
+        from esolangs.languages.alight.interpreter import prepare_machine
+
+        factory = prepare_machine(
+            f"begin;var a;set a {source};out a;end;",
+            {"expression_syntax": syntax},
+        )
+        machine = factory(ScriptedIO())
+        while not machine.halted:
+            machine.step()
+        assert machine.io.getvalue() == "B"
 
 
 @pytest.mark.medium

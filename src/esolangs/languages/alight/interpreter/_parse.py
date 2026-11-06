@@ -5,7 +5,7 @@ from __future__ import annotations
 from fractions import Fraction
 from typing import Literal, NamedTuple
 
-from esolangs.languages.alight.interpreter._dialect import (
+from esolangs.languages.alight.dialect import (
     expression_syntax as validate_expression_syntax,
 )
 from esolangs.languages.alight.interpreter._hints import Hint

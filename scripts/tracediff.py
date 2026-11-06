@@ -74,6 +74,8 @@ def _machine(
     """
     options: dict[str, object] = {}
     if isinstance(source, esolangs.ProgramArtifact):
+        if source.settings is not None:
+            options.update(source.settings.options(source.language))
         if source.scale is not None:
             options["scale"] = source.scale
         source = source.source

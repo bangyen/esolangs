@@ -4,10 +4,10 @@ from fractions import Fraction
 from typing import assert_never
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.alight.interpreter._dialect import (
+from esolangs.languages.alight.dialect import (
     expression_syntax as validate_expression_syntax,
 )
-from esolangs.languages.alight.interpreter._dialect import (
+from esolangs.languages.alight.dialect import (
     list_update as validate_list_update,
 )
 from esolangs.languages.alight.interpreter._hints import Hint
