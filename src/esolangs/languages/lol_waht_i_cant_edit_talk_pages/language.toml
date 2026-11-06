@@ -10,6 +10,8 @@ labels = ["tree"]
 qualification = "an identity on the final bit reads and prints x directly; other branches keep the loop tree"
 
 [catalogue]
+folding_ignored_local = "_branch"  # canonical equal children retain one read
+folding_constant_local = "_branch"  # one draining read per remaining level
 sharing_exempt = "no procedures or jumps: a subtree runs only where it is written"
 
 [generator_sizes]

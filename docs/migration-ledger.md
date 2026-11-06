@@ -336,3 +336,10 @@ and leaf numbering. Fackward uses the shared memoized subtable fold; its native
 terminals, draining reads and copied block syntax remain emitter-owned.
 Each retains all 632 corpus programs byte for byte, with executed shared-analysis
 fault controls. Size pins, anchors and declared exact resource scopes are unchanged.
+
+Lol waht i cant edit talk pages uses canonical memoized subtable folding.
+Its emitter retains draining reads, final-bit echoing and one-arm termination;
+constant programs validate and emit without initializing decision machinery.
+The local analysis traversal and emitted-arm comparison are gone. All 632
+corpus requests and 160 larger layouts match; 3,128 native/stepped rows retain
+traces, input progress and resource peaks. Original bounds and arities remain.

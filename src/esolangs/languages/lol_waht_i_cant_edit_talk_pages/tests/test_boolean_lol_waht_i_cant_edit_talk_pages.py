@@ -9,7 +9,7 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
 @pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer(table: str, monkeypatch) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     from esolangs.languages.lol_waht_i_cant_edit_talk_pages.interpreter import run
 
@@ -17,6 +17,26 @@ def test_every_row_prints_its_answer(table: str) -> None:
     assert_native_rows(
         "lol waht i cant edit talk pages", table, program, run, sentinel="Q", token=True
     )
+    if table == "0011":
+        from esolangs.generation import decision
+
+        canonical = decision.fold_subtables
+
+        def wrong_branches(table, terminals, branch):
+            return canonical(table, terminals, lambda zero, one: branch(one, zero))
+
+        with monkeypatch.context() as patch:
+            patch.setattr(decision, "fold_subtables", wrong_branches)
+            mutant = esolangs.generate("lol waht i cant edit talk pages", table).source
+            with pytest.raises(AssertionError):
+                assert_native_rows(
+                    "lol waht i cant edit talk pages",
+                    table,
+                    mutant,
+                    run,
+                    sentinel="Q",
+                    token=True,
+                )
 
 
 @pytest.mark.medium
