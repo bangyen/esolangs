@@ -70,9 +70,10 @@ except ModuleNotFoundError as error:
     assert error.name == 'esolangs.languages.generators'
 else:
     raise AssertionError('retired generator facade imported')
-for lang in pilots:
-    native = importlib.import_module(registry.INTERPRETERS[lang.name])
+for name in registry.LANGUAGES:
+    native = importlib.import_module(registry.INTERPRETERS[name])
     assert all(not hasattr(native, key) for key in ('load_source', 'supports_scale'))
+for lang in pilots:
     backend = lang.backend
     generate = backend.generate
     module = sys.modules[generate.__module__]

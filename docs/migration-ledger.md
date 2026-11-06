@@ -872,4 +872,19 @@ worker termination evidence agrees on nine cycles and thisthat’s closed graph.
 Seven changed native interpreters retain 53,492 matching observations and
 throughput ratios 0.996–1.002, with live output-fault controls for each.
 The CSV’s `snapshot_transport` column records this bounded evidence separately
-from whole-language acceptance; interpreter-only rows remain pending.
+from whole-language acceptance; interpreter-only transport follows below.
+
+The installed runtime/import witness now covers all 117 languages on Python
+3.12–3.15: catalog/describe, 114 generated artifact round trips, native execution,
+116 debugger halts and one periodic boundary replay. Every language also runs
+in a fresh worker behind a fatal certification-import barrier, matching its
+native result; barrier controls fire before execution. Reference-language EOF
+and step-limit failures retain their prefixes and observations. All 832 packaged Python files
+match tracked source, with no extra wheel modules. Known retired imports,
+constructor aliases, callable proxies and source/scale hooks remain absent.
+Source tests guard the existing ordinary, post-halt, periodic and dynamic
+completion workers without duplicating their runs. Snapshot checks now include
+the three interpreter-only languages: VM and debugger retain 1,747 boundaries
+each, with transported history unchanged by later steps. The CSV records runtime
+import isolation separately from pending certification claims; bounded route
+parity does not complete independent accounting or whole-language acceptance.

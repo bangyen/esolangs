@@ -14,6 +14,7 @@ from esolangs.vm import (
     run_until_halt_or_cycle,
     run_until_halt_or_value_growth,
 )
+from tests.support.certification_barrier import guarded_worker
 from tests.support.cli_support import run_cli
 from tests.support.generator_support import evaluate_generated
 from tests.support.vm_support import _STEP_BUDGET, _row
@@ -135,7 +136,8 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
         result.completion.cycle.repeat_pass,
         result.completion.cycle.commands_per_pass,
     ) == (0, 1, 1)
-    assert esolangs._run_result("Suffolk", "<", isolated=True) == result
+    with guarded_worker():
+        assert esolangs._run_result("Suffolk", "<", isolated=True) == result
 
     ended = esolangs._run_result("Suffolk", ",")
     assert ended.completion.kind is Completion.HALTED
@@ -148,8 +150,9 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     from esolangs.languages.suffolk import interpreter
     from esolangs.runtime._lifecycle import POST_HALT_REPORT
 
-    assert esolangs.run("Suffolk", "<", isolated=True) == result
-    assert esolangs.run("Suffolk", ",", isolated=True) == ended
+    with guarded_worker(expected=2):
+        assert esolangs.run("Suffolk", "<", isolated=True) == result
+        assert esolangs.run("Suffolk", ",", isolated=True) == ended
     monkeypatch.setattr(
         vm,
         "interpreter_module",

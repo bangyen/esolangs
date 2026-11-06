@@ -19,6 +19,7 @@ from esolangs.runtime._lifecycle import (
     BoundaryCycle,
     Completion,
 )
+from tests.support.certification_barrier import guarded_worker
 from tests.support.samples import SAMPLES
 
 
@@ -196,9 +197,11 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
         source, stdin = SAMPLES[name]
         seed = language.runtime.reproducible_seed if language.runtime.random else None
         native = esolangs.run(name, source, stdin=stdin, seed=seed)
-        assert (
-            esolangs.run(name, source, stdin=stdin, seed=seed, isolated=True) == native
-        )
+        with guarded_worker():
+            assert (
+                esolangs.run(name, source, stdin=stdin, seed=seed, isolated=True)
+                == native
+            )
         module = interpreter_module(name)
         with monkeypatch.context() as control:
             control.setattr(module._Machine, "completion", Completion.HALTED)
@@ -321,7 +324,10 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
         return esolangs.run(name, source, stdin=stdin, seed=seed, isolated=True)
 
     # Each disposable worker is independent; serial startup exceeded 18s at 104.
-    with ThreadPoolExecutor(max_workers=4) as workers:
+    with (
+        guarded_worker(expected=len(selected)),
+        ThreadPoolExecutor(max_workers=4) as workers,
+    ):
         isolated = dict(
             zip(selected, workers.map(isolated_result, selected), strict=True)
         )

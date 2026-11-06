@@ -7,6 +7,7 @@ from fractions import Fraction
 import pytest
 
 import esolangs
+from esolangs.debugger import make_debugger
 from esolangs.registry import LANGUAGES
 from esolangs.results import ExecutionResult
 from esolangs.runtime._execution import interpreter_module
@@ -17,23 +18,44 @@ from esolangs.vm import make_vm
 from tests.support.reference import REFERENCE
 
 
-def _assert_catalog_snapshot_round_trips(result):
+@pytest.fixture
+def interpreter_only_samples():
+    from tests.support.samples import SAMPLES
+
+    return {
+        name: SAMPLES[name] for name, spec in LANGUAGES.items() if spec.backend is None
+    }
+
+
+def _assert_catalog_snapshot_round_trips(result, interpreter_only_samples):
+    assert set(interpreter_only_samples) == {
+        name for name, spec in LANGUAGES.items() if spec.backend is None
+    }
     for name, spec in LANGUAGES.items():
         if spec.backend is None:
-            continue
-        artifact = esolangs.generate(name, "01")
-        for row in (0, 1):
-            source = (
-                esolangs.instantiate(name, artifact, [row])
-                if spec.parameterized
-                else artifact
+            cases = [interpreter_only_samples[name]]
+        else:
+            artifact = esolangs.generate(name, "01")
+            cases = [
+                (
+                    esolangs.instantiate(name, artifact, [row])
+                    if spec.parameterized
+                    else artifact,
+                    "" if spec.parameterized else esolangs.encode_inputs(name, [row]),
+                )
+                for row in (0, 1)
+            ]
+        for source, stdin in cases:
+            options = {"stdin": stdin, "seed": 7 if spec.runtime.random else None}
+            vm, debugger = (
+                make_vm(name, source, **options),
+                make_debugger(name, source, **options),
             )
-            stdin = "" if spec.parameterized else esolangs.encode_inputs(name, [row])
-            vm = make_vm(
-                name, source, stdin=stdin, seed=7 if spec.runtime.random else None
-            )
+            retained = []
             for step in range(9):
                 cycle = BoundaryCycle(vm.snapshot(), 0, 1, step)
+                assert debugger.snapshot() == cycle.state
+                assert debugger.output == vm.output
                 observed = result._replace(
                     completion=CompletionReport(Completion.PERIODIC, cycle)
                 )
@@ -41,14 +63,20 @@ def _assert_catalog_snapshot_round_trips(result):
                     observed.output, json.loads(json.dumps(encode_result(observed)))
                 )
                 assert restored == observed
-                assert hash(restored.completion.cycle.state) == hash(cycle.state)
+                retained.append((cycle.state, restored.completion.cycle.state))
+                assert all(
+                    before == frozen and hash(before) == hash(frozen)
+                    for before, frozen in retained
+                )
                 if vm.halted:
+                    assert debugger.halted
                     break
                 vm.step()
+                debugger.step()
 
 
 @pytest.mark.medium
-def test_immutable_cycle_state_survives_json():
+def test_immutable_cycle_state_survives_json(interpreter_only_samples):
     def record_at(value, tag="record"):
         pending = [value]
         while pending:
@@ -105,7 +133,7 @@ def test_immutable_cycle_state_survives_json():
         decode_result(zero.output, json.loads(json.dumps(encode_result(zero)))) == zero
     )
 
-    _assert_catalog_snapshot_round_trips(result)
+    _assert_catalog_snapshot_round_trips(result, interpreter_only_samples)
 
     def refuses(broken, match):
         with pytest.raises(ValueError, match=match):
