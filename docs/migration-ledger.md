@@ -1002,3 +1002,20 @@ layouts retain bytes and execute; all declared size, resource, scaling and
 anchor scopes pass. Pins and 36 default timing comparisons pass unchanged;
 eight APL balance trials retain a 0.996 speed ratio. Catalog acceptance
 remains open.
+
+FALSE uses canonical child layers; lambda stores, formula split prices and
+signed literal packets remain owned. B-tapemark retains canonical projection;
+copy, narrow/folded geometry and both swap-marker dialects remain owned.
+Four public query faults and twenty direct nonconstant shared-diagram rows
+change executed answers. Disabling projection grows the new/old dialect grids
+from 1,500/1,425 to 6,426 cells; both enlarged programs execute correctly.
+
+All 1,956 artifacts, 6,360 paired rows and 784,830 semantic samples match.
+Another 276 direct FALSE diagrams retain bytes and execute every small row.
+All 525 larger layouts, 162 size witnesses, pins, scaling/anchor scopes and
+36 balanced timing comparisons pass. Constant-input checks share one runner
+without dropping arities, layouts, read ordering or following-record checks.
+The eight-input B-tapemark resource aggregate hits its unchanged 60-second
+cap; all ten full-table checks pass separately, retaining all 2,560 rows and
+both exact maxima. Other resource arities pass, including FALSE at nine.
+Catalog acceptance remains open.

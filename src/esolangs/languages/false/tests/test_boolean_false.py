@@ -5,17 +5,20 @@ import pytest
 import esolangs
 from esolangs import run as execute
 from esolangs.languages.false.generator import _shared, false
+from esolangs.languages.false.interpreter import run
 from tests.generators.plain_oracles import separated_tree_text
 from tests.generators.reader_support import assert_emissions_grow_by_a_line
 from tests.generators.sample_tables import five_input_sample
-from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output, verify_generated
+from tests.support.analysis_support import assert_analysis_complement
+from tests.support.generator_support import assert_constant_roots, verify_generated
 from tests.support.witness_tables import witnesses
 
 
 def test_false_tests_the_low_bit_and_splits_every_node() -> None:
     """``1&`` is the bit; a node over two constant halves splits like any other."""
 
+    assert_analysis_complement("FALSE", "decision_layers", "00")
+    assert_analysis_complement("FALSE", "read_at")
     assert _shared("0110", 2) == "^1&$[^1&$[0.]?0=[1.]?]?0=[^1&$[1.]?0=[0.]?]?"
     assert _shared("0001", 2) == "^1&$[^1&$[1.]?0=[0.]?]?0=[^%0.]?"
     total = sum(len(false_plain(f"{value:08b}", 3)) for value in range(256))
@@ -90,7 +93,7 @@ def test_false_single_character_floor_executes_every_small_table() -> None:
 
 def test_folding_shortens_a_constant_table() -> None:
     """A table whose rows agree collapses below one that folds nothing."""
-    _check_constants()
+    assert_constant_roots("FALSE", run)
     assert len(false("00000000")) < len(false("01101001"))
 
 
@@ -114,19 +117,6 @@ def false_plain(truth_table: str, n: int) -> str:
         close="]?",
         one_first=True,
     )
-
-
-def _check_constants() -> None:
-    from esolangs.languages.false.interpreter import run
-
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("FALSE", bit * (1 << n), **options).source
-                for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row + "7", expected=n)
-                    assert_constant_output(run, program, io, bit, n)
-                    assert io.input_char() == ord("7")
 
 
 def _check_lookup_and_cached_formula() -> None:

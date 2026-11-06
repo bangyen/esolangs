@@ -11,10 +11,10 @@ from esolangs.languages.b_tapemark import generator as tools
 from esolangs.languages.b_tapemark.generator import _Builder
 from esolangs.languages.b_tapemark.interpreter import run
 from esolangs.runtime.io import ScriptedIO
-from tests.support.event_io import ReadFirstIO
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
-    assert_constant_output,
+    assert_constant_roots,
 )
 from tests.support.witness_tables import witnesses
 
@@ -28,6 +28,7 @@ def execute(program: str, bits: str, swap_marker: str = "new") -> tuple[str, int
 
 def test_each_dialect_answers_its_own_programs() -> None:
     """A dialect's generated programs run under that dialect's semantics."""
+    assert_analysis_complement("B-tapemark", "input_weights")
     tables = [table for n in (1, 2, 3) for table in witnesses(n)]
     tables += ["01101001", "0110100110010110"]
     for swap_marker in ("new", "old"):
@@ -114,7 +115,7 @@ def test_constant_reads_each_input_and_prints_a_literal(n, bit) -> None:
     from esolangs.languages.b_tapemark.interpreter import _Machine
 
     if n == 1 and bit == "0":
-        _check_constants()
+        assert_constant_roots("B-tapemark", run)
     table = bit * (1 << n)
     default = tools.b_tapemark(table)
     assert default == ">" + "-|" * (n - 1) + "-" + bit + "!"
@@ -366,18 +367,3 @@ def test_area_oriented_fold_executes_every_five_input_row() -> None:
     assert grid_area(program) == 1750
     for row in range(32):
         assert execute(program, format(row, "05b")) == (table[row], 5)
-
-
-def _check_constants() -> None:
-    from esolangs.languages.b_tapemark.interpreter import run
-
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "B-tapemark", bit * (1 << n), **options
-                ).source
-                for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row + "7", expected=n)
-                    assert_constant_output(run, program, io, bit, n)
-                    assert io.input_char() == ord("7")

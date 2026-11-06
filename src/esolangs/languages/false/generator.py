@@ -24,6 +24,7 @@ from string import ascii_lowercase
 from sys import maxsize
 from typing import NamedTuple
 
+from esolangs.generation.decision import decision_layers
 from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
@@ -104,7 +105,7 @@ def _shared(truth_table: str, n: int) -> str:
     bare, fetched as ``x;!``; the read still happens where the tree had it.
     26 variables, handed out deepest first, cap the stores.
     """
-    ids = subtree_ids(truth_table)
+    root, layers = decision_layers(truth_table)
     nodes: dict[Key, _Fold | _Split] = {}
     uses: dict[Key, int] = {}
     inner: dict[Key, int] = {}  # of those uses, the ones that are a body
@@ -115,13 +116,12 @@ def _shared(truth_table: str, n: int) -> str:
             found[depth].append(child)
         uses[child] = uses.get(child, 0) + 1
 
-    for depth in range(n):
-        for place, node in enumerate(ids[depth]):
+    for depth, children in enumerate(layers):
+        for node, (low, high) in children.items():
             key = (depth, node)
-            if node < 2 or key in nodes:
-                continue  # a leaf, or a node already seen at this level
-            zero = (depth + 1, ids[depth + 1][2 * place])
-            one = (depth + 1, ids[depth + 1][2 * place + 1])
+            if node < 2:
+                continue  # constant leaves drain the remaining reads
+            zero, one = (depth + 1, low), (depth + 1, high)
             if zero == one:  # the test changes nothing: drop the bit, run it
                 nodes[key] = _Fold(zero)
                 inner[zero] = inner.get(zero, 0) + 1
@@ -160,7 +160,7 @@ def _shared(truth_table: str, n: int) -> str:
     stores = "".join(
         "[" + render(key) + "]" + name + ":" for key, name in names.items()
     )
-    return stores + _root_text((0, ids[0][0]), nodes, names, render, n)
+    return stores + _root_text((0, root), nodes, names, render, n)
 
 
 def _render_diagram(
