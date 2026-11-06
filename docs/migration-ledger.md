@@ -604,3 +604,12 @@ All 632 corpus requests and 240 larger layouts retain their bytes; 2,286 paired
 execution records retain 20,988 semantic samples. Live query faults damage both
 executed constructions. Bounds, size pins and anchors remain unchanged;
 catalog-wide acceptance stays open.
+
+RAM0's width-one fallback uses canonical subtree IDs instead of repeated slice
+classification. Unary pair leaves lower directly to native NAND references;
+gate interning, allocation order and unary addresses remain owned. The ordinary
+tree retains canonical subtree slots. Both routes have executed ID-fault controls.
+All 632 corpus requests and 240 larger layouts retain their bytes; 4,406 paired
+rows include exhaustive width-one execution through three inputs, preserving
+1,330,216 semantic samples. Bounds, pins and anchors remain unchanged;
+catalog acceptance stays open.

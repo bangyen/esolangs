@@ -108,12 +108,19 @@ def _ram0_nand(truth_table: str) -> str:
         gates[pair] = result
         return result
 
-    def tree(rows: str, level: int) -> int:
-        if rows == rows[0] * len(rows):
-            return 1 - int(rows[0])
-        half = len(rows) // 2
-        zero = tree(rows[:half], level + 1)
-        one = tree(rows[half:], level + 1)
+    ids = subtree_ids(truth_table) if n > 1 else []
+
+    def tree(level: int, block: int) -> int:
+        # Unary leaves lower straight to NAND refs, avoiding two recursive calls.
+        if level == n - 1:
+            zero = 1 - int(truth_table[2 * block])
+            one = 1 - int(truth_table[2 * block + 1])
+        else:
+            key = ids[level][block]
+            if key < 2:
+                return 1 - key
+            zero = tree(level + 1, 2 * block)
+            one = tree(level + 1, 2 * block + 1)
         if zero == one:
             return zero
         bit = 4 + level
@@ -122,7 +129,7 @@ def _ram0_nand(truth_table: str) -> str:
 
     # A unary address would cost O(T squared) at unrestricted arity;
     # the three-input cap keeps this fallback uniformly O(T).
-    load(tree(truth_table, 0))
+    load(tree(0, 0))
     return " ".join(tokens)
 
 

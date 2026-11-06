@@ -33,7 +33,9 @@ class TestParameterizedRam0:
         template = esolangs.TemplateArtifact(tpl, "RAM0", bindings)
         return esolangs.instantiate("RAM0", template, bits).source
 
-    def test_template_is_input_independent(self) -> None:
+    def test_template_is_input_independent(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """The template has one run per input, not hardcoded bits."""
         from esolangs.generation.helpers import TEMPLATE_CHAR, runs
         from esolangs.languages.ram0 import generator as generators
@@ -42,6 +44,25 @@ class TestParameterizedRam0:
         template = generators.ram0("0110")
         assert "{X" not in template
         assert len(runs(template, TEMPLATE_CHAR, (RAM0_PAIR,) * 2)) == 2
+
+        for width in (None, 1):
+            analyze = generators.subtree_ids
+            with monkeypatch.context() as patch:
+                patch.setattr(
+                    generators,
+                    "subtree_ids",
+                    lambda table, analyze=analyze: [
+                        [1] * len(layer) for layer in analyze(table)
+                    ],
+                )
+                damaged = generators.ram0("0001", width=width)
+            assert (
+                "".join(
+                    self.run_ram0(self.instantiate(damaged, [row >> 1, row & 1]))
+                    for row in range(4)
+                )
+                == "1111"
+            )
 
     def test_leaves_share_a_low_address_halt_trampoline(self) -> None:
         """Every leaf jumps to 2; only the trampoline names the end."""

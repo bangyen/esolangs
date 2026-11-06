@@ -88,7 +88,7 @@ Pointless,yes,declared,not-applicable,declared,owned-adapter,pointless-v1,pendin
 Qoibl,yes,declared,not-applicable,declared,owned-adapter,qoibl-v1,pending-backend-audit,pending-acceptance-audit,open
 Qrain,yes,declared,not-applicable,declared,owned-adapter,qrain-v1,canonical-subtree-flag;owned-queue-costs,pending-acceptance-audit,open
 Quassaunt,yes,declared,not-applicable,declared,owned-adapter,quassaunt-v1,pending-backend-audit,pending-acceptance-audit,open
-RAM0,yes,declared,not-applicable,declared,owned-adapter,ram0-v1,pending-backend-audit,pending-acceptance-audit,open
+RAM0,yes,declared,not-applicable,declared,owned-adapter,ram0-v1,canonical-subtree-analysis;owned-unary-nand-lowering,pending-acceptance-audit,open
 REFRACTRAN,yes,declared,not-applicable,declared,owned-adapter,refractran-v1,canonical-decision-parity,pending-acceptance-audit,open
 Retrograde,yes,declared,not-applicable,declared,owned-adapter,retrograde-v1,canonical-subtree-analysis;owned-reversal-involution,pending-acceptance-audit,open
 ROTfuck,yes,declared,declared,declared,owned-adapter,rotfuck-v1,pending-backend-audit,pending-acceptance-audit,open
