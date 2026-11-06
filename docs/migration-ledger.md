@@ -42,9 +42,9 @@ Owners are workstreams, not individual contributors.
 | Snapshot-as-workspace fallback | Accounting | Retired; VM capture and `WrittenState` require models; missing/invalid adapters and raw values are rejected in runtime/tooling tests | Versioned semantic accounting models |
 | Noninteger cycle counters and unhashable cycle snapshots | Results | Retired; constructor, JSON and parent-decoder controls retain zero-stride completion and partial output | Integer ordered boundaries and hashable snapshots |
 | Disconnected, mutable or draw-dependent branch verdicts | Results | Retired; constructor, wire and parent-decoder refusal controls preserve partial output | Immutable root-reachable graphs; run-specific termination decisions |
-| Legacy worker-field defaults | Results | Retired; complete requests and explicit success/error observations; omission controls in `tests/runtime/test_worker_results.py` | Explicit canonical fields, including unavailable observations |
+| Legacy worker-field defaults | Results | Retired; complete typed requests and explicit success/error observations; omission, flag, integer-tag and raster-run controls in `tests/runtime/test_worker_results.py` | Explicit canonical fields, including unavailable observations |
 | Permissive worker envelopes and nested proof fields | Results | Retired; missing/extra fields, unknown error kinds, duplicate terminals and contradictory output fail with retained prefixes | Exact canonical stream, result and evidence schemas |
-| Superseded serialization decoders/converters | Persistence | Persisted data and fixtures, if a format is superseded | One-time data migration, then remove the obsolete code |
+| Superseded serialization decoders/converters | Persistence | Not applicable: no persisted format was superseded; version-1 JSON/PNG and unlabelled native files remain supported | Retain canonical decoders; convert only after a format cutover |
 
 For each family, locate consumers before changing it; close the row only after
 those consumers migrate, the implementation disappears and a regression check
@@ -813,3 +813,12 @@ peak predictions. Whole-language and catalog-wide acceptance remain open.
 Eight owned models share ordered component-name parsing; corpus digests retain
 62,382 captures, 79 refusals and 14,038 observations, with an altered-width
 positive control. This preserves the source/test line budget after integration.
+
+Worker requests reject truthy flag substitutes, untagged decimal integer
+fallbacks, incoherent setting tags and malformed raster runs before execution.
+The baseline executed numeric flags and untagged step limits; raster decoding
+also discarded fourth channels and zero-count rows, and accepted Boolean
+counts. Live refusal controls retain text, gzip and raster requests, signed
+seeds and limits beyond the decimal-rendering cap. No persisted format changes;
+canonical version-1 artifacts remain supported. Final tree-wide retirement and
+catalog acceptance remain open.

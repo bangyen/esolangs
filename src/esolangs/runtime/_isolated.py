@@ -610,11 +610,86 @@ def _read_request(stream: TextIO) -> dict[str, Any]:
     request = json.load(stream, object_pairs_hook=unique_object)
     if not isinstance(request, dict) or set(request) != _REQUEST_FIELDS:
         raise ValueError("invalid worker request fields")
-    if request["integer_max_output"]:
-        request["max_output"] = int(request["max_output"], 16)
-    if request["integer_max_steps"]:
-        request["max_steps"] = int(request["max_steps"], 16)
+    flags = (
+        "raster",
+        "compressed",
+        "termination",
+        "integer_seed",
+        "integer_max_output",
+        "integer_max_steps",
+    )
+    if (
+        any(type(request[key]) is not bool for key in flags)
+        or (request["raster"] and request["compressed"])
+        or any(not isinstance(request[key], str) for key in ("language", "stdin"))
+        or not isinstance(request["settings"], dict)
+        or not isinstance(request["integer_settings"], list)
+    ):
+        raise ValueError("invalid worker request values")
+    integer_settings = request["integer_settings"]
+    if (
+        any(not isinstance(key, str) for key in integer_settings)
+        or len(set(integer_settings)) != len(integer_settings)
+        or set(integer_settings) - request["settings"].keys()
+    ):
+        raise ValueError("invalid worker integer settings")
+    for key, value in request["settings"].items():
+        if not isinstance(value, str):
+            raise ValueError("invalid worker setting")
+        if key in integer_settings:
+            _request_integer(value)
+    for key in ("seed", "max_output", "max_steps"):
+        value = request[key]
+        if request[f"integer_{key}"]:
+            decoded = _request_integer(value)
+            if key != "seed" and decoded < 0:
+                raise ValueError("invalid worker limit")
+            if key != "seed":
+                request[key] = decoded
+        elif value is not None:
+            raise ValueError("untagged worker integer")
+    for key in ("scale", "max_memory"):
+        value = request[key]
+        if value is not None and (type(value) is not int or value < 1):
+            raise ValueError("invalid worker size")
+    if request["raster"]:
+        _check_raster_request(request["program"])
+    elif not isinstance(request["program"], str):
+        raise ValueError("invalid worker source")
     return cast("dict[str, Any]", request)
+
+
+def _request_integer(value: Any) -> int:
+    """Decode a tagged hexadecimal integer without accepting decimal fallbacks."""
+    if not isinstance(value, str) or not value.startswith(("0x", "-0x")):
+        raise ValueError("invalid worker integer")
+    return int(value, 16)
+
+
+def _check_raster_request(runs: Any) -> None:
+    """Refuse malformed runs before expansion can drop counts or channels."""
+    if not isinstance(runs, list):
+        raise ValueError("invalid worker raster")
+    for run in runs:
+        if (
+            not isinstance(run, list)
+            or len(run) != 2
+            or type(run[0]) is not int
+            or run[0] < 1
+            or not isinstance(run[1], list)
+        ):
+            raise ValueError("invalid worker raster row")
+        for pixel in run[1]:
+            if (
+                not isinstance(pixel, list)
+                or len(pixel) != 2
+                or type(pixel[0]) is not int
+                or pixel[0] < 1
+                or not isinstance(pixel[1], list)
+                or len(pixel[1]) != 3
+                or any(type(c) is not int or not 0 <= c <= 255 for c in pixel[1])
+            ):
+                raise ValueError("invalid worker raster pixel")
 
 
 def _serve_request() -> None:

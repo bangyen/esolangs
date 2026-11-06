@@ -237,11 +237,18 @@ def test_missing_worker_observations_are_rejected_with_the_prefix(failure):
             assert invalid.value.partial_output == "prefix"
 
 
-def test_worker_requires_the_complete_request(monkeypatch):
+def test_worker_requires_the_complete_request(monkeypatch, capsys):
     import io
     import sys
 
+    from esolangs.registry import SourceKind
     from esolangs.runtime import _isolated
+
+    def serve(value):
+        document = json.dumps(value) if isinstance(value, dict) else value
+        monkeypatch.setattr(sys, "stdin", io.StringIO(document))
+        _isolated._worker()
+        return json.loads(capsys.readouterr().out.splitlines()[-1])["result"]
 
     request = _isolated._request_wire(REFERENCE, "", "")
     for key in (*request, "obsolete"):
@@ -250,9 +257,8 @@ def test_worker_requires_the_complete_request(monkeypatch):
             if key == "obsolete"
             else {k: value for k, value in request.items() if k != key}
         )
-        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(broken)))
         with pytest.raises(ValueError, match="invalid worker request fields"):
-            _isolated._worker()
+            serve(broken)
     encoded = json.dumps(request)
     for malformed in (
         encoded.replace('"language":', '"language":"ignored","language":', 1),
@@ -261,9 +267,83 @@ def test_worker_requires_the_complete_request(monkeypatch):
         ),
     ):
         assert malformed != encoded
-        monkeypatch.setattr(sys, "stdin", io.StringIO(malformed))
         with pytest.raises(ValueError, match="duplicate field"):
-            _isolated._worker()
+            serve(malformed)
+    for source in (",.", esolangs.CompressedText.from_chunks((",.",))):
+        valid = _isolated._request_wire(
+            REFERENCE, source, "A", max_steps=2, max_output=1
+        )
+        assert serve(valid) == "A"
+    huge = 1 << 15000
+    for predicate in (
+        lambda lang: lang.runtime.random,
+        lambda lang: lang.runtime.source_kind is SourceKind.RASTER,
+    ):
+        language = next(
+            lang
+            for lang in LANGUAGES.values()
+            if lang.backend and not lang.parameterized and predicate(lang)
+        )
+        name = language.name
+        valid = _isolated._request_wire(
+            name,
+            esolangs.generate(name, "01").source,
+            esolangs.encode_inputs(name, [1]),
+            seed=-huge if language.runtime.random else None,
+            max_steps=huge,
+            max_output=huge,
+        )
+        assert esolangs.read_answer(name, serve(valid)) == "1"
+    raster = valid
+    invalid = {
+        **{
+            key: (0, 1, "", "false", None)
+            for key, value in request.items()
+            if type(value) is bool
+        },
+        **dict.fromkeys(("seed", "max_output", "max_steps"), (0, 1, "0x1")),
+        **dict.fromkeys(("scale", "max_memory"), (False, 0, -1, 1.0)),
+        "language": (0,),
+        "stdin": ([],),
+        "program": ([],),
+        "settings": ([],),
+        "integer_settings": ({}, [1], ["missing"]),
+    }
+    patches = [{key: value} for key, values in invalid.items() for value in values]
+    patches += [
+        {"raster": True, "compressed": True},
+        {"settings": {"cell_modulus": 256}},
+        {
+            "settings": {"cell_modulus": "0x100"},
+            "integer_settings": ["cell_modulus", "cell_modulus"],
+        },
+        {"settings": {"cell_modulus": "256"}, "integer_settings": ["cell_modulus"]},
+        *(
+            {key: value, f"integer_{key}": True}
+            for key in ("seed", "max_output", "max_steps")
+            for value in (None, 0, "1", "0x!")
+        ),
+        *({key: "-0x1", f"integer_{key}": True} for key in ("max_output", "max_steps")),
+    ]
+    for patch in patches:
+        with pytest.raises(ValueError, match=r"worker|invalid literal"):
+            serve({**request, **patch})
+        assert capsys.readouterr().out == ""
+    for runs in (
+        {},
+        [0],
+        [[1, {}]],
+        *([[count, []]] for count in (True, 0, -1)),
+        [[1, [0]]],
+        *([[1, [[count, [0, 0, 0]]]]] for count in (False, 0)),
+        *(
+            [[1, [[1, pixel]]]]
+            for pixel in ([0, 0], [0, 0, 0, 0], [False, 0, 0], [256, 0, 0])
+        ),
+    ):
+        with pytest.raises(ValueError, match="invalid worker raster"):
+            serve({**raster, "program": runs})
+        assert capsys.readouterr().out == ""
 
 
 def test_worker_error_requires_explicit_unavailable_observation_and_options():
