@@ -98,3 +98,17 @@ def missing_workspace(factory, component):
             return WorkspaceSnapshot(captured.model, tuple(parts))
 
     return Fault
+
+
+def workspace_view(trace, model, parts, view):
+    """Check predicted resources alongside each independently modeled state view."""
+    expected = iter(trace)
+    witness = WorkspaceWitness(model)
+
+    def observe(machine):
+        predicted = next(expected)
+        assert predicted[0] is not None
+        witness.sample(machine.workspace_snapshot(), parts(predicted))
+        return view(machine)
+
+    return observe

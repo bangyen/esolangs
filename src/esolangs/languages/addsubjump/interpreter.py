@@ -477,6 +477,8 @@ def _store(state: _State, addr: int, value: int) -> _State:
         return state
     if addr in _SPECIAL:
         return (state[0], ip, zf, nf, value) if addr == _FUM else state
+    if addr < 0:
+        return state
     if addr >= length:
         length = addr + 1
     # dict(proxy) walks keys; proxy.copy() retains the dict's native copy.

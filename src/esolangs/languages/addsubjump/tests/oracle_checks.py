@@ -2,8 +2,12 @@
 
 from itertools import product
 
+import pytest
+
 from esolangs.languages.addsubjump.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import missing_workspace, workspace_view
 
 
 def _model(words, stdin):
@@ -70,4 +74,68 @@ def check_raw_addsubjump():
     ):
         words = [-9, -6, 4, -7, a, b, -1, mode, 3]
         code = " ".join(map(str, words))
-        assert observed(_Machine, code, stdin, state, cap=16) == _model(words, stdin)
+        expected = _model(words, stdin)
+        checked = _workspace_view(expected[1], state)
+        assert observed(_Machine, code, stdin, checked, cap=16) == expected
+
+    for component in (
+        "cells",
+        "extent",
+        "instruction",
+        "zero",
+        "negative",
+        "flag_update",
+        "input_cursor",
+    ):
+        words = [-9, -6, 4, -7, -1, 8, -1, -8, 3]
+        expected = _model(words, "A")
+        with pytest.raises(AssertionError):
+            observed(
+                missing_workspace(_Machine, component),
+                " ".join(map(str, words)),
+                "A",
+                _workspace_view(expected[1], state),
+                cap=16,
+            )
+
+    class PhantomCell(_Machine):
+        def step(self):
+            super().step()
+            (cells, length), *rest = self.state
+            self.state = (({**cells, -10: 1}, length), *rest)
+
+    words = [-10, -6, -1, -7]
+    with pytest.raises(AssertionError):
+        observed(
+            PhantomCell,
+            " ".join(map(str, words)),
+            "",
+            _workspace_view(_model(words, "")[1], state),
+            cap=16,
+        )
+
+
+def _workspace_view(trace, view):
+    return workspace_view(
+        trace,
+        WorkspaceModel(
+            "addsubjump-v1",
+            (
+                "cells",
+                "extent",
+                "instruction",
+                "zero",
+                "negative",
+                "flag_update",
+                "input_cursor",
+            ),
+        ),
+        lambda row: (
+            frozenset((i, value) for i, value in enumerate(row[0][1]) if value),
+            len(row[0][1]),
+            row[0][0],
+            *row[0][2:],
+            row[-1],
+        ),
+        view,
+    )

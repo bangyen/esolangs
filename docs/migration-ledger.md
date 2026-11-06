@@ -669,3 +669,12 @@ validate the unchanged 0.9 floor. Original resource, scaling, pin and anchor
 scopes remain. Installed Python 3.12–3.15 retains corpus execution, artifact
 round trips, retired-import refusals and guarded workers without certification
 imports. Catalog-wide acceptance remains open.
+
+Seven more independent models predict workspace captures and charged peaks:
+AddSubJump, ArrowQueue, Back, BASICER, Blindfolded Arithmetic, Crement and
+HQ9+ with headers. They retain bounded traces, failed steps, input progress
+and post-halt dumps. Thirty new live controls reject erased fields or phantom
+storage without relying on output changes. The independent AddSubJump witness
+found writes below −9 retaining unreadable cells; those writes now drop as
+specified. Of 5,200 paired traces (3,217 clean halts; 250,694 states), all 59
+changes consist only of discarded negative cells. Catalog acceptance stays open.

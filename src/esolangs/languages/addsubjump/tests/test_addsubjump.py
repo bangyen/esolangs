@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.addsubjump.interpreter import _assembly, run
+from esolangs.languages.addsubjump.interpreter import _assembly, _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
@@ -175,6 +175,12 @@ class TestSpecialAddresses:
         """Of the special addresses only ``-1`` and ``-9`` accept a write."""
         code = memory([[-5, -6, 4, -7], [-1, -7, -8, -7]])
         assert _run(code) == "\x00"
+        for address in (-2, -3, -4, -5, -6, -7, -8, -10, -1_000_000):
+            machine = _Machine(memory([[address, -6, -1, -7]]), ScriptedIO())
+            initial = machine.workspace_snapshot().parts[0]
+            machine.step()
+            assert machine.workspace_snapshot().parts[0] == initial
+            assert all(address >= 0 for address, _value in machine.snapshot()[0])
 
     def test_input_byte_is_added_to_the_target(self) -> None:
         # memory[12] starts 0, so reading -1 (as *b) adds the input byte.

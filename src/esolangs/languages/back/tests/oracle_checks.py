@@ -6,7 +6,9 @@ import random
 import pytest
 
 from esolangs.languages.back.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import missing_workspace, workspace_view
 
 
 def _model(lines):
@@ -66,7 +68,23 @@ def _agrees(factory, lines):
             factory,
             lines,
             "unused λ",
-            lambda m: (*m.state, m.dumped, tuple(m.memory), m.ip),
+            workspace_view(
+                expected[1],
+                WorkspaceModel(
+                    "back-v1",
+                    (
+                        "row",
+                        "column",
+                        "direction_row",
+                        "direction_column",
+                        "tape",
+                        "cell",
+                        "input_cursor",
+                    ),
+                ),
+                lambda row: (*row[0][:6], row[-1]),
+                lambda m: (*m.state, m.dumped, tuple(m.memory), m.ip),
+            ),
         )
         == expected
     ), lines
@@ -140,4 +158,15 @@ def check_raw_back():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, lines)
-    return len(results), len(controls)
+    for component in (
+        "row",
+        "column",
+        "direction_row",
+        "direction_column",
+        "tape",
+        "cell",
+        "input_cursor",
+    ):
+        with pytest.raises(AssertionError):
+            _agrees(missing_workspace(_Machine, component), [">-* "])
+    return len(results), len(controls) + 7

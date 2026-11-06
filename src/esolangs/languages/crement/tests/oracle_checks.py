@@ -5,7 +5,9 @@ from itertools import product
 import pytest
 
 from esolangs.languages.crement.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import missing_workspace, workspace_view
 
 
 def _source(program):
@@ -48,9 +50,14 @@ def _check(factory, program):
             (row.opcode, row.polarity, row.address, row.data) for row in machine.memory
         )
 
-    assert observed(factory, _source(program), "unused", state, cap=16) == _model(
-        program
+    expected = _model(program)
+    checked = workspace_view(
+        expected[1],
+        WorkspaceModel("crement-v1", ("configuration", "input_cursor")),
+        lambda row: (row[0], row[-1]),
+        state,
     )
+    assert observed(factory, _source(program), "unused", checked, cap=16) == expected
 
 
 def check_raw_crement():
@@ -66,3 +73,7 @@ def check_raw_crement():
 
     with pytest.raises(AssertionError):
         _check(SkippedWrite, (("D", 1, 0, 0),))
+
+    for component in ("configuration", "input_cursor"):
+        with pytest.raises(AssertionError):
+            _check(missing_workspace(_Machine, component), (("D", 1, 0, 0),))
