@@ -101,7 +101,7 @@ acceptance audit after the active separation work lands. Storage policy needs
 its priced comparison and explicit decision. These remain open even where an
 implementation pilot already passed.
 
-Accounting now has 110 explicit or inherited semantic adapters; 7 language
+Accounting now has 111 explicit or inherited semantic adapters; 6 language
 rows still use snapshot accounting. Declarations do not close lifecycle,
 storage-policy or catalog-wide acceptance requirements.
 
@@ -221,3 +221,9 @@ cursors remain per-run; topology caching and constructor input reads stay intact
 Befunge and Fish declare RNG-aware split-grid factories and debug fields.
 Preparation freezes source/options without drawing; machines retain the caller's
 RNG and own their codebox, stack and register state.
+
+
+
+FRACTRAN records its chosen logical numeric representation explicitly: integer
+registers or sparse prime exponents. Mutable cursors and immutable scans share
+the exponent model; zero entries, guard indexes and selection caches are excluded.

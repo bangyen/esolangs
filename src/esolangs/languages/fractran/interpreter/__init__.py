@@ -47,6 +47,7 @@ from esolangs.languages.fractran.interpreter.index import (
 )
 from esolangs.runtime._drive import drive
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -156,6 +157,11 @@ def _advance_indexed(
     return printed, factor_writes(value, index.rules[choice][1]), None
 
 
+_WORKSPACE_MODEL = WorkspaceModel(
+    "fractran-v1", ("register", "printed", "input_cursor")
+)
+
+
 class _Machine:
     """The run state: one integer, against a fixed list of fractions."""
 
@@ -253,6 +259,23 @@ class _Machine:
     def ip(self) -> int | None:
         index = self._next()
         return None if index is None else self.offsets[index + 1]
+
+    def workspace_snapshot(self) -> WorkspaceSnapshot:
+        """Capture the logical numeric representation, excluding evaluator indexes."""
+        if self._index is None:
+            register = WorkspaceVariant("integer", (self._integer,))
+        else:
+            entries = (
+                self._scan_factors
+                if self._cursor is None
+                else self._cursor.value.items()
+            )
+            register = WorkspaceVariant(
+                "prime_exponents", (frozenset((p, e) for p, e in entries if e),)
+            )
+        return _WORKSPACE_MODEL.capture(
+            register=register, printed=self.printed, input_cursor=self.io.progress()
+        )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

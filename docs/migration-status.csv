@@ -54,7 +54,7 @@ Fish,yes,declared,not-applicable,declared,owned-adapter,fish-v1,pending-backend-
 Flowchart,yes,declared,not-applicable,declared,owned-adapter,flowchart-v1,pending-backend-audit,pending-acceptance-audit,open
 Forbin,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
 Forþ,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,for-thorn-v1,pending-backend-audit,pending-acceptance-audit,open
-FRACTRAN,yes,legacy-discovery,not-applicable,legacy-discovery,snapshot-fallback,,pending-backend-audit,pending-acceptance-audit,open
+FRACTRAN,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,fractran-v1,pending-backend-audit,pending-acceptance-audit,open
 Freestajlo,yes,legacy-discovery,not-applicable,legacy-discovery,owned-adapter,freestajlo-v1,pending-backend-audit,pending-acceptance-audit,open
 Grapheme,yes,legacy-discovery,declared,legacy-discovery,owned-adapter,grapheme-v1,pending-backend-audit,pending-acceptance-audit,open
 Home Row,yes,declared,not-applicable,declared,owned-adapter,home-row-v1,pending-backend-audit,pending-acceptance-audit,open

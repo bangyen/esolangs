@@ -75,12 +75,28 @@ def test_indexed_removal_guards_match_independent_literal_runs() -> None:
         assert index is not None
         value, fractions, _offsets = _parse(source)
         factors = index.initial
+        cursor = _Machine(source, ScriptedIO())
+        scan = _Machine(source, ScriptedIO())
+        scan._cursor = None
+        retained = {cursor.workspace_snapshot()}
+        cursor.snapshot = scan.snapshot = lambda: ("unrelated cycle key",)
         for _ in range(31):
             assert fractran_index.integer(factors) == value
+            assert cursor.value == scan.value == value
+            assert cursor.workspace_snapshot() == scan.workspace_snapshot()
+            assert all(saved in retained for saved in tuple(retained))
+            retained.add(cursor.workspace_snapshot())
             rule, _probes = index.choose(factors)
             assert rule == _choose(value, fractions)
             if rule is None:
+                cursor.step()
+                scan.step()
+                assert cursor.halted
+                assert scan.halted
+                assert cursor.io.getvalue() == scan.io.getvalue() == str(value)
                 break
+            cursor.step()
+            scan.step()
             numerator, denominator = fractions[rule]
             value = value * numerator // denominator
             factors = fractran_index.advance(factors, index.rules[rule][1])
@@ -232,8 +248,18 @@ def test_indexed_transitions_do_not_materialize_factor_snapshots(
         pytest.fail("ordinary indexed execution copied the canonical factor snapshot")
 
     monkeypatch.setattr(_Machine, "_factors", property(forbidden))
+    value_property = _Machine.value
+    monkeypatch.setattr(_Machine, "value", property(forbidden))
+    saved = machine.workspace_snapshot()
+    retained = {saved}
+    machine._cursor.value = dict(reversed(tuple(machine._cursor.value.items())))
+    machine._cursor.value[257] = 0
+    assert machine.workspace_snapshot() == saved
     while not machine.halted:
         machine.step()
+        assert saved in retained
+        assert machine.workspace_snapshot().model == saved.model
+    monkeypatch.setattr(_Machine, "value", value_property)
     assert machine.value == 1
     assert machine._cursor.factor_updates == 120
 
@@ -243,6 +269,17 @@ def test_a_base_at_the_index_limit_is_indexed() -> None:
     base = fractran_index.SMALL_BASE
     assert fractran_index.compile_index(f"{base} 1/2") is not None
     assert fractran_index.compile_index(f"{base + 1} 1/2") is None
+    machine = _Machine(f"{base + 1} 1/{base + 1}", ScriptedIO())
+    assert machine._index is None
+    before = machine.workspace_snapshot()
+    assert before.parts[0].kind == "integer"
+    assert before.parts[0].values == (base + 1,)
+    machine.snapshot = lambda: ("unrelated cycle key",)
+    machine.step()
+    assert machine.workspace_snapshot().parts[0].values == (1,)
+    machine.step()
+    assert machine.halted
+    assert machine.io.getvalue() == "1"
 
 
 def test_least_prime_sieve_factors_match_literal_arithmetic() -> None:

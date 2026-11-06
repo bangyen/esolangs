@@ -179,7 +179,7 @@ def test_fractran_parity_two_balances_and_executes() -> None:
 def _check_native_constants() -> None:
     from esolangs.generation.helpers import runs
     from esolangs.languages.fractran.proof_formulas import workspace
-    from esolangs.vm import make_vm
+    from esolangs.vm import _capture_workspace, make_vm
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
@@ -197,11 +197,11 @@ def _check_native_constants() -> None:
                     program = esolangs.instantiate("FRACTRAN", template, bits)
                     sizes.add(len(program.source))
                     machine = make_vm("FRACTRAN", program)
-                    written = WrittenState(machine.snapshot())
+                    written = WrittenState(_capture_workspace(machine))
                     steps = 0
                     while not machine.halted:
                         machine.step()
-                        written.sample(machine.snapshot())
+                        written.sample(_capture_workspace(machine))
                         steps += 1
                         assert steps <= n + 1
                     assert steps == 1 + sum(bits)
