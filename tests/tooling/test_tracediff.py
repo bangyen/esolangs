@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -216,3 +217,45 @@ def test_cli_uses_declared_post_halt_policy_for_mutant_controls(
     assert "0 differ from main" in output
     control = next(line for line in output.splitlines() if line.startswith("control:"))
     assert int(control.rsplit(" ", 1)[-1]) > 0
+
+
+def test_speed_does_not_reward_an_inherited_warm_cache(tmp_path, monkeypatch):
+    source = tmp_path / "cached.py"
+    source.write_text(
+        """
+from functools import lru_cache
+
+_clock = None
+
+@lru_cache(maxsize=8)
+def _compiled(code):
+    _clock.elapsed += 1
+    return code
+
+class _Machine:
+    def __init__(self, code, io):
+        _compiled(code)
+        self.halted = False
+
+    def snapshot(self):
+        return self.halted
+
+    def step(self):
+        _clock.elapsed += 0.01
+        self.halted = True
+"""
+    )
+    before = tracediff._load(source, "cached_before")
+    after = tracediff._load(source, "cached_after")
+    clock = SimpleNamespace(elapsed=0.0)
+    before._clock = after._clock = clock
+    monkeypatch.setattr(
+        tracediff, "time", SimpleNamespace(perf_counter=lambda: clock.elapsed)
+    )
+    programs = [(str(i), "") for i in range(16)]
+    for code, _stdin in programs[:8]:
+        before._compiled(code)
+    old_rate, new_rate = tracediff.speeds(
+        before, after, programs, rounds=2, policy=Completion.HALTED
+    )
+    assert new_rate == pytest.approx(old_rate)

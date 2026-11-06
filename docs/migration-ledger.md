@@ -170,3 +170,6 @@ Ordinary lifecycle checks now cover raster sources.
 The continuation/scope batch freezes nine more logical stores and frame stacks.
 Persistent scope-map history, grid caches and accumulator list spines are excluded;
 input and clock-read progress remain explicit.
+
+Trace-speed comparisons warm both copies on the sized workload before timing.
+An inherited warm prefix can no longer give the baseline a cheaper first lap.

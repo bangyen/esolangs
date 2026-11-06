@@ -414,7 +414,8 @@ def speeds(
     """Return each copy's steps per second over the longest-running programs.
 
     Both run the same steps, the trace's length, repeated until a lap takes
-    0.2 s; laps alternate and the fastest of ``rounds`` counts.
+    0.2 s. Both copies warm the sized workload before timed laps; laps
+    alternate and the fastest of ``rounds`` counts.
     """
     lengths = [
         (len(trace(new, p, frozenset(), split=split, policy=policy)), p)
@@ -423,6 +424,9 @@ def speeds(
     lengths.sort(key=lambda pair: pair[0], reverse=True)
     work = [(program, steps) for steps, program in lengths[:40]]
     work *= max(1, math.ceil(0.2 / max(_lap(new, work, split=split), 1e-6)))
+    # Line's inherited warm prefix gave the baseline 15 misses versus 20.
+    _lap(old, work, split=split)
+    _lap(new, work, split=split)
     old_best = new_best = math.inf
     for _ in range(rounds):
         old_best = min(old_best, _lap(old, work, split=split))
