@@ -110,6 +110,12 @@ jobs:
       matrix:
         python-version: ["3.12", "3.15"]
         shard: [0, 1]
+    env:
+      CI_SERIAL_NODES: >-
+        src/esolangs/languages/blindfolded_arithmetic/tests/test_blindfolded_arithmetic.py::test_ip_is_the_next_instructions_source_offset
+        tests/proofs/test_workspace_formulas.py::test_execution_and_workspace_formulas_hold[Malbolge-2]
+        src/esolangs/languages/flowchart/tests/test_boolean_flowchart.py::test_constant_lookup_reads_without_deque_or_selector[0]
+        src/esolangs/languages/flowchart/tests/test_boolean_flowchart.py::test_constant_lookup_reads_without_deque_or_selector[1]
 
     steps:
     - uses: actions/checkout@v7
@@ -124,7 +130,23 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Test with pytest (shard ${{ matrix.shard }} of 2)
-      run: uv run python scripts/ci/shard.py shard --marker "not slow and not weekly" --shard ${{ matrix.shard }} --shards 2 --manifest notes/ci/test.shard.json -- -n auto -p scripts.ci.shard --duration-output notes/ci/test-durations.json
+      env:
+        TEST_PYTHON: ${{ matrix.python-version }}
+      run: |
+        excluded=()
+        if [[ "$TEST_PYTHON" == "3.12" ]]; then
+          read -r -a nodes <<< "$CI_SERIAL_NODES"
+          for node in "${nodes[@]}"; do excluded+=(--exclude-node "$node"); done
+        fi
+        uv run python scripts/ci/shard.py shard --marker "not slow and not weekly" --shard ${{ matrix.shard }} --shards 2 --manifest notes/ci/test.shard.json "${excluded[@]}" -- -n auto -p scripts.ci.shard --duration-output notes/ci/test-durations.json
+
+    # Runs 42238353250/1-2: these 3.12 witnesses overrun alongside workers.
+    # Keep their bands; the completeness referee includes this separate receipt.
+    - name: Check Python 3.12 witnesses without competing workers
+      if: ${{ !cancelled() && matrix.python-version == '3.12' && matrix.shard == 0 }}
+      run: |
+        read -r -a nodes <<< "$CI_SERIAL_NODES"
+        uv run python -m pytest -q -n 0 -m "" -p scripts.ci.shard --duration-output notes/ci/test-durations-serial.json "${nodes[@]}"
 
     - name: Retain shard selection and completion evidence
       if: always()
