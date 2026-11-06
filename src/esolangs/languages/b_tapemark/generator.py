@@ -35,7 +35,7 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.b_tapemark.interpreter import (
+from esolangs.languages.b_tapemark.dialect import (
     validate_swap_marker,
 )
 

@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Movesum."""
 
+from esolangs.languages.movesum.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
@@ -9,6 +10,9 @@ LANGUAGE = Language(
     "Movesum",
     RuntimeSpec(
         "movesum",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="tape_based",
         eof="a read at EOF is 0",
         empty_program="Movesum program is empty",

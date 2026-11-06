@@ -42,11 +42,16 @@ from __future__ import annotations
 
 import re
 from collections import deque
+from collections.abc import Mapping
+from typing import Any
 
 from esolangs.exceptions import ArgumentError, HaltError
+from esolangs.languages.nor_machine.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer
@@ -163,9 +168,24 @@ class _Machine:
         self.ind = (self.ind + 1) % len(self.commands)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind source; each IO-bound construction owns fresh runtime state."""
+    if not isinstance(source, str):
+        raise TypeError("nor_machine machines require text source")
+    if options:
+        raise TypeError("nor_machine machines accept no runtime options")
+
+    def build(io: IO) -> _Machine:
+        return _Machine(source, io)
+
+    return build
+
+
 def _execute(code: str, io: IO) -> CompletionReport:
     """Run a NOR machine program until a lone ``V`` prints."""
-    return drive(_Machine(code, io))
+    return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO) -> None:

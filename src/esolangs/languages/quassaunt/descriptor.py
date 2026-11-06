@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Quassaunt."""
 
 from esolangs.generation.wrap import wrap_space_delimited
+from esolangs.languages.quassaunt.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -9,7 +10,13 @@ from esolangs.runtime._definition import RuntimeSpec
 
 LANGUAGE = Language(
     "Quassaunt",
-    RuntimeSpec("quassaunt", category="stack_based"),
+    RuntimeSpec(
+        "quassaunt",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+        category="stack_based",
+    ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(
             "esolangs.languages.quassaunt.generator", "quassaunt", ("truth_table",)

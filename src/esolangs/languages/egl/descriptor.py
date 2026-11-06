@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for EGL."""
 
+from esolangs.languages.egl.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -10,6 +11,9 @@ LANGUAGE = Language(
     "EGL",
     RuntimeSpec(
         "egl",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="grid_based",
         empty_program="EGL program must begin with 'width,height:'",
     ),

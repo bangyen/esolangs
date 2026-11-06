@@ -36,27 +36,23 @@ Decisions:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import lru_cache
+from typing import Any
 
+from esolangs.languages.b_tapemark.dialect import validate_swap_marker
+from esolangs.languages.b_tapemark.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
 type _Point = tuple[int, int]
-
-#: The two readings of the post-swap step, named by whose marker moves.
-SWAP_MARKERS = ("new", "old")
-
-
-def validate_swap_marker(value: str) -> str:
-    """Validate which grid's marker moves after a swap."""
-    if value not in SWAP_MARKERS:
-        raise ValueError("swap_marker must be new or old")
-    return value
 
 
 class _Grid:
@@ -322,10 +318,26 @@ class _Machine:
             self.io.print_char(output)
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind source; each IO-bound construction owns fresh runtime state."""
+    if not isinstance(source, str):
+        raise TypeError("b_tapemark machines require text source")
+    if options.keys() - {"swap_marker"}:
+        raise TypeError("b_tapemark machines accept only the swap_marker option")
+    swap_marker = options.get("swap_marker", "new")
+
+    def build(io: IO) -> _Machine:
+        return _Machine(source, io, swap_marker=swap_marker)
+
+    return build
+
+
 def _execute(source: str, io: IO, *, swap_marker: str = "new") -> CompletionReport:
     """Run a B-tapemark program until ``!`` executes."""
     machine = _Machine(source, io, swap_marker=swap_marker)
-    return drive(machine)
+    return drive(machine, policy=CAPABILITIES.completion)
 
 
 def run(source: str, io: IO, *, swap_marker: str = "new") -> None:

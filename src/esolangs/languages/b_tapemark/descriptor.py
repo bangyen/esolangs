@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for B-tapemark."""
 
-from esolangs.languages.b_tapemark.interpreter import SWAP_MARKERS, validate_swap_marker
+from esolangs.languages.b_tapemark.dialect import SWAP_MARKERS, validate_swap_marker
+from esolangs.languages.b_tapemark.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
@@ -17,6 +18,9 @@ LANGUAGE = Language(
     "B-tapemark",
     RuntimeSpec(
         "b_tapemark",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
         category="grid_based",
         dialect=_dialect,
         dialect_values={"swap_marker": SWAP_MARKERS},

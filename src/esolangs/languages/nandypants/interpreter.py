@@ -34,11 +34,15 @@ Decisions:
 """
 
 import re
-from typing import NamedTuple
+from collections.abc import Mapping
+from typing import Any, NamedTuple
 
+from esolangs.languages.nandypants.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.bits import flush_byte, put_bit, take_bit
 from esolangs.runtime.io import IO
@@ -259,9 +263,24 @@ class _Machine:
             )
 
 
+def prepare_machine(
+    source: RunnerProgram, options: Mapping[str, Any]
+) -> MachineFactory:
+    """Bind source; each IO-bound construction owns fresh runtime state."""
+    if not isinstance(source, str):
+        raise TypeError("nandypants machines require text source")
+    if options:
+        raise TypeError("nandypants machines accept no runtime options")
+
+    def build(io: IO) -> _Machine:
+        return _Machine(source, io)
+
+    return build
+
+
 def _execute(code: str, io: IO) -> CompletionReport:
     """Execute Nandypants and flush its final partial byte."""
-    return drive(_Machine(code, io))
+    return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 
 
 def run(code: str, io: IO) -> None:
