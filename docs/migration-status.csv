@@ -12,7 +12,7 @@ Aprknia,yes,declared,not-applicable,declared,owned-adapter,aprknia-v1,canonical-
 ArrowQueue,yes,declared,not-applicable,declared,owned-adapter,arrowqueue-v1,pending-backend-audit,pending-acceptance-audit,open
 Ascenic,yes,declared,not-applicable,declared,owned-adapter,ascenic-v1,canonical-parity-projection;owned-threshold-scan,pending-acceptance-audit,open
 B-tapemark,yes,declared,declared,declared,owned-adapter,b-tapemark-v1,pending-backend-audit,pending-acceptance-audit,open
-Back,yes,declared,not-applicable,declared,owned-adapter,back-v1,canonical-parity;pending-backend-audit,pending-acceptance-audit,open
+Back,yes,declared,not-applicable,declared,owned-adapter,back-v1,canonical-parity;canonical-subtree-parity-weighted-lookup;owned-beam-layout,pending-acceptance-audit,open
 Balik,yes,declared,not-applicable,declared,owned-adapter,balik-v1,canonical-constant-projection;owned-spatial-boxes,pending-acceptance-audit,open
 BASICER,yes,declared,not-applicable,declared,owned-adapter,basicer-v1,canonical-decision-layers,pending-acceptance-audit,open
 Basicfuck,yes,declared,not-applicable,declared,owned-adapter,basicfuck-v1,canonical-affine-reduced-diagram;owned-flag-pricing,pending-acceptance-audit,open

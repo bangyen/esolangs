@@ -119,6 +119,24 @@ class TestParameterizedBack:
                 bits = [(row >> (2 - i)) & 1 for i in range(3)]
                 assert self.run_back(self.instantiate(program, bits), 3) == table[row]
 
+        analyze = generator.subtree_ids
+        monkeypatch.setattr(
+            generator,
+            "subtree_ids",
+            lambda table: [[0] * len(layer) for layer in analyze(table)],
+        )
+        for program in (
+            _back_ordered("0001", (0, 1)),
+            _back_htree("0001", [1, 1]),
+        ):
+            assert (
+                "".join(
+                    self.run_back(self.instantiate(program, [row >> 1, row & 1]), 2)
+                    for row in range(4)
+                )
+                == "0000"
+            )
+
     def test_area_is_linear_where_the_comb_is_not(self) -> None:
         """Rudin-Shapiro shares nothing: the comb is 3n + 5 wide, the fold is not."""
         from esolangs.generation.helpers import grid_area
@@ -459,7 +477,6 @@ def _drawn_plan(table, levels, n, vertical):
             truth_table=table,
             levels=levels - 1,
             n=n,
-            constant=constant,
             vertical=vertical,
             shared=shared | tried,
             ids=ids,
@@ -480,7 +497,7 @@ def test_the_landing_rule_matches_drawing_the_tree() -> None:
     """The geometric rule picks the sets the draw-and-verify search kept."""
     import random
 
-    from esolangs.generation.helpers import constant_span_test, subtree_ids
+    from esolangs.generation.helpers import subtree_ids
     from esolangs.languages.back.generator import _BackContext
 
     rng = random.Random(7)
@@ -502,7 +519,6 @@ def test_the_landing_rule_matches_drawing_the_tree() -> None:
                 truth_table=table,
                 levels=levels - 1,
                 n=levels,
-                constant=constant_span_test(table),
                 vertical=vertical,
                 ids=subtree_ids(table),
             ).plan()

@@ -36,7 +36,6 @@ Decisions:
     area 29-33% off at n=8 only, under 8% at n=10 and 0% at n=9, 11, 12.
 """
 
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from itertools import pairwise
 
@@ -44,7 +43,6 @@ from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
-    constant_span_test,
     grid_rank,
     grid_width,
     input_weights,
@@ -171,11 +169,10 @@ def _back_htree(table: str, weights: list[int], base: int = _FOLD_BASE) -> str:
     for level, i in enumerate(essential):
         cells[i] = n if level == levels else level
     units = _back_load(list(range(n)), cells, weights, levels, n)
-    constant = constant_span_test(table)
     ids = subtree_ids(table)
 
     def leaf(level: int, lo: int) -> bool:
-        return level == levels or constant(lo, lo + (1 << (levels - level + 1)))
+        return level == levels or ids[level][lo >> (levels - level + 1)] < 2
 
     # (width, height, entry row) of a subtree drawn heading east from its
     # west edge; a comb block enters at its top-left.
@@ -342,7 +339,6 @@ class _BackContext:
     truth_table: str
     levels: int
     n: int
-    constant: Callable[[int, int], bool]
     vertical: bool = False
     shared: set[_Node] = field(default_factory=set)
     ids: list[list[int]] = field(default_factory=list)
@@ -366,7 +362,7 @@ class _BackContext:
 
     def emit(self, level: int, lo: int, hi: int, row: int, col: int) -> None:
         """Emit rows ``[lo, hi)``; pass wires retain the fall columns' alignment."""
-        if level == self.levels or self.constant(lo, hi):
+        if level == self.levels or self.ids[level][lo // (hi - lo)] < 2:
             self.leaf(level, self.truth_table[lo : lo + 2], row, col)
             return
         mid = lo + (hi - lo) // 2
@@ -415,7 +411,7 @@ class _BackContext:
         """
         size = 2 ** (self.levels + 1 - level)
         low = block * size
-        if level == self.levels or self.constant(low, low + size):
+        if level == self.levels or self.ids[level][block] < 2:
             if not self.vertical and (
                 2 * level
                 + self.n
@@ -501,7 +497,6 @@ def _back_ordered(
         # [ablations.answer_cell_preload_20261102]: the final bit is a leaf input.
         cells[essential[i]] = n if level == levels - 1 else level
 
-    constant = constant_span_test(truth_table)
     ids = subtree_ids(truth_table)
 
     def build(*, vertical: bool) -> _Grid:
@@ -510,7 +505,6 @@ def _back_ordered(
             truth_table=truth_table,
             levels=levels - 1,
             n=n,
-            constant=constant,
             vertical=vertical,
             ids=ids,
         )

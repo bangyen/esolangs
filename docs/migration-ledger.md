@@ -577,3 +577,11 @@ owned. All 632 corpus requests and 240 larger layouts retain their bytes;
 2,286 native/stepped records retain 77,350 resource and snapshot samples.
 A live constant-map fault complements the executed tree. Bounds, size pins and
 anchors remain unchanged; catalog-wide acceptance stays open.
+
+Back uses canonical subtree IDs for constant folding in both comb and H-tree
+layouts; duplicate prefix-count indexes and the context's classifier field are
+removed. Native beam placement, pair finishers and fall-through planning remain
+owned. The independent drawing oracle retains its prefix classifier. All 632
+corpus requests and 240 larger layouts retain their bytes; 2,286 paired rows
+retain 75,368 semantic samples. Live ID faults damage both executed layouts.
+Bounds, size pins and anchors remain unchanged; catalog acceptance stays open.
