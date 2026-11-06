@@ -41,6 +41,29 @@ def _check_constants() -> None:
 
 def _check_projection() -> None:
     """Projection leaves preserve the tested cell used by every merge."""
+    from unittest.mock import patch
+
+    from esolangs.generation.helpers import constant_span_test, read_at
+    from esolangs.languages.balik import generator
+    from tests.support.generator_support import evaluate_generated
+
+    assert generator.constant_span_test is constant_span_test
+    assert generator.read_at is read_at
+    with patch.object(
+        generator, "constant_span_test", return_value=lambda *_: True
+    ) as corrupted:
+        assert evaluate_generated("Balik", "0011") == "0000"
+        assert corrupted.called
+    with patch.object(
+        generator,
+        "read_at",
+        side_effect=lambda table, used, n: read_at(
+            table.translate(str.maketrans("01", "10")), used, n
+        ),
+    ) as corrupted:
+        assert evaluate_generated("Balik", "0011") == "1100"
+        assert corrupted.called
+
     from esolangs.exceptions import InputExhaustedError
     from esolangs.languages.balik.generator import balik
     from esolangs.languages.balik.interpreter import _Machine, run

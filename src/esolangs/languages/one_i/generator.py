@@ -23,6 +23,7 @@ Decisions:
     not size).
 """
 
+from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
@@ -120,16 +121,14 @@ def _parity_reader(t: str, used: list[int], n: int) -> str | None:
     reads = "".join("B" if i in used else "B$" for i in range(n))
     if len(used) == 1:
         return reads + ("p" if t[0] == "0" else "iic+>p")
-    pattern = "01"
-    for _ in range(len(used) - 1):
-        pattern += pattern.translate(str.maketrans("01", "10"))
-    if t not in (pattern, pattern.translate(str.maketrans("01", "10"))):
+    bias = parity_bias(t)
+    if bias is None:
         return None
     return (
         "ii*"
         + reads
         + "+" * (len(used) - 1)
         + "^::+"
-        + ("<" if t[0] == "0" else ">")
+        + ("<" if bias == 0 else ">")
         + "p"
     )

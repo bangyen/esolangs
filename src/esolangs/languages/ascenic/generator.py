@@ -37,6 +37,7 @@ Decisions:
     plus its argument, both rising, so no two jumps land on one line.
 """
 
+from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
@@ -166,11 +167,9 @@ def ascenic(truth_table: str) -> str:
         return out.text()
     used = essential_inputs(truth_table, n)
     table = read_at(truth_table, used, n)
-    parity = "0"
-    for _ in used:
-        parity += parity.translate(str.maketrans("01", "10"))
-    if table == parity or table == parity.translate(str.maketrans("01", "10")):
-        return _parity(n, used, invert=table[0] == "1")
+    bias = parity_bias(table)
+    if bias is not None:
+        return _parity(n, used, invert=bool(bias))
     forward = _scan(table, n, used, mirror=False)
     # The mirror's ``SUB 2`` needs the first line's argument budget.
     if not used or used[0] != 0:

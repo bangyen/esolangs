@@ -28,7 +28,21 @@ def affine_form(table: str, n: int) -> AffineForm | None:
 def parity_bias(table: str) -> int | None:
     """Return full parity's bias for a validated table, or None; no table copy."""
     bias = int(table[0])
-    for row, bit in enumerate(table):
-        if bit != "01"[(row.bit_count() & 1) ^ bias]:
+    if len(table) > 1 and table[1] == table[0]:
+        return None
+    if len(table) >= 4 and (table[2] != table[1] or table[3] != table[0]):
+        return None
+    # Aligned power-of-two words differ only by their word index's parity.
+    # Bound the derived word so checking a large table never copies it whole.
+    word = "0"
+    flip = str.maketrans("01", "10")
+    limit = min(len(table), 1024)
+    while len(word) < limit:
+        word += word.translate(flip)
+    words = word, word.translate(flip)
+    width = len(word)
+    for row in range(0, len(table), width):
+        expected = words[bias ^ ((row // width).bit_count() & 1)]
+        if not table.startswith(expected[: len(table) - row], row):
             return None
     return bias

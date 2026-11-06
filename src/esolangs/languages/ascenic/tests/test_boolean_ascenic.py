@@ -22,6 +22,23 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 def test_ignored_inputs_are_popped_not_scanned() -> None:
     """Two ignored inputs of six leave a four-row scan, not a 64-row one."""
+    from unittest.mock import patch
+
+    from esolangs.generation.algebraic import parity_bias
+    from esolangs.languages.ascenic import generator
+    from tests.support.generator_support import evaluate_generated
+
+    assert generator.parity_bias is parity_bias
+    with patch.object(
+        generator,
+        "parity_bias",
+        side_effect=lambda table: (
+            None if (bias := parity_bias(table)) is None else 1 - bias
+        ),
+    ) as corrupted:
+        assert evaluate_generated("Ascenic", "01101001") == "10010110"
+        assert corrupted.called
+
     table = "0110" * 16
     assert len(esolangs.generate("Ascenic", table).source) < 1000
 

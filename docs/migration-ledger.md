@@ -500,3 +500,19 @@ All 180 guarded workers match native proofs. Damaged cycle states, counters and
 command counts are rejected. The same matrix passes installed Python 3.12–3.15
 under the certification barrier. Existing worker deadlines and collected case
 counts remain unchanged; larger, branching and periodic acceptance stays open.
+
+Between uses a canonical reduced diagram; local reduction is deleted while
+one-first fallthrough and address placement remain owned. 1 + i and Ascenic
+use canonical parity recognition instead of building whole parity tables;
+complex arithmetic tails and threshold scans remain owned. Balik retains
+canonical projection and constant spans with native spatial boxes. All four
+have executed query-fault controls. The shared parity query compares bounded,
+derived words without copying the table; late faults across word boundaries fail.
+
+All eleven affected backends retain their standard corpus bytes. The four
+analysis audits retain 9,144 execution records and 960 larger layouts; the seven
+existing parity consumers retain 320 native records and 192 full stepped records,
+with Befunge's thirteen-input cap preserved. Their full resource traces above
+eight inputs remain unverified: Interprogck8's twelve-input trace reached the
+60-second cap at about 24,600 steps. No high-arity peak or full-corpus acceptance
+is claimed. Existing bounds, size pins and anchors remain unchanged.

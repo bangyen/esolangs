@@ -30,6 +30,11 @@ def test_constant_table_reads_every_input() -> None:
 
 def test_equal_subtables_are_one_block() -> None:
     """A repeated subtable is placed once and branched to."""
+    from esolangs.languages.between import generator
+    from tests.support.analysis_support import assert_analysis_complement
+
+    assert not hasattr(generator, "_diagram")
+    assert_analysis_complement("Between", "reduced_diagram")
     once = esolangs.generate("Between", "01100110").source
     assert once.count("p.") == 2
 

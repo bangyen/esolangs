@@ -35,6 +35,23 @@ def _check_constants() -> None:
 
 
 def _check_arithmetic_tails() -> None:
+    from unittest.mock import patch
+
+    from esolangs.generation.algebraic import parity_bias
+    from esolangs.languages.one_i import generator
+    from tests.support.generator_support import evaluate_generated
+
+    assert generator.parity_bias is parity_bias
+    with patch.object(
+        generator,
+        "parity_bias",
+        side_effect=lambda table: (
+            None if (bias := parity_bias(table)) is None else 1 - bias
+        ),
+    ) as corrupted:
+        assert evaluate_generated("1 + i", "01101001") == "10010110"
+        assert corrupted.called
+
     from fractions import Fraction
 
     from esolangs.languages.one_i.interpreter import _Fn, _Machine

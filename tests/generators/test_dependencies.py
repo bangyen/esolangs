@@ -72,6 +72,13 @@ def test_dependencies_exhaustive() -> None:
 
 
 def test_dependencies_late_witnesses_and_ignored_inputs() -> None:
+    for n in (11, 12, 16):
+        for bias in (0, 1):
+            parity = "".join(str((row.bit_count() & 1) ^ bias) for row in range(1 << n))
+            assert parity_bias(parity) == bias
+            for row in (0, 1, 1023, 1024, 1025, 1 << (n - 1), (1 << n) - 1):
+                corrupted = parity[:row] + str(1 - int(parity[row])) + parity[row + 1 :]
+                assert parity_bias(corrupted) is None
     rng = random.Random(929)
     for n in range(5, 11):
         for bias in (0, 1):

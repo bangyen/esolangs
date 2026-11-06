@@ -22,46 +22,14 @@ Decisions:
 
 from string import ascii_letters
 
+from esolangs.generation.decision import DecisionNode, reduced_diagram
 from esolangs.generation.helpers import (
     _validate_truth_table,
     short_name,
-    subtree_ids,
 )
 
 
-def _diagram(ids: list[list[int]]) -> tuple[int, dict[int, tuple[int, int, int]]]:
-    """Return the root and ``{node: (depth, zero, one)}`` of the reduced diagram.
-
-    Leaves are the ids 0 and 1 with depth ``len(ids) - 1``.  A node whose
-    children coincide is replaced by that child, so every test matters.
-    """
-
-    def reduce(depth: int, k: int) -> tuple[int, int]:
-        while (
-            depth < len(ids) - 1 and ids[depth + 1][2 * k] == ids[depth + 1][2 * k + 1]
-        ):
-            depth, k = depth + 1, 2 * k
-        return depth, k
-
-    nodes: dict[int, tuple[int, int, int]] = {}
-    start = reduce(0, 0)
-    todo = [start]
-    while todo:
-        depth, k = todo.pop()
-        node = ids[depth][k]
-        if node in nodes:
-            continue
-        if node < 2:
-            nodes[node] = (depth, node, node)
-            continue
-        below = [reduce(depth + 1, 2 * k), reduce(depth + 1, 2 * k + 1)]
-        (d0, k0), (d1, k1) = below
-        nodes[node] = (depth, ids[d0][k0], ids[d1][k1])
-        todo.extend(below)
-    return ids[start[0]][start[1]], nodes
-
-
-def _layout(root: int, nodes: dict[int, tuple[int, int, int]]) -> list[tuple[int, str]]:
+def _layout(root: int, nodes: list[DecisionNode]) -> list[tuple[int, str]]:
     """Return the placement order as ``(node, mode)``, mode ``o``, ``z`` or ``b``.
 
     The mode names the child that follows the node (``b``: neither does).
@@ -96,10 +64,9 @@ def between(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         return "\n".join(["'a'v.", *["[a]i."] * n, f"|{truth_table[0]}|p."])
-    ids = subtree_ids(truth_table)
-    root, nodes = _diagram(ids)
+    nodes, root = reduced_diagram(truth_table, n)
     order = _layout(root, nodes)
-    tested = {depth for node, (depth, _, _) in nodes.items() if node > 1}
+    tested = {node.level for node in nodes[2:]}
     names = [short_name(i, ascii_letters) for i in range(n + 1)]
     scratch = names[n]
     header = []
