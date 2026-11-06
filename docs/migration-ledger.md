@@ -696,3 +696,12 @@ rebased tape extents, live tag suffixes, answer latches, variables and input
 progress. Thirty-eight live component-erasure controls preserve execution but
 fail resource checks. Failed and post-halt boundaries remain covered at each
 model's existing step cap; whole-corpus and catalog acceptance stays open.
+
+Eight more owned models predict workspace payloads and charged peaks:
+Aprknia, Ascenic, Circlefuck, Clockwise, Codesick, Collatz Multiverse,
+Container and DINAC's straight-line fragment. DINAC independently derives
+future scope slots, root-block cursors and retained null declarations, including
+empty frames after halt. Thirty-one field-erasure controls, a null-type
+omission and reversed scope slots preserve execution but fail resource checks. The common observer
+accepts a modeled null state only at a halted boundary; malformed-source
+controls remain strict. Existing step caps remain; broader acceptance stays open.

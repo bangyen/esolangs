@@ -6,7 +6,9 @@ from operator import ge, le
 import pytest
 
 from esolangs.languages.container.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed, stalled
+from tests.support.workspace_oracle import missing_workspace, workspace_view
 
 
 def _source(network):
@@ -60,11 +62,33 @@ def _model(network, stdin):
 
 
 def _check(factory, network, stdin):
+    expected = _model(network, stdin)
+
     def state(machine):
         return machine.var, machine.exit_code, machine.tick, machine.state[3]
 
-    assert observed(factory, _source(network), stdin, state, cap=8) == _model(
-        network, stdin
+    assert (
+        observed(
+            factory,
+            _source(network),
+            stdin,
+            workspace_view(
+                expected[1],
+                WorkspaceModel(
+                    "container-v1",
+                    ("variables", "exit_code", "input_cursor", "input_reads"),
+                ),
+                lambda row: (
+                    frozenset(row[0][0].items()),
+                    row[0][1],
+                    row[-1],
+                    row[0][3],
+                ),
+                state,
+            ),
+            cap=8,
+        )
+        == expected
     ), network
 
 
@@ -84,3 +108,10 @@ def check_raw_container():
 
     with pytest.raises(AssertionError):
         _check(stalled(_Machine), {"OUT": (0, ((1, "OUT", ">=", 0),))}, "")
+    for component in ("variables", "exit_code", "input_cursor", "input_reads"):
+        with pytest.raises(AssertionError):
+            _check(
+                missing_workspace(_Machine, component),
+                {"EXIT": (0, ((1, "EXIT", ">=", 0),))},
+                "",
+            )

@@ -6,7 +6,9 @@ from itertools import product
 import pytest
 
 from esolangs.languages.collatz_multiverse.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import missing_workspace, workspace_view
 
 
 def _source(program):
@@ -93,11 +95,36 @@ def _model(program, stdin):
 
 
 def _check(factory, program, stdin):
+    expected = _model(program, stdin)
+
     def state(machine):
         return machine.ip, machine.registers, machine.arrays
 
-    assert observed(factory, _source(program), stdin, state, cap=16) == _model(
-        program, stdin
+    assert (
+        observed(
+            factory,
+            _source(program),
+            stdin,
+            workspace_view(
+                expected[1],
+                WorkspaceModel(
+                    "collatz-multiverse-v1",
+                    ("registers", "arrays", "instruction", "input_cursor"),
+                ),
+                lambda row: (
+                    frozenset(row[0][1].items()),
+                    frozenset(
+                        (name, frozenset(cells.items()))
+                        for name, cells in row[0][2].items()
+                    ),
+                    row[0][0],
+                    row[-1],
+                ),
+                state,
+            ),
+            cap=16,
+        )
+        == expected
     ), (program, stdin)
 
 
@@ -120,3 +147,10 @@ def check_raw_collatz_multiverse():
 
     with pytest.raises(AssertionError):
         _check(OmittedRead, (("x", "x", "input", True),), "42")
+    for component in ("registers", "arrays", "instruction", "input_cursor"):
+        with pytest.raises(AssertionError):
+            _check(
+                missing_workspace(_Machine, component),
+                (("x", "x", "input", False),),
+                "2",
+            )

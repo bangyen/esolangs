@@ -107,7 +107,7 @@ def workspace_view(trace, model, parts, view):
 
     def observe(machine):
         predicted = next(expected)
-        assert predicted[0] is not None
+        assert predicted[0] is not None or predicted[1]
         witness.sample(machine.workspace_snapshot(), parts(predicted))
         return view(machine)
 

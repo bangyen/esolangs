@@ -7,7 +7,9 @@ from decimal import Decimal
 import pytest
 
 from esolangs.languages.ascenic.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import missing_workspace, workspace_view
 
 
 class _Draws:
@@ -154,7 +156,12 @@ def _agrees(factory, source, stdin):
             lambda code, io: factory(code, io, rng),
             source,
             stdin,
-            lambda m: (m.state[0], tuple(m.stack), m.ip, rng.used),
+            workspace_view(
+                expected[1],
+                WorkspaceModel("ascenic-v1", ("instruction", "stack", "input_cursor")),
+                lambda row: (row[0][0], row[0][1], row[-1]),
+                lambda m: (m.state[0], tuple(m.stack), m.ip, rng.used),
+            ),
         )
         == expected
     ), (source, stdin)
@@ -236,4 +243,7 @@ def check_raw_ascenic():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    return len(results), len(controls)
+    for component in ("instruction", "stack", "input_cursor"):
+        with pytest.raises(AssertionError):
+            _agrees(missing_workspace(_Machine, component), _source(((3, 1),)), "")
+    return len(results), len(controls) + 3

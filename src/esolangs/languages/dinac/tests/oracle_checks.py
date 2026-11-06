@@ -11,7 +11,9 @@ from itertools import product
 import pytest
 
 from esolangs.languages.dinac.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.support.workspace_oracle import missing_workspace, workspace_view
 
 
 def _source(expr):
@@ -145,13 +147,52 @@ def _view(machine):
     return frame.blocks[-1][1], tuple(sorted(values)), tuple(sorted(types))
 
 
+def _names(expr):
+    if isinstance(expr, str):
+        yield expr
+    elif isinstance(expr, tuple):
+        for child in expr[1:]:
+            yield from _names(child)
+
+
+def _frame_parts(names, row):
+    """Project the straight-line root frame, including retained null declarations."""
+    if row[1]:
+        return (), row[-1]
+    pc, bindings, types = row[0]
+    values, declared = dict(bindings), dict(types)
+    scope = tuple(values.get(name) for name in names)
+    null_types = tuple(
+        (slot, declared[name])
+        for slot, name in enumerate(names)
+        if scope[slot] is not None and scope[slot][0] == "snuval"
+    )
+    return ((0, scope, ((0, pc),), None, None, null_types),), row[-1]
+
+
 def _check(factory, statements, stdin="unused"):
     assert len(statements) < 48
     code = "\n".join(_line(statement) for statement in statements)
-    assert observed(factory, code, stdin, _view, cap=48) == _model(statements, stdin), (
-        code,
-        stdin,
+    names = []
+    for kind, *args in statements:
+        mentions = (
+            _names(args[0])
+            if kind == "out"
+            else iter((args[0],))
+            if kind == "in"
+            else (args[0], *_names(args[1]))
+        )
+        for name in mentions:
+            if name not in names:
+                names.append(name)
+    expected = _model(statements, stdin)
+    checked = workspace_view(
+        expected[1],
+        WorkspaceModel("dinac-v1", ("frames", "input_cursor")),
+        lambda row: _frame_parts(names, row),
+        _view,
     )
+    assert observed(factory, code, stdin, checked, cap=48) == expected, (code, stdin)
 
 
 def check_raw_dinac():
@@ -228,3 +269,48 @@ def check_raw_dinac():
     for factory in (stalled(_Machine), WrongOutput, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, (("out", ("wubyte", 1)),))
+
+    for component in ("frames", "input_cursor"):
+        with pytest.raises(AssertionError):
+            _check(missing_workspace(_Machine, component), (("out", ("wubyte", 1)),))
+
+    class MissingNullType(_Machine):
+        def workspace_snapshot(self):
+            captured = super().workspace_snapshot()
+            frames, cursor = captured.parts
+            frames = tuple((*frame[:5], ()) for frame in frames)
+            return WorkspaceSnapshot(captured.model, (frames, cursor))
+
+    with pytest.raises(AssertionError):
+        _check(
+            MissingNullType,
+            (
+                ("declare", "value", ("wubyte", 1)),
+                ("assign", "value", ("snuval", 0)),
+                ("out", "value"),
+            ),
+        )
+
+    multiple = (
+        ("declare", "z", ("wubyte", 7)),
+        ("declare", "a", ("aschar", 65)),
+        ("out", ("=", "z", ("~", "a"))),
+        ("assign", "a", ("snuval", 0)),
+        ("declare", "later", ("~", "a")),
+        ("in", "a"),
+        ("out", "a"),
+        ("out", "later"),
+    )
+    _check(_Machine, multiple, "Z")
+
+    class ReversedSlots(_Machine):
+        def workspace_snapshot(self):
+            captured = super().workspace_snapshot()
+            frames, cursor = captured.parts
+            frames = tuple(
+                (frame[0], tuple(reversed(frame[1])), *frame[2:]) for frame in frames
+            )
+            return WorkspaceSnapshot(captured.model, (frames, cursor))
+
+    with pytest.raises(AssertionError):
+        _check(ReversedSlots, multiple, "Z")
