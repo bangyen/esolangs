@@ -14,6 +14,7 @@ from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace, complete_vm, make_vm
 from scripts.benchmark import WrittenState, state_bits
 from tests.interpreters.semantic_oracles import brainfuck
+from tests.support.workspace_oracle import WorkspaceOracle
 
 
 def test_model_components_are_named_complete_and_immutable():
@@ -86,6 +87,18 @@ def test_accounting_refuses_a_mid_run_model_change():
     ):
         with pytest.raises(ValueError, match="model changed"):
             written.sample(changed)
+    oracle = WorkspaceOracle(model.capture(cursor=0, cells=(0,)))
+    for cursor, cells, expected in ((1, (8, -1), 7), (2, (0,), 8)):
+        snapshot = model.capture(cursor=cursor, cells=cells)
+        written.sample(snapshot)
+        oracle.sample(snapshot)
+        assert written.bits == oracle.bits == expected
+    # A missing component peak must be observable, rather than a vacuous match.
+    written._peaks[1] = 0
+    with pytest.raises(AssertionError):
+        assert written.bits == oracle.bits
+    with pytest.raises(TypeError, match="undeclared workspace payload"):
+        oracle.width([])
 
 
 class _PaddedMachine(_Machine):
@@ -189,6 +202,8 @@ def test_input_progress_and_failed_reads_are_observed():
 
 
 def test_an_invalid_owned_adapter_cannot_fall_back(monkeypatch):
+    from tests.support.samples import SAMPLES
+
     def forbidden(*_args):
         raise AssertionError("cycle snapshot reached accounting")
 
@@ -196,15 +211,28 @@ def test_an_invalid_owned_adapter_cannot_fall_back(monkeypatch):
     for language in LANGUAGES.values():
         if language.backend is not None:
             continue
-        artifact = esolangs.ProgramArtifact("", language.name)
-        vm = make_vm(language.name, artifact)
+        source, stdin = SAMPLES[language.name]
+        artifact = esolangs.ProgramArtifact(source, language.name)
+        vm = make_vm(language.name, artifact, stdin=stdin)
         saved = _capture_workspace(vm)
         retained = {saved}
+        measured = WrittenState(saved)
+        oracle = WorkspaceOracle(saved)
         monkeypatch.setattr(vm._machine, "snapshot", forbidden)
-        complete_vm(vm, max_steps=2)
+        for _ in range(len(source) + 1):
+            if vm.halted:
+                break
+            vm.step()
+            snapshot = _capture_workspace(vm)
+            measured.sample(snapshot)
+            oracle.sample(snapshot)
+            assert measured.bits == oracle.bits
+            assert saved in retained
+        assert vm.halted
+        assert measured.bits > 0
         assert isinstance(_capture_workspace(vm), WorkspaceSnapshot)
         assert saved in retained
-        assert vm.output == esolangs.run(language.name, artifact).output
+        assert vm.output == esolangs.run(language.name, artifact, stdin=stdin).output
         non_boolean += 1
     assert non_boolean > 0
     vm = make_vm("Brainfuck", "+.")
@@ -267,6 +295,7 @@ def test_declared_models_keep_immutable_accounting_without_cycle_keys(
     assert saved.model.name == model
     retained = {saved}
     measured = WrittenState(saved)
+    oracle = WorkspaceOracle(saved)
     monkeypatch.setattr(type(vm._machine), "snapshot", lambda _self: ())
     capabilities = LANGUAGES[name].runtime.capabilities
     periodic = (
@@ -289,7 +318,10 @@ def test_declared_models_keep_immutable_accounting_without_cycle_keys(
         if vm.halted:
             break
         vm.step()
-        measured.sample(_capture_workspace(vm))
+        captured = _capture_workspace(vm)
+        measured.sample(captured)
+        oracle.sample(captured)
+        assert measured.bits == oracle.bits, (name, captured)
         assert saved in retained
     else:
         pytest.fail(f"one-input accounting witness exceeded {budget} commands")
@@ -300,6 +332,8 @@ def test_declared_models_keep_immutable_accounting_without_cycle_keys(
     else:
         complete_vm(vm)
     measured.sample(_capture_workspace(vm))
+    oracle.sample(_capture_workspace(vm))
+    assert measured.bits == oracle.bits, name
     assert measured.bits > 0
     if termination:
         assert vm.halted

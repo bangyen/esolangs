@@ -5,6 +5,7 @@ import pytest
 from esolangs.languages.nope.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from tests.support.workspace_oracle import WorkspaceOracle
 
 
 @pytest.mark.parametrize("code", ["", "Nope.", "[,☃\x00"])
@@ -24,6 +25,7 @@ def test_empty_source_has_one_output_transition() -> None:
     machine = _Machine("", io)
     before = machine.snapshot()
     measured = WrittenState(machine.workspace_snapshot())
+    oracle = WorkspaceOracle(machine.workspace_snapshot())
     assert not machine.halted
     machine.step()
     assert machine.halted
@@ -31,7 +33,8 @@ def test_empty_source_has_one_output_transition() -> None:
     captured = machine.workspace_snapshot()
     assert captured.parts == (machine.state, io.progress()) == (True, 0)
     measured.sample(captured)
-    assert measured.bits == 1
+    oracle.sample(captured)
+    assert measured.bits == oracle.bits == 1
     assert machine.ip == 1
     assert not hasattr(machine, "memory")
     assert not hasattr(machine, "stack")

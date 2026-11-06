@@ -427,3 +427,12 @@ for byte; 2,286 paired native/stepped rows retain traces and resource peaks.
 The canonical-analysis fault control changes executed answers. Existing bounds,
 size pins and the n=4 parity anchor remain unchanged. The wheel matches these
 witnesses on Python 3.12–3.15; catalog acceptance stays open.
+
+Workspace witnesses now compare every sample with an independent full-component
+width oracle across all 117 models; positive counts alone no longer suffice.
+The three non-Boolean samples reach exactly 8, 3 and 1 bits. Missing peaks and
+mutable payloads have live refusal controls. Installed Python 3.12–3.15 matches
+13,778 accounting observations, including model components, written peaks,
+input counters, source steps and output, under the certification import barrier.
+An altered baseline is rejected. These are executed witness traces; independent
+language-owned component semantics and whole-corpus acceptance remain open.

@@ -6,6 +6,7 @@ from esolangs.runtime.io import IO, ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.interpreters.contract import SnapshotContract, StateViewContract
 from tests.interpreters.runner import run_program
+from tests.support.workspace_oracle import WorkspaceOracle
 
 #: The wiki's four-line "Hello, world!", whose lines run as one program.
 _HELLO = "".join(
@@ -38,6 +39,7 @@ class TestDeadfish:
             machine = _Machine(program, ScriptedIO())
             steps = 0
             measured = WrittenState(machine.workspace_snapshot())
+            oracle = WorkspaceOracle(machine.workspace_snapshot())
             reference = WorkspaceModel(
                 "deadfish-reference-test-v1",
                 ("source", "instruction", "accumulator", "stopped", "input_cursor"),
@@ -48,12 +50,14 @@ class TestDeadfish:
                 captured = machine.workspace_snapshot()
                 assert captured.parts == parts(machine)
                 measured.sample(captured)
+                oracle.sample(captured)
+                assert measured.bits == oracle.bits
                 legacy.sample(WorkspaceSnapshot(reference, parts(machine)))
                 assert measured.bits == legacy.bits
                 steps += 1
             assert steps <= len(program), program
-            if program in ("h", "iio"):
-                assert measured.bits == {"h": 1, "iio": 4}[program]
+            if program in ("h", "iio", "iissso"):
+                assert measured.bits == {"h": 1, "iio": 4, "iissso": 8}[program]
 
 
 def _machine(code: object) -> object:

@@ -7,6 +7,7 @@ from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.interpreters.runner import run_program
+from tests.support.workspace_oracle import WorkspaceOracle
 
 
 @pytest.mark.parametrize("code", ["H", "h"])
@@ -23,28 +24,35 @@ def test_execution_order_and_silent_accumulator() -> None:
     from esolangs.languages.hq9.tests.oracle_checks import check_raw_hq9
 
     check_raw_hq9()
-    io = ScriptedIO("unused")
-    machine = _Machine("h++qH", io)
-    measured = WrittenState(machine.workspace_snapshot())
+    for code, peak, accumulator, output in (
+        ("h++qH", 5, 2, "Hello, world!\nh++qHHello, world!\n"),
+        ("h+q", 3, 1, "Hello, world!\nh+q"),
+    ):
+        io = ScriptedIO("unused")
+        machine = _Machine(code, io)
+        measured = WrittenState(machine.workspace_snapshot())
+        oracle = WorkspaceOracle(machine.workspace_snapshot())
 
-    def parts(current):
-        return (*current.state, current.io.progress())
+        def parts(current):
+            return (*current.state, current.io.progress())
 
-    reference = WorkspaceModel(
-        "hq9-reference-test-v1", ("instruction", "accumulator", "input_cursor")
-    )
-    legacy = WrittenState(WorkspaceSnapshot(reference, parts(machine)))
-    while not machine.halted:
-        machine.step()
-        captured = machine.workspace_snapshot()
-        assert captured.parts == parts(machine)
-        measured.sample(captured)
-        legacy.sample(WorkspaceSnapshot(reference, parts(machine)))
-        assert measured.bits == legacy.bits
-    assert measured.bits == 5
-    assert io.getvalue() == "Hello, world!\nh++qHHello, world!\n"
-    assert machine.memory == [2]
-    assert io.position() == 0
+        reference = WorkspaceModel(
+            "hq9-reference-test-v1", ("instruction", "accumulator", "input_cursor")
+        )
+        legacy = WrittenState(WorkspaceSnapshot(reference, parts(machine)))
+        while not machine.halted:
+            machine.step()
+            captured = machine.workspace_snapshot()
+            assert captured.parts == parts(machine)
+            measured.sample(captured)
+            oracle.sample(captured)
+            assert measured.bits == oracle.bits
+            legacy.sample(WorkspaceSnapshot(reference, parts(machine)))
+            assert measured.bits == legacy.bits
+        assert measured.bits == peak
+        assert io.getvalue() == output
+        assert machine.memory == [accumulator]
+        assert io.position() == 0
 
 
 @pytest.mark.parametrize("code", ["", "xyz☃\n", "+++", "\u210e\uff28\uff31"])
