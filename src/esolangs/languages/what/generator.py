@@ -25,6 +25,7 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.lookup import change_points
 
 #: Row literals stay below 2^15, at most 5 digits.
 _LOW_INPUTS = 15
@@ -41,8 +42,7 @@ def what(truth_table: str) -> str:
         parts = ["??" + ".2*.??+" * (n - 1) + f".{48 + int(truth_table[-1])},"]
         parts.extend(
             f"[{row}>.{48 + int(truth_table[row - 1])},]"
-            for row in range(len(truth_table) - 1, 0, -1)
-            if truth_table[row] != truth_table[row - 1]
+            for row in reversed(change_points(truth_table))
         )
         return "".join(parts) + ".!"
     low = _LOW_INPUTS
@@ -59,9 +59,8 @@ def what(truth_table: str) -> str:
         label = f"{start >> low:0{high}b}"
         parts.append(f'65535["{label}":{_LOAD}.{answer},]')
         # Last change point first: each row keeps its nearest write above.
-        for row in range(len(rows) - 1, 0, -1):
-            if rows[row] != rows[row - 1]:
-                parts.append(f"[{row}>.{48 + int(rows[row - 1])},]")
+        for row in reversed(change_points(rows)):
+            parts.append(f"[{row}>.{48 + int(rows[row - 1])},]")
     parts.append(".!")
     return "".join(parts)
 

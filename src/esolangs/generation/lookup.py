@@ -1,4 +1,9 @@
-"""Boolean row counts and popcount lookup profiles."""
+"""Boolean row boundaries, counts and popcount lookup profiles."""
+
+
+def change_points(table: str) -> list[int]:
+    """Return ascending row boundaries whose adjacent outputs differ."""
+    return [row for row in range(1, len(table)) if table[row] != table[row - 1]]
 
 
 def prefix_counts(table: str, value: str) -> list[int]:

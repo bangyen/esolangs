@@ -24,6 +24,10 @@ def execute(program: str, bits: tuple[int, ...]) -> tuple[str, int]:
 def test_the_walk_is_branch_free() -> None:
     """One guard and one counter loop an input, no other: the table is not a tree."""
     _check_folded()
+    from tests.support.analysis_support import assert_analysis_complement
+
+    assert_analysis_complement("EGL", "input_weights")
+    assert_analysis_complement("EGL", "symmetric_weights", "0110")
     program = tools.egl("01101001")
     assert program.count("(") == 6
     assert program.count("(->") == 3

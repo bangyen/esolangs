@@ -84,7 +84,7 @@ Bound a run with:
 
 Generated artifacts expose `.source`; templates expose `.fill(bits)`.
 The [2.0 migration guide](docs/usage.md#compatibility) covers the changed return
-types and explicit `esolangs.compat` adapters for 1.x source/output callers.
+types and migrating 1.x source/output callers.
 
 The [usage guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md)
 covers [input](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#feeding-a-program),

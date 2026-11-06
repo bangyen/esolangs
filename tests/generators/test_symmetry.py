@@ -1,10 +1,10 @@
 """Popcount classification agrees with invariance under input permutations."""
 
 from bisect import bisect_right
-from itertools import permutations, product
+from itertools import pairwise, permutations, product
 
 from esolangs.generation import helpers
-from esolangs.generation.lookup import prefix_counts, symmetric_outputs
+from esolangs.generation.lookup import change_points, prefix_counts, symmetric_outputs
 
 
 def test_symmetry_is_invariant_under_every_input_permutation():
@@ -21,6 +21,11 @@ def _check_permutations(n):
     orders = list(permutations(range(n)))
     for bits in product("01", repeat=1 << n):
         table = "".join(bits)
+        boundaries = change_points(table)
+        runs = [0, *boundaries, len(table)]
+        assert boundaries == sorted(set(boundaries))
+        assert all(len(set(table[lo:hi])) == 1 for lo, hi in pairwise(runs))
+        assert all(table[row] != table[row - 1] for row in boundaries)
         constant = helpers.constant_span_test(table)
         for value in "01":
             counts = prefix_counts(table, value)

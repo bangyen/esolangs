@@ -28,6 +28,15 @@ def _answer(machine: BFMachine | _Machine) -> tuple[str, int]:
     "table", ["00", "01", "10", "11", pytest.param("0001", marks=pytest.mark.medium)]
 )
 def test_generated_sources_execute_every_row(table: str) -> None:
+    if table == "01":
+        from unittest.mock import patch
+
+        from esolangs.languages.unary import generator
+        from tests.support.generator_support import evaluate_generated
+
+        encode = generator._zeros
+        with patch.object(generator, "_zeros", side_effect=lambda _: encode(",+[]")):
+            assert evaluate_generated("Unary", table) == "10"
     source = unary(table)
     assert decode(source) == _decoded(table)
     n = len(table).bit_length() - 1

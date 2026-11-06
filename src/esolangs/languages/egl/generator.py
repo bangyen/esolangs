@@ -24,11 +24,6 @@ from esolangs.generation.wrap import balance_score, balance_width
 
 def egl(truth_table: str, width: int | None = None) -> str:
     """Build an EGL program computing ``truth_table``; ``width`` wraps it."""
-    return _program(truth_table, width)
-
-
-def _program(truth_table: str, width: int | None = None) -> str:
-    """Build the indexed grid or a two-cell read-and-print constant."""
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         return _wrap("2,1:" + "x" * n + ">" + "+" * int(truth_table[0]) + "=", width)

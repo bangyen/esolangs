@@ -13,6 +13,9 @@ def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     if table == "00":
         _check_constants()
+        from tests.support.analysis_support import assert_analysis_complement
+
+        assert_analysis_complement("Qrain", "flag_tree_body")
     assert_every_row("Qrain", table)
 
 

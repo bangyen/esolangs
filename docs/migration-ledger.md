@@ -20,7 +20,7 @@ Owners are workstreams, not individual contributors.
 | `tagged.source_adapter` and artifact-to-tagged round trips | Artifact API | Retired; direct metadata encoding and source loading; raster retagging fault controls | Direct artifact/source handling |
 | `_recover_template` and plain-string binding inference | Artifact API | Retired with `registry.recover_setters`; declared bindings and known-arity validation | Declared template bindings |
 | Tagged-source `load_program` | Persistence | Retired; canonical loader preserves the existing version-1 format | Canonical artifact loading |
-| Temporary `esolangs.compat` API | Artifact API | Retired; actual missing-import checks and live import barriers | Canonical API; delete the facade after migration |
+| Temporary `esolangs.compat` API | Artifact API | Retired; actual missing-import checks and live import barriers | Canonical API |
 | Temporary `generate_artifact` / `load_artifact` aliases | Registry | Retired; tools use canonical names; public and bound-method absence checks | `generate` / `load_program` |
 | Shared plain-text fixture filler `tests.generators.fills` | Artifact API | Retired; native fixtures declare their bindings; negative import check in `tests/generators/test_generator_support.py` | Explicit `TemplateBindings` from declared native setters |
 | `BooleanBackend(generate=...)` constructor alias | Registry | Retired; callers use `entrypoint`; negative constructor/replacement checks in `tests/api/test_boolean_backend.py` | Canonical entrypoint field |
@@ -516,3 +516,19 @@ with Befunge's thirteen-input cap preserved. Their full resource traces above
 eight inputs remain unverified: Interprogck8's twelve-input trace reached the
 60-second cap at about 24,600 steps. No high-arity peak or full-corpus acceptance
 is claimed. Existing bounds, size pins and anchors remain unchanged.
+
+What!? shares change-point analysis across direct and 15-bit block emission.
+EGL's redundant generator wrapper is removed. EGL and Qrain retain canonical
+projection/symmetry and shared flag analysis; grid layout, queue splitting and
+command budgets remain owned. HQ9+ with headers retains native integer packing
+and checksums; Unary retains its zero-count codec, canonical dependency/tree
+analysis and generation/export caps.
+
+These five audits preserve 3,160 artifact requests (550 declared Unary refusals),
+8,580 executed rows and retained accounting captures. All original size/resource
+scopes pass; additional paired executions cover every size witness through 22
+inputs, including What!?'s 48,912,569-character programs. Existing pins, anchors
+and the 0.9 timing floor hold, including block-boundary timings. Installed
+Python 3.12–3.15 passes the admitted corpus, six live fault controls and isolated
+route comparisons. README and usage guidance no longer advertise the retired
+source facade. Catalog-wide acceptance remains open.

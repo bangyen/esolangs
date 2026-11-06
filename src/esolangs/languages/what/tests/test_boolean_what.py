@@ -17,6 +17,14 @@ def test_every_row_prints_its_answer(table: str) -> None:
     if table == "00":
         _check_constants()
         _check_copyless()
+        from unittest.mock import patch
+
+        from esolangs.languages.what import generator
+        from tests.support.generator_support import evaluate_generated
+
+        with patch.object(generator, "change_points", return_value=[]) as corrupted:
+            assert evaluate_generated("What!?", "0011") == "1111"
+            assert corrupted.called
     assert_every_row("What!?", table)
 
 

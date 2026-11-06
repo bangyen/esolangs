@@ -485,9 +485,6 @@ The 1.x source facade is removed. Retain artifacts through generation, filling
 and execution; use `.source` for native measurements and portable JSON to
 preserve template bindings. Plain source cannot be instantiated.
 Use `run(...).output` for output text; `run_result` is replaced by `run`.
-These adapters are explicit projections of the artifact-first implementation;
-new code should retain records and extract `.source` or `.output` where needed.
-
 
 The CLI is a deliberate subset of the Python API, not a mirror of it:
 every command calls public functions, a capability lands in the API first,

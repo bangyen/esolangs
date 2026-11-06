@@ -39,7 +39,7 @@ archive_revision = "ba52adb67a87307935ae2ae906a72b33afdadc1f"
 archive_context = { audited = "2026-10-19" }
 
 [catalogue]
-folding_constant_local = "_program"  # scratch reads beside a literal answer cell
+folding_constant_local = "egl"  # scratch reads beside a literal answer cell
 
 [schemes]
 folds_without_tree = true

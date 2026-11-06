@@ -11,6 +11,7 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.lookup import prefix_counts
+from esolangs.generation.shared_flag import flag_tree_body
 from esolangs.registry import LANGUAGES
 from esolangs.registry._functions import FunctionRef
 from tests.support.generator_support import evaluate_generated
@@ -31,13 +32,14 @@ def assert_analysis_complement(name: str, attribute: str, table: str = "0011") -
         "read_at": read_at,
         "input_weights": input_weights,
         "symmetric_weights": symmetric_weights,
+        "flag_tree_body": flag_tree_body,
     }[attribute]
     assert getattr(module, attribute) is query
     with patch.object(
         module,
         attribute,
-        side_effect=lambda table, *args: query(
-            table.translate(str.maketrans("01", "10")), *args
+        side_effect=lambda table, *args, **kwargs: query(
+            table.translate(str.maketrans("01", "10")), *args, **kwargs
         ),
     ) as corrupted:
         assert evaluate_generated(name, table) == table.translate(
