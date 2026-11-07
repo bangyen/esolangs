@@ -8,6 +8,16 @@ import pytest
 
 from esolangs.languages.lol_waht_i_cant_edit_talk_pages.interpreter import _Machine
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import (
+    charged_bits,
+    missing_workspace,
+    workspace_model,
+    workspace_view,
+)
+
+_WORKSPACE = workspace_model(
+    "lol-waht-i-cant-edit-talk-pages-v1", "instruction variables input_cursor"
+)
 
 
 def _keyword(text):
@@ -112,13 +122,8 @@ def _model(source, stdin):
     env, pc, consumed, output, error = {}, 0, 0, "", None
 
     def view():
-        return (
-            (pc, tuple(sorted(env.items())), pc),
-            pc == len(ops),
-            output,
-            consumed,
-            consumed,
-        )
+        state = pc, tuple(sorted(env.items())), pc
+        return state, pc == len(ops), output, consumed, consumed
 
     trace = [view()]
     for _ in range(64):
@@ -168,10 +173,13 @@ def _model(source, stdin):
 
 def _agrees(factory, source, stdin):
     expected = _model(source, stdin)
-    assert observed(factory, source, stdin, lambda m: (*m.state, m.ip)) == expected, (
-        source,
-        stdin,
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (row[0][0], frozenset(row[0][1]), row[-1]),
+        lambda machine: (*machine.state, machine.ip),
     )
+    assert observed(factory, source, stdin, checked) == expected, (source, stdin)
     return expected
 
 
@@ -221,39 +229,28 @@ def check_raw_lol_waht_i_cant_edit_talk_pages():
             "bad",
         )
     )
-    results.append(
-        _agrees(_Machine, "user:a\nim awesome tottaly but no a\ni hate u a", "9" * 5000)
-    )
-    results.append(
-        _agrees(
-            _Machine,
+    read = "user:a\nim awesome tottaly but no a"
+    cases = (
+        (read + "\ni hate u a", "9" * 5000),
+        (
             "user:a\nedit user talk:a to change "
             + "0" * 5000
             + "1 messages\ni hate u a",
             "",
-        )
+        ),
+        (read + "\ngrr why u do this a", "9" * 5000),
+        (read, "no"),
     )
-    results.append(
-        _agrees(
-            _Machine,
-            "user:a\nim awesome tottaly but no a\ngrr why u do this a",
-            "9" * 5000,
-        )
-    )
-    results.append(_agrees(_Machine, "user:a\nim awesome tottaly but no a", "no"))
-    assert {error for error, _ in results} == {
-        None,
-        "syntax",
-        "halt",
-        "argument",
-        "input",
-    }
+    results.extend(_agrees(_Machine, code, stdin) for code, stdin in cases)
+    errors = {error for error, _ in results}
+    assert errors == {None, "syntax", "halt", "argument", "input"}
     controls = {
         "arithmetic": ("user:a\nedit user talk:a to change 1 messages", ""),
         "loop": ("user:a\nJUST LET ME CHANGE 1 MESSAGE ON a {\ni hate u a\n}", ""),
         "read": ("im awesome tottaly but no a", "5"),
         "case": ("user:A\ni hate u a", ""),
         "posthalt": ("", ""),
+        "output": ("Hi --tommyaweosme", ""),
     }
     for fault, (source, stdin) in controls.items():
 
@@ -261,6 +258,9 @@ def check_raw_lol_waht_i_cant_edit_talk_pages():
             mode = fault
 
             def __init__(self, code, io):
+                if self.mode == "output":
+                    write = io.print_str
+                    io.print_str = lambda text: write("X" * len(text))
                 super().__init__(code, io)
                 if self.mode == "case":
                     self.ops[0] = ("def", ("A",), -1)
@@ -284,4 +284,16 @@ def check_raw_lol_waht_i_cant_edit_talk_pages():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    return len(results), len(controls)
+    for source, stdin, bits in (
+        ("", "", 0),
+        ("user:a", "", 10),
+        (read, "5", 14),
+        (read, "-8", 17),
+    ):
+        rows = _agrees(_Machine, source, stdin)[1]
+        parts = ((row[0][0], frozenset(row[0][1]), row[-1]) for row in rows)
+        assert charged_bits(_WORKSPACE, parts) == bits
+    for component in _WORKSPACE.components:
+        with pytest.raises(AssertionError):
+            _agrees(missing_workspace(_Machine, component), read, "5")
+    return len(results) + 4, len(controls) + len(_WORKSPACE.components)

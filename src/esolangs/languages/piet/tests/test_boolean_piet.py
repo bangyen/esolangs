@@ -16,7 +16,7 @@ from esolangs.raster import Raster
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.evaluation import _evaluate
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import constant_runs
 
 
@@ -296,12 +296,7 @@ def _check_majority() -> None:
                     io = ReadFirstIO("\n".join(f"{row:0{n}b}") + "\n7\n", expected=n)
                     machine = _Machine(image, io, scale=scale)
                     written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps < 10_000
+                    steps = count_steps(machine, 9999, written=written)
                     assert io.getvalue() == table[row]
                     assert io.reads == n
                     assert io.past_end == 0
@@ -327,11 +322,7 @@ def _check_majority() -> None:
 
             io = ProjectedIO("\n".join(f"{row:09b}") + "\n7\n")
             machine = _Machine(image, io, scale=1)
-            steps = 0
-            while not machine.halted:
-                machine.step()
-                steps += 1
-                assert steps < 10_000
+            steps = count_steps(machine, 9999)
             assert io.getvalue() == table[row]
             assert io.reads == 9
             assert io.past_end == 0
@@ -407,12 +398,7 @@ def _check_triples() -> None:
                     io = ScriptedIO("\n".join(f"{row:0{n}b}") + "\n7\n")
                     machine = _Machine(image, io, scale=1)
                     written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps < 10_000
+                    steps = count_steps(machine, 9999, written=written)
                     assert io.getvalue() == truth_table[row]
                     assert io.reads == n
                     assert io.past_end == 0

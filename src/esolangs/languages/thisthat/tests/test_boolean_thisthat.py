@@ -12,7 +12,7 @@ from esolangs.languages.thisthat.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.evaluation import _evaluate
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import (
     assert_shared_program,
     evaluate_generated,
@@ -479,12 +479,7 @@ def _check_constants() -> None:
                     io = ReadFirstIO(f"{row:0{n}b}" + "1", expected=n)
                     machine = _Machine(program.splitlines(), io)
                     written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps <= 2 * n + 5
+                    steps = count_steps(machine, 2 * n + 5, written=written)
                     assert steps == 2 * n + 5
                     assert written.bits <= workspace(n, program)
                     assert io.getvalue() == bit

@@ -175,7 +175,7 @@ def agrees_stack(
     machine_type, oracle, code, stdin="", *, dynamic=False, cap=64, workspace=None
 ):
     expected = oracle(code, stdin, cap)
-    capture, retained = None, []
+    capture = None
     if workspace is not None:
         model, project = workspace
         witness, rows = WorkspaceWitness(model), iter(expected)
@@ -184,11 +184,11 @@ def agrees_stack(
             parts = project(next(rows))
             captured = machine.workspace_snapshot()
             witness.sample(captured, parts)
-            retained.append((captured, parts))
 
     actual = observed_stack(
         machine_type, code, stdin, len(expected) - 1, dynamic=dynamic, workspace=capture
     )
-    assert all(captured.parts == parts for captured, parts in retained)
+    if workspace is not None:
+        witness.finish()
     assert actual == expected, (code, stdin, actual, expected)
     return expected

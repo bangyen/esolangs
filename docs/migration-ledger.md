@@ -1864,3 +1864,31 @@ corpora and reference traces remain identical. Safe import hoisting recovers
 nodes and twenty error contexts across ten files, saving another 30 lines.
 No cases, assertions or budget limits are removed. Independent review found
 no blocker in the bounded scopes; language/catalog completion remains open.
+
+Lol waht i cant edit talk pages, Pilas, Underload, Nope. and Taglate have
+independent full-component accounting across 4,008 cases/16,094 boundaries.
+Original corpora and 64-command caps remain; Taglate retains 16. Case/boundary
+counts are 804/5,352, 1,564/3,893, 265/1,166, 210/1,050 and 1,165/4,633.
+Raw, VM and debugger captures match every independent state, IO counter,
+source-step count and retained cycle/workspace snapshot, including failed
+steps and repeated halts. Underload's growth guard never ends a bounded
+trace before its command cap. Taglate includes split command fragments.
+
+The frozen wheel matches all 951 packaged source files. Python 3.12.11, 3.13.15, 3.14.7 and final 3.15.0
+pass this matrix and 140 selected guarded workers each, retaining native/
+isolated failures, partial output and unfinished observations. Fourteen
+frozen-written components change charged peaks; two constant-field
+omissions, five same-state wrong-text faults and five declared-view faults
+fail. Underload and Nope never write their input cursors. Observed maxima
+are 16,633/48/735/1/1,071 bits, not global bounds; literal anchors include
+Underload's 172-bit splice and Nope's one-bit transition. Full language and
+catalog completion remain open.
+
+The existing bounded-step helper replaces 21 duplicate loops in
+18 owned test files. Expanded non-import ASTs preserve every step,
+workspace sample, increment and cap assertion; reviewed immutable cap
+arguments make their earlier evaluation safe. Corpus bytes and 2,368
+independent model traces match before/after local factoring. Shared witnesses
+retain all captures and verify them at trace completion, including failures,
+while preserving their previous-snapshot assertion. No cases, assertions,
+resource scopes or limits are removed.

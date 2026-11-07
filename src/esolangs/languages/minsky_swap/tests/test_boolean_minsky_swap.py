@@ -9,6 +9,7 @@ from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs, runs
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
+from tests.support.event_io import count_steps
 from tests.support.generator_support import measure_run
 from tests.support.witness_tables import witnesses
 
@@ -168,12 +169,7 @@ def _check_constant_templates() -> None:
                     io = ScriptedIO()
                     machine = _Machine(program.source, io)
                     written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps <= 1 + 3 * int(bit)
+                    steps = count_steps(machine, 1 + 3 * int(bit), written=written)
                     assert steps == 1 + 3 * int(bit)
                     machine.step()
                     written.sample(machine.workspace_snapshot())

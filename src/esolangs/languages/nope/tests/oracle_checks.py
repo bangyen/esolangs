@@ -28,6 +28,7 @@ def _agrees(factory, source, stdin):
         source,
         stdin,
     )
+    witness.finish()
 
 
 def check_raw_nope():

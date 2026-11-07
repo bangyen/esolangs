@@ -81,6 +81,7 @@ class WorkspaceWitness:
         self.measured = None
         self.expected = None
         self.previous = None
+        self.history = []
 
     def sample(self, captured, parts):
         reference = WorkspaceSnapshot(self.model, parts)
@@ -96,6 +97,11 @@ class WorkspaceWitness:
             self.expected.sample(reference)
         assert self.measured.bits == self.expected.bits
         self.previous = captured, reference
+        self.history.append(self.previous)
+
+    def finish(self):
+        """Check all retained captures after the final modeled boundary."""
+        assert all(captured == reference for captured, reference in self.history)
 
 
 def missing_workspace(factory, component):
@@ -115,12 +121,17 @@ def workspace_view(trace, model, parts, view):
     """Check predicted resources alongside each independently modeled state view."""
     expected = iter(trace)
     witness = WorkspaceWitness(model)
+    pending = next(expected, None)
 
     def observe(machine):
-        predicted = next(expected, None)
+        nonlocal pending
+        predicted = pending
         assert predicted is not None, "machine exceeded its independently modeled trace"
         assert predicted[0] is not None or predicted[1]
         witness.sample(machine.workspace_snapshot(), parts(predicted))
+        pending = next(expected, None)
+        if pending is None:
+            witness.finish()
         return view(machine)
 
     return observe

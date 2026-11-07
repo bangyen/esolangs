@@ -11,7 +11,7 @@ from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.generators.sample_tables import five_input_sample
 from tests.support.analysis_support import assert_analysis_complement
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import ReadFirstIO, count_steps
 
 
 def execute(program: str, row: int, n: int) -> tuple[str, int]:
@@ -122,11 +122,7 @@ def _check_terminal_leaves() -> None:
                 # The existing terminal run consumes one byte if one is supplied.
                 following = ScriptedIO(f"{row:0{n}b}" + "QR")
                 machine = _Machine(program, following)
-                steps = 0
-                while not machine.halted:
-                    machine.step()
-                    steps += 1
-                    assert steps <= 55 * n + 5
+                steps = count_steps(machine, 55 * n + 5)
                 assert following.getvalue() == table[row]
                 assert following.reads == n + 1
                 assert following.past_end == 0
@@ -145,12 +141,7 @@ def _check_constants() -> None:
                     io = ReadFirstIO(f"{row:0{n}b}", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps <= 55 * n + 5
+                    steps = count_steps(machine, 55 * n + 5, written=written)
                     assert steps == 55 * n + 5
                     assert io.getvalue() == bit
                     assert written.bits == workspace(n, program)

@@ -8,6 +8,16 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.pilas.interpreter import _Machine
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import (
+    charged_bits,
+    missing_workspace,
+    workspace_model,
+    workspace_view,
+)
+
+_WORKSPACE = workspace_model(
+    "pilas-v1", "instruction_pointers stacks turn input_cursor"
+)
 
 
 def _partner(line, at, step):
@@ -39,14 +49,9 @@ def _model(source, stdin):
     ips, stacks, turn, consumed, output, error = [0, 0], [[], []], 0, 0, "", None
 
     def view():
-        state = (tuple(ips), tuple(tuple(s) for s in stacks), turn)
-        return (
-            (*state, tuple(ips)),
-            any(ips[i] >= len(lines[i]) for i in (0, 1)),
-            output,
-            consumed,
-            consumed,
-        )
+        state = tuple(ips), tuple(tuple(s) for s in stacks), turn
+        halted = any(ips[i] >= len(lines[i]) for i in (0, 1))
+        return (*state, tuple(ips)), halted, output, consumed, consumed
 
     trace = [view()]
     for _ in range(64):
@@ -93,10 +98,14 @@ def _model(source, stdin):
 
 def _agrees(factory, source, stdin):
     expected = _model(source, stdin)
-    assert observed(factory, source, stdin, lambda m: (*m.state, m.ip)) == expected, (
-        source,
-        stdin,
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (*row[0][:3], row[-1]),
+        lambda m: (*m.state, m.ip),
     )
+
+    assert observed(factory, source, stdin, checked) == expected, (source, stdin)
     return expected
 
 
@@ -198,4 +207,17 @@ def check_raw_pilas():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, code, stdin)
+    for component in _WORKSPACE.components:
+        with pytest.raises(AssertionError):
+            _agrees(missing_workspace(_Machine, component), ",x\nxx", "A")
+    for code, stdin, bits in (
+        ("", "", 0),
+        ("x\nx", "", 3),
+        ("9x\nxx", "", 8),
+        (",x\nxx", "A", 12),
+    ):
+        rows = _agrees(_Machine, code, stdin)[1]
+        assert (
+            charged_bits(_WORKSPACE, ((*row[0][:3], row[-1]) for row in rows)) == bits
+        )
     return len(results), len(controls)

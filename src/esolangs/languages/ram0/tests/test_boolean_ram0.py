@@ -12,6 +12,7 @@ from esolangs.languages.ram0.generator import PAIR as RAM0_PAIR
 from esolangs.languages.ram0.generator import _ram0_ordered
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from tests.support.event_io import count_steps
 from tests.support.generator_support import assert_parity_at_most_doubles
 from tests.support.witness_tables import row_bits
 
@@ -129,12 +130,7 @@ def test_constants_execute_every_fixed_width_setter() -> None:
                     io = ScriptedIO()
                     machine = _Machine(program.source, io)
                     written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps <= 2 * n + 1 + int(bit)
+                    steps = count_steps(machine, 2 * n + 1 + int(bit), written=written)
                     machine.step()  # RAM0's post-halt dump is one command.
                     written.sample(machine.workspace_snapshot())
                     assert steps + 1 == 2 * n + 2 + int(bit)

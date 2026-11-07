@@ -14,7 +14,7 @@ from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace, complete_vm, make_vm
 from scripts.benchmark import WrittenState, state_bits
 from tests.interpreters.semantic_oracles import brainfuck
-from tests.support.workspace_oracle import WorkspaceOracle
+from tests.support.workspace_oracle import WorkspaceOracle, WorkspaceWitness
 
 
 def test_model_components_are_named_complete_and_immutable():
@@ -101,6 +101,18 @@ def test_accounting_refuses_a_mid_run_model_change():
         assert written.bits == oracle.bits
     with pytest.raises(TypeError, match="undeclared workspace payload"):
         oracle.width([])
+    witness = WorkspaceWitness(model)
+    saved = model.capture(cursor=0, cells=(0,))
+    witness.sample(saved, saved.parts)
+    for cursor in (1, 2):
+        captured = model.capture(cursor=cursor, cells=(0,))
+        witness.sample(captured, captured.parts)
+    witness.finish()
+    # Corrupt an older capture after its neighbor has already been checked.
+    object.__setattr__(saved, "parts", (7, (0,)))
+    assert witness.previous[0] == witness.previous[1]
+    with pytest.raises(AssertionError):
+        witness.finish()
 
 
 class _PaddedMachine(_Machine):

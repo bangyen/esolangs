@@ -6,6 +6,7 @@ import esolangs
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
+from tests.support.event_io import count_steps
 from tests.support.generator_support import assert_every_row
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
@@ -99,12 +100,7 @@ def _check_single_accumulator_boundaries() -> None:
                     )
                     machine = _Machine(program, io)
                     written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps <= len(commands)
+                    steps = count_steps(machine, len(commands), written=written)
                     assert io.getvalue() == table[row]
                     assert io.progress() == 2 * n
                     assert io.past_end == 0

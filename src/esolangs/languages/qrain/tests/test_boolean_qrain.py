@@ -5,7 +5,7 @@ import pytest
 import esolangs
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
@@ -33,12 +33,7 @@ def _check_constants() -> None:
                     io = ReadFirstIO(stdin + "Q", expected=n)
                     machine = _Machine("".join(program.split()), io)
                     written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps <= n + 10 - 2 * int(bit)
+                    steps = count_steps(machine, n + 10 - 2 * int(bit), written=written)
                     assert steps == n + 10 - 2 * int(bit)
                     assert io.getvalue() == bit
                     length = n + 10 - 2 * int(bit)

@@ -8,7 +8,7 @@ from esolangs.languages.pilas.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -63,12 +63,7 @@ def _check_constants() -> None:
                     io = ReadFirstIO(stdin + "7", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps < 2000
+                    steps = count_steps(machine, 1999, written=written)
                     assert machine.state.stks[0] == tuple(
                         48 + value for value in list(map(int, f"{row:0{n}b}"))[:keep]
                     )
