@@ -1236,3 +1236,27 @@ Installed Python 3.12.11, 3.13.15, 3.14.7 and cached 3.15.0rc1 each round-trip
 guarded workers and all fault/cost controls. EOF-as-value and command-limit
 failures agree across native/isolated routes; certification imports stay blocked.
 Four backend audits remain; stable 3.15 final and catalog acceptance stay open.
+
+
+SLOW ACV MAMMALIAN uses canonical constant recognition; dependency and projection
+queries remain shared. Native weights, pools, address/merge arithmetic, coprime
+plans and resume guards remain unchanged. All eight cell/I/O/resume dialects
+retain 15,456 artifacts through three inputs over seven layouts. All 30,208
+native rows execute correctly: every default row and at least one row per other
+artifact. Forty full trace scopes retain 832 native/VM row pairs and 1,679,780
+semantic samples; their source hashes match the artifact corpus. Ninety-six
+larger layouts retain 464 native/VM rows, including sixteen-input gaps.
+
+Forty-eight constant timing contexts pass eight alternating trials per side
+(minimum ratio 0.9848). Eight pins, two declared size anchors, the 119-character
+constant witness and eighteen resource/scaling nodes pass unchanged. Twenty-eight
+query faults change sixty executed answers; three validation controls fire.
+Removing a projection candidate grows a correct witness from 170,335 to 178,487
+characters across ten runs. `just test` passes 8,466 cases with six skips.
+
+Installed Python 3.12.11, 3.13.15, 3.14.7 and cached 3.15.0rc1 each round-trip
+15,456 artifacts across all eight dialects and execute 832 native/VM rows from
+192 programs, plus forty-eight guarded workers and sixteen constant-query faults.
+EOF and command-limit failures retain progress and agree across native/isolated
+routes; certification imports stay blocked. Three backend audits remain; stable
+3.15 final and catalog-wide acceptance stay open.
