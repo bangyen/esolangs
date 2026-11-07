@@ -1434,3 +1434,28 @@ on Python 3.12.11, 3.13.15, 3.14.7 and final 3.15.0, with 1,174 native halts,
 257 failed steps, four field faults and five guarded workers per version.
 Native/isolated input, operand and output failures agree. `just test` passes
 in 230.2 seconds. Language and catalog completion remain open.
+
+
+A Painter Ant uses a-painter-ant-v2: visited bounds join grid, position and
+instruction. Previously `ew` restored an equal capture while changing the
+render from `o` to `o.`. The model records the rectangle independently of the
+visited-set backing; full-content cache invalidation preserves changed bounds.
+Cycle keys remain unchanged. The workspace upper bound adds four signed
+coordinate widths within the at-most-2L-command walk; its proof table is updated.
+
+All 1,076 raw/generated cases retain 19,176 semantic observations, including
+periodic rendering and repeated dumping. Five component erasures preserve
+execution but fail resources; the reversed-colour fault remains. Literal peaks
+are 6, 3, 50, 10 and zero bits. All 35 resource tables and 836 rows pass.
+The full 5,195-program, 400-step comparison has zero differences and 3,514 mutant
+differences. Zero self-halts are expected; 73 separate periodic completions
+provide completed-output evidence. Native speed ratio is 0.9952; snapshot and
+repeated accounting-capture pilots are 1.0025 and 1.1046.
+
+The final 951-file wheel passes the full raw/VM/debugger corpus on Python
+3.12.11, 3.13.15, 3.14.7 and final 3.15.0, with 74 guarded workers per version.
+The refreshed 117-runtime/13,778-sample matrix and 240 guarded workers per
+version pass; only Painter Ant accounting changes. An altered accounting width
+is rejected. `just test` passes in 247.2 seconds. The monolithic trace run hit
+60 seconds; the identical full scope passed bounded batches without raising
+caps. Language and catalog completion remain open.
