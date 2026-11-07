@@ -4,14 +4,12 @@ import pytest
 
 from esolangs.languages.codesick.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 
 TRUTH = "codesick in a 0 1;\n0 codesick out 0 * halt;\n1 codesick out 1 * 1;"
 
 
-def _run(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_run = native_runner(run)
 
 
 def _steps(code: str, stdin: str, count: int) -> tuple[_Machine, ScriptedIO]:

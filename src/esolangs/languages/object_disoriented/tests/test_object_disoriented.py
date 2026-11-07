@@ -5,6 +5,7 @@ import pytest
 from esolangs.languages.object_disoriented.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
+from tests.interpreters.runner import native_runner
 
 CAT = """
 dcatloop.
@@ -42,10 +43,7 @@ dmain. c flmakehelloworld.z a c flmakeloop11. flmakeloop8. lprintstackbit. b fba
 HELLO_REPAIRED = HELLO.replace("pz p zz", "pz p rz zz")
 
 
-def _run(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_run = native_runner(run)
 
 
 def _machine(code: str) -> _Machine:

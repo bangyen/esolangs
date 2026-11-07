@@ -6,12 +6,9 @@ from esolangs import run as execute
 from esolangs.exceptions import HaltError
 from esolangs.languages.fackward.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 
-
-def _run(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_run = native_runner(run)
 
 
 def test_wiki_hello_world() -> None:

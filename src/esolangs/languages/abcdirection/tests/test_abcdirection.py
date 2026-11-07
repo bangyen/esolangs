@@ -14,12 +14,9 @@ from esolangs.languages.abcdirection.interpreter import (
     run,
 )
 from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 
-
-def output(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+output = native_runner(run)
 
 
 #: Eight C's down column 0 print a zero byte; the D row then turns the

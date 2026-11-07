@@ -7,7 +7,7 @@ from typing import Any
 
 from esolangs.runtime.io import IO, ScriptedIO
 
-__all__ = ["run_lines", "run_printing", "run_program"]
+__all__ = ["native_runner", "run_lines", "run_printing", "run_program"]
 
 
 def run_program(
@@ -26,6 +26,11 @@ def run_program(
     with contextlib.suppress(*halts):
         run(code, io, **kwargs)
     return io.getvalue()
+
+
+def native_runner(run: Callable[..., Any]) -> Callable[..., str]:
+    """Bind a native runner without swallowing EOF."""
+    return lambda code, stdin="": run_program(run, code, stdin, suppress_eof=False)
 
 
 def run_printing(run: Callable[..., Any], code: Any) -> str:

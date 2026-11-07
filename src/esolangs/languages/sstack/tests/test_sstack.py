@@ -7,12 +7,9 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.sstack.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 
-
-def _out(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_out = native_runner(run)
 
 
 def test_push_and_print_peek() -> None:

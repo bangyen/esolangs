@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs.languages.aprknia.interpreter import run
-from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 
 #: Pushes 7 then 3, b and a for the page's snippets.
 _SEVEN_THREE = "11*!!!!" + "1*!!!!" * 5 + "11*!!!!1*!!!!"
@@ -11,10 +11,7 @@ _SEVEN_THREE = "11*!!!!" + "1*!!!!" * 5 + "11*!!!!1*!!!!"
 _PRINT = "11*!!!!,!"
 
 
-def _out(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_out = native_runner(run)
 
 
 @pytest.mark.parametrize(

@@ -8,6 +8,7 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.dinac.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
+from tests.interpreters.runner import native_runner
 
 # Two lines carry a trailing space: ``OUT ' `` is the space of the greeting,
 # ``OUT 'r `` has a stray one the parser must tolerate.
@@ -120,10 +121,7 @@ DEADFISH_RAW = DEADFISH.replace(
 AND = "DEF/00 and a:00 b:00\n    IF a\n        GIVE ~~b\n    ELSE\n        GIVE 00\n"
 
 
-def out(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+out = native_runner(run)
 
 
 def test_hello_world() -> None:

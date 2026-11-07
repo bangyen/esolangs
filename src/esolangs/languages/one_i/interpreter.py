@@ -56,6 +56,7 @@ from collections import deque
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from fractions import Fraction
+from struct import pack
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -65,7 +66,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 
 #: An exact Gaussian rational ``(re, im)``, or a float once inexact.
@@ -372,7 +373,12 @@ def _advance(
     return frames, edit, out
 
 
-_WORKSPACE_MODEL = WorkspaceModel("one-i-v1", ("frames", "values", "input_cursor"))
+_WORKSPACE_MODEL = WorkspaceModel("one-i-v2", ("frames", "values", "input_cursor"))
+
+
+def _inexact(value: complex) -> bytes:
+    """Encode both IEEE components, preserving signed zero and NaN payloads."""
+    return pack("!dd", value.real, value.imag)
 
 
 class _Machine:
@@ -413,7 +419,11 @@ class _Machine:
         return _WORKSPACE_MODEL.capture(
             frames=tuple(frames),
             values=tuple(
-                ("fn", value.offset) if isinstance(value, _Fn) else value
+                ("fn", value.offset)
+                if isinstance(value, _Fn)
+                else WorkspaceVariant("inexact", (_inexact(value),))
+                if isinstance(value, complex)
+                else value
                 for value in self.values
             ),
             input_cursor=self.io.progress(),
@@ -430,7 +440,12 @@ class _Machine:
             frames.append((node[0][0].offset, node[0][2]))
             node = node[1]
         values = tuple(
-            ("fn", v.offset) if isinstance(v, _Fn) else v for v in self.values
+            ("fn", v.offset)
+            if isinstance(v, _Fn)
+            else ("inexact", _inexact(v))
+            if isinstance(v, complex)
+            else v
+            for v in self.values
         )
         return (tuple(frames), values, self.io.progress())
 

@@ -3,13 +3,9 @@
 import pytest
 
 from esolangs.languages.freestajlo.interpreter import run
-from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 
-
-def _out(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_out = native_runner(run)
 
 
 @pytest.mark.parametrize(

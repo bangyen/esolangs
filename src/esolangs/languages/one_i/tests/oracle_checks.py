@@ -12,8 +12,14 @@ import pytest
 
 from esolangs.languages.one_i.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.support.workspace_oracle import (
+    missing_workspace,
+    workspace_model,
+    workspace_view,
+)
 
 _ZERO, _I = (Fraction(0), Fraction(0)), (Fraction(0), Fraction(1))
+_WORKSPACE = workspace_model("one-i-v2", "frames values input_cursor")
 
 
 def _multiply(left, right):
@@ -201,10 +207,18 @@ def _view(machine):
 
 def _check(factory, code, stdin="unused"):
     assert all(c.isspace() or c in "ic+*/^><%:()$ABpo?[]" for c in code)
-    assert observed(factory, code, stdin, _view, cap=64) == _model(code, stdin), (
-        code,
-        stdin,
+    expected = _model(code, stdin)
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (
+            tuple((start, nth) for start, _, nth in row[0][0]),
+            row[0][1],
+            row[-1],
+        ),
+        _view,
     )
+    assert observed(factory, code, stdin, checked, cap=64) == expected, (code, stdin)
 
 
 def check_raw_one_i():
@@ -249,6 +263,10 @@ def check_raw_one_i():
         (stalled(_Machine), "ii+"),
         (WrongOutput, "ip"),
         (overread(_Machine), "Ap"),
+        *(
+            (missing_workspace(_Machine, field), "Ap")
+            for field in _WORKSPACE.components
+        ),
     ):
         with pytest.raises(AssertionError):
             _check(factory, code, "ab")

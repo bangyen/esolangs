@@ -5,7 +5,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.smu.generator import smu
 from esolangs.languages.smu.interpreter import preprocess, run
-from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 from tests.support.witness_tables import witnesses
 
 CAT = "x(+|)xg()+gy(g)ybx=(=)y=xy+x=ba(bxggxg)aa(|=)=a(+=)=baxg"
@@ -15,10 +15,7 @@ PRINTED = f"{_A}(|=)={_A}(+=)(+|)=(=)(()+)=(+|)(()+)+(+|)={_A}(+|)()+"
 REPAIRED = PRINTED.replace("(+=)(+|)", "(+=)=(+|)")
 
 
-def _run(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_run = native_runner(run)
 
 
 def test_wiki_cat_copies_every_byte() -> None:

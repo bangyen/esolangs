@@ -13,6 +13,7 @@ from esolangs.languages.cvnc.interpreter import (
 )
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
+from tests.interpreters.runner import native_runner
 
 TRUTH_MACHINE = "soθɰ̊oθʋi"
 CAT = "ʒuɰ̊fuʒʋu"
@@ -24,10 +25,7 @@ HELLO = (
 )
 
 
-def run_program(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+run_program = native_runner(run)
 
 
 class TestWikiExamples:

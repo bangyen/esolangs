@@ -8,6 +8,7 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.sendstuff.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
+from tests.interpreters.runner import native_runner
 
 #: The wiki's Hello world: its closing parentheses are left off, so each
 #: ``Add`` is a child of the one before and the deltas accumulate.
@@ -47,10 +48,7 @@ TALK_HELLO = """
 SNZ = "@SNZ(>(Subtract 1 >(Add 1 %)))\n|o(OutputNumber)\n"
 
 
-def _run(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_run = native_runner(run)
 
 
 def _machine(code: str) -> _Machine:

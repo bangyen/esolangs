@@ -4,7 +4,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.creativescript_v2.interpreter import run
-from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 
 #: The page's equality program, as a function of two inputs.
 EQUALS = """in! a
@@ -20,10 +20,7 @@ sub! one neq eq
 out! eq"""
 
 
-def output(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+output = native_runner(run)
 
 
 @pytest.mark.parametrize(

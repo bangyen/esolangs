@@ -6,13 +6,9 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.between.interpreter import run
-from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 
-
-def out(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+out = native_runner(run)
 
 
 def test_goto_is_zero_based_and_skips_comments() -> None:

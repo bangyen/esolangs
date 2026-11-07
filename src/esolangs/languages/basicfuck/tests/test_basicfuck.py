@@ -6,6 +6,7 @@ from esolangs.exceptions import HaltError, ProgramError
 from esolangs.languages.basicfuck.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
+from tests.interpreters.runner import native_runner
 
 #: Directive and allocation lines for a few variables, wrapping bytes.
 WRAP = "#basicfuck t=unbounded r=0~255 o=wrap\n"
@@ -35,10 +36,7 @@ while (char) {
 )
 
 
-def _run(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_run = native_runner(run)
 
 
 def _machine(code: str) -> _Machine:

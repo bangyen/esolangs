@@ -5,6 +5,7 @@ import pytest
 from esolangs.languages.rubic.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
+from tests.interpreters.runner import native_runner
 
 HELLO = (
     ".ww ( +ww ) ! +ww +ww +ww +ww r -wg ! +oo b -og ! ! +wo' ! b' .wg "
@@ -13,10 +14,7 @@ HELLO = (
 )
 
 
-def _run(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_run = native_runner(run)
 
 
 def _machine(code: str) -> _Machine:

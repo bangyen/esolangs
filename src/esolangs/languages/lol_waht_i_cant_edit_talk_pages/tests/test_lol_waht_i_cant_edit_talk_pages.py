@@ -8,6 +8,7 @@ from esolangs.languages.lol_waht_i_cant_edit_talk_pages.interpreter import (
     run,
 )
 from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 
 TRUTH = """user:i
 im awesome tottaly but no i
@@ -43,10 +44,7 @@ i hate u A
 waht i got banned"""
 
 
-def _out(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_out = native_runner(run)
 
 
 def _steps(code: str, stdin: str, count: int) -> str:

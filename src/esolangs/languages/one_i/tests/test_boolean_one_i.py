@@ -1,10 +1,19 @@
 """Tests for the 1 + i Boolean generator."""
 
+from fractions import Fraction
+from unittest.mock import patch
+
 import pytest
 
 import esolangs
+from esolangs.generation.algebraic import parity_bias
+from esolangs.languages.one_i import generator
+from esolangs.languages.one_i import interpreter as native
+from esolangs.languages.one_i.proof_formulas import execution, workspace
+from esolangs.languages.one_i.tests.formulas import workspace_witness
+from scripts.benchmark import WrittenState
+from tests.support import generator_support as checks
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output, assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -14,13 +23,10 @@ def test_every_row_prints_its_answer(table: str) -> None:
     if table == "00":
         _check_constants()
         _check_arithmetic_tails()
-    assert_every_row("1 + i", table)
+    checks.assert_every_row("1 + i", table)
 
 
 def _check_constants() -> None:
-    import esolangs
-    from esolangs.languages.one_i.interpreter import run
-
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
@@ -30,16 +36,11 @@ def _check_constants() -> None:
                         esolangs.encode_inputs("1 + i", [int(b) for b in row]) + "7\n",
                         expected=n,
                     )
-                    assert_constant_output(run, program, io, bit, n)
+                    checks.assert_constant_output(native.run, program, io, bit, n)
                     assert io.input_num() == 7
 
 
 def _check_arithmetic_tails() -> None:
-    from unittest.mock import patch
-
-    from esolangs.generation.algebraic import parity_bias
-    from esolangs.languages.one_i import generator
-    from tests.support.generator_support import evaluate_generated
 
     assert generator.parity_bias is parity_bias
     with patch.object(
@@ -49,15 +50,8 @@ def _check_arithmetic_tails() -> None:
             None if (bias := parity_bias(table)) is None else 1 - bias
         ),
     ) as corrupted:
-        assert evaluate_generated("1 + i", "01101001") == "10010110"
+        assert checks.evaluate_generated("1 + i", "01101001") == "10010110"
         assert corrupted.called
-
-    from fractions import Fraction
-
-    from esolangs.languages.one_i.interpreter import _Fn, _Machine
-    from esolangs.languages.one_i.proof_formulas import execution, workspace
-    from esolangs.languages.one_i.tests.formulas import workspace_witness
-    from scripts.benchmark import WrittenState
 
     tables = [f"{v:04b}" for v in range(16)]
     tables += [
@@ -83,7 +77,7 @@ def _check_arithmetic_tails() -> None:
                 esolangs.encode_inputs("1 + i", list(map(int, f"{row:0{n}b}"))) + "7\n",
                 expected=n,
             )
-            machine = _Machine(program, io)
+            machine = native._Machine(program, io)
             written = WrittenState(machine.workspace_snapshot())
             steps = 0
             while not machine.halted:
@@ -91,7 +85,7 @@ def _check_arithmetic_tails() -> None:
                 written.sample(machine.workspace_snapshot())
                 steps += 1
                 for value in machine.values:
-                    assert isinstance(value, _Fn) or (
+                    assert isinstance(value, native._Fn) or (
                         isinstance(value, tuple)
                         and all(isinstance(part, Fraction) for part in value)
                     )

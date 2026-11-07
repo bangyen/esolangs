@@ -3,13 +3,9 @@
 import pytest
 
 from esolangs.languages.balik.interpreter import run
-from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 
-
-def _out(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_out = native_runner(run)
 
 
 def _page_loop(before: str, body: str, after: str) -> str:

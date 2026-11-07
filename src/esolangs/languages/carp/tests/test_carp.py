@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs.languages.carp.interpreter import run
-from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 
 ADD = """INC r3 2 # r3 is used for control flow
 INP r1 3
@@ -17,10 +17,7 @@ OUT r1 10
 DEC r1 0"""
 
 
-def _run(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_run = native_runner(run)
 
 
 @pytest.mark.parametrize(("a", "b"), [(0, 0), (3, 4), (7, 8), (9, 6)])

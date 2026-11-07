@@ -1,13 +1,22 @@
 """Tests for the 1 + i interpreter."""
 
+from fractions import Fraction
 from itertools import product
+from math import pi
 from operator import add, mul
+from struct import pack
 
 import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.one_i.interpreter import _Machine, _text, run
+from esolangs.languages.one_i.tests.oracle_checks import _text as reference_text
+from esolangs.runtime import _isolated, _termination
+from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
+from tests.interpreters.runner import native_runner
+from tests.support.certification_barrier import guarded_worker
 
 TRUTH = "[$$[(:p)i?]i?][$$p]C:)ii*+?"
 
@@ -27,10 +36,7 @@ CONSTANTS = [
 ]  # fmt: skip
 
 
-def _run(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_run = native_runner(run)
 
 
 def _value(code: str) -> str:
@@ -108,13 +114,7 @@ def test_printing() -> None:
     assert _run("ici*ii++p") == "1 + 2i"
 
     def spelling(value: complex) -> str:
-        real, imag = int(value.real), int(value.imag)
-        if not imag:
-            return str(real)
-        magnitude = "i" if abs(imag) == 1 else f"{abs(imag)}i"
-        if not real:
-            return ("-" if imag < 0 else "") + magnitude
-        return f"{real} {'-' if imag < 0 else '+'} {magnitude}"
+        return reference_text((Fraction(int(value.real)), Fraction(int(value.imag))))
 
     # Small Gaussian integers are represented exactly by Python complex.
     values = [complex(a, b) for a, b in product((-3, 0, 2, 65536), repeat=2)]
@@ -157,6 +157,30 @@ def test_mixing_an_inexact_number_with_an_exact_one() -> None:
     # e leaves floating point; i + or i * then mixes it with an exact value.
     assert _run("iei+p") == "0.5403023058681398 + 1.8414709848078965i"
     assert _run("iei*p") == "-0.8414709848078965 + 0.5403023058681398i"
+    keys = []
+    for zero, angle in ((0.0, pi), (-0.0, -pi)):
+        machine = _Machine("lp", ScriptedIO())
+        machine.values.append(complex(-1, zero))
+        keys.append(machine.snapshot())
+        written = WrittenState(machine.workspace_snapshot())
+        machine.step()
+        captured = machine.workspace_snapshot()
+        assert captured.parts[1] == (
+            WorkspaceVariant("inexact", (pack("!dd", 0, angle),)),
+        )
+        written.sample(captured)
+        machine.step()
+        written.sample(machine.workspace_snapshot())
+        assert written.bits == 131
+        assert machine.io.getvalue() == f"{angle}i"
+    assert keys[0] != keys[1]
+    proof = _termination._termination_result("1 + i", "ie[i?]i?", "", 5)
+    assert not proof.decision.halts
+    assert proof.decision.commands == 9
+    with guarded_worker():
+        assert (
+            _isolated.termination_result_isolated("1 + i", "ie[i?]i?", "", 5) == proof
+        )
 
 
 def test_equal_reals_are_neither_above_nor_below() -> None:

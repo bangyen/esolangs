@@ -8,6 +8,7 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.ascenic.interpreter import _Machine, prepare_machine, run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
+from tests.interpreters.runner import native_runner
 
 #: The wiki's Hello world as (SUB, ADD, PRINT, POP) arguments per character;
 #: its 52 lines are 35KB of ``s``.
@@ -32,10 +33,7 @@ def _program(*lines: tuple[int, int]) -> str:
     return "\n".join("A" * op + "s" * arg for op, arg in lines)
 
 
-def _run(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_run = native_runner(run)
 
 
 def test_wiki_hello_world() -> None:

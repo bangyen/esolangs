@@ -1,13 +1,9 @@
 """Tests for the SwitchCase interpreter."""
 
 from esolangs.languages.switchcase.interpreter import run
-from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 
-
-def _output(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_output = native_runner(run)
 
 
 def test_the_page_minsky_increment_runs() -> None:

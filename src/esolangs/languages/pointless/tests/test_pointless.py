@@ -7,6 +7,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.pointless.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 
 #: The wiki's Hello world, comments included.
 HELLO = (
@@ -20,10 +21,7 @@ HELLO = (
 )
 
 
-def _run(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_run = native_runner(run)
 
 
 def _finish(code: str, stdin: str = "") -> _Machine:

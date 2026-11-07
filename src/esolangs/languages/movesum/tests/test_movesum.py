@@ -4,13 +4,9 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.movesum.interpreter import run
-from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 
-
-def out(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+out = native_runner(run)
 
 
 def test_unchanged_compares_values_not_keys() -> None:

@@ -4,15 +4,11 @@ import pytest
 
 from esolangs.languages.monotonic_boolfuck.generator import monotonic_boolfuck
 from esolangs.languages.monotonic_boolfuck.interpreter import run
-from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 from tests.support.raises import assert_rejected_with_hint
 from tests.support.witness_tables import witnesses
 
-
-def out(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+out = native_runner(run)
 
 
 @pytest.mark.parametrize(

@@ -5,8 +5,8 @@ from itertools import product
 import pytest
 
 from esolangs.languages.bleh.interpreter import _Machine, run
-from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import check_terminal
+from tests.interpreters.runner import native_runner
 
 #: The page's pattern table: pattern, arguments, ``1`` if they match.
 TABLE = [
@@ -31,10 +31,7 @@ TABLE = [
 ]
 
 
-def _out(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_out = native_runner(run)
 
 
 @pytest.mark.parametrize(("pattern", "args", "expected"), TABLE)

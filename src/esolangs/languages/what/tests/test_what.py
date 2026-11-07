@@ -5,6 +5,7 @@ import pytest
 from esolangs.exceptions import ArgumentError, HaltError
 from esolangs.languages.what.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 
 _TRUTH = ".??([1:!!][1;,1.(-)]),0!!"
 _BOTTLES = r"""99 " bottles of beer on the wall, ".
@@ -17,10 +18,7 @@ _BOTTLES = r"""99 " bottles of beer on the wall, ".
 "Go to the store and buy some more, 99 bottles of beer on the wall."!!! !!!!"""
 
 
-def _run(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_run = native_runner(run)
 
 
 def test_wiki_hello_world_and_cat() -> None:

@@ -5,6 +5,7 @@ import pytest
 from esolangs.exceptions import ArgumentError, HaltError
 from esolangs.languages.basicer.interpreter import run
 from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 
 ADDER = """10 PRINT First digit please! (1 = 0, 2 = 1, 3 = exit)
 20 GOTO 50 70 200
@@ -43,10 +44,7 @@ RPG = """10 CLEAR
 150 GOTO 10"""
 
 
-def _out(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_out = native_runner(run)
 
 
 def _sums(stdin: str) -> str:

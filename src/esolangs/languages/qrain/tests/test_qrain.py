@@ -4,13 +4,9 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.qrain.interpreter import run
-from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.runner import native_runner
 
-
-def _run(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+_run = native_runner(run)
 
 
 @pytest.mark.parametrize(
