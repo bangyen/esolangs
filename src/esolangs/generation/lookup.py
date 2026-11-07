@@ -1,6 +1,11 @@
 """Boolean row boundaries, counts and popcount lookup profiles."""
 
 
+def constant_output(table: str) -> str | None:
+    """Return the constant output of a validated nonempty table, or None."""
+    return table[0] if table.count(table[0]) == len(table) else None
+
+
 def change_points(table: str) -> list[int]:
     """Return ascending row boundaries whose adjacent outputs differ."""
     return [row for row in range(1, len(table)) if table[row] != table[row - 1]]

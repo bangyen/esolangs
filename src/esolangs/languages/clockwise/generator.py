@@ -32,6 +32,7 @@ from esolangs.generation.helpers import (
     grid_width,
     read_at,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 
@@ -60,8 +61,8 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     program prints ``'0'`` or ``'1'``.
     """
     total = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
-        return _constant_ring(total, truth_table[0])
+    if (bit := constant_output(truth_table)) is not None:
+        return _constant_ring(total, bit)
     used = essential_inputs(truth_table, total)
     if len(used) == 1:
         return _coordinate_ring(total, used[0], truth_table[0])
@@ -529,7 +530,7 @@ def _clockwise_two_columns(table: str) -> str:
 
 def _balance(table: str, default: str) -> str:
     """Compare the lookup, its rotations, the two-column route and the strips."""
-    inputs = len(table).bit_length() - 1
+    inputs = _validate_truth_table(table)
     used = essential_inputs(table, inputs)
     if len(used) <= 1:
         commands = _READS * inputs + len(_DIGIT) + int(table[0]) + bool(used)

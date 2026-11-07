@@ -16,7 +16,9 @@ def run_clockwise(program: str, inputs: list[str] | list[int]) -> str:
 
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_ring_reads_and_prints_without_a_lookup(n: int, bit: str) -> None:
+def test_constant_ring_reads_and_prints_without_a_lookup(
+    n: int, bit: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from esolangs.languages.clockwise.generator import _balance
 
     table = bit * (1 << n)
@@ -26,6 +28,10 @@ def test_constant_ring_reads_and_prints_without_a_lookup(n: int, bit: str) -> No
         assert "!" not in program
         for row in range(1 << n):
             assert run_clockwise(program, row_bits(row, n)) == bit
+    with monkeypatch.context() as fault:
+        other = str(1 - int(bit))
+        fault.setattr(boolean, "constant_output", lambda _table: other)
+        assert run_clockwise(boolean.clockwise(table), [0] * n) == other
 
 
 @pytest.mark.parametrize(
@@ -97,17 +103,7 @@ class TestClockwise:
     def test_every_run_reads_each_input_exactly_once(self, width: int | None) -> None:
         """Clockwise's input queue rotates, so a run must consume 7n bits."""
         from esolangs.languages.clockwise.interpreter import _Machine
-        from esolangs.runtime.io import IO
-
-        class _Quiet(IO):
-            def __init__(self, text: str) -> None:
-                self._text = text
-
-            def input_all(self, _prompt: str = "Input: ") -> str:
-                return self._text
-
-            def print_char(self, char: str) -> None:
-                pass
+        from esolangs.runtime.io import ScriptedIO
 
         # A constant, and a table ignoring every input after the first.
         tables = [
@@ -124,7 +120,7 @@ class TestClockwise:
             for combo in range(2**n):
                 machine = _Machine(
                     program.splitlines(),
-                    _Quiet("".join(map(str, row_bits(combo, n)))),
+                    ScriptedIO("".join(map(str, row_bits(combo, n)))),
                 )
                 start = machine.inp
                 steps = 0
