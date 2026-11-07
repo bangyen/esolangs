@@ -7,6 +7,7 @@ import re
 import pytest
 
 import esolangs
+from esolangs.generation.lookup import constant_output
 from esolangs.languages.laserfuck import generator as boolean
 from esolangs.languages.laserfuck.generator import MARGIN
 from esolangs.languages.laserfuck.tests.runners import run_laserfuck
@@ -423,15 +424,11 @@ def test_overhead_funnel_larger_tables(n: int) -> None:
 
 @pytest.mark.parametrize("width", [1, 7, 9, 10, 15, 18, 20, 40, 80])
 def test_vertical_tree_preserves_fitting_public_layouts(width: int) -> None:
-    from esolangs.languages.laserfuck.generator import (
-        _laserfuck_build,
-        _laserfuck_raise_funnel,
-    )
 
     table = "0110"
-    legacy = _laserfuck_build(table, width)
+    legacy = boolean._laserfuck_build(table, width)
     if max(map(len, legacy.splitlines())) > width:
-        legacy = _laserfuck_raise_funnel(legacy)
+        legacy = boolean._laserfuck_raise_funnel(legacy)
     source = esolangs.generate("LaserFuck", table, width=width).source
     if max(map(len, legacy.splitlines())) <= width:
         assert source == legacy
@@ -449,13 +446,9 @@ def test_vertical_tree_places_inputs_in_stream_order(table: str, n: int) -> None
     width 1, raised through the funnel, reads its inputs in stream
     order (input ``k`` in cell ``k + 1``) and computes every row.
     """
-    from esolangs.languages.laserfuck.generator import (
-        _laserfuck_build,
-        _laserfuck_raise_funnel,
-    )
 
-    source = _laserfuck_build(table, 1, vertical_tree=True)
-    source = _laserfuck_raise_funnel(source)
+    source = boolean._laserfuck_build(table, 1, vertical_tree=True)
+    source = boolean._laserfuck_raise_funnel(source)
     for row, expected in enumerate(table):
         for heading in range(4):
             assert run_laserfuck(source, list(f"{row:0{n}b}"), heading) == expected
@@ -525,3 +518,13 @@ def test_three_input_corpus_size() -> None:
         )
         == 87555
     )
+
+
+def test_constant_analysis_reaches_dump(monkeypatch) -> None:
+    assert boolean.constant_output is constant_output
+    baseline = boolean.laserfuck("0000")
+    monkeypatch.setattr(boolean, "constant_output", lambda _: "1")
+    mutant = boolean.laserfuck("0000")
+    for heading in range(4):
+        assert run_laserfuck(baseline, ["1", "0"], heading) == "0"
+        assert run_laserfuck(mutant, ["1", "0"], heading) == "1"

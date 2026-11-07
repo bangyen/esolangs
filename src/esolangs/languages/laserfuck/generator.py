@@ -38,6 +38,7 @@ from esolangs.generation.helpers import (
     narrowest_grid,
     subtree_ids,
 )
+from esolangs.generation.lookup import constant_output
 
 __all__ = ["laserfuck"]
 
@@ -692,10 +693,10 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     often not the shortest.
     """
     n = _validate_truth_table(truth_table)
-    if width is None and truth_table.count(truth_table[0]) == len(truth_table):
+    if width is None and (constant := constant_output(truth_table)) is not None:
         # Overwrite one cell while reading, then drain it before the dump.
         # The zeroing ring removes the last ASCII digit without a second cell.
-        top = " }}" + "," * n + "}-#/)" + ("+" if truth_table[0] == "1" else "") + "x"
+        top = " }}" + "," * n + "}-#/)" + ("+" if constant == "1" else "") + "x"
         middle = "|o^" + " " * n + "^  {"
         return top + "\n" + middle + "\n _"
     if width is None and len(truth_table) > 64:

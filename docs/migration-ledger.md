@@ -1141,3 +1141,27 @@ every prior assertion, case and oracle. Installed Python 3.12.11, 3.13.15,
 and all faults; every binary mask through seven inputs passes. EOF and invalid
 operation errors retain partial output and agree across native/isolated routes.
 Eight backend audits remain; catalog acceptance stays open.
+
+
+LaserFuck uses canonical constant recognition; weighted lookup and subtree
+identities remain shared. Reader placement, beam funnels and path-sized leaf
+retirement remain native: equal residuals retire different path bits. All
+1,932 artifacts across seven layouts match. Default execution through three
+inputs and seven layouts through two inputs retain 2,552 paired rows and
+3,726,956 semantic samples. All 288 larger layouts and 1,152 paired rows match;
+twenty direct constructions retain 256 rows and 301,628 samples over all four
+verified initial headings, including constants through sixteen inputs.
+
+The sixteen-input AND emits 984,713 characters, occupies 2,165,193 character-grid
+cells and executes 721,794 steps on its all-ones row. Four faults change 120
+executed answers; eight cost controls retain correct answers across 176 runs.
+Two validation controls fire; all 170 owner/budget tests pass, with prior test
+assertions, cases and oracles preserved after import consolidation.
+Eight pins, six size anchors and eleven resource/scaling nodes pass unchanged.
+Sixty timing contexts pass (minimum ratio 0.9911); all 160 default-constant
+heading witnesses satisfy their execution bounds. Installed Python 3.12.11,
+3.13.15, 3.14.7 and cached 3.15.0rc1 each round-trip 828 artifacts and execute
+408 rows from 84 programs, plus five guarded workers and all fault/cost controls.
+EOF after zero or one input preserves progress and agrees across native/isolated
+routes; certification imports stay blocked.
+Seven backend audits remain; catalog acceptance stays open.
