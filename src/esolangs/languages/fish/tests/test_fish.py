@@ -6,8 +6,11 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.fish.interpreter import _advance, _Machine, prepare_machine, run
+from esolangs.runtime import _termination
+from esolangs.runtime._isolated import termination_result_isolated
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import FirstDraw, Seeded
+from tests.support.certification_barrier import guarded_worker
 from tests.support.raises import assert_halts_with_hint
 
 
@@ -126,7 +129,9 @@ def test_get_put_and_negative_storage() -> None:
     assert (machine.width, machine.height) == (10, 10)
 
 
-def test_branching_protocol_covers_random_input_plain_and_halted_states() -> None:
+def test_branching_protocol_covers_random_input_plain_and_halted_states(
+    monkeypatch,
+) -> None:
     random = _Machine(["x"], ScriptedIO(""))
     start = random.branching_snapshot()
     assert len(random.branching_successors(start, 10) or ()) == 4
@@ -140,6 +145,22 @@ def test_branching_protocol_covers_random_input_plain_and_halted_states() -> Non
     assert halted.branching_halted(final)
     assert halted.branching_successors(final, 10) == (final,)
     halted.step()
+
+    for source, halts in [('"A"o;', True), ('"A"o>', False)]:
+        result = _termination._termination_result("Fish", source, "", 5)
+        assert result.observation.output == "A"
+        assert result.observation.completion is None
+        assert result.decision.halts is halts
+        with guarded_worker():
+            assert termination_result_isolated("Fish", source, "", 5) == result
+        with monkeypatch.context() as fault:
+            fault.setattr(_termination, "_observe_branch_path", lambda *_: None)
+            assert (
+                _termination._termination_result(
+                    "Fish", source, "", 5
+                ).observation.output
+                == ""
+            )
 
 
 def test_errors_are_fishy() -> None:

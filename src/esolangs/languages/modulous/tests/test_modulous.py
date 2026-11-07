@@ -12,6 +12,8 @@ from esolangs.languages.modulous.interpreter import (
     run,
 )
 from esolangs.languages.modulous.interpreter import _Machine as Modulous
+from esolangs.runtime import _termination
+from esolangs.runtime._isolated import termination_result_isolated
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.runtime.randomness import Seeded
 from esolangs.vm import (
@@ -22,6 +24,7 @@ from esolangs.vm import (
 from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_lines
+from tests.support.certification_barrier import guarded_worker
 from tests.support.raises import (
     assert_halts_with_hint,
     assert_rejected_with_hint,
@@ -414,7 +417,7 @@ def test_modulous_reset_loops_and_end_halts() -> None:
         assert io.getvalue() == (str(value) if value == threshold else "")
 
 
-def test_modulous_forks_every_value_rnd_could_draw() -> None:
+def test_modulous_forks_every_value_rnd_could_draw(monkeypatch) -> None:
     """``RND n`` opens exactly ``n`` outcomes, one per drawable value."""
     machine = Modulous("[RND 4]", ScriptedIO())
     successors = machine.branching_successors(machine.branching_snapshot(), 100)
@@ -426,6 +429,23 @@ def test_modulous_forks_every_value_rnd_could_draw() -> None:
     quiet = Modulous("[RND 0]", ScriptedIO())
     with pytest.raises(HaltError):
         quiet.branching_successors(quiet.branching_snapshot(), 100)
+
+    source = "[RND 2][POP][PSH INT 65][PRT STR][RST]"
+    result = _termination._termination_result("Modulous", source, "", 5)
+    assert result.observation.output == "A"
+    assert result.observation.completion is None
+    assert result.decision.halts is False
+    assert result.decision.branches.forked is True
+    with guarded_worker():
+        assert termination_result_isolated("Modulous", source, "", 5) == result
+    with monkeypatch.context() as fault:
+        fault.setattr(_termination, "_observe_branch_path", lambda *_: None)
+        assert (
+            _termination._termination_result(
+                "Modulous", source, "", 5
+            ).observation.output
+            == ""
+        )
 
 
 def test_modulous_non_command_tokens_advance_one_branch() -> None:

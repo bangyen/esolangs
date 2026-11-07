@@ -1338,3 +1338,13 @@ and command-limit routes agree; certification imports stay blocked. Every
 Boolean backend now has an analysis disposition. Final reconciliation, stable
 3.15 acceptance and catalog-wide lifecycle/accounting/evidence acceptance remain
 open.
+
+
+Termination results observe a real path through retained branch evidence before
+capturing IO. Fish's `"A"o;` previously proved a halt but reported empty output;
+it now retains `A`, as do deterministic cycles and a closed Modulous random
+loop. Each live transition must belong to the proved graph, ending at its halt
+or first repeated state. Graph exploration and Boolean verdicts stay unchanged;
+post-halt output finalization is not requested. Native/worker controls retain
+output, reject malformed decisions and detect disabled observation. Catalog-wide
+acceptance remains open.

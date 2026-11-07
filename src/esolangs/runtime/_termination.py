@@ -1,20 +1,56 @@
 """Observe IO while proving halting or a repeated machine state."""
 
 from functools import partial
+from typing import cast
 
 import esolangs
-from esolangs._cycles import _halt_or_cycle_result
+from esolangs._cycles import _BranchingStepMachine, _halt_or_cycle_result, _unwrap
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.exceptions import EsolangError, InterpreterLimitError
 from esolangs.results import ExecutionResult
 from esolangs.runtime._program import Program
 from esolangs.runtime._proof import (
+    BranchProof,
     TerminationResult,
+    checked_decision,
     checked_termination,
 )
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import DialectSettings, dialect_options
-from esolangs.vm import _capture_observation, make_vm
+from esolangs.vm import VM, _capture_observation, make_vm
+
+
+def _observe_branch_path(machine: VM, proof: BranchProof) -> None:
+    """Retain live IO along a proved path, checking every transition."""
+    # Branch exploration discards output effects: Fish's '"A"o;' proves a
+    # halt without printing. Observe a real path before capturing its IO.
+    branch = cast(
+        _BranchingStepMachine,
+        _unwrap(
+            machine,
+            _BranchingStepMachine,
+            "branch-enumerable",
+            hint="observe the machine that supplied the branching evidence",
+        ),
+    )
+    graph = dict(proof.transitions)
+    state = branch.branching_snapshot()
+    seen = set()
+    if state != proof.root:
+        raise InterpreterLimitError("branch observation does not start at its root")
+    while state in graph and state not in seen:
+        seen.add(state)
+        machine.step()
+        successor = branch.branching_snapshot()
+        if successor not in graph[state]:
+            raise InterpreterLimitError(
+                "live transition is absent from branch evidence"
+            )
+        state = successor
+    if machine.halted is not proof.halts or (
+        state != proof.terminal if proof.halts else state not in seen
+    ):
+        raise InterpreterLimitError("live endpoint disagrees with branch evidence")
 
 
 def _termination_result(
@@ -33,6 +69,12 @@ def _termination_result(
         machine = factory(name, source, stdin=stdin)
         try:
             decision = _halt_or_cycle_result(machine)
+            try:
+                checked_decision(decision)
+            except ValueError:
+                return TerminationResult(_capture_observation(machine), decision)
+            if decision.branches is not None:
+                _observe_branch_path(machine, decision.branches)
             return TerminationResult(_capture_observation(machine), decision)
         except EsolangError as error:
             error.partial_output = machine.output
