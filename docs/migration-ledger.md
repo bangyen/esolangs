@@ -1558,3 +1558,20 @@ The unchanged 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
 3.15.0: 568 native completions and 145 guarded workers per version, with exact
 raw/VM/debugger captures, held snapshots and post-halt stability. Alight's
 bounded accounting scope is reviewed; language/catalog completion stays open.
+
+
+Aprknia's existing declared stack oracle passes all 3,665 cases and fifteen
+live faults. Eight added audit cases extend the review to 3,673 programs and
+7,570 boundaries: completed 80-item storage, a bounded loop, partial-output
+EOF and paired Unicode inputs. All three components are written; independent
+recounts match exact captures. Literal charges are 87/3/14 bits for the first
+three witnesses; the observed corpus maximum is 104 bits, not a global bound.
+
+The unchanged 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0: 180 native completions, 1,347 execution failures, 2,125 constructor
+failures and 21 bounded runs. All raw/VM/debugger traces match; 118 guarded
+workers per version agree on completion/failure/unfinished observations.
+Three installed resource erasures fail; the declared semantic entry point
+retains a clean baseline and live output-fault detection. No runtime/test
+source changes. This bounded accounting scope is reviewed; completion stays
+open.
