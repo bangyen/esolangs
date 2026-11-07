@@ -1492,3 +1492,22 @@ workers agree; malformed assembly, unfinished loop observations and partial
 output survive transport. The extra witnesses charge zero and three bits.
 This reviews existing evidence without changing production or test code.
 Language and catalog completion remain open.
+
+
+Algebraic Programming Language's independent terminal oracle now preserves
+exact integer quotients and promotes exact floating quotients before later
+arithmetic. Executed counterexamples were `(2**80+1)/1` and `10**30/1.0+1`;
+the interpreter already returned the correct final increment. All 164 prior
+cases/traces remain, with three additions. Six unchanged output assertions
+move into the existing matrix; remaining test bodies are identical.
+
+An independent expression-frame prototype matches 167 cases and 1,991 complete
+semantic/resource captures, including typed values, structural instruction
+locations, early returns and failed-step rollback. Four erasures preserve
+execution but fail resources; the observed corpus peak is 260 bits. The
+unchanged 951-file package passes this raw/VM/debugger scope on Python 3.12.11,
+3.13.15, 3.14.7 and final 3.15.0, with 145 native completions, 22 failures and
+167 guarded workers per version. `just test` passes in 232.8 seconds.
+
+APL remains review-pending: the frame prototype needs function/custom-operator
+coverage and permanent owned regression checks. No language completion closes.
