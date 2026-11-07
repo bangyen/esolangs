@@ -3,18 +3,10 @@
 import pytest
 
 import esolangs
-from esolangs import run
-from esolangs.debugger import make_vm
 from esolangs.exceptions import TemplateError
 from esolangs.generation.wrap import wrap_program
-from esolangs.languages.slashes.generator import (
-    _DECODE,
-    _IGNORE,
-    _SWEEP,
-    _UNARY,
-    _is_unfilled_template,
-)
-from esolangs.vm import _capture_workspace
+from esolangs.languages.slashes import generator as boolean
+from esolangs.vm import _capture_workspace, make_vm
 from scripts.benchmark import WrittenState
 from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import witnesses
@@ -46,13 +38,13 @@ def test_constant_root_parses_inputs_without_selecting_a_table(inputs, bit) -> N
     assert len(template.source) == inputs + 4
     assert template.source.count("$") == inputs
     assert _evaluate("///", template, inputs=inputs) == table
-    assert _is_unfilled_template(template.source)
+    assert boolean._is_unfilled_template(template.source)
     with pytest.raises(TemplateError, match="unfilled"):
-        run("///", template.source)
+        esolangs.run("///", template.source)
     for row in (0, (1 << inputs) - 1):
         bits = [int(c) for c in format(row, f"0{inputs}b")]
         program = esolangs.instantiate("///", template, bits)
-        assert not _is_unfilled_template(program.source)
+        assert not boolean._is_unfilled_template(program.source)
         vm = make_vm("///", program)
         state = WrittenState(_capture_workspace(vm))
         commands = 0
@@ -68,27 +60,27 @@ def test_constant_root_parses_inputs_without_selecting_a_table(inputs, bit) -> N
 
 @pytest.mark.parametrize("suffix", ["", "0", "$", "$2", "$x0", "ab0"])
 def test_constant_recognizer_does_not_reserve_other_literal_dollars(suffix) -> None:
-    assert not _is_unfilled_template("/a///b//" + suffix)
+    assert not boolean._is_unfilled_template("/a///b//" + suffix)
 
 
 def test_all_slots_ignored_is_still_a_template() -> None:
     # read == 0: the one slot is an ignored X and the table has one entry.
-    program = _IGNORE + _UNARY + _DECODE + "X$>qA"
-    assert _is_unfilled_template(program)
+    program = boolean._IGNORE + boolean._UNARY + boolean._DECODE + "X$>qA"
+    assert boolean._is_unfilled_template(program)
 
 
 def test_filled_slots_are_not_a_template() -> None:
     # No $ in the slots: a and b are filled values, not template slots,
     # even when the rest of the string is canonical.
-    program = _UNARY + _SWEEP * 4 + _DECODE + "ab>qAqAqAqA"
-    assert not _is_unfilled_template(program)
+    program = boolean._UNARY + boolean._SWEEP * 4 + boolean._DECODE + "ab>qAqAqAqA"
+    assert not boolean._is_unfilled_template(program)
 
 
 def test_more_ignored_slots_than_slots_is_a_program_not_a_template() -> None:
     # Two X in a three-character slot list once shifted by -1 and raised.
-    program = _UNARY + _DECODE + "$XX>qAqB"
-    assert not _is_unfilled_template(program)
-    assert isinstance(run("///", program).output, str)
+    program = boolean._UNARY + boolean._DECODE + "$XX>qAqB"
+    assert not boolean._is_unfilled_template(program)
+    assert isinstance(esolangs.run("///", program).output, str)
 
 
 def test_ignored_input_template_is_recognized_only_while_canonical() -> None:
@@ -97,15 +89,15 @@ def test_ignored_input_template_is_recognized_only_while_canonical() -> None:
     assert_analysis_complement("///", "input_weights")
     template = esolangs.generate("///", "0011")  # slots "$X$": one ignored
     assert template.source.endswith("$X$>qAqB")
-    assert _is_unfilled_template(template.source)
+    assert boolean._is_unfilled_template(template.source)
     body = template.source.removesuffix("$X$>qAqB")
-    assert not _is_unfilled_template(body + "$X1>qAqB")  # a filled slot
-    assert not _is_unfilled_template(body + "$X$>qAXB")  # a foreign cell
+    assert not boolean._is_unfilled_template(body + "$X1>qAqB")  # a filled slot
+    assert not boolean._is_unfilled_template(body + "$X$>qAXB")  # a foreign cell
 
 
 def test_partly_filled_constant_still_requires_its_remaining_input() -> None:
-    assert _is_unfilled_template("/a///b//a$b1")
-    assert run("///", "$0").output == "$0"
+    assert boolean._is_unfilled_template("/a///b//a$b1")
+    assert esolangs.run("///", "$0").output == "$0"
 
 
 def test_unwrappable_source_is_untouched() -> None:
@@ -149,12 +141,12 @@ def _check_run_macros() -> None:
     machine = _Machine(_SWEEP_DEF + "SS", io)
     for _ in range(4):
         machine.step()
-    assert machine.state == (_SWEEP * 2, None)
+    assert machine.state == (boolean._SWEEP * 2, None)
     for table in ("1011", "10111011", "00010100", "0101101000011010"):
         n = len(table).bit_length() - 1
         for balanced in (False, True):
             template = esolangs.generate("///", table, balance=balanced)
-            assert balanced or _is_unfilled_template(template.source)
+            assert balanced or boolean._is_unfilled_template(template.source)
             for row in range(1 << n):
                 program = esolangs.instantiate(
                     "///", template, [int(c) for c in f"{row:0{n}b}"]
@@ -205,5 +197,5 @@ def _check_constants() -> None:
 
 def test_ignored_markers_must_prefix_their_own_slot() -> None:
     for slots in ("XX$$", "$XX$", "X$$X", "$$XX"):
-        program = _IGNORE + _UNARY + _DECODE + slots + ">qA"
-        assert not _is_unfilled_template(program)
+        program = boolean._IGNORE + boolean._UNARY + boolean._DECODE + slots + ">qA"
+        assert not boolean._is_unfilled_template(program)

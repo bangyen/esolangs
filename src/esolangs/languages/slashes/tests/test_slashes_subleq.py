@@ -5,11 +5,9 @@ import random
 import pytest
 
 import esolangs
-from esolangs import run
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.languages.slashes import interpreter as native
 from esolangs.languages.slashes.generator import slashes
-from esolangs.languages.slashes.interpreter import _Machine as SlashMachine
-from esolangs.languages.slashes.interpreter import run as run_slashes
 from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import witnesses
 
@@ -22,7 +20,7 @@ def test_all_three_input_tables() -> None:
             for row in range(1 << n):
                 bits = [int(c) for c in f"{row:0{n}b}"]
                 io = ScriptedIO("")
-                run_slashes(fill_runs(code, TEMPLATE_CHAR, (("a", "b"),) * n, bits), io)
+                native.run(fill_runs(code, TEMPLATE_CHAR, (("a", "b"),) * n, bits), io)
                 assert io.getvalue() == table[row]
 
 
@@ -41,15 +39,15 @@ def test_rendered_scaling() -> None:
 )
 def test_slashes_conventions(code: str, expected: str) -> None:
     io = ScriptedIO()
-    run_slashes(code, io)
+    native.run(code, io)
     assert io.getvalue() == expected
 
 
 def test_slashes_escaped_pattern() -> None:
     io = ScriptedIO()
-    run_slashes(r"/a\/b/c/a/b", io)
+    native.run(r"/a\/b/c/a/b", io)
     assert io.getvalue() == "c"
-    run_slashes("/a\\", io)
+    native.run("/a\\", io)
     assert io.getvalue() == "c"
 
 
@@ -57,13 +55,13 @@ def test_slashes_divergence_controls() -> None:
     from esolangs.languages.slashes.tests.oracle_checks import check_raw_slashes
 
     check_raw_slashes()
-    empty = SlashMachine("///", ScriptedIO())
+    empty = native._Machine("///", ScriptedIO())
     empty.step()
     before = empty.snapshot()
     empty.step()
     assert empty.snapshot() == before
     assert not empty.halted
-    growth = SlashMachine("/a/aa/a", ScriptedIO())
+    growth = native._Machine("/a/aa/a", ScriptedIO())
     growth.step()
     growth.step()
     assert growth.state[0] == "aa"
@@ -72,24 +70,24 @@ def test_slashes_divergence_controls() -> None:
 
 def test_slashes_trailing_escape() -> None:
     io = ScriptedIO()
-    run_slashes("\\", io)
+    native.run("\\", io)
     assert io.getvalue() == ""
-    run_slashes("/a/\\", io)
+    native.run("/a/\\", io)
     assert io.getvalue() == ""
 
 
 def test_slashes_literal_dollar_and_serialized_template() -> None:
     from esolangs.exceptions import TemplateError
 
-    assert run("///", "/a/$/a").output == "$"
-    assert run("Slashalash", "$", max_steps=20).output == "$"
+    assert esolangs.run("///", "/a/$/a").output == "$"
+    assert esolangs.run("Slashalash", "$", max_steps=20).output == "$"
     template = esolangs.generate("///", "01")
     restored = esolangs.load_program("///", esolangs.dump_program("///", template))
     with pytest.raises(TemplateError, match="fill the template"):
-        run("///", restored)
+        esolangs.run("///", restored)
     partial = esolangs.generate("///", "0110").source.replace("$", "a", 1)
     with pytest.raises(TemplateError, match="unfilled"):
-        run("///", partial)
+        esolangs.run("///", partial)
 
 
 @pytest.mark.parametrize("tail", ["$", ">qAqB", "x>qAqB", "$>qAq", "$>qAqZ", "$>qA"])

@@ -7,6 +7,13 @@ import pytest
 
 from esolangs.languages.slashes.interpreter import _Machine
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import (
+    missing_workspace,
+    workspace_model,
+    workspace_view,
+)
+
+_WORKSPACE = workspace_model("slashes-v1", "source pattern replacement input_cursor")
 
 
 def _rule(characters):
@@ -31,9 +38,8 @@ def _model(code):
     unread, active, output = list(code), None, ""
 
     def view():
-        text = "".join(unread)
         return (
-            (text, active, tuple(map(ord, unread)), None),
+            ("".join(unread), active, tuple(map(ord, unread)), None),
             not unread and active is None,
             output,
             0,
@@ -67,12 +73,13 @@ def _model(code):
 
 def _agrees(factory, source):
     expected = _model(source)
-    assert (
-        observed(
-            factory, source, "λ\nunused", lambda m: (*m.state, tuple(m.memory), m.ip)
-        )
-        == expected
-    ), source
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (row[0][0], *(row[0][1] or (None, "")), row[-1]),
+        lambda m: (*m.state, tuple(m.memory), m.ip),
+    )
+    assert observed(factory, source, "λ\nunused", checked) == expected, source
     return expected
 
 
@@ -138,4 +145,7 @@ def check_raw_slashes():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source)
-    return len(corpus), len(controls)
+    for component in _WORKSPACE.components:
+        with pytest.raises(AssertionError):
+            _agrees(missing_workspace(_Machine, component), "/a/b/aaa")
+    return len(corpus), len(controls) + 4
