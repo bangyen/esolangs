@@ -1511,3 +1511,31 @@ unchanged 951-file package passes this raw/VM/debugger scope on Python 3.12.11,
 
 APL remains review-pending: the frame prototype needs function/custom-operator
 coverage and permanent owned regression checks. No language completion closes.
+
+
+APL's frame audit now includes function calls and custom operators: all 167
+expression cases plus 57 new cases match 3,080 complete semantic/resource
+captures. Coverage includes local/global lookup, assignments, retained aliases
+after redefinition, multiline/early returns, custom patterns, recursive frames,
+large integers and nonfinite/nonreal errors. Two loops retain unfinished
+observations at 128 commands; one configured guard fails at forty work steps.
+
+A permanent witness in the declared oracle entry point independently constructs
+the two-frame activation state for function and postfix calls. Frames cost
+2w+28 bits, globals w+8, the line two, and the input cursor its bit length:
+integer/floating inputs charge 45/232 bits. Four component erasures fail.
+Four activation programs add 36 checked raw/VM/debugger boundaries.
+Twenty-four existing assertions move into existing matrices with identical
+calls/results and explanations; remaining test bodies are unchanged. Four
+obsolete semantic selectors are removed because their already-declared
+matrices now contain those assertions. Between, DINAC and Freestajlo retain
+clean baselines and live fault detection.
+
+The refreshed 951-file wheel passes this scope on Python 3.12.11, 3.13.15,
+3.14.7 and final 3.15.0: 188 native completions, 34 failures, two bounded loops
+and 228 guarded workers per version. The 117-runtime/13,778-sample catalog
+matrix and 240 guarded workers per version remain unchanged. An altered width
+is rejected. Only three packaged evidence-selector records change;
+runtime/generation code is unchanged. `just test` passes in 245.2 seconds.
+APL's bounded accounting scope is reviewed; language/catalog completion stays
+open.
