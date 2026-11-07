@@ -1363,3 +1363,23 @@ The dependency cache contains the final interpreter without system shims.
 This replaces release-candidate-only installed witness evidence. It does not
 close independent component semantics, broader corpus/failure coverage, claims
 or the final retirement reconciliation. All language completion rows stay open.
+
+
+The CSV's `semantic_accounting` column records reviewed witness scopes;
+`review-pending` does not assert that a model is absent. Existing declarations
+and source/installed accounting traces remain separate evidence.
+
+/// now predicts source, nullable pattern, replacement and input cursor from its
+independent iterator/list rewrite model. All 924 prior cases retain 8,813 semantic
+observations at the unchanged 64-command cap, including growing rewrites and
+post-halt steps. Four component erasures preserve execution but fail resource
+checks; all six prior semantic faults remain. Literal charged peaks are 16,
+80 and 536 bits. Import consolidation preserves all fifty-seven assertions and
+cases in the two owned tests; the source/test line count stays unchanged.
+
+The unchanged installed package passes this complete raw/VM/debugger corpus on
+Python 3.12.11, 3.13.15, 3.14.7 and final 3.15.0, with 884 native halts, four
+component faults and four guarded workers per version. The partial-step error
+retains output and agrees across native/isolated routes. `just test` passes in
+230.6 seconds. This is bounded semantic accounting evidence; final language and
+catalog acceptance stay open.
