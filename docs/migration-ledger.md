@@ -1680,3 +1680,23 @@ fault fail; forty-six guarded workers per version preserve post-halt results
 and unfinished/failure observations. No runtime or test source changes.
 This bounded accounting scope is reviewed; language/catalog completion
 remains open.
+
+
+Balik's declared sparse-trit oracle retains 1,744 cases and eighteen live
+controls. Eight added witnesses complete 81-cell tapes containing trits 0,
+1 and 2, consume eighty inputs, exhaust long whitespace and preserve output
+before EOF or invalid input. Independent captures and charged peaks match
+1,752 cases/10,907 boundaries under 64–288-command caps. All six components
+are written; eight literal charges are 95/96/176/183/11/1/3/2 bits. The
+183-bit observed maximum is not a global bound. Halting follows captured
+position rather than an omitted stored flag.
+
+Current source matches the tested 951-file wheel. Python 3.12.11, 3.13.15,
+3.14.7 and final 3.15.0 each pass 1,201 native completions, 503 execution
+failures, forty constructor failures and eight bounded runs. Raw/VM/debugger
+captures preserve held snapshots, post-halt stability, exact input counters
+and source-command counts. Six resource erasures fail; a wrong-trit output
+with unchanged captures and length fails independently. Sixty-seven guarded
+workers per version preserve completion, partial-output failures and
+unfinished observations. No runtime or test source changes. This bounded
+accounting scope is reviewed; language/catalog completion remains open.
