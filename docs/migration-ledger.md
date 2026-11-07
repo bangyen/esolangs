@@ -1476,3 +1476,19 @@ native halts and 89 guarded workers per version. Three syntax failures agree;
 a printing loop retains twelve NUL characters and an unfinished observation
 after 96 commands across bounded/isolated routes. `just test` passes in 233.6
 seconds. Language and catalog completion remain open.
+
+
+AddSubJump's existing dense-memory model independently predicts sparse cells,
+logical extent, instruction, flags and input cursor. Its 192 cases retain
+1,008 observations at the 16-command cap; all seven components are written.
+Seven erasures preserve execution but fail resources, and the phantom-cell
+control remains. Two additional witnesses cover a 16-command loop and EOF
+after emitting `A`, adding twenty independently checked boundaries.
+
+The unchanged 951-file package passes raw/VM/debugger captures, retained
+snapshots and exact charged peaks on Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0. Per version, 144 native completions, 48 input failures and 196 guarded
+workers agree; malformed assembly, unfinished loop observations and partial
+output survive transport. The extra witnesses charge zero and three bits.
+This reviews existing evidence without changing production or test code.
+Language and catalog completion remain open.
