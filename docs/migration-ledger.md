@@ -1406,3 +1406,17 @@ and six guarded workers. The refreshed 951-file wheel also matches all 117
 catalog witnesses and 13,778 accounting samples on all four versions; only
 the declared model label changes in the default corpus. `just test` passes in
 233.6 seconds. All language completion rows remain open.
+
+
+3x predicts instruction, rational operands, loop returns, bindings and input
+cursor independently. All 1,221 prior cases and 10,348 observations remain at
+the 64-command cap. Five component erasures preserve execution but fail resource
+checks; all ten prior semantic faults remain. The shared witness now rejects an
+extra machine observation with an assertion. Literal charged peaks are 4, 7,
+27 and 5 bits; the growing-loop witness reaches 99 bits at 64 commands.
+
+The unchanged 951-file package passes the complete raw/VM/debugger corpus on
+Python 3.12.11, 3.13.15, 3.14.7 and final 3.15.0: 211 native halts, 927 failed
+steps, five field faults and five guarded workers per version. Native/isolated
+failures agree, including retained output and a failed loop scan ending at EOF.
+`just test` passes in 229.6 seconds. Language completion remains open.
