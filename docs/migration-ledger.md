@@ -1539,3 +1539,22 @@ is rejected. Only three packaged evidence-selector records change;
 runtime/generation code is unchanged. `just test` passes in 245.2 seconds.
 APL's bounded accounting scope is reviewed; language/catalog completion stays
 open.
+
+
+Alight's independent linear-grid audit matches 568 programs and 3,552 complete
+semantic/resource captures in four walking directions: arithmetic, input/EOF,
+list aliases, suspended calls and both list-update dialects. All five components
+are written; five erasures and a stalled transition fail. The observed corpus
+peak is 209 bits. Turns, skips and arbitrary recursive graphs remain outside
+this bounded model.
+
+The declared 117-case arithmetic oracle now independently constructs every
+walker/binding capture and recounts written state, including post-halt samples.
+Thirty redundant imports are removed from sixteen test modules; remaining
+normalized ASTs and all prior assertions are unchanged. Six file-size checks
+pass; `just test` passes in 11.3 seconds at changed-test scope.
+
+The unchanged 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0: 568 native completions and 145 guarded workers per version, with exact
+raw/VM/debugger captures, held snapshots and post-halt stability. Alight's
+bounded accounting scope is reviewed; language/catalog completion stays open.
