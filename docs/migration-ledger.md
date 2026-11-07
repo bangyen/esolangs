@@ -1621,3 +1621,22 @@ results, partial-output failures and unfinished observations. Three installed
 resource erasures and a same-width seeded-draw fault fail. No runtime or test
 source changes. This bounded accounting scope is reviewed; language/catalog
 completion remains open.
+
+
+B-tapemark's declared complex-grid oracle passes all 613 cases and three live
+controls. Eighteen added cases cover both marker dialects, four directions,
+Unicode/space input, partial-output EOF, wiki examples and completed 80-cell
+writes. Independent captures and charged peaks match at 631 cases/9,389
+boundaries, capped at 24–192 commands. Both components are written; literal
+charges are 17/40/30/40/3,671 bits. The 3,671-bit observed maximum is not a
+global bound. A same-state output fault supplements the marker fault and two
+resource erasures.
+
+Current source matches all 951 package files in the tested wheel. Python
+3.12.11, 3.13.15, 3.14.7 and final 3.15.0 each pass 309 native completions,
+46 input failures, sixteen constructor failures and 260 bounded runs.
+Raw/VM/debugger captures preserve held snapshots, post-halt stability,
+input counters and source-command counts. Sixty-one guarded workers per
+version preserve both dialects, explicit completion, partial-output failures
+and unfinished observations. No runtime or test source changes. This bounded
+accounting scope is reviewed; language/catalog completion remains open.
