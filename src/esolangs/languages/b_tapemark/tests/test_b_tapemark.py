@@ -2,13 +2,7 @@
 
 import pytest
 
-from esolangs.languages.b_tapemark.interpreter import (
-    _advance,
-    _Grid,
-    _load,
-    _Machine,
-    run,
-)
+from esolangs.languages.b_tapemark import interpreter as native
 from esolangs.runtime._result_wire import _state_from_wire, _state_wire
 from esolangs.runtime.io import ScriptedIO
 
@@ -16,14 +10,14 @@ from esolangs.runtime.io import ScriptedIO
 def execute(source: str, stdin: str = "") -> str:
     """Run ``source`` and return its output."""
     io = ScriptedIO(stdin)
-    run(source, io)
+    native.run(source, io)
     return io.getvalue()
 
 
 def test_documented_cat() -> None:
     io = ScriptedIO("A\nB\n")
     with pytest.raises(EOFError):
-        run("/>-+|\\\n\\    /", io)
+        native.run("/>-+|\\\n\\    /", io)
     assert io.getvalue() == "A\nB\n"
 
 
@@ -41,8 +35,8 @@ def test_the_swap_marker_dialect_names_the_marker_that_moves() -> None:
         ("new", ((1, 0), (1, 0))),
         ("old", ((2, 0), (0, 0))),
     ):
-        state = _load(">?", reading)
-        state = _advance(_advance(state)[0])[0]
+        state = native._load(">?", reading)
+        state = native._advance(native._advance(state)[0])[0]
         assert state.program == 1
         assert state.positions == expected
 
@@ -54,9 +48,9 @@ def test_quoted_text_is_blank() -> None:
 
 
 def test_transition_does_not_mutate_its_input() -> None:
-    state = _load(">*A!")
-    advanced, output = _advance(state)
-    assert state == _load(">*A!")
+    state = native._load(">*A!")
+    advanced, output = native._advance(state)
+    assert state == native._load(">*A!")
     assert advanced != state
     assert output is None
 
@@ -81,15 +75,15 @@ class TestTheGridIsAMapOfPoints:
 
     def test_a_blank_erases_the_mark(self) -> None:
         """Writing a blank removes the point rather than storing a space."""
-        grid = _Grid({(0, 0): "A", (1, 0): "B"})
+        grid = native._Grid({(0, 0): "A", (1, 0): "B"})
         cleared = grid.marked((0, 0), " ")
         assert cleared.at((0, 0)) == " "
         assert cleared.at((1, 0)) == "B"
-        assert cleared == _Grid({(1, 0): "B"})
+        assert cleared == native._Grid({(1, 0): "B"})
 
     def test_writing_leaves_the_original_alone(self) -> None:
         """A write returns a new grid; the old one is what a cycle compares."""
-        grid = _Grid({(0, 0): "A"})
+        grid = native._Grid({(0, 0): "A"})
         assert grid.marked((0, 0), "Z").at((0, 0)) == "Z"
         restored = _state_from_wire(_state_wire(grid))
         assert restored == grid
@@ -108,33 +102,33 @@ class TestTheGridIsAMapOfPoints:
 
     def test_a_missing_point_reads_blank(self) -> None:
         """Off the marks is a blank, not an error -- the scans rely on it."""
-        assert _Grid({}).at((9, 9)) == " "
+        assert native._Grid({}).at((9, 9)) == " "
 
 
 def test_a_halted_state_advances_to_itself() -> None:
     """``_advance`` on a halted state is a no-op, not a step off the end."""
-    state = _load(">!")
-    halted = _advance(_advance(state)[0])[0]
+    state = native._load(">!")
+    halted = native._advance(native._advance(state)[0])[0]
     while not halted.halted:
-        halted = _advance(halted)[0]
-    assert _advance(halted) == (halted, None)
+        halted = native._advance(halted)[0]
+    assert native._advance(halted) == (halted, None)
 
 
 def test_input_command_without_a_symbol_is_refused() -> None:
     """``-`` needs the byte the shell was supposed to have read for it."""
-    state = _load(">-!")
+    state = native._load(">-!")
     for _ in range(3):
-        state = _advance(state)[0]
+        state = native._advance(state)[0]
         if state.grids[state.program].at(state.positions[state.program]) == "-":
             break
     with pytest.raises(ValueError, match="input symbol required"):
-        _advance(state)
+        native._advance(state)
 
 
 def test_copy_onto_an_occupied_cell_leaves_it() -> None:
     """``*`` copies only onto a blank data cell."""
     io = ScriptedIO("A\n")
-    run(">-*+!", io)
+    native.run(">-*+!", io)
     assert io.getvalue() == ""
 
 
@@ -145,17 +139,17 @@ def test_the_last_letter_is_a_command_symbol() -> None:
 
 def test_a_nonblank_data_cell_keeps_the_question_mark_in_the_program() -> None:
     """``?`` hands control to the data tape only over a blank data cell."""
-    state = _load(">*A?!")
+    state = native._load(">*A?!")
     for _ in range(3):
-        state = _advance(state)[0]
+        state = native._advance(state)[0]
     assert state.program == 0
-    assert _advance(state)[0].halted
+    assert native._advance(state)[0].halted
 
 
 def test_the_data_tape_can_run_a_dash_command() -> None:
     """A ``-`` run from the data tape looks at the program tape, not itself."""
     # the data tape gets a ``-`` at its origin, steps back, and ``?`` jumps onto it
-    machine = _Machine(">*-\\\n /|/\n \\?", ScriptedIO(""))
+    machine = native._Machine(">*-\\\n /|/\n \\?", ScriptedIO(""))
     for _ in range(9):
         machine.step()
     assert machine.state.program == 1
@@ -166,11 +160,11 @@ def test_workspace_ignores_grid_hash_caches_and_readonly_dialect(monkeypatch):
     from esolangs.languages.b_tapemark.interpreter import _workspace_grid
     from scripts.benchmark import WrittenState
 
-    machine = _Machine(">*A+!", ScriptedIO())
-    alternate = _Machine(">*A+!", ScriptedIO(), swap_marker="old")
+    machine = native._Machine(">*A+!", ScriptedIO())
+    alternate = native._Machine(">*A+!", ScriptedIO(), swap_marker="old")
     assert machine.workspace_snapshot() == alternate.workspace_snapshot()
     written = WrittenState(machine.workspace_snapshot())
-    monkeypatch.setattr(_Machine, "snapshot", lambda _self: ())
+    monkeypatch.setattr(native._Machine, "snapshot", lambda _self: ())
     while not machine.halted:
         saved = machine.workspace_snapshot()
         retained = {saved}

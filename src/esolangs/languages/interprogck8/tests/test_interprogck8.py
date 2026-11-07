@@ -10,17 +10,7 @@ example was reaching for.
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.interprogck8.interpreter import (
-    _capture,
-    _dice,
-    _Machine,
-    _pips,
-    _roll,
-    _split_args,
-    _State,
-    _value,
-    run,
-)
+from esolangs.languages.interprogck8 import interpreter as native
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import FirstDraw, Seeded
 from esolangs.vm import run_until_halt_or_all_branches_cycle
@@ -95,14 +85,14 @@ _WIKI_LITERAL = ":" * 49
 TRUTH_WIKI = (
     f"u\n{{values/=/=/=[{_WIKI_LITERAL} {_WIKI_LITERAL}]}}\n<\ndiv\nEXE\n>\nIFQ\ndiv"
 )
-TRUTH_FIXED = f"u\n{{values/=/=/={_dice(49)}}}\n<\ndiv\nEXE\n>\nIFQ\ndiv"
+TRUTH_FIXED = f"u\n{{values/=/=/={native._dice(49)}}}\n<\ndiv\nEXE\n>\nIFQ\ndiv"
 
 DICE = "[. :::]\n$ay"
 
 
 def go(code: str, stdin: str = "") -> str:
     io = ScriptedIO(stdin)
-    run(code, io, Seeded(0))
+    native.run(code, io, Seeded(0))
     return io.getvalue()
 
 
@@ -114,7 +104,7 @@ class TestWikiExamples:
         """``EXE`` inside the body recurses, so the cat reads until EOF."""
         io = ScriptedIO("ab\ncd\n")
         with pytest.raises(EOFError):
-            run(CAT, io)
+            native.run(CAT, io)
         assert io.getvalue() == "ac"
 
     def test_wiki_truth_machine_is_degenerate(self) -> None:
@@ -124,7 +114,7 @@ class TestWikiExamples:
         any rule where ``:`` is two pips the literal cannot be 49, and the
         dice-roll example (``[. :::]``, a 1-6 roll) needs that rule.
         """
-        assert _pips(_WIKI_LITERAL) == 98
+        assert native._pips(_WIKI_LITERAL) == 98
         assert go(TRUTH_WIKI, "0\n") == "T"
         assert go(TRUTH_WIKI, "1\n") == "T"
 
@@ -141,11 +131,11 @@ class TestWikiExamples:
         an exhausted body, so the tail call runs at constant depth.
         """
         io = ScriptedIO(bit + "\n")
-        machine = _Machine(TRUTH_FIXED, io)
+        machine = native._Machine(TRUTH_FIXED, io)
         machine.step()  # the ``u``: the branch search declines input lines
         assert run_until_halt_or_all_branches_cycle(machine) is halts
         printed = ScriptedIO(bit + "\n")
-        stepped = _Machine(TRUTH_FIXED, printed)
+        stepped = native._Machine(TRUTH_FIXED, printed)
         for _ in range(200):  # the search drops output; a plain run shows it
             stepped.step()
         assert stepped.halted is halts
@@ -155,14 +145,14 @@ class TestWikiExamples:
         """``[. :::]`` rolls 1-6, and ``$ay`` writes a readable literal."""
         for seed in range(20):
             io = ScriptedIO("")
-            run(DICE, io, Seeded(seed))
-            assert 1 <= _pips(io.getvalue()) <= 6
+            native.run(DICE, io, Seeded(seed))
+            assert 1 <= native._pips(io.getvalue()) <= 6
 
     def test_each_dice_face_prints_its_pips(self) -> None:
         for source in (DICE, "[::: .]\n$ay"):
             for face in range(1, 7):
                 io = ScriptedIO("")
-                run(source, io, FirstDraw(face - 1))
+                native.run(source, io, FirstDraw(face - 1))
                 assert io.getvalue() == ":" * (face // 2) + "." * (face % 2)
 
 
@@ -172,16 +162,16 @@ class TestDiceLiterals:
     )
     def test_pips(self, literal: str, value: int) -> None:
         """The wiki's worked examples: ``.`` is 1, ``:`` 2, ``:.`` 3."""
-        assert _pips(literal) == value
+        assert native._pips(literal) == value
 
     def test_round_trip(self) -> None:
         """``$ay``'s spelling reads back as the value it was written for."""
         for value in range(1, 256):
-            assert _pips(_dice(value)) == value
+            assert native._pips(native._dice(value)) == value
 
     def test_zero_has_no_literal(self) -> None:
         """No dice face is blank, so 0 prints nothing and is not readable."""
-        assert _dice(0) == ""
+        assert native._dice(0) == ""
         assert go("NnNn\n$ay") == ""
 
     def test_non_literal_input_is_a_runtime_error(self) -> None:
@@ -198,7 +188,7 @@ class TestCommands:
                 inputs += [("$py", literal + "\n"), (f"[{literal} {literal}]", "")]
             for source, data in inputs:
                 io = ScriptedIO(data)
-                machine = _Machine(source, io, FirstDraw(0))
+                machine = native._Machine(source, io, FirstDraw(0))
                 machine.step()
                 assert machine.state.acc == value % 256
                 assert io.position() == len(data)
@@ -231,7 +221,7 @@ class TestCommands:
     def test_tilde_prints_exactly_on_the_zero_draw(self) -> None:
         for first, expected in ((0, "Interprogck8\n"), (1, ""), (9, "")):
             io = ScriptedIO("")
-            run("~", io, FirstDraw(first))
+            native.run("~", io, FirstDraw(first))
             assert io.getvalue() == expected
 
 
@@ -303,7 +293,7 @@ class TestErrors:
     def test_empty_program_halts_silently(self) -> None:
         """No lines, nothing to run: the cursor starts past the end."""
         io = ScriptedIO("")
-        run("", io)
+        native.run("", io)
         assert io.getvalue() == ""
 
     def test_unknown_line_is_a_runtime_error(self) -> None:
@@ -335,7 +325,9 @@ class TestBranchingSearch:
     def test_a_draw_forks_into_every_outcome(self) -> None:
         """Every distinct byte result is reachable, including wrapped ranges."""
         for low, high in ((1, 2), (254, 258), (256, 258), (1, 513)):
-            machine = _Machine(f"[{_dice(low)} {_dice(high)}]\ndiv", ScriptedIO(""))
+            machine = native._Machine(
+                f"[{native._dice(low)} {native._dice(high)}]\ndiv", ScriptedIO("")
+            )
             start = machine.branching_snapshot()
             assert not machine.branching_halted(start)
             successors = machine.branching_successors(start, 100)
@@ -344,7 +336,7 @@ class TestBranchingSearch:
 
     def test_tilde_has_one_outcome_the_state_can_see(self) -> None:
         """``~``'s ten draws differ only in output, which is left out."""
-        machine = _Machine("~\nx", ScriptedIO(""))
+        machine = native._Machine("~\nx", ScriptedIO(""))
         successors = machine.branching_successors(machine.branching_snapshot(), 100)
         assert successors is not None
         assert len(successors) == 1
@@ -357,17 +349,17 @@ class TestBranchingSearch:
 
     def test_a_reading_line_declines_to_fork(self) -> None:
         """Siblings cannot share one input cursor, so the search declines."""
-        machine = _Machine("u\ndiv", ScriptedIO("a\n"))
+        machine = native._Machine("u\ndiv", ScriptedIO("a\n"))
         assert machine.branching_successors(machine.branching_snapshot(), 100) is None
 
     def test_an_unexecutable_line_fails_the_search(self) -> None:
         """A native error cannot become a divergence verdict."""
-        machine = _Machine("nonsense", ScriptedIO(""))
+        machine = native._Machine("nonsense", ScriptedIO(""))
         with pytest.raises(HaltError, match="unknown instruction"):
             machine.branching_successors(machine.branching_snapshot(), 100)
 
     def test_a_finished_program_is_branching_halted(self) -> None:
-        machine = _Machine("x", ScriptedIO(""))
+        machine = native._Machine("x", ScriptedIO(""))
         machine.step()
         assert machine.branching_halted(machine.branching_snapshot())
 
@@ -405,16 +397,16 @@ class TestConstructedGuards:
     """
 
     def test_an_opener_inside_a_body_is_refused(self) -> None:
-        inside = _State(("<", "x"), 0, 0, ("<",), ((("<",), 0),))
+        inside = native._State(("<", "x"), 0, 0, ("<",), ((("<",), 0),))
         with pytest.raises(HaltError, match="inside other functions"):
-            _capture(inside)
+            native._capture(inside)
 
     @pytest.mark.parametrize(
         "line", ["{values/=a/=b}", "{valuesX/=a/=b/=c}", "{values/=a/=b/=c/=d}"]
     )
     def test_a_misshapen_comparison_is_not_a_comparison(self, line: str) -> None:
         """Not a comparison, so running it is the unknown-line error."""
-        assert _split_args(line) is None
+        assert native._split_args(line) is None
         with pytest.raises(HaltError, match="unknown instruction"):
             go(line)
 
@@ -426,18 +418,18 @@ class TestConstructedGuards:
 
     def test_a_range_bound_with_no_byte_is_refused(self) -> None:
         with pytest.raises(HaltError, match="read nothing"):
-            _roll("[$py .]", 0, None, None)
+            native._roll("[$py .]", 0, None, None)
 
     def test_a_comparison_argument_with_no_byte_is_refused(self) -> None:
         with pytest.raises(HaltError, match="read nothing"):
-            _value("$py", 0, None, None)
+            native._value("$py", 0, None, None)
 
 
 class TestMachine:
     def test_snapshot_covers_the_slot_and_the_cursor(self) -> None:
         """Two states differing only in the slot must not compare equal."""
-        first = _Machine("x\nx", ScriptedIO(""))
-        second = _Machine("x\nx", ScriptedIO(""))
+        first = native._Machine("x\nx", ScriptedIO(""))
+        second = native._Machine("x\nx", ScriptedIO(""))
         assert first.snapshot() == second.snapshot()
         second.state = second.state.__class__(second.state.lines, slot=("x",))
         assert first.snapshot() != second.snapshot()
@@ -445,5 +437,5 @@ class TestMachine:
     def test_accepts_a_line_list(self) -> None:
         """The registry sets ``split=True``, so ``run`` takes lines."""
         io = ScriptedIO("")
-        run(["nNnN", "div"], io)
+        native.run(["nNnN", "div"], io)
         assert io.getvalue() == "A"

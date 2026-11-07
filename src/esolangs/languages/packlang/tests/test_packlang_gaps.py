@@ -5,15 +5,12 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.packlang.interpreter import (
-    _Machine,
-    run,
-)
+from esolangs.languages.packlang import interpreter as native
 from esolangs.languages.packlang.interpreter._parse import _Parser
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 
-_run = partial(run_program, run)
+_run = partial(run_program, native.run)
 
 
 def _wrap(body: str, decls: str = "") -> str:
@@ -234,7 +231,7 @@ class TestDefaultIntegerRange:
 class TestMachineMemory:
     def test_memory_flattens_an_array_into_its_cells(self) -> None:
         program = _wrap("    INCR row(1);\n    0;", "Array(Integer, 3) row;")
-        machine = _Machine(program, ScriptedIO(""))
+        machine = native._Machine(program, ScriptedIO(""))
         seen: list[object] = []
         for _ in range(200):
             if machine.halted:
@@ -246,12 +243,12 @@ class TestMachineMemory:
         assert seen == [0, 1, 0]
 
     def test_memory_is_empty_once_the_frames_are_gone(self) -> None:
-        machine = _Machine(_wrap("    0;"), ScriptedIO(""))
+        machine = native._Machine(_wrap("    0;"), ScriptedIO(""))
         machine.frames = ()
         assert machine.memory == []
 
     def test_ip_is_zero_once_the_frames_are_gone(self) -> None:
-        machine = _Machine(_wrap("    0;"), ScriptedIO(""))
+        machine = native._Machine(_wrap("    0;"), ScriptedIO(""))
         machine.frames = ()
         assert machine.ip == 0
 
@@ -267,7 +264,7 @@ def test_call_transition_preserves_immutable_frames() -> None:
 
     from esolangs.languages.packlang.interpreter import _advance
 
-    machine = _Machine(_wrap("    charPut(65);\n    0;"), ScriptedIO(""))
+    machine = native._Machine(_wrap("    charPut(65);\n    0;"), ScriptedIO(""))
     before = machine.frames
     first = _advance(before, machine.program)
     assert _advance(before, machine.program) == first

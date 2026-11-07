@@ -4,15 +4,7 @@ import re
 
 import pytest
 
-from esolangs.languages.unlambda.interpreter import (
-    _advance,
-    _App,
-    _Kont,
-    _Machine,
-    _parse,
-    _Promise,
-    run,
-)
+from esolangs.languages.unlambda import interpreter as native
 from esolangs.runtime._result_wire import _state_from_wire, _state_wire
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
@@ -43,7 +35,7 @@ HELLO = "`" * (len(_HELLO_ATOMS) - 1) + "".join(_HELLO_ATOMS)
     ],
 )
 def test_output(program: str, stdin: str, expected: str) -> None:
-    assert run_program(run, program, stdin) == expected
+    assert run_program(native.run, program, stdin) == expected
 
 
 def _applicative_oracle():
@@ -83,7 +75,7 @@ def _applicative_oracle():
             output = []
             execute(tree, output)
             io = ScriptedIO("unused")
-            machine = _Machine(encode(tree), io)
+            machine = native._Machine(encode(tree), io)
             for _ in range(128):
                 if machine.halted:
                     break
@@ -95,21 +87,21 @@ def _applicative_oracle():
 
 def test_the_combinators() -> None:
     _applicative_oracle()
-    assert run_program(run, "`i`.Xi") == "X"
-    assert run_program(run, "``k`.Ai`.Bi") == "AB"  # A then B, value is A's
-    assert run_program(run, "```s.A.Bi") == "AB"
-    assert run_program(run, "`v`.Ai") == "A"  # the argument still evaluates
+    assert run_program(native.run, "`i`.Xi") == "X"
+    assert run_program(native.run, "``k`.Ai`.Bi") == "AB"  # A then B, value is A's
+    assert run_program(native.run, "```s.A.Bi") == "AB"
+    assert run_program(native.run, "`v`.Ai") == "A"  # the argument still evaluates
 
 
 def test_d_delays_and_applying_the_promise_forces_it() -> None:
-    assert run_program(run, "`d`.Ai") == ""  # never forced
-    assert run_program(run, "``d`.Aii") == "A"  # forced by the application
+    assert run_program(native.run, "`d`.Ai") == ""  # never forced
+    assert run_program(native.run, "``d`.Aii") == "A"  # forced by the application
 
 
 def test_a_read_and_a_test_on_the_character() -> None:
     program = "`@`d````?0i`d`.zivi"
-    assert run_program(run, program, "0\n") == "z"
-    assert run_program(run, program, "1\n") == ""
+    assert run_program(native.run, program, "0\n") == "z"
+    assert run_program(native.run, program, "1\n") == ""
 
     from esolangs.languages.unlambda import interpreter
     from esolangs.registry import LANGUAGES
@@ -137,13 +129,13 @@ _ON_READ = "``@``s``si`k`d`.Xi`kvi"
 
 def test_a_read_at_end_of_input_takes_the_spec_branch() -> None:
     """``@`` hands its argument ``v`` at EOF rather than letting it escape."""
-    assert run_program(run, _ON_READ, "0\n", suppress_eof=False) == "X"
-    assert run_program(run, _ON_READ, "", suppress_eof=False) == ""
+    assert run_program(native.run, _ON_READ, "0\n", suppress_eof=False) == "X"
+    assert run_program(native.run, _ON_READ, "", suppress_eof=False) == ""
 
 
 def test_a_read_that_found_nothing_clears_the_character() -> None:
     """Wiki: ``|`` applies to ``v`` once EOF has been reached, so Q is gone."""
-    assert run_program(run, "``k`@i``k`@i``|ii", "Q", suppress_eof=False) == ""
+    assert run_program(native.run, "``k`@i``k`@i``|ii", "Q", suppress_eof=False) == ""
 
 
 @pytest.mark.parametrize(
@@ -158,7 +150,7 @@ def test_a_read_that_found_nothing_clears_the_character() -> None:
 )
 def test_a_malformed_program_is_refused(program: str, message: str) -> None:
     with pytest.raises(ValueError, match=re.escape(message)):
-        run_program(run, program)
+        run_program(native.run, program)
 
 
 def test_the_parser_is_iterative_over_a_long_chain() -> None:
@@ -169,8 +161,8 @@ def test_the_parser_is_iterative_over_a_long_chain() -> None:
     from scripts.benchmark import state_bits
 
     depth = 5000
-    term = _parse("`" * depth + "i" * (depth + 1))
-    assert isinstance(term, _App)
+    term = native._parse("`" * depth + "i" * (depth + 1))
+    assert isinstance(term, native._App)
     left, right = _workspace_value(term), _workspace_value(term)
     assert hash(left) == hash(right)
     assert left == right
@@ -180,12 +172,12 @@ def test_the_parser_is_iterative_over_a_long_chain() -> None:
     assert state_bits(left, {}) == 8 * (depth + 1)
     shared = _Cmd("i")
     for _ in range(16):
-        shared = _App(shared, shared)
+        shared = native._App(shared, shared)
     assert state_bits(_workspace_value(shared), {}) == 8 * 2**16
 
 
 def test_the_continuation_is_the_stack_the_vm_shows() -> None:
-    machine = _Machine("`.A`.Bi", ScriptedIO(""))
+    machine = native._Machine("`.A`.Bi", ScriptedIO(""))
     machine.step()
     assert machine.stack  # a frame is waiting on the argument
     while not machine.halted:
@@ -197,7 +189,8 @@ def test_snapshots_compare_continuations_by_their_frames() -> None:
     """Two runs build distinct linked continuations; the cycle detector
     needs them equal, and hashed alike, exactly when their frames are."""
     runs = [
-        _Machine(code, ScriptedIO("")) for code in ("``ci`.Ai", "``ci`.Ai", "``ci`.Bi")
+        native._Machine(code, ScriptedIO(""))
+        for code in ("``ci`.Ai", "``ci`.Ai", "``ci`.Bi")
     ]
     for _ in range(3):
         for machine in runs:
@@ -228,8 +221,8 @@ def test_snapshots_compare_continuations_by_their_frames() -> None:
     )
     from scripts.benchmark import state_bits
 
-    continuation = _Kont(_Arg(_Cmd("i")), None)
-    machine = _Machine("i", ScriptedIO())
+    continuation = native._Kont(_Arg(_Cmd("i")), None)
+    machine = native._Machine("i", ScriptedIO())
     machine.state = (_Ret(_Cont(continuation)), continuation, None, False)
     saved = machine.workspace_snapshot()
     retained = {saved}
@@ -247,8 +240,8 @@ def test_snapshots_compare_continuations_by_their_frames() -> None:
 
 def test_continuations_of_different_lengths_are_unequal() -> None:
     """A stack of one frame is not a longer stack of the same frame."""
-    one = _Kont("f", None)  # type: ignore[arg-type]
-    three = _Kont("f", _Kont("f", _Kont("f", None)))  # type: ignore[arg-type]
+    one = native._Kont("f", None)  # type: ignore[arg-type]
+    three = native._Kont("f", native._Kont("f", native._Kont("f", None)))  # type: ignore[arg-type]
     assert one != three
     assert three != one
 
@@ -258,30 +251,30 @@ def test_d_applied_as_a_value_promises_what_it_was_given() -> None:
     function needs a combinator to hand it an already-evaluated argument.
     ``c`` is the one that can: it applies ``d`` to the continuation, and the
     answer is a promise of that value rather than of an unevaluated term."""
-    machine = _Machine("`cd", ScriptedIO(""))
+    machine = native._Machine("`cd", ScriptedIO(""))
     while not machine.halted:
         machine.step()
-    assert isinstance(machine.state[0].value, _Promise)
+    assert isinstance(machine.state[0].value, native._Promise)
     # Applying that promise forces it, and the continuation answers ``i``.
-    assert run_program(run, "```cdii") == ""
+    assert run_program(native.run, "```cdii") == ""
 
 
 def test_e_ends_the_run_before_a_pending_print() -> None:
     """``e`` ends the run while the argument is evaluating, so ``.A`` never fires."""
-    assert run_program(run, "`.Ai") == "A"
-    assert run_program(run, "`.A`ei") == ""
+    assert run_program(native.run, "`.Ai") == "A"
+    assert run_program(native.run, "`.A`ei") == ""
 
 
 def test_a_comment_runs_to_the_end_of_the_line_or_the_source() -> None:
-    assert run_program(run, "`.A# ignored `.B\ni") == "A"
-    assert run_program(run, "`.Ai# tail") == "A"
+    assert run_program(native.run, "`.A# ignored `.B\ni") == "A"
+    assert run_program(native.run, "`.Ai# tail") == "A"
 
 
 def test_advancing_a_finished_state_is_answered_not_stepped() -> None:
-    machine = _Machine("`.Ai", ScriptedIO(""))
+    machine = native._Machine("`.Ai", ScriptedIO(""))
     while not machine.halted:
         machine.step()
-    assert _advance(machine.state) == (machine.state, None)
+    assert native._advance(machine.state) == (machine.state, None)
 
 
 @pytest.mark.medium

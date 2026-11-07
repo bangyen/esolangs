@@ -5,13 +5,8 @@ from itertools import product
 import pytest
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.super_snusp import interpreter as native
 from esolangs.languages.super_snusp.generator import super_snusp
-from esolangs.languages.super_snusp.interpreter import (
-    _advance,
-    _floor_root,
-    prepare_machine,
-    run,
-)
 from esolangs.languages.super_snusp.interpreter import _Machine as SuperSnusp
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.runtime.randomness import Seeded
@@ -23,7 +18,7 @@ from tests.support.vm_support import assert_one_row_moves_along_it
 
 def run_super(program: str, stdin: str = "") -> str:
     """Run a grid program and return its captured output."""
-    return run_program(run, program.splitlines(), stdin)
+    return run_program(native.run, program.splitlines(), stdin)
 
 
 def _check_accumulator_arithmetic() -> None:
@@ -104,7 +99,7 @@ def test_wiki_hello_world_reflects_at_both_mirrors() -> None:
         "\"33>d>l>r>o>W>32>44>o>l>l>e>H!/ ?\\' ",
         " " * 30 + "\\<./",
     ]
-    assert run_program(run, hello) == "Hello, World!"
+    assert run_program(native.run, hello) == "Hello, World!"
 
 
 @pytest.mark.parametrize("character", ["\u0661", "²", "\U0001d7da", "é", "中"])
@@ -139,7 +134,7 @@ def test_decimal_io_and_output() -> None:
 )
 def test_invalid_stack_and_arithmetic_operations_raise_halt_error(program: str) -> None:
     with pytest.raises(HaltError):
-        run(program.splitlines(), IO())
+        native.run(program.splitlines(), IO())
 
 
 def _run_boolean(program: str, bits: tuple[int, ...]) -> str:
@@ -168,7 +163,7 @@ def test_generator_rejects_invalid_table() -> None:
 def test_the_integer_root_is_exact_when_the_power_is_a_doubling(
     value: int, degree: int, root: int
 ) -> None:
-    assert _floor_root(value, degree) == root
+    assert native._floor_root(value, degree) == root
 
 
 @pytest.mark.parametrize(("value", "degree"), [(5, 0), (-9, 2), (-1, 4)])
@@ -177,7 +172,7 @@ def test_the_integer_root_refuses_what_it_cannot_answer(
 ) -> None:
     """A non-positive degree, and an even root of a negative value."""
     with pytest.raises(HaltError):
-        _floor_root(value, degree)
+        native._floor_root(value, degree)
 
 
 def test_char_input_writes_the_byte_it_read() -> None:
@@ -186,13 +181,13 @@ def test_char_input_writes_the_byte_it_read() -> None:
 
 def test_empty_program_is_rejected() -> None:
     with pytest.raises(ValueError, match="cannot be empty"):
-        run([""], IO())
+        native.run([""], IO())
 
 
 def test_advance_short_circuits_once_the_cursor_has_left_the_grid() -> None:
     """A done state is its own successor, so the shell can stop on it."""
     done = ((0, 0, 0), (0, ()), (), False, True)
-    assert _advance(done, ['"']) == (done, None)
+    assert native._advance(done, ['"']) == (done, None)
 
 
 @pytest.mark.parametrize(
@@ -210,7 +205,7 @@ def test_advance_refuses_an_input_the_shell_did_not_supply(
     """The shell always supplies these, so only a direct call reaches the guard."""
     state = ((0, 0, 0), (0, ((0, 5),)), (1,), False, False)
     with pytest.raises(HaltError):
-        _advance(state, [command], random_offset=offset)
+        native._advance(state, [command], random_offset=offset)
 
 
 @pytest.mark.medium
@@ -219,9 +214,9 @@ def test_hints_for_bad_programs_and_input() -> None:
 
 
 def test_root_hint_does_not_require_an_exact_root() -> None:
-    assert _floor_root(2, 2) == 1
+    assert native._floor_root(2, 2) == 1
     with pytest.raises(HaltError) as caught:
-        _floor_root(-2, 2)
+        native._floor_root(-2, 2)
     assert "even degrees need nonnegative radicands" in caught.value.__notes__[0]
 
 
@@ -259,7 +254,7 @@ def test_super_snusp_forks_every_value_equals_could_store() -> None:
     rng = Seeded(7)
     before = rng._random.getstate()
     options = {"rng": rng}
-    factory = prepare_machine(source, options)
+    factory = native.prepare_machine(source, options)
     source[0] = " "
     options.clear()
     first, second = factory(ScriptedIO()), factory(ScriptedIO())
@@ -275,9 +270,9 @@ def test_super_snusp_forks_every_value_equals_could_store() -> None:
     assert second.snapshot() == initial
     assert second.memory == second.stack == []
     with pytest.raises(TypeError, match="split text"):
-        prepare_machine("invalid", {})
+        native.prepare_machine("invalid", {})
     with pytest.raises(TypeError, match="only the rng"):
-        prepare_machine(['"'], {"unknown": True})
+        native.prepare_machine(['"'], {"unknown": True})
 
 
 def test_super_snusp_declines_input_and_caps_a_wide_span() -> None:

@@ -3,10 +3,7 @@
 import pytest
 
 from esolangs.exceptions import HaltError, InputExhaustedError
-from esolangs.languages.lol_waht_i_cant_edit_talk_pages.interpreter import (
-    _Machine,
-    run,
-)
+from esolangs.languages.lol_waht_i_cant_edit_talk_pages import interpreter as native
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
 
@@ -44,13 +41,13 @@ i hate u A
 waht i got banned"""
 
 
-_out = native_runner(run)
+_out = native_runner(native.run)
 
 
 def _steps(code: str, stdin: str, count: int) -> str:
     """Run ``count`` statements of a program that never halts."""
     io = ScriptedIO(stdin)
-    machine = _Machine(code, io)
+    machine = native._Machine(code, io)
     for _ in range(count):
         machine.step()
     assert not machine.halted
