@@ -1288,3 +1288,27 @@ guarded workers and all fault/cost controls. Template rejection, post-halt outpu
 without duplication, malformed source, command limits and a post-halt output cap
 pass; certification imports stay blocked. Two backend audits remain; stable
 3.15 final and catalog-wide acceptance stay open.
+
+
+Streetcode uses canonical constant recognition alongside its existing span and
+weighted projection analyses. Sibling drawing reuse, minority painting, room
+folds and layout costs stay native: a constant tree still draws two leaves,
+eight rows. All 2,072 artifact requests retain baseline bytes across seven
+layouts; 15,764 native rows execute correctly. The complete small-table scope
+passes as 119 bounded leaves: 14,840 native/VM rows, 13,014,396 semantic samples,
+all coupled to baseline source hashes. Twenty direct layouts retain 105 row
+pairs, including nonadjacent ignored inputs at sixteen inputs.
+
+Integer-tuple memoization retains uncached digest checks, mutation controls and
+all seventy-two pre-cache baseline traces. Three semantic faults change fourteen
+answers; disabling sibling drawing reuse grows a correct witness from 440 to
+1,408 character-grid cells across sixteen runs. Sixteen timing contexts pass
+(minimum ratio 0.9685); nine pins, four anchors and sixteen resource/scaling
+nodes pass unchanged. `just test` passes in 162 seconds.
+
+Installed Python 3.12.11, 3.13.15, 3.14.7 and cached 3.15.0rc1 each round-trip
+1,932 artifacts and execute 952 native/VM rows, 649,964 commands and 8,568
+workspace samples, plus six guarded workers and all fault/cost controls. EOF
+and command-limit failures agree across native/isolated routes; certification
+imports stay blocked. One backend audit remains; stable 3.15 final and
+catalog-wide acceptance stay open.
