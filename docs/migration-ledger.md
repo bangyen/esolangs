@@ -1190,3 +1190,28 @@ image extra, each round-trip 572 artifacts and execute 344 rows from 76 programs
 plus five guarded workers and all fault/cost controls. Native/isolated EOF
 observations agree after zero and one input; certification imports stay blocked.
 Six backend audits remain; catalog acceptance stays open.
+
+
+Malbolge uses canonical constant, dependency, projection and popcount queries;
+three local analysis helpers are retired. Digit gadgets, discarded-read placement,
+navigation and source-cell labels remain native. Canonical single-input projection
+uses block slices: 263,900 comparisons match the former gather, exhaustive through
+four inputs and sampled through seventeen. Seventeen timing contexts pass eight
+alternating trials per side (minimum ratio 0.9897); failed scan/gather probes remain
+recorded without changing the 0.9 floor.
+
+All 1,445 artifacts match the saved generator across default, widths 1/13/200 and
+balanced layouts; 11,005 native rows execute, including both seventeen-input
+families and multiple ignored inputs. Five direct before/after traces retain
+62,314 semantic samples. Four query faults change executed answers; three admission
+controls fire. Eight pins, one size anchor, constant size ranges and eight
+resource/scaling nodes pass unchanged. Consolidated tests retain their cases,
+independent oracles and input/output/sentinel checks; `just test` passes 16,259
+cases with twelve skips.
+
+Installed Python 3.12.11, 3.13.15, 3.14.7 and cached 3.15.0rc1 each round-trip
+1,380 artifacts and execute 680 native/VM rows, 3,669,670 commands and 6,120
+command/final workspace samples. Six guarded workers cover success, EOF-as-value
+and command-limit failures; three installed query faults fire. Certification
+imports stay blocked. Five backend audits remain; stable 3.15 final and the
+catalog-wide lifecycle/accounting acceptance stay open.
