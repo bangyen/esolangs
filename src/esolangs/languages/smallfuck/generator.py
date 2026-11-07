@@ -25,6 +25,7 @@ from itertools import pairwise
 from typing import Any
 
 from esolangs.generation.algebraic import affine_form
+from esolangs.generation.anf import anf_coefficients
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -36,6 +37,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
     unmark,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.shared_block import ContinuationCost as _Cost
 from esolangs.generation.shared_block import (
     _repeated_blocks,
@@ -123,7 +125,7 @@ def smallfuck(truth_table: str, width: int | None = None) -> str:
         if negate or complement
     ]
     natural = min(natural, *twins, key=len)
-    if n >= 3 and truth_table == "1" * len(truth_table):
+    if n >= 3 and constant_output(truth_table) == "1":
         # Cell 2 is outside the input walk: set it before walking away.
         natural = ">>*<<" + TEMPLATE_CHAR * len(PAIR[0]) * n
     if (form := affine_form(truth_table, n)) is not None and any(form.coefficients):
@@ -382,14 +384,11 @@ class _Tree:
         if cost is not None:
             return cost
         if level == self.n - 2:
-            # Four independent coefficients, not four searched truth-table cases.
             start = self.builder.count
-            a, b, c, d = map(int, self.truth_table[lo:hi])
-            if a ^ (on == "0"):
+            bias, z, y, yz = anf_coefficients(self.truth_table[lo:hi])
+            if bias ^ (on == "0"):
                 self.builder.flip(result)
-            for cell, coefficient in zip(
-                self.weights, (a ^ c, a ^ b, a ^ b ^ c ^ d), strict=True
-            ):
+            for cell, coefficient in zip(self.weights, (y, z, yz), strict=True):
                 if coefficient:
                     self.builder.flip(cell)
             return _Cost(self.builder.count - start)
@@ -761,7 +760,7 @@ def _smallfuck_tree(
     def tail() -> int:
         # y adds A and moves C into B; z then adds B. All loops clear on entry.
         start = builder.count
-        if n >= 2 and len(set(truth_table)) > 1:
+        if n >= 2 and constant_output(truth_table) is None:
             a, b, c = tree.weights
             y, z = (STRIDE * perm[-2], STRIDE * perm[-1])
             builder.loop(y)

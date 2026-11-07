@@ -7,10 +7,16 @@ import pytest
 
 import esolangs
 from esolangs import run as execute
+from esolangs.generation.anf import anf_coefficients
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs, in_input_order
+from esolangs.generation.lookup import constant_output
+from esolangs.languages.smallfuck import generator as boolean
 from esolangs.languages.smallfuck.generator import (
+    BAND,
     PAIR,
+    _paired_roots,
     _smallfuck_ordered,
+    _smallfuck_tree,
     smallfuck,
 )
 from esolangs.languages.smallfuck.interpreter import run
@@ -126,7 +132,6 @@ def test_smallfuck_matches_a_narrow_layout_without_its_newlines() -> None:
 
 @pytest.mark.medium
 def test_shared_residual_executes_within_ledger() -> None:
-    from esolangs.languages.smallfuck.generator import _smallfuck_tree
     from tests.support.generator_support import assert_shared_program
     from tests.support.screen_support import corpus
 
@@ -143,7 +148,6 @@ def test_shared_residual_executes_within_ledger() -> None:
 
 def test_complemented_shared_arm_contributes_its_constant_first() -> None:
     from esolangs.generation.shared_block import repeated_blocks
-    from esolangs.languages.smallfuck.generator import _smallfuck_tree
     from tests.support.generator_support import assert_shared_program
 
     table = "1111011001101111"
@@ -174,7 +178,6 @@ def test_multiple_residuals_preserve_bands_and_native_bounds(
     from esolangs.debugger import make_vm
     from esolangs.generation.helpers import permute_truth_table
     from esolangs.generation.shared_block import repeated_bank, repeated_blocks
-    from esolangs.languages.smallfuck.generator import _smallfuck_tree
 
     n = len(table).bit_length() - 1
     perm = tuple(reversed(range(n))) if reverse else tuple(range(n))
@@ -221,8 +224,6 @@ def test_multiple_residuals_preserve_bands_and_native_bounds(
     ],
 )
 def test_invalid_multiple_definitions_abort(blocks, flags, message) -> None:
-    from esolangs.languages.smallfuck.generator import _smallfuck_tree
-
     with pytest.raises(ValueError, match=message):
         _smallfuck_tree("01100110", (0, 1, 2), shared_blocks=blocks, flag_levels=flags)
 
@@ -230,7 +231,6 @@ def test_invalid_multiple_definitions_abort(blocks, flags, message) -> None:
 @pytest.mark.medium
 def test_multiple_residuals_reduce_tiled_cap_program_within_ledger() -> None:
     from esolangs.generation.shared_block import repeated_blocks
-    from esolangs.languages.smallfuck.generator import _smallfuck_tree
     from tests.support.generator_support import assert_shared_program
 
     n = 16
@@ -267,7 +267,6 @@ def test_all_two_input_complement_pairs_and_ignored_prefixes(swap_suffix, half) 
     from esolangs.debugger import make_vm
     from esolangs.generation.helpers import permute_truth_table
     from esolangs.generation.shared_block import repeated_block
-    from esolangs.languages.smallfuck.generator import _paired_roots, _smallfuck_tree
 
     table = "".join(f"{code:04b}" for code in range(16)) * 4
     n = 8
@@ -294,8 +293,6 @@ def test_all_two_input_complement_pairs_and_ignored_prefixes(swap_suffix, half) 
 
 
 def test_pair_definitions_require_retired_levels_and_an_exclusive_mode() -> None:
-    from esolangs.languages.smallfuck.generator import _smallfuck_tree
-
     with pytest.raises(ValueError, match="two retired levels"):
         _smallfuck_tree("0110", (0, 1), paired_roots=((6, 0),))
     with pytest.raises(ValueError, match="no other definitions"):
@@ -309,8 +306,6 @@ def test_pair_definitions_require_retired_levels_and_an_exclusive_mode() -> None
 
 @pytest.mark.parametrize("word", ["0001", "0100"])
 def test_one_pair_keeps_completed_constant_paths_and_fixed_code_bits(word) -> None:
-    from esolangs.languages.smallfuck.generator import _paired_roots, _smallfuck_tree
-
     complement = "".join("1" if bit == "0" else "0" for bit in word)
     table = word + complement + "0000" + "1111"
     pairs = _paired_roots(table)
@@ -324,16 +319,26 @@ def test_one_pair_keeps_completed_constant_paths_and_fixed_code_bits(word) -> No
 
 
 @pytest.mark.parametrize("n", [4, 9])
-def test_davio_weights_use_spare_band_cells(n: int) -> None:
+def test_davio_weights_use_spare_band_cells(
+    n: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """The three Davio weights require the spare cells of a five-level band."""
-    from esolangs.languages.smallfuck.generator import BAND
-
     assert BAND == 5
     rng = random.Random(8)
     table = "".join(rng.choice("01") for _ in range(1 << n))
     template = in_input_order(table, _smallfuck_ordered)
     for row in range(0, 1 << n, max(1, (1 << n) // 16)):
         assert run_filled(run, template, [PAIR] * n, row, n) == table[row]
+
+    assert boolean.anf_coefficients is anf_coefficients
+    assert boolean.constant_output is constant_output
+    for name, broken, table, row, expected in (
+        ("anf_coefficients", lambda _: [0] * 4, "0001", 3, "1"),
+        ("constant_output", lambda _: "1", "00000010", 0, "0"),
+    ):
+        with monkeypatch.context() as fault:
+            fault.setattr(boolean, name, broken)
+            assert _run(table, row) != expected
 
 
 @pytest.mark.parametrize(

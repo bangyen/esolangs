@@ -20,6 +20,9 @@ def anf_coefficients(truth_table: str) -> list[int]:
     n = _validate_shape(truth_table)
     if n == 0:
         return [int(truth_table)]
+    if n == 2:
+        a, b, c, d = map(int, truth_table)
+        return [a, a ^ b, a ^ c, a ^ b ^ c ^ d]
     width = word_width(n)
     words = [
         int(truth_table[start : start + width][::-1], 2)
