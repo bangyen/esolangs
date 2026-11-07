@@ -8,6 +8,11 @@ import pytest
 
 from esolangs.generation.wrap import balance_program, balance_score, wrap_program
 from esolangs.languages.decleq import generator as boolean
+from esolangs.languages.decleq.generator import (
+    _CodeBuilder,
+    _owner_family,
+    _OwnerBuilder,
+)
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
@@ -123,11 +128,6 @@ def test_constants_reuse_scratch_and_print_after_every_read() -> None:
 
 
 def _check_gadgets_and_owner_families() -> None:
-    from esolangs.languages.decleq.generator import (
-        _CodeBuilder,
-        _owner_family,
-        _OwnerBuilder,
-    )
     from esolangs.languages.decleq.interpreter import _Machine
     from esolangs.languages.decleq.proof_formulas import workspace
 
@@ -197,8 +197,6 @@ def _check_gadgets_and_owner_families() -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("n", range(1, 9))
 def test_owner_family_accepts_only_the_named_thresholds(n):
-    from esolangs.languages.decleq.generator import _owner_family
-
     admitted = set()
     for threshold in {3, 4, 5, 6, n // 2 + 1}:
         if threshold <= n:

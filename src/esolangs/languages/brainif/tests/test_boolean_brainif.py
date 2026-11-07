@@ -10,6 +10,7 @@ import pytest
 import esolangs
 from esolangs import run as execute
 from esolangs.languages.brainif import generator as boolean
+from esolangs.languages.brainif.generator import _brainif_tree, _Strip
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
@@ -133,8 +134,6 @@ class TestBrainIf:
 
     def test_pruning_never_grows_a_table(self) -> None:
         """No table through four inputs is longer than its unpruned tree."""
-        from esolangs.languages.brainif.generator import _brainif_tree
-
         for n in (1, 2, 3, 4):
             for i in range(0, 1 << (1 << n), 1 if n < 4 else 257):
                 table = format(i, f"0{1 << n}b")
@@ -195,8 +194,6 @@ def test_brainif_zero_landing_public_and_larger_samples(width: int) -> None:
 
 
 def test_brainif_unpruned_large_tree_uses_spatial_fallback() -> None:
-    from esolangs.languages.brainif.generator import _brainif_tree
-
     table = "".join(str(row.bit_count() % 2) for row in range(32))
     program = _brainif_tree(table, 1, prune=False)
     for row in [0, 1, 7, 13, 31]:
@@ -222,7 +219,6 @@ def test_linear_lookup_loops_stop_at_a_shared_marker_cell() -> None:
     """Ignored inputs 1-7 put levels 0 and 8 on one marker cell: only level 0 loops."""
     from esolangs import generate
     from esolangs.generation.helpers import input_weights
-    from esolangs.languages.brainif.generator import _Strip
     from esolangs.languages.brainif.interpreter import run
 
     n, kept = 12, [0, 8, 9, 10, 11]
@@ -262,7 +258,7 @@ def test_loop_depth_rule_is_within_the_bar_of_the_measured_best(monkeypatch) -> 
     agree on a seeded random table: n=5..10 (rule 1, 1, 2, 2, 3, 3).
     """
     import esolangs.languages.brainif.generator as generator
-    from esolangs.languages.brainif.generator import _brainif_tree, _top_level
+    from esolangs.languages.brainif.generator import _top_level
 
     rng = random.Random(11)
     for n in (5, 6, 7, 8, 9, 10):

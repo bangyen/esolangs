@@ -3,7 +3,7 @@
 import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, permute_truth_table
 from esolangs.languages.eval import generator as boolean
-from esolangs.languages.eval.generator import PAIR
+from esolangs.languages.eval.generator import PAIR, eval_setters
 from esolangs.languages.eval.tests.eval_support import (
     _eval_ordered,
     _eval_stack_programs,
@@ -202,7 +202,6 @@ class TestEvalBoolean:
 
 
 def _check_constants() -> None:
-    from esolangs.languages.eval.generator import eval_setters
     from esolangs.languages.eval.interpreter import run
 
     for n in range(1, 13):

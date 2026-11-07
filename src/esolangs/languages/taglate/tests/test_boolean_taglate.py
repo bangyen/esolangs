@@ -5,6 +5,7 @@ import pytest
 import esolangs
 from esolangs import run as execute
 from esolangs.languages.taglate import generator as boolean
+from esolangs.languages.taglate.generator import _seed_commands, _taglate_raw
 from esolangs.languages.taglate.wrapping import _taglate
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
@@ -157,8 +158,6 @@ class TestTaglate:
 @pytest.mark.parametrize("width", [1, 7, 19])
 def test_narrow_seed_truth_tables(width: int) -> None:
     """Bootstrapping leaves the original seed and input consumption intact."""
-    from esolangs.languages.taglate.generator import _taglate_raw
-
     tables = [f"{value:02b}" for value in range(4)]
     tables += [f"{value:04b}" for value in range(16)]
     tables += ["10010110", "00000001", "0000000000000001"]
@@ -176,7 +175,6 @@ def test_narrow_seed_truth_tables(width: int) -> None:
 @pytest.mark.parametrize("count", [20, 70, 262, 1030])
 def test_seed_bootstrap_exact_queue(count: int) -> None:
     """Multiple URL layers initialize the exact FIFO without any input."""
-    from esolangs.languages.taglate.generator import _seed_commands
     from esolangs.languages.taglate.interpreter import _advance, _match, _tokens
 
     seed = "1" + "0" * (count - 2) + "1"
@@ -213,7 +211,6 @@ def _check_constants() -> None:
 
 
 def _check_packed_leaves() -> None:
-    from esolangs.languages.taglate.generator import _taglate_raw
     from esolangs.languages.taglate.interpreter import _Machine, run
     from esolangs.languages.taglate.proof_formulas import execution, workspace
     from esolangs.languages.taglate.tests.ablations import ablate

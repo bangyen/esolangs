@@ -91,8 +91,6 @@ def test_malformed_source_carries_a_repair_hint() -> None:
 
 
 def test_delegation_exposes_an_immutable_state() -> None:
-    from esolangs.languages.unary.interpreter import _Machine
-
     machine = _Machine("0" * 10, ScriptedIO(""))
     before = machine.state
     machine.step()

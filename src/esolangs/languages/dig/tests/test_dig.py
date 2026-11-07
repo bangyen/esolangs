@@ -7,7 +7,7 @@ from typing import ClassVar
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.dig.interpreter import run
+from esolangs.languages.dig.interpreter import _Machine, prepare_machine, run
 from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import CycleContract, InputCursorContract
 from tests.interpreters.runner import run_lines
@@ -76,8 +76,6 @@ class TestDigInput:
 
     def test_integer_input_keeps_all_digits(self) -> None:
         """``~`` reads an integer, rather than only its first digit."""
-        from esolangs.languages.dig.interpreter import _Machine
-
         machine = _Machine([">$~:", " 2 "], ScriptedIO("12"))
         for _ in range(3):  # move over, dig, read
             machine.step()
@@ -93,7 +91,6 @@ class TestDigInput:
 
     def test_a_cursorless_read_loop_is_not_a_cycle(self) -> None:
         """Reads count in the snapshot: the loop runs to EOF, not a false cycle."""
-        from esolangs.languages.dig.interpreter import _Machine
         from esolangs.vm import run_until_halt_or_cycle
         from tests.interpreters.cursorless_io import CursorlessIO
 
@@ -161,7 +158,6 @@ class TestDigEdgeCases:
 
     def test_a_steer_digit_outside_zero_and_one_goes_straight(self) -> None:
         """``#`` turns on 1 and 0; every other digit holds the heading."""
-        from esolangs.languages.dig.interpreter import _Machine
 
         def heading_after(digit: str) -> int:
             # "#" steers overground, so no "$" -- the mole starts at (0, 0)
@@ -179,7 +175,6 @@ class TestDigEdgeCases:
 
     def test_a_whitespace_digit_outside_zero_and_one_is_inert(self) -> None:
         """``%`` loads a newline for 1 and a space for 0, nothing otherwise."""
-        from esolangs.languages.dig.interpreter import _Machine
 
         def mole_after(digit: str) -> int:
             # "%" is a work command, so "$" has to open the underground
@@ -197,8 +192,6 @@ class TestDigEdgeCases:
 
 class TestStepMachine:
     def test_step_tracks_position_direction_and_mole(self) -> None:
-        from esolangs.languages.dig.interpreter import _Machine
-
         machine = _Machine([">$5:", " 2 "], IO())
         assert (machine.row, machine.col, machine.move, machine.mole) == (0, 0, 1, 0)
         machine.step()  # > keeps facing right
@@ -210,8 +203,6 @@ class TestStepMachine:
 
     def test_the_read_lands_in_the_mole(self) -> None:
         """``=`` puts the line it read where the language says it goes."""
-        from esolangs.languages.dig.interpreter import _Machine
-
         machine = _Machine([">$=:", " 2 "], ScriptedIO("A"))
         for _ in range(3):  # move over, dig, read
             machine.step()
@@ -219,7 +210,6 @@ class TestStepMachine:
 
 
 def test_repeated_runs_keep_stores_private() -> None:
-    from esolangs.languages.dig.interpreter import _Machine, prepare_machine
     from esolangs.runtime._drive import drive
     from esolangs.runtime._lifecycle import Completion
 
@@ -249,8 +239,6 @@ def test_repeated_runs_keep_stores_private() -> None:
 
 
 def test_overground_data_steps_follow_the_heading() -> None:
-    from esolangs.languages.dig.interpreter import _Machine
-
     directions = ((-1, 0), (0, 1), (1, 0), (0, -1))
     for char, move, row, col in product(
         (" ", "é", ";", ":", "~", "7", 12, -3), range(4), range(3), range(3)
@@ -289,14 +277,10 @@ def test_overground_data_steps_follow_the_heading() -> None:
 
 
 def _machine(code: object) -> object:
-    from esolangs.languages.dig.interpreter import _Machine
-
     return _Machine(code, IO())
 
 
 def _reader(code: object, stdin: str) -> object:
-    from esolangs.languages.dig.interpreter import _Machine
-
     return _Machine(code, ScriptedIO(stdin))
 
 

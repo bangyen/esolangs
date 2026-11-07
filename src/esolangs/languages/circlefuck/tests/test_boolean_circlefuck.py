@@ -7,6 +7,7 @@ import pytest
 import esolangs
 from esolangs import run as execute
 from esolangs.languages.circlefuck import generator as boolean
+from esolangs.languages.circlefuck.generator import _DIGIT_BITS
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
 from tests.support.analysis_support import assert_analysis_complement
@@ -57,8 +58,6 @@ def test_constant_reads_into_spent_code_and_prints_a_literal_tail(n, bit) -> Non
 class TestCirclefuck:
     def test_the_index_survives_more_than_one_digit(self) -> None:
         """Past 128 entries the index needs a carry, and it is spent right."""
-        from esolangs.languages.circlefuck.generator import _DIGIT_BITS
-
         n = 9
         table = "".join("1" if row % 3 == 0 else "0" for row in range(2**n))
         program = boolean.circlefuck(table)

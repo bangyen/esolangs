@@ -1781,3 +1781,36 @@ expanded source check exceeded the fast limit alone (1.02 seconds), so its
 existing hook and admission helper use the medium band; no cases, assertions
 or limits change. This bounded accounting scope is reviewed; broader
 language/catalog completion remains open.
+
+
+Between's independent variable-machine model retains all 204 original
+AST cases and five malformed-source fixtures. All seven pure operations,
+strict group/operand types, eager jump-target evaluation, identity-True
+conditions and post-read declaration failures now match 986 cases/3,555
+boundaries under 16-command caps. Ten distinct faults fail in fourteen
+executions, including four erasures, wrong read ordering/conditions and
+same-state/same-length wrong text. Six literal charges are 0/1/10/74/12/20
+bits. Repeated EOF preserves machine parts and input progress. All four
+components are written; the observed 28,580-bit peak is not a global bound.
+
+Current runtime source matches the tested 951-file wheel. Python 3.12.11,
+3.13.15, 3.14.7 and final 3.15.0 each pass 993 cases/3,562 boundaries:
+294 completions, 652 execution failures, 43 constructor failures and four
+bounded runs. Four execution failures and two constructor fixtures hit the
+recorded 4,300-digit host cap; raw ValueError and public InterpreterLimitError
+are distinguished. Long leading zeros and arithmetic growth before failed
+formatting are included. Raw/VM/debugger checks retain every snapshot and
+compare independent LF-line read, past-end, position and progress counters,
+including undeclared reads after consumption and partial output. Constructor
+metadata preserves unavailable VM/debugger observations versus native zero-IO
+results. All 79 guarded workers per version compare native/isolated failures,
+completion and unfinished observations.
+
+Import hoisting in 54 existing language test modules recovers 225 lines
+within the unchanged test/source budget. Parent AST proof preserves every
+non-import statement, binding origin and unaffected scoped import; native
+interpreter/generator modules were already loaded unconditionally. Patched
+bindings stay local. No cases or assertions are removed. Independent review
+found no blocker in the bounded generated-AST scope; this is not a general
+parser model. This accounting scope is reviewed; language/catalog completion
+remains open.

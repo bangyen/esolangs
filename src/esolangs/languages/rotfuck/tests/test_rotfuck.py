@@ -5,7 +5,7 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.rotfuck.interpreter import _Machine, run
+from esolangs.languages.rotfuck.interpreter import _advance, _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters import runner
 from tests.interpreters.contract import (
@@ -173,8 +173,6 @@ class TestStepMachine:
         assert machine.ind == 2
 
     def test_pure_transition_moves_left_and_checks_backward_partners(self) -> None:
-        from esolangs.languages.rotfuck.interpreter import _advance
-
         chars = tuple("<[]")
         assert _advance(((0, 1), 1, 0, 0), chars) == ((0, 1), 0, 1, 1)
         assert _advance(((7,), 0, 0, 0), tuple("<")) == ((0, 7), 0, 1, 1)

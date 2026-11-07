@@ -7,7 +7,7 @@ import pytest
 import esolangs
 from esolangs import run as execute
 from esolangs.exceptions import HaltError
-from esolangs.languages.decleq.interpreter import _Machine, run
+from esolangs.languages.decleq.interpreter import _Machine, _written, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
@@ -184,14 +184,10 @@ class TestNegativeWriteIndex:
     """``_written`` indexes a negative ``b`` from the right, or raises."""
 
     def test_negative_addr_writes_from_the_right(self) -> None:
-        from esolangs.languages.decleq.interpreter import _written
-
         assert _written((1, 2, 3), -1, 9) == (1, 2, 9)
         assert _written((1, 2, 3), -3, 9) == (9, 2, 3)
 
     def test_negative_addr_past_the_left_end_raises(self) -> None:
-        from esolangs.languages.decleq.interpreter import _written
-
         with pytest.raises(HaltError, match="past the left end"):
             _written((1, 2, 3), -4, 9)
         with pytest.raises(HaltError, match="past the left end"):

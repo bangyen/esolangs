@@ -7,7 +7,7 @@ from typing import ClassVar
 
 import pytest
 
-from esolangs.languages.laserfuck.interpreter import _Machine, run
+from esolangs.languages.laserfuck.interpreter import _advance, _Machine, run
 from esolangs.languages.laserfuck.interpreter import _Machine as Laserfuck
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.runtime.randomness import FirstDraw
@@ -128,7 +128,6 @@ class TestLaserFuck:
 
     def test_cells_wrap_at_signed_32_bit_bounds(self) -> None:
         """The fixed-width tape wraps in signed two's-complement order."""
-        from esolangs.languages.laserfuck.interpreter import _advance
         from esolangs.runtime.persistent import chunked, flatten
 
         def advance(value: int, op: str) -> int:

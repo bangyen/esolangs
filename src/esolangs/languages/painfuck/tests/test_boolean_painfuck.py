@@ -7,6 +7,7 @@ import pytest
 import esolangs
 from esolangs.debugger import make_vm
 from esolangs.languages.painfuck import generator as boolean
+from esolangs.languages.painfuck.generator import _constant, _painfuck_shared, painfuck
 from esolangs.runtime.io import ScriptedIO
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
@@ -68,8 +69,6 @@ class TestPainfuck:
 
 @pytest.mark.medium
 def test_shared_residual_executes_within_ledger() -> None:
-    from esolangs.languages.painfuck.generator import _painfuck_shared
-
     table = corpus(8)["tiled"]
     plain, _ = _painfuck_shared(table, tuple(range(8)), ())
     assert_shared_program(
@@ -86,7 +85,6 @@ def test_shared_residual_executes_within_ledger() -> None:
 def test_multiple_flags_execute_with_their_native_command_price(table) -> None:
     from esolangs.generation.helpers import permute_truth_table
     from esolangs.generation.shared_block import repeated_bank
-    from esolangs.languages.painfuck.generator import _painfuck_shared
 
     n = len(table).bit_length() - 1
     served = 0
@@ -116,8 +114,6 @@ def test_multiple_flags_execute_with_their_native_command_price(table) -> None:
 # shard pushed it past the 15s scaled limit.
 @pytest.mark.slow
 def test_multiple_flags_reduce_dense_cap_program_within_ledger() -> None:
-    from esolangs.languages.painfuck.generator import _painfuck_shared
-
     n = 16
     rng = random.Random(99123)
     table = "".join(str(rng.randrange(2)) for _ in range(1 << n))
@@ -143,8 +139,6 @@ def test_admission_bound_keeps_the_winning_shared_form() -> None:
     a bound computed that way excludes the winner and falls back
     to a longer form (368 and 675 characters respectively).
     """
-    from esolangs.languages.painfuck.generator import painfuck
-
     assert len(painfuck("10000001000101100001011001101000")) == 297
     assert (
         len(
@@ -172,8 +166,6 @@ def _check_constants() -> None:
                     assert_constant_output(run, program, io, bit, n)
                     assert io.input_num() == 7
 
-    from esolangs.languages.painfuck.generator import _constant
-
     for n in (6, 7, 8, 13, 14, 48, 49, 50, 342, 343, 344, 511, 512):
         for bit in (0, 1):
             io = ScriptedIO("1\n" * n + "7\n")
@@ -184,7 +176,6 @@ def _check_constants() -> None:
 
 
 def _check_zero_fold_and_chain() -> None:
-    from esolangs.languages.painfuck.generator import _painfuck_shared, painfuck
     from esolangs.languages.painfuck.interpreter import _Machine, _translate
     from esolangs.languages.painfuck.tests.formulas import _execution
 

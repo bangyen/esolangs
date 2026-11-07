@@ -11,7 +11,7 @@ from esolangs.generation.wrap import (
     wrap_program,
 )
 from esolangs.languages.dimensional import generator as boolean
-from esolangs.languages.dimensional.generator import dimensional
+from esolangs.languages.dimensional.generator import _packed, dimensional
 from esolangs.languages.dimensional.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
@@ -71,8 +71,6 @@ def test_bare_axis_leaves_execute_all_small_tables() -> None:
 
 @pytest.mark.parametrize("width", [None, 2, 3, 8, 80])
 def test_other_widths_preserve_the_established_build(width: int | None) -> None:
-    from esolangs.generation.wrap import wrap_program
-
     for table in ("00", "11", "0110", "0001", "10010110"):
         assert dimensional(table, width) == wrap_program(
             dimensional(table), "dimensional", width
@@ -242,7 +240,6 @@ def _check_constants() -> None:
 def _check_first_essential_read() -> None:
     """Ignored prefixes preserve zero coordinates before the first indexed read."""
     from esolangs.generation.helpers import input_weights
-    from esolangs.languages.dimensional.generator import _packed
 
     for selected in ((0, 1, 6), (2, 4, 6), (0, 3, 5)):
         table = "".join(

@@ -12,7 +12,17 @@ from esolangs.generation.helpers import (
 )
 from esolangs.languages.intercal import generator
 from esolangs.languages.intercal.descriptor import PAIR, TEMPLATE_CHAR
-from esolangs.languages.intercal.generator import _Expr, intercal
+from esolangs.languages.intercal.generator import (
+    _ONE,
+    _ZERO,
+    _Expr,
+    _pack_rows,
+    _program,
+    _reference,
+    _spill,
+    _wrap_intercal,
+    intercal,
+)
 from esolangs.languages.intercal.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
@@ -123,7 +133,7 @@ def test_names_past_the_cap_spill_to_arrays_and_execute(
 
 def test_spill_width_is_zero_at_the_cap_and_a_ceiling_root_past_it() -> None:
     """``_spill``: nothing past the cap -> 0; S past it -> ceil(sqrt(S))."""
-    from esolangs.languages.intercal.generator import _VARIABLE_MAX, _spill
+    from esolangs.languages.intercal.generator import _VARIABLE_MAX
 
     assert _spill(_VARIABLE_MAX) == 0
     assert _spill(_VARIABLE_MAX + 288) == 17
@@ -133,7 +143,7 @@ def test_spill_width_is_zero_at_the_cap_and_a_ceiling_root_past_it() -> None:
 
 def test_program_declares_one_array_per_spill_width_of_names() -> None:
     """289 names past the cap at width 17 declare 17 arrays, not 18."""
-    from esolangs.languages.intercal.generator import _VARIABLE_MAX, _ZERO, _program
+    from esolangs.languages.intercal.generator import _VARIABLE_MAX
 
     program = _program(2, [(_VARIABLE_MAX + 289, _ZERO)], _ZERO, width=17)
     assert re.findall(r",(\d+) <- #17", program) == [str(j) for j in range(1, 18)]
@@ -162,7 +172,7 @@ def test_narrow_balance_regime_edge_executes(table) -> None:
 
 def intercal_plain(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one order's template; level ``k`` selects input ``perm[k]``."""
-    from esolangs.languages.intercal.generator import _Expr, _mux, _program
+    from esolangs.languages.intercal.generator import _mux
 
     n = _validate_truth_table(truth_table)
     constant = constant_span_test(truth_table)
@@ -219,16 +229,7 @@ def test_constants_reuse_one_variable_and_print_the_literal() -> None:
 
 def _check_emitted_resource_routes() -> None:
     """Check high-arity write-set syntax without building exponential tables."""
-    from esolangs.languages.intercal.generator import (
-        _ONE,
-        _VARIABLE_MAX,
-        _ZERO,
-        _pack_rows,
-        _program,
-        _reference,
-        _spill,
-        _wrap_intercal,
-    )
+    from esolangs.languages.intercal.generator import _VARIABLE_MAX
     from esolangs.languages.intercal.proof_formulas import (
         execution,
         global_execution,
@@ -278,8 +279,6 @@ def _check_emitted_resource_routes() -> None:
 
 def _check_select_bits() -> None:
     """Both mask spellings select one bit; exchanging the mask fires the oracle."""
-    from esolangs.languages.intercal.generator import _program
-
     selector, zero, one = (_Expr("input", i) for i in range(3))
     complement = _Expr("not", children=(selector,))
     correct = _Expr("mingle", children=(selector, complement))

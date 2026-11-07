@@ -11,6 +11,7 @@ from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.crement.generator import (
     PAIR,
+    _packed,
     crement,
     crement_setters,
 )
@@ -268,8 +269,6 @@ def test_balanced_packed_template_instantiates_for_its_table() -> None:
 
 def test_packed_rule_matches_the_k_scan() -> None:
     """Oracle: k0-1..k0+1 lines per row reach the best side of the full scan."""
-
-    from esolangs.languages.crement.generator import _packed, crement
 
     rng = random.Random(3)
     for n in range(1, 9):

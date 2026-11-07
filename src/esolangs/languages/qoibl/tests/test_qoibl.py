@@ -15,8 +15,11 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.qoibl import interpreter as qoibl
 from esolangs.languages.qoibl.interpreter import (
     _advance,
+    _eval,
     _Machine,
     _NeedInput,
+    _Reading,
+    _steal,
     run,
     tokenize,
 )
@@ -117,8 +120,6 @@ class TestQoiblBehaviour:
                 assert f.getvalue() == chr(ord("0") + left + right)
 
     def test_variable_indices_stay_within_the_256_cell_list(self) -> None:
-        from esolangs.languages.qoibl.interpreter import _eval
-
         with pytest.raises(HaltError, match="variable index"):
             _eval(["we", "yeeeeeeee", "we", "y", "we"], {}, (), 0, [])
         with pytest.raises(HaltError, match="variable index"):
@@ -241,8 +242,6 @@ class TestQoiblIncompleteTokens:
 
     def test_stepping_an_empty_statement_advances_the_cursor(self) -> None:
         """An empty statement is a no-op, not a parse of nothing."""
-        from esolangs.languages.qoibl.interpreter import _Machine
-
         state = _Machine("w", ScriptedIO(""))
         assert state.code == ([],)
         state.step()
@@ -274,21 +273,16 @@ class TestQoiblParserGuards:
 
     def test_steal_declines_a_literal_without_the_character(self) -> None:
         """Nothing is given back unless the literal actually ends in it."""
-        from esolangs.languages.qoibl.interpreter import _steal
-
         assert _steal(["yy"], "e") is None  # no trailing 'e' to give back
         assert _steal(["e"], "e") == []  # a one-character literal vanishes
         assert _steal(["ye"], "e") == ["y"]  # a longer one is shortened
 
     def test_steal_declines_an_empty_token_list(self) -> None:
         """The emptiness check has to come first, or indexing raises."""
-        from esolangs.languages.qoibl.interpreter import _steal
-
         assert _steal([], "e") is None
 
     def test_a_binary_operator_needs_its_closing_marker(self) -> None:
         """``yr``/``ry`` wrap an operator, and both ends must be the same one."""
-        from esolangs.languages.qoibl.interpreter import _Reading
 
         def _wellformed(expr: list[str]) -> bool:
             # :func:`_eval`'s split points and arm order, without effects.
@@ -300,8 +294,6 @@ class TestQoiblParserGuards:
 
     def test_an_unrecognised_token_is_rejected(self) -> None:
         """A hand-built token no keyword claims is not a binary literal."""
-        from esolangs.languages.qoibl.interpreter import _eval
-
         with pytest.raises(ValueError, match="invalid literal"):
             _eval(["zz"], {"e": 1}, (), 0, [])
 

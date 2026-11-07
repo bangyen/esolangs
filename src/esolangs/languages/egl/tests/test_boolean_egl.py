@@ -7,6 +7,7 @@ import pytest
 
 import esolangs
 from esolangs.languages.egl import generator as tools
+from esolangs.languages.egl.generator import _balance, _wrap
 from esolangs.languages.egl.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
@@ -37,8 +38,6 @@ def test_the_walk_is_branch_free() -> None:
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_reads_into_scratch_and_prints_a_literal(n: int, bit: str) -> None:
-    from esolangs.languages.egl.generator import _balance
-
     if n == 1 and bit == "0":
         _check_constants()
     table = bit * (1 << n)
@@ -90,7 +89,6 @@ def _check_constants() -> None:
 
 
 def _check_folded() -> None:
-    from esolangs.languages.egl.generator import _wrap
     from esolangs.languages.egl.proof_formulas import execution, workspace
     from esolangs.languages.egl.tests.ablations import ablate
 

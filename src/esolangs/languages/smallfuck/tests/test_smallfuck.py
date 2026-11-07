@@ -6,7 +6,7 @@ from functools import partial
 
 import pytest
 
-from esolangs.languages.smallfuck.interpreter import _Machine, run
+from esolangs.languages.smallfuck.interpreter import _advance, _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 from tests.interpreters.semantic_oracles import STDINS, agrees
@@ -83,8 +83,6 @@ def test_oracle_controls(code, output) -> None:
 
 
 def test_transition_preserves_its_state_and_reports_output() -> None:
-    from esolangs.languages.smallfuck.interpreter import _advance
-
     machine = _Machine(">>*", ScriptedIO(""))
     state = machine.state
     first = _advance(state, machine.code, machine.brackets)

@@ -11,7 +11,8 @@ from esolangs.debugger import make_debugger
 from esolangs.exceptions import HaltError
 from esolangs.generation.helpers import essential_inputs
 from esolangs.languages.alight.generator import alight
-from esolangs.languages.alight.interpreter import run
+from esolangs.languages.alight.interpreter import _machine as owned
+from esolangs.languages.alight.interpreter import prepare_machine, run
 from esolangs.languages.alight.interpreter._machine import _Machine
 from esolangs.languages.alight.interpreter._parse import (
     _Bin,
@@ -391,7 +392,6 @@ class TestSnapshot(SnapshotContract):
         assert banked == copy
         assert banked != machine.snapshot()
 
-        from esolangs.languages.alight.interpreter import _machine as owned
         from esolangs.languages.alight.interpreter._parse import _Not
         from esolangs.languages.alight.interpreter._workspace import _Graph
         from scripts.benchmark import state_bits
@@ -694,8 +694,6 @@ def test_at_list_update_and_aliases(
     )
     assert _run([program], "", list_update) == expected
 
-    from esolangs.languages.alight.interpreter import prepare_machine
-
     source = [program]
     options = {"list_update": list_update}
     factory = prepare_machine(source, options)
@@ -752,8 +750,6 @@ def test_alight_notation(source, syntax) -> None:
         assert io.getvalue() == "B"
 
     if syntax != "bad":
-        from esolangs.languages.alight.interpreter import prepare_machine
-
         factory = prepare_machine(
             f"begin;var a;set a {source};out a;end;",
             {"expression_syntax": syntax},

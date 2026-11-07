@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.generation.helpers import essential_inputs, permute_truth_table
 from esolangs.languages.for_thorn import generator as boolean
+from esolangs.languages.for_thorn.generator import _forth_const, _forth_ordered
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.generators.sample_tables import five_input_sample
@@ -32,8 +33,6 @@ def _forth_scope_keys(table: str) -> set[int]:
 
 def _forth_plain(table: str) -> str:
     """Forþ's build with no subtree shared: the fold alone, in natural order."""
-    from esolangs.languages.for_thorn.generator import _forth_ordered
-
     n = len(table).bit_length() - 1
     natural = tuple(reversed(range(n)))
     return _forth_ordered(permute_truth_table(table, natural), ",68*-" * n)
@@ -140,15 +139,11 @@ class TestForth:
 
     def test_const_large(self) -> None:
         """Constants above 225 need multiple base-15 digits."""
-        from esolangs.languages.for_thorn.generator import _forth_const
-
         assert _forth_const(0) == "0"
         assert len(_forth_const(300)) > len(_forth_const(48))
 
     def test_const_is_base_fifteen(self) -> None:
         """Digits are ``0-E`` and the radix is 15, not 16."""
-        from esolangs.languages.for_thorn.generator import _forth_const
-
         assert _forth_const(14) == "E"
         assert _forth_const(15) == "1F*0+"
         assert _forth_const(48) == "3F*3+"

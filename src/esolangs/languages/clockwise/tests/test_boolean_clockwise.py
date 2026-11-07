@@ -8,6 +8,11 @@ import esolangs
 from esolangs import run
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.clockwise import generator as boolean
+from esolangs.languages.clockwise.generator import (
+    _balance,
+    _clockwise_banded,
+    clockwise,
+)
 from esolangs.runtime.io import ScriptedIO
 from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import parity, row_bits, witnesses
@@ -24,8 +29,6 @@ def run_clockwise(program: str, inputs: list[str] | list[int]) -> str:
 def test_constant_ring_reads_and_prints_without_a_lookup(
     n: int, bit: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from esolangs.languages.clockwise.generator import _balance
-
     table = bit * (1 << n)
     default = boolean.clockwise(table)
     for program in (default, boolean.clockwise(table, 1), _balance(table, default)):
@@ -191,8 +194,6 @@ def test_single_column_cannot_close_a_clockwise_ring() -> None:
 
 @pytest.mark.parametrize("split", [1, 2, 3])
 def test_banded_lookup_selects_a_strip_by_the_first_inputs(split: int) -> None:
-    from esolangs.languages.clockwise.generator import _clockwise_banded
-
     # The second input is ignored and the sixth trails: a head reads past
     # one and the rail reads the other.
     table = "".join(
@@ -227,11 +228,6 @@ def test_balance_bands_a_random_table() -> None:
 def test_balance_split_rule_matches_the_split_search() -> None:
     """Oracle: the {k//3, k//3+1} contest is no wider than scanning every split."""
     from esolangs.generation.helpers import essential_inputs
-    from esolangs.languages.clockwise.generator import (
-        _balance,
-        _clockwise_banded,
-        clockwise,
-    )
 
     rng = random.Random(5)
     for n in (4, 5, 6, 7, 8):

@@ -6,6 +6,7 @@ import pytest
 
 from esolangs._cycles import _StepMachine
 from esolangs.languages.streetcode.interpreter import _Machine, _State
+from esolangs.languages.streetcode.interpreter import geometry as module
 from esolangs.languages.streetcode.interpreter.geometry import (
     _NO_LATCHES,
     _drive,
@@ -127,8 +128,6 @@ class TestStreetcodeDriveStates:
 
     def test_a_wedging_phase_is_rejected_at_construction(self) -> None:
         """The check fires when the movement rules do run out of road."""
-        from esolangs.languages.streetcode.interpreter import geometry as module
-
         with (
             patch.object(
                 module,
@@ -148,8 +147,6 @@ class TestStreetcodeDriveStates:
     )
     def test_mouth_depth_bound_does_not_change_the_driving(self, path: str) -> None:
         """``_MOUTH_MAX_DEPTH`` is pinned by behaviour, not by its scans."""
-        from esolangs.languages.streetcode.interpreter import geometry as module
-
         root = ROOT
         code = (root / path).read_text().split("\n")
         if code and code[-1] == "":

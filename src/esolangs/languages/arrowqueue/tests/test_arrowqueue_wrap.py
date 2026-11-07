@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.arrowqueue.generator import arrowqueue
+from esolangs.languages.arrowqueue.generator import _folded, _folds, arrowqueue
 from tests.support.divergence import diverges
 from tests.support.evaluation import _evaluate
 from tests.support.generator_support import source_shape
@@ -111,8 +111,6 @@ def test_balanced_three_input_sizes_are_pinned(
 
 def test_fold_heights_stay_near_the_swept_optimum() -> None:
     """Four heights from a closed form are within 5% of every height (sum)."""
-    from esolangs.languages.arrowqueue.generator import _folded, _folds
-
     rng = random.Random(11)
     got = swept = 0
     for n in range(3, 9):

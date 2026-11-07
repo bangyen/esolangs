@@ -7,7 +7,7 @@ from itertools import product
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.grapheme.interpreter import _Machine, run
+from esolangs.languages.grapheme.interpreter import _advance, _Machine, run
 from esolangs.languages.grapheme.interpreter import _Machine as Grapheme
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_ancestor, run_until_halt_or_cycle
@@ -319,8 +319,6 @@ def test_malformed_source_carries_a_repair_hint() -> None:
 
 
 def test_variable_transition_keeps_old_maps_immutable() -> None:
-    from esolangs.languages.grapheme.interpreter import _advance
-
     machine = Grapheme("C", ScriptedIO(""))
     before = (machine.vars, machine.frames)
     moved, effects, output = _advance(before, (7, "name"))

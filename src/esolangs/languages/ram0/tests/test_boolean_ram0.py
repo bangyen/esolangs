@@ -7,6 +7,8 @@ import pytest
 
 import esolangs
 from esolangs.languages.ram0 import generator as boolean
+from esolangs.languages.ram0.generator import PAIR as RAM0_PAIR
+from esolangs.languages.ram0.generator import _ram0_ordered
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.generator_support import assert_parity_at_most_doubles
@@ -40,7 +42,6 @@ class TestParameterizedRam0:
         """The template has one run per input, not hardcoded bits."""
         from esolangs.generation.helpers import TEMPLATE_CHAR, runs
         from esolangs.languages.ram0 import generator as generators
-        from esolangs.languages.ram0.generator import PAIR as RAM0_PAIR
 
         template = generators.ram0("0110")
         assert "{X" not in template
@@ -68,7 +69,6 @@ class TestParameterizedRam0:
     def test_leaves_share_a_low_address_halt_trampoline(self) -> None:
         """Every leaf jumps to 2; only the trampoline names the end."""
         from esolangs.languages.ram0 import generator as generators
-        from esolangs.languages.ram0.generator import _ram0_ordered
 
         tokens = generators.ram0("01101001").split()
         assert tokens[0] == "C"
@@ -80,7 +80,6 @@ class TestParameterizedRam0:
     def _sharing_totals(tables: list[str]) -> tuple[int, int]:
         """(before, shipped) totals, each table checked not to grow."""
         from esolangs.languages.ram0 import generator as generators
-        from esolangs.languages.ram0.generator import _ram0_ordered
 
         before = after = 0
         for table in tables:

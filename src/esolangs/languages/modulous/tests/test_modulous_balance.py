@@ -7,6 +7,7 @@ from esolangs.generation.wrap import balance_score
 from esolangs.languages.modulous.generator import (
     _TABLE_PUSH_OVERHEAD,
     _TOKEN,
+    _balance,
     _chunked_columns,
     modulous,
 )
@@ -138,8 +139,6 @@ def test_chunked_columns_match_the_swept_optimum() -> None:
 
 def test_suffix_measurement_starts_past_the_table_push() -> None:
     """Including the packed table closer moves this form from 41 to40 columns."""
-    from esolangs.languages.modulous.generator import _balance, modulous
-
     table = f"{random.Random(1847).getrandbits(128):0128b}"
     balanced = _balance(table, modulous(table))
     assert max(map(len, balanced.splitlines())) == 41

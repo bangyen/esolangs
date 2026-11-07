@@ -9,7 +9,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.languages.cyclic_tag.generator import cyclic_tag
-from esolangs.languages.cyclic_tag.interpreter import _Machine, run
+from esolangs.languages.cyclic_tag.interpreter import _execute, _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.support.raises import assert_rejected_with_hint
 from tests.support.witness_tables import witnesses
@@ -91,7 +91,6 @@ def test_malformed_source_carries_a_repair_hint() -> None:
 
 
 def test_native_completion_reports_the_dump_and_run_keeps_its_return_contract():
-    from esolangs.languages.cyclic_tag.interpreter import _execute
     from esolangs.runtime._lifecycle import Completion
 
     io = ScriptedIO()

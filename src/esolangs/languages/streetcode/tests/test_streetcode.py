@@ -7,7 +7,7 @@ from contextlib import redirect_stdout
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.streetcode.interpreter import _Machine, run
+from esolangs.languages.streetcode.interpreter import _advance, _Machine, run
 from esolangs.languages.streetcode.interpreter.geometry import (
     _ReachableCell,
 )
@@ -291,7 +291,6 @@ class TestPureTransition:
     """``_advance`` runs one cell; ``step`` is only the read/write shell."""
 
     def test_advance_is_pure_and_repeatable(self) -> None:
-        from esolangs.languages.streetcode.interpreter import _advance
         from esolangs.languages.streetcode.tests.streetcode_support import street
 
         machine = _Machine(street("C^O;"), ScriptedIO())
@@ -309,8 +308,6 @@ class TestPureTransition:
         assert first[0][2][0] == 5
 
     def test_output_is_returned_not_written(self) -> None:
-        from esolangs.languages.streetcode.interpreter import _advance
-
         machine = _Machine(["C^O;"], ScriptedIO())
         run = (machine._state, machine.cp, machine.cells, machine._done)
         before = machine.snapshot()

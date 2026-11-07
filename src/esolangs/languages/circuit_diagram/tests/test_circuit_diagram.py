@@ -13,10 +13,12 @@ from esolangs.languages.circuit_diagram import interpreter
 from esolangs.languages.circuit_diagram.interpreter import (
     _compile,
     _functions,
+    _generation,
     _Machine,
     _merge,
     _seconds_since_2000,
     _Topology,
+    prepare_machine,
     run,
 )
 from esolangs.languages.circuit_diagram.interpreter._functions import _remember_width
@@ -696,10 +698,6 @@ class TestPureTransition:
     def test_generation_is_pure_and_needs_no_wall_time(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from esolangs.languages.circuit_diagram.interpreter import (
-            _generation,
-            prepare_machine,
-        )
         from esolangs.languages.circuit_diagram.interpreter._functions import (
             _BufferedClock,
         )

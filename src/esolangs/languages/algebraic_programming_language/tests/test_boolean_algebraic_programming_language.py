@@ -9,6 +9,12 @@ import pytest
 import esolangs
 from esolangs import run as execute_program
 from esolangs.languages.algebraic_programming_language import generator as boolean
+from esolangs.languages.algebraic_programming_language.generator import (
+    _NAMES,
+    _apl_reduced_ordered,
+    _apl_tree_ordered,
+    algebraic_programming_language,
+)
 from esolangs.languages.algebraic_programming_language.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
@@ -208,17 +214,11 @@ class TestAlgebraicProgrammingLanguageShapes:
 
     def test_the_name_alphabet_is_codepoint_ascending(self) -> None:
         """``_order_key`` sorts literals by name to keep reads in order."""
-        from esolangs.languages.algebraic_programming_language.generator import _NAMES
-
         assert list(_NAMES) == sorted(_NAMES)
         assert len(set(_NAMES)) == len(_NAMES)
 
     def test_constant_arms_need_no_guard(self) -> None:
         """A node over a constant arm is one literal and one operator."""
-        from esolangs.languages.algebraic_programming_language.generator import (
-            _apl_tree_ordered,
-        )
-
         tail = {
             "0110": "(a+b)%2",
             "0001": "a&b",
@@ -236,10 +236,6 @@ class TestAlgebraicProgrammingLanguageShapes:
 
     def test_the_reduced_diagram_skips_idle_tests_and_complements(self) -> None:
         """The fixed-order reduced diagram stays within the retirement budget."""
-        from esolangs.languages.algebraic_programming_language.generator import (
-            _apl_tree_ordered,
-        )
-
         assert boolean.algebraic_programming_language("00011110").endswith(
             "a&b&c&0|(a+(b&c))%2"
         )
@@ -353,10 +349,6 @@ def test_operator_binding_reads_every_input_once(table: str, width: int) -> None
 
 
 def test_xor_arithmetic_family_reaches_four_columns() -> None:
-    from esolangs.languages.algebraic_programming_language.generator import (
-        algebraic_programming_language,
-    )
-
     program = esolangs.generate("Algebraic Programming Language", "0110", width=1)
     assert max(map(len, program.source.splitlines())) == 4
     assert len(program.source) == 49
@@ -380,10 +372,6 @@ def test_parity_source_at_most_doubles_per_input() -> None:
 
 @pytest.mark.medium
 def test_default_reuses_emitted_frames() -> None:
-    from esolangs.languages.algebraic_programming_language.generator import (
-        _apl_reduced_ordered,
-    )
-
     table = corpus(8)["tiled"]
     plain = _apl_reduced_ordered(table, tuple(range(8)))
     program = boolean.algebraic_programming_language(table)

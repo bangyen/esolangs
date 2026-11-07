@@ -8,7 +8,12 @@ import esolangs
 from esolangs.exceptions import TemplateError
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.slashes import interpreter as native
-from esolangs.languages.slashes.generator import slashes
+from esolangs.languages.slashes.generator import (
+    _DECODE,
+    _UNARY,
+    _is_unfilled_template,
+    slashes,
+)
 from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import witnesses
 
@@ -91,16 +96,8 @@ def test_slashes_literal_dollar_and_serialized_template() -> None:
 
 @pytest.mark.parametrize("tail", ["$", ">qAqB", "x>qAqB", "$>qAq", "$>qAqZ", "$>qA"])
 def test_slashes_template_recognition_rejects_noncanonical_tails(tail: str) -> None:
-    from esolangs.languages.slashes.generator import (
-        _DECODE,
-        _UNARY,
-        _is_unfilled_template,
-    )
-
     assert not _is_unfilled_template(_UNARY + _DECODE + tail)
 
 
 def test_slashes_template_recognition_rejects_changed_prefix() -> None:
-    from esolangs.languages.slashes.generator import _is_unfilled_template
-
     assert not _is_unfilled_template("x" + slashes("01"))

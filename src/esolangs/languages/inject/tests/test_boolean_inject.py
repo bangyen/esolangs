@@ -10,6 +10,7 @@ import esolangs
 from esolangs.generation.helpers import read_at
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.inject import generator as boolean
+from esolangs.languages.inject.generator import _half_pattern, _Names, _tree
 from tests.generators.boolean_runners import _runner
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
@@ -128,8 +129,6 @@ class TestInject:
 
     def test_the_tree_collapses_on_the_constant_subtree_alone(self) -> None:
         """Depth never terminates the recursion; a constant subtree always does."""
-        from esolangs.languages.inject.generator import _Names, _tree
-
         calls: list[tuple[str, int, int]] = []
 
         def record(table: str, depth: int, n: int, state: dict[str, int]) -> None:
@@ -183,8 +182,6 @@ def test_counted_halving_keeps_the_exact_offset() -> None:
 
 
 def test_counted_halving_splits_unrepresentable_repeat_counts() -> None:
-    from esolangs.languages.inject.generator import _half_pattern
-
     for half in (1, 2, 4, 8, 16):
         pattern = _half_pattern(half)
         assert re.fullmatch(pattern, "x" * half)

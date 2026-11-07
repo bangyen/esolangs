@@ -6,7 +6,7 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.three_x.interpreter import _Machine, run
+from esolangs.languages.three_x.interpreter import _advance, _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters import runner
@@ -119,8 +119,6 @@ class Test3x:
 class TestStepMachine:
     def test_stack_commands_replace_or_consume_their_operands(self) -> None:
         """Arithmetic, output, and swap do not leave stale operands behind."""
-        from esolangs.languages.three_x.interpreter import _advance
-
         three = Fraction(3)
         zero = Fraction(0)
         assert _advance((0, (three, three, three), (), ()), "x") == (
@@ -134,8 +132,6 @@ class TestStepMachine:
 
     def test_an_open_paren_on_zero_skips_only_when_it_has_a_target(self) -> None:
         """``(`` on a zero jumps past the loop, or advances with no target."""
-        from esolangs.languages.three_x.interpreter import _advance
-
         zero = Fraction(0)
         assert _advance((0, (zero,), (), ()), "(") == (1, (zero,), (), ())
         assert _advance((0, (zero,), (), ()), "(", None, 9) == (10, (zero,), (), ())

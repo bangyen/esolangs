@@ -40,8 +40,6 @@ def run_addsubjump_from(program: str, feed: Iterator[str]) -> str:
 
 @pytest.mark.medium
 def test_packed_projection_executes_every_three_input_table() -> None:
-    from esolangs.languages.addsubjump.generator import _addsubjump_packed
-
     for value in range(256):
         table = f"{value:08b}"
         program = _addsubjump_packed(table)
@@ -339,7 +337,6 @@ def _check_native_constants() -> None:
 
 def _check_packed_reader() -> None:
     """Raw Horner reads preserve projection, stream order and low data words."""
-    from esolangs.languages.addsubjump.generator import _addsubjump_packed
     from esolangs.languages.addsubjump.interpreter import _Machine
 
     for position in range(6):

@@ -7,6 +7,18 @@ import pytest
 import esolangs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.collatz_multiverse import generator as boolean
+from esolangs.languages.collatz_multiverse.generator import (
+    _cm_build,
+    _cm_candidates,
+    _cm_chain,
+    _cm_codes,
+    _cm_constant_program,
+    _cm_constants,
+    _cm_layout,
+    _cm_layout_versions,
+    _cm_narrow_choice,
+    collatz_multiverse,
+)
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner, assert_runner_rows
 from tests.support.event_io import ReadFirstIO
@@ -60,8 +72,6 @@ class TestCollatzMultiverse:
         """The empty cell takes code 0 only when the ranking gives it."""
         from collections import Counter
 
-        from esolangs.languages.collatz_multiverse.generator import _cm_codes
-
         codes = _cm_codes(Counter({0: 1, 8: 10, 1: 5}))
         assert codes[8] == 0
         assert codes[0] == 1
@@ -69,8 +79,6 @@ class TestCollatzMultiverse:
 
     def test_value_coded_and_public_three_input_totals(self) -> None:
         """Pin the value-coded oracle and every varied public program."""
-        from esolangs.languages.collatz_multiverse.generator import _cm_build
-
         varied = [t for v in range(256) if len(set(t := format(v, "08b"))) > 1]
         plain = sum(len(_cm_build(t, 3, [0, 1, 2], numbered=False)) for t in varied)
         built = sum(len(boolean.collatz_multiverse(t)) for t in varied)
@@ -78,8 +86,6 @@ class TestCollatzMultiverse:
 
     def test_numbering_never_grows_a_program(self) -> None:
         """Numbered cells beat the retired value-as-code size oracle."""
-        from esolangs.languages.collatz_multiverse.generator import _cm_build
-
         rng = random.Random(0)
         tables = [format(v, "08b") for v in range(1, 255)]
         tables += ["".join(rng.choice("01") for _ in range(2**n)) for n in (4, 5, 6)]
@@ -151,8 +157,6 @@ class TestCollatzMultiverse:
 
     def test_narrow_statement_floor_is_idempotent(self) -> None:
         """Another alias prefix cannot narrow or widen the existing floor."""
-        from esolangs.languages.collatz_multiverse.generator import _cm_layout
-
         table = "01101001"
         narrow = boolean.collatz_multiverse(table, 1)
         relaid = _cm_layout(narrow, 1)
@@ -174,8 +178,6 @@ def test_parity_source_at_most_doubles_per_input() -> None:
 
 def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
     """Nothing above k2 is needed, so the plan sieve is never entered."""
-    from esolangs.languages.collatz_multiverse.generator import _cm_constants
-
     lines = _cm_constants([1, 2])
     assert len(lines) == 2
     from esolangs.languages.collatz_multiverse.interpreter import _Machine
@@ -209,8 +211,6 @@ def _minimal_plan_sizes(maxval: int) -> dict[int, int]:
 
 def test_cm_plan_chain_is_valid_and_near_minimal() -> None:
     """The rule builds each constant from smaller ones, within 3 of the minimum."""
-    from esolangs.languages.collatz_multiverse.generator import _cm_chain
-
     oracle = _minimal_plan_sizes(150)
     for m in range(3, 151):
         plan = _cm_chain([m])
@@ -224,8 +224,6 @@ def test_cm_plan_chain_is_valid_and_near_minimal() -> None:
 
 def test_cm_constants_print_the_right_value() -> None:
     """A constant program prints chr(value) for every byte value."""
-    from esolangs.languages.collatz_multiverse.generator import _cm_constant_program
-
     for value in range(256):
         program = _cm_constant_program(1, value)
         assert run_collatz_multiverse(program, ["0"]) == chr(value)
@@ -234,12 +232,6 @@ def test_cm_constants_print_the_right_value() -> None:
 def _swept_balance(table: str, default: str) -> str:
     """The retired balance: select among the spellings at every fit threshold."""
     from esolangs.generation.helpers import _validate_truth_table, grid_width
-    from esolangs.languages.collatz_multiverse.generator import (
-        _cm_candidates,
-        _cm_layout_versions,
-        _cm_narrow_choice,
-        collatz_multiverse,
-    )
 
     n = _validate_truth_table(table)
     wide = collatz_multiverse(table, len(default))
@@ -312,8 +304,6 @@ def test_layout_sizes(table: str, width: int | None, size: int) -> None:
 @pytest.mark.parametrize("family", ["and", "or", "parity"])
 @pytest.mark.parametrize("invert", [False, True])
 def test_named_routes_improve_the_four_row_lookup(family: str, *, invert: bool) -> None:
-    from esolangs.languages.collatz_multiverse.generator import _cm_build
-
     n = 7
     table = "".join(
         str(

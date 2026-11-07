@@ -5,7 +5,7 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.for_thorn.interpreter import _Machine, run
+from esolangs.languages.for_thorn.interpreter import _advance, _Machine, run
 from esolangs.languages.for_thorn.interpreter import _Machine as Forth
 from esolangs.runtime._result_wire import _state_from_wire, _state_wire
 from esolangs.runtime.io import ScriptedIO
@@ -128,8 +128,6 @@ def test_forth_changing_stack_halts() -> None:
 
 
 def test_scope_transition_keeps_old_tables_immutable() -> None:
-    from esolangs.languages.for_thorn.interpreter import _advance
-
     machine = Forth("1{2}", ScriptedIO(""))
     machine.step()
     before = machine._state

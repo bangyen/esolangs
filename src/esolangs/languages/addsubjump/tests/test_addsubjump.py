@@ -3,7 +3,14 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.addsubjump.interpreter import _assembly, _Machine, run
+from esolangs.languages.addsubjump.interpreter import (
+    _advance,
+    _assembly,
+    _Machine,
+    _pack,
+    _store,
+    run,
+)
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
@@ -136,8 +143,6 @@ class TestSpecialAddresses:
     @pytest.mark.parametrize("target", [8, -1])
     @pytest.mark.parametrize("selector", [0, 1])
     def test_port_reads_selector_before_source(self, target, selector) -> None:
-        from esolangs.languages.addsubjump.interpreter import _Machine
-
         port = ScriptedIO(chr(selector) + chr(3))
         machine = _Machine(f"{target} -1 -1 -1 0 0 0 0 7", port)
         machine.step()
@@ -149,8 +154,6 @@ class TestSpecialAddresses:
         assert machine.halted
 
     def test_second_port_read_exhaustion_preserves_memory(self) -> None:
-        from esolangs.languages.addsubjump.interpreter import _Machine
-
         port = ScriptedIO(chr(1))
         machine = _Machine("8 -1 -1 -1 0 0 0 0 7", port)
         before = machine.state
@@ -210,8 +213,6 @@ class TestTruncatedInstruction:
     @staticmethod
     def _once(code: str) -> tuple[str, int]:
         """Run one instruction and return its output and the new pointer."""
-        from esolangs.languages.addsubjump.interpreter import _Machine
-
         machine = _Machine(code, ScriptedIO())
         machine.step()
         return machine.io.getvalue(), machine.ip
@@ -309,8 +310,6 @@ class TestHaltAndErrors:
 
 class TestStepMachine:
     def test_transition_keeps_its_input_memory(self) -> None:
-        from esolangs.languages.addsubjump.interpreter import _advance, _pack
-
         state = (_pack([8, -1, -1, -1, 0, 0, 0, 0, 7]), 0, 0, 0, 0)
         value, after = _advance(state, (1, 3))
         assert value == 4
@@ -339,8 +338,6 @@ class TestStepMachine:
         assert (machine.zf, machine.nf, machine.fum) == (1, 0, 1)
 
     def test_step_tracks_ip_and_memory(self) -> None:
-        from esolangs.languages.addsubjump.interpreter import _Machine
-
         machine = _Machine("-1 1 -1 -7", ScriptedIO())
         assert (machine.ip, list(machine.memory)) == (0, [-1, 1, -1, -7])
         machine.step()  # writes *b to I/O and jumps to c, a special address
@@ -351,8 +348,6 @@ class TestStepMachine:
         assert machine.ip == -1
 
     def test_snapshot_includes_the_input_cursor(self) -> None:
-        from esolangs.languages.addsubjump.interpreter import _Machine
-
         machine = _Machine("0 0 0 0", ScriptedIO("one\n"))
         before = machine.snapshot()
         machine.io.input_str()
@@ -360,11 +355,6 @@ class TestStepMachine:
 
     def test_a_cell_written_to_zero_matches_one_never_written(self) -> None:
         """The sparse store must not distinguish a stored zero from no key."""
-        from esolangs.languages.addsubjump.interpreter import (
-            _pack,
-            _store,
-        )
-
         state = (_pack([5, 0, 0]), 0, 0, 0, 0)
         # Write a non-zero and then zero it again: back to the start.
         written = _store(_store(state, 1, 7), 1, 0)
@@ -377,11 +367,6 @@ class TestStepMachine:
 
     def test_snapshot_is_independent_of_write_order(self) -> None:
         """Equal memories must snapshot equal however they were reached."""
-        from esolangs.languages.addsubjump.interpreter import (
-            _Machine,
-            _store,
-        )
-
         one = _Machine("0 0 0 0", ScriptedIO())
         other = _Machine("0 0 0 0", ScriptedIO())
         one.state = _store(_store(one.state, 1, 4), 2, 9)
@@ -462,8 +447,6 @@ temp:.data 0
 
 def _capped(code: str, stdin: str, cap: int) -> tuple[str, bool, int]:
     """Run at most ``cap`` instructions; return output, halted, steps taken."""
-    from esolangs.languages.addsubjump.interpreter import _Machine
-
     machine = _Machine(code, ScriptedIO(stdin))
     steps = 0
     while not machine.halted and steps < cap:
@@ -489,8 +472,6 @@ class TestWikiPrograms:
 
 
 def _machine(code: object) -> object:
-    from esolangs.languages.addsubjump.interpreter import _Machine
-
     return _Machine(code, ScriptedIO())
 
 

@@ -6,10 +6,17 @@ from itertools import product
 import pytest
 
 import esolangs
-from esolangs.generation.helpers import essential_inputs
+from esolangs.generation.helpers import essential_inputs, grid_area
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.b_tapemark import generator as tools
-from esolangs.languages.b_tapemark.generator import _Builder
+from esolangs.languages.b_tapemark.generator import (
+    _b_tapemark_folded,
+    _b_tapemark_narrow,
+    _b_tapemark_program,
+    _balance,
+    _Builder,
+    _closed_forms,
+)
 from esolangs.languages.b_tapemark.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.support.analysis_support import assert_analysis_complement
@@ -110,8 +117,6 @@ def test_size_does_not_depend_on_the_table() -> None:
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_reads_each_input_and_prints_a_literal(n, bit) -> None:
-    from esolangs.languages.b_tapemark.generator import _b_tapemark_program
-
     if n == 1 and bit == "0":
         assert_constant_roots("B-tapemark", run)
     table = bit * (1 << n)
@@ -151,8 +156,6 @@ def test_constant_reads_each_input_and_prints_a_literal(n, bit) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("used", [(i,) for i in range(8)] + [(0, 7), (0, 3, 7)])
 def test_narrow_short_projected_table_keeps_ignored_selectors_out(used) -> None:
-    from esolangs.languages.b_tapemark.generator import _b_tapemark_program
-
     n = 8
     base = {1: "01", 2: "0110", 3: "01001110"}[len(used)]
     table = "".join(
@@ -215,8 +218,6 @@ def test_narrow_drops_ignored_inputs_but_reads_them() -> None:
 
 @pytest.mark.medium
 def test_narrow_weighted_arms_and_fitting_layouts() -> None:
-    from esolangs.languages.b_tapemark.generator import _b_tapemark_narrow, _Builder
-
     for n in range(4, 7):
         table = "".join(
             str((row * 17 + row // 3).bit_count() % 2) for row in range(1 << n)
@@ -292,8 +293,6 @@ def test_balance_of_a_three_ones_n8_table_is_exact() -> None:
 
 @pytest.mark.parametrize(("copy", "run"), [(1, 1), (5, 3), (16, 40)])
 def test_folded_copy_and_runs_keep_the_walk(copy: int, run: int) -> None:
-    from esolangs.languages.b_tapemark.generator import _b_tapemark_folded
-
     # The second input is ignored, so its stage crosses no run.
     table = "".join(
         str((i >> 4) ^ (i & 1) ^ (i >> 1) & (i >> 2) & 1) for i in range(32)
@@ -307,12 +306,6 @@ def test_folded_copy_and_runs_keep_the_walk(copy: int, run: int) -> None:
 
 def test_the_default_is_the_least_by_area_of_the_strip_and_closed_forms() -> None:
     """The strip wins a tie; each layout the default takes runs and is no larger."""
-    from esolangs.generation.helpers import grid_area
-    from esolangs.languages.b_tapemark.generator import (
-        _b_tapemark_program,
-        _closed_forms,
-    )
-
     rng = random.Random(11)
     for bits in (2, 4, 6, 7):
         table = "".join(rng.choice("01") for _ in range(1 << bits))
@@ -325,8 +318,6 @@ def test_the_default_is_the_least_by_area_of_the_strip_and_closed_forms() -> Non
 
 
 def test_balance_folds_a_random_table() -> None:
-    from esolangs.languages.b_tapemark.generator import _b_tapemark_program
-
     table = "".join(str((value * 73 + value // 3) & 1) for value in range(64))
     balanced = esolangs.generate("B-tapemark", table, balance=True).source
     # 202 columns unfolded; the stages' seven rows apiece floor the height.
@@ -338,8 +329,6 @@ def test_balance_folds_a_random_table() -> None:
 @pytest.mark.parametrize("depth", range(4, 10))
 def test_fold_widths_match_the_swept_optimum(depth: int) -> None:
     """The closed-form copy length is within 3% of every copy and run swept."""
-    from esolangs.languages.b_tapemark.generator import _b_tapemark_folded, _balance
-
     table = "".join(str((value * 73 + value // 3) & 1) for value in range(1 << depth))
     copies = {round(2 ** (step / 4)) for step in range(4 * depth + 1)}
     swept = min(
@@ -352,8 +341,6 @@ def test_fold_widths_match_the_swept_optimum(depth: int) -> None:
 
 
 def test_area_oriented_fold_executes_every_five_input_row() -> None:
-    from esolangs.generation.helpers import grid_area
-
     table = "".join(str(row.bit_count() & 1) for row in range(32))
     program = tools.b_tapemark(table)
     assert grid_area(program) == 1750

@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs.languages.quassaunt.generator import quassaunt
+from esolangs.languages.quassaunt.generator import _balance, quassaunt
 from esolangs.languages.quassaunt.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.support.analysis_support import assert_analysis_complement
@@ -49,8 +49,6 @@ def test_equal_subtables_share_one_node() -> None:
 
 def test_balance_cuts_only_compact_programs() -> None:
     """A compact table's balanced form is narrower than its longest word."""
-    from esolangs.languages.quassaunt.generator import _balance
-
     parity = "0110100110010110"
     default = quassaunt(parity)
     balanced = _balance(parity, default)

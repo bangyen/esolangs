@@ -6,7 +6,7 @@ from itertools import product
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.parenthesys.interpreter import _Machine, run
+from esolangs.languages.parenthesys.interpreter import _Acc, _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import check_terminal
 from tests.interpreters.runner import run_program
@@ -154,8 +154,6 @@ def test_runtime_errors() -> None:
 
 
 def test_workspace_accumulator_ignores_piece_boundaries():
-    from esolangs.languages.parenthesys.interpreter import _Acc
-
     machine = _Machine("(x)", ScriptedIO())
     machine.state = (0, (_Acc(("cd", ("ab", None)), number=True), None), None)
     saved = machine.workspace_snapshot()

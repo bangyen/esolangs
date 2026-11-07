@@ -7,6 +7,7 @@ import pytest
 import esolangs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.qoibl import generator as boolean
+from esolangs.languages.qoibl.generator import _horner_lines, _source
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
@@ -149,8 +150,6 @@ class TestQoiblSweepPins:
     def test_the_horner_scratch_is_variable_two(self) -> None:
         # _horner_lines expands over-long literals into variable 2 ("ye");
         # variable 3 computes the same programs but is not the scratch.
-        from esolangs.languages.qoibl.generator import _horner_lines
-
         lines = [f"we y we {'y' * 27} we"]
         expanded = _horner_lines(lines, 4)
         assert expanded[0].startswith("we ye we ")
@@ -218,7 +217,6 @@ def test_constant_audit_three_input_corpus_size() -> None:
 
 def _check_compact_input_tokens() -> None:
     """Compaction preserves statements, all ordered reads and their answers."""
-    from esolangs.languages.qoibl.generator import _source
     from esolangs.languages.qoibl.interpreter import _Machine, tokenize
     from esolangs.languages.qoibl.proof_formulas import execution, workspace
 

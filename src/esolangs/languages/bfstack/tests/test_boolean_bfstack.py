@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs import run
 from esolangs.languages.bfstack import generator as boolean
+from esolangs.languages.bfstack.generator import _bfstack_small
 from esolangs.registry._certification import load as load_certification
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
@@ -159,8 +160,6 @@ def test_constant_leaf_preserves_shape_and_input_consumption(n: int, bit: str) -
 
 def test_small_tables_do_not_grow_and_execute() -> None:
     """The n=3 total is 58,899 characters."""
-    from esolangs.languages.bfstack.generator import _bfstack_small
-
     total = 0
     for n in range(1, 4):
         for value in range(1 << (1 << n)):

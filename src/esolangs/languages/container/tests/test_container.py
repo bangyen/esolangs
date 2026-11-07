@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from esolangs import run as execute
-from esolangs.languages.container.interpreter import _Machine, run
+from esolangs.languages.container.interpreter import Con, _Machine, run
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract, StateViewContract
@@ -29,8 +29,6 @@ class TestContainer:
 
     def test_container_update_clamps_at_zero(self) -> None:
         """Negative results are clamped to zero."""
-        from esolangs.languages.container.interpreter import Con
-
         con = Con("A")
         con.add("-5 B>=1")
         assert con.update({"A": 2, "B": 1}) == 0

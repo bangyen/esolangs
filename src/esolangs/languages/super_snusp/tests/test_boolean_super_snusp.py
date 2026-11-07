@@ -5,7 +5,7 @@ import pytest
 import esolangs
 from esolangs import run as execute
 from esolangs.languages.super_snusp import generator as boolean
-from esolangs.languages.super_snusp.generator import balance_super_snusp
+from esolangs.languages.super_snusp.generator import balance_super_snusp, super_snusp
 from esolangs.runtime.io import ScriptedIO
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import assert_constant_roots, measure_run
@@ -78,7 +78,6 @@ class TestSuperSNUSP:
     @staticmethod
     def run_table(table: str) -> str:
         """Return the generated program's output for every input, in order."""
-        from esolangs.languages.super_snusp.generator import super_snusp
         from esolangs.languages.super_snusp.interpreter import run
 
         n = len(table).bit_length() - 1
@@ -106,8 +105,6 @@ class TestSuperSNUSP:
 
     def test_the_lookup_scales_linearly_and_runs(self) -> None:
         """The unbounded path approaches its one-or-two commands per row."""
-        from esolangs.languages.super_snusp.generator import super_snusp
-
         ratios = []
         for n in range(5, 13):
             table = "".join(str(i.bit_count() & 1) for i in range(2**n))
@@ -124,21 +121,16 @@ class TestSuperSNUSP:
     )
     def test_every_input_is_consumed(self, table: str) -> None:
         """One ``,`` per input, including inputs the answer ignores."""
-        from esolangs.languages.super_snusp.generator import super_snusp
-
         n = len(table).bit_length() - 1
         assert super_snusp(table).count(",") == n
 
     @pytest.mark.parametrize("table", ["01", "0000", "0110", "01101001", "11110000"])
     def test_every_program_starts_with_the_marker(self, table: str) -> None:
         """``"`` pins the entry point rather than inheriting the default."""
-        from esolangs.languages.super_snusp.generator import super_snusp
-
         assert super_snusp(table).startswith('"')
 
     def test_the_short_forms_are_what_the_generator_emits(self) -> None:
         """The four intrinsic two-input forms retain their independent spellings."""
-        from esolangs.languages.super_snusp.generator import super_snusp
         from esolangs.languages.super_snusp.interpreter import run
 
         assert_analysis_complement("Super SNUSP", "input_weights", "00100010")
@@ -164,8 +156,6 @@ class TestSuperSNUSP:
     )
     def test_the_lookup_length_is_pinned(self, table: str, length: int) -> None:
         """Ignored inputs are read but not dropped: the lookup is the whole table."""
-        from esolangs.languages.super_snusp.generator import super_snusp
-
         assert len(super_snusp(table)) == length
 
 

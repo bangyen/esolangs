@@ -11,7 +11,7 @@ import pytest
 from esolangs import run as execute
 from esolangs.exceptions import HaltError
 from esolangs.languages.packlang.generator import packlang
-from esolangs.languages.packlang.interpreter import _get, _Machine, _node, run
+from esolangs.languages.packlang.interpreter import _Frame, _get, _Machine, _node, run
 from esolangs.languages.packlang.interpreter._parse import _Parser
 from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
@@ -269,7 +269,6 @@ Package : IO, d {
 """
         assert _run(code) == "A1"
 
-        from esolangs.languages.packlang.interpreter import _Frame
         from esolangs.languages.packlang.interpreter._workspace import _term
         from scripts.benchmark import state_bits
 

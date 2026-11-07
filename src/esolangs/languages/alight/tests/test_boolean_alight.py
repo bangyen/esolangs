@@ -8,6 +8,12 @@ import esolangs
 from esolangs import run
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.alight import generator as boolean
+from esolangs.languages.alight.generator import (
+    _alight_chunk,
+    _alight_folded,
+    _alight_units,
+    _dimensions,
+)
 from esolangs.languages.alight.interpreter import _Machine
 from esolangs.languages.alight.interpreter import run as alight_run
 from esolangs.runtime.io import ScriptedIO
@@ -56,13 +62,6 @@ def test_alight_balance_drops_ignored_inputs(syntax, monkeypatch) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("inputs", [1, 4, 8])
 def test_alight_layouts_stay_near_the_exhaustive_column_selector(inputs) -> None:
-    from esolangs.languages.alight.generator import (
-        _alight_chunk,
-        _alight_folded,
-        _alight_units,
-        _dimensions,
-    )
-
     rng = random.Random(1025 + inputs)
     table = "".join(rng.choice("01") for _ in range(1 << inputs))
     flat = esolangs.generate("Alight", table).source
@@ -264,8 +263,6 @@ def test_alight_small_tables_at_width_40_keep_their_exact_silhouette() -> None:
     layouts still compute their tables at the same widths, so only
     the exact length and dimensions pin them.
     """
-    from esolangs.languages.alight.generator import _dimensions
-
     packed = boolean.alight("01", 40)
     assert (len(packed), _dimensions(packed)) == (788, (34, 33))
     rooted = boolean.alight("00", 40)

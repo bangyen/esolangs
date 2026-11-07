@@ -4,7 +4,12 @@ from typing import ClassVar
 
 import pytest
 
-from esolangs.languages.clockwise.interpreter import _Machine, run
+from esolangs.languages.clockwise.interpreter import (
+    _Machine,
+    move,
+    prepare_machine,
+    run,
+)
 from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
@@ -70,8 +75,6 @@ class TestMove:
 
     def test_a_position_off_the_grid_is_a_malformed_ring(self) -> None:
         """Each side of both bounds is rejected before the cell is read."""
-        from esolangs.languages.clockwise.interpreter import move
-
         grid = ["  R", "R R"]
         for row, col in ((2, 0), (-1, 0), (0, 3), (0, -1)):
             with raises_message(ValueError, "Clockwise ring is not closed"):
@@ -79,8 +82,6 @@ class TestMove:
 
     def test_the_origin_is_only_ever_entered_heading_left_or_up(self) -> None:
         """The heading-right exception guards a state no caller can build."""
-        from esolangs.languages.clockwise.interpreter import move
-
         grid = ["RR", "RR"]
         assert move(0, 1, 1, grid, 0)[:3] == (0, 0, 2)
         assert move(1, 0, 2, grid, 0)[:3] == (0, 0, 3)
@@ -89,8 +90,6 @@ class TestMove:
 
     def test_a_question_turns_once_when_nonzero(self) -> None:
         """``?`` tests whether ``acc`` is nonzero; its turn is one quarter."""
-        from esolangs.languages.clockwise.interpreter import move
-
         counts = (0, 1, 2, 3, 4, -1)
         assert [move(1, 1, 0, ["???"] * 3, acc)[2] for acc in counts] == [
             0,
@@ -124,8 +123,6 @@ class TestStepMachine:
 
     def test_snapshot_includes_the_input_bits_and_their_rotation(self) -> None:
         """A consuming ``.`` rotates the input bit list, changing the snapshot."""
-        from esolangs.languages.clockwise.interpreter import prepare_machine
-
         rows = ["+-?.;.;.;.;.;.;.;?R", "  R              R", "R                 R"]
         factory = prepare_machine(rows, {})
         machine, other = factory(ScriptedIO("0")), factory(ScriptedIO("1"))

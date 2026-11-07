@@ -7,7 +7,13 @@ import pytest
 
 import esolangs
 from esolangs.languages.three_x import generator as boolean
-from esolangs.languages.three_x.generator import _constant, _gain
+from esolangs.languages.three_x.generator import (
+    _constant,
+    _gain,
+    _shared_blocks,
+    _three_x_emit,
+    _three_x_ordered,
+)
 from esolangs.languages.three_x.tests.formulas import _key
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import state_bits
@@ -68,8 +74,6 @@ class TestThreeX:
 
     def test_reordering_only_shrinks(self) -> None:
         """No table comes out longer than the identity order's program."""
-        from esolangs.languages.three_x.generator import _three_x_ordered
-
         for i in range(256):
             table = format(i, "08b")
             identity = _three_x_ordered(table, (0, 1, 2))
@@ -77,15 +81,11 @@ class TestThreeX:
 
     def test_unimproved_tables_keep_their_emission(self) -> None:
         """A table no reorder helps emits exactly what it emitted before."""
-        from esolangs.languages.three_x.generator import _three_x_ordered
-
         for table in ("01101001", "00000001"):
             assert boolean.three_x(table) == _three_x_ordered(table, (0, 1, 2))
 
     def test_reads_stay_in_stream_order(self) -> None:
         """Only the store target moves, so the input stream is consumed the same."""
-        from esolangs.languages.three_x.generator import _three_x_ordered
-
         table = "00010111"
         for perm in ((0, 1, 2), (2, 1, 0), (1, 2, 0)):
             program = _three_x_ordered(table, perm)
@@ -97,7 +97,6 @@ class TestThreeX:
     def test_every_input_order_computes_the_table(self) -> None:
         """The permuted build computes the original table on the original stream."""
 
-        from esolangs.languages.three_x.generator import _three_x_ordered
         from esolangs.languages.three_x.interpreter import run
 
         def permuted(table: str, perm: tuple[int, ...]) -> str:
@@ -191,7 +190,6 @@ class TestThreeX:
 
     def test_repeated_blocks_are_written_once(self) -> None:
         """Three copies of one block cost one block, and the program still runs."""
-        from esolangs.languages.three_x.generator import _three_x_emit
         from esolangs.languages.three_x.interpreter import run
 
         a, b = "0010110111010001", "1101001000101110"
@@ -246,7 +244,6 @@ def test_initial_shared_block_and_ignored_inputs_execute(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from esolangs.generation.helpers import subtree_ids
-    from esolangs.languages.three_x.generator import _shared_blocks, _three_x_emit
     from esolangs.languages.three_x.interpreter import run
 
     core = "01101001" * 3 + "00000000"

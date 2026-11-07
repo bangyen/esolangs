@@ -9,6 +9,14 @@ import pytest
 import esolangs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.container import generator as boolean
+from esolangs.languages.container.generator import (
+    _RESERVED,
+    _container_threshold,
+    _container_tree,
+    _free_names,
+    _narrow_rule_parts,
+    _narrow_rules,
+)
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
 from tests.generators.sample_tables import five_input_sample
@@ -54,7 +62,6 @@ class TestContainer:
         "original", ["A:\n+9 A<=18\nEXIT:", "A=27:\n-9 A>=9\nEXIT:"]
     )
     def test_exact_delta_chunks_preserve_each_tick(self, original: str) -> None:
-        from esolangs.languages.container.generator import _narrow_rules
         from esolangs.languages.container.interpreter import _Machine
 
         before = _Machine(original.splitlines(), ScriptedIO(""))
@@ -78,10 +85,6 @@ class TestContainer:
 
     @pytest.mark.medium
     def test_factored_rules_preserve_synchronous_state(self) -> None:
-        from esolangs.languages.container.generator import (
-            _container_threshold,
-            _narrow_rules,
-        )
         from esolangs.languages.container.interpreter import _Machine
 
         original = _container_threshold("01101001")
@@ -115,8 +118,6 @@ class TestContainer:
 
     def test_name_allocation_steps_over_container_s_own_names(self) -> None:
         """Letter names reach ``T`` at 45 and ``IN`` at 754, so they collide."""
-        from esolangs.languages.container.generator import _RESERVED, _free_names
-
         names = list(itertools.islice(_free_names(_RESERVED), 800))
         assert not _RESERVED & set(names)
         assert len(set(names)) == len(names)
@@ -161,8 +162,6 @@ class TestContainer:
     ) -> None:
         """A level whose halves agree is read but never tested."""
 
-        from esolangs.languages.container.generator import _container_tree
-
         def tests(table: str) -> int:
             program = _container_tree(table, share=True)
             return program.count("IN>=") + program.count(">=IN")
@@ -197,8 +196,6 @@ class TestContainer:
 
     def test_pruning_never_grows_a_table(self) -> None:
         """No table up to three inputs comes out longer than its full tree."""
-        from esolangs.languages.container.generator import _container_tree
-
         for n in (1, 2, 3):
             for i in range(1 << (1 << n)):
                 table = format(i, f"0{1 << n}b")
@@ -212,8 +209,6 @@ class TestContainer:
 
     def test_no_line_restores_what_nothing_reads(self) -> None:
         """Unsigned deltas, no leaf decay, no output restore, a static ``OUT``."""
-        from esolangs.languages.container.generator import _container_tree
-
         program = _container_tree("01101001", share=True)
         assert "+" not in program
         assert "OUT=48:" in program
@@ -242,8 +237,6 @@ class TestContainerSharing:
     @staticmethod
     def _totals(tables: list[str]) -> tuple[int, int]:
         """Return unshared and shared tree character totals."""
-        from esolangs.languages.container.generator import _container_tree
-
         before = after = 0
         for table in tables:
             plain = len(_container_tree(table))
@@ -263,8 +256,6 @@ class TestContainerSharing:
 
     def test_a_relay_feeds_the_other_side_s_copy(self) -> None:
         """Four-input parity relays its repeated nodes and runs every row."""
-        from esolangs.languages.container.generator import _container_tree
-
         table = "0110100110010110"
         program = _container_tree(table, share=True)
         assert len(program) == 820  # 1,136 unshared
@@ -305,7 +296,6 @@ def test_balanced_parity_is_the_block_program() -> None:
 
 @pytest.mark.parametrize(("table", "weights"), [("0011", [1, 0]), ("0101", [0, 1])])
 def test_threshold_proof_keeps_ignored_latches(table: str, weights: list[int]) -> None:
-    from esolangs.languages.container.generator import _container_threshold
     from esolangs.languages.container.tests.proof_container import parse
 
     program = _container_threshold(table)
@@ -327,11 +317,6 @@ def test_threshold_proof_executes_wide_inputs() -> None:
 def _swept_balance(table: str, default: str) -> str:
     """The retired balance: narrow at every rule-fit and decimal-budget threshold."""
     from esolangs.generation.helpers import grid_width
-    from esolangs.languages.container.generator import (
-        _container_threshold,
-        _narrow_rule_parts,
-        _narrow_rules,
-    )
 
     span = grid_width(default)
     programs = [default, _container_threshold(table)]

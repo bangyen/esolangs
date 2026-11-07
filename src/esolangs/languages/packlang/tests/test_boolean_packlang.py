@@ -10,7 +10,7 @@ from esolangs.generation.wrap import (
     wrap_program,
 )
 from esolangs.languages.packlang import generator as boolean
-from esolangs.languages.packlang.generator import _folded
+from esolangs.languages.packlang.generator import _balance_form, _folded, _refolded
 from esolangs.languages.packlang.interpreter import _Machine
 from esolangs.languages.packlang.interpreter import run as packlang_run
 from esolangs.languages.packlang.wrapping import _packlang
@@ -95,8 +95,6 @@ class TestPacklangPaintedArray:
 
 @pytest.mark.parametrize("indent", [0, 4, 16, 64])
 def test_packlang_reduced_indent_crossing(indent) -> None:
-    from esolangs.languages.packlang.generator import _balance_form
-
     for table in ("0110", "0001", "10010110"):
         default = esolangs.generate("Packlang", table).source
         program = "\n".join(
@@ -240,8 +238,6 @@ def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
 
 
 def _check_refolding_leaves_foreign_or_incomplete_bodies_alone() -> None:
-    from esolangs.languages.packlang.generator import _refolded
-
     for source in (
         "foreign",
         "  Integer main {\nunfinished",

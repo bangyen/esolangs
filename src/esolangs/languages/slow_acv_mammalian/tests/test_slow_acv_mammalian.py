@@ -4,7 +4,13 @@ from functools import partial
 
 import pytest
 
-from esolangs.languages.slow_acv_mammalian.interpreter import _Machine, run
+from esolangs.languages.slow_acv_mammalian.interpreter import (
+    _advance,
+    _Machine,
+    _partial,
+    _total,
+    run,
+)
 from esolangs.languages.slow_acv_mammalian.interpreter import (
     _Machine as SlowAcvMammalian,
 )
@@ -104,29 +110,21 @@ class TestPartial:
 
     def test_consume_takes_the_middle_cell(self) -> None:
         """``CONSUME`` pops ``(len - 1) // 2``, the lower of the two middles."""
-        from esolangs.languages.slow_acv_mammalian.interpreter import _partial
-
         after, acc = _partial(3, (10, 11, 12), 0)
         assert acc == 11
         assert after == (10, 12)
 
     def test_consume_on_an_empty_array_leaves_the_state_alone(self) -> None:
-        from esolangs.languages.slow_acv_mammalian.interpreter import _partial
-
         assert _partial(3, (), 7) == ((), 7)
 
     def test_fission_splits_the_middle_cell(self) -> None:
         """``FISSION`` halves the same middle cell and hangs it off both ends."""
-        from esolangs.languages.slow_acv_mammalian.interpreter import _partial
-
         after, acc = _partial(4, (10, 12, 14), 3)
         assert acc == 3
         assert after == (6, 10, 14, 6)
 
     def test_excrete_stores_the_accumulator_modulo_the_io_modulus(self) -> None:
         """``EXCRETE`` appends ``acc % 255`` by default and clears ``acc``."""
-        from esolangs.languages.slow_acv_mammalian.interpreter import _partial
-
         after, acc = _partial(2, (), 256)
         assert acc == 0
         assert after == (1,)
@@ -143,16 +141,12 @@ class TestTotal:
 
     def test_seed_adds_each_arrays_index_to_its_head(self) -> None:
         """``SEED`` adds ``index + 1`` to every array's first cell."""
-        from esolangs.languages.slow_acv_mammalian.interpreter import _total
-
         arrays = _total(0, tuple((10, 0) for _ in range(23)))
         assert [arr[0] for arr in arrays] == [11 + k for k in range(23)]
         assert all(arr[1] == 0 for arr in arrays)
 
     def test_seed_skips_an_empty_array(self) -> None:
         """An empty array has no head to seed, so it stays empty."""
-        from esolangs.languages.slow_acv_mammalian.interpreter import _total
-
         before = [() for _ in range(23)]
         before[5] = (1,)
         arrays = _total(0, tuple(before))
@@ -161,8 +155,6 @@ class TestTotal:
 
     def test_conflagrate_pairs_the_flattened_memory(self) -> None:
         """``CONFLAGRATE`` folds the memory end to end, across array bounds."""
-        from esolangs.languages.slow_acv_mammalian.interpreter import _total
-
         before = [() for _ in range(23)]
         before[0] = (9, 2)
         arrays = _total(1, tuple(before))
@@ -174,8 +166,6 @@ class TestSprintIndex:
 
     def test_an_accumulator_past_the_far_end_reports_a_list(self) -> None:
         """Walking off the front raises, and says "list", not "tuple"."""
-        from esolangs.languages.slow_acv_mammalian.interpreter import _advance
-
         arrays = tuple((0,) for _ in range(23))
         with raises_message(IndexError, "list index out of range"):
             _advance((arrays, 0, -2, 0, False), 6)
@@ -237,8 +227,6 @@ class TestContract(SnapshotContract):
 
 @pytest.mark.parametrize("cell_modulus", [255, 256])
 def test_conflagrate_uses_cell_modulus(cell_modulus: int) -> None:
-    from esolangs.languages.slow_acv_mammalian.interpreter import _total
-
     arrays = ((512, 254),) + ((),) * 22
     assert _total(1, arrays, cell_modulus)[0] == (510, 256 % cell_modulus)
 
