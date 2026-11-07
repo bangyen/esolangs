@@ -32,6 +32,7 @@ from esolangs.generation.helpers import (
     input_weights,
     subtree_ids,
 )
+from esolangs.generation.lookup import constant_output
 
 __all__ = ["cvnc"]
 
@@ -365,9 +366,9 @@ def cvnc(truth_table: str) -> str:
     # A tree over the inputs that matter, its ignored reads bare, against the
     # full tree, whose sharing is sometimes the shorter; a tie keeps the full.
     n = _validate_truth_table(truth_table)
-    if truth_table.count(truth_table[0]) == len(truth_table):
+    if (constant := constant_output(truth_table)) is not None:
         return _render(
-            [_READ] * n + [_NORMALIZE] + [_INCREMENT] * int(truth_table[0]) + [_PRINT]
+            [_READ] * n + [_NORMALIZE] + [_INCREMENT] * int(constant) + [_PRINT]
         )
     weights, table = input_weights(truth_table, n)
     shapes = [(truth_table, [1] * n)]

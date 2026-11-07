@@ -10,7 +10,6 @@ from esolangs.exceptions import TruthTableError
 from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.languages.crement.generator import (
     PAIR,
-    _crement_ordered,
     crement,
     crement_setters,
 )
@@ -19,7 +18,32 @@ from esolangs.vm import run_until_halt_or_cycle
 from tests.generators.sample_tables import five_input_sample
 from tests.support.divergence import diverges
 from tests.support.evaluation import _evaluate
+from tests.support.generator_support import source_shape
 from tests.support.witness_tables import dense, parity
+
+
+def _plain(table: str, perm: tuple[int, ...]) -> str:
+    """Independent unshared tree: reserve three native lines per nonconstant split."""
+    lines = ["", "", "+J @ 1"] + [TEMPLATE_CHAR * len("+J 0 0"), "+J 0 1"] * len(perm)
+
+    def emit(bits, level):
+        if len(set(bits)) == 1:
+            return 1 + int(bits[0])
+        at = len(lines)
+        lines.extend([""] * 3)
+        half = len(bits) // 2
+        zero, one = emit(bits[:half], level + 1), emit(bits[half:], level + 1)
+        cell = 3 + 2 * perm[level]
+        lines[at : at + 3] = [
+            f"+A {cell} {one - 1}",
+            f"+A {cell + 1} {zero - 1}",
+            f"+J {cell} 1",
+        ]
+        return at
+
+    lines[0] = f"+J {emit(table, 0)} 1"
+    lines[1] = f"+J {len(lines)} 1"
+    return "\n".join(lines)
 
 
 def instantiate_crement(template: str, bits: list[int]) -> str:
@@ -159,35 +183,31 @@ class TestCrementTree:
 
     def test_initial_tester_uses_the_chosen_input(self) -> None:
         """Entry names the retained input's initialized tester."""
+        from esolangs.languages.crement import generator
+
+        assert not {"_Ref", "_crement_ordered"} & vars(generator).keys()
         template = crement("10101010")
         assert template.splitlines()[0] == "+J 7 1"
         assert template.splitlines()[9:] == []
         _check("10101010")
-        assert len(template) < len(_crement_ordered("10101010", (0, 1, 2)))
+        assert len(template) < len(_plain("10101010", (0, 1, 2)))
 
     @pytest.mark.parametrize("n", [2, 3])
     def test_reordering_never_grows_a_template(self, n: int) -> None:
         """Every table is at most its name-order template, as emitted."""
-        identity = tuple(range(n))
-        old = new = 0
-        for table_int in range(2 ** (2**n)):
-            table = format(table_int, f"0{2**n}b")
-            before = len(_crement_ordered(table, identity))
-            after = len(crement(table))
-            assert after <= before, table
-            old, new = old + before, new + after
-        assert (old, new) == {2: (1416, 928), 3: (42580, 35592)}[n]
+        tables = [format(value, f"0{1 << n}b") for value in range(1 << (1 << n))]
+        assert (
+            TestCrementSharing._totals(tables) == {2: (1416, 928), 3: (42580, 35592)}[n]
+        )
 
     def test_runs_a_handful_of_commands_per_input(self) -> None:
         """Initialized complemented AND uses one tester per bit."""
+        from tests.support.event_io import count_steps
+
         for n in (2, 4, 6):
             template = crement("1" * (2**n - 1) + "0")
             machine = _Machine(instantiate_crement(template, [1] * n))
-            steps = 0
-            while not machine.halted:
-                machine.step()
-                steps += 1
-            assert steps == n + 2
+            assert count_steps(machine, n + 2) == n + 2
 
 
 class TestCrementSharing:
@@ -198,10 +218,9 @@ class TestCrementSharing:
         """(plain, shipped) character totals."""
         before = after = 0
         for table in tables:
-            plain = len(
-                _crement_ordered(table, tuple(range(len(table).bit_length() - 1)))
-            )
+            plain = len(_plain(table, tuple(range(len(table).bit_length() - 1))))
             shipped = len(crement(table))
+            assert shipped <= plain, table
             before, after = before + plain, after + shipped
         return before, after
 
@@ -219,7 +238,7 @@ class TestCrementSharing:
         table = "01101001" * 4
         template = crement(table)
         assert len(template) < len(
-            _crement_ordered(table, tuple(range(len(table).bit_length() - 1)))
+            _plain(table, tuple(range(len(table).bit_length() - 1)))
         )
         _check(table)
 
@@ -276,19 +295,11 @@ class TestCrementSweepPins:
             "00101100001000010100111101100100101100011000101010101100110101111000000011001011101100001110010111011000010011100111000111111101110111101000001111100110110100001110100100111101110100110100000010001111001011100001100010100101110000110101110010101101101011001000010100101000000000000110101110010101111100110001110000100011111010001110101000101011111000001010000011111111011101011010001011110100111110000110100101000101110001100000001111001001010101101101100001110001001010100100101100110011010101010110000101011101001100110110100111101001110100110010100001100011100100001111011111011100111001111000011000011101011111110011010001110100011111100000010010101110100101000101000101011111111001101101011101001000000001111111010011111111100000011100001010111100100100111111000111101111011111011010011001001100000000100111001000101001010110100100001001011010110110000000111010000101001000100001110011000110011101001011101010100100101000001001111000000100100100011110000111101010000101110010011100110100000100010111000011111111111110110011000001010000111101001001000111100111010001111101010101100101100001011010101000110010001001110110101001010111101000001001010110011110110111111001011000111001101110001101101001101010011010110100001101011000101100010000111001011011100100101001101011100001010000101110101110000000110011100010010010111110111100101001111110011000100110000010110111001101001100000100110111010110100111101000110110010100011001100001100101100001101111110011001001000001011111110111100101101101101110101001010110001111101001101110000100011010101111111001111000011011010001001011100000111100010011101000100001110000101111111010011100111101001001010100101010110111110101100111010000000011111000010011110000001100011101100100011010011011101010111111000100101100111100001100011011000000010111011010010011111110010001100100101101111101101100000111110110001111011010110001101110111011001010100000011111011101110000010111100100011100010010000100011101110111011000001100001001000000101000100010110101001001001101111100110000110011111101101111101111110101",
             width=10,
         )
-        assert (
-            len(program),
-            program.count("\n") + 1,
-            max(map(len, program.split("\n"))),
-        ) == (11758, 1294, 10)
+        assert source_shape(program) == (11758, 1294, 10)
 
     def test_width_six_preserves_preset_and_generic_setters(self) -> None:
         program = crement("0110", width=6)
-        assert (
-            len(program),
-            program.count("\n") + 1,
-            max(map(len, program.split("\n"))),
-        ) == (70, 11, 6)
+        assert source_shape(program) == (70, 11, 6)
         assert crement_setters(program, 2) == (("0", "1"),) * 2
         generic = crement("00110110", width=6)
         assert crement_setters(generic, 3) == (PAIR,) * 3
@@ -300,8 +311,4 @@ class TestCrementSweepPins:
             "00110000000011001001110100010000100110101010000001010110001111101001100110011110110101110001100000010010000001011100101111111101110011100010100111011100000001011101100110110011011101101010000100100011111100001011001111010011100110000101101111010100000110110110110001000100100111100010010101101001000010010101110001011101001100111011101011110000100001000001101011101001110011100001101010101110101010101100011101010111010010110110010010010011010010100011011001000100100010110011101110000110011111010111100001010011",
             balance=True,
         ).source
-        assert (
-            len(program),
-            program.count("\n") + 1,
-            max(map(len, program.split("\n"))),
-        ) == (3602, 46, 83)
+        assert source_shape(program) == (3602, 46, 83)

@@ -6,6 +6,7 @@ from itertools import pairwise, permutations, product
 from esolangs.generation import helpers
 from esolangs.generation.lookup import (
     change_points,
+    constant_output,
     packed_cells,
     prefix_counts,
     symmetric_outputs,
@@ -38,6 +39,7 @@ def _check_permutations(n):
                 assert decoded == (
                     table.translate(str.maketrans("01", "10")) if complement else table
                 )
+        assert constant_output(table) == (table[0] if len(set(table)) == 1 else None)
         boundaries = change_points(table)
         runs = [0, *boundaries, len(table)]
         assert boundaries == sorted(set(boundaries))

@@ -6,7 +6,6 @@ from functools import partial
 
 import pytest
 
-import esolangs
 from esolangs.generation.helpers import in_input_order
 from esolangs.languages.cvnc import generator as boolean
 from esolangs.languages.cvnc.generator import (
@@ -14,10 +13,9 @@ from esolangs.languages.cvnc.generator import (
     _direct,
     _halt,
 )
-from tests.generators.boolean_runners import _runner
+from tests.generators.boolean_runners import _runner, assert_runner_rows
 from tests.generators.sample_tables import five_input_sample
-from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output
+from tests.support.generator_support import assert_constant_roots
 from tests.support.witness_tables import witnesses
 
 run_cvnc = _runner("cvnc", newline=True)
@@ -58,9 +56,7 @@ class TestCvnc:
         assert _leaves(program) == 2
         assert _branches(program) == 1  # only the root still branches
         assert program.count("s") == 5  # the root's, then two owed on each arm
-        for combo in range(8):
-            bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
-            assert run_cvnc(program, bits) == "11110000"[combo]
+        assert_runner_rows(run_cvnc, program, "11110000")
 
     def test_folding_shortens_the_program(self) -> None:
         assert len(boolean.cvnc("00000000")) < len(boolean.cvnc("01101001"))
@@ -92,10 +88,7 @@ class TestCvnc:
             assert _halt(squarings) in program
             assert _halt(squarings + 1) not in program
             assert len(program) < module._reach(squarings)
-            n = len(table).bit_length() - 1
-            for combo in range(len(table)):
-                bits = f"{combo:0{n}b}"
-                assert run_cvnc(program, bits) == table[combo], (table, bits)
+            assert_runner_rows(run_cvnc, program, table)
 
     def test_squarings_match_the_retry_search_it_replaced(self) -> None:
         """The closed form never undershoots the old one-more-squaring loop.
@@ -131,9 +124,7 @@ class TestCvnc:
         monkeypatch.setattr(module, "_HALT_SQUARINGS", 5)
         table = "11101000"
         program = boolean.cvnc(table)
-        for combo in range(8):
-            bits = f"{combo:03b}"
-            assert run_cvnc(program, bits) == table[combo], bits
+        assert_runner_rows(run_cvnc, program, table)
 
     def test_every_leaf_ends_by_halting(self) -> None:
         """Without the halting jump a then-arm falls into its own loop end."""
@@ -145,8 +136,7 @@ class TestCvnc:
         """A folded root still holds an unpredictable bit."""
         program = boolean.cvnc("00")
         assert "sə" in program  # the floor rides the read's own vowel slot
-        for bit in ("0", "1"):
-            assert run_cvnc(program, [bit]) == "0"
+        assert_runner_rows(run_cvnc, program, "00")
 
 
 class TestCvncSharing:
@@ -199,9 +189,7 @@ class TestCvncSharing:
             program = boolean.cvnc(table)
             plain = in_input_order(table, _direct)
             assert not program.endswith(plain), table
-            for combo in range(2**n):
-                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-                assert run_cvnc(program, bits) == table[combo], f"{table} {bits}"
+            assert_runner_rows(run_cvnc, program, table)
 
 
 @pytest.mark.parametrize("n", [1, 2, 3])
@@ -211,9 +199,7 @@ def test_lf_wrapped_generators_execute_every_small_table(n: int, width: int) -> 
     for table in witnesses(n):
         raw = boolean.cvnc(table)
         wrapped = "\n".join(raw[at : at + width] for at in range(0, len(raw), width))
-        for row, expected in enumerate(table):
-            inputs = list(format(row, f"0{n}b"))
-            assert run_cvnc(wrapped, inputs) == expected
+        assert_runner_rows(run_cvnc, wrapped, table)
 
 
 #: A pair spelled alone, by its two bits: constants fold to a read and a leaf.
@@ -277,17 +263,4 @@ class TestCvncScalingBound:
 def _check_constants() -> None:
     from esolangs.languages.cvnc.interpreter import run
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "CV(N)(C)", bit * (1 << n), **options
-                ).source
-                for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(
-                        esolangs.encode_inputs("CV(N)(C)", [int(b) for b in row])
-                        + "7\n",
-                        expected=n,
-                    )
-                    assert_constant_output(run, program, io, bit, n)
-                    assert io.input_num() == 7
+    assert_constant_roots("CV(N)(C)", run, token=True)

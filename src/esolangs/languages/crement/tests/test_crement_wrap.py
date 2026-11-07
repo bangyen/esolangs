@@ -7,6 +7,7 @@ import pytest
 import esolangs
 from esolangs.languages.crement.generator import crement
 from tests.support.divergence import diverges
+from tests.support.generator_support import source_shape
 
 
 @pytest.mark.medium
@@ -21,16 +22,8 @@ def test_crement_width_narrows_the_widest_instruction() -> None:
     table = f"{random.Random(0).getrandbits(2048):02048b}"[:1536] + "0" * 512
     default = esolangs.generate("Crement", table)
     narrowed = esolangs.generate("Crement", table, width=9)
-    assert (
-        len(default.source),
-        len(default.source.splitlines()),
-        max(map(len, default.source.splitlines())),
-    ) == (9106, 1012, 10)
-    assert (
-        len(narrowed.source),
-        len(narrowed.source.splitlines()),
-        max(map(len, narrowed.source.splitlines())),
-    ) == (9103, 1012, 9)
+    assert source_shape(default.source) == (9106, 1012, 10)
+    assert source_shape(narrowed.source) == (9103, 1012, 9)
     rows = {0, 1, 511, 512, 1023, 1024, 1535, 1536, 2047}
     rows.update(random.Random(1).sample(range(2048), 23))
     assert {table[row] for row in rows} == {"0", "1"}

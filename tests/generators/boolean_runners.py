@@ -46,3 +46,10 @@ def _run_from(module: str, program: str, feed: Iterator[str]) -> str:
     with redirect_stdout(buffer):
         run(program, io=CharacterFeed())
     return buffer.getvalue()
+
+
+def assert_runner_rows(run: Runner, program: str, table: str, *, rows=None) -> None:
+    """Check the selected native rows, retaining the runner's input spelling."""
+    n = len(table).bit_length() - 1
+    for row in range(len(table)) if rows is None else rows:
+        assert run(program, list(format(row, f"0{n}b"))) == table[row], (table, row)

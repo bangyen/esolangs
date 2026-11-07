@@ -39,6 +39,7 @@ from esolangs.generation.helpers import (
     input_weights,
     read_at,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.wrap import balance_score
 
 #: Each input's cell: ``~`` pushes a down heading, ``.`` nothing.
@@ -75,7 +76,7 @@ def arrowqueue(truth_table: str, width: int | None = None) -> str:
     Unbounded, the smaller by area of the unfolded cascade and the folds.
     """
     program = _program(truth_table, width)
-    if width is None and len(set(truth_table)) > 1:
+    if width is None and constant_output(truth_table) is None:
         return min([program, *_folds(truth_table)], key=grid_rank)
     return program
 
@@ -109,8 +110,8 @@ def _constant_ring(n: int, width: int) -> str:
 def _program(truth_table: str, width: int | None = None) -> str:
     """Build the marker cascade, or a direct constant halt/ring."""
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
-        if truth_table[0] == "0":
+    if (constant := constant_output(truth_table)) is not None:
+        if constant == "0":
             return "+" + ("\n" + TEMPLATE_CHAR) * n
         if n >= 3:
             forms = [_constant_ring(n, 4), _constant_ring(n, max(4, -(-(n + 8) // 3)))]
@@ -300,6 +301,6 @@ def _folds(table: str) -> list[str]:
 
 def _balance(table: str, default: str) -> str:
     """Return the default or the fold with the least balanced side."""
-    if len(set(table)) == 1:
+    if constant_output(table) is not None:
         return default
     return min([default, *_folds(table)], key=balance_score)

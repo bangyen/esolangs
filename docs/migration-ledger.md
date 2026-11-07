@@ -1059,3 +1059,22 @@ including separate cold and hot Piet construction. Installed Python 3.12–3.15
 checks execute 8,552 rows and fifteen isolated workers each with the image extra;
 retired imports fail and certification/proof imports remain blocked. Sixteen
 backend audits remain; catalog acceptance stays open.
+
+
+Clockwise, ArrowQueue, Collatz Multiverse, Crement and CV(N)(C) use canonical
+constant analysis. Collatz packing and exceptional endpoints move to lookup;
+Crement uses canonical reduced diagrams, retaining native patch/address order.
+Its independent unshared oracle moves into tests; `_Ref` and `_crement_ordered`
+are removed. Queue folds, ring geometry, Collatz code prices and CV(N)(C)
+syllable/jump construction remain emitter-owned.
+
+The four-backend corpus preserves 2,608 artifacts, 8,480 rows and 401,708 semantic
+samples; Clockwise separately preserves 652 artifacts, 8,480 layout rows and
+1,556,056 samples. The four retain 700 larger layouts, 225 size witnesses,
+32 pins, ten anchors and all 43 resource/scaling nodes. All 64 timing contexts
+pass (minimum ratio 0.9493); Clockwise's 28 pass at 0.9759 minimum. Twelve live
+query faults change 79 executed answers; five cost controls enlarge correct
+programs. Installed Python 3.12–3.15 checks execute 8,480 rows, fourteen isolated
+workers and all fault controls each; retired imports fail and certification/proof
+imports stay blocked. Clockwise has separate installed and resource evidence.
+Eleven backend audits remain; catalog acceptance stays open.

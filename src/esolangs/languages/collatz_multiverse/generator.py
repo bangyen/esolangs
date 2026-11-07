@@ -34,6 +34,7 @@ from esolangs.generation.helpers import (
     grid_width,
     read_at,
 )
+from esolangs.generation.lookup import constant_output, exceptional_row, packed_cells
 from esolangs.generation.wrap import balance_score
 
 __all__ = ["balance_collatz_multiverse", "collatz_multiverse"]
@@ -147,11 +148,7 @@ def _cm_build(
     if invert:
         truth_table = "".join("10"[int(bit)] for bit in truth_table)
     table = read_at(truth_table, order, n)
-    padded = table + "0" * (-len(table) % chunk)
-    chunks = [
-        sum(int(bit) << j for j, bit in enumerate(padded[base : base + chunk]))
-        for base in range(0, len(padded), chunk)
-    ]
+    chunks = list(map(ord, packed_cells(table, chunk)))
     uses = Counter(chunks)
     codes = _cm_codes(uses) if numbered else {value: value for value in chunks}
 
@@ -359,8 +356,8 @@ def _cm_chunk(table: str) -> int:
     """Use eight-row cells for endpoint products from seven inputs."""
     if len(table) < 128:
         return _CM_CHUNK
-    ones = table.count("1")
-    if ones in (1, len(table) - 1) and table[0] != table[-1]:
+    entry = exceptional_row(table)
+    if entry is not None and entry[0] in (0, len(table) - 1):
         return 8
     return _CM_CHUNK
 
@@ -394,12 +391,10 @@ def _cm_candidates(
     truth_table: str, n: int, *, narrow: bool, expanded: bool
 ) -> list[str]:
     """Return one constant/affine stream, otherwise the selector orders."""
-    if len(set(truth_table)) == 1:
+    if (constant := constant_output(truth_table)) is not None:
         # A constant table needs no evaluation, but the reads are the
         # interface: skipping them strands the caller's bits and the prompts.
-        return [
-            _cm_constant_program(n, _ASCII_ZERO + int(truth_table[0]), narrow=narrow)
-        ]
+        return [_cm_constant_program(n, _ASCII_ZERO + int(constant), narrow=narrow)]
     if (affine := _cm_affine_program(truth_table, n)) is not None:
         return [affine]
     orders = _cm_orders(essential_inputs(truth_table, n), expanded=expanded)

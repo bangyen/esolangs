@@ -238,18 +238,21 @@ def assert_constant_output(run, code, io, expected, reads, **run_kwargs):
     assert io.past_end == 0
 
 
-def assert_constant_roots(language, run, *, split=False):
-    """Check character-input constants, all reads and the following record."""
+def assert_constant_roots(language, run, *, split=False, token=False):
+    """Check constants, all reads and the following character or numeric record."""
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate(language, bit * (1 << n), **options).source
                 for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row + "7", expected=n)
+                    stdin = esolangs.encode_inputs(language, list(map(int, row)))
+                    io = ReadFirstIO(stdin + ("7\n" if token else "7"), expected=n)
                     assert_constant_output(
                         run, program.splitlines() if split else program, io, bit, n
                     )
-                    assert io.input_char() == ord("7")
+                    assert (io.input_num() if token else io.input_char()) == (
+                        7 if token else ord("7")
+                    )
 
 
 def measure_run(machine, *, limit=None):
@@ -281,18 +284,14 @@ def constant_runs(
 ):
     """Yield steps and peak written bits, checking constant I/O and the next record."""
     from scripts.benchmark import WrittenState
+    from tests.support.event_io import count_steps
 
     for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
         stdin = esolangs.encode_inputs(language, row_bits(row, n))
         io = ReadFirstIO(stdin + ("\n7\n" if token else "7"), expected=n)
         machine = make_machine(program, io)
         written = WrittenState(machine.workspace_snapshot())
-        steps = 0
-        while not machine.halted:
-            machine.step()
-            written.sample(machine.workspace_snapshot())
-            steps += 1
-            assert steps < limit
+        steps = count_steps(machine, limit - 1, written=written)
         assert (io.getvalue().strip() if strip else io.getvalue()) == bit
         assert io.past_end == 0
         assert (io.input_num() if token else io.input_char()) == (
@@ -311,3 +310,9 @@ def constant_layouts(build, balance, table):
     oracle = min(layouts.values(), key=balance_score)
     assert balance_score(balance(table, default)) == balance_score(oracle)
     return layouts
+
+
+def source_shape(source):
+    """Return text characters, LF-separated rows and maximum row width."""
+    rows = source.split("\n")
+    return len(source), len(rows), max(map(len, rows))

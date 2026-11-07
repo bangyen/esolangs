@@ -30,6 +30,7 @@ from itertools import pairwise
 from math import isqrt
 from typing import Any
 
+from esolangs.generation.decision import reduced_diagram
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -39,9 +40,9 @@ from esolangs.generation.helpers import (
     layout_width,
     same_tokens,
     same_up_to_wrapping,
-    subtree_ids,
     symmetric_weights,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
 
 __all__ = ["crement"]
@@ -73,8 +74,8 @@ def crement(truth_table: str, width: int | None = None) -> str:
     templates use that field form too.
     """
     n = _validate_truth_table(truth_table)
-    if truth_table == truth_table[0] * len(truth_table):
-        target = 0 if truth_table[0] == "1" else n + 1
+    if (constant := constant_output(truth_table)) is not None:
+        target = 0 if constant == "1" else n + 1
         template = "\n".join([f"+J {target} 1", *[TEMPLATE_CHAR * len(PAIR[0])] * n])
     else:
         template = in_input_order(truth_table, _crement_shared)
@@ -119,10 +120,7 @@ def _crement_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     """Return one order's shared template."""
     if _preset_family(truth_table, len(perm)):
         return _preset_template(truth_table, perm)
-    return _crement_ordered(truth_table, perm, share=True)
-
-
-type _Ref = int | tuple[int, int]
+    return _shared_template(truth_table, perm)
 
 
 def _preset_family(table: str, n: int) -> bool:
@@ -137,52 +135,44 @@ def _preset_family(table: str, n: int) -> bool:
 
 
 def _preset_template(table: str, perm: tuple[int, ...]) -> str:
-    """Reuse each level's first tester state; parent references bypass its call."""
+    """Initialize each level's tester to its first native branch state."""
     n = len(perm)
-    ids = subtree_ids(table)
-    nodes: dict[tuple[int, int], tuple[_Ref, _Ref]] = {}
-    order: list[tuple[int, int]] = []
-    defaults: dict[int, tuple[_Ref, _Ref]] = {}
+    nodes, root = reduced_diagram(table, n)
+    order: dict[int, None] = {}
+    defaults: dict[int, tuple[int, int]] = {}
 
-    def visit(level: int, block: int) -> _Ref:
-        node = ids[level][block]
-        if node < 2:
-            return node
-        if ids[level + 1][2 * block] == ids[level + 1][2 * block + 1]:
-            return visit(level + 1, 2 * block)
-        key = (level, node)
-        if key not in nodes:
-            order.append(key)
-            children = (visit(level + 1, 2 * block), visit(level + 1, 2 * block + 1))
-            nodes[key] = children
-            defaults.setdefault(level, children)
-        return key
+    def visit(ref: int) -> None:
+        if ref < 2 or ref in order:
+            return
+        node = nodes[ref]
+        order[ref] = None
+        visit(node.zero)
+        visit(node.one)
+        defaults.setdefault(node.level, (node.zero, node.one))
 
-    root = visit(0, 0)
+    visit(root)
     first = _HEADER_LINES + 2 * n
-    position: dict[tuple[int, int], int] = {}
+    position: dict[int, int] = {}
     end = first
-    for key in order:
-        zero, one = nodes[key]
-        z0, o0 = defaults[key[0]]
+    for ref in order:
+        level, zero, one = nodes[ref]
+        z0, o0 = defaults[level]
         if (zero, one) == (z0, o0):
-            position[key] = _HEADER_LINES + 2 * perm[key[0]]
+            position[ref] = _HEADER_LINES + 2 * perm[level]
         else:
-            position[key] = end
+            position[ref] = end
             end += 1 + (zero != z0) + (one != o0)
 
-    def address(ref: _Ref) -> int:
-        if isinstance(ref, int):
-            return _LOOP + 1 if ref else _HALT + 1
-        return position[ref]
+    def address(ref: int) -> int:
+        return (_LOOP + 1 if ref else _HALT + 1) if ref < 2 else position[ref]
 
     body = []
-    for key in order:
-        zero, one = nodes[key]
-        z0, o0 = defaults[key[0]]
+    for ref in order:
+        level, zero, one = nodes[ref]
+        z0, o0 = defaults[level]
         if (zero, one) == (z0, o0):
             continue
-        cell = _HEADER_LINES + 2 * perm[key[0]]
+        cell = _HEADER_LINES + 2 * perm[level]
         if one != o0:
             body.append(f"+A {cell} {address(one) - 1}")
         if zero != z0:
@@ -198,53 +188,33 @@ def _preset_template(table: str, perm: tuple[int, ...]) -> str:
     )
 
 
-def _crement_ordered(
-    truth_table: str, perm: tuple[int, ...], *, share: bool = False
-) -> str:
-    """Emit one split order's template; level ``k`` calls input ``perm[k]``'s tester.
-
-    The runs, and so the testers, stay in name order.  With ``share`` a
-    parent may name a copy emitted for another: sound, since a node patches
-    its tester's two targets itself on every entry.
-    """
-    n = _validate_truth_table(truth_table)
-    lines: list[str] = []
-    tester = [_HEADER_LINES + 2 * perm[level] for level in range(n)]
+def _shared_template(table: str, perm: tuple[int, ...]) -> str:
+    """Emit each reduced node once, with native child patches and calls."""
+    n = len(perm)
+    nodes, root = reduced_diagram(table, n)
     first = _HEADER_LINES + 2 * n
-    ids = subtree_ids(truth_table)  # O(2**n), so a node's lookup is O(1)
-    placed: dict[tuple[int, int], int] = {}
+    lines: list[str] = []
+    placed: dict[int, int] = {}
 
-    def walk(level: int, block: int) -> int:
-        """Emit the subtree at ``block`` of ``level``; return its first line."""
-        key = ids[level][block]
-        if key < 2:
-            return _LOOP + 1 if key else _HALT + 1
-        if (level, key) in placed:
-            return placed[level, key]
-        # Equal halves need no test: the parent names the child directly.
-        if share and ids[level + 1][2 * block] == ids[level + 1][2 * block + 1]:
-            return walk(level + 1, 2 * block)
-        at = first + len(lines)
-        if share:
-            placed[level, key] = at
-        lines.extend([""] * _NODE_LINES)  # reserve the node's lines
-        zero = walk(level + 1, 2 * block)
-        one = walk(level + 1, 2 * block + 1)
-
-        # A child is named by its absolute line, one less as ``+A`` data.
-        cell = tester[level]
-        rel = at - first
-        lines[rel] = f"+A {cell} {one - 1}"
-        lines[rel + 1] = f"+A {cell + 1} {zero - 1}"
-        lines[rel + 2] = f"+J {cell} 1"
+    def emit(ref: int) -> int:
+        if ref < 2:
+            return _LOOP + 1 if ref else _HALT + 1
+        if ref in placed:
+            return placed[ref]
+        level, zero, one = nodes[ref]
+        at = placed[ref] = first + len(lines)
+        lines.extend([""] * _NODE_LINES)
+        zero, one = emit(zero), emit(one)
+        cell = _HEADER_LINES + 2 * perm[level]
+        lines[at - first : at - first + 3] = [
+            f"+A {cell} {one - 1}",
+            f"+A {cell + 1} {zero - 1}",
+            f"+J {cell} 1",
+        ]
         return at
 
-    root = walk(0, 0)
-    header = [
-        f"+J {root} 1",
-        f"+J {first + len(lines)} 1",
-        "+J @ 1",
-    ]
+    start = emit(root)
+    header = [f"+J {start} 1", f"+J {first + len(lines)} 1", "+J @ 1"]
     testers = [TEMPLATE_CHAR * len(PAIR[0]), "+J 0 1"] * n
     return "\n".join(header + testers + lines)
 

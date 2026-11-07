@@ -5,6 +5,7 @@ import pytest
 import esolangs
 from esolangs.languages.arrowqueue.generator import arrowqueue
 from tests.support.divergence import diverges
+from tests.support.generator_support import source_shape
 from tests.support.witness_tables import row_bits
 
 
@@ -53,8 +54,7 @@ def test_width_six_builds_the_wide_cascade() -> None:
     from tests.support.evaluation import _evaluate
 
     template = esolangs.generate("ArrowQueue", "01011100", width=6)
-    lines = template.source.splitlines()
-    assert (len(template.source), len(lines), max(map(len, lines))) == (195, 36, 6)
+    assert source_shape(template.source) == (195, 36, 6)
     assert _evaluate("ArrowQueue", template, inputs=3) == "01011100"
 
 
@@ -110,12 +110,7 @@ def test_balanced_three_input_sizes_are_pinned(
     from tests.support.evaluation import _evaluate
 
     program = esolangs.generate("ArrowQueue", table, balance=True)
-    lines = program.source.split("\n")
-    assert (len(lines), max(map(len, lines)), len(program.source)) == (
-        rows,
-        cols,
-        chars,
-    )
+    assert source_shape(program.source) == (chars, rows, cols)
     assert _evaluate("ArrowQueue", program, inputs=3) == table
 
 
