@@ -1260,3 +1260,31 @@ Installed Python 3.12.11, 3.13.15, 3.14.7 and cached 3.15.0rc1 each round-trip
 EOF and command-limit failures retain progress and agree across native/isolated
 routes; certification imports stay blocked. Three backend audits remain; stable
 3.15 final and catalog-wide acceptance stay open.
+
+
+Smallfuck uses canonical constant recognition and row-indexed ANF coefficients
+for its two-input Davio leaves. Canonical ANF has a closed four-row path;
+band cells, paired-root codes, deferred definitions and pointer costs remain
+native. All 2,093 template requests retain baseline bytes across seven layouts,
+including constants through sixteen inputs; 15,911 native rows execute correctly.
+The complete small-table trace scope retains 14,840 native/VM rows and 1,310,589
+semantic samples, coupled to filled-program hashes. Ten direct plain, deferred,
+banked and paired constructions retain 1,280 rows and their construction limits.
+
+The original aggregate trace hits its sixty-second cap. The same seven-layout
+scope passes as sixty-three bounded leaves; immutable tuple caching is checked
+against uncached digests and live mutation controls. All 65,817 ANF comparisons
+match, with independent subset-XOR oracles through three inputs. All forty-two
+prior test assertions, cases and oracles survive import consolidation.
+Five query faults change nineteen answers; disabling sharing grows a correct
+witness from 1,170 to 1,473 characters across 512 runs. Three validation/template
+controls fire. Sixteen timing contexts pass (minimum ratio 0.9724); eight pins,
+three size anchors and thirteen resource/scaling nodes pass unchanged.
+`just test` passes 16,259 cases with twelve skips.
+
+Installed Python 3.12.11, 3.13.15, 3.14.7 and cached 3.15.0rc1 each round-trip
+1,932 templates and execute 728 native/VM rows from 168 templates, plus six
+guarded workers and all fault/cost controls. Template rejection, post-halt output
+without duplication, malformed source, command limits and a post-halt output cap
+pass; certification imports stay blocked. Two backend audits remain; stable
+3.15 final and catalog-wide acceptance stay open.
