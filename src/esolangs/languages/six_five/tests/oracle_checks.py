@@ -8,6 +8,13 @@ import pytest
 
 from esolangs.languages.six_five.interpreter import _Machine
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import (
+    missing_workspace,
+    workspace_model,
+    workspace_view,
+)
+
+_WORKSPACE = workspace_model("six-five-v1", "accumulator tape instruction input_cursor")
 
 _TOKENS = re.compile(r"[78][\s\S]?|C[^\n]*(?:\n|$)|[\s\S]")
 
@@ -92,10 +99,13 @@ def _model(source, stdin):
 
 def _agrees(factory, source, stdin):
     expected = _model(source, stdin)
-    assert (
-        observed(factory, source, stdin, lambda m: (*m.state, tuple(m.memory), m.ip))
-        == expected
-    ), (source, stdin)
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (row[0][1], row[0][2], row[0][0], row[-1]),
+        lambda m: (*m.state, tuple(m.memory), m.ip),
+    )
+    assert observed(factory, source, stdin, checked) == expected, (source, stdin)
     return expected
 
 
@@ -189,4 +199,7 @@ def check_raw_six_five():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    return len(results), len(controls)
+    for component in _WORKSPACE.components:
+        with pytest.raises(AssertionError):
+            _agrees(missing_workspace(_Machine, component), "B13B", "λA")
+    return len(results), len(controls) + 4
