@@ -1601,3 +1601,23 @@ catalog observations stay identical; only ArrowQueue accounting changes.
 An altered width is rejected. `just test` passes 16,260 tests in 230.6 seconds.
 This bounded accounting scope is reviewed; language/catalog completion stays
 open.
+
+
+Ascenic's existing oracle passes 4,356 scripted cases and eight live controls.
+Its seeded public audit covers 4,856 cases/30,271 boundaries, including 495
+seed-one cases, completed 80-item stacks, output followed by EOF and numeric
+whitespace exhaustion. All three components are written; independent captures
+and charged peaks match. Five literal charges are 447/87/10/2/7 bits; the
+observed maximum of 14,306 bits is not a global bound. The current oracle
+regenerates the saved model and both corpora byte-identically.
+
+Current source matches all 951 package files in the tested wheel. Python 3.12.11,
+3.13.15, 3.14.7 and final 3.15.0 each pass 4,444 native completions, 401 runtime
+failures, six constructor failures and five bounded runs. Raw/VM/debugger
+captures preserve held snapshots, post-halt stability, input progress and
+1,022 actual random draws. Debugger source-command counts and explicit halted
+versus unfinished reports match. Ninety-five guarded workers per version preserve
+results, partial-output failures and unfinished observations. Three installed
+resource erasures and a same-width seeded-draw fault fail. No runtime or test
+source changes. This bounded accounting scope is reviewed; language/catalog
+completion remains open.
