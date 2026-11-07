@@ -9,6 +9,7 @@ import pytest
 
 import esolangs
 from esolangs import run as execute
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.slow_acv_mammalian import generator as boolean
 from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
@@ -116,15 +117,21 @@ def test_mod255_ignored_inputs_keep_reads_and_the_smaller_candidate(
 class TestSlowAcvMammalian:
     """The decision tree LEAPFROG makes possible."""
 
-    def test_constant_tables_still_read_every_input(self) -> None:
+    def test_constant_tables_still_read_every_input(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """A constant table consumes all ``n`` inputs."""
 
+        assert boolean.constant_output is constant_output
         for table in ("0000", "1111", "0110"):
             program = boolean.slow_acv_mammalian(table)
             assert program.split().count("ACCEPT") == 2  # one per input
             io_obj = ScriptedIO("0\n" * 8)
             run_until_halt_or_cycle(_Machine(program, io_obj))
             assert io_obj.position() == 2
+        monkeypatch.setattr(boolean, "constant_output", lambda _: "1")
+        mutant = esolangs.generate("SLOW ACV MAMMALIAN", "00")
+        assert execute("SLOW ACV MAMMALIAN", mutant, stdin="0").output == "1"
 
     def test_a_node_opens_the_accumulator_on_a_clean_digit(self) -> None:
         """``ACCEPT`` is entered with ``acc % 256 == 48``, whatever the state."""

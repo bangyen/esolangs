@@ -37,6 +37,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.languages.slow_acv_mammalian._mammalian255 import decision_tree
 from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
 from esolangs.languages.slow_acv_mammalian._sums import (
@@ -705,8 +706,8 @@ def _program(
     """Build the dispatch and its leaf bank."""
     moduli = MammalianModuli(cell_modulus, io_modulus, leapfrog_resume)
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
-        return _constant_read(truth_table[0], n)
+    if (constant := constant_output(truth_table)) is not None:
+        return _constant_read(constant, n)
     if moduli.cell_modulus == 255:
         return _program_255(truth_table, n, moduli.io_modulus)
     return _program_256(truth_table, n, moduli.io_modulus)
