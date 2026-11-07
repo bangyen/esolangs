@@ -4,7 +4,9 @@ import pytest
 
 import esolangs
 from esolangs import generate
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.streetcode import generator as boolean
 from tests.support.evaluation import _evaluate
 from tests.support.generator_support import evaluate_generated
 
@@ -36,10 +38,16 @@ def test_streetcode_lays_out_every_two_input_table(width: int) -> None:
         assert evaluate_generated("Streetcode", table, timeout=30, width=width) == table
 
 
-def test_fitting_narrow_lookup_still_shares_its_kerb() -> None:
+def test_fitting_narrow_lookup_still_shares_its_kerb(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     table = "00000011"
     program = generate("Streetcode", table, width=40).source
     rows = program.splitlines()
     assert len(rows) == 165
     assert max(map(len, rows)) == 7
     assert evaluate_generated("Streetcode", table, width=40) == table
+    assert boolean.constant_output is constant_output
+    monkeypatch.setattr(boolean, "constant_output", lambda _: "1")
+    mutant = generate("Streetcode", "00")
+    assert esolangs.run("Streetcode", mutant, stdin="0").output == "1"

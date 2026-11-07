@@ -61,6 +61,7 @@ from esolangs.generation.helpers import (
     grid_width,
     input_weights,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 
@@ -213,7 +214,7 @@ def _streetcode_shared_half(table: str) -> list[str] | None:
     # tables; none grows. Two label columns preserve the two-lane street.
     half = len(table) // 2
     child = table[:half]
-    if child != table[half:] or len(set(child)) != 2:
+    if child != table[half:] or constant_output(child) is not None:
         return None
     return _streetcode_strip("= ", _streetcode_tree(child))
 
@@ -886,10 +887,10 @@ def _tree_leaves(table: str) -> int:
     """Count the leaves :func:`_streetcode_tree` draws, four rows each."""
     half = len(table) // 2
     child = table[:half]
-    if child == table[half:] and len(set(child)) == 2:
+    if child == table[half:] and constant_output(child) is None:
         return _tree_leaves(child)
     return sum(
-        1 if len(set(part)) == 1 else _tree_leaves(part)
+        1 if constant_output(part) is not None else _tree_leaves(part)
         for part in (child, table[half:])
     )
 
@@ -931,9 +932,9 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     ``width`` chooses among the shapes rather than reflowing (rows are streets).
     """
     n = _validate_truth_table(truth_table)
-    if truth_table.count(truth_table[0]) == len(truth_table):
+    if (constant := constant_output(truth_table)) is not None:
         # A closed two-lane corridor needs no junction, normalization or lookup.
-        body = "C" + "I" * n + "=" + "^" * (48 + int(truth_table[0])) + "O;"
+        body = "C" + "I" * n + "=" + "^" * (48 + int(constant)) + "O;"
         wall = "+" + "-" * len(body) + "+"
         program = "\n".join((wall, "|" + " " * len(body) + "|", "|" + body + "|", wall))
         if width is not None and grid_width(program) > width:
@@ -967,7 +968,7 @@ def _balance(table: str, default: str) -> str:
     # A requested width changes the shortest fitting shape only when another
     # shape starts fitting; asking at that shape's span also excludes losers.
     candidates = [default, streetcode(table, 1), streetcode(table, 9)]
-    if len(set(table)) == 1:
+    if constant_output(table) is not None:
         # The corridor wins area; small constants' loop shapes are squarer.
         candidates.extend(shapes)
     candidates.extend(streetcode(table, grid_width(shape)) for shape in shapes)
