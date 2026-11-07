@@ -1,14 +1,20 @@
 """Covers :mod:`esolangs.languages.back.generator`."""
 
-from itertools import pairwise
+import random
+from itertools import pairwise, permutations
 
 import pytest
 
 import esolangs
 from esolangs import run as execute
+from esolangs.debugger import make_vm
 from esolangs.generation.helpers import TEMPLATE_CHAR, permute_truth_table, runs
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.back.generator import _back_ordered
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace
+from scripts.benchmark import WrittenState
+from tests.proofs.deep.execution import run_to_answer
 from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import _drawing, row_bits, witnesses
 
@@ -22,7 +28,6 @@ class TestParameterizedBack:
         # field is the result -- no need to track the head, which the dump
         # does not report.
         from esolangs.languages.back.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         io = ScriptedIO()
         run(prog.splitlines(), io)
@@ -39,10 +44,7 @@ class TestParameterizedBack:
     @pytest.mark.medium
     def test_constant_embedding_keeps_its_resource_bounds(self) -> None:
         from esolangs import generate, instantiate, read_answer
-        from esolangs.debugger import make_vm
         from esolangs.languages.back.proof_formulas import execution, workspace
-        from scripts.benchmark import WrittenState
-        from tests.proofs.deep.execution import run_to_answer
 
         for n in (1, 2, 3, 6, 9, 12):
             for bit in "01":
@@ -94,8 +96,6 @@ class TestParameterizedBack:
 
     def test_a_falling_beam_reuses_the_next_zero_subtree(self) -> None:
         """A one-edge onto an equal zero side draws no rows, and still answers."""
-        import random
-
         from esolangs.languages.back import generator as generators
 
         rng = random.Random(5)
@@ -163,8 +163,6 @@ class TestParameterizedBack:
     def test_each_input_is_stored_once(self) -> None:
         """Constant runs clear one scratch cell before the fixed answer cell."""
         from esolangs.languages.back.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
-        from scripts.benchmark import WrittenState
 
         _check_held_input_and_dump()
         for n in range(1, 13):
@@ -244,8 +242,6 @@ class TestParameterizedBack:
 
     def test_reordering_pays_a_walk_and_keeps_name_order(self) -> None:
         """A permuted load spends rows on the walk, and keeps its runs in name order."""
-        from itertools import permutations
-
         walked = 0
         for table in ("0110", "10101010", "01101001"):
             n = (len(table) - 1).bit_length()
@@ -412,8 +408,6 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 @pytest.mark.slow  # builds every permuting generator over several tables
 def test_a_permuting_generator_changes_its_drawing() -> None:
     """A generator that permutes its slots must emit a different *drawing*."""
-    from itertools import permutations
-
     from esolangs.generation.helpers import permute_truth_table
 
     checked = 0
@@ -495,8 +489,6 @@ def _drawn_plan(table, levels, n, vertical):
 @pytest.mark.medium
 def test_the_landing_rule_matches_drawing_the_tree() -> None:
     """The geometric rule picks the sets the draw-and-verify search kept."""
-    import random
-
     from esolangs.generation.helpers import subtree_ids
     from esolangs.languages.back.generator import _BackContext
 
@@ -530,10 +522,6 @@ def test_the_landing_rule_matches_drawing_the_tree() -> None:
 @pytest.mark.parametrize(("n", "side"), [(7, 66), (8, 82)])
 def test_balance_races_the_folded_tree(n: int, side: int) -> None:
     """The comb wins area but the fold, at its best comb base, is the smaller square."""
-    import random
-
-    from esolangs.generation.wrap import balance_score
-
     table = format(random.Random(131 * 0 + n).getrandbits(1 << n), f"0{1 << n}b")
     comb = esolangs.generate("Back", table)
     balanced = esolangs.generate("Back", table, balance=True)
@@ -543,7 +531,6 @@ def test_balance_races_the_folded_tree(n: int, side: int) -> None:
 
 def _check_held_input_and_dump() -> None:
     from esolangs.languages.back.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     for n, used in ((1, (0,)), (3, (0, 2)), (8, (0, 2, 6)), (8, (1, 3, 7))):
         table = "".join(
@@ -576,7 +563,6 @@ def _check_held_input_and_dump() -> None:
 
 
 def _check_exact_preload_bounds() -> None:
-    from esolangs.debugger import make_vm
     from esolangs.generation.helpers import grid_area
     from esolangs.languages.back.proof_formulas import execution, workspace
     from esolangs.languages.back.tests.formulas import (
@@ -584,8 +570,6 @@ def _check_exact_preload_bounds() -> None:
         execution_witness,
         witness,
     )
-    from scripts.benchmark import WrittenState
-    from tests.proofs.deep.execution import run_to_answer
 
     for n in (1, 2, 3, 4, 5, 6, 7, 8, 9):
         area_table = witness(n)

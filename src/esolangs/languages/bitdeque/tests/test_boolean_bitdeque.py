@@ -6,7 +6,10 @@ import pytest
 
 import esolangs
 from esolangs import run as execute
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.proofs.conventions import _embedding, _tables
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.witness_tables import witnesses
 
 
@@ -15,7 +18,6 @@ class TestParameterizedBitdeque:
 
     def run_bitdeque(self, prog: str) -> str:
         from esolangs.languages.bitdeque.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         io = ScriptedIO()
         run(prog, io)
@@ -50,7 +52,6 @@ class TestParameterizedBitdeque:
         """The load flips the register per block; the tree's table absorbs it."""
         from esolangs.languages.bitdeque import generator as generators
         from esolangs.languages.bitdeque.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         template = generators.bitdeque("0101")
         prelude_and_load = " ".join(self.instantiate(template, [0, 1]).split()[:12])
@@ -63,7 +64,6 @@ class TestParameterizedBitdeque:
     def test_constant_leaf_and_shared_halt_trampoline(self) -> None:
         """Whole constants need no trampoline; branching leaves still share one."""
         from esolangs.languages.bitdeque import generator as generators
-        from tests.support.analysis_support import assert_analysis_complement
 
         assert_analysis_complement("Bitdeque", "decision_layers")
         template = generators.bitdeque("0000")
@@ -168,8 +168,6 @@ def test_constant_native_and_short_loads_keep_all_slots() -> None:
     from esolangs.languages.bitdeque.generator import bitdeque_setters
     from esolangs.languages.bitdeque.interpreter import _Machine
     from esolangs.languages.bitdeque.proof_formulas import workspace
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":

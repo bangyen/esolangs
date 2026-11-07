@@ -1,10 +1,15 @@
 """Covers :mod:`esolangs.languages.clockwise.generator`."""
 
+import random
+
 import pytest
 
 import esolangs
 from esolangs import run
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.clockwise import generator as boolean
+from esolangs.runtime.io import ScriptedIO
+from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import parity, row_bits, witnesses
 
 
@@ -62,7 +67,6 @@ def test_trailing_inputs_are_read_after_the_two_entry_lookup(width: int | None) 
 @pytest.mark.parametrize("width", [None, 1, 20])
 def test_return_reads_complete_exactly_one_rotation(width: int | None) -> None:
     from esolangs.languages.clockwise.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     n = 8
     table = "".join(str(((row >> 7) ^ (row >> 6)) & 1) for row in range(256))
@@ -103,7 +107,6 @@ class TestClockwise:
     def test_every_run_reads_each_input_exactly_once(self, width: int | None) -> None:
         """Clockwise's input queue rotates, so a run must consume 7n bits."""
         from esolangs.languages.clockwise.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
 
         # A constant, and a table ignoring every input after the first.
         tables = [
@@ -178,7 +181,6 @@ def test_entry_digit_prefix_executes_every_small_table() -> None:
 def test_single_column_cannot_close_a_clockwise_ring() -> None:
     """A downward beam's next clockwise turn leaves the only column."""
     from esolangs.languages.clockwise.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     machine = _Machine(["R", "R"], ScriptedIO(""))
     machine.step()
@@ -190,7 +192,6 @@ def test_single_column_cannot_close_a_clockwise_ring() -> None:
 @pytest.mark.parametrize("split", [1, 2, 3])
 def test_banded_lookup_selects_a_strip_by_the_first_inputs(split: int) -> None:
     from esolangs.languages.clockwise.generator import _clockwise_banded
-    from tests.support.evaluation import _evaluate
 
     # The second input is ignored and the sixth trails: a head reads past
     # one and the rail reads the other.
@@ -212,8 +213,6 @@ def test_banded_lookup_selects_a_strip_by_the_first_inputs(split: int) -> None:
 
 
 def test_balance_bands_a_random_table() -> None:
-    from esolangs.generation.wrap import balance_score
-
     table = "".join(str((value * 73 + value // 3) & 1) for value in range(64))
     balanced = esolangs.generate("Clockwise", table, balance=True).source
     # 184 columns by default; two selected strips of sixteen entries each.
@@ -227,10 +226,7 @@ def test_balance_bands_a_random_table() -> None:
 @pytest.mark.medium
 def test_balance_split_rule_matches_the_split_search() -> None:
     """Oracle: the {k//3, k//3+1} contest is no wider than scanning every split."""
-    import random
-
     from esolangs.generation.helpers import essential_inputs
-    from esolangs.generation.wrap import balance_score
     from esolangs.languages.clockwise.generator import (
         _balance,
         _clockwise_banded,

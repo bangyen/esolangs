@@ -1,5 +1,6 @@
 """Unit tests for the Fargo interpreter."""
 
+from dataclasses import replace
 from itertools import product
 from operator import and_, or_, xor
 
@@ -15,6 +16,7 @@ from esolangs.languages.fargo.interpreter import (
     _State,
     run,
 )
+from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_ancestor
 from tests.interpreters.oracle_support import check_terminal
@@ -318,10 +320,7 @@ class TestMachine:
             "g | 0 0\n% 0 : 1 g\n$\n"
         ), "a frame's result does not reach the snapshot"
 
-        from dataclasses import replace
-
         from esolangs.languages.fargo.interpreter import _Func, _workspace_value
-        from esolangs.runtime._state import WorkspaceVariant
         from scripts.benchmark import WrittenState, state_bits
 
         def forbidden(*_args):

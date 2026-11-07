@@ -1,9 +1,12 @@
 """Tests for the HQ9+ with headers Boolean generator."""
 
+from unittest.mock import patch
+
 import pytest
 
 import esolangs
-from tests.support.generator_support import assert_every_row
+from esolangs.runtime.io import ScriptedIO
+from tests.support.generator_support import assert_every_row, evaluate_generated
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -11,10 +14,7 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     if table == "00":
-        from unittest.mock import patch
-
         from esolangs.languages.hq9_with_headers import generator
-        from tests.support.generator_support import evaluate_generated
 
         answer = (
             *generator._ANSWER[:-1],
@@ -29,7 +29,6 @@ def test_every_row_prints_its_answer(table: str) -> None:
 def test_constant_output_consumes_every_input(bit: str) -> None:
     """Direct output follows all reads and leaves the next number untouched."""
     from esolangs.languages.hq9_with_headers.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
 

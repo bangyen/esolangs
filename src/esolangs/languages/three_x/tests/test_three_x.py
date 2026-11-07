@@ -6,8 +6,9 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.three_x.interpreter import run
+from esolangs.languages.three_x.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters import runner
 from tests.interpreters.contract import (
     CycleContract,
@@ -141,9 +142,6 @@ class TestStepMachine:
 
     def test_a_close_paren_with_no_open_loop(self) -> None:
         """``)`` on a zero falls out of a loop it was never inside."""
-        from esolangs.exceptions import HaltError
-        from esolangs.languages.three_x.interpreter import _Machine
-
         machine = _Machine("?)", ScriptedIO("0\n"))
         while not machine.halted:
             machine.step()
@@ -158,8 +156,6 @@ class TestStepMachine:
             drain(_Machine("?)", ScriptedIO("1\n")))
 
     def test_an_open_loop_is_recorded_in_jumps(self) -> None:
-        from esolangs.languages.three_x.interpreter import _Machine
-
         machine = _Machine("3()", ScriptedIO(""))
         machine.step()
         machine.step()
@@ -167,8 +163,6 @@ class TestStepMachine:
 
     def test_an_unterminated_literal_prints_nothing(self) -> None:
         """``[`` with no closing ``]`` prints the empty string, not the rest."""
-        from esolangs.languages.three_x.interpreter import _Machine
-
         machine = _Machine("[abc", ScriptedIO())
         while not machine.halted:
             machine.step()
@@ -191,8 +185,6 @@ class TestStepMachine:
 
     def test_a_closed_literal_prints_its_contents(self) -> None:
         """The companion to the unterminated case: a closed ``[`` prints."""
-        from esolangs.languages.three_x.interpreter import _Machine
-
         closed = _Machine("[abc]", ScriptedIO())
         while not closed.halted:
             closed.step()
@@ -200,18 +192,12 @@ class TestStepMachine:
 
     def test_a_loop_that_reads_is_not_a_cycle(self) -> None:
         """The snapshot holds the input cursor (214c4f77)."""
-        from esolangs.languages.three_x.interpreter import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
         io = ScriptedIO("1 1 0")
         assert run_until_halt_or_cycle(_Machine("?(!?)!", io), limit=100)
         assert io.getvalue() == "110"
 
 
 def _machine(code: object) -> object:
-    from esolangs.languages.three_x.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
     return _Machine(code, ScriptedIO())
 
 

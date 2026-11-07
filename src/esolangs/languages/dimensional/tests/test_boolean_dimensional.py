@@ -1,6 +1,7 @@
 """Dimensional generator tests."""
 
 import random
+from unittest.mock import patch
 
 import pytest
 
@@ -13,8 +14,11 @@ from esolangs.languages.dimensional import generator as boolean
 from esolangs.languages.dimensional.generator import dimensional
 from esolangs.languages.dimensional.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import evaluate_generated
 from tests.support.witness_tables import witnesses
 
 run_dimensional = _runner("dimensional", newline=True)
@@ -95,13 +99,8 @@ def test_larger_tables_keep_the_established_index(n: int) -> None:
 class TestDimensional:
     def test_a_bare_move_is_the_addressing(self) -> None:
         """A bare >/< takes its dimension from the cell, which is the point."""
-        from tests.support.analysis_support import assert_analysis_complement
-
         assert_analysis_complement("Dimensional", "input_weights", "0001")
-        from unittest.mock import patch
-
         from esolangs.generation.lookup import change_points
-        from tests.support.generator_support import evaluate_generated
 
         assert boolean.change_points is change_points
         with patch.object(boolean, "change_points", return_value=[]) as corrupted:
@@ -206,9 +205,6 @@ def test_fourteen_input_lookup_stays_within_step_cap(kind: str) -> None:
 
 
 def _check_constants() -> None:
-    from esolangs.languages.dimensional.interpreter import _Machine
-    from scripts.benchmark import WrittenState
-
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):

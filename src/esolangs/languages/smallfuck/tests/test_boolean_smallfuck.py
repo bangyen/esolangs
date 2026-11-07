@@ -7,6 +7,7 @@ import pytest
 
 import esolangs
 from esolangs import run as execute
+from esolangs.debugger import make_vm
 from esolangs.generation.anf import anf_coefficients
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs, in_input_order
 from esolangs.generation.lookup import constant_output
@@ -21,8 +22,15 @@ from esolangs.languages.smallfuck.generator import (
 )
 from esolangs.languages.smallfuck.interpreter import run
 from esolangs.registry import LANGUAGES
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace
-from tests.support.generator_support import measure_run, multiple_tables, run_filled
+from tests.support.generator_support import (
+    assert_shared_program,
+    measure_run,
+    multiple_tables,
+    run_filled,
+)
+from tests.support.screen_support import corpus
 from tests.support.witness_tables import dense, witnesses
 
 
@@ -132,9 +140,6 @@ def test_smallfuck_matches_a_narrow_layout_without_its_newlines() -> None:
 
 @pytest.mark.medium
 def test_shared_residual_executes_within_ledger() -> None:
-    from tests.support.generator_support import assert_shared_program
-    from tests.support.screen_support import corpus
-
     table = corpus(8)["tiled"]
     plain, _ = _smallfuck_tree(table, tuple(range(8)))
     assert_shared_program(
@@ -148,7 +153,6 @@ def test_shared_residual_executes_within_ledger() -> None:
 
 def test_complemented_shared_arm_contributes_its_constant_first() -> None:
     from esolangs.generation.shared_block import repeated_blocks
-    from tests.support.generator_support import assert_shared_program
 
     table = "1111011001101111"
     forced, _ = _smallfuck_tree(
@@ -175,7 +179,6 @@ def test_complemented_shared_arm_contributes_its_constant_first() -> None:
 def test_multiple_residuals_preserve_bands_and_native_bounds(
     table, reverse, kind, half
 ) -> None:
-    from esolangs.debugger import make_vm
     from esolangs.generation.helpers import permute_truth_table
     from esolangs.generation.shared_block import repeated_bank, repeated_blocks
 
@@ -231,7 +234,6 @@ def test_invalid_multiple_definitions_abort(blocks, flags, message) -> None:
 @pytest.mark.medium
 def test_multiple_residuals_reduce_tiled_cap_program_within_ledger() -> None:
     from esolangs.generation.shared_block import repeated_blocks
-    from tests.support.generator_support import assert_shared_program
 
     n = 16
     a, b = "00010111" * (1 << (n - 6)), "01101001" * (1 << (n - 6))
@@ -264,7 +266,6 @@ def test_multiple_residuals_reduce_tiled_cap_program_within_ledger() -> None:
 @pytest.mark.parametrize("swap_suffix", [False, True])
 @pytest.mark.parametrize("half", [0, 1])
 def test_all_two_input_complement_pairs_and_ignored_prefixes(swap_suffix, half) -> None:
-    from esolangs.debugger import make_vm
     from esolangs.generation.helpers import permute_truth_table
     from esolangs.generation.shared_block import repeated_block
 
@@ -361,8 +362,6 @@ def test_pinned_template_sizes(table: str, size: int) -> None:
 
 
 def _check_constants() -> None:
-    from esolangs.runtime.io import ScriptedIO
-
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):

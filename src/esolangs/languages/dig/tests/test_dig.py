@@ -6,6 +6,7 @@ from typing import ClassVar
 
 import pytest
 
+from esolangs.exceptions import HaltError
 from esolangs.languages.dig.interpreter import run
 from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import CycleContract, InputCursorContract
@@ -106,8 +107,6 @@ class TestDigStore:
 
     def test_a_stored_negative_digging_distance_halts(self) -> None:
         """``;`` stores -5 beside a ``$``; digging -5 tiles is refused."""
-        from esolangs.exceptions import HaltError
-
         with pytest.raises(HaltError, match="negative digging distance"):
             run_and_capture([">$ -;$", " 3 5  "])
 
@@ -152,22 +151,17 @@ class TestDigEdgeCases:
 
     def test_no_adjacent_digit_halts(self) -> None:
         """A work command with no adjacent digit is an invalid operation."""
-        from esolangs.exceptions import HaltError
-
         with pytest.raises(HaltError):
             run([">$+:", "    "], io=IO())
 
     def test_divide_by_zero_halts(self) -> None:
         """Dividing by an adjacent zero is an invalid operation."""
-        from esolangs.exceptions import HaltError
-
         with pytest.raises(HaltError):
             run([">$/", " 10"], io=IO())
 
     def test_a_steer_digit_outside_zero_and_one_goes_straight(self) -> None:
         """``#`` turns on 1 and 0; every other digit holds the heading."""
         from esolangs.languages.dig.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
 
         def heading_after(digit: str) -> int:
             # "#" steers overground, so no "$" -- the mole starts at (0, 0)
@@ -186,7 +180,6 @@ class TestDigEdgeCases:
     def test_a_whitespace_digit_outside_zero_and_one_is_inert(self) -> None:
         """``%`` loads a newline for 1 and a space for 0, nothing otherwise."""
         from esolangs.languages.dig.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
 
         def mole_after(digit: str) -> int:
             # "%" is a work command, so "$" has to open the underground
@@ -297,7 +290,6 @@ def test_overground_data_steps_follow_the_heading() -> None:
 
 def _machine(code: object) -> object:
     from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import IO
 
     return _Machine(code, IO())
 

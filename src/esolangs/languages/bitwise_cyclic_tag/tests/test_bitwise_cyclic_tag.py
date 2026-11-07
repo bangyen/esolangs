@@ -10,6 +10,7 @@ from tests.interpreters.contract import (
     StateViewContract,
 )
 from tests.interpreters.runner import run_program
+from tests.support.generator_support import measure_run
 
 #: The wiki's example: program ``00111`` on data ``101``, read off the
 #: published table as the data-string before each command.  The system never
@@ -156,8 +157,6 @@ def test_workspace_drops_deleted_storage_but_keeps_the_answer():
 
 
 def test_raw_resource_witnesses_use_the_owned_projection(monkeypatch):
-    from tests.support.generator_support import measure_run
-
     machine = _Machine("0,101", ScriptedIO())
     steps, written = measure_run(machine)
     assert (steps, written.bits) == (3, 32)  # live queue: 24; answer: 8

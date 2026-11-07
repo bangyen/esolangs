@@ -5,6 +5,7 @@ import pytest
 from esolangs.languages.monotonic_boolfuck.generator import monotonic_boolfuck
 from esolangs.languages.monotonic_boolfuck.interpreter import run
 from tests.interpreters.runner import native_runner
+from tests.support.bit_lifecycle import check_byte_lifecycle
 from tests.support.raises import assert_rejected_with_hint
 from tests.support.witness_tables import witnesses
 
@@ -70,6 +71,4 @@ def test_nodes_diverge_by_pointer_not_by_flag() -> None:
 
 
 def test_declared_byte_lifecycle() -> None:
-    from tests.support.bit_lifecycle import check_byte_lifecycle
-
     check_byte_lifecycle("Monotonic Boolfuck", "1")

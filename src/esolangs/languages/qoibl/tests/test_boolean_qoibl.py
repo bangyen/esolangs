@@ -5,8 +5,12 @@ import random
 import pytest
 
 import esolangs
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.qoibl import generator as boolean
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
@@ -22,8 +26,6 @@ class TestQoibl:
     def test_narrow_horner_literals_execute_small_tables(self, width: int) -> None:
         from esolangs.languages.qoibl.interpreter import _Machine
         from esolangs.languages.qoibl.proof_formulas import execution, workspace
-        from esolangs.runtime.io import ScriptedIO
-        from scripts.benchmark import WrittenState
 
         for n in (1, 2, 3):
             for table in witnesses(n):
@@ -114,8 +116,6 @@ def test_constant_table_reads_cost_one_line_each() -> None:
 @pytest.mark.medium
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """One read into a register the next write clears."""
-    from tests.support.analysis_support import assert_analysis_complement
-
     assert_analysis_complement("Qoibl", "input_weights")
     assert_an_ignored_input_costs("Qoibl", 6, 13)
     _check_compact_input_tokens()
@@ -128,7 +128,6 @@ def test_parity_source_at_most_doubles_per_input() -> None:
 
 @pytest.mark.parametrize("seed", range(6))
 def test_balance_stays_within_five_percent_of_the_retired_sweep(seed: int) -> None:
-    from esolangs.generation.wrap import balance_score
     from esolangs.languages.qoibl.tests.balance_oracle import sweep_balance_qoibl
 
     rng = random.Random(seed)
@@ -222,8 +221,6 @@ def _check_compact_input_tokens() -> None:
     from esolangs.languages.qoibl.generator import _source
     from esolangs.languages.qoibl.interpreter import _Machine, tokenize
     from esolangs.languages.qoibl.proof_formulas import execution, workspace
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     cases = [(3, f"{value:08b}", None) for value in range(256)]
     parity = "".join(str(row.bit_count() & 1) for row in range(1 << 10))

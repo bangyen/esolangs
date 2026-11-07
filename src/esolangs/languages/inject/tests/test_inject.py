@@ -8,6 +8,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.inject.interpreter import _Machine, prepare_machine, run
 from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,
@@ -109,8 +110,6 @@ class TestWikiExamples:
 
     def test_wiki_truth_machine_is_inverted(self) -> None:
         """The wiki's truth machine halts on 1 and loops on 0 -- backwards."""
-        from esolangs.vm import run_until_halt_or_cycle
-
         # On "1" it halts after a single print -- the 0 case's behaviour.
         assert _run(WIKI_TRUTH_MACHINE, "1\n") == "1\n"
 
@@ -123,8 +122,6 @@ class TestWikiExamples:
 class TestCorrectedTruthMachine:
     def test_one_prints_and_loops(self) -> None:
         """The 1 branch loops, and revisits a state so the loop is proven."""
-        from esolangs.vm import run_until_halt_or_cycle
-
         io = ScriptedIO("1\n")
         assert not run_until_halt_or_cycle(_Machine(INJECT_TRUTH_MACHINE, io))
         assert io.getvalue() == "1\n"

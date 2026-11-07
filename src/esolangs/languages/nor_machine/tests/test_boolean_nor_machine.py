@@ -3,6 +3,9 @@
 import pytest
 
 import esolangs
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import assert_every_row
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
@@ -16,15 +19,11 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 
 def test_constants_consume_the_queue_then_print_once() -> None:
-    from tests.support.analysis_support import assert_analysis_complement
-
     assert_analysis_complement("NOR machine", "read_at")
     _check_single_accumulator_boundaries()
 
     from esolangs.languages.nor_machine.interpreter import _Machine
     from esolangs.languages.nor_machine.proof_formulas import workspace
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
 
@@ -72,8 +71,6 @@ def _check_single_accumulator_boundaries() -> None:
     from esolangs.languages.nor_machine.generator import _low_from_singleton, _Queue
     from esolangs.languages.nor_machine.interpreter import _Machine
     from esolangs.languages.nor_machine.proof_formulas import execution, workspace
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     q = _Queue(0)
     q.names = ["v"]

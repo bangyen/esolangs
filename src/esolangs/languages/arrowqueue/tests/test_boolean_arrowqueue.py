@@ -7,6 +7,9 @@ import pytest
 import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.languages.arrowqueue.descriptor import PAIR
+from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import run_until_halt_or_cycle
+from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import row_bits
 
 
@@ -22,7 +25,6 @@ class TestParameterizedArrowQueue:
 
     def run_arrowqueue(self, prog: str) -> str:
         from esolangs.languages.arrowqueue.interpreter import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
 
         return "0" if run_until_halt_or_cycle(_Machine(prog.splitlines())) else "1"
 
@@ -109,8 +111,6 @@ class TestParameterizedArrowQueue:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_balance_and_setters_off_path(bit: str) -> None:
     """Constant roots keep their setters off the halt/ring path, balanced."""
-    from tests.support.evaluation import _evaluate
-
     if bit == "0":
         _check_constants()
     n = 8
@@ -126,7 +126,6 @@ def test_ring_pops_rdlu_then_sustains() -> None:
     """A ``1`` row pops R, D, L, U at its corners then sustains; a ``0`` row exits."""
     from esolangs.languages.arrowqueue.generator import _ROWS
     from esolangs.languages.arrowqueue.interpreter import _Machine
-    from esolangs.vm import run_until_halt_or_cycle
 
     right, down, left, up = range(4)
 
@@ -171,7 +170,6 @@ def test_ring_pops_rdlu_then_sustains() -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.arrowqueue.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
         for bit in "01":

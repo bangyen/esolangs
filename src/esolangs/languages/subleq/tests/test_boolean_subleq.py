@@ -7,6 +7,8 @@ from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.languages.subleq.generator import subleq
 from esolangs.languages.subleq.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import assert_falloff, assert_oisc_constants, count_steps
 
 
@@ -49,7 +51,6 @@ def test_public_candidate_computes_every_small_table(n) -> None:
 @pytest.mark.medium
 def test_shared_parity_uses_direct_jumps_at_sixteen_inputs() -> None:
     from tests.generators.generator_sections import named_table
-    from tests.support.analysis_support import assert_analysis_complement
 
     for query, rule in (("hoisted_tree", "parity"), ("packed_decoder", "random 1847")):
         assert_analysis_complement(
@@ -93,7 +94,6 @@ def _check_io_targets() -> None:
 
     # A constructive packed peak retains n=9 coverage without a 512-row trace.
     from esolangs.languages.subleq.proof_formulas import workspace
-    from scripts.benchmark import WrittenState
     from tests.proofs._witnesses import _subleq_worst
 
     n = 9

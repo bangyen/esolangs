@@ -1,5 +1,7 @@
 """Forbin's I/O, its loops and functions, and the state it steps through."""
 
+from dataclasses import replace
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -226,7 +228,6 @@ class TestSnapshotWithoutTheCycleDetector:
         assert [key for key, _locals in rebound] == [1, 2]
         assert rebound[-1][1] == (("x", "0"),)
 
-        from dataclasses import replace
         from types import MappingProxyType
 
         from esolangs.languages.forbin.interpreter._scope import _Closure

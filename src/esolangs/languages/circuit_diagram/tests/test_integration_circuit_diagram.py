@@ -10,6 +10,7 @@ from tests.support.generator_support import evaluate_generated
 from tests.support.reference import REFERENCE
 from tests.support.samples import CIRCUIT_PRIME_TESTER, bits_of
 from tests.support.vm_support import _run_all
+from tests.support.witness_tables import dense
 
 
 class TestBreakAtWhereThereIsNoShape:
@@ -85,7 +86,6 @@ class TestAFailedRowSaysWhichRow:
     ) -> None:
         """Not only the stand-in: the path a caller actually hits."""
         from esolangs.languages.circuit_diagram import interpreter as circuit_diagram
-        from tests.support.witness_tables import dense
 
         table = dense(9)
         # A warm compile cache (another test, same worker) beats 5 ms a row.

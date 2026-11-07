@@ -8,9 +8,12 @@ import pytest
 
 import esolangs
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.laserfuck import generator as boolean
 from esolangs.languages.laserfuck.generator import MARGIN
 from esolangs.languages.laserfuck.tests.runners import run_laserfuck
+from esolangs.runtime.io import ScriptedIO
+from tests.support.evaluation import _evaluate
 from tests.support.generator_support import measure_run
 from tests.support.witness_tables import row_bits, witnesses
 
@@ -46,7 +49,6 @@ class TestLaserFuck:
             execution,
             workspace,
         )
-        from esolangs.runtime.io import ScriptedIO
         from esolangs.runtime.randomness import FirstDraw
 
         for n in (7, 8):
@@ -468,9 +470,6 @@ def test_a_width_tree_tests_only_essential_inputs(width: int) -> None:
 @pytest.mark.parametrize(("n", "side"), [(7, 92), (8, 162)])
 def test_balance_races_the_turned_tree(n: int, side: int) -> None:
     """The tree stood on end is the balanced square (upright: 166-172 / 322+)."""
-    from esolangs.generation.wrap import balance_score
-    from tests.support.evaluation import _evaluate
-
     table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
     balanced = esolangs.generate("LaserFuck", table, balance=True).source
     assert balance_score(balanced)[0] == side
@@ -482,9 +481,6 @@ def test_balance_races_the_turned_tree(n: int, side: int) -> None:
 @pytest.mark.medium
 def test_balance_tiles_subtrees_at_n9() -> None:
     """The tree cut at depth 2, subtrees side by side: (side, length, width)."""
-    from esolangs.generation.wrap import balance_score
-    from tests.support.evaluation import _evaluate
-
     table = format(random.Random(9).getrandbits(1 << 9), f"0{1 << 9}b")
     balanced = esolangs.generate("LaserFuck", table, balance=True).source
     assert balance_score(balanced) == (292, 25252, 292)
@@ -495,7 +491,6 @@ def test_balance_tiles_subtrees_at_n9() -> None:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constants_drain_before_dump_at_every_heading(n, bit) -> None:
     from esolangs.languages.laserfuck.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
     from esolangs.runtime.randomness import FirstDraw
 
     program = boolean.laserfuck(bit * (1 << n))

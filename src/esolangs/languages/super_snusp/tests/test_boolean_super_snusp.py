@@ -6,6 +6,7 @@ import esolangs
 from esolangs import run as execute
 from esolangs.languages.super_snusp import generator as boolean
 from esolangs.languages.super_snusp.generator import balance_super_snusp
+from esolangs.runtime.io import ScriptedIO
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import assert_constant_roots, measure_run
 
@@ -79,7 +80,6 @@ class TestSuperSNUSP:
         """Return the generated program's output for every input, in order."""
         from esolangs.languages.super_snusp.generator import super_snusp
         from esolangs.languages.super_snusp.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         n = len(table).bit_length() - 1
         program = super_snusp(table).splitlines()
@@ -232,7 +232,6 @@ class TestSuperSNUSPSweepPins:
 
 def _check_stacked_operands() -> None:
     from esolangs.languages.super_snusp.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     class ReadFirstIO(ScriptedIO):
         def __init__(self, bits: str) -> None:

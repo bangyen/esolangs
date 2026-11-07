@@ -4,10 +4,10 @@ from functools import partial
 
 import pytest
 
+from esolangs.languages.slow_acv_mammalian.interpreter import _Machine, run
 from esolangs.languages.slow_acv_mammalian.interpreter import (
     _Machine as SlowAcvMammalian,
 )
-from esolangs.languages.slow_acv_mammalian.interpreter import run
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract
@@ -47,8 +47,6 @@ class TestMammalian:
 
     def test_accept_appends_a_newline(self) -> None:
         """ACCEPT appends a newline byte, narrowed like other input."""
-        from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
 
         def accepted(stdin: str) -> list[int]:
             machine = _Machine("ACCEPT", ScriptedIO(stdin))
@@ -66,9 +64,6 @@ class TestMammalian:
         self, io_modulus: int | None, printed: str
     ) -> None:
         """PRONOUNCE prints ``acc`` modulo 255 ("modulo 255"), or 256 if asked."""
-        from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
-
         # SEED puts 1 in lst[0]; ACCEPT folds 0xff against acc 0 and appends
         # it; DIGEST xors the accumulator with the sum, giving 256.
         io = ScriptedIO("\xff\n")
@@ -81,9 +76,6 @@ class TestMammalian:
 
     def test_seed_wraps_its_register_at_a_byte(self) -> None:
         """``SEED``'s addition wraps too, at the same 256."""
-        from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
-
         machine = _Machine("CONSUME ACCEPT SEED", ScriptedIO("\xff\n"))
         while not machine.halted:
             machine.step()
@@ -91,8 +83,6 @@ class TestMammalian:
 
     def test_sprint_needs_a_position_inside_the_array(self) -> None:
         """``SPRINT`` is a NOP unless the accumulator indexes a real cell."""
-        from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
-
         machine = _Machine("CONSUME SPRINT", IO())
         while not machine.halted:
             machine.step()
@@ -100,8 +90,6 @@ class TestMammalian:
         assert machine.ptr == 0
 
     def test_fast_run_covers_each_control_branch(self) -> None:
-        from esolangs.runtime.io import ScriptedIO
-
         run(
             "CONSUME SEED CONFLAGRATE EXCRETE CONSUME FISSION DIGEST SPRINT",
             ScriptedIO(),
@@ -199,8 +187,6 @@ class TestLeapfrog:
     """``LEAPFROG`` jumps the cursor, or halts when the target is negative."""
 
     def test_a_negative_target_halts(self) -> None:
-        from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
-
         # acc 0 and a head of 0 give target -1, which halts instead of jumping.
         machine = _Machine("LEAPFROG PRONOUNCE", IO())
         machine.lst = (
@@ -213,8 +199,6 @@ class TestLeapfrog:
 
     def test_the_target_subtracts_the_head_from_the_accumulator(self) -> None:
         """``target`` is ``acc - head - 1``, so a larger head jumps lower."""
-        from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
-
         machine = _Machine("LEAPFROG PRONOUNCE PRONOUNCE PRONOUNCE", IO())
         machine.lst = (
             *machine.lst[:0],
@@ -228,8 +212,6 @@ class TestLeapfrog:
 
     def test_leapfrog_reads_the_last_cell_to_decide_whether_to_jump(self) -> None:
         """The guard is the array's *last* value, not its second."""
-        from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
-
         machine = _Machine("LEAPFROG PRONOUNCE", IO())
         machine.lst = (
             *machine.lst[:0],
@@ -243,9 +225,6 @@ class TestLeapfrog:
 
 
 def _machine(code: object) -> object:
-    from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
-    from esolangs.runtime.io import IO
-
     return _Machine(code, IO())
 
 
@@ -266,9 +245,6 @@ def test_conflagrate_uses_cell_modulus(cell_modulus: int) -> None:
 
 @pytest.mark.parametrize("io_modulus", [255])
 def test_excrete_uses_io_modulus_without_changing_seed(io_modulus: int) -> None:
-    from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
     machine = _Machine("EXCRETE SEED", ScriptedIO(), io_modulus=io_modulus)
     machine.acc = 256
     machine.step()
@@ -288,18 +264,12 @@ def test_excrete_uses_io_modulus_without_changing_seed(io_modulus: int) -> None:
     ],
 )
 def test_unsupported_moduli_are_rejected_before_execution(settings) -> None:
-    from esolangs.languages.slow_acv_mammalian.interpreter import _Machine, run
-    from esolangs.runtime.io import ScriptedIO
-
     for entry in (_Machine, run):
         with pytest.raises(ValueError, match="modulus must"):
             entry("PRONOUNCE", ScriptedIO(), **settings)
 
 
 def test_unsupported_leapfrog_resume_is_rejected_before_execution() -> None:
-    from esolangs.languages.slow_acv_mammalian.interpreter import _Machine, run
-    from esolangs.runtime.io import ScriptedIO
-
     for entry in (_Machine, run):
         with pytest.raises(ValueError, match="leapfrog_resume must be after or at"):
             entry("PRONOUNCE", ScriptedIO(), leapfrog_resume="during")
@@ -309,9 +279,6 @@ def test_leapfrog_resume_readings_diverge_on_a_searched_witness() -> None:
     from .oracle_checks import check_raw_slow_acv_mammalian
 
     check_raw_slow_acv_mammalian()
-    from esolangs.languages.slow_acv_mammalian.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
-
     # The LEAPFROG's count is acc - head = 1, naming the first SEED.
     # "after" resumes at the DIGEST past it and the second pass prints 2;
     # "at" re-runs the SEED and the second pass prints 4.  The next

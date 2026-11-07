@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs.runtime.io import ScriptedIO
 from tests.support.cli_support import _program, call_both, call_main
 from tests.support.generator_support import evaluate_generated
 from tests.support.screen_support import _worst
@@ -91,7 +92,6 @@ def test_periodic_completion_renders_at_the_repeated_pass_boundary(source, expec
     from esolangs.languages.a_painter_ant.interpreter import _Machine
     from esolangs.runtime._drive import drive_periodic
     from esolangs.runtime._lifecycle import Completion
-    from esolangs.runtime.io import ScriptedIO
 
     io = ScriptedIO()
     machine = _Machine(source, io)
@@ -107,7 +107,6 @@ def test_periodic_completion_renders_at_the_repeated_pass_boundary(source, expec
 def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
     from esolangs.languages.a_painter_ant.interpreter import _execute, run
     from esolangs.runtime._lifecycle import Completion
-    from esolangs.runtime.io import ScriptedIO
 
     io = ScriptedIO()
     report = _execute("P", io)

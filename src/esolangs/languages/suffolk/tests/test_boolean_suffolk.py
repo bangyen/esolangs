@@ -5,6 +5,8 @@ import pytest
 import esolangs
 from esolangs.languages.suffolk import generator as boolean
 from esolangs.languages.suffolk.tests.lookup_support import _suffolk_lookup
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
 from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import row_bits
@@ -28,7 +30,6 @@ class TestSuffolk:
         _check_reader_cutoff()
 
         from esolangs.languages.suffolk.interpreter import _Machine
-        from scripts.benchmark import WrittenState
 
         for n in range(1, 13):
             for bit in "01":
@@ -93,8 +94,6 @@ class TestSuffolk:
 def _check_stored_input_records() -> None:
     from esolangs.languages.suffolk.interpreter import _Machine
     from esolangs.languages.suffolk.proof_formulas import workspace
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for n in (2, 6, 8):
         for ignored in (False, True):
@@ -130,7 +129,6 @@ def _check_stored_input_records() -> None:
 
 def _check_reader_cutoff() -> None:
     from esolangs.languages.suffolk.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     for n in (10, 11):
         table = "".join(str(row.bit_count() % 2) for row in range(1 << n))

@@ -8,6 +8,7 @@ from esolangs import run as execute_program
 from esolangs.languages.piet.interpreter import _command, _Machine, run
 from esolangs.raster import Raster
 from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.cursorless_io import PositionlessIO
 
 LIGHT_RED = (255, 192, 192)
@@ -225,8 +226,6 @@ def test_numeric_and_character_commands_share_the_input_cursor() -> None:
 
 def test_a_read_loop_on_a_cursorless_port_runs_to_eof() -> None:
     """A port with no cursor reports position 0; the snapshot counts reads."""
-    from esolangs.vm import run_until_halt_or_cycle
-
     io = PositionlessIO("x " * 10)
     machine = _Machine(raster((LIGHT_RED, DARK_BLUE)), io)
     assert not run_until_halt_or_cycle(machine, limit=1000)

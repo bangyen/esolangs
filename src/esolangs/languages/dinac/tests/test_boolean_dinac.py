@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 from esolangs import run as execute
+from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_native_rows
@@ -46,7 +47,6 @@ def test_size_is_linear_in_the_table(n: int) -> None:
 def _check_constants() -> None:
     assert_analysis_complement("DINAC", "prefix_counts")
     from esolangs.languages.dinac.interpreter import _Machine
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":

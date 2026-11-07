@@ -1,15 +1,16 @@
 """Unit tests for the Grapheme interpreter."""
 
+import re
 from functools import partial
 from itertools import product
 
 import pytest
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.grapheme.interpreter import _Machine, run
 from esolangs.languages.grapheme.interpreter import _Machine as Grapheme
-from esolangs.languages.grapheme.interpreter import run
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import run_until_halt_or_ancestor
+from esolangs.vm import run_until_halt_or_ancestor, run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -38,8 +39,6 @@ run_program = partial(_run_program, run)
 def test_lf_is_removed_before_literals_functions_and_command_positions(
     code: str, expected: str
 ) -> None:
-    from esolangs.languages.grapheme.interpreter import _Machine
-
     plain = _Machine(code, ScriptedIO(""))
     wrapped = _Machine("\n" + "\n".join(code) + "\n", ScriptedIO(""))
     while not plain.halted:
@@ -204,8 +203,6 @@ class TestEdgeCases:
 
     def test_the_error_messages_read_in_full(self) -> None:
         """Each message entire, not the fragment the tests match on."""
-        import re
-
         for code, message in (
             ("M", "popped an empty stack"),
             ("FFFFR", "division by zero"),
@@ -293,15 +290,11 @@ def test_spec_truth_machine_zero_branch() -> None:
 
 def test_an_empty_z_body_repeats_while_the_stack_is_live() -> None:
     """Z runs its function "while the stack is not empty", empty body or not."""
-    from esolangs.vm import run_until_halt_or_cycle
-
     assert run_until_halt_or_cycle(Grapheme("FAFHHZ", ScriptedIO()), limit=100) is False
 
 
 def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle() -> None:
     """A port with no cursor reports position 0; the snapshot counts reads."""
-    from esolangs.vm import run_until_halt_or_cycle
-
     machine = Grapheme("FAFHWMHZ", PositionlessIO("a\n" * 10))
     with pytest.raises(EOFError):
         run_until_halt_or_cycle(machine, limit=100)

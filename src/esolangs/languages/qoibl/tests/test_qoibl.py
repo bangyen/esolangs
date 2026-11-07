@@ -11,6 +11,7 @@ import pytest
 
 import esolangs
 from esolangs import run as execute
+from esolangs.exceptions import HaltError
 from esolangs.languages.qoibl import interpreter as qoibl
 from esolangs.languages.qoibl.interpreter import (
     _advance,
@@ -116,7 +117,6 @@ class TestQoiblBehaviour:
                 assert f.getvalue() == chr(ord("0") + left + right)
 
     def test_variable_indices_stay_within_the_256_cell_list(self) -> None:
-        from esolangs.exceptions import HaltError
         from esolangs.languages.qoibl.interpreter import _eval
 
         with pytest.raises(HaltError, match="variable index"):
@@ -134,8 +134,6 @@ class TestQoiblBehaviour:
             _eval(["qe", "yeeeeeeee", "qe"], {}, (), 0, [])
 
     def test_signed_division_and_zero(self) -> None:
-        from esolangs.exceptions import HaltError
-
         expr = ["qe", "y", "qe", "ry", "yy", "ry", "qe", "ye", "qe"]
         for left, right, expected in (
             (-7, 3, -3),
@@ -244,7 +242,6 @@ class TestQoiblIncompleteTokens:
     def test_stepping_an_empty_statement_advances_the_cursor(self) -> None:
         """An empty statement is a no-op, not a parse of nothing."""
         from esolangs.languages.qoibl.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
 
         state = _Machine("w", ScriptedIO(""))
         assert state.code == ([],)
@@ -456,8 +453,6 @@ class TestOutputOrdering:
 
     def test_output_before_a_halt_is_written_and_ordered(self) -> None:
         """The same target prints before the value's division by zero halts."""
-        from esolangs.exceptions import HaltError
-
         io = EventIO("")
         with pytest.raises(HaltError, match="division by zero"):
             run(["we tt y tt we e ry yy ry qe e qe we"], io)
@@ -465,8 +460,6 @@ class TestOutputOrdering:
 
     def test_a_later_statement_still_prints_before_its_own_fault(self) -> None:
         """Two statements: the first prints, the second prints then faults."""
-        from esolangs.exceptions import HaltError
-
         io = EventIO("")
         with pytest.raises(HaltError, match="division by zero"):
             run(

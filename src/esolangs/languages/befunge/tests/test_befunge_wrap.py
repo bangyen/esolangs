@@ -18,6 +18,9 @@ from esolangs.languages.befunge.generator import (
     balance_befunge,
     befunge,
 )
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
+from tests.support.generator_support import constant_layouts, constant_runs
 
 
 @pytest.mark.parametrize("inputs", [1, 4, 13])
@@ -229,7 +232,6 @@ def _check_constants() -> None:
 
     assert not hasattr(generator, "MAX_INPUTS")
     from esolangs.languages.befunge.interpreter import _Machine
-    from tests.support.generator_support import constant_layouts, constant_runs
 
     for n in range(1, 14):
         for bit in "01":
@@ -272,8 +274,6 @@ def _check_one_row_nibbles() -> None:
     from esolangs.languages.befunge.interpreter import _Machine
     from esolangs.languages.befunge.proof_formulas import execution, workspace
     from esolangs.languages.befunge.tests.ablations import ablate
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     totals = [0, 0, 0]
     for value in range(256):

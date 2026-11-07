@@ -13,6 +13,7 @@ from esolangs.languages.intercal.generator import (
     _wrap_intercal,
     intercal,
 )
+from tests.support.evaluation import _evaluate
 
 
 def test_intercal_token_floor_and_wrapped_corpus_size() -> None:
@@ -90,8 +91,6 @@ def test_balance_stays_within_five_percent_of_every_fit_width(seed: int) -> None
 )
 def test_balance_packs_short_statements_into_shared_rows(n: int, side: int) -> None:
     """Seed n: statements start at DO/PLEASE, so a row holds several."""
-    from tests.support.evaluation import _evaluate
-
     table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
     balanced = esolangs.generate("INTERCAL", table, balance=True)
     assert balance_score(balanced.source)[0] == side

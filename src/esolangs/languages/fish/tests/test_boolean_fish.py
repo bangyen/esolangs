@@ -17,9 +17,10 @@ from esolangs.languages.fish.generator import (
     balance_fish,
     fish,
 )
-from esolangs.languages.fish.interpreter import run
+from esolangs.languages.fish.interpreter import _Machine, run
+from esolangs.runtime.io import ScriptedIO
 from tests.support.evaluation import _evaluate
-from tests.support.generator_support import run_lines
+from tests.support.generator_support import constant_layouts, constant_runs, run_lines
 from tests.support.witness_tables import witnesses
 
 
@@ -180,9 +181,6 @@ def test_balance_folds_the_packed_row(n: int, side: int) -> None:
 
 
 def _check_constants() -> None:
-    from esolangs.languages.fish.interpreter import _Machine
-    from tests.support.generator_support import constant_layouts, constant_runs
-
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
@@ -212,8 +210,6 @@ def _check_constants() -> None:
 def _check_precision_guards(monkeypatch) -> None:
     from esolangs.languages.fish import generator
     from esolangs.languages.fish.generator import _integer_coordinates
-    from esolangs.languages.fish.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     # Force every precision fallback on small tables, including ignored bits.
     monkeypatch.setattr(generator, "_EXACT", 0)

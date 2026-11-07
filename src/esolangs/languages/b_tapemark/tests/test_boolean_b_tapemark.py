@@ -1,5 +1,6 @@
 """Execution tests for the B-tapemark boolean generator."""
 
+import random
 from itertools import product
 
 import pytest
@@ -9,9 +10,10 @@ from esolangs.generation.helpers import essential_inputs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.b_tapemark import generator as tools
 from esolangs.languages.b_tapemark.generator import _Builder
-from esolangs.languages.b_tapemark.interpreter import run
+from esolangs.languages.b_tapemark.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.support.analysis_support import assert_analysis_complement
+from tests.support.evaluation import _evaluate
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
     assert_constant_roots,
@@ -47,8 +49,6 @@ def test_each_dialect_answers_its_own_programs() -> None:
 
 def test_a_default_program_is_not_claimed_under_the_old_dialect() -> None:
     """The readings are not interchangeable: ``0110`` hangs under ``old``."""
-    from esolangs.languages.b_tapemark.interpreter import _Machine
-
     machine = _Machine(tools.b_tapemark("0110"), ScriptedIO("00"), swap_marker="old")
     for _ in range(5000):
         if machine.halted:
@@ -111,7 +111,6 @@ def test_size_does_not_depend_on_the_table() -> None:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_reads_each_input_and_prints_a_literal(n, bit) -> None:
     from esolangs.languages.b_tapemark.generator import _b_tapemark_program
-    from esolangs.languages.b_tapemark.interpreter import _Machine
 
     if n == 1 and bit == "0":
         assert_constant_roots("B-tapemark", run)
@@ -294,7 +293,6 @@ def test_balance_of_a_three_ones_n8_table_is_exact() -> None:
 @pytest.mark.parametrize(("copy", "run"), [(1, 1), (5, 3), (16, 40)])
 def test_folded_copy_and_runs_keep_the_walk(copy: int, run: int) -> None:
     from esolangs.languages.b_tapemark.generator import _b_tapemark_folded
-    from tests.support.evaluation import _evaluate
 
     # The second input is ignored, so its stage crosses no run.
     table = "".join(
@@ -309,14 +307,11 @@ def test_folded_copy_and_runs_keep_the_walk(copy: int, run: int) -> None:
 
 def test_the_default_is_the_least_by_area_of_the_strip_and_closed_forms() -> None:
     """The strip wins a tie; each layout the default takes runs and is no larger."""
-    import random
-
     from esolangs.generation.helpers import grid_area
     from esolangs.languages.b_tapemark.generator import (
         _b_tapemark_program,
         _closed_forms,
     )
-    from tests.support.evaluation import _evaluate
 
     rng = random.Random(11)
     for bits in (2, 4, 6, 7):

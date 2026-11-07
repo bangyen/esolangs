@@ -4,6 +4,8 @@ import pytest
 
 import esolangs
 from esolangs import run
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -26,8 +28,6 @@ def test_every_row_prints_its_answer(table: str) -> None:
 def _check_constants() -> None:
     assert_analysis_complement("Chicken", "read_at")
     from esolangs.languages.chicken.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
 

@@ -3,16 +3,22 @@
 import pytest
 
 import esolangs
+from esolangs.debugger import make_vm
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import measure_run
+from tests.support.generator_support import (
+    assert_shared_program,
+    evaluate_generated,
+    measure_run,
+)
 from tests.support.reference import REFERENCE
 
 
 @pytest.mark.medium
 def test_affine_stream_all_small_coefficients_within_ledger() -> None:
-    from esolangs.debugger import make_vm
     from esolangs.languages.brainfuck.generator import _affine_stream
-    from tests.support.analysis_support import assert_analysis_complement
 
     assert_analysis_complement("brainfuck", "affine_form", "0110100110010110")
     with pytest.raises(ImportError):
@@ -51,7 +57,6 @@ def test_affine_stream_all_small_coefficients_within_ledger() -> None:
 @pytest.mark.medium
 def test_affine_stream_reduces_cap_parity_within_ledger() -> None:
     from esolangs.languages.brainfuck.generator import _bf_ordered
-    from tests.support.generator_support import assert_shared_program
 
     n = 16
     table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
@@ -78,14 +83,11 @@ def test_deferred_flags_require_ordered_distinct_levels(blocks) -> None:
 
 @pytest.mark.medium
 def test_multiple_residuals_reduce_guarded_parity_within_ledger() -> None:
-    from tests.support.analysis_support import assert_analysis_complement
-
     assert_analysis_complement("brainfuck", "flag_tree_body", "0001")
     with pytest.MonkeyPatch.context() as patch:
         _check_shared_body_must_be_strictly_shorter(patch)
     from esolangs.generation.shared_block import repeated_block
     from esolangs.generation.shared_flag import flag_tree_body
-    from tests.support.generator_support import assert_shared_program
 
     n = 10
     residual = "".join(str(row.bit_count() & 1) for row in range(1 << (n - 4)))
@@ -113,7 +115,6 @@ def test_multiple_residuals_reduce_guarded_parity_within_ledger() -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [2, 3, 6])
 def test_literal_counter_consumes_inputs_within_revised_bounds(n: int) -> None:
-    from esolangs.debugger import make_vm
     from esolangs.languages.brainfuck.generator import brainfuck
 
     size = 1 << n
@@ -138,7 +139,6 @@ def test_literal_counter_consumes_inputs_within_revised_bounds(n: int) -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.brainfuck.interpreter import _Machine
-    from scripts.benchmark import WrittenState
 
     for n in range(2, 13):
         for bit in "01":
@@ -174,7 +174,6 @@ def _check_constants() -> None:
 
 def _check_zero_guards() -> None:
     from esolangs.languages.brainfuck.interpreter import _Machine
-    from scripts.benchmark import WrittenState
 
     inverted = False
     for n, used in ((3, (0, 1, 2)), (5, (1, 3)), (7, (0, 4, 6))):
@@ -216,8 +215,6 @@ def _check_shared_body_must_be_strictly_shorter(monkeypatch) -> None:
     from esolangs.generation.helpers import move_text
     from esolangs.generation.shared_flag import shared_flag_tree
     from esolangs.languages.brainfuck.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-    from tests.support.generator_support import evaluate_generated
 
     module = importlib.import_module("esolangs.languages.brainfuck.generator")
     assert module.shared_flag_tree is shared_flag_tree

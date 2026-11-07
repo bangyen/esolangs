@@ -5,6 +5,7 @@ import random
 import pytest
 
 import esolangs
+from esolangs.exceptions import TemplateError
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.slashes import interpreter as native
 from esolangs.languages.slashes.generator import slashes
@@ -77,8 +78,6 @@ def test_slashes_trailing_escape() -> None:
 
 
 def test_slashes_literal_dollar_and_serialized_template() -> None:
-    from esolangs.exceptions import TemplateError
-
     assert esolangs.run("///", "/a/$/a").output == "$"
     assert esolangs.run("Slashalash", "$", max_steps=20).output == "$"
     template = esolangs.generate("///", "01")

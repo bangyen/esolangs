@@ -6,12 +6,14 @@ import esolangs
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.languages.unlambda import generator as boolean
 from esolangs.languages.unlambda.generator import unlambda
+from scripts.benchmark import WrittenState
 from tests.generators.plain_oracles import separated_tree_text
 from tests.generators.reader_support import (
     _read_answers,
     assert_emissions_grow_by_a_line,
 )
 from tests.generators.sample_tables import five_input_sample
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import verify_generated
 
@@ -19,8 +21,6 @@ from tests.support.generator_support import verify_generated
 @pytest.mark.medium  # both builds of 456 tables: 0.95s alone
 def test_unlambda_binds_repeated_subtrees_and_skips_equal_halves() -> None:
     """Share-taking nodes cut both totals and lengthen no table."""
-
-    from tests.support.analysis_support import assert_analysis_complement
 
     assert_analysis_complement("Unlambda", "SubtreeDiagram")
     _check_constants(range(5, 13))
@@ -78,7 +78,6 @@ def unlambda_plain(truth_table: str) -> str:
 def _check_constants(arities: range) -> None:
     from esolangs.languages.unlambda.interpreter import _Machine
     from esolangs.languages.unlambda.tests.formulas import _workspace
-    from scripts.benchmark import WrittenState
 
     for n in arities:
         for bit in "01":

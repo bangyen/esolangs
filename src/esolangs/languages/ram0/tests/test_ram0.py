@@ -2,9 +2,9 @@
 
 import pytest
 
-from esolangs.exceptions import HaltError
-from esolangs.languages.ram0.interpreter import run
-from esolangs.runtime.io import IO
+from esolangs.exceptions import HaltError, InterpreterLimitError
+from esolangs.languages.ram0.interpreter import _Machine, run
+from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,
@@ -72,8 +72,6 @@ def test_goto_zero_names_no_command() -> None:
 
 class TestStepMachine:
     def test_the_dump_flag_is_set_by_the_step_past_the_end(self) -> None:
-        from esolangs.languages.ram0.interpreter import _Machine
-
         machine = _Machine("A", IO())
         machine.step()
         assert not machine.dumped
@@ -85,8 +83,6 @@ class TestStepMachine:
         from esolangs.languages.ram0.tests.oracle_checks import check_raw_ram0
 
         check_raw_ram0()
-        from esolangs.languages.ram0.interpreter import _Machine
-
         machine = _Machine("A N S L", IO())
         while not machine.halted:
             machine.step()
@@ -94,8 +90,6 @@ class TestStepMachine:
 
     def test_conditional_skip_is_relative(self) -> None:
         """C skips the next command; it does not jump to a fixed index."""
-        from esolangs.languages.ram0.interpreter import _Machine
-
         machine = _Machine("A Z C A A", IO())
         while not machine.halted:
             machine.step()
@@ -104,9 +98,6 @@ class TestStepMachine:
 
     def test_state_is_dumped_only_once(self) -> None:
         """Stepping a halted machine again does not repeat the dump."""
-        from esolangs.languages.ram0.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
-
         machine = _Machine("A", ScriptedIO(""))
         while not machine.halted:
             machine.step()
@@ -116,9 +107,6 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.languages.ram0.interpreter import _Machine
-    from esolangs.runtime.io import IO
-
     return _Machine(code, IO())
 
 
@@ -149,8 +137,6 @@ class TestStateViewValues:
 @pytest.mark.medium
 def test_a_literal_past_the_host_digit_cap_is_a_limit_with_a_hint() -> None:
     """Legal source the host cannot convert: a limit, not malformed source."""
-    from esolangs.exceptions import InterpreterLimitError
-
     assert_rejected_with_hint(
         "RAM0", "1" * 4301, "PYTHONINTMAXSTRDIGITS", error=InterpreterLimitError
     )

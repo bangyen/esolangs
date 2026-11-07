@@ -11,6 +11,7 @@ from esolangs.generation.wrap import (
 )
 from esolangs.languages.packlang import generator as boolean
 from esolangs.languages.packlang.generator import _folded
+from esolangs.languages.packlang.interpreter import _Machine
 from esolangs.languages.packlang.interpreter import run as packlang_run
 from esolangs.languages.packlang.wrapping import _packlang
 from esolangs.runtime.io import ScriptedIO
@@ -202,8 +203,6 @@ def test_balance_of_random_n10_refolds_the_body() -> None:
 
 @pytest.mark.medium
 def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
-    from esolangs.languages.packlang.interpreter import _Machine
-
     for n in range(1, 13):
         for bit in "01":
             for policy in ("decimal", "binary_digits"):

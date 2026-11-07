@@ -23,6 +23,7 @@ from esolangs.languages.six_five.generator import (
     _six_five_markers,
     _six_five_walk,
 )
+from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _run_from, _runner
 from tests.generators.sample_tables import five_input_sample
 from tests.support.event_io import ReadFirstIO
@@ -384,7 +385,6 @@ class TestSixFiveSharing:
 def _check_and_label_boundary() -> None:
     from esolangs.languages.six_five.generator import _six_five_and
     from esolangs.languages.six_five.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     for n in (1, 7, 8, 35, 36, 64):
         source = _six_five_and(n)

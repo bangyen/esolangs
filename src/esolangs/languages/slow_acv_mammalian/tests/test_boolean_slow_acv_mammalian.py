@@ -26,6 +26,7 @@ from esolangs.languages.slow_acv_mammalian.wrapping import (
 )
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
+from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import measure_run
 from tests.support.witness_tables import witnesses
@@ -283,7 +284,6 @@ class TestSlowAcvMammalian:
         from esolangs.languages.slow_acv_mammalian.interpreter import (
             _advance as advance,
         )
-        from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
 
         def at_target(state, n, byte=None, *, moduli=DEFAULT_MODULI):
             out = advance(state, n, byte, moduli=moduli)
@@ -316,7 +316,6 @@ class TestSlowAcvMammalian:
         from esolangs.languages.slow_acv_mammalian.interpreter import (
             _advance as advance,
         )
-        from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
 
         def at_target(state, n, byte=None, *, moduli=DEFAULT_MODULI):
             out = advance(state, n, byte, moduli=moduli)
@@ -956,8 +955,6 @@ def test_mammalian_hands_back_a_program_with_no_words() -> None:
 @pytest.mark.parametrize("io", [255, 256])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_print_array_is_independent_of_every_input(cell, io, bit) -> None:
-    from tests.support.evaluation import _evaluate
-
     table = bit * 256
     settings = esolangs.DialectSettings(cell_modulus=cell, io_modulus=io)
     program = esolangs.generate("SLOW ACV MAMMALIAN", table, settings=settings).source

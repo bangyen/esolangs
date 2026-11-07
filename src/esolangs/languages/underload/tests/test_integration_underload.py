@@ -1,5 +1,6 @@
 """Underload through the shared API, CLI and machinery."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -80,7 +81,5 @@ def test_memory_failure_during_evaluation_is_not_an_answer() -> None:
 
 
 def _growing_template(doublings: int) -> esolangs.TemplateArtifact:
-    from dataclasses import replace
-
     template = esolangs.generate("Underload", "01")
     return replace(template, source=template.source + "(x)" + ":*" * doublings)

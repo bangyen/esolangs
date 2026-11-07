@@ -7,7 +7,9 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import run as execute
-from esolangs.languages.brainif.interpreter import run
+from esolangs.languages.brainif.interpreter import _Machine, run
+from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import make_vm, run_until_halt
 from tests.interpreters.contract import (
     CycleContract,
     InputCursorContract,
@@ -26,8 +28,6 @@ class TestBrainIfBasicCommands:
 
     def test_cells_are_wrapping_bytes_in_both_engines(self) -> None:
         """brainfuck's tape ("identical memory tape"): 255 + 1 is 0."""
-        from esolangs.vm import make_vm
-
         code = "\n".join(f"if {k} increment" for k in range(256)) + "\nif 0 output"
         assert run_and_capture(code.splitlines()) == "\x00"
         vm = make_vm("BrainIf", code, stdin="")
@@ -45,9 +45,6 @@ class TestBrainIfBasicCommands:
 
     def test_left_of_zero_and_back_keeps_both_cells(self) -> None:
         """The grown cell and the start cell are distinct, in both engines."""
-        from esolangs.languages.brainif.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
-
         code = [
             "if 0 increment",  # start cell -> 1
             "if 1 left",  # grow: a new cell 0
@@ -143,9 +140,6 @@ class TestBrainIfGeneratedHelloWorld:
 
 class TestStepMachine:
     def test_step_tracks_cells_and_cursor(self) -> None:
-        from esolangs.languages.brainif.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
-
         machine = _Machine(["if 0 increment", "if 1 output"], ScriptedIO())
         assert (machine.ind, machine.cells) == (0, (0,))
         machine.step()  # cell 0 is 0: increment
@@ -158,17 +152,11 @@ class TestStepMachine:
 
     def test_the_read_lands_in_the_cell(self) -> None:
         """``input`` puts the byte where the language says it goes."""
-        from esolangs.languages.brainif.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
-
         machine = _Machine(["if 0 input"], ScriptedIO("A"))
         machine.step()
         assert machine.cells == (ord("A"),)
 
     def test_a_read_above_a_byte_wraps_modulo_256(self) -> None:
-        from esolangs.languages.brainif.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
-
         machine = _Machine(["if 0 input"], ScriptedIO("\u0100"))
         machine.step()
         assert machine.cells == (0,)
@@ -182,9 +170,6 @@ def test_a_blank_line_is_skipped() -> None:
     assert run_and_capture(["if 0 increment", "", "if 1 output"]) == "\x01"
     assert run_and_capture(["if 0 increment", "", "   ", "if 1 output"]) == "\x01"
 
-    from esolangs.languages.brainif.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
     machine = _Machine(["", "if 0 output"], ScriptedIO())
     machine.step()
     assert machine.ind == 1
@@ -196,16 +181,10 @@ def test_run_reuses_a_parsed_line_after_a_backward_goto() -> None:
 
 
 def _machine(code: object) -> object:
-    from esolangs.languages.brainif.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
     return _Machine(code, ScriptedIO())
 
 
 def _reader(code: object, stdin: str) -> object:
-    from esolangs.languages.brainif.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
     return _Machine(code, ScriptedIO(stdin))
 
 
@@ -264,8 +243,6 @@ def test_nonpositive_goto_targets_are_rejected_by_run_and_vm() -> None:
 
 
 def test_positive_goto_targets_match_run_and_vm() -> None:
-    from esolangs.vm import run_until_halt
-
     for code, expected in (
         ("if 0 goto 3\nif 0 output\nif 0 increment\nif 1 output", "\x01"),
         ("if 0 goto 2", ""),
@@ -289,9 +266,6 @@ def test_goto_without_a_target_is_rejected() -> None:
 
 
 def test_moving_right_over_an_existing_cell_does_not_grow_the_tape() -> None:
-    from esolangs.languages.brainif.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
     machine = _Machine(["if 0 right", "if 0 left", "if 0 right"], ScriptedIO())
     for _ in range(3):
         machine.step()

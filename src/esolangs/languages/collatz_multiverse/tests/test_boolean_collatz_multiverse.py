@@ -5,10 +5,12 @@ import random
 import pytest
 
 import esolangs
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.collatz_multiverse import generator as boolean
+from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner, assert_runner_rows
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_parity_at_most_doubles
+from tests.support.generator_support import assert_parity_at_most_doubles, measure_run
 from tests.support.witness_tables import row_bits, witnesses
 
 run_collatz_multiverse = _runner("collatz_multiverse", newline=True)
@@ -177,7 +179,6 @@ def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
     lines = _cm_constants([1, 2])
     assert len(lines) == 2
     from esolangs.languages.collatz_multiverse.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     machine = _Machine("\n".join(lines), ScriptedIO(""))
     while not machine.halted:
@@ -233,7 +234,6 @@ def test_cm_constants_print_the_right_value() -> None:
 def _swept_balance(table: str, default: str) -> str:
     """The retired balance: select among the spellings at every fit threshold."""
     from esolangs.generation.helpers import _validate_truth_table, grid_width
-    from esolangs.generation.wrap import balance_score
     from esolangs.languages.collatz_multiverse.generator import (
         _cm_candidates,
         _cm_layout_versions,
@@ -271,8 +271,6 @@ def _swept_balance(table: str, default: str) -> str:
 
 def test_balance_scores_the_spellings_without_a_threshold_sweep() -> None:
     """Per table, 1..5 inputs: never worse than the retired threshold sweep."""
-    from esolangs.generation.wrap import balance_score
-
     rng = random.Random(3)
     for n in (1, 2, 3, 4, 5):
         for _ in range(6):
@@ -376,7 +374,6 @@ def _check_affine_stream() -> None:
         execution,
         workspace,
     )
-    from tests.support.generator_support import measure_run
 
     for n in range(1, 6):
         for mask in range(1 << n):

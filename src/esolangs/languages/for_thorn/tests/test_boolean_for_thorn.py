@@ -1,16 +1,21 @@
 """for_thorn generator tests."""
 
 import random
+from unittest.mock import patch
 
 import pytest
 
 import esolangs
 from esolangs.generation.helpers import essential_inputs, permute_truth_table
 from esolangs.languages.for_thorn import generator as boolean
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.generators.sample_tables import five_input_sample
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
+    evaluate_generated,
     verify_generated,
 )
 
@@ -18,7 +23,6 @@ from tests.support.generator_support import (
 def _forth_scope_keys(table: str) -> set[int]:
     """The heap indices a Forþ program's definitions actually reach."""
     from esolangs.languages.for_thorn.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     machine = _Machine(boolean.for_thorn(table).split(",")[0], ScriptedIO(""))
     while not machine.halted:
@@ -38,11 +42,7 @@ def _forth_plain(table: str) -> str:
 class TestForth:
     def test_leaf_results_are_the_byte(self) -> None:
         """Each leaf pushes 48 + its table entry."""
-        from unittest.mock import patch
-
         from esolangs.generation.helpers import subtree_ids
-        from tests.support.analysis_support import assert_analysis_complement
-        from tests.support.generator_support import evaluate_generated
 
         assert_analysis_complement("Forþ", "input_weights")
         assert boolean.subtree_ids is subtree_ids
@@ -171,7 +171,6 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.for_thorn.interpreter import _Machine
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":

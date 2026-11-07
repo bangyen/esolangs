@@ -6,11 +6,15 @@ from itertools import pairwise
 import pytest
 
 import esolangs
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.thisthat.generator import _Builder, _tree, thisthat
-from esolangs.languages.thisthat.interpreter import run
+from esolangs.languages.thisthat.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
+from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
+    assert_shared_program,
     evaluate_generated,
     run_lines,
     verify_generated,
@@ -92,7 +96,6 @@ def test_every_kept_level_is_tested_at_every_node(monkeypatch) -> None:
 
 
 def _check_literal_leaf_outputs() -> None:
-    from esolangs.languages.thisthat.interpreter import _Machine
     from esolangs.languages.thisthat.proof_formulas import execution
 
     for table in ("01", "10", "01010101", "10101010", "11110000"):
@@ -255,7 +258,6 @@ def test_xor_has_one_column() -> None:
 @pytest.mark.medium
 def test_shared_residual_buses_execute_within_ledger(monkeypatch) -> None:
     from esolangs.languages.thisthat.generator import shared_tree
-    from tests.support.generator_support import assert_shared_program
 
     a, b = "0001011101101001" * 4, "0110100100010111" * 4
     table = a + b + b + a
@@ -379,7 +381,6 @@ def test_shared_unequal_bus_banks_execute_all_rows() -> None:
 def test_balance_matches_the_old_one_column_narrowing_search() -> None:
     """The named widths score as well as walking ``width - 1`` three times."""
     from esolangs.generation.helpers import grid_width
-    from esolangs.generation.wrap import balance_score
     from esolangs.languages.thisthat.generator import _balance, _narrow_tree
 
     def searched(table: str, default: str) -> str:
@@ -430,9 +431,6 @@ def test_a_dag_over_the_cycle_bound_is_refused() -> None:
 )
 def test_balance_races_the_flat_tree(n: int, side: int) -> None:
     """Contracted flat trees retain their balanced size pins."""
-    from esolangs.generation.wrap import balance_score
-    from tests.support.evaluation import _evaluate
-
     table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
     balanced = esolangs.generate("thisthat", table, balance=True).source
     assert balance_score(balanced)[0] == side
@@ -443,7 +441,6 @@ def test_coalescing_preserves_the_single_pointer_schedule() -> None:
     """Ordinary diagrams cannot race when transit legs contract."""
     from esolangs.generation.helpers import grid_area
     from esolangs.languages.thisthat.generator import _coalesce
-    from esolangs.languages.thisthat.interpreter import _Machine
 
     for table in witnesses(3):
         raw = _tree(table)
@@ -465,9 +462,7 @@ def test_coalescing_preserves_the_single_pointer_schedule() -> None:
 
 
 def _check_constants() -> None:
-    from esolangs.languages.thisthat.interpreter import _Machine
     from esolangs.languages.thisthat.proof_formulas import workspace
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":

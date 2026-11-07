@@ -6,6 +6,9 @@ import esolangs
 from esolangs import run as execute
 from esolangs.languages.taglate import generator as boolean
 from esolangs.languages.taglate.wrapping import _taglate
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_constant_output
 from tests.support.witness_tables import row_bits, witnesses
@@ -28,7 +31,6 @@ def test_execution_bound_is_one_form() -> None:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_reads_every_input_before_printing(n: int, bit: str) -> None:
     from esolangs.languages.taglate.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     if n == 1 and bit == "0":
         _check_constants()
@@ -87,8 +89,6 @@ class TestTaglate:
 
     def test_gapped_dependencies_reduce_without_reordering_inputs(self) -> None:
         """Every n=3 function of inputs 0 and 2 uses the small program."""
-        from tests.support.analysis_support import assert_analysis_complement
-
         assert_analysis_complement("Taglate", "read_at")
         tables = (
             "00000101",
@@ -217,8 +217,6 @@ def _check_packed_leaves() -> None:
     from esolangs.languages.taglate.interpreter import _Machine, run
     from esolangs.languages.taglate.proof_formulas import execution, workspace
     from esolangs.languages.taglate.tests.ablations import ablate
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     totals = [0, 0]
     for value in range(256):
@@ -257,8 +255,6 @@ def _check_resource_layouts() -> None:
     from esolangs.languages.taglate.interpreter import _Machine
     from esolangs.languages.taglate.proof_formulas import execution, workspace
     from esolangs.languages.taglate.tests.formulas import resource_witness
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for n in (1, 2, 3, 4, 5):
         table = resource_witness(n)

@@ -16,7 +16,11 @@ from esolangs.languages.addsubjump.generator import (
     _packed_build,
     addsubjump,
 )
+from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import run_until_halt_or_cycle
+from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _run_from, _runner
+from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_parity_at_most_doubles
 from tests.support.witness_tables import row_bits, witnesses
@@ -37,7 +41,6 @@ def run_addsubjump_from(program: str, feed: Iterator[str]) -> str:
 @pytest.mark.medium
 def test_packed_projection_executes_every_three_input_table() -> None:
     from esolangs.languages.addsubjump.generator import _addsubjump_packed
-    from tests.support.evaluation import _evaluate
 
     for value in range(256):
         table = f"{value:08b}"
@@ -51,9 +54,6 @@ def test_packed_projection_executes_every_three_input_table() -> None:
 @pytest.mark.parametrize("kind", ["zero", "one", "first", "last", "ends"])
 def test_wide_packed_projection_keeps_reads(kind) -> None:
     from esolangs.languages.addsubjump.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-    from esolangs.vm import run_until_halt_or_cycle
-    from tests.support.evaluation import _evaluate
 
     table = (
         str(int(kind == "one")) * 256
@@ -90,8 +90,6 @@ def test_wide_packed_projection_keeps_reads(kind) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("essential", range(1, 8))
 def test_packed_projection_indexes_nonadjacent_coordinates(essential) -> None:
-    from tests.support.evaluation import _evaluate
-
     used = [*range(essential - 1), 7]
     table = "".join(
         str(sum((row >> (7 - bit)) & 1 for bit in used) % 2) for row in range(256)
@@ -284,8 +282,6 @@ def test_packed_program_prints_then_halts_on_the_special_address() -> None:
     Any negative target halts the machine, so execution cannot tell -8
     from -9; the shipped spelling is pinned as exact text.
     """
-    from tests.support.evaluation import _evaluate
-
     table = "0111111010111101111010100000001100101100101110001110010110111110"
     program = boolean.addsubjump(table)
     assert program == (
@@ -315,7 +311,6 @@ def test_five_input_all_essential_table_pins_its_balanced_size() -> None:
 def _check_native_constants() -> None:
     from esolangs.languages.addsubjump.interpreter import _Machine
     from esolangs.languages.addsubjump.proof_formulas import workspace
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":

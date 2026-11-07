@@ -14,6 +14,7 @@ from esolangs.languages.brainif.generator import (
 )
 from esolangs.languages.brainif.interpreter import _Machine as BrainIf
 from esolangs.runtime.io import ScriptedIO
+from tests.support.generator_support import evaluate_generated
 
 
 def test_residual_dag_worst_case_width_and_size() -> None:
@@ -89,8 +90,6 @@ def test_dag_forgets_the_previous_input_before_reuse() -> None:
             steps += 1
         assert boundaries == [(0, (49,)), (0, (49,))]
         assert steps <= 4 * 3 + 50
-
-    from tests.support.generator_support import evaluate_generated
 
     assert generator.decision_layers is decision_layers
     with patch.object(

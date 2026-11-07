@@ -3,6 +3,7 @@
 import inspect
 import itertools
 import random
+import re
 import sys
 from collections.abc import Callable
 
@@ -11,11 +12,14 @@ import pytest
 import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.generation.helpers import constant_span_test, subtree_ids
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.forbin import generator as boolean
 from esolangs.languages.forbin.generator import _BLOCK_WIDTHS, _Names
 from esolangs.languages.forbin.tests.forbin_support import _build
+from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
 from tests.support.analysis_support import assert_analysis_complement
+from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import evaluate_generated
 from tests.support.witness_tables import witnesses
@@ -248,11 +252,6 @@ def test_host_recursion_fits_the_claimed_scaling_range() -> None:
 @pytest.mark.parametrize(("n", "side"), [(7, 39), (8, 48)])
 def test_balanced_spaces_only_separate_word_tokens(n: int, side: int) -> None:
     """A space survives only between two word characters (seed n)."""
-    import re
-
-    from esolangs.generation.wrap import balance_score
-    from tests.support.evaluation import _evaluate
-
     table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
     balanced = str(esolangs.generate("forbin", table, balance=True).source)
     assert balance_score(balanced)[0] == side
@@ -264,7 +263,6 @@ def test_balanced_spaces_only_separate_word_tokens(n: int, side: int) -> None:
 def test_constants_read_whole_bytes_then_print_inline() -> None:
     from esolangs.languages.forbin.interpreter import _Machine
     from esolangs.languages.forbin.proof_formulas import workspace
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":

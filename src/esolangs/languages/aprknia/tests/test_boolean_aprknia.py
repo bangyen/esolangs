@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs.runtime.io import ScriptedIO
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
@@ -45,7 +46,6 @@ def _check_constants() -> None:
 def _check_quotient_guard() -> None:
     from esolangs.languages.aprknia.generator import aprknia
     from esolangs.languages.aprknia.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     for code in range(256):
         table = f"{code:08b}"

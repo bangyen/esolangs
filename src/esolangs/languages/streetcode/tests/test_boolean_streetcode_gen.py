@@ -3,12 +3,14 @@
 import itertools
 import random
 from importlib import import_module
+from itertools import pairwise
 
 import pytest
 
 import esolangs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.streetcode import generator as boolean
+from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
@@ -205,7 +207,6 @@ def test_a_width_past_the_crossover_still_chooses_a_shape() -> None:
 @pytest.mark.parametrize("row", [0, 1, -1])
 def test_quarter_turned_lookup_preserves_input_order(n: int, row: int) -> None:
     from esolangs.languages.streetcode.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     table = "".join(str((value * 73 + value // 3) & 1) for value in range(1 << n))
     row %= len(table)
@@ -218,8 +219,6 @@ def test_quarter_turned_lookup_preserves_input_order(n: int, row: int) -> None:
 
 
 def test_quarter_turned_rendered_size_is_linear() -> None:
-    from itertools import pairwise
-
     sizes = [
         len(boolean.streetcode("01101001" * (2 ** (n - 3)), 1)) for n in (5, 6, 7, 8)
     ]
@@ -276,7 +275,6 @@ def test_the_oracle_rejects_a_bend_read_as_a_junction() -> None:
         drives_alike,
         shared_sill_fold,
     )
-    from esolangs.runtime.io import ScriptedIO
 
     generator = import_module("esolangs.languages.streetcode.generator")
     run = import_module("esolangs.languages.streetcode.interpreter").run

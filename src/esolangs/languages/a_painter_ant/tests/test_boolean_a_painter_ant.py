@@ -9,7 +9,11 @@ import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.languages.a_painter_ant.descriptor import PAIR
 from esolangs.languages.a_painter_ant.generator import a_painter_ant
+from esolangs.languages.a_painter_ant.interpreter import _Machine
 from esolangs.languages.a_painter_ant.interpreter import run as run_a_painter_ant
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
+from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import parity as _parity
 
 
@@ -103,8 +107,6 @@ def test_constant_roots_keep_one_origin(bit: str) -> None:
     if bit == "0":
         _check_constants()
     """A constant table restores each input to one white origin, then leaves it."""
-    from tests.support.evaluation import _evaluate
-
     table = bit * 8
     assert a_painter_ant(table) == "P" + "$S" * 3 + ("p" if bit == "0" else "")
     for options in ({}, {"width": 40}, {"balance": True}):
@@ -141,7 +143,6 @@ class TestAPainterAntTrace:
             cycle_stable,
             first_divergence,
         )
-        from esolangs.runtime.io import ScriptedIO
 
         for value in range(16):
             table = format(value, "04b")
@@ -161,9 +162,6 @@ class TestAPainterAntTrace:
 
 
 def _check_constants() -> None:
-    from esolangs.languages.a_painter_ant.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
@@ -192,10 +190,6 @@ def _check_near_unanimity() -> None:
     from esolangs.languages.a_painter_ant import generator
 
     assert not hasattr(generator, "_near_unanimity")
-    from esolangs.languages.a_painter_ant.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
-
     for n in (4, 5, 7, 8):
         plain = "".join(str(int(row.bit_count() >= n - 1)) for row in range(1 << n))
         for table in (plain, plain.translate(str.maketrans("01", "10"))):

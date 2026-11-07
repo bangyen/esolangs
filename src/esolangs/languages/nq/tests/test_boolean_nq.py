@@ -10,6 +10,7 @@ from esolangs.debugger import make_vm
 from esolangs.languages.nq.generator import nq
 from esolangs.languages.nq.tests.ablations import ablate
 from esolangs.languages.nq.tests.test_nq import check_instructions
+from scripts.benchmark import WrittenState
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 
@@ -88,7 +89,6 @@ def test_language_contract(monkeypatch) -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.nq.interpreter import _Machine
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":

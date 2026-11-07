@@ -18,6 +18,7 @@ from esolangs.languages.thisthat.interpreter import (
 )
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import FirstDraw, Seeded, draw
+from esolangs.vm import run_until_halt
 from tests.interpreters.oracle_support import check_terminal
 from tests.support.paths import ROOT
 
@@ -465,7 +466,6 @@ def test_a_branch_from_another_program_is_rejected() -> None:
 
 def test_a_cursorless_read_loop_halts_at_eof() -> None:
     """Reads count in the snapshot: the 1-loop runs to EOF, not a false cycle."""
-    from esolangs.vm import run_until_halt
     from tests.interpreters.cursorless_io import CursorlessIO
 
     io = CursorlessIO("11111111")

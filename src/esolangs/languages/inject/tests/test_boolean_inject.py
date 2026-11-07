@@ -1,6 +1,7 @@
 """inject generator tests."""
 
 import random
+import re
 from itertools import pairwise
 
 import pytest
@@ -182,8 +183,6 @@ def test_counted_halving_keeps_the_exact_offset() -> None:
 
 
 def test_counted_halving_splits_unrepresentable_repeat_counts() -> None:
-    import re
-
     from esolangs.languages.inject.generator import _half_pattern
 
     for half in (1, 2, 4, 8, 16):

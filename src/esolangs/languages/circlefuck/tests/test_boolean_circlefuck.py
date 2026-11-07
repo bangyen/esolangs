@@ -7,7 +7,10 @@ import pytest
 import esolangs
 from esolangs import run as execute
 from esolangs.languages.circlefuck import generator as boolean
+from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
+from tests.support.analysis_support import assert_analysis_complement
+from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_constant_output, measure_run
 
@@ -26,8 +29,6 @@ def _rows(program: str, table: str, n: int) -> None:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_reads_into_spent_code_and_prints_a_literal_tail(n, bit) -> None:
     from esolangs.languages.circlefuck.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-    from tests.support.evaluation import _evaluate
 
     if n == 1 and bit == "0":
         _check_constants()
@@ -91,8 +92,6 @@ class TestCirclefuck:
 
     def test_an_inessential_input_is_read_but_not_tabulated(self) -> None:
         """A degenerate table is the smaller table it really is."""
-        from tests.support.analysis_support import assert_analysis_complement
-
         assert_analysis_complement("Circlefuck", "read_at")
         assert_analysis_complement(
             "Circlefuck", "symmetric_weights", "0110100110010110"

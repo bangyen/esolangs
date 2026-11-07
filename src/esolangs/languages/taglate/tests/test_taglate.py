@@ -8,6 +8,7 @@ import pytest
 from esolangs import run as execute_program
 from esolangs.exceptions import HaltError
 from esolangs.languages.taglate.interpreter import run
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_lines
 from tests.support.raises import raises_message
@@ -42,7 +43,6 @@ def test_batched_run_matches_single_steps(seed, commands, stdin, monkeypatch) ->
     from esolangs.languages.taglate import interpreter as taglate
     from esolangs.runtime._drive import drive
     from esolangs.runtime._lifecycle import Completion
-    from esolangs.runtime.io import ScriptedIO
 
     original = taglate._Machine
     machines = []
@@ -75,7 +75,6 @@ def test_batched_run_matches_single_steps(seed, commands, stdin, monkeypatch) ->
 @pytest.mark.parametrize("command", ["a", "b", "c", "d"])
 def test_binary_underflow_retains_consumed_pops(seed, command) -> None:
     from esolangs.languages.taglate.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     machine = _Machine([seed, command], ScriptedIO(""))
     with pytest.raises(HaltError, match="queue is empty"):
@@ -86,7 +85,6 @@ def test_binary_underflow_retains_consumed_pops(seed, command) -> None:
 
 def test_repeated_programs_keep_parser_state_private() -> None:
     from esolangs.languages.taglate.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     code = ["ABC", "gyeigz"]
     first = _Machine(code, ScriptedIO(""))
@@ -184,8 +182,6 @@ class TestTaglate:
         """Popping an empty queue in arithmetic is an invalid operation."""
         import pytest
 
-        from esolangs.exceptions import HaltError
-
         with pytest.raises(HaltError):
             run_and_capture(["", "a"])
         with pytest.raises(HaltError):
@@ -195,7 +191,6 @@ class TestTaglate:
 class TestStepMachine:
     def test_step_tracks_queue_and_cursor(self) -> None:
         from esolangs.languages.taglate.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine(["abc", "i"], ScriptedIO())
         assert (machine.ind, list(machine.queue)) == (0, [97, 98, 99])
@@ -208,7 +203,6 @@ class TestStepMachine:
 
 def _machine(code: object) -> object:
     from esolangs.languages.taglate.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO())
 
@@ -251,7 +245,6 @@ def test_the_seed_keeps_characters_above_the_queue_ceiling_modulo_65536() -> Non
 
 def test_a_halting_division_leaves_the_rest_of_the_queue() -> None:
     from esolangs.languages.taglate.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     machine = _Machine(["1\x00A", "d"], ScriptedIO(""))
     with pytest.raises(HaltError, match="zero"):

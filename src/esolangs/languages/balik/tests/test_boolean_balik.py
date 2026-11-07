@@ -1,10 +1,18 @@
 """Tests for the Balik Boolean generator."""
 
+from unittest.mock import patch
+
 import pytest
 
 import esolangs
+from esolangs.exceptions import InputExhaustedError
+from esolangs.runtime.io import ScriptedIO
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output, assert_native_rows
+from tests.support.generator_support import (
+    assert_constant_output,
+    assert_native_rows,
+    evaluate_generated,
+)
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -41,11 +49,8 @@ def _check_constants() -> None:
 
 def _check_projection() -> None:
     """Projection leaves preserve the tested cell used by every merge."""
-    from unittest.mock import patch
-
     from esolangs.generation.helpers import constant_span_test, read_at
     from esolangs.languages.balik import generator
-    from tests.support.generator_support import evaluate_generated
 
     assert generator.constant_span_test is constant_span_test
     assert generator.read_at is read_at
@@ -64,12 +69,10 @@ def _check_projection() -> None:
         assert evaluate_generated("Balik", "0011") == "1100"
         assert corrupted.called
 
-    from esolangs.exceptions import InputExhaustedError
     from esolangs.languages.balik.generator import balik
     from esolangs.languages.balik.interpreter import _Machine, run
     from esolangs.languages.balik.proof_formulas import execution
     from esolangs.languages.balik.tests.formulas import execution_witness
-    from esolangs.runtime.io import ScriptedIO
 
     for table in ("00001111", "00110011", "01010101", "01101001"):
         for row in range(8):

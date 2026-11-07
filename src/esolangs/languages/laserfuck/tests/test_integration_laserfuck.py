@@ -10,6 +10,7 @@ import esolangs.debugger as debugger_api
 from esolangs import run
 from esolangs.cli import HELP
 from esolangs.runtime._execution import interpreter_module
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import make_vm, run_until_halt_or_all_branches_cycle
 from tests.support.cli_support import call_both, call_main
 from tests.support.generator_support import evaluate_generated, overruns
@@ -88,7 +89,6 @@ class TestLaserFuck:
     def test_dump_output_matches_interpreter(self) -> None:
         from esolangs.languages.laserfuck.interpreter import run as lf_run
         from esolangs.registry import LANGUAGES
-        from esolangs.runtime.io import ScriptedIO
         from esolangs.runtime.randomness import Seeded
 
         program = "\u00ff   x\n    +\n    o"

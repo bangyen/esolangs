@@ -7,6 +7,7 @@ import pytest
 import esolangs
 from esolangs.languages.a_painter_ant.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import EmptyProgramContract
 
 
@@ -135,8 +136,6 @@ class TestStepMachine:
         assert machine.snapshot() != first  # the paint changed the state
 
     def test_blocked_instruction_loops_and_is_a_cycle(self) -> None:
-        from esolangs.vm import run_until_halt_or_cycle
-
         # N never fires (all cells start black), so the run revisits state.
         assert run_until_halt_or_cycle(_Machine("N")) is False
 

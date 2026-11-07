@@ -9,7 +9,7 @@ import pytest
 import esolangs
 from esolangs import run as execute_program
 from esolangs.languages.algebraic_programming_language import generator as boolean
-from esolangs.languages.algebraic_programming_language.interpreter import _Machine
+from esolangs.languages.algebraic_programming_language.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
 from tests.generators.sample_tables import five_input_sample
@@ -20,6 +20,7 @@ from tests.support.generator_support import (
     assert_parity_at_most_doubles,
     verify_generated,
 )
+from tests.support.screen_support import corpus, execute
 from tests.support.witness_tables import witnesses
 
 _run_apl = _runner("algebraic_programming_language", newline=True)
@@ -382,7 +383,6 @@ def test_default_reuses_emitted_frames() -> None:
     from esolangs.languages.algebraic_programming_language.generator import (
         _apl_reduced_ordered,
     )
-    from tests.support.screen_support import corpus, execute
 
     table = corpus(8)["tiled"]
     plain = _apl_reduced_ordered(table, tuple(range(8)))
@@ -412,8 +412,6 @@ def test_a_wide_table_keeps_its_one_line_tail_under_the_frame_floor() -> None:
 
 
 def _check_constants() -> None:
-    from esolangs.languages.algebraic_programming_language.interpreter import run
-
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):

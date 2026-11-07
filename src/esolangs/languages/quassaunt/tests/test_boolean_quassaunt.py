@@ -1,15 +1,21 @@
 """Tests for the Quassaunt Boolean generator."""
 
 import random
+from unittest.mock import patch
 
 import pytest
 
 import esolangs
 from esolangs.languages.quassaunt.generator import quassaunt
-from esolangs.languages.quassaunt.interpreter import run
+from esolangs.languages.quassaunt.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_every_row, measure_run
+from tests.support.generator_support import (
+    assert_every_row,
+    evaluate_generated,
+    measure_run,
+)
 
 #: Every one- and two-input table; a diagram's sharing bugs show here first.
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -22,12 +28,8 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 
 def test_equal_subtables_share_one_node() -> None:
-    from unittest.mock import patch
-
     from esolangs.generation.helpers import short_name
     from esolangs.languages.quassaunt import generator
-    from tests.support.analysis_support import assert_analysis_complement
-    from tests.support.generator_support import evaluate_generated
 
     assert_analysis_complement("Quassaunt", "subtree_ids")
     assert generator.short_name is short_name
@@ -71,7 +73,6 @@ def test_constants_read_every_input(n: int, bit: str) -> None:
 
 
 def _check_store_loop() -> None:
-    from esolangs.languages.quassaunt.interpreter import _Machine
     from esolangs.languages.quassaunt.proof_formulas import execution, workspace
 
     table = "00110110"

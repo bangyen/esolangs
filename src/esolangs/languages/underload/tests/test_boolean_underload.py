@@ -1,5 +1,7 @@
 """Executed tests for the Underload promise-tree generator."""
 
+from dataclasses import replace
+
 import pytest
 
 import esolangs
@@ -14,6 +16,7 @@ from esolangs.languages.underload.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import make_vm
 from tests.generators.sample_tables import five_input_sample
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import measure_run, run_filled, verify_generated
 from tests.support.witness_tables import witnesses
 
@@ -71,8 +74,6 @@ def test_first_eight_tables_through_three_inputs(n: int) -> None:
 
 
 def test_setters_are_equal_width_and_embedded_once() -> None:
-    from tests.support.analysis_support import assert_analysis_complement
-
     assert_analysis_complement("Underload", "SubtreeDiagram")
     assert len(PAIR[0]) == len(PAIR[1]) == 5
     for n in range(1, 8):
@@ -150,8 +151,6 @@ def test_short_selector_floor_and_actual_narrow_corpus() -> None:
 
 
 def test_layout_provenance_does_not_ignore_output_literal_newlines() -> None:
-    from dataclasses import replace
-
     template = esolangs.generate("Underload", "0000", width=1)
     with pytest.raises(esolangs.TemplateError, match="not the template"):
         esolangs.instantiate(

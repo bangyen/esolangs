@@ -1,6 +1,7 @@
 """Piet's linear Boolean generator."""
 
 import random
+from dataclasses import replace
 from itertools import pairwise, product
 
 import pytest
@@ -12,8 +13,11 @@ from esolangs.languages.piet.generator import piet as generate
 from esolangs.languages.piet.generator.balance import _bounded_operations
 from esolangs.languages.piet.tests.test_boolean_piet_raster_balance import TABLES, score
 from esolangs.raster import Raster
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import constant_runs
 
 
 @pytest.mark.parametrize(
@@ -181,8 +185,6 @@ def test_invalid_truth_table_is_rejected(truth_table: str) -> None:
 
 
 def test_balance_raster_retains_layout(monkeypatch: pytest.MonkeyPatch) -> None:
-    from dataclasses import replace
-
     from esolangs.registry import LANGUAGES
 
     monkeypatch.setitem(
@@ -279,8 +281,6 @@ def test_compact_majority_is_smaller() -> None:
 def _check_majority() -> None:
     from esolangs.languages.piet.interpreter import _Machine
     from esolangs.languages.piet.tests.formulas import _codels, _steps, _written
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for n in range(3, 9):
         for inverted in (False, True):
@@ -340,7 +340,6 @@ def _check_majority() -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.piet.interpreter import _Machine
-    from tests.support.generator_support import constant_runs
 
     for n in range(1, 13):
         for bit in "01":
@@ -392,8 +391,6 @@ def _check_triples() -> None:
         _steps,
         _written,
     )
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for n in (7, 8):
         rng = random.Random(184700 + n)

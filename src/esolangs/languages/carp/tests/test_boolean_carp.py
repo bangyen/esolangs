@@ -3,6 +3,8 @@
 import pytest
 
 import esolangs
+from scripts.benchmark import WrittenState
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -12,8 +14,6 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     if table == "00":
-        from tests.support.analysis_support import assert_analysis_complement
-
         assert_analysis_complement("CARP", "decision_layers")
         _check_constants()
     assert_every_row("CARP", table)
@@ -21,7 +21,6 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.carp.interpreter import _Machine
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 15):
         for bit in "01":

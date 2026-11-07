@@ -1723,3 +1723,31 @@ per version compare independent IO counters, including unfinished runs.
 Independent subagent review tightened these counter and constructor witnesses.
 No runtime or test source changes. This bounded accounting scope is reviewed;
 language/catalog completion remains open.
+
+
+Basicfuck adds an independent parser and compiled-control-flow workspace
+oracle: 315 cases/2,669 boundaries under 40–192-command caps, retaining all
+108 closed-form programs. Witnesses cover branch/back-jump boundaries,
+variable-operand temporary reservation, empty tapes and zero-count aliases,
+lazy bounds, READ consumption before failure, range modes, Unicode numbers
+and surrogate output. All three components are written; a literal 11-bit
+charge passes. The observed 81-bit peak is not a global bound. Seven live
+controls reject resource erasure, stalled execution, overread, wrong overflow
+and extra output. Broader grammar, nesting/allocation limits and exact error
+messages remain unproven.
+
+Current runtime source matches the tested 951-file wheel. Python 3.12.11,
+3.13.15, 3.14.7 and final 3.15.0 each pass 184 native completions, 71 execution
+failures, 58 constructor failures and two bounded runs. Raw/VM/debugger
+captures preserve held snapshots, post-halt stability, exact input counters
+and command counts; 97 guarded workers per version preserve native/isolated
+results and unfinished observations. Constructor failures retain unavailable
+VM observations versus native zero-IO observations. Independent review found
+no blocker within this bounded scope.
+
+Import hoisting in 152 existing language test modules recovers 541 lines
+for the oracle within the unchanged test/source budget. Independent AST
+comparison preserves every non-import statement and binding origin; native
+imports move only where the same module was already imported unconditionally.
+No cases or assertions are removed. This bounded accounting scope is reviewed;
+language/catalog completion remains open.

@@ -3,6 +3,9 @@
 import pytest
 
 import esolangs
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -12,8 +15,6 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     if table == "00":
-        from tests.support.analysis_support import assert_analysis_complement
-
         assert_analysis_complement("Nandypants", "subtree_ids")
         _check_constants()
         _check_forward()
@@ -23,7 +24,6 @@ def test_every_row_prints_its_answer(table: str) -> None:
 def _check_constants() -> None:
     from esolangs.languages.nandypants.interpreter import _Machine
     from esolangs.languages.nandypants.proof_formulas import workspace
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":
@@ -61,7 +61,6 @@ def _check_constants() -> None:
 
 def _check_forward() -> None:
     from esolangs.languages.nandypants.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     jumped = False
     for table in ("1101001101101101", "00110110", "00011110"):

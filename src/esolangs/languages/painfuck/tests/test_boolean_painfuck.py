@@ -5,13 +5,18 @@ import random
 import pytest
 
 import esolangs
+from esolangs.debugger import make_vm
 from esolangs.languages.painfuck import generator as boolean
+from esolangs.runtime.io import ScriptedIO
+from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_constant_output,
+    assert_shared_program,
     measure_run,
     multiple_tables,
 )
+from tests.support.screen_support import corpus
 
 
 class TestPainfuck:
@@ -32,7 +37,6 @@ class TestPainfuck:
         from esolangs.generation import shared_block
         from esolangs.generation.algebraic import affine_form
         from esolangs.generation.shared_flag import flag_tree_body
-        from tests.support.evaluation import _evaluate
 
         assert boolean.affine_form is affine_form
         assert boolean.flag_tree_body is flag_tree_body
@@ -65,8 +69,6 @@ class TestPainfuck:
 @pytest.mark.medium
 def test_shared_residual_executes_within_ledger() -> None:
     from esolangs.languages.painfuck.generator import _painfuck_shared
-    from tests.support.generator_support import assert_shared_program
-    from tests.support.screen_support import corpus
 
     table = corpus(8)["tiled"]
     plain, _ = _painfuck_shared(table, tuple(range(8)), ())
@@ -82,7 +84,6 @@ def test_shared_residual_executes_within_ledger() -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("table", multiple_tables())
 def test_multiple_flags_execute_with_their_native_command_price(table) -> None:
-    from esolangs.debugger import make_vm
     from esolangs.generation.helpers import permute_truth_table
     from esolangs.generation.shared_block import repeated_bank
     from esolangs.languages.painfuck.generator import _painfuck_shared
@@ -116,7 +117,6 @@ def test_multiple_flags_execute_with_their_native_command_price(table) -> None:
 @pytest.mark.slow
 def test_multiple_flags_reduce_dense_cap_program_within_ledger() -> None:
     from esolangs.languages.painfuck.generator import _painfuck_shared
-    from tests.support.generator_support import assert_shared_program
 
     n = 16
     rng = random.Random(99123)
@@ -156,7 +156,6 @@ def test_admission_bound_keeps_the_winning_shared_form() -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.painfuck.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
         for bit in "01":
@@ -188,7 +187,6 @@ def _check_zero_fold_and_chain() -> None:
     from esolangs.languages.painfuck.generator import _painfuck_shared, painfuck
     from esolangs.languages.painfuck.interpreter import _Machine, _translate
     from esolangs.languages.painfuck.tests.formulas import _execution
-    from esolangs.runtime.io import ScriptedIO
 
     program, _ = _painfuck_shared("00000001", (0, 1, 2), ())
     # The empty zero child has no flag protocol; only the result adds one.

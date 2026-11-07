@@ -1,11 +1,13 @@
 """grapheme generator tests."""
 
 import importlib
+from unittest.mock import patch
 
 import pytest
 
 import esolangs
 from esolangs import run as execute
+from esolangs.exceptions import InputExhaustedError
 from esolangs.languages.grapheme import generator as boolean
 from esolangs.languages.grapheme.dialect import GraphemeDialect
 from esolangs.languages.grapheme.generator import (
@@ -15,6 +17,7 @@ from esolangs.languages.grapheme.generator import (
 )
 from esolangs.languages.grapheme.interpreter import run
 from esolangs.runtime.io import ScriptedIO
+from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_constant_output, evaluate_generated
 from tests.support.witness_tables import _one_minterm
@@ -90,11 +93,8 @@ class TestGraphemeTable:
 
 @pytest.mark.parametrize("mode", ["between_letters", "after_each_letter"])
 def test_generator_literals_are_exact(mode: str) -> None:
-    from unittest.mock import patch
-
     from esolangs.generation.helpers import read_at
     from esolangs.languages.grapheme.generator import grapheme
-    from tests.support.evaluation import _evaluate
 
     assert boolean.read_at is read_at
     with patch.object(
@@ -150,7 +150,6 @@ def test_generator_literals_are_exact(mode: str) -> None:
 
 def _check_constants() -> None:
     import esolangs
-    from esolangs.languages.grapheme.interpreter import run
 
     for n in range(1, 13):
         for bit in "01":
@@ -171,7 +170,6 @@ def _check_constants() -> None:
 
 def _check_seed() -> None:
     """The first essential factor survives ignored reads and underfeeding."""
-    from esolangs.exceptions import InputExhaustedError
     from esolangs.languages.grapheme.generator import grapheme
 
     for mode in ("between_letters", "after_each_letter"):

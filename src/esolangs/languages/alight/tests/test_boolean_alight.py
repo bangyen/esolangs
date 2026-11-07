@@ -8,8 +8,10 @@ import esolangs
 from esolangs import run
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.alight import generator as boolean
+from esolangs.languages.alight.interpreter import _Machine
 from esolangs.languages.alight.interpreter import run as alight_run
 from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_an_ignored_input_costs
@@ -271,9 +273,7 @@ def test_alight_small_tables_at_width_40_keep_their_exact_silhouette() -> None:
 
 
 def _check_native_constants(syntax: str, update: str, bit: str) -> None:
-    from esolangs.languages.alight.interpreter import _Machine
     from esolangs.languages.alight.proof_formulas import workspace
-    from scripts.benchmark import WrittenState
 
     settings = esolangs.DialectSettings(expression_syntax=syntax, list_update=update)
     for n in range(1, 13):

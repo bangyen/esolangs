@@ -7,6 +7,7 @@ from esolangs import run
 from esolangs.languages.rubic.generator import _OPENING, _TABLE
 from esolangs.languages.rubic.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -71,9 +72,6 @@ def test_the_table_holds_on_both_cube_states() -> None:
 
 @pytest.mark.medium
 def test_constant_reads_precede_output_and_preserve_the_next_character() -> None:
-    from esolangs.languages.rubic.interpreter import _Machine
-    from scripts.benchmark import WrittenState
-
     for n in range(1, 13):
         for bit in "01":
             commands = n + 11

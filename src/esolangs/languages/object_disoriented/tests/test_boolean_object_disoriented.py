@@ -1,8 +1,12 @@
 """Tests for the Object disoriented Boolean generator."""
 
+from itertools import islice
+
 import pytest
 
 import esolangs
+from scripts.benchmark import WrittenState
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_native_rows
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -14,8 +18,6 @@ def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     if table == "00":
         _check_native_constants()
-        from tests.support.analysis_support import assert_analysis_complement
-
         assert_analysis_complement("Object disoriented", "subtree_ids")
     from esolangs.languages.object_disoriented.interpreter import run
 
@@ -27,7 +29,6 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 def _check_native_constants() -> None:
     from esolangs.languages.object_disoriented.interpreter import _Machine
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":
@@ -52,8 +53,6 @@ def _check_native_constants() -> None:
                     assert written.bits == 48 + 2 * n.bit_length()
                     assert io.getvalue() == bit
                     assert io.input_char() == ord("Q")
-
-    from itertools import islice
 
     from esolangs.languages.object_disoriented.generator import _NAME_CHARS, _names
 

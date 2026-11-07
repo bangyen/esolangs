@@ -5,6 +5,8 @@ from itertools import pairwise
 import pytest
 
 import esolangs
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import measure_run
 from tests.support.witness_tables import witnesses
@@ -15,7 +17,6 @@ class TestParameterizedMinskySwap:
 
     def run_minsky_swap(self, prog: str) -> str:
         from esolangs.languages.minsky_swap.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         io = ScriptedIO()
         run(prog, io)
@@ -149,8 +150,6 @@ def _check_constant_templates() -> None:
     from esolangs.generation.helpers import TEMPLATE_CHAR, runs
     from esolangs.languages.minsky_swap.generator import minsky_swap_setters
     from esolangs.languages.minsky_swap.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":
@@ -196,7 +195,6 @@ def _check_pair_leaves() -> None:
     import esolangs
     from esolangs.languages.minsky_swap.generator import minsky_swap_setters
     from esolangs.languages.minsky_swap.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     # All pair patterns, then the same function with a physical ignored tail.
     for table in ("00011011", "0000001100111111", "0000000011111111"):
@@ -233,7 +231,6 @@ def _check_pair_source_cap() -> None:
     from esolangs.languages.minsky_swap.interpreter import _Machine
     from esolangs.languages.minsky_swap.proof_formulas import execution, workspace
     from esolangs.languages.minsky_swap.tests.formulas import _chars
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 9):
         table = "0" * (1 << (n - 1)) + "1" * (1 << (n - 1))

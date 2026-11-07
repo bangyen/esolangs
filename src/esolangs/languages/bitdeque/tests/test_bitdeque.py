@@ -7,8 +7,8 @@ import pytest
 import esolangs
 from esolangs import run as execute
 from esolangs.exceptions import HaltError
-from esolangs.languages.bitdeque.interpreter import run
-from esolangs.runtime.io import IO
+from esolangs.languages.bitdeque.interpreter import _Machine, run
+from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,
@@ -73,8 +73,6 @@ class TestTheWikiExample:
 
 class TestStepMachine:
     def test_step_tracks_cursor_register_and_deque(self) -> None:
-        from esolangs.languages.bitdeque.interpreter import _Machine
-
         machine = _Machine("INVERT PUSH", IO())
         assert (machine.ind, machine.reg, machine.deq) == (0, 0, ())
         machine.step()  # INVERT flips the register
@@ -87,9 +85,6 @@ class TestStepMachine:
 
     def test_the_deque_renders_once_however_far_it_is_stepped(self) -> None:
         """The post-halt step prints the deque, and only the first one does."""
-        from esolangs.languages.bitdeque.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
-
         io_obj = ScriptedIO()
         machine = _Machine("PUSH INVERT", io_obj)
         while not machine.halted:
@@ -103,8 +98,6 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.languages.bitdeque.interpreter import _Machine
-
     return _Machine(code, IO())
 
 

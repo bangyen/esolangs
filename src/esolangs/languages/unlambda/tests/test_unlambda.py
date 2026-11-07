@@ -1,6 +1,7 @@
 """Execution tests for the Unlambda interpreter."""
 
 import re
+from itertools import product
 
 import pytest
 
@@ -40,7 +41,6 @@ def test_output(program: str, stdin: str, expected: str) -> None:
 
 def _applicative_oracle():
     """Evaluate finite application trees using ordinary Python closures."""
-    from itertools import product
 
     def execute(tree, output):
         if isinstance(tree, tuple):

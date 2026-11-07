@@ -2,15 +2,19 @@
 
 from collections.abc import Callable, Iterable
 from functools import cache
+from itertools import product
 
 import pytest
 
 import esolangs
 from esolangs.languages.rotfuck import generator as boolean
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
 from tests.interpreters.runner import run_program
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import assert_shared_program
 from tests.support.witness_tables import row_bits
 
 
@@ -268,7 +272,6 @@ def test_rotation_is_checked() -> None:
 def test_every_constant_row_within_written_state_bound(bit: str) -> None:
     from esolangs import generate
     from esolangs.languages.rotfuck.proof_formulas import workspace
-    from tests.support.generator_support import assert_shared_program
 
     _check_native_constants(bit)
     table = bit * 256
@@ -290,8 +293,6 @@ def run_rotfuck_forward(program: str, inputs: list[str]) -> str:
 @cache
 def _search_pads() -> tuple[str, ...]:
     """Every net-zero run of ``+-><`` of even length <= 6 (the old pad set)."""
-    from itertools import product
-
     return tuple(
         "".join(run)
         for length in range(2, 7, 2)
@@ -354,7 +355,6 @@ def _search_pad_until(builder: object, done: Callable[[int], bool]) -> int | Non
 def _check_native_constants(bit: str) -> None:
     from esolangs.languages.rotfuck.interpreter import _Machine
     from esolangs.languages.rotfuck.proof_formulas import execution, workspace
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for rotation in ("backward", "forward"):
@@ -392,8 +392,6 @@ def _check_symmetric_multipliers() -> None:
     from esolangs.languages.rotfuck.generator import _Builder, _constant, _parse
     from esolangs.languages.rotfuck.interpreter import _Machine
     from esolangs.languages.rotfuck.proof_formulas import workspace
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for rotation, cycle in g.ROTFUCK_CYCLES.items():
         for delta in (-80, 128):
@@ -443,7 +441,6 @@ def _check_raw_five_digits() -> None:
     from esolangs.languages.rotfuck.generator import _groups
     from esolangs.languages.rotfuck.interpreter import _Machine
     from esolangs.languages.rotfuck.proof_formulas import execution
-    from esolangs.runtime.io import ScriptedIO
 
     assert _groups(8) == [2, 6]
     assert _groups(8, raw=True) == [3, 5]

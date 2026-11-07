@@ -8,6 +8,7 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import run
 from esolangs.debugger import complete_vm
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import (
     make_vm,
     run_until_halt,
@@ -121,7 +122,6 @@ def test_the_readme_suffolk_flow_completes(tmp_path: Path) -> None:
 def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     from esolangs.languages.suffolk.interpreter import _Machine
     from esolangs.runtime._lifecycle import Completion
-    from esolangs.runtime.io import ScriptedIO
 
     machine = _Machine("<", ScriptedIO())
     state = machine.snapshot()

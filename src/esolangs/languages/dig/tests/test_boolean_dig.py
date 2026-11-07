@@ -8,12 +8,14 @@ import pytest
 
 import esolangs
 from esolangs import run as execute
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.dig import generator as boolean
 from esolangs.languages.dig.generator import _DIG_BRANCH, _DIG_STRIDE
 from esolangs.languages.dig.generator import _layout as layout
 from esolangs.languages.dig.generator import _shared as indexed
 from esolangs.languages.dig.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
@@ -54,7 +56,6 @@ class TestDig:
             execution,
             workspace,
         )
-        from scripts.benchmark import WrittenState
 
         assert not hasattr(boolean, "_dig_parity_bias")
         assert not hasattr(indexed, "_leaf_weights")
@@ -560,7 +561,6 @@ def test_ignored_prefix_keeps_the_smallest_shared_grid(ignored: int) -> None:
 
 def test_balance_considers_the_discard_wrapper() -> None:
     from esolangs.generation.helpers import essential_inputs
-    from esolangs.generation.wrap import balance_score
 
     # The first input is ignored, so the discard column applies: 21x13 against
     # the default's 22x8, which renders the smaller square.

@@ -7,8 +7,9 @@ import pytest
 
 import esolangs
 from esolangs import run
+from esolangs.debugger import make_debugger
 from tests.proofs._ledger import load
-from tests.support.cli_support import _failure
+from tests.support.cli_support import _failure, run_cli
 from tests.support.input_convention import assert_reads_tokens_on_one_line
 
 
@@ -49,7 +50,6 @@ def test_befunge_grid_refusal_is_catchable() -> None:
 
 @pytest.mark.parametrize("wrapped", ["vm", "machine", "debugger"])
 def test_random_snapshot_cannot_prove_a_cycle(wrapped) -> None:
-    from esolangs.debugger import make_debugger
     from esolangs.vm import make_vm, run_until_halt, run_until_halt_or_cycle
 
     source = "v \n?@"
@@ -80,9 +80,7 @@ def test_befunge_refusal_is_an_explicit_totality_exception() -> None:
 
 @pytest.mark.medium
 def test_seeded_steps_debuggers_and_combined_worker_budgets_agree(tmp_path):
-    from esolangs.debugger import make_debugger
     from esolangs.vm import complete_vm, make_vm
-    from tests.support.cli_support import run_cli
 
     source = "?.@\n. @\n@ @"
     observed = {}

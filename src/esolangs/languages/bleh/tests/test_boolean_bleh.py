@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 from esolangs import run
+from esolangs.exceptions import HaltError
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row, measure_run
@@ -58,8 +59,6 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
 
 
 def test_skipped_reads_reject_eof() -> None:
-    from esolangs.exceptions import HaltError
-
     for table, stdin in (("00", ""), ("0011", "0"), ("0101", ""), ("01", "")):
         with pytest.raises(HaltError, match="no branch"):
             run("Bleh", esolangs.generate("Bleh", table).source, stdin=stdin)

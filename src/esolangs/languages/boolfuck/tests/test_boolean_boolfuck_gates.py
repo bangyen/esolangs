@@ -13,7 +13,9 @@ from esolangs.languages.boolfuck.generator import (
 )
 from esolangs.languages.boolfuck.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
+from tests.support.evaluation import _evaluate
 from tests.support.generator_support import measure_run
+from tests.support.witness_tables import nested_dense
 
 
 def _execute(table: str, program: str, rows: range | list[int]) -> int:
@@ -238,7 +240,6 @@ def test_boolfuck_scaling_windows_follow_normalized_gate_route() -> None:
         _series,
         _trend,
     )
-    from tests.support.witness_tables import nested_dense
 
     series = _series(boolfuck, nested_dense, ARITY_OVERRIDE["boolfuck"])
     windows = _classes(series)
@@ -282,8 +283,6 @@ def test_four_input_table_keeps_its_gate_size() -> None:
 
     # The gates race starts at n = 4, where the workspace first holds;
     # this table's winner is the gates program, not the shared tree.
-    from tests.support.evaluation import _evaluate
-
     table = "0001110100101101"
     program = boolfuck(table)
     assert len(esolangs.generate("Boolfuck", table).source) == 191

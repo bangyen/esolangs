@@ -7,6 +7,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.eval.interpreter import _Machine, run
 from esolangs.runtime.io import IO, ScriptedIO
+from esolangs.vm import run_until_halt_or_ancestor
 from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.runner import run_printing
 
@@ -88,8 +89,6 @@ class TestFrames:
 
     def test_endless_recursion_is_proved_rather_than_crashing(self) -> None:
         """A self-referential program is decided by the ancestor check."""
-        from esolangs.vm import run_until_halt_or_ancestor
-
         looping = _Machine('"0+.^!"^0+?!0.', ScriptedIO(""))
         assert run_until_halt_or_ancestor(looping) is False
 

@@ -1,11 +1,13 @@
 """Unit tests for the Alight interpreter and its generator."""
 
+from fractions import Fraction
 from itertools import product
 from operator import add, mul, sub
 from typing import ClassVar
 
 import pytest
 
+from esolangs.debugger import make_debugger
 from esolangs.exceptions import HaltError
 from esolangs.generation.helpers import essential_inputs
 from esolangs.languages.alight.generator import alight
@@ -21,6 +23,7 @@ from esolangs.languages.alight.interpreter._parse import (
 )
 from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.io import ScriptedIO as _ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,
@@ -388,12 +391,9 @@ class TestSnapshot(SnapshotContract):
         assert banked == copy
         assert banked != machine.snapshot()
 
-        from fractions import Fraction
-
         from esolangs.languages.alight.interpreter import _machine as owned
         from esolangs.languages.alight.interpreter._parse import _Not
         from esolangs.languages.alight.interpreter._workspace import _Graph
-        from esolangs.runtime._state import WorkspaceVariant
         from scripts.benchmark import state_bits
 
         def forbidden(*_args):
@@ -709,7 +709,6 @@ def test_at_list_update_and_aliases(
     assert first.io.getvalue() == expected
     from esolangs import DialectSettings
     from esolangs import run as run_api
-    from esolangs.debugger import make_debugger
 
     settings = DialectSettings(list_update=list_update)
     native = run_api("Alight", program, settings=settings)
@@ -876,7 +875,6 @@ class TestPureTransition:
 
     def test_the_shell_writes_before_a_later_read(self) -> None:
         """An ``out`` effect is applied before a later ``inp`` reads."""
-        from esolangs.runtime.io import ScriptedIO as _ScriptedIO
 
         class LoggingIO(_ScriptedIO):
             def __init__(self, stdin: str) -> None:

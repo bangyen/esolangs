@@ -4,7 +4,7 @@ from typing import ClassVar
 
 import pytest
 
-from esolangs.languages.clockwise.interpreter import run
+from esolangs.languages.clockwise.interpreter import _Machine, run
 from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
@@ -60,8 +60,6 @@ class TestClockwise:
 class TestMachineState:
     def test_a_ring_with_no_read_never_touches_the_input(self) -> None:
         """The bits are read at construction, but only if a ``.`` is there."""
-        from esolangs.languages.clockwise.interpreter import _Machine
-
         io = ScriptedIO("A\n")
         _Machine(["+;S;S;S;S;S;+;R", "R             R"], io)
         assert io.position() == 0
@@ -108,8 +106,6 @@ class TestMove:
 
 class TestStepMachine:
     def test_step_tracks_position_heading_and_accumulator(self) -> None:
-        from esolangs.languages.clockwise.interpreter import _Machine
-
         machine = _Machine(["+;S;S;S;S;S;+;R", "R             R"], IO())
         assert (machine.row, machine.col, machine.r, machine.acc) == (0, 0, 0, 0)
         machine.step()  # + at the origin: acc 1, head right
@@ -121,8 +117,6 @@ class TestStepMachine:
 
     def test_a_read_keeps_the_counts_above_the_low_bit(self) -> None:
         """``.`` clears the low bit and adds the input one, keeping the rest."""
-        from esolangs.languages.clockwise.interpreter import _Machine
-
         machine = _Machine(["++.R", "  ?R", "R R "], ScriptedIO("A"))
         for _ in range(3):
             machine.step()
@@ -157,8 +151,6 @@ class TestStepMachine:
 
 def test_reading_with_no_input_is_eof() -> None:
     """Bits are read up front, so an empty queue is exhausted input."""
-    from esolangs.runtime.io import ScriptedIO
-
     with pytest.raises(EOFError) as caught:
         run(".", ScriptedIO(""))
     assert "0 characters supplied, read 1" in str(caught.value)
@@ -166,8 +158,6 @@ def test_reading_with_no_input_is_eof() -> None:
 
 
 def _machine(code: object) -> object:
-    from esolangs.languages.clockwise.interpreter import _Machine
-
     return _Machine(code, IO())
 
 

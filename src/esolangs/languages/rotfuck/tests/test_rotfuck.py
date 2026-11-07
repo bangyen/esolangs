@@ -5,7 +5,7 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.rotfuck.interpreter import run
+from esolangs.languages.rotfuck.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters import runner
 from tests.interpreters.contract import (
@@ -58,8 +58,6 @@ class TestTape:
         assert run_program(build("+<<<<>>>>.")) == "\x01"
 
     def test_the_step_machine_grows_left_as_run_does(self) -> None:
-        from esolangs.languages.rotfuck.interpreter import _Machine
-
         machine = _Machine(build("+<<++>"), ScriptedIO())
         while not machine.halted:
             machine.step()
@@ -122,8 +120,6 @@ class TestBrackets:
         Outer counter 4, dropped by two a trip: two trips, each running the
         inner loop (prints 3 and 1) and then printing the counter.
         """
-        from esolangs.languages.rotfuck.interpreter import _Machine
-
         machine = _Machine(build("++++[>+[++.--.-]<--.]"), ScriptedIO())
         while not machine.halted:
             machine.step()
@@ -165,8 +161,6 @@ class TestBrackets:
 
 class TestStepMachine:
     def test_step_tracks_tape_cursor_and_rotation(self) -> None:
-        from esolangs.languages.rotfuck.interpreter import _Machine
-
         machine = _Machine(build("+."), ScriptedIO())
         assert (machine.ind, machine.ptr, list(machine.tape)) == (0, 0, [0])
         machine.step()  # + increments the cell and rotates the program
@@ -195,9 +189,6 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.languages.rotfuck.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
     return _Machine(code, ScriptedIO())
 
 
@@ -213,8 +204,6 @@ class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
 
 @pytest.mark.parametrize("code", [build("+-><,.[]"), "+<.]>", "[[]", "comment"])
 def test_rotation_and_cursor_preclude_snapshot_cycles(code: str) -> None:
-    from esolangs.languages.rotfuck.interpreter import _Machine
-
     machine = _Machine(code, ScriptedIO("x\n" * 100))
     for _ in range(100):
         if machine.halted:

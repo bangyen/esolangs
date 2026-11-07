@@ -5,8 +5,12 @@ import random
 import pytest
 
 import esolangs
+from esolangs.exceptions import InputExhaustedError
 from esolangs.languages.modulous import generator as boolean
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_an_ignored_input_costs, measure_run
 from tests.support.witness_tables import witnesses
@@ -51,7 +55,6 @@ class TestModulous:
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """``[INP INT][POP]``."""
     from tests.generators.generator_sections import named_table
-    from tests.support.analysis_support import assert_analysis_complement
 
     assert_analysis_complement("Modulous", "input_weights")
     assert_analysis_complement(
@@ -62,7 +65,6 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
     assert_an_ignored_input_costs("Modulous", 6, 14)
 
     from esolangs.languages.modulous.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     base = "11100110001111100101010001000110"
     table = "".join(
@@ -92,7 +94,6 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
     from esolangs.languages.modulous.interpreter import _Machine
     from esolangs.languages.modulous.proof_formulas import workspace
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         if n == 1:
@@ -143,12 +144,9 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
 
 
 def _check_pair_resources() -> None:
-    from esolangs.exceptions import InputExhaustedError
     from esolangs.languages.modulous.interpreter import _Machine
     from esolangs.languages.modulous.proof_formulas import execution, workspace
     from esolangs.languages.modulous.tests.formulas import resource_witness
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for n in range(2, 9):
         table = resource_witness(n)

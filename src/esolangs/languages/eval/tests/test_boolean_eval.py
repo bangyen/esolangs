@@ -8,6 +8,8 @@ from esolangs.languages.eval.tests.eval_support import (
     _eval_ordered,
     _eval_stack_programs,
 )
+from esolangs.runtime.io import ScriptedIO
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.witness_tables import row_bits
 
 #: One input's run, as the template spells it.
@@ -19,7 +21,6 @@ class TestEvalBoolean:
 
     def run_eval(self, prog: str) -> str:
         from esolangs.languages.eval.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         io_ = ScriptedIO("")
         run(prog, io_)
@@ -31,7 +32,6 @@ class TestEvalBoolean:
 
     def test_ignored_inputs_shrink_the_lookup(self) -> None:
         """A constant table pushes one result; its staged inputs never drain."""
-        from tests.support.analysis_support import assert_analysis_complement
         from tests.support.witness_tables import parity
 
         assert not {"_EVAL_TREE_STACK", "_EVAL_READ_STACK"} & vars(boolean).keys()
@@ -204,7 +204,6 @@ class TestEvalBoolean:
 def _check_constants() -> None:
     from esolangs.languages.eval.generator import eval_setters
     from esolangs.languages.eval.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
         for bit in "01":

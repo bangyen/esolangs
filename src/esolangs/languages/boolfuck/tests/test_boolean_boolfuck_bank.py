@@ -4,6 +4,7 @@ import random
 
 import pytest
 
+from esolangs.debugger import make_vm
 from tests.support.generator_support import measure_run
 from tests.support.reference import REFERENCE
 
@@ -29,7 +30,6 @@ def _bank_tables():
 @pytest.mark.parametrize("table", _bank_tables()[:2], ids=["two", "four"])
 def test_banked_residuals_execute_and_match_command_price(kind, table) -> None:
     import esolangs
-    from esolangs.debugger import make_vm
     from esolangs.generation.helpers import permute_truth_table
     from esolangs.generation.shared_block import repeated_bank
     from esolangs.generation.shared_flag import flag_tree_body

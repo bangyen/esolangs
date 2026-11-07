@@ -4,8 +4,9 @@ import pytest
 
 import esolangs
 from esolangs import run as execute
-from esolangs.languages.pilas.interpreter import run
+from esolangs.languages.pilas.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -45,9 +46,6 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 def _check_constants() -> None:
     assert_analysis_complement("Pilas", "subtree_ids")
-    from esolangs.languages.pilas.interpreter import _Machine
-    from scripts.benchmark import WrittenState
-
     for n in range(1, 13):
         keep = min(
             n, max(0, (3 * n + 10 - (3 * n + 10).bit_length() - n.bit_length()) // 6)

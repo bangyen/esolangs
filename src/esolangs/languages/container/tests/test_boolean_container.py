@@ -2,16 +2,19 @@
 
 import itertools
 import random
+from itertools import pairwise
 
 import pytest
 
 import esolangs
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.container import generator as boolean
+from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
 from tests.generators.sample_tables import five_input_sample
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_an_ignored_input_costs
+from tests.support.generator_support import assert_an_ignored_input_costs, measure_run
 from tests.support.witness_tables import row_bits, witnesses
 
 run_container = _runner("container", lines=True)
@@ -20,7 +23,6 @@ run_container = _runner("container", lines=True)
 def _run_container_capped(program: str, inputs: list[str], *, budget: int) -> str:
     """Run a Container program under a hard tick budget and return its output."""
     from esolangs.languages.container.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     stream = ScriptedIO("".join(f"{line}" for line in inputs))
     machine = _Machine(program.splitlines(), stream)
@@ -54,7 +56,6 @@ class TestContainer:
     def test_exact_delta_chunks_preserve_each_tick(self, original: str) -> None:
         from esolangs.languages.container.generator import _narrow_rules
         from esolangs.languages.container.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
 
         before = _Machine(original.splitlines(), ScriptedIO(""))
         after = _Machine(_narrow_rules(original, 1).splitlines(), ScriptedIO(""))
@@ -82,7 +83,6 @@ class TestContainer:
             _narrow_rules,
         )
         from esolangs.languages.container.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
 
         original = _container_threshold("01101001")
         narrow = _narrow_rules(original, 7)
@@ -291,15 +291,11 @@ def test_narrow_balance_regime_edge_executes(table) -> None:
 @pytest.mark.medium
 def test_balanced_parity_is_the_block_program() -> None:
     """Parity at n=8 draws as eight-row blocks with a longer decode."""
-    from esolangs.generation.wrap import balance_score
-
     table = "".join(str(row.bit_count() & 1) for row in range(256))
     balanced = esolangs.generate("Container", table, balance=True).source
     assert balance_score(balanced) == (348, 1322, 9)
     assert _evaluate("Container", balanced, inputs=8) == table
     from esolangs.languages.container.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-    from tests.support.generator_support import measure_run
 
     io = ScriptedIO("11111111")
     steps, _ = measure_run(_Machine(balanced.splitlines(), io), limit=34)
@@ -330,10 +326,7 @@ def test_threshold_proof_executes_wide_inputs() -> None:
 
 def _swept_balance(table: str, default: str) -> str:
     """The retired balance: narrow at every rule-fit and decimal-budget threshold."""
-    from itertools import pairwise
-
     from esolangs.generation.helpers import grid_width
-    from esolangs.generation.wrap import balance_score
     from esolangs.languages.container.generator import (
         _container_threshold,
         _narrow_rule_parts,
@@ -377,8 +370,6 @@ def _swept_balance(table: str, default: str) -> str:
 
 def test_balance_closed_form_is_never_worse_than_the_swept_one() -> None:
     """Per table, 1..6 inputs: the square-width narrowing scores at most the sweep's."""
-    from esolangs.generation.wrap import balance_score
-
     rng = random.Random(9)
     for n in (2, 3, 4, 5, 6):
         for _ in range(6):

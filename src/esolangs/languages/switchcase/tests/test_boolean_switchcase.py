@@ -3,6 +3,8 @@
 import pytest
 
 import esolangs
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
@@ -20,7 +22,6 @@ def test_every_row_prints_its_answer(table: str) -> None:
 @pytest.mark.medium
 def test_constant_reads_precede_output_and_preserve_the_next_character() -> None:
     from esolangs.languages.switchcase.interpreter import _Machine
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":
@@ -64,8 +65,6 @@ def _check_shared_residuals() -> None:
     """Every small table preserves IO; parity reaches the command bound."""
     from esolangs.languages.switchcase.interpreter import _Machine
     from esolangs.languages.switchcase.proof_formulas import execution, workspace
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     summed = 0
     for value in range(256):

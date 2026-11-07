@@ -1,6 +1,7 @@
 """Execute Unary's admitted sources and its uncapped tree construction."""
 
 import itertools
+from unittest.mock import patch
 
 import pytest
 
@@ -9,6 +10,7 @@ from esolangs.languages.brainfuck.interpreter import _Machine as BFMachine
 from esolangs.languages.unary.generator import _decoded, unary
 from esolangs.languages.unary.interpreter import _Machine, decode
 from esolangs.runtime.io import ScriptedIO
+from tests.support.generator_support import evaluate_generated
 
 
 def _answer(machine: BFMachine | _Machine) -> tuple[str, int]:
@@ -29,10 +31,7 @@ def _answer(machine: BFMachine | _Machine) -> tuple[str, int]:
 )
 def test_generated_sources_execute_every_row(table: str) -> None:
     if table == "01":
-        from unittest.mock import patch
-
         from esolangs.languages.unary import generator
-        from tests.support.generator_support import evaluate_generated
 
         encode = generator._zeros
         with patch.object(generator, "_zeros", side_effect=lambda _: encode(",+[]")):

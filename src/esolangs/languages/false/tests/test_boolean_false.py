@@ -1,11 +1,14 @@
 """false generator tests."""
 
+import random
+
 import pytest
 
 import esolangs
 from esolangs import run as execute
 from esolangs.languages.false.generator import _shared, false
 from esolangs.languages.false.interpreter import run
+from esolangs.runtime.io import ScriptedIO
 from tests.generators.plain_oracles import separated_tree_text
 from tests.generators.reader_support import assert_emissions_grow_by_a_line
 from tests.generators.sample_tables import five_input_sample
@@ -53,8 +56,6 @@ def test_false_stores_repeated_halves_and_skips_equal_ones() -> None:
 @pytest.mark.medium
 def test_false_runs_out_of_variables_and_writes_the_rest_inline(monkeypatch) -> None:
     """Past 26 repeated halves the rest stay written out, and still run."""
-    import random
-
     table = format(random.Random(0).getrandbits(512), "0512b")
     program = _shared(table, 9)
     assert all(f"]{name}:" in program for name in "abcdefghijklmnopqrstuvwxyz")
@@ -127,8 +128,6 @@ def _check_lookup_and_cached_formula() -> None:
         _ExpressionSearch,
         _lookup,
     )
-    from esolangs.languages.false.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     for table in ("1" + "0" * 31, "0" * 31 + "1", "1" * 32, "01" * 16):
         program = _lookup(table, 5, list(range(5)))

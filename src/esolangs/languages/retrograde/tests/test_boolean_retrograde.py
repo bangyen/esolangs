@@ -5,6 +5,7 @@ from random import Random
 
 import esolangs
 from esolangs import run as execute
+from esolangs.runtime.io import ScriptedIO
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import evaluate_generated
 
@@ -75,7 +76,6 @@ def check_boolean_tables() -> None:
 def _check_constants() -> None:
     assert_analysis_complement("Retrograde", "subtree_ids")
     from esolangs.languages.retrograde.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
         for bit in "01":

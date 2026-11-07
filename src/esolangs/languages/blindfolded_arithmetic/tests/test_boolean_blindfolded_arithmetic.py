@@ -3,6 +3,8 @@
 import pytest
 
 import esolangs
+from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import make_vm
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import assert_every_row, measure_run
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -21,8 +23,6 @@ def test_the_input_is_the_row_number() -> None:
     assert esolangs.encode_inputs("Blindfolded Arithmetic", [1, 0]) == "3\n"
     assert_analysis_complement("Blindfolded Arithmetic", "read_at")
     _check_alternating_rounds()
-    from esolangs.vm import make_vm
-
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
@@ -40,7 +40,6 @@ def test_the_input_is_the_row_number() -> None:
 
 def _check_alternating_rounds() -> None:
     from esolangs.languages.blindfolded_arithmetic.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     # Both counter parities, ignored positions and complemented/mirrored answers.
     for table in (

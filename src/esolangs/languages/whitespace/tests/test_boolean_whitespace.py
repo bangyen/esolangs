@@ -6,7 +6,10 @@ import pytest
 
 import esolangs
 from esolangs import run
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
+from tests.support.cli_support import call_main
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -25,7 +28,6 @@ def _check_constants() -> None:
     assert_analysis_complement("Whitespace", "read_at")
     from esolangs.languages.whitespace.generator import _END
     from esolangs.languages.whitespace.interpreter import _Machine
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":
@@ -69,8 +71,6 @@ def _check_power_steps() -> None:
     from esolangs.languages.whitespace.generator import whitespace
     from esolangs.languages.whitespace.interpreter import _Machine
     from esolangs.languages.whitespace.proof_formulas import execution, workspace
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for n in (1, 2, 3, 5, 8):
         size = 1 << n
@@ -128,7 +128,6 @@ def test_cli_exports_exact_command_bytes(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     from esolangs.languages.whitespace.generator import whitespace
-    from tests.support.cli_support import call_main
 
     output = call_main(["generate", "Whitespace", "0110"], capsys)
     assert output == whitespace("0110")

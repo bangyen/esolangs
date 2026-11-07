@@ -7,6 +7,7 @@ import pytest
 import esolangs
 from esolangs.generation.decision import decision_layers
 from esolangs.languages.basicer import generator
+from scripts.benchmark import WrittenState
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row, evaluate_generated
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -22,7 +23,6 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.basicer.interpreter import _Machine
-    from scripts.benchmark import WrittenState
 
     with patch.object(
         generator,

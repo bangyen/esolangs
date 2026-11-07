@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs.runtime.io import ScriptedIO
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -85,7 +86,6 @@ def test_three_input_corpus_size(monkeypatch) -> None:
 
 def _check_majority() -> None:
     from esolangs.languages.hot.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     for n, size in ((2, 253), (3, 353), (7, 1313), (8, 1999)):
         table = "".join(str(int(2 * row.bit_count() > n)) for row in range(1 << n))

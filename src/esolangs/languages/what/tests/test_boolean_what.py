@@ -1,13 +1,15 @@
 """Tests for the What!? Boolean generator."""
 
 import random
+from unittest.mock import patch
 
 import pytest
 
 import esolangs
 from esolangs import run
+from scripts.benchmark import WrittenState
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_every_row
+from tests.support.generator_support import assert_every_row, evaluate_generated
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -17,10 +19,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
     if table == "00":
         _check_constants()
         _check_copyless()
-        from unittest.mock import patch
-
         from esolangs.languages.what import generator
-        from tests.support.generator_support import evaluate_generated
 
         with patch.object(generator, "change_points", return_value=[]) as corrupted:
             assert evaluate_generated("What!?", "0011") == "1111"
@@ -41,7 +40,6 @@ def test_a_table_past_the_low_input_cap_labels_its_blocks() -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.what.interpreter import _Machine
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 17):
         for bit in "01":

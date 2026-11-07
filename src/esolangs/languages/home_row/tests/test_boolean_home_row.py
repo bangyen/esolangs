@@ -5,6 +5,7 @@ import random
 import pytest
 
 import esolangs
+from esolangs.runtime.io import ScriptedIO
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.witness_tables import row_bits
 
@@ -13,7 +14,6 @@ from tests.support.witness_tables import row_bits
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_setters_leave_scratch_zero(n: int, bit: str) -> None:
     from esolangs.languages.home_row.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     if n == 1 and bit == "0":
         _check_constants()
@@ -41,7 +41,6 @@ class TestParameterizedHomeRow:
 
     def run_home_row(self, prog: str) -> str:
         from esolangs.languages.home_row.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         io_ = ScriptedIO("")
         run(prog, io_)
@@ -125,7 +124,6 @@ class TestParameterizedHomeRow:
 def _check_constants() -> None:
     assert_analysis_complement("Home Row", "read_at")
     from esolangs.languages.home_row.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
         for bit in "01":

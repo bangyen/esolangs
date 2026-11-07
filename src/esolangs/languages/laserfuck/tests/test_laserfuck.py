@@ -7,8 +7,8 @@ from typing import ClassVar
 
 import pytest
 
+from esolangs.languages.laserfuck.interpreter import _Machine, run
 from esolangs.languages.laserfuck.interpreter import _Machine as Laserfuck
-from esolangs.languages.laserfuck.interpreter import run
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.runtime.randomness import FirstDraw
 from esolangs.vm import (
@@ -150,8 +150,6 @@ class TestLaserFuck:
 
     def test_step_on_an_already_halted_machine(self) -> None:
         # a second start halts the machine before any step; stepping is a no-op
-        from esolangs.languages.laserfuck.interpreter import _Machine
-
         machine = _Machine(["oo"], IO(), rng=FirstDraw(3))
         assert machine.halted
         machine.step()  # must not raise
@@ -210,9 +208,6 @@ class TestSurvivorGaps:
 
     def test_the_tape_dumps_once_however_far_it_is_stepped(self) -> None:
         """The post-halt step dumps the tape, and only the first one does."""
-        from esolangs.languages.laserfuck.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
-
         io_obj = ScriptedIO()
         machine = _Machine(["o+x"], io_obj, rng=FirstDraw(3))
         while not machine.halted:
@@ -267,8 +262,6 @@ class TestSnapshotProgress:
 
     def test_a_cursorless_read_ring_is_not_a_cycle(self) -> None:
         """``,`` re-reading ``a`` round a ring runs to EOF, not a false cycle."""
-        from esolangs.languages.laserfuck.interpreter import _Machine
-        from esolangs.vm import run_until_halt
         from tests.interpreters.cursorless_io import CursorlessIO
 
         ring = ["/o,\\", "\\  /"]
@@ -278,9 +271,6 @@ class TestSnapshotProgress:
 
 
 def _machine(code: object) -> object:
-    from esolangs.languages.laserfuck.interpreter import _Machine
-    from esolangs.runtime.io import IO
-
     return _Machine(code, IO(), rng=FirstDraw(3))
 
 

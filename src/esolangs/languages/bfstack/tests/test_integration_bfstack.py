@@ -1,12 +1,15 @@
 """BFStack through the shared API, CLI and machinery."""
 
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
 import esolangs.debugger as debugger_api
 from tests.support.input_convention import assert_echoes_a_newline
 from tests.support.reference import REFERENCE
+from tests.support.screen_support import audit
+from tests.support.screen_support import resource_corpus as corpus
 
 
 def test_cli_echoes_a_surrogate_to_a_text_stdout(tmp_path: Any) -> None:
@@ -17,7 +20,6 @@ def test_cli_echoes_a_surrogate_to_a_text_stdout(tmp_path: Any) -> None:
     import io
     import sys
     from io import StringIO
-    from unittest.mock import patch
 
     from esolangs.cli import main
 
@@ -103,8 +105,5 @@ def _bounds(profile: dict[str, Any]) -> None:
 @pytest.mark.medium
 def test_resource_bounds() -> None:
     """The resource audit counts a UTF-8 byte per source unit."""
-    from tests.support.screen_support import audit
-    from tests.support.screen_support import resource_corpus as corpus
-
     result = audit("BFStack", 8, corpus(8)["dense"], _bounds)
     assert result["source_utf8_bits"] == 8 * result["source_units"]

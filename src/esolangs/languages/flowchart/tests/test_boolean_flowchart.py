@@ -6,6 +6,7 @@ from itertools import pairwise
 import pytest
 
 import esolangs
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.flowchart import generator as boolean
 from esolangs.languages.flowchart.generator import (
     _flowchart_cells,
@@ -15,7 +16,9 @@ from esolangs.languages.flowchart.generator import (
 )
 from esolangs.runtime.io import IO, ScriptedIO
 from tests.generators.boolean_runners import _runner
+from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import assert_shared_program
 from tests.support.witness_tables import row_bits
 
 run_flowchart = _runner("flowchart", lines=True)
@@ -319,8 +322,6 @@ def test_a_width_tree_branches_only_on_essential_inputs(width: int) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_lookup_reads_without_deque_or_selector(bit) -> None:
-    from tests.support.generator_support import assert_shared_program
-
     n = 8
     table = bit * (1 << n)
     program = boolean.flowchart(table)
@@ -367,8 +368,6 @@ def test_constant_lookup_reads_without_deque_or_selector(bit) -> None:
 def test_balance_of_parity_n8_is_banded() -> None:
     """Parity n=8 balances as a top tree over 2 inputs and four bands:
     (side, length, width); the flat tree's side was 1,534."""
-    from esolangs.generation.wrap import balance_score
-
     table = "".join(str((row).bit_count() & 1) for row in range(256))
     program = esolangs.generate("Flowchart", table, balance=True).source
     assert balance_score(program) == (878, 200404, 878)
@@ -377,9 +376,7 @@ def test_balance_of_parity_n8_is_banded() -> None:
 @pytest.mark.parametrize("table", ["0001", "0110", "01101001", "00010111", "11101000"])
 def test_balanced_tree_folds_and_still_computes(table: str, monkeypatch) -> None:
     """Snaking chains beats the tall tree's side by a third and keeps the table."""
-    from esolangs.generation.wrap import balance_score
     from esolangs.languages.flowchart.generator import _ANSWER, _snake
-    from tests.support.evaluation import _evaluate
 
     shapes = set()
     padded_reads = []

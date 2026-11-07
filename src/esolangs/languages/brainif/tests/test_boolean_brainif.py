@@ -1,16 +1,24 @@
 """brainif generator tests."""
 
+import random
 from functools import partial
 from itertools import pairwise
+from unittest.mock import patch
 
 import pytest
 
 import esolangs
 from esolangs import run as execute
 from esolangs.languages.brainif import generator as boolean
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
+from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_parity_at_most_doubles
+from tests.support.generator_support import (
+    assert_parity_at_most_doubles,
+    evaluate_generated,
+)
 from tests.support.witness_tables import witnesses
 
 run_brainif = _runner("brainif", lines=True)
@@ -43,10 +51,7 @@ class TestBrainIf:
             boolean.brainif("10010110", width=1000)
         )
 
-        from unittest.mock import patch
-
         from esolangs.generation.decision import fold_subtables
-        from tests.support.generator_support import evaluate_generated
 
         assert boolean.fold_subtables is fold_subtables
         with patch.object(
@@ -71,7 +76,6 @@ class TestBrainIf:
     def _reads(program: str, stdin: str) -> tuple[str, int]:
         """Run ``program`` and return its answer and how many inputs it read."""
         from esolangs.languages.brainif.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         io = ScriptedIO(stdin)
         run(program.splitlines(), io)
@@ -154,7 +158,6 @@ class TestBrainIf:
 @pytest.mark.parametrize("width", [1, 13, 40])
 def test_brainif_zero_landing_executes_all_small_tables(width: int) -> None:
     from esolangs.languages.brainif.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 4):
         for table in witnesses(n):
@@ -221,7 +224,6 @@ def test_linear_lookup_loops_stop_at_a_shared_marker_cell() -> None:
     from esolangs.generation.helpers import input_weights
     from esolangs.languages.brainif.generator import _Strip
     from esolangs.languages.brainif.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
 
     n, kept = 12, [0, 8, 9, 10, 11]
     small = "01101001100101101001011001101001"
@@ -259,8 +261,6 @@ def test_loop_depth_rule_is_within_the_bar_of_the_measured_best(monkeypatch) -> 
     Checked at the arities where the rule and the old cap of 4 differ or
     agree on a seeded random table: n=5..10 (rule 1, 1, 2, 2, 3, 3).
     """
-    import random
-
     import esolangs.languages.brainif.generator as generator
     from esolangs.languages.brainif.generator import _brainif_tree, _top_level
 
@@ -279,8 +279,6 @@ def test_loop_depth_rule_is_within_the_bar_of_the_measured_best(monkeypatch) -> 
 
 def test_a_narrow_five_input_lookup_has_an_exact_size() -> None:
     """The single-one table's strip walks every unlooped level's guards in full."""
-    from tests.support.evaluation import _evaluate
-
     table = "0" * 31 + "1"
     program = esolangs.generate("brainif", table, width=1).source
     assert len(str(program)) == 2731
@@ -308,7 +306,6 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
 def _check_or_zero_entries() -> None:
     from esolangs.languages.brainif.interpreter import _Machine
     from esolangs.languages.brainif.proof_formulas import workspace
-    from scripts.benchmark import WrittenState
 
     for n, mask in ((1, 1), (3, 4), (6, 33), (8, 255), (8, 192)):
         table = "".join(str(int(bool(row & mask))) for row in range(1 << n))

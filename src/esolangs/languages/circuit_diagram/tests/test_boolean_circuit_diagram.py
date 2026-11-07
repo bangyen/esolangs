@@ -11,6 +11,9 @@ from esolangs import run as execute
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.circuit_diagram import generator as boolean
 from esolangs.languages.circuit_diagram.generator.hlayout import _LATTICE, _h_size
+from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import _capture_workspace
+from scripts.benchmark import WrittenState
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import witnesses
@@ -254,7 +257,6 @@ class TestCircuitDiagramLayoutGuards:
         """The routed minterm and reduction trees compute all small functions."""
         from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
         from esolangs.languages.circuit_diagram.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         for value in range(1, 15):
             table = format(value, "04b")
@@ -307,7 +309,6 @@ class TestCircuitDiagramLayoutGuards:
     def _run_at(table: str, width: int | None) -> str:
         """The banded program's output for every input, in table order."""
         from esolangs.languages.circuit_diagram.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         n = len(table).bit_length() - 1
         program = boolean.circuit_diagram(table, width).split("\n")
@@ -367,7 +368,6 @@ class TestCircuitDiagramLayoutGuards:
             affine_circuit,
         )
         from esolangs.languages.circuit_diagram.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         for n in range(1, 4):
             for table in witnesses(n):
@@ -440,7 +440,6 @@ class TestCircuitDiagram:
     def run_table(table: str) -> str:
         """Return the generated program's output for every input, in order."""
         from esolangs.languages.circuit_diagram.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         n = len(table).bit_length() - 1
         program = boolean.circuit_diagram(table).split("\n")
@@ -505,7 +504,6 @@ class TestCircuitDiagram:
     def test_each_run_prints_exactly_one_bit(self) -> None:
         """The output wire is live for exactly one generation."""
         from esolangs.languages.circuit_diagram.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         for table in ("0001", "0110", "00010111"):
             n = len(table).bit_length() - 1
@@ -579,7 +577,6 @@ class TestCircuitDiagram:
 
         from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
         from esolangs.languages.circuit_diagram.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         rng = random.Random(4)
         for _ in range(3):
@@ -712,8 +709,6 @@ def test_complete_wide_projection_retains_nonadjacent_ports() -> None:
 @pytest.mark.parametrize("kind", ["shared", "projected", "minterms"])
 def test_wide_layouts_preserve_execution_and_written_state_bounds(kind) -> None:
     from esolangs.debugger import make_vm
-    from esolangs.vm import _capture_workspace
-    from scripts.benchmark import WrittenState
 
     rng = random.Random(841)
     if kind == "shared":

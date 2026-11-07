@@ -59,10 +59,6 @@ def test_an_ignored_input_still_selects_one_of_two_identical_children() -> None:
 
 def _check_constants() -> None:
     assert_analysis_complement("Stisp", "decision_layers")
-    from esolangs.languages.stisp.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
-
     assert (
         sum(len(esolangs.generate("Stisp", f"{i:08b}").source) for i in range(256))
         == 20552

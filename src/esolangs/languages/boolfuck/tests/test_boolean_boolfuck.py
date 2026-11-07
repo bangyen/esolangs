@@ -3,12 +3,14 @@
 import pytest
 
 import esolangs
+from esolangs.debugger import make_vm
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.support.event_io import ReadFirstIO
 
 
 @pytest.mark.parametrize("table", ["01101001", "00000000"])
 def test_program_stays_within_the_command_bound(table) -> None:
-    from esolangs.debugger import make_vm
     from esolangs.languages.boolfuck.generator import _command_bound, boolfuck
 
     if table == "01101001":
@@ -30,7 +32,6 @@ def test_program_stays_within_the_command_bound(table) -> None:
 def _check_constants() -> None:
     from esolangs.languages.boolfuck.interpreter import _Machine
     from esolangs.languages.boolfuck.proof_formulas import workspace
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":
@@ -64,8 +65,6 @@ def _check_zero_guard() -> None:
     from esolangs.languages.boolfuck.generator import _boolfuck_tree, _command_bound
     from esolangs.languages.boolfuck.interpreter import _Machine
     from esolangs.languages.boolfuck.proof_formulas import workspace
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     fixtures = (
         "00000001",

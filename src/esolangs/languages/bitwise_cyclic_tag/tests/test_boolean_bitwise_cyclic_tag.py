@@ -6,6 +6,7 @@ import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.bitwise_cyclic_tag import generator as boolean
 from esolangs.languages.bitwise_cyclic_tag.descriptor import PAIR as BCT_PAIR
+from esolangs.languages.bitwise_cyclic_tag.interpreter import _Machine
 from esolangs.languages.bitwise_cyclic_tag.interpreter import (
     _Machine as BctMachine,
 )
@@ -107,8 +108,6 @@ def test_constant_deletes_inputs_and_literal_answer(n, bit) -> None:
 
 
 def _check_constants() -> None:
-    from esolangs.languages.bitwise_cyclic_tag.interpreter import _Machine
-
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):

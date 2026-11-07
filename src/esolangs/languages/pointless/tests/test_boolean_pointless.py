@@ -1,8 +1,12 @@
 """Tests for the Pointless Boolean generator."""
 
+import random
+import re
+
 import pytest
 
 import esolangs
+from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -16,7 +20,6 @@ def test_every_row_prints_its_answer(table: str, monkeypatch) -> None:
     if table == "0001":
         from esolangs.generation.helpers import subtree_ids
         from esolangs.languages.pointless import generator
-        from tests.support.evaluation import _evaluate
 
         assert generator.subtree_ids is subtree_ids
         monkeypatch.setattr(
@@ -28,11 +31,7 @@ def test_every_row_prints_its_answer(table: str, monkeypatch) -> None:
 
 
 def test_a_function_called_once_is_pasted_in() -> None:
-    import random
-    import re
-
     from esolangs.languages.pointless.generator import pointless
-    from tests.support.evaluation import _evaluate
 
     table = format(random.Random(1847).getrandbits(64), "064b")
     program = pointless(table)

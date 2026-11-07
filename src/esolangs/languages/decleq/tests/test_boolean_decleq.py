@@ -2,12 +2,16 @@
 
 import random
 from itertools import product
+from unittest.mock import patch
 
 import pytest
 
 from esolangs.generation.wrap import balance_program, balance_score, wrap_program
 from esolangs.languages.decleq import generator as boolean
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import assert_oisc_constants
 from tests.support.witness_tables import parity as _parity
 
@@ -17,8 +21,6 @@ run_decleq = _runner("decleq")
 class TestDecleq:
     def test_essential_bits_share_one_pass_loop(self) -> None:
         """Decrement once; ``0110`` tests input 2 under both input-1 arms."""
-        from tests.support.analysis_support import assert_analysis_complement
-
         assert_analysis_complement("Decleq", "read_at")
         assert_analysis_complement("Decleq", "subtree_ids")
         for table, tests in (("0110", (1, 2)), ("11110000", (1, 0, 0))):
@@ -121,8 +123,6 @@ def test_constants_reuse_scratch_and_print_after_every_read() -> None:
 
 
 def _check_gadgets_and_owner_families() -> None:
-    from unittest.mock import patch
-
     from esolangs.languages.decleq.generator import (
         _CodeBuilder,
         _owner_family,
@@ -130,8 +130,6 @@ def _check_gadgets_and_owner_families() -> None:
     )
     from esolangs.languages.decleq.interpreter import _Machine
     from esolangs.languages.decleq.proof_formulas import workspace
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     table = "".join(str(int(row.bit_count() >= 4)) for row in range(128))
     original = boolean.decleq(table)

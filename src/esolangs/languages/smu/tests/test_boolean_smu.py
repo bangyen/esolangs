@@ -6,8 +6,9 @@ import pytest
 
 import esolangs
 from esolangs.languages.smu import generator as tools
-from esolangs.languages.smu.interpreter import run
+from esolangs.languages.smu.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.generators.sample_tables import five_input_sample
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
@@ -84,9 +85,7 @@ def test_an_ignored_input_is_one_pad() -> None:
 
 
 def _check_terminal_leaves() -> None:
-    from esolangs.languages.smu.interpreter import _Machine
     from esolangs.languages.smu.proof_formulas import workspace
-    from scripts.benchmark import WrittenState
 
     tables = [
         "".join(str((row.bit_count() % 2) ^ inverted) for row in range(1 << n))
@@ -136,9 +135,7 @@ def _check_terminal_leaves() -> None:
 
 def _check_constants() -> None:
     assert_analysis_complement("Smu", "decision_layers")
-    from esolangs.languages.smu.interpreter import _Machine
     from esolangs.languages.smu.proof_formulas import workspace
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":

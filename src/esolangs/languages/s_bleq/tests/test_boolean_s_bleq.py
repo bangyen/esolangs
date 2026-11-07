@@ -1,6 +1,7 @@
 """S*bleq shared-tree and packed-decoder tests."""
 
 import random
+from unittest.mock import patch
 
 import pytest
 
@@ -16,6 +17,7 @@ from tests.generators.boolean_runners import _runner
 from tests.proofs._witnesses import _sbleq_worst
 from tests.proofs.execution import tables as _tables
 from tests.support import event_io
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import assert_parity_at_most_doubles
 
 run_sbleq = _runner("s_bleq")
@@ -101,10 +103,7 @@ def test_parity_still_runs_the_race_and_ships_the_tree() -> None:
     assert boolean.s_bleq(table) == _compact_tree(
         hoisted_tree(table, tuple(range(n))), n
     )
-    from unittest.mock import patch
-
     from tests.generators.generator_sections import named_table
-    from tests.support.analysis_support import assert_analysis_complement
 
     for query, rule in (
         ("_sbleq_hoisted", "parity"),

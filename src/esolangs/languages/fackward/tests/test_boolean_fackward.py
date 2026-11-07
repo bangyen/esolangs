@@ -7,6 +7,7 @@ import pytest
 import esolangs
 from esolangs.generation.decision import fold_subtables
 from esolangs.languages.fackward import generator
+from scripts.benchmark import WrittenState
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_native_rows, evaluate_generated
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -25,7 +26,6 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.fackward.interpreter import _Machine
-    from scripts.benchmark import WrittenState
 
     with patch.object(
         generator,

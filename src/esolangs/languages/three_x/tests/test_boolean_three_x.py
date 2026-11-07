@@ -9,6 +9,7 @@ import esolangs
 from esolangs.languages.three_x import generator as boolean
 from esolangs.languages.three_x.generator import _constant, _gain
 from esolangs.languages.three_x.tests.formulas import _key
+from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import state_bits
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
@@ -98,7 +99,6 @@ class TestThreeX:
 
         from esolangs.languages.three_x.generator import _three_x_ordered
         from esolangs.languages.three_x.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         def permuted(table: str, perm: tuple[int, ...]) -> str:
             out = []
@@ -171,7 +171,6 @@ class TestThreeX:
     def test_constants_run_to_their_value(self) -> None:
         """The interpreter agrees with the exact evaluation for the first 40 keys."""
         from esolangs.languages.three_x.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         for k in range(40):
             io = ScriptedIO("")
@@ -194,7 +193,6 @@ class TestThreeX:
         """Three copies of one block cost one block, and the program still runs."""
         from esolangs.languages.three_x.generator import _three_x_emit
         from esolangs.languages.three_x.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         a, b = "0010110111010001", "1101001000101110"
         table = a + a + b + a

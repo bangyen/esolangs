@@ -1,6 +1,7 @@
 """bfstack generator tests."""
 
 import random
+from unittest.mock import patch
 
 import pytest
 
@@ -8,7 +9,10 @@ import esolangs
 from esolangs import run
 from esolangs.languages.bfstack import generator as boolean
 from esolangs.registry._certification import load as load_certification
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_an_ignored_input_costs
 
@@ -92,8 +96,6 @@ class TestBfstack:
         body[255 - ones] = "0"
         table = "".join(body)
         if ones == 0:
-            from unittest.mock import patch
-
             with patch.object(boolean, "_start", return_value=0) as corrupted:
                 broken = boolean.bfstack(table)
                 assert run_bfstack(broken, ["0"] * 8) == "0"
@@ -106,8 +108,6 @@ class TestBfstack:
 
     def test_generated_structure_and_written_payload(self) -> None:
         """Program shape and the payload used by workspace proofs."""
-        from tests.support.analysis_support import assert_analysis_complement
-
         assert_analysis_complement("BFStack", "symmetric_weights", "01101001")
         assert_analysis_complement("BFStack", "input_weights", "00010011")
         """Program shape and the payload used by workspace proofs."""
@@ -120,7 +120,6 @@ class TestBfstack:
 
         from esolangs.languages.bfstack.descriptor import LANGUAGE
         from esolangs.languages.bfstack.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
 
         io = ScriptedIO("A")
         machine = _Machine(",.", io)
@@ -178,8 +177,6 @@ def test_small_tables_do_not_grow_and_execute() -> None:
 def _check_identities() -> None:
     from esolangs.languages.bfstack.interpreter import _Machine
     from esolangs.languages.bfstack.proof_formulas import execution, workspace
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for selected in range(n):
@@ -236,7 +233,6 @@ def _check_identities() -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.bfstack.interpreter import _Machine
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":

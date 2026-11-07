@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.exceptions import TruthTableError
 from esolangs.generation.helpers import TEMPLATE_CHAR, runs
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.crement.generator import (
     PAIR,
     crement,
@@ -15,9 +16,11 @@ from esolangs.languages.crement.generator import (
 )
 from esolangs.languages.crement.interpreter import _Machine
 from esolangs.vm import run_until_halt_or_cycle
+from scripts.benchmark import WrittenState
 from tests.generators.sample_tables import five_input_sample
 from tests.support.divergence import diverges
 from tests.support.evaluation import _evaluate
+from tests.support.event_io import count_steps
 from tests.support.generator_support import source_shape
 from tests.support.witness_tables import dense, parity
 
@@ -134,7 +137,6 @@ class TestCrementTree:
     def test_constant_tables_fold_to_the_gadget_alone(self) -> None:
         """One control instruction precedes all fixed-width, unreachable slots."""
         from esolangs.languages.crement.proof_formulas import workspace
-        from scripts.benchmark import WrittenState
 
         for n in range(1, 13):
             for bit in "01":
@@ -202,8 +204,6 @@ class TestCrementTree:
 
     def test_runs_a_handful_of_commands_per_input(self) -> None:
         """Initialized complemented AND uses one tester per bit."""
-        from tests.support.event_io import count_steps
-
         for n in (2, 4, 6):
             template = crement("1" * (2**n - 1) + "0")
             machine = _Machine(instantiate_crement(template, [1] * n))
@@ -269,7 +269,6 @@ def test_balanced_packed_template_instantiates_for_its_table() -> None:
 def test_packed_rule_matches_the_k_scan() -> None:
     """Oracle: k0-1..k0+1 lines per row reach the best side of the full scan."""
 
-    from esolangs.generation.wrap import balance_score
     from esolangs.languages.crement.generator import _packed, crement
 
     rng = random.Random(3)

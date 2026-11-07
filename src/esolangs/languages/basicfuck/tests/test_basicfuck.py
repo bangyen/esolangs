@@ -73,8 +73,10 @@ write <- result;"""
     assert _run(code) == "\x18"
 
     from .oracle_checks import check_raw_basicfuck
+    from .workspace_oracle import check_raw_workspace_basicfuck
 
     check_raw_basicfuck()
+    check_raw_workspace_basicfuck()
 
 
 def test_the_wiki_array_example_addresses_by_offset() -> None:

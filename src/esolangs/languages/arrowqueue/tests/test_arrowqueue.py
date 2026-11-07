@@ -7,6 +7,7 @@ from esolangs.languages.arrowqueue.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.runner import run_printing
+from tests.support.evaluation import _row_answerer
 
 run_and_capture = partial(run_printing, run)
 
@@ -21,7 +22,6 @@ class TestArrowQueue:
         assert run_and_capture(["   "]) == ""
 
         import esolangs
-        from tests.support.evaluation import _row_answerer
 
         declared = esolangs.Language("ArrowQueue").from_source("file.qq")
         for isolated in (False, True):

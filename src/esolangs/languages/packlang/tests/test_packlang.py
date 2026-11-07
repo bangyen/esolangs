@@ -1,6 +1,7 @@
 """Unit tests for the Packlang interpreter and its generator."""
 
 import contextlib
+from dataclasses import replace
 from functools import partial
 from itertools import product
 from typing import Any, ClassVar
@@ -12,6 +13,7 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.packlang.generator import packlang
 from esolangs.languages.packlang.interpreter import _get, _Machine, _node, run
 from esolangs.languages.packlang.interpreter._parse import _Parser
+from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
@@ -267,11 +269,8 @@ Package : IO, d {
 """
         assert _run(code) == "A1"
 
-        from dataclasses import replace
-
         from esolangs.languages.packlang.interpreter import _Frame
         from esolangs.languages.packlang.interpreter._workspace import _term
-        from esolangs.runtime._state import WorkspaceVariant
         from scripts.benchmark import state_bits
 
         def forbidden(*_args):

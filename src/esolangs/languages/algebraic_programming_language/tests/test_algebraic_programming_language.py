@@ -14,6 +14,7 @@ from esolangs.languages.algebraic_programming_language.interpreter import (
     run,
 )
 from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import run_until_halt_or_ancestor
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -557,15 +558,11 @@ def test_the_ancestor_check_decides_the_truth_machine(
     stdin: str, *, halts: bool
 ) -> None:
     """On 1, each lap re-enters ``?`` with the same binding and input cursor."""
-    from esolangs.vm import run_until_halt_or_ancestor
-
     assert run_until_halt_or_ancestor(machine(TRUTH_MACHINE, stdin)) is halts
 
 
 def test_a_recursion_whose_bindings_differ_each_lap_is_undecided() -> None:
     """The ancestor check proves *repeats*, not every infinite recursion."""
-    from esolangs.vm import run_until_halt_or_ancestor
-
     with pytest.raises(TimeoutError):
         run_until_halt_or_ancestor(machine("F(x) = F(x + 1)\nF(0)"))
 

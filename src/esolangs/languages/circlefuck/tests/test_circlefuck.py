@@ -2,7 +2,9 @@
 
 import pytest
 
-from esolangs.languages.circlefuck.interpreter import parse, run
+from esolangs.exceptions import HaltError
+from esolangs.languages.circlefuck.interpreter import _Machine, parse, run
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_lines
 from tests.support.raises import assert_rejected_with_hint, raises_message
@@ -77,9 +79,6 @@ class TestCirclefuck:
 
 class TestStepMachine:
     def test_step_tracks_cells_and_pointers(self) -> None:
-        from esolangs.languages.circlefuck.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
-
         machine = _Machine("+.@", ScriptedIO())
         assert (machine.ind, machine.ptr, machine.cells) == (0, 0, (43, 46, 64))
         machine.step()  # + sets the cell
@@ -100,9 +99,6 @@ class TestStepMachine:
                 parse(source)
 
     def test_unmatched_taken_brackets_suspend(self) -> None:
-        from esolangs.languages.circlefuck.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
-
         for code in ("\\0[.@", "]@"):
             machine = _Machine(code, ScriptedIO())
             if code.startswith("\\0"):
@@ -121,9 +117,6 @@ class TestStepMachine:
 
     def test_insert_leaves_the_cursor_on_the_cell_after_the_new_one(self) -> None:
         """``{`` steps the cursor past the cell it just pushed forward."""
-        from esolangs.languages.circlefuck.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
-
         machine = _Machine("+{+.@", ScriptedIO())
         machine.step()  # + raises cell 0
         machine.step()  # { inserts a zero before it and steps past both
@@ -132,9 +125,6 @@ class TestStepMachine:
 
     def test_edits_keep_the_instruction_successor(self) -> None:
         """Edits shift the instruction cursor before its normal advance."""
-        from esolangs.languages.circlefuck.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
-
         machine = _Machine("<{abc@", ScriptedIO())
         machine.step()
         machine.step()
@@ -150,9 +140,6 @@ class TestStepMachine:
 
     def test_state_reports_the_fields_and_copies_the_tape(self) -> None:
         """``state`` is an observer, so it must not alias the live tape."""
-        from esolangs.languages.circlefuck.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
-
         machine = _Machine("+.@", ScriptedIO())
         before = machine.state
         assert before == (0, 0, (43, 46, 64), False)
@@ -165,8 +152,6 @@ class TestStepMachine:
     def test_delete_last_cell_halts(self) -> None:
         """Deleting the last cell is an invalid operation."""
 
-        from esolangs.exceptions import HaltError
-
         with pytest.raises(HaltError):
             run_and_capture("}")
         # a pop that would leave the pointer out of bounds wraps instead of
@@ -176,9 +161,6 @@ class TestStepMachine:
 
 
 def _machine(code: str) -> object:
-    from esolangs.languages.circlefuck.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
     return _Machine(code, ScriptedIO())
 
 
@@ -209,9 +191,6 @@ def test_halting_on_at_changes_the_snapshot() -> None:
 
     check_raw_circlefuck()
     """Pins ``done`` in the snapshot: ``@`` changes nothing else."""
-    from esolangs.languages.circlefuck.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
     machine = _Machine("@", ScriptedIO(""))
     before = machine.snapshot()
     machine.step()

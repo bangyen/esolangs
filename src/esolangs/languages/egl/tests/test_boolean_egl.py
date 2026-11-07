@@ -1,13 +1,16 @@
 """Execution tests for the EGL boolean generator."""
 
 import itertools
+import random
 
 import pytest
 
 import esolangs
 from esolangs.languages.egl import generator as tools
-from esolangs.languages.egl.interpreter import run
+from esolangs.languages.egl.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
@@ -24,8 +27,6 @@ def execute(program: str, bits: tuple[int, ...]) -> tuple[str, int]:
 def test_the_walk_is_branch_free() -> None:
     """One guard and one counter loop an input, no other: the table is not a tree."""
     _check_folded()
-    from tests.support.analysis_support import assert_analysis_complement
-
     assert_analysis_complement("EGL", "input_weights")
     assert_analysis_complement("EGL", "symmetric_weights", "0110")
     program = tools.egl("01101001")
@@ -78,8 +79,6 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 
 
 def _check_constants() -> None:
-    from esolangs.languages.egl.interpreter import run
-
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
@@ -91,13 +90,9 @@ def _check_constants() -> None:
 
 
 def _check_folded() -> None:
-    import random
-
     from esolangs.languages.egl.generator import _wrap
-    from esolangs.languages.egl.interpreter import _Machine
     from esolangs.languages.egl.proof_formulas import execution, workspace
     from esolangs.languages.egl.tests.ablations import ablate
-    from scripts.benchmark import WrittenState
 
     for n in (4, 7):
         rng = random.Random(n)

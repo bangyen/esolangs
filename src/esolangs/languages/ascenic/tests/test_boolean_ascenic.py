@@ -1,10 +1,12 @@
 """Tests for the Ascenic Boolean generator."""
 
+from unittest.mock import patch
+
 import pytest
 
 import esolangs
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_native_rows
+from tests.support.generator_support import assert_native_rows, evaluate_generated
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -22,11 +24,8 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 def test_ignored_inputs_are_popped_not_scanned() -> None:
     """Two ignored inputs of six leave a four-row scan, not a 64-row one."""
-    from unittest.mock import patch
-
     from esolangs.generation.algebraic import parity_bias
     from esolangs.languages.ascenic import generator
-    from tests.support.generator_support import evaluate_generated
 
     assert generator.parity_bias is parity_bias
     with patch.object(

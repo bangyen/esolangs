@@ -95,6 +95,7 @@ kind = "model"
 contract = "interpreter.py"
 tests = [
     "src/esolangs/languages/basicfuck/tests/oracle_checks.py::check_raw_basicfuck",
+    "src/esolangs/languages/basicfuck/tests/workspace_oracle.py::check_raw_workspace_basicfuck",
 ]
 
 [ablations.parity_modular_sum_20261104]

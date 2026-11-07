@@ -4,7 +4,7 @@ from functools import partial
 
 import pytest
 
-from esolangs.languages.home_row.interpreter import run
+from esolangs.languages.home_row.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters import runner
 from tests.interpreters.contract import (
@@ -53,8 +53,6 @@ class TestPointer:
         from esolangs.languages.home_row.tests.oracle_checks import check_raw_home_row
 
         check_raw_home_row()
-        from esolangs.languages.home_row.interpreter import _Machine
-
         for code, ptr in (("d", 5), ("f", 1)):
             machine = _Machine(code, ScriptedIO())
             machine.step()
@@ -91,8 +89,6 @@ class TestLongProgram:
 
 class TestStepMachine:
     def test_snapshot_changes_after_a_step(self) -> None:
-        from esolangs.languages.home_row.interpreter import _Machine
-
         machine = _Machine("a", ScriptedIO())
         before = machine.snapshot()
         saved = machine.workspace_snapshot()
@@ -105,9 +101,6 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.languages.home_row.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
     return _Machine(code, ScriptedIO())
 
 

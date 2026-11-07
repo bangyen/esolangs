@@ -1,6 +1,7 @@
 """fractran generator tests."""
 
 from collections.abc import Iterator
+from dataclasses import replace
 
 import pytest
 
@@ -11,9 +12,13 @@ from esolangs.generation.wrap import balance_program, balance_score
 from esolangs.languages.fractran import generator as boolean
 from esolangs.languages.fractran.descriptor import PAIR as FRACTRAN_PAIR
 from esolangs.languages.fractran.generator import fractran
+from esolangs.languages.fractran.interpreter import _Machine
 from esolangs.languages.fractran.interpreter import run as run_fractran
 from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import _capture_workspace, make_vm
+from scripts.benchmark import WrittenState
 from tests.generators.reader_support import _TABLES
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.evaluation import _evaluate
 from tests.support.generator_support import evaluate_generated
 from tests.support.witness_tables import row_bits as _bits
@@ -51,8 +56,6 @@ def test_fractran_answers_every_table_to_three_inputs() -> None:
 
 def test_fractran_shares_equal_subtables() -> None:
     """No ``p^1``; parity at five inputs needs only 2n - 1 nodes, not 2**n - 1."""
-    from tests.support.analysis_support import assert_analysis_complement
-
     assert_analysis_complement("FRACTRAN", "reduced_diagram")
     parity = str(boolean.fractran("".join(str(r.bit_count() & 1) for r in range(32))))
     assert "^1 " not in parity
@@ -65,8 +68,6 @@ def test_fractran_shares_equal_subtables() -> None:
 
 def _fractran_steps(template: str, n: int) -> int:
     """Return the steps every row of ``template`` runs to its halt, summed."""
-    from esolangs.languages.fractran.interpreter import _Machine
-
     steps = 0
     for row in range(2**n):
         program = fill_runs(template, TEMPLATE_CHAR, [FRACTRAN_PAIR] * n, _bits(row, n))
@@ -170,8 +171,6 @@ def test_balanced_width_bounds_stop_below_the_widest_token() -> None:
 
 
 def test_fractran_parity_two_balances_and_executes() -> None:
-    from dataclasses import replace
-
     from esolangs.languages.fractran.generator import _balance as _fractran
 
     template = esolangs.generate("FRACTRAN", "0110", width=4)
@@ -182,8 +181,6 @@ def test_fractran_parity_two_balances_and_executes() -> None:
 def _check_native_constants() -> None:
     from esolangs.generation.helpers import runs
     from esolangs.languages.fractran.proof_formulas import workspace
-    from esolangs.vm import _capture_workspace, make_vm
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":

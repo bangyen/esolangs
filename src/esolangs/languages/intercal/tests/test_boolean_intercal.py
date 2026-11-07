@@ -13,7 +13,9 @@ from esolangs.generation.helpers import (
 from esolangs.languages.intercal import generator
 from esolangs.languages.intercal.descriptor import PAIR, TEMPLATE_CHAR
 from esolangs.languages.intercal.generator import _Expr, intercal
-from esolangs.languages.intercal.interpreter import run
+from esolangs.languages.intercal.interpreter import _Machine, run
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.proofs._witnesses import _intercal_worst
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.evaluation import _evaluate
@@ -182,9 +184,7 @@ def intercal_plain(truth_table: str, perm: tuple[int, ...]) -> str:
 @pytest.mark.medium
 def test_constants_reuse_one_variable_and_print_the_literal() -> None:
     _check_emitted_resource_routes()
-    from esolangs.languages.intercal.interpreter import _Machine
     from esolangs.languages.intercal.proof_formulas import workspace
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
         for bit in "01":
@@ -229,15 +229,12 @@ def _check_emitted_resource_routes() -> None:
         _spill,
         _wrap_intercal,
     )
-    from esolangs.languages.intercal.interpreter import _Machine
     from esolangs.languages.intercal.proof_formulas import (
         execution,
         global_execution,
         global_workspace,
         workspace,
     )
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for n in (13, 16, 20, 21, 22, 25, 26, 27):
         selector = _Expr("input", n - 1)

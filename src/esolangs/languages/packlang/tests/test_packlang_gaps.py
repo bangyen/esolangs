@@ -1,5 +1,6 @@
 """Packlang paths the wiki examples never take."""
 
+from dataclasses import FrozenInstanceError
 from functools import partial
 
 import pytest
@@ -260,8 +261,6 @@ class TestPacklangDeclarationScan:
 
 
 def test_call_transition_preserves_immutable_frames() -> None:
-    from dataclasses import FrozenInstanceError
-
     from esolangs.languages.packlang.interpreter import _advance
 
     machine = native._Machine(_wrap("    charPut(65);\n    0;"), ScriptedIO(""))

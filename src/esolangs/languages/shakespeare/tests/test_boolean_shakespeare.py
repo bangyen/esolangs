@@ -5,6 +5,9 @@ import random
 import pytest
 
 import esolangs
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
@@ -53,8 +56,6 @@ def test_random_tables_past_the_chunk_width_compute_their_rows(n: int) -> None:
 
 def _check_large_packing_bounds() -> None:
     from esolangs.languages.shakespeare.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     # All inputs matter; the sparse signed form still crosses sixteen chunks.
     table = "0" * 513 + "1" * 511
@@ -75,8 +76,6 @@ def _check_large_packing_bounds() -> None:
 
 def test_a_flipped_bit_is_caught() -> None:
     """Positive control: a program built for another table fails some row."""
-    from tests.support.analysis_support import assert_analysis_complement
-
     assert_analysis_complement("Shakespeare", "read_at")
     assert_analysis_complement("Shakespeare", "parity_bias", "0110100110010110")
     table = "01101001"

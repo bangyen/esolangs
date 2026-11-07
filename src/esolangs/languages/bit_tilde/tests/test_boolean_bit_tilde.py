@@ -1,11 +1,20 @@
 """bit_tilde generator tests."""
 
+from unittest.mock import patch
+
 import pytest
 
 import esolangs
 from esolangs.languages.bit_tilde import generator as boolean
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_parity_at_most_doubles, measure_run
+from tests.support.generator_support import (
+    assert_parity_at_most_doubles,
+    evaluate_generated,
+    measure_run,
+)
 
 
 class TestBitTilde:
@@ -29,7 +38,6 @@ def test_parity_source_at_most_doubles_per_input() -> None:
 @pytest.mark.parametrize("bit", "01")
 def test_every_constant_row_within_written_state_bound(bit: str) -> None:
     from esolangs.languages.bit_tilde.interpreter import _Machine
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for options in ({}, {"width": 1}, {"balance": True}):
@@ -66,12 +74,8 @@ def test_xor_window_scratch_read_comes_back_eight() -> None:
     walks off the tape.  Each table below is affine with an
     ignored input, so the xor-window form is the shipped one.
     """
-    from unittest.mock import patch
-
     from esolangs.generation.algebraic import affine_form
     from tests.generators.boolean_runners import _runner
-    from tests.support.analysis_support import assert_analysis_complement
-    from tests.support.generator_support import evaluate_generated
 
     assert_analysis_complement("bit~", "read_at", "0001")
     assert boolean.affine_form is affine_form
@@ -97,7 +101,6 @@ def test_xor_window_scratch_read_comes_back_eight() -> None:
 
 def _check_split_inputs() -> None:
     from esolangs.languages.bit_tilde.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     # First-bit exits and odd/even ignored prefixes, including before planting.
     for n, used in ((5, list(range(5))), (6, [1, 2, 3, 4, 5]), (7, [2, 3, 4, 5, 6])):

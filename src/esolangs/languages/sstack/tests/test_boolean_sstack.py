@@ -1,18 +1,26 @@
 """SStack generator tests."""
 
 import random
+from dataclasses import replace
 
 import pytest
 
 import esolangs
 from esolangs import run as execute
+from esolangs.debugger import make_vm
 from esolangs.languages.sstack import generator as boolean
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace
 from scripts import new_language
+from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output, measure_run
+from tests.support.generator_support import (
+    assert_constant_output,
+    assert_shared_program,
+    measure_run,
+)
 
 run_sstack = _runner("sstack")
 
@@ -52,7 +60,6 @@ def test_screen_sharing_potential_is_mostly_below_the_label_reach() -> None:
     ("table", "shared"), [("01101001", (0, 0)), ("00000000", (1, 0))]
 )
 def test_dispatch_prices_single_reachable_path_classes(table, shared) -> None:
-    from esolangs.debugger import make_vm
     from esolangs.languages.sstack.generator import _sstack_tree
 
     program, bound = _sstack_tree(table, shared)
@@ -100,7 +107,6 @@ def test_a_constant_subtree_still_reads_its_inputs() -> None:
 def test_popping_before_descent_admits_shared_parity_without_nested_test_bytes() -> (
     None
 ):
-    from esolangs.debugger import make_vm
     from esolangs.languages.sstack.generator import _sstack_tree
 
     n = 6
@@ -134,7 +140,6 @@ def test_the_program_is_only_sstack_glyphs() -> None:
 def test_shared_residual_executes_within_ledger() -> None:
     from esolangs.languages.sstack.generator import _sstack_tree
     from esolangs.languages.sstack.interpreter import _parse
-    from tests.support.generator_support import assert_shared_program
 
     a, b = "0001" * 16, "0110" * 16
     table = a + b + b + a
@@ -150,7 +155,6 @@ def test_shared_residual_executes_within_ledger() -> None:
 
 @pytest.mark.medium
 def test_multiple_definitions_preserve_inputs_commands_and_workspace() -> None:
-    from esolangs.debugger import make_vm
     from esolangs.generation.shared_block import _repeated_blocks
     from esolangs.languages.sstack.generator import _sstack_shared
     from esolangs.languages.sstack.interpreter import _parse
@@ -177,11 +181,9 @@ def test_multiple_definitions_preserve_inputs_commands_and_workspace() -> None:
 
 @pytest.mark.medium
 def test_six_bit_labels_include_the_ascii_constants_and_last_label() -> None:
-    from esolangs.debugger import make_vm
     from esolangs.generation.shared_block import _repeated_blocks
     from esolangs.languages.sstack.generator import _sstack_shared
     from esolangs.languages.sstack.interpreter import _parse
-    from scripts.benchmark import WrittenState
 
     n = 11
     rng = random.Random(77319)
@@ -238,7 +240,6 @@ def test_multiple_definitions_reduce_cap_program_within_ledger() -> None:
     from esolangs.generation.shared_block import repeated_block
     from esolangs.languages.sstack.generator import _sstack_tree
     from esolangs.languages.sstack.interpreter import _parse
-    from tests.support.generator_support import assert_shared_program
 
     n = 16
     a, b = "0001" * (1 << (n - 4)), "0110" * (1 << (n - 4))
@@ -273,7 +274,6 @@ def test_binary_bank_shares_more_than_sixty_three_residuals_within_ledger() -> N
     from esolangs.languages.sstack.generator import _sstack_tree
     from esolangs.languages.sstack.generator._binary import binary_bank
     from esolangs.languages.sstack.interpreter import _Machine, _parse
-    from esolangs.runtime.io import ScriptedIO
 
     table = _binary_bank_table()
     blocks = tuple(
@@ -316,7 +316,6 @@ def test_binary_bank_shares_more_than_sixty_three_residuals_within_ledger() -> N
     ],
 )
 def test_binary_codes_preserve_completed_outputs_and_fixed_digits(words) -> None:
-    from esolangs.debugger import make_vm
     from esolangs.languages.sstack.generator import _sstack_tree
     from esolangs.languages.sstack.generator._binary import binary_bank
 
@@ -397,8 +396,6 @@ def test_binary_bank_refuses_a_drifted_inline_builder(monkeypatch) -> None:
 
     with pytest.raises(ValueError, match="builder disagrees"):
         binary_bank("00010110", ((1, 0), (1, 4)), drifted)
-
-    from dataclasses import replace
 
     from esolangs.languages.sstack.generator._binary import _price
 

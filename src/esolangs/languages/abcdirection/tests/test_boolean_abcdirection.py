@@ -8,6 +8,7 @@ import esolangs
 from esolangs.generation.token_balance import rendered_side
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.abcdirection.generator import _floor, _plan, abcdirection
+from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_native_rows
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -24,7 +25,6 @@ def test_every_row_prints_its_answer(table: str, monkeypatch) -> None:
     if table == "0001":
         from esolangs.generation.helpers import essential_inputs, read_at
         from esolangs.languages.abcdirection import generator
-        from tests.support.evaluation import _evaluate
 
         assert generator.essential_inputs is essential_inputs
         assert generator.read_at is read_at

@@ -1,13 +1,17 @@
 """Constant roots and template recognition for ///."""
 
+import random
+
 import pytest
 
 import esolangs
 from esolangs.exceptions import TemplateError
-from esolangs.generation.wrap import wrap_program
+from esolangs.generation.wrap import balance_score, wrap_program
 from esolangs.languages.slashes import generator as boolean
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace, make_vm
 from scripts.benchmark import WrittenState
+from tests.support.analysis_support import assert_analysis_complement
 from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import witnesses
 
@@ -84,8 +88,6 @@ def test_more_ignored_slots_than_slots_is_a_program_not_a_template() -> None:
 
 
 def test_ignored_input_template_is_recognized_only_while_canonical() -> None:
-    from tests.support.analysis_support import assert_analysis_complement
-
     assert_analysis_complement("///", "input_weights")
     template = esolangs.generate("///", "0011")  # slots "$X$": one ignored
     assert template.source.endswith("$X$>qAqB")
@@ -109,8 +111,6 @@ def test_unwrappable_source_is_untouched() -> None:
 )
 def test_balanced_program_folds_behind_the_newline_rule(table: str) -> None:
     """Constant, ignored-input and full tables all run once folded."""
-    from esolangs.generation.wrap import balance_score
-
     n = len(table).bit_length() - 1
     plain = esolangs.generate("///", table)
     balanced = esolangs.generate("///", table, balance=True)
@@ -121,10 +121,6 @@ def test_balanced_program_folds_behind_the_newline_rule(table: str) -> None:
 
 def test_balanced_side_is_square_at_n8() -> None:
     """Seed 8 folds to 18 x 38 behind the newline rule."""
-    import random
-
-    from esolangs.generation.wrap import balance_score
-
     table = format(random.Random(8).getrandbits(256), "0256b")
     balanced = esolangs.generate("///", table, balance=True)
     assert balance_score(balanced.source)[0] == 38
@@ -135,7 +131,6 @@ def _check_run_macros() -> None:
     from esolangs.languages.slashes.generator import _SWEEP_DEF
     from esolangs.languages.slashes.interpreter import _Machine
     from esolangs.languages.slashes.proof_formulas import workspace
-    from esolangs.runtime.io import ScriptedIO
 
     io = ScriptedIO("Q")
     machine = _Machine(_SWEEP_DEF + "SS", io)
@@ -168,7 +163,6 @@ def _check_run_macros() -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.slashes.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
         for bit in "01":

@@ -2,17 +2,20 @@
 
 import itertools
 import random
+from math import isqrt
 from unittest.mock import patch
 
 import pytest
 
 import esolangs
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.thue import generator as boolean
 from esolangs.languages.thue.generator import thue
 from esolangs.languages.thue.interpreter import _Machine, _matches
 from esolangs.languages.thue.interpreter import run as run_thue
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
+from scripts.benchmark import WrittenState
 from tests.generators.reader_support import _TABLES
 from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import row_bits as _bits
@@ -245,11 +248,8 @@ def test_the_emissions_grow_by_a_line() -> None:
 
 def _swept_balance(table: str, default: str) -> str:
     """The retired balance: every payload within CELL_ASPECT of each layout's root."""
-    from math import isqrt
-
     from esolangs.generation.helpers import grid_width
     from esolangs.generation.token_balance import CELL_ASPECT
-    from esolangs.generation.wrap import balance_score
 
     plain = min(
         (boolean._thue_layout(*layout, None) for layout in boolean._tables(table)),
@@ -277,8 +277,6 @@ def _swept_balance(table: str, default: str) -> str:
 
 def test_balance_root_payload_matches_the_swept_side() -> None:
     """Over 3..6 inputs the root payload loses under 1% side to the sweep."""
-    from esolangs.generation.wrap import balance_score
-
     rng = random.Random(6)
     new = old = 0
     for n in (3, 4, 5, 6):
@@ -298,8 +296,6 @@ def test_balanced_fold_tables_keep_their_square(
     n: int, score: tuple[int, int, int]
 ) -> None:
     """A table with a constant half balances at a pinned side, length and width."""
-    from esolangs.generation.wrap import balance_score
-
     half = format(random.Random(1).getrandbits(1 << (n - 1)), f"0{1 << (n - 1)}b")
     program = esolangs.generate(
         "Thue", half + "1" * (1 << (n - 1)), balance=True
@@ -368,8 +364,6 @@ def test_packed_layouts_expand_before_reading_and_stay_deterministic() -> None:
 
 
 def _check_constants() -> None:
-    from scripts.benchmark import WrittenState
-
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):

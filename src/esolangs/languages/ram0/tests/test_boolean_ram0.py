@@ -7,6 +7,8 @@ import pytest
 
 import esolangs
 from esolangs.languages.ram0 import generator as boolean
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 from tests.support.generator_support import assert_parity_at_most_doubles
 from tests.support.witness_tables import row_bits
 
@@ -17,7 +19,6 @@ class TestParameterizedRam0:
     def run_ram0(self, prog: str) -> str:
 
         from esolangs.languages.ram0.interpreter import run
-        from esolangs.runtime.io import ScriptedIO
 
         io = ScriptedIO()
         run(prog, io)
@@ -117,8 +118,6 @@ def test_constants_execute_every_fixed_width_setter() -> None:
     from esolangs.languages.ram0.generator import PAIR
     from esolangs.languages.ram0.interpreter import _Machine
     from esolangs.languages.ram0.proof_formulas import workspace
-    from esolangs.runtime.io import ScriptedIO
-    from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
         for bit in "01":
