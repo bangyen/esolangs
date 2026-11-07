@@ -1,8 +1,7 @@
 """Run resource witnesses and measure native commands and written state."""
 
 import esolangs
-from esolangs.debugger import make_vm
-from esolangs.vm import _capture_workspace
+from esolangs.vm import _capture_workspace, complete_vm, make_vm
 from scripts.benchmark import WrittenState
 from tests.proofs._witnesses import (
     _WITNESSES,
@@ -167,5 +166,8 @@ def measure(
         assert steps is not None  # no cap
         worst_steps = max(worst_steps, steps)
         if state is not None:
+            if machine.dumps_on_the_post_halt_step:
+                complete_vm(machine, max_steps=0)
+                state.sample(_capture_workspace(machine))
             worst_bits = max(worst_bits, state.bits)
     return worst_steps, worst_bits

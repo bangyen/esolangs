@@ -90,7 +90,7 @@ first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.stisp.generator:stisp"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} through n=7, at most beyond: frames/head 16n each; halt dump excluded", formula = "32n" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} through n=7, at most beyond: frames/head 16n each plus rendered flag", formula = "32n+1" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.stisp.tests.formulas:_hybrid_chars"

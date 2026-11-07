@@ -71,7 +71,8 @@ def _advance(state: _State, grid: Sequence[str], width: int) -> _State:
 
 
 _WORKSPACE_MODEL = WorkspaceModel(
-    "arrowqueue-v1", ("row", "column", "direction", "queue", "input_cursor")
+    "arrowqueue-v2",
+    ("row", "column", "direction", "queue", "stopped", "dumped", "input_cursor"),
 )
 
 
@@ -159,6 +160,8 @@ class _Machine:
             column=self.state[1],
             direction=self.state[2],
             queue=self.state[3],
+            stopped=self.halted,
+            dumped=self.dumped,
             input_cursor=self.io.progress(),
         )
 

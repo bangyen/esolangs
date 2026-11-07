@@ -78,14 +78,14 @@ construction = "esolangs.languages.arrowqueue.generator:arrowqueue"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: Horner doubling 8 a marker, a row 1, fold corridors" }
 
 [resource_evidence.workspace]
-expression = "T + 11 + bl(T+6n+8)"
+expression = "T + 13 + bl(T+6n+8)"
 exact = true
 arities = [1, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.arrowqueue.generator:arrowqueue"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: a queue of T + 6 bits, the row, the column" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: queue, position, heading, halt and dump flags" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.arrowqueue.tests.formulas:_cells"

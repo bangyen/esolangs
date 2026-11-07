@@ -11,8 +11,8 @@ from tests.interpreters.oracle_support import observed
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
 _WORKSPACE = WorkspaceModel(
-    "arrowqueue-v1",
-    ("row", "column", "direction", "queue", "input_cursor"),
+    "arrowqueue-v2",
+    ("row", "column", "direction", "queue", "stopped", "dumped", "input_cursor"),
 )
 
 
@@ -78,7 +78,7 @@ def _agrees(factory, lines):
     checked = workspace_view(
         expected[1],
         _WORKSPACE,
-        lambda row: (*row[0][:4], row[-1]),
+        lambda row: (*row[0][:6], row[-1]),
         lambda m: (*m.state, m.dumped, m.ip, tuple(m.stack)),
     )
     assert observed(factory, lines, "unused λ", checked) == expected, lines
@@ -107,6 +107,8 @@ def check_raw_arrowqueue():
         ["~~*", "  ~", "  *"],
         ["~*  ", " ~  ", " +~~"],
         ["~" * 80],
+        [" ~*", "+ *", "*~+"],
+        [" ~*", "+~*", "*~+"],
     ]
     results = [_agrees(_Machine, lines) for lines in corpus]
     assert any(not trace[-1][1] for _, trace in results)
@@ -167,4 +169,4 @@ def check_raw_arrowqueue():
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _agrees(missing_workspace(_Machine, component), ["~~*"])
-    return len(results), len(controls) + 5
+    return len(results), len(controls) + 7

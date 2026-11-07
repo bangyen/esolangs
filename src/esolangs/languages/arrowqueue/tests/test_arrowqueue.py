@@ -5,10 +5,7 @@ from typing import ClassVar
 
 from esolangs.languages.arrowqueue.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
-from tests.interpreters.contract import (
-    CycleContract,
-    EmptyProgramContract,
-)
+from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.runner import run_printing
 
 run_and_capture = partial(run_printing, run)
@@ -44,6 +41,11 @@ class TestArrowQueue:
         io = ScriptedIO("")
         run(["~~"], io)
         assert io.getvalue() == "0 0"
+
+    def test_workspace_finalizes_without_counting_another_command(self) -> None:
+        from tests.proofs.execution import measure
+
+        assert measure("ArrowQueue", "00", written=True) == (1, 2)
 
     def test_the_dump_fires_once_however_often_a_halted_machine_is_stepped(
         self,
@@ -104,8 +106,6 @@ class TestMachineState:
 
 
 def _machine(code: object) -> object:
-    from esolangs.languages.arrowqueue.interpreter import _Machine
-
     return _Machine(code)
 
 
