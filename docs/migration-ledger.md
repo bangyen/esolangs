@@ -1700,3 +1700,26 @@ with unchanged captures and length fails independently. Sixty-seven guarded
 workers per version preserve completion, partial-output failures and
 unfinished observations. No runtime or test source changes. This bounded
 accounting scope is reviewed; language/catalog completion remains open.
+
+
+BASICER's declared label-map oracle retains 1,832 cases and thirteen live
+controls. Eighteen added witnesses cover completed 81-menu and 80-print
+runs, LF/CRLF, duplicate numeric labels, blank-line addressing, equivalent
+menu targets, Unicode line separators and failures after partial output.
+Independent captures and charged peaks match 1,850 cases/18,993 boundaries
+under 64–96-command caps. Both components are written; literal charges span
+0–14 bits. The observed 14-bit peak is not a global bound. Raw digit-cap
+`ValueError` and public `InterpreterLimitError` are modeled separately at
+the recorded host limit of 4,300 digits.
+
+Current source matches the tested 951-file wheel. Python 3.12.11, 3.13.15,
+3.14.7 and final 3.15.0 each pass 1,397 completions, 291 execution failures,
+eighteen constructor failures and 144 bounded runs. Raw/VM/debugger captures
+preserve held snapshots, post-halt stability, line-read/character-progress
+counters and source-command counts. Constructor failures retain unavailable
+VM observations versus native zero-IO observations. Two resource erasures
+and a same-state/same-length wrong-text fault fail. All 214 guarded workers
+per version compare independent IO counters, including unfinished runs.
+Independent subagent review tightened these counter and constructor witnesses.
+No runtime or test source changes. This bounded accounting scope is reviewed;
+language/catalog completion remains open.
