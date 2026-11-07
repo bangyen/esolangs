@@ -2,8 +2,9 @@
 
 from math import isqrt
 
-from esolangs.generation.algebraic import affine_form
+from esolangs.generation.algebraic import affine_form, parity_bias
 from esolangs.generation.helpers import _validate_truth_table, grid_width
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.circuit_diagram.generator import (
@@ -22,17 +23,8 @@ _XOR2_FLAT_WIDTH = 6
 def parity_circuit(table: str, *, folded: bool) -> str | None:
     """Return a four/six-column ladder for full parity, otherwise None."""
     n = len(table).bit_length() - 1
-    if n < 2:
+    if n < 2 or (bias := parity_bias(table)) is None:
         return None
-    parity = bias = int(table[0])
-    for row, value in enumerate(table):
-        if int(value) != parity:
-            return None
-        carry = row
-        while carry & 1:
-            parity ^= 1
-            carry >>= 1
-        parity ^= 1
     layout = _Layout()
     for k in range(n):
         row = 0 if k == 0 else 2 if k == 1 else 5 * k - 3
@@ -98,14 +90,14 @@ def _drawn_at(table: str, flat: str, width: int) -> str:
 
 def balance_circuit_diagram(table: str, default: str) -> str:
     """Compare the default, the flat drawing and drawings at the square widths."""
-    if len(set(table)) == 1:
+    if constant_output(table) is not None:
         # Native sources beat the clock/gate layouts; no H lattice is needed.
         return default
     flat = _circuit_diagram_at(table, None)
     candidates = [default, flat]
     # Folding can shrink a wide default while increasing its imbalance.
     # Retain the former H candidate until a folded layout beats its score.
-    if len(table) >= 256 and "1" in table:
+    if len(table) >= 256:
         candidates.append(_h_term_layout(table).render())
     # A drawing's area is about that of the flat one whatever its width, so
     # the square side is isqrt(CELL_ASPECT * area).

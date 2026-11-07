@@ -55,6 +55,7 @@ from esolangs.generation.helpers import (
     narrowest_grid,
     read_at,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.languages.circuit_diagram.generator.columns import _FreeColumns
 from esolangs.languages.circuit_diagram.generator.layout import (
     _Layout,
@@ -736,9 +737,9 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     """
     _validate_truth_table(truth_table)
     inputs = len(truth_table).bit_length() - 1
-    if truth_table.count(truth_table[0]) == len(truth_table):
+    if (constant := constant_output(truth_table)) is not None:
         # Input ports are loaded before sources; each isolated dash still reads.
-        source = "(" if truth_table[0] == "0" else ")"
+        source = "(" if constant == "0" else ")"
         return "-\n" * inputs + source + "-:"
     # A (negated) projection is one direct wire, not the whole port grid;
     # below the wire's own width the fitted builds below decide as before.
@@ -753,12 +754,7 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     if parity is not None:
         return parity
     # Constants need only the scalar clock gate, not a minterm lattice.
-    if (
-        width is None
-        and inputs >= _COMPETING_MODEL_MIN_INPUTS
-        and "1" in truth_table
-        and "0" in truth_table
-    ):
+    if width is None and inputs >= _COMPETING_MODEL_MIN_INPUTS:
         return _competing_model_circuit(truth_table, inputs)
     flat = _circuit_diagram_at(truth_table, None)
     if width is None or grid_width(flat) <= width:

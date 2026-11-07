@@ -1104,3 +1104,22 @@ pins, three size anchors and seven resource/scaling nodes pass unchanged.
 Installed Python 3.12–3.15 checks each execute 6,360 rows, five guarded workers
 and all fault controls; certification/proof imports stay blocked. Ten backend
 audits remain; catalog acceptance stays open.
+
+
+Circuit Diagram uses canonical constants throughout scalar, forest and pool
+classification, and canonical full-parity recognition. Reduced diagrams and
+projection remain shared; wire geometry, gate/read accounting, H sites, class
+masks and candidate prices remain emitter-owned. All 1,932 artifacts, 14,840
+paired rows and 97,326 semantic samples match; 336 larger layouts and 1,344
+paired rows also match. Ten pins, four size anchors and seven resource/scaling
+nodes pass unchanged. Sixty timing contexts pass (minimum ratio 0.9887).
+
+The twelve-input dense width-one aggregate hits its original 60-second cap
+because large topologies are intentionally reparsed per machine. The harness
+reuses one exact compiled topology, delegating nested function compilations;
+all original rows and native/counted checks pass without raising the cap.
+Eight live semantic faults change 31 answers; two validation probes and eleven
+executed cost controls also fire. Installed Python 3.12–3.15 checks each execute
+6,360 rows and five guarded workers, including EOF-as-zero and malformed-source
+result equivalence; certification imports stay blocked. Nine backend audits
+remain; catalog acceptance stays open.

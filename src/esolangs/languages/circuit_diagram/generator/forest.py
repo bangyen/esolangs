@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.lookup import constant_output
 
 from . import _Builder, _Dag, _dag, _emit_dag, _note_mux
 from .layout import _Layout
@@ -32,9 +33,9 @@ def _suffix_forest(words: list[str], inputs: int) -> _Forest:
     if not 1 <= inputs <= 8 or not 1 <= len(words) < 1 << (1 << inputs):
         raise ValueError("suffix forests exceed their input or class capacity")
     for word in words:
-        if _validate_truth_table(word) != inputs or "1" not in word:
+        if _validate_truth_table(word) != inputs or constant_output(word) == "0":
             raise ValueError("suffix classes must be nonzero tables of the same arity")
-    if not any("0" in word for word in words):
+    if not any(constant_output(word) is None for word in words):
         raise ValueError("suffix forests need a nonconstant class")
     size = 1 << (len(words) - 1).bit_length()
     virtual = size.bit_length() - 1

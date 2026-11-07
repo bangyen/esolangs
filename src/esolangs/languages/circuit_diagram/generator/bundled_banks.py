@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.lookup import constant_output
 from esolangs.languages.circuit_diagram.generator import (
     _circuit_diagram_model,
     _dag,
@@ -45,11 +46,11 @@ def bundled_class_bank_candidate(
     n = _validate_truth_table(table)
     tail = _atom_inputs(n)
     prefix = n - tail
-    if prefix < 2 or len(set(table)) == 1:
+    if prefix < 2 or constant_output(table) is not None:
         return None
     size = 1 << tail
     chunks = _chunks(table, size)
-    classes = [word for word in dict.fromkeys(chunks) if "1" in word]
+    classes = [word for word in dict.fromkeys(chunks) if constant_output(word) != "0"]
     q = len(classes)
     if q * len(chunks) > 4 * len(table):
         return None
@@ -66,12 +67,14 @@ def bundled_class_bank_candidate(
     for start in range(0, q, 4):
         words = classes[start : start + 4]
         forest = (
-            _suffix_forest(words, tail) if any("0" in word for word in words) else None
+            _suffix_forest(words, tail)
+            if any(constant_output(word) is None for word in words)
+            else None
         )
         inner_parts = []
         for used, reduced in masks[start : start + 4]:
             models = []
-            if "0" in reduced:
+            if constant_output(reduced) is None:
                 model = _circuit_diagram_model(
                     reduced, None, input_order=used, port_inputs=prefix
                 )
@@ -80,7 +83,7 @@ def bundled_class_bank_candidate(
         bands = [m for models in inner_parts for m, _ports in models]
         if forest is not None:
             bands.append(forest[0])
-        ands = sum("0" in word for word in words)
+        ands = sum(constant_output(word) is None for word in words)
         gates += sum(_gate_count(m) for m in bands) + ands + len(words) - 1
         if gates > len(table) + n:
             return None

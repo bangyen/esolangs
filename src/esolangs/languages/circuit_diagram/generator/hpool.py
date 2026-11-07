@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.lookup import constant_output
 
 from .hcells import _HCellLayout
 from .hlayout import (
@@ -100,7 +101,7 @@ def _pool_atoms(table: str, k: int, p: int) -> dict[str, _Layout]:
     atoms: dict[str, _Layout] = {}
     for i in range(0, len(table), 1 << k):
         chunk = table[i : i + (1 << k)]
-        if "0" in chunk and "1" in chunk and chunk not in atoms:
+        if constant_output(chunk) is None and chunk not in atoms:
             atoms[chunk] = _circuit_diagram_model(chunk, None)
     return atoms
 
@@ -230,11 +231,12 @@ class _PoolBuild:
         for prefix in self.levels[p]:
             offset = (prefix - (1 << p)) * (1 << k)
             chunk = self.table[offset : offset + (1 << k)]
-            if "1" not in chunk:
+            constant = constant_output(chunk)
+            if constant == "0":
                 self.values[prefix] = None
                 continue
             x, y = self.sites[prefix]
-            if "0" not in chunk:
+            if constant == "1":
                 self.values[prefix] = self.signals[prefix]
                 self.points[prefix] = (x + 1, y)
                 continue
