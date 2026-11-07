@@ -670,12 +670,7 @@ class _Machine:
         current = _branch_state(state)
         if _read_kinds(current.current):
             return None
-        try:
-            reached = _outcomes(current)
-        except HaltError:
-            # A line the run cannot execute ends this branch rather than
-            # ending the search: an unreachable neighbour is not a hang.
-            return ()
+        reached = _outcomes(current)
         return tuple(
             (nxt.lines, nxt.ip, nxt.acc, nxt.slot, nxt.frames) for nxt in reached
         )

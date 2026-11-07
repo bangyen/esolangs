@@ -64,7 +64,7 @@ class _Branches:
         return {0: (1, 2), 1: (1,), 2: (0,)}[state]
 
 
-def test_branching_divergence_keeps_every_explored_outcome():
+def test_branching_divergence_keeps_every_explored_outcome(monkeypatch):
     machine = _Branches()
     result = checked_decision(_halt_or_cycle_result(machine))
     assert result.halts is False
@@ -79,6 +79,13 @@ def test_branching_divergence_keeps_every_explored_outcome():
         assert outcomes == machine.branching_successors(state, 10)
         assert set(outcomes) <= graph.keys()
         assert not machine.branching_halted(state)
+    for dead_end in ({0: ()}, {0: (1,), 1: ()}):
+        monkeypatch.setattr(
+            machine, "branching_successors", lambda state, _, rows=dead_end: rows[state]
+        )
+        for decide in (run_until_halt_or_all_branches_cycle, _halt_or_cycle_result):
+            with pytest.raises(TypeError, match="requires a successor"):
+                decide(machine)
 
 
 def test_a_possible_branching_halt_is_not_this_runs_verdict():
@@ -89,9 +96,10 @@ def test_a_possible_branching_halt_is_not_this_runs_verdict():
 
 
 def test_an_open_branch_graph_cannot_claim_divergence():
-    with pytest.raises(ValueError, match="closed graph"):
-        BranchProof(0, ((0, (1,)),), halts=False)
     for transitions, halts, terminal in (
+        (((0, (1,)),), False, None),
+        (((0, ()),), False, None),
+        (((0, (1,)), (1, ())), False, None),
         (((9, (10,)),), True, 10),
         (((0, (0,)), (9, (10,))), True, 10),
         (((0, (0,)), (9, (9,))), False, None),
@@ -100,7 +108,7 @@ def test_an_open_branch_graph_cannot_claim_divergence():
         (([0, (0,)],), False, None),
         (((0, [0]),), False, None),
     ):
-        with pytest.raises(ValueError, match=r"unreachable|outgoing|containers"):
+        with pytest.raises(ValueError, match=r"unreachable|outgoing|containers|closed"):
             BranchProof(0, transitions, halts=halts, terminal=terminal)
     # DFS may stop with an unexplored sibling when it reaches the terminal.
     partial = BranchProof(0, ((0, (1, 2)), (2, (3,))), halts=True, terminal=3)

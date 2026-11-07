@@ -360,10 +360,11 @@ class TestBranchingSearch:
         machine = _Machine("u\ndiv", ScriptedIO("a\n"))
         assert machine.branching_successors(machine.branching_snapshot(), 100) is None
 
-    def test_an_unexecutable_line_ends_its_branch(self) -> None:
-        """A line that raises is a dead end, not a failed search."""
+    def test_an_unexecutable_line_fails_the_search(self) -> None:
+        """A native error cannot become a divergence verdict."""
         machine = _Machine("nonsense", ScriptedIO(""))
-        assert machine.branching_successors(machine.branching_snapshot(), 100) == ()
+        with pytest.raises(HaltError, match="unknown instruction"):
+            machine.branching_successors(machine.branching_snapshot(), 100)
 
     def test_a_finished_program_is_branching_halted(self) -> None:
         machine = _Machine("x", ScriptedIO(""))

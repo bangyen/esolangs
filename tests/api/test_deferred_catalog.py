@@ -15,10 +15,17 @@ import sys
 from dataclasses import replace
 
 import esolangs
+import pytest
 from esolangs import registry
+from esolangs.registry._backend import Generator
 from esolangs.registry._functions import FunctionRef
+from esolangs.runtime._definition import SourceKind
 from tests.support.evaluation import _evaluate
 
+assert registry.Generator is Generator and registry.SourceKind is SourceKind
+for retired in ('Generator', 'SourceKind'):
+    with pytest.raises(ImportError):
+        exec(f'from esolangs.registry._table import {retired}', {})
 pilots = [lang for lang in registry.LANGUAGES.values()
           if lang.backend is not None
           and isinstance(lang.backend.entrypoint, FunctionRef)]
@@ -45,31 +52,20 @@ try:
                   if language.runtime.source_kind.value == 'raster' else '')
         esolangs._read_source(name, source)
     assert not native_modules.intersection(sys.modules), 'source imported runner'
-    try:
+    with pytest.raises(ImportError, match='deferred import control'):
         importlib.import_module(next(iter(native_modules)))
-    except ImportError as error:
-        assert 'deferred import control' in str(error)
-    else:
-        raise AssertionError('native import control did not fire')
     blocked = modules
     before = [esolangs.describe(name) for name in esolangs.list_languages()]
-    try:
+    with pytest.raises(ImportError, match='deferred import control'):
         esolangs.generate(pilots[0].name, '00110101')
-    except ImportError as error:
-        assert 'deferred import control' in str(error)
-    else:
-        raise AssertionError('blocking control did not fire')
 finally:
     sys.meta_path.remove(block)
 
 assert 'generators' not in dir(esolangs.languages)
 assert not hasattr(esolangs.languages, 'generators')
-try:
+with pytest.raises(ModuleNotFoundError) as caught:
     importlib.import_module('esolangs.languages.generators')
-except ModuleNotFoundError as error:
-    assert error.name == 'esolangs.languages.generators'
-else:
-    raise AssertionError('retired generator facade imported')
+assert caught.value.name == 'esolangs.languages.generators'
 for name in registry.LANGUAGES:
     native = importlib.import_module(registry.INTERPRETERS[name])
     assert all(not hasattr(native, key) for key in ('load_source', 'supports_scale'))

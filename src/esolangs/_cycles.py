@@ -309,6 +309,9 @@ def _branch_search(
                     "does not decide all random paths"
                 ),
             )
+        # An error dead end cannot prove an infinite execution.
+        if not successors:
+            raise TypeError("branching transition requires a successor")
         forked = forked or len(successors) > 1
         if transitions is not None:
             outcomes = tuple(successors)

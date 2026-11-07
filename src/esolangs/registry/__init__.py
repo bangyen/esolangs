@@ -12,9 +12,11 @@ from urllib.parse import quote
 from esolangs.exceptions import TemplateError, UnknownLanguageError
 from esolangs.generation.helpers import Setters, mark_runs, unmark
 from esolangs.generation.wrap import wrap_program
-from esolangs.registry._backend import TemplateSpec
+from esolangs.registry._backend import Generator, TemplateSpec
+from esolangs.registry._language import Language
 from esolangs.registry._slug import SUGGESTION_CUTOFF, canonical_id
-from esolangs.registry._table import LANGUAGES, Generator, Language, SourceKind
+from esolangs.registry._table import LANGUAGES
+from esolangs.runtime._definition import SourceKind
 
 __all__ = [
     "BY_BOOLEAN",

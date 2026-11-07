@@ -46,6 +46,7 @@ class BranchProof:
         elif (
             self.terminal is not None
             or self.root not in graph
+            or any(not outcomes for outcomes in graph.values())
             or any(
                 next_state not in graph for row in graph.values() for next_state in row
             )

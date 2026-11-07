@@ -24,6 +24,7 @@ Owners are workstreams, not individual contributors.
 | Temporary `generate_artifact` / `load_artifact` aliases | Registry | Retired; tools use canonical names; public and bound-method absence checks | `generate` / `load_program` |
 | Shared plain-text fixture filler `tests.generators.fills` | Artifact API | Retired; native fixtures declare their bindings; negative import check in `tests/generators/test_generator_support.py` | Explicit `TemplateBindings` from declared native setters |
 | `BooleanBackend(generate=...)` constructor alias | Registry | Retired; callers use `entrypoint`; negative constructor/replacement checks in `tests/api/test_boolean_backend.py` | Canonical entrypoint field |
+| `_table.Generator` / `_table.SourceKind` forwarding imports | Registry | Retired; public registry imports canonical owners; actual old imports fail in deferred catalog controls | `registry._backend.Generator` / `runtime._definition.SourceKind`; supported public registry names retained |
 | `registry.GENERATORS` | Registry | Retired; negative index checks in `tests/api/test_deferred_catalog.py` | Descriptor/backend entrypoints |
 | `languages.generators` facade | Registry | Retired; callers use owned modules or backend declarations; negative import checks in `tests/api/test_deferred_catalog.py` | Artifact API or direct owned generator imports |
 | Unused generator-module descriptor re-exports | Registry | Retired; owned metadata consumers use descriptors; all-backend checks in `tests/api/test_certification_capability.py` reject unused imports and `LANGUAGE` exports | Independent descriptors; retain constants actually used by emitters |
@@ -44,7 +45,7 @@ Owners are workstreams, not individual contributors.
 | `FunctionRef.__signature__` proxy | Registry | Retired; recursive declaration checks reject its return in `tests/api/test_descriptor_loading.py` | Explicit callable parameter declarations |
 | Snapshot-as-workspace fallback | Accounting | Retired; VM capture and `WrittenState` require models; missing/invalid adapters and raw values are rejected in runtime/tooling tests | Versioned semantic accounting models |
 | Noninteger cycle counters and unhashable cycle snapshots | Results | Retired; constructor, JSON and parent-decoder controls retain zero-stride completion and partial output | Integer ordered boundaries and hashable snapshots |
-| Disconnected, mutable or draw-dependent branch verdicts | Results | Retired; constructor, wire and parent-decoder refusal controls preserve partial output | Immutable root-reachable graphs; run-specific termination decisions |
+| Empty, disconnected, mutable or draw-dependent branch verdicts | Results | Retired; constructor, wire and parent-decoder refusal controls preserve partial output | Immutable root-reachable graphs; run-specific termination decisions |
 | Legacy worker-field defaults | Results | Retired; complete typed requests and explicit success/error observations; omission, flag, integer-tag and raster-run controls in `tests/runtime/test_worker_results.py` | Explicit canonical fields, including unavailable observations |
 | Permissive worker envelopes and nested proof fields | Results | Retired; missing/extra fields, unknown error kinds, duplicate terminals and contradictory output fail with retained prefixes | Exact canonical stream, result and evidence schemas |
 | Normalized worker hex spellings and duplicate snapshot-set members | Results | Retired; request, result and parent-decoder refusals retain signed huge integers, byte snapshots and partial output | Encoder spellings and distinct immutable members |
@@ -1078,3 +1079,11 @@ programs. Installed Python 3.12–3.15 checks execute 8,480 rows, fourteen isola
 workers and all fault controls each; retired imports fail and certification/proof
 imports stay blocked. Clockwise has separate installed and resource evidence.
 Eleven backend audits remain; catalog acceptance stays open.
+
+
+Nonhalting branch proofs reject empty successor rows at construction, decoding
+and search. Interprogck8 propagates unknown-instruction errors instead of
+turning them into a false divergence verdict. Native, Boolean, proof and result
+routes raise the same `HaltError`; valid halts and closed cycles remain accepted.
+Constructor, wire and worker-envelope controls retain partial-output assertions.
+Branching IO observation acceptance remains open.

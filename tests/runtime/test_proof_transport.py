@@ -118,23 +118,21 @@ def test_actual_termination_workers_retain_every_halt_and_cycle():
 
     name, source, stdin, result = next(case for case in cases if case[3].decision.cycle)
     cycle = result.decision.cycle
-    damaged = result._replace(
-        decision=result.decision._replace(cycle=replace(cycle, state=("wrong",)))
-    )
-    with pytest.raises(AssertionError):
-        _replay_termination(name, source, stdin, damaged)
-    damaged = result._replace(
-        observation=result.observation._replace(
-            input_reads=result.observation.input_reads + 1
-        )
-    )
-    with pytest.raises(AssertionError):
-        _replay_termination(name, source, stdin, damaged)
-    damaged = result._replace(
-        decision=result.decision._replace(commands=result.decision.commands + 1)
-    )
-    with pytest.raises(AssertionError):
-        _replay_termination(name, source, stdin, damaged)
+    for damaged in (
+        result._replace(
+            decision=result.decision._replace(cycle=replace(cycle, state=("wrong",)))
+        ),
+        result._replace(
+            observation=result.observation._replace(
+                input_reads=result.observation.input_reads + 1
+            )
+        ),
+        result._replace(
+            decision=result.decision._replace(commands=result.decision.commands + 1)
+        ),
+    ):
+        with pytest.raises(AssertionError):
+            _replay_termination(name, source, stdin, damaged)
 
     def check_worker(case):
         name, source, stdin, native = case
@@ -193,28 +191,33 @@ def test_proof_deadlines_keep_output_without_claiming_divergence():
 
 
 def test_wire_decisions_require_proof_and_matching_counts():
+    streamed = json.dumps({"output": "prefix"}) + "\n"
+    observation = encode_result(ExecutionResult("prefix", 0, 0, 0))
+
+    def refuses(proof, pattern):
+        with pytest.raises(ValueError, match=pattern):
+            decode_decision(proof)
+        packet = {"result": "prefix", "execution": observation, "termination": proof}
+        with pytest.raises(
+            esolangs.InterpreterLimitError, match="invalid isolated"
+        ) as caught:
+            _decode(streamed + json.dumps(packet), expired=False)
+        assert caught.value.partial_output == "prefix"
+
     records = [
         CycleDecision(halts=False, commands=1, cycle=BoundaryCycle((0,), 0, 1, 1)),
-        CycleDecision(
-            halts=False,
-            commands=None,
-            branches=BranchProof(0, ((0, (0,)),), halts=False),
-        ),
-        CycleDecision(
-            halts=True,
-            commands=None,
-            branches=BranchProof(0, ((0, (1,)), (1, (2,))), halts=True, terminal=2),
+        *(
+            CycleDecision(halts=proof.halts, commands=None, branches=proof)
+            for proof in (
+                BranchProof(0, ((0, (0,)),), halts=False),
+                BranchProof(0, ((0, (1,)), (1, (2,))), halts=True, terminal=2),
+            )
         ),
     ]
     for record in records:
         wire = json.loads(json.dumps(encode_decision(record)))
         assert decode_decision(wire) == record
-        packet = {
-            "result": "prefix",
-            "execution": encode_result(ExecutionResult("prefix", 0, 0, 0)),
-            "termination": wire,
-        }
-        streamed = json.dumps({"output": "prefix"}) + "\n"
+        packet = {"result": "prefix", "execution": observation, "termination": wire}
         assert _decode(streamed + json.dumps(packet), expired=False).decision == record
         nested = "cycle" if record.cycle is not None else "branches"
         for part in (None, nested):
@@ -228,16 +231,10 @@ def test_wire_decisions_require_proof_and_matching_counts():
                     changed[key] = True
                 else:
                     del changed[key]
-                with pytest.raises(
-                    ValueError,
-                    match=r"invalid (termination|boundary|branching)",
-                ):
-                    decode_decision(malformed["termination"])
-                with pytest.raises(
-                    esolangs.InterpreterLimitError, match="invalid isolated"
-                ) as caught:
-                    _decode(streamed + json.dumps(malformed), expired=False)
-                assert caught.value.partial_output == "prefix"
+                refuses(
+                    malformed["termination"],
+                    r"invalid (termination|boundary|branching)",
+                )
         broken = copy.deepcopy(wire)
         broken["cycle"] = broken["branches"] = None
         with pytest.raises(ValueError, match=r"evidence|count"):
@@ -247,6 +244,8 @@ def test_wire_decisions_require_proof_and_matching_counts():
     with pytest.raises(ValueError, match="evidence"):
         decode_decision(broken)
     for transitions, halts, terminal in (
+        ([[0, []]], False, None),
+        ([[0, [1]], [1, []]], False, None),
         ([[9, [10]]], True, 10),
         ([[0, [0]], [9, [10]]], True, 10),
         ([[0, [0]], [9, [9]]], False, None),
@@ -264,18 +263,7 @@ def test_wire_decisions_require_proof_and_matching_counts():
                 "terminal": terminal,
             },
         }
-        with pytest.raises(ValueError, match=r"unreachable|outgoing|draws"):
-            decode_decision(broken)
-        packet = {
-            "result": "prefix",
-            "execution": encode_result(ExecutionResult("prefix", 0, 0, 0)),
-            "termination": broken,
-        }
-        with pytest.raises(
-            esolangs.InterpreterLimitError, match="invalid isolated"
-        ) as caught:
-            _decode(streamed + json.dumps(packet), expired=False)
-        assert caught.value.partial_output == "prefix"
+        refuses(broken, r"unreachable|outgoing|draws|closed")
 
 
 def test_a_plain_worker_result_cannot_become_a_verdict():
