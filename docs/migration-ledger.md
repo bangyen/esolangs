@@ -1383,3 +1383,26 @@ component faults and four guarded workers per version. The partial-step error
 retains output and agrees across native/isolated routes. `just test` passes in
 230.6 seconds. This is bounded semantic accounting evidence; final language and
 catalog acceptance stay open.
+
+
+1 + i uses one-i-v2 captures: inexact values retain typed 128-bit IEEE payloads,
+and cycle keys retain the same lossless bits. Previously `ie` could not be
+accounted, signed-zero states aliased despite opposite logarithm outputs, and
+inexact cycles could not cross worker transport. Finite and nonfinite cycles
+now round-trip without permissive wire fallbacks; NaN payloads survive.
+
+The independent Gaussian-rational/frame corpus retains all 1,202 cases and
+4,060 observations at 64 commands. Three field erasures preserve execution but
+fail resources; all three prior semantic faults remain. Hand-derived inexact
+witnesses reach 131 bits. A 5,193-program interpreter comparison retains 2,296
+clean halts and zero execution differences after only the intended key encoding
+is normalized; a mutant changes 2,454 programs. Native speed ratio is 1.0005.
+Thirty duplicate native test runners are consolidated with EOF suppression
+disabled: all 599 collected cases, 1,953 calls and 191 errors match exactly.
+
+Python 3.12.11, 3.13.15, 3.14.7 and final 3.15.0 each pass the complete owned
+raw/VM/debugger corpus, 219 native halts, 981 failed steps, three field faults
+and six guarded workers. The refreshed 951-file wheel also matches all 117
+catalog witnesses and 13,778 accounting samples on all four versions; only
+the declared model label changes in the default corpus. `just test` passes in
+233.6 seconds. All language completion rows remain open.
