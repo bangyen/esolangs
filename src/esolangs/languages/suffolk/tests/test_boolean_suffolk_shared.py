@@ -4,11 +4,9 @@ import random
 
 import pytest
 
-from esolangs.languages.suffolk.generator import (
-    _nor,
-    shared_dag,
-    suffolk,
-)
+from esolangs import generate, run
+from esolangs.generation.lookup import constant_output
+from esolangs.languages.suffolk import generator as boolean
 from esolangs.languages.suffolk.interpreter import _Machine
 from esolangs.languages.suffolk.tests.lookup_support import _suffolk_lookup
 from esolangs.runtime.io import ScriptedIO
@@ -18,7 +16,7 @@ from scripts.benchmark import WrittenState
 @pytest.mark.parametrize("target", [0, 1, 48])
 @pytest.mark.parametrize(("left", "right"), [(0, 0), (0, 1), (1, 0), (1, 1)])
 def test_nor_cancels_the_targets_old_value(target, left, right) -> None:
-    code = _nor(2, 0, 1)
+    code = boolean._nor(2, 0, 1)
     machine = _Machine(code, ScriptedIO(""))
     machine.state = (0, 0, 0, (left, right, target))
     for _ in code:
@@ -61,7 +59,7 @@ def _witness_rows(n):
 @pytest.mark.parametrize("n", [9, 10])
 def test_changed_scaling_controls_execute_witness_rows(n) -> None:
     table = "".join(str((i * 73 + i.bit_count()) & 1) for i in range(1 << n))
-    old, new = _suffolk_lookup(table), suffolk(table)
+    old, new = _suffolk_lookup(table), boolean.suffolk(table)
     assert len(new) < len(old)
     _execute(table, old, _witness_rows(n))
     _execute(table, new, _witness_rows(n))
@@ -72,29 +70,32 @@ def test_changed_scaling_controls_execute_witness_rows(n) -> None:
 def test_shared_parity_executes_both_ignored_input_fills(start) -> None:
     core = "".join(str(row.bit_count() & 1) for row in range(256))
     table = core * 256
-    program = shared_dag(table, 16)
+    program = boolean.shared_dag(table, 16)
     assert program is not None
     assert len(program) == 2461
-    assert suffolk(table) == program
+    assert boolean.suffolk(table) == program
     rows = [fill << 8 | row for fill in (0, 255) for row in range(start, start + 32)]
     _execute(table, program, rows)
 
 
 def test_workspace_refusal_preserves_lookup() -> None:
     table = "".join(str(row.bit_count() & 1) for row in range(256))
-    assert shared_dag(table, 8) is None
-    assert suffolk(table) == _suffolk_lookup(table)
+    assert boolean.shared_dag(table, 8) is None
+    assert boolean.suffolk(table) == _suffolk_lookup(table)
 
 
 @pytest.mark.parametrize("table", ["00", "11"])
-def test_constants_keep_the_stream_drain(table) -> None:
-    assert shared_dag(table, 1) is None
-    assert suffolk(table) == _suffolk_lookup(table)
+def test_constants_keep_the_stream_drain(table, monkeypatch) -> None:
+    assert boolean.shared_dag(table, 1) is None
+    assert boolean.suffolk(table) == _suffolk_lookup(table)
+    assert boolean.constant_output is constant_output
+    monkeypatch.setattr(boolean, "constant_output", lambda _: str(1 - int(table[0])))
+    assert run("Suffolk", generate("Suffolk", table), stdin="0").output != table[0]
 
 
 def test_repeated_passes_overwrite_every_shared_value() -> None:
     table = "01101001" * 4
-    program = shared_dag(table, 5)
+    program = boolean.shared_dag(table, 5)
     assert program is not None
     machine = _Machine(program, ScriptedIO("00000" + "11111" + "01001"))
     while not machine.halted:
@@ -108,6 +109,6 @@ def test_dag_at_the_pointer_bit_boundary_stays_shared() -> None:
         str(int((row >> 2).bit_count() % 2 == 1 and row & 3 == 3))
         for row in range(1 << 10)
     )
-    program = suffolk(table)
+    program = boolean.suffolk(table)
     assert len(program) == 3060
     _execute(table, program, _witness_rows(10)[:8])

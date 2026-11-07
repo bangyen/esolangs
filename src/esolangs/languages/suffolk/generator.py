@@ -22,6 +22,7 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
+from esolangs.generation.lookup import constant_output
 
 #: The cell plan.  Cost here is a cell's *index* -- every read spends one
 #: ``>`` per cell crossed -- so the countdown, which every sweep op reads,
@@ -73,9 +74,9 @@ def _lookup(truth_table: str, n: int) -> str:
     between two steps the table is constant.  The top input splits the table
     in half and each half gets its own pair of counters, halving the sweep.
     """
-    if len(set(truth_table)) == 1:
+    if (constant := constant_output(truth_table)) is not None:
         # Reads clamp cell zero to zero; reuse it for the ASCII answer.
-        return ",!" * n + "!" * (_ASCII_ONE + int(truth_table[0])) + "<."
+        return ",!" * n + "!" * (_ASCII_ONE + int(constant)) + "<."
 
     used = essential_inputs(truth_table, n)
     reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
