@@ -1459,3 +1459,20 @@ version pass; only Painter Ant accounting changes. An altered accounting width
 is rejected. `just test` passes in 247.2 seconds. The monolithic trace run hit
 60 seconds; the identical full scope passed bounded batches without raising
 caps. Language and catalog completion remain open.
+
+
+ABCDirection's independent complex-grid/deque model predicts all ten workspace
+components, including bit buffers and the exact silent-cycle phase. Relative
+anchor validity is modeled without production epoch numbers. All 135 prior
+cases and 7,783 observations remain at 96 commands; every component is written
+in the corpus. Ten component erasures preserve semantics but fail resources;
+the stalled-machine control remains. Literal charged peaks are 23, 32, 33 and
+13 bits. Eight test modules consolidate imports with identical normalized test
+bodies and all 245 assertions retained, keeping the source/test line budget.
+
+All 951 package files remain byte-identical. The installed raw/VM/debugger
+corpus passes on Python 3.12.11, 3.13.15, 3.14.7 and final 3.15.0, with 85
+native halts and 89 guarded workers per version. Three syntax failures agree;
+a printing loop retains twelve NUL characters and an unfinished observation
+after 96 commands across bounded/isolated routes. `just test` passes in 233.6
+seconds. Language and catalog completion remain open.
