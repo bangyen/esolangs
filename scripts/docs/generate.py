@@ -363,9 +363,9 @@ def render_raster_section() -> str:
     verb = "carries" if len(raster) == 1 else "carry"
     return "\n".join(
         [
-            f"{_join(raster)} {verb} a raster source: `generate` returns an",
-            "`esolangs.Raster`, `run` takes it or a PNG path through the shared",
-            'codec, and `describe` reports `source_kind="raster"`.',
+            f"{_join(raster)} {verb} a raster source: `generate` returns a",
+            "`ProgramArtifact` containing a `Raster`; `run` takes it or a PNG path",
+            'through the shared codec; `describe` reports `source_kind="raster"`.',
         ]
     )
 

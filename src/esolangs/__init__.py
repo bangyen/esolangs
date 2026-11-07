@@ -727,7 +727,7 @@ def run(
         max_memory: Linux worker virtual address space cap in bytes, including
             Python overhead; other platforms refuse it.  Loading in the
             parent is not capped.
-        settings: Dialect choices.  Tagged source retains its own; these
+        settings: Dialect choices.  Artifacts retain their own; these
             override individual ones.  Plain source uses these.
 
     Raises:

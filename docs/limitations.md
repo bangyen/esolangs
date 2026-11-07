@@ -50,9 +50,9 @@ Exceptions and per-language notes:
 
 <!-- RASTER-SOURCES:START -->
 
-Line and Piet carry a raster source: `generate` returns an
-`esolangs.Raster`, `run` takes it or a PNG path through the shared
-codec, and `describe` reports `source_kind="raster"`.
+Line and Piet carry a raster source: `generate` returns a
+`ProgramArtifact` containing a `Raster`; `run` takes it or a PNG path
+through the shared codec; `describe` reports `source_kind="raster"`.
 
 <!-- RASTER-SOURCES:END -->
 
