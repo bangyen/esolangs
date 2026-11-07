@@ -89,14 +89,15 @@ construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one pass to the fixed point, one proving the repeat", formula = "2L" }
 
 [resource_evidence.workspace]
-expression = "2(n+1)T + 3 + bl(L-1)"
+# Each visited coordinate lies within the at-most-2L-command walk.
+expression = "2(n+1)T + 3 + bl(L-1) + 4(bl(2L)+1)"
 exact = false
 arities = [3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant"
-description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit}: corridor, answers, ant, cursor" }
+description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit}: corridor, answers, ant, cursor, visited bounds" }
 
 [resource_evidence.scaling]
 expression = "13T/2 + 3n - 2"

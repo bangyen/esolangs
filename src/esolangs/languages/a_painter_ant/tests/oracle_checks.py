@@ -6,6 +6,13 @@ import pytest
 
 from esolangs.languages.a_painter_ant.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
+from tests.support.workspace_oracle import (
+    WorkspaceWitness,
+    missing_workspace,
+    workspace_model,
+)
+
+_WORKSPACE = workspace_model("a-painter-ant-v2", "grid x y instruction extent")
 
 _DIRECTIONS = dict(zip("eswn", (1, 1j, -1, -1j), strict=True))
 
@@ -26,6 +33,12 @@ def _check(factory, source, *, passes=4, cycle=None, output=None):
         )
         return (cells, int(ant.real), int(ant.imag), instruction)
 
+    def resources(instruction):
+        xs, ys = [int(c.real) for c in visited], [int(c.imag) for c in visited]
+        return (*snapshot(instruction), (min(xs), max(xs), min(ys), max(ys)))
+
+    witness = WorkspaceWitness(_WORKSPACE)
+    witness.sample(machine.workspace_snapshot(), resources(0))
     saved = machine.workspace_snapshot()
     retained = {saved}
     first = snapshot(0) if cycle is not None and cycle.first_pass == 0 else None
@@ -52,7 +65,7 @@ def _check(factory, source, *, passes=4, cycle=None, output=None):
         assert {complex(*cell) for cell in machine.visited} == visited
         expected = snapshot(step % len(commands))
         assert machine.snapshot() == expected
-        assert machine.workspace_snapshot().parts == expected
+        witness.sample(machine.workspace_snapshot(), resources(step % len(commands)))
         assert saved in retained
         if cycle is not None and step == cycle.first_pass * len(commands):
             first = expected
@@ -80,6 +93,7 @@ def _check(factory, source, *, passes=4, cycle=None, output=None):
         machine.step()
         assert io.getvalue() == rendered
         assert machine.workspace_snapshot() == before_dump
+        witness.sample(machine.workspace_snapshot(), resources(0))
 
 
 def check_raw_a_painter_ant():
@@ -96,3 +110,6 @@ def check_raw_a_painter_ant():
 
     with pytest.raises(AssertionError):
         _check(ReversedColours, "P e W")
+    for component in _WORKSPACE.components:
+        with pytest.raises(AssertionError):
+            _check(missing_workspace(_Machine, component), "P e p s")

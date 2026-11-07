@@ -90,7 +90,9 @@ def _advance(state: _State, grid: _Grid, program: str) -> _Move:
     return (x, y, ip, None)
 
 
-_WORKSPACE_MODEL = WorkspaceModel("a-painter-ant-v1", ("grid", "x", "y", "instruction"))
+_WORKSPACE_MODEL = WorkspaceModel(
+    "a-painter-ant-v2", ("grid", "x", "y", "instruction", "extent")
+)
 
 
 class _Machine:
@@ -135,6 +137,9 @@ class _Machine:
         # pass 1 almost none do, so a per-step snapshot stops costing O(grid).
         self._frozen: frozenset[tuple[tuple[int, int], int]] | None = None
         self.visited: set[tuple[int, int]] = {(0, 0)}
+        self._extent: (
+            tuple[frozenset[tuple[int, int]], tuple[int, int, int, int]] | None
+        ) = None
         self.x = self.y = 0
         self.ip = 0
 
@@ -152,11 +157,14 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
-        return _WORKSPACE_MODEL.capture(
-            grid=frozenset(self.grid.items()),
-            x=self.x,
-            y=self.y,
-            instruction=self.ip,
+        # Four full scans made repeated accounting captures 4.8x slower.
+        if self._extent is None or self._extent[0] != self.visited:
+            visited = frozenset(self.visited)
+            xs, ys = zip(*visited, strict=True)
+            self._extent = visited, (min(xs), max(xs), min(ys), max(ys))
+        return WorkspaceSnapshot(
+            _WORKSPACE_MODEL,
+            (frozenset(self.grid.items()), self.x, self.y, self.ip, self._extent[1]),
         )
 
     def snapshot(self) -> tuple[object, ...]:

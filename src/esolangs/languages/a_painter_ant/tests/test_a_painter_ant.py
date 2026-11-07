@@ -162,14 +162,26 @@ class TestPainterAntDumpsOnce:
         assert io.getvalue() == first
 
 
-def test_workspace_ignores_cycle_grid_cache_and_visited_extent():
+def test_workspace_ignores_cycle_cache_and_retains_visited_extent():
     machine = _Machine("pN")
     machine.step()
     saved = machine.workspace_snapshot()
     retained = {saved}
     machine._frozen = frozenset({((999, 999), 1)})
-    machine.visited.add((-999, -999))
     machine.snapshot = lambda: ("unrelated cycle key",)
     assert machine.workspace_snapshot() == saved
     assert saved in retained
     assert saved.parts[0] == frozenset(machine.grid.items())
+    machine.visited.add((-999, -999))
+    assert machine.workspace_snapshot().parts == (
+        *saved.parts[:-1],
+        (-999, 0, -999, 0),
+    )
+    assert saved in retained
+    machine = _Machine("ew")
+    before, picture = machine.workspace_snapshot(), machine.render()
+    machine.step()
+    machine.step()
+    assert before.parts[:-1] == machine.workspace_snapshot().parts[:-1]
+    assert before != machine.workspace_snapshot()
+    assert picture != machine.render()
