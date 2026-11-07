@@ -106,7 +106,8 @@ def workspace_view(trace, model, parts, view):
     witness = WorkspaceWitness(model)
 
     def observe(machine):
-        predicted = next(expected)
+        predicted = next(expected, None)
+        assert predicted is not None, "machine exceeded its independently modeled trace"
         assert predicted[0] is not None or predicted[1]
         witness.sample(machine.workspace_snapshot(), parts(predicted))
         return view(machine)
