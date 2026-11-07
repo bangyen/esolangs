@@ -1420,3 +1420,17 @@ Python 3.12.11, 3.13.15, 3.14.7 and final 3.15.0: 211 native halts, 927 failed
 steps, five field faults and five guarded workers per version. Native/isolated
 failures agree, including retained output and a failed loop scan ending at EOF.
 `just test` passes in 229.6 seconds. Language completion remains open.
+
+
+6-5 independently predicts tape position, tape contents, instruction and input
+cursor. All 1,535 cases and 17,506 observations remain at 64 commands. Four
+component erasures retain execution but fail resources; all nine prior semantic
+faults remain. Literal charged peaks are 6, 3, 13 and 25 bits; a marker loop
+reaches one bit at 64 commands, and invalid output retains its prior character
+with a five-bit peak.
+
+The unchanged 951-file installed package passes the full raw/VM/debugger corpus
+on Python 3.12.11, 3.13.15, 3.14.7 and final 3.15.0, with 1,174 native halts,
+257 failed steps, four field faults and five guarded workers per version.
+Native/isolated input, operand and output failures agree. `just test` passes
+in 230.2 seconds. Language and catalog completion remain open.
