@@ -8,12 +8,13 @@ import pytest
 
 from esolangs.languages.bitwise_cyclic_tag.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support import workspace_oracle as workspace
 
 _WORKSPACE = WorkspaceModel(
-    "bitwise-cyclic-tag-v1",
-    ("instruction", "live_bits", "answer", "input_cursor"),
+    "bitwise-cyclic-tag-v2",
+    ("instruction", "live_bits", "answer", "completion_emitted", "input_cursor"),
 )
 
 
@@ -25,7 +26,7 @@ def _word(number):
     return "".join(bits)
 
 
-def _model(source):
+def _model(source, *, cap=64):
     text = "".join(source.split())
     if not re.fullmatch(r"[01]*(?:,[01]*)?", text):
         return "syntax", [(None, False, "", 0, 0)]
@@ -36,24 +37,12 @@ def _model(source):
 
     def view():
         live = _word(number)
-        return (
-            (
-                head,
-                deleted,
-                live,
-                answer,
-                printed,
-                tuple(map(int, live)),
-                offsets[head] if program else None,
-            ),
-            not program or not number,
-            output,
-            0,
-            0,
-        )
+        ip = offsets[head] if program else None
+        state = head, deleted, live, answer, printed, tuple(map(int, live)), ip
+        return state, not program or not number, output, 0, 0
 
     trace = [view()]
-    for _ in range(64):
+    for _ in range(cap):
         if not program or not number:
             break
         if program[head] == "0":
@@ -75,19 +64,23 @@ def _model(source):
     return None, trace
 
 
-def _agrees(factory, source):
-    expected = _model(source)
-    checked = workspace_view(
+def _parts(row):
+    return row[0][0], row[0][2], row[0][3], row[0][4], row[-1]
+
+
+def _agrees(factory, source, *, cap=64):
+    expected = _model(source, cap=cap)
+    checked = workspace.workspace_view(
         expected[1],
         _WORKSPACE,
-        lambda row: (row[0][0], row[0][2], row[0][3], row[-1]),
+        _parts,
         lambda m: (m.head, m.read, m.live, m.answer, m.printed, tuple(m.memory), m.ip),
     )
-    assert observed(factory, source, "unused λ", checked) == expected, source
+    assert observed(factory, source, "unused λ", checked, cap=cap) == expected, source
     return expected
 
 
-def check_raw_bitwise_cyclic_tag():
+def bitwise_cyclic_tag_cases():
     words = ["".join(p) for n in range(5) for p in itertools.product("01", repeat=n)]
     corpus = [f"{program},{data}" for program in words for data in words[:15]]
     rng = random.Random(20261103)
@@ -113,19 +106,37 @@ def check_raw_bitwise_cyclic_tag():
         "0,,1",
         "0;1,1",
     ]
-    results = [_agrees(_Machine, code) for code in corpus]
+    corpus.append("9" * 4400)
+    return [(code, 64) for code in corpus] + [("0," + "0" * 80, 80)]
+
+
+def check_raw_bitwise_cyclic_tag():
+    results = [
+        _agrees(_Machine, code, cap=cap) for code, cap in bitwise_cyclic_tag_cases()
+    ]
     assert {error for error, _ in results} == {None, "syntax"}
     assert any(not trace[-1][1] for error, trace in results if error is None)
     assert _model("110100,10")[1][-1][2] == "0"
-    assert [v[0][2] for v in _model("00111,101")[1][:7]] == [
-        "101",
-        "01",
-        "1",
-        "11",
-        "110",
-        "10",
-        "101",
-    ]
+    live = [v[0][2] for v in _model("00111,101")[1][:7]]
+    assert live == ["101", "01", "1", "11", "110", "10", "101"]
+    for source, cap, bits in (
+        (",1", 64, 1),
+        ("0,1", 64, 17),
+        ("00,1", 64, 18),
+        ("0," + "0" * 80, 64, 648),
+        ("0," + "0" * 80, 80, 649),
+    ):
+        trace = _model(source, cap=cap)[1]
+        assert workspace.charged_bits(_WORKSPACE, map(_parts, trace)) == bits
+    probe = _Machine("0,1", ScriptedIO("unused"))
+    probe.step()
+    cycle_key = probe.snapshot()
+    assert probe.io.getvalue() == ""
+    probe.step()
+    assert (probe.snapshot(), probe.io.getvalue()) == (cycle_key, "1")
+    probe.step()
+    assert (probe.snapshot(), probe.io.getvalue()) == (cycle_key, "1")
+
     controls = {
         "conditional": "11,0",
         "operand": "10,1",
@@ -178,5 +189,4 @@ def check_raw_bitwise_cyclic_tag():
             _agrees(Fault, source)
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), "00,1")
-    return len(results), len(controls) + 4
+            _agrees(workspace.missing_workspace(_Machine, component), "00,1")

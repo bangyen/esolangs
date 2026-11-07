@@ -98,7 +98,7 @@ first = 3
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.bitdeque.generator:bitdeque"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: n deque bits, a register bit, the cursor", formula = "n + 1 + bl(U)" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: n deque bits, register and dump bits, the cursor", formula = "n + 2 + bl(U)" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.bitdeque.tests.formulas:_bound"

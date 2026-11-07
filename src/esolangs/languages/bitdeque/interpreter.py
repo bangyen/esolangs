@@ -106,7 +106,7 @@ def _reject_stray_text(code: str) -> None:
 
 
 _WORKSPACE_MODEL = WorkspaceModel(
-    "bitdeque-v1", ("instruction", "register", "deque", "input_cursor")
+    "bitdeque-v2", ("instruction", "register", "deque", "rendered", "input_cursor")
 )
 
 
@@ -174,6 +174,7 @@ class _Machine:
             instruction=self.state.ind,
             register=self.state.reg,
             deque=self.state.deq,
+            rendered=self.state.rendered,
             input_cursor=self.io.progress(),
         )
 

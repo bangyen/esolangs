@@ -5,20 +5,24 @@ import random
 
 import pytest
 
-from esolangs.exceptions import HaltError
 from esolangs.languages.bitdeque.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
 from esolangs.runtime.io import ScriptedIO
-from tests.support.workspace_oracle import WorkspaceWitness, missing_workspace
+from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import (
+    charged_bits,
+    missing_workspace,
+    workspace_view,
+)
 
 _WORKSPACE = WorkspaceModel(
-    "bitdeque-v1", ("instruction", "register", "deque", "input_cursor")
+    "bitdeque-v2", ("instruction", "register", "deque", "rendered", "input_cursor")
 )
 
 _CAP = 64
 
 
-def _model(code):
+def _model(code, _stdin="λ\nunused", cap=_CAP):
     words, commands = code.split(), []
     while words:
         word = words.pop(0)
@@ -43,7 +47,7 @@ def _model(code):
         )
 
     trace, error = [view()], None
-    for _ in range(_CAP):
+    for _ in range(cap):
         if pc >= len(commands):
             break
         command, operand = commands[pc]
@@ -59,10 +63,15 @@ def _model(code):
         elif command == "EJECT":
             register = bool(queue.pop(0)) if queue else False
         elif register:
-            if int(operand) == 0:
+            try:
+                target = int(operand)
+            except ValueError:
+                trace.append(view())
+                return "syntax", trace
+            if target == 0:
                 error = "target"
             else:
-                next_pc = int(operand) - 1
+                next_pc = target - 1
         if not error:
             pc = next_pc
         trace.append(view())
@@ -77,58 +86,26 @@ def _model(code):
     return error, trace
 
 
-def _observed(machine_type, code, predicted):
-    io = ScriptedIO("λ\nunused")
-    try:
-        machine = machine_type(code, io)
-    except ValueError:
-        return "syntax", []
+def _observed(machine_type, code, predicted, stdin, cap):
+    standard = [((*r[:3], r[4]), r[3], *r[5:]) for r in predicted]
 
-    expected = iter(predicted)
-    witness = WorkspaceWitness(_WORKSPACE)
+    def state(machine):
+        assert machine.io.reads == machine.io.past_end == 0
+        return tuple(machine.state)
 
-    def view():
-        assert predicted
-        row = next(expected)
-        witness.sample(machine.workspace_snapshot(), (*row[:3], row[-1]))
-        return (
-            machine.ind,
-            machine.reg,
-            tuple(machine.deq),
-            machine.halted,
-            machine.rendered,
-            io.getvalue(),
-            io.position(),
-            io.progress(),
-        )
-
-    trace, error = [view()], None
-    for _ in range(_CAP):
-        if machine.halted:
-            break
-        try:
-            machine.step()
-        except HaltError:
-            error = "target"
-        except EOFError:
-            error = "input"
-        trace.append(view())
-        if error:
-            break
-    if not error and machine.halted:
-        for _ in range(3):
-            machine.step()
-            trace.append(view())
-    return error, trace
+    checked = workspace_view(standard, _WORKSPACE, lambda r: (*r[0], r[-1]), state)
+    error, rows = observed(machine_type, code, stdin, checked, cap=cap)
+    trace = [(*r[0][:3], r[1], r[0][3], *r[2:]) for r in rows if r[0] is not None]
+    return "target" if error == "halt" else error, trace
 
 
-def _agrees(machine_type, code):
-    expected = _model(code)
-    assert _observed(machine_type, code, expected[1]) == expected, code
+def _agrees(machine_type, code, stdin="λ\nunused", cap=_CAP):
+    expected = _model(code, stdin, cap)
+    assert _observed(machine_type, code, expected[1], stdin, cap) == expected, code
     return expected
 
 
-def check_raw_bitdeque():
+def corpus():
     atoms = (
         "PUSH",
         "INJECT",
@@ -140,12 +117,12 @@ def check_raw_bitdeque():
         "GOTO 2",
         "GOTO 9",
     )
-    corpus = [" ".join(p) for n in range(4) for p in itertools.product(atoms, repeat=n)]
+    codes = [" ".join(p) for n in range(4) for p in itertools.product(atoms, repeat=n)]
     rng = random.Random(20261103)
-    corpus += [
+    codes += [
         rng.choice((" ", "\t", "\n")).join(rng.choices(atoms, k=12)) for _ in range(256)
     ]
-    corpus += [
+    codes += [
         "INVERT PUSH INVERT INJECT",
         "INVERT PUSH PUSH INVERT INJECT",
         "INVERT PUSH PUSH INVERT PUSH",
@@ -167,7 +144,21 @@ def check_raw_bitdeque():
         "INVERT GOTO " + "9" * 100,
         "\n\t",
     ]
-    results = [_agrees(_Machine, code) for code in corpus]
+    yield from ((code, "λ\nunused", _CAP) for code in codes)
+    for code in (
+        "PUSH " * 81,
+        "INVERT " + "INJECT " * 81,
+        "INVERT " + "PUSH " * 81 + "POP EJECT " * 41,
+        "GOTO " + "9" * 5000,
+        "INVERT GOTO " + "9" * 5000,
+        "GOTO\u2028٢ PUSH",
+        "INVERT GOTO 2",
+    ):
+        yield code, "\U0001f600\r\n", 192
+
+
+def check_raw_bitdeque():
+    results = [_agrees(_Machine, *case) for case in corpus()]
     assert {error for error, _ in results} == {None, "syntax", "target"}
     assert any(not trace[-1][3] for error, trace in results if not error)
     assert _model("INVERT PUSH INVERT INJECT")[1][-1][2:6] == (
@@ -177,6 +168,18 @@ def check_raw_bitdeque():
         "0 1",
     )
     assert _model("INVERT PUSH INVERT PUSH POP")[1][-1][1:3] == (0, (1,))
+    for code, bits in (("", 1), ("PUSH", 3), ("INVERT PUSH", 5), ("PUSH " * 81, 89)):
+        trace = _model(code, cap=192)[1]
+        assert charged_bits(_WORKSPACE, ((*r[:3], r[4], r[-1]) for r in trace)) == bits
+    probe = _Machine("PUSH", ScriptedIO("unused"))
+    probe.step()
+    cycle_key = probe.snapshot()
+    assert probe.io.getvalue() == ""
+    probe.step()
+    assert (probe.snapshot(), probe.io.getvalue()) == (cycle_key, "0")
+    probe.step()
+    assert (probe.snapshot(), probe.io.getvalue()) == (cycle_key, "0")
+
     controls = {
         "end": "INVERT PUSH INVERT PUSH",
         "empty": "INVERT POP",
@@ -220,4 +223,3 @@ def check_raw_bitdeque():
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _agrees(missing_workspace(_Machine, component), "INVERT PUSH")
-    return len(corpus), len(controls) + 4

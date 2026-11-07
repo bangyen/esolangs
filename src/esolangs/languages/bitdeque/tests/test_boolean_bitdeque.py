@@ -195,6 +195,7 @@ def test_constant_native_and_short_loads_keep_all_slots() -> None:
                     assert machine.deq == (int(bit),)
                     assert not io.getvalue()
                     machine.step()
+                    written.sample(machine.workspace_snapshot())
                     assert io.getvalue() == bit
                     if not options:
                         assert steps + 1 == 3 * n + 3 + int(bit)

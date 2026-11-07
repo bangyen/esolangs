@@ -94,7 +94,8 @@ def _advance(state: _State, program: str, bit: str) -> tuple[_State, str | None]
 
 
 _WORKSPACE_MODEL = WorkspaceModel(
-    "bitwise-cyclic-tag-v1", ("instruction", "live_bits", "answer", "input_cursor")
+    "bitwise-cyclic-tag-v2",
+    ("instruction", "live_bits", "answer", "completion_emitted", "input_cursor"),
 )
 
 
@@ -160,6 +161,7 @@ class _Machine:
             instruction=self.state[0],
             live_bits=self.live,
             answer=self.answer,
+            completion_emitted=self.printed,
             input_cursor=self.io.progress(),
         )
 
