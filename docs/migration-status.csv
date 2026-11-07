@@ -42,7 +42,7 @@ CV(N)(C),yes,declared,not-applicable,declared,owned-adapter,cvnc-v1,canonical-co
 Cyclic tag,yes,declared,not-applicable,declared,owned-adapter,cyclic-tag-v1,canonical-weighted-lookup,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 Deadfish,no,declared,not-applicable,declared,owned-adapter,deadfish-v1,not-applicable,runtime-isolation-py312-315;claims-pending,sample-first-eight-steps;vm-debugger-history,open
 Decleq,yes,declared,not-applicable,declared,owned-adapter,decleq-v1,canonical-subtree-projection-symmetry;owned-gadget-layout,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
-Dig,yes,declared,not-applicable,declared,owned-adapter,dig-v1,canonical-parity;pending-backend-audit,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
+Dig,yes,declared,not-applicable,declared,owned-adapter,dig-v1,canonical-parity-span-projection-binary-weights;owned-adder-clearance-lane-class-layout,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 Dimensional,yes,declared,not-applicable,declared,owned-adapter,dimensional-v1,canonical-weighted-boundaries;owned-axis-pair-encoding,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 DINAC,yes,declared,not-applicable,declared,owned-adapter,dinac-v1,canonical-prefix-counts-projection;owned-prefix-scan,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open
 EGL,yes,declared,not-applicable,declared,owned-adapter,egl-v1,canonical-projection-symmetry;owned-grid-layout,runtime-isolation-py312-315;claims-pending,bounded-first-eight-steps;vm-debugger-history,open

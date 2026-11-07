@@ -4,6 +4,7 @@ from collections.abc import Callable
 from typing import NamedTuple
 
 from esolangs.generation.helpers import constant_span_test, essential_inputs, read_at
+from esolangs.generation.lookup import binary_weights
 from esolangs.languages.dig.generator._leaf import (
     _DIG_DIGITS,
     _DIG_OPAQUE,
@@ -138,10 +139,7 @@ def _dig_leaf_inputs(
     leaf = essential[-_DIG_LEAF_BITS:]
 
     def weigh(group: range) -> list[int]:
-        return [
-            1 << sum(j in leaf for j in group if j > i) if i in leaf else 0
-            for i in group
-        ]
+        return binary_weights([i in leaf for i in group])
 
     def fits(group: range, bonus: int) -> bool:
         return _dig_adder_fits(weigh(group), 2 * bonus)

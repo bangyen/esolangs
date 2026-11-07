@@ -5,6 +5,7 @@ from itertools import product
 
 from esolangs.generation import helpers
 from esolangs.generation.algebraic import AffineForm, affine_form, parity_bias
+from esolangs.generation.lookup import binary_weights
 from tests.support.witness_tables import witnesses
 
 
@@ -47,6 +48,9 @@ def test_dependencies_exhaustive() -> None:
             )
             lookup = helpers.input_weights(table, n)
             assert isinstance(lookup, helpers.WeightedLookup)
+            assert (
+                binary_weights([i in dependencies for i in range(n)]) == lookup.weights
+            )
             for row, bit in zip(product((0, 1), repeat=n), table, strict=True):
                 assert (
                     lookup.table[

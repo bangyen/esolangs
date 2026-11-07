@@ -1123,3 +1123,21 @@ executed cost controls also fire. Installed Python 3.12–3.15 checks each execu
 6,360 rows and five guarded workers, including EOF-as-zero and malformed-source
 result equivalence; certification imports stay blocked. Nine backend audits
 remain; catalog acceptance stays open.
+
+Dig shares binary row weights between alternating and indexed leaves; the
+duplicate leaf helper is retired. Parity, dependency, projection and span
+queries remain canonical. Adder clearance, forced reads, corridor sharing,
+prefix stamps and ordered one-digit class admission remain emitter-owned.
+All 1,932 artifacts, 16,960 paired rows and 603,272 semantic samples match
+across seven public layouts and the private unshared construction. All 240
+larger layouts and 960 paired rows match; six direct constructions add 37
+rows and 10,218 samples, including thirteen- and seventeen-input gaps.
+
+Eight pins, two size anchors and ten resource/scaling nodes pass unchanged.
+Sixty timing contexts pass (minimum ratio 0.9913). Seven semantic faults change
+334 answers; two validation probes fire. Consolidated test imports preserve
+every prior assertion, case and oracle. Installed Python 3.12.11, 3.13.15,
+3.14.7 and cached 3.15.0rc1 checks each execute 6,360 rows, five guarded workers
+and all faults; every binary mask through seven inputs passes. EOF and invalid
+operation errors retain partial output and agree across native/isolated routes.
+Eight backend audits remain; catalog acceptance stays open.

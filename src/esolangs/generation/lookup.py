@@ -1,6 +1,16 @@
 """Boolean row boundaries, counts and popcount lookup profiles."""
 
 
+def binary_weights(live: list[bool]) -> list[int]:
+    """Return MSB-first row weights, assigning ignored inputs zero."""
+    remaining = sum(live)
+    weights = []
+    for kept in live:
+        remaining -= kept
+        weights.append(1 << remaining if kept else 0)
+    return weights
+
+
 def constant_output(table: str) -> str | None:
     """Return the constant output of a validated nonempty table, or None."""
     return table[0] if table.count(table[0]) == len(table) else None

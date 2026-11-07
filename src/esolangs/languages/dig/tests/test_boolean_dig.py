@@ -10,7 +10,9 @@ import esolangs
 from esolangs import run as execute
 from esolangs.languages.dig import generator as boolean
 from esolangs.languages.dig.generator import _DIG_BRANCH, _DIG_STRIDE
-from esolangs.languages.dig.interpreter import _Machine
+from esolangs.languages.dig.generator import _layout as layout
+from esolangs.languages.dig.generator import _shared as indexed
+from esolangs.languages.dig.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
 from tests.support.evaluation import _evaluate
@@ -55,6 +57,7 @@ class TestDig:
         from scripts.benchmark import WrittenState
 
         assert not hasattr(boolean, "_dig_parity_bias")
+        assert not hasattr(indexed, "_leaf_weights")
         for n in (4, 5):
             for bias in (0, 1):
                 table = "".join(str(bias ^ (r.bit_count() % 2)) for r in range(1 << n))
@@ -112,23 +115,21 @@ class TestDig:
 
     def test_banded_layout_remains_available_for_width_requests(self) -> None:
         """A banded tree fits when the flat tree exceeds the requested width."""
-        from esolangs.languages.dig.generator import _dig_grid
 
         table = "0110100110010110"
         n = 4
-        flat = _dig_grid(table, n, None)
-        banded = _dig_grid(table, n, -(-(n + 2) // 2))
+        flat = boolean._dig_grid(table, n, None)
+        banded = boolean._dig_grid(table, n, -(-(n + 2) // 2))
         assert len(banded) < len(flat)
         assert boolean.dig(table, width=18) == banded
 
     def test_quarter_turn_wins_the_narrow_fallback_race_at_four_inputs(self) -> None:
         """When no layout fits a narrow width, the quarter-turn is narrowest."""
-        from esolangs.languages.dig.generator import _dig_grid, _dig_quarter_turn
 
         for table in ("0110101001101010", "1000001111111010"):
-            flat = _dig_grid(table, 4, None)
+            flat = boolean._dig_grid(table, 4, None)
             program = boolean.dig(table, width=8)
-            assert program == _dig_quarter_turn(flat)
+            assert program == boolean._dig_quarter_turn(flat)
             for row, expected in enumerate(table):
                 assert run_dig(program, list(format(row, "04b"))) == expected
 
@@ -186,7 +187,6 @@ class TestDig:
 
     def test_unaligned_leaf_chains_seven_input_reads(self) -> None:
         """A folded flat leaf needs two windows beyond its six-read tail."""
-        from esolangs.languages.dig.interpreter import run
 
         for expected in "01":
             program = boolean.dig(expected * 128, 1000)
@@ -232,7 +232,6 @@ class TestDig:
                     assert run_dig(program, bits) == expected
 
     def test_xor_polynomial_uses_four_operand_columns(self) -> None:
-        from esolangs.languages.dig.interpreter import run
 
         # Every width up to 7 builds this same program.
         program = esolangs.generate("Dig", "0110", width=1).source
@@ -276,47 +275,42 @@ class TestDig:
         # and the stride the rule names still builds
         assert boolean.dig("0110100110010110", 1)
 
-        from esolangs.languages.dig.generator._layout import (
-            _AlternatingTree,
-            _dig_layout,
-            _LeafKey,
-            _Point,
-        )
-
         sample = "0110100110010110"
-        point = _Point(0, 0)
-        key = _LeafKey(sample, 1, 0)
-        tree = _AlternatingTree(sample, 4, sharing=True)
+        point = layout._Point(0, 0)
+        key = layout._LeafKey(sample, 1, 0)
+        tree = layout._AlternatingTree(sample, 4, sharing=True)
         tree.entries = {point: key}
         tree.owners = {key: point}
-        lane = _Point(0, -1)
+        lane = layout._Point(0, -1)
         tree.cells[lane] = "#"
         assert not tree.bridge_entries()
         assert tree.cells == {lane: "#"}
         tree.cells.clear()
         assert tree._route_entry(point, key, {})
 
-        source = _dig_layout(sample, 4)
+        source = layout._dig_layout(sample, 4)
         assert source is not None
         for row, expected in enumerate(sample):
             assert run_dig(source, list(f"{row:04b}")) == expected
 
         with monkeypatch.context() as patch:
-            patch.setattr(_AlternatingTree, "plan_sharing", lambda _self: True)
-            patch.setattr(_AlternatingTree, "bridge_entries", lambda _self: False)
-            assert _dig_layout(sample, 4, sharing=True) is None
+            patch.setattr(layout._AlternatingTree, "plan_sharing", lambda _self: True)
+            patch.setattr(
+                layout._AlternatingTree, "bridge_entries", lambda _self: False
+            )
+            assert layout._dig_layout(sample, 4, sharing=True) is None
 
         def blocked(*_args):
             raise AssertionError("blocked corridor")
 
         with monkeypatch.context() as patch:
-            patch.setattr(_AlternatingTree, "plan_sharing", lambda _self: True)
+            patch.setattr(layout._AlternatingTree, "plan_sharing", lambda _self: True)
             patch.setattr(
                 "esolangs.languages.dig.generator._layout._dig_alt_clear", blocked
             )
-            assert _dig_layout(sample, 4, sharing=True) is None
+            assert layout._dig_layout(sample, 4, sharing=True) is None
             with pytest.raises(AssertionError, match="blocked corridor"):
-                _dig_layout(sample, 4)
+                layout._dig_layout(sample, 4)
 
     def test_ignored_leading_inputs_choose_a_compact_reader(self) -> None:
         """A discard column competes with an integrated reader by grid area."""
@@ -395,15 +389,13 @@ def test_narrow_balance_regime_edge_executes(table) -> None:
 def test_wide_requests_admit_the_unshared_alternating_grid(width: int) -> None:
     """The repeated-leaf case fits 35 columns and keeps the 220-step bound."""
 
-    from esolangs.languages.dig.generator import _dig_grid
-
     a, b = _blocks(2)
     table = a + b + b + a
     program = boolean.dig(table, width, share=False)
     rows = program.splitlines()
     assert max(map(len, rows)) <= width
     assert len(rows) * max(map(len, rows)) == 1925
-    banded = _dig_grid(table, 8, 5).splitlines()
+    banded = boolean._dig_grid(table, 8, 5).splitlines()
     assert len(banded) * max(map(len, banded)) == 11250
     worst = _check_rows(rows, table, 220)
     assert worst == 220
@@ -427,11 +419,9 @@ def test_shared_routes_keep_the_execution_bound(
 @pytest.mark.medium
 @pytest.mark.parametrize(("a", "b"), [("01" * 32, "10" * 32), ("0" * 64, "1" * 64)])
 def test_indexed_pair_reads_ignored_and_constant_leaf_inputs(a: str, b: str) -> None:
-    from esolangs.languages.dig.generator._shared import _dig_indexed_shared
-    from esolangs.languages.dig.interpreter import run
 
     table = a + b + b + a
-    program = _dig_indexed_shared(table, 8)
+    program = indexed._dig_indexed_shared(table, 8)
     assert program is not None
     for row, expected in enumerate(table):
         io = ScriptedIO("\n".join(format(row, "08b")) + "\n")
@@ -453,12 +443,10 @@ def test_two_leaf_prefixes_keep_the_execution_ledger(pattern: str) -> None:
 @pytest.mark.parametrize("ignored", [0, 1, 2])
 def test_column_routes_consume_ignored_prefix_inputs(ignored: int) -> None:
 
-    from esolangs.languages.dig.generator import _dig_lane_shared
-
     a, b = _blocks(2)
     table = (a + b + b + a) * (1 << ignored)
     n = 8 + ignored
-    program = _dig_lane_shared(table, n)
+    program = boolean._dig_lane_shared(table, n)
     assert program is not None
     rows = program.splitlines()
     assert len(rows) * max(map(len, rows)) == 1155
@@ -475,11 +463,9 @@ def test_multiple_copies_merge_along_one_column(
     pattern: str, expected_steps: int
 ) -> None:
 
-    from esolangs.languages.dig.generator import _dig_lane_shared
-
     blocks = _blocks(2)
     table = "".join(blocks[int(bit)] for bit in pattern)
-    program = _dig_lane_shared(table, 10)
+    program = boolean._dig_lane_shared(table, 10)
     assert program is not None
     rows = program.splitlines()
     unshared = boolean.dig(table, share=False).splitlines()
@@ -494,12 +480,10 @@ def test_multiple_copies_merge_along_one_column(
 @pytest.mark.parametrize("ignored", [0, 1, 2])
 def test_vertical_leaves_share_a_spare_row(ignored: int) -> None:
 
-    from esolangs.languages.dig.generator import _dig_lane_shared
-
     blocks = _blocks(2)
     table = "".join(blocks[int(bit)] for bit in "01101001") * (1 << ignored)
     n = 9 + ignored
-    program = _dig_lane_shared(table, n)
+    program = boolean._dig_lane_shared(table, n)
     assert program is not None
     rows = program.splitlines()
     assert (len(rows), max(map(len, rows)), len(program)) == (
@@ -532,11 +516,9 @@ def test_disjoint_and_interleaved_groups_choose_the_indexed_route(
     pattern: str, expected_steps: int, expected_area: int
 ) -> None:
 
-    from esolangs.languages.dig.generator import _dig_lane_shared
-
     blocks = _blocks(4)
     table = "".join(blocks[int(bit)] for bit in pattern)
-    assert _dig_lane_shared(table, 10) is not None
+    assert boolean._dig_lane_shared(table, 10) is not None
     program = boolean.dig(table)
     rows = program.splitlines()
     assert len(rows) * max(map(len, rows)) == expected_area
@@ -559,14 +541,12 @@ def test_seventeen_input_mosaic_executes() -> None:
 @pytest.mark.parametrize("ignored", [1, 2])
 def test_ignored_prefix_keeps_the_smallest_shared_grid(ignored: int) -> None:
 
-    from esolangs.languages.dig.generator import _dig_build, _dig_discards
-
     blocks = _blocks(2)
     base = "".join(blocks[int(bit)] for bit in "01101001")
     table = base * (1 << ignored)
     n = 9 + ignored
-    integrated = _dig_build(table, n, None, share=True)
-    wrapped = _dig_discards(ignored) + "\n" + boolean.dig(base)
+    integrated = boolean._dig_build(table, n, None, share=True)
+    wrapped = boolean._dig_discards(ignored) + "\n" + boolean.dig(base)
     program = boolean.dig(table)
     assert program == wrapped
     rows = program.splitlines()
@@ -581,12 +561,11 @@ def test_ignored_prefix_keeps_the_smallest_shared_grid(ignored: int) -> None:
 def test_balance_considers_the_discard_wrapper() -> None:
     from esolangs.generation.helpers import essential_inputs
     from esolangs.generation.wrap import balance_score
-    from esolangs.languages.dig.generator import _dig_discarded
 
     # The first input is ignored, so the discard column applies: 21x13 against
     # the default's 22x8, which renders the smaller square.
     table = "0000011100000111"
-    wrapped = _dig_discarded(table, 4, essential_inputs(table, 4))
+    wrapped = boolean._dig_discarded(table, 4, essential_inputs(table, 4))
     assert wrapped is not None
     program = esolangs.generate("Dig", table, balance=True).source
     assert balance_score(program) <= balance_score(wrapped)
@@ -600,14 +579,13 @@ def test_balance_considers_the_discard_wrapper() -> None:
 def test_constant_columns_use_grid_area_and_read_every_input(
     n: int, value: str
 ) -> None:
-    from esolangs.languages.dig.generator import _dig_build
 
     if n == 1 and value == "0":
         _check_constants()
     table = value * (1 << n)
     program = boolean.dig(table)
     rows = program.splitlines()
-    integrated = _dig_build(table, n, None, share=True)
+    integrated = boolean._dig_build(table, n, None, share=True)
     previous = integrated.splitlines()
     assert max(map(len, rows)) == 1
     assert len(rows) < len(previous) * max(map(len, previous))
@@ -639,12 +617,10 @@ def test_indexed_sharing_admits_full_input_controls(
     pattern: str, area: int, commands: int
 ) -> None:
 
-    from esolangs.languages.dig.generator._shared import _dig_indexed_shared
-
     blocks = _blocks(4)
     table = "".join(blocks[int(c)] for c in pattern)
     n = (len(table) - 1).bit_length()
-    program = _dig_indexed_shared(table, n)
+    program = indexed._dig_indexed_shared(table, n)
     assert program is not None
     assert boolean.dig(table) == program
     rows = program.splitlines()
@@ -654,11 +630,9 @@ def test_indexed_sharing_admits_full_input_controls(
 
 
 def test_indexed_sharing_builds_four_classes_at_nine_inputs() -> None:
-    from esolangs.languages.dig.generator._shared import _dig_indexed_shared
-
     blocks = ("01" * 32, "0011" * 16, "00001111" * 8, "0" * 64)
     table = "".join(blocks[int(c)] for c in "01230123")
-    assert _dig_indexed_shared(table, 9) is not None
+    assert indexed._dig_indexed_shared(table, 9) is not None
 
 
 @pytest.mark.medium
@@ -668,10 +642,8 @@ def test_indexed_sharing_builds_four_classes_at_nine_inputs() -> None:
 def test_indexed_prefix_decoders_execute_every_row(
     n: int, area: int, commands: int
 ) -> None:
-    from esolangs.languages.dig.generator._shared import _dig_indexed_shared
-
     table = "".join(str(row.bit_count() % 2) for row in range(1 << n))
-    program = _dig_indexed_shared(table, n)
+    program = indexed._dig_indexed_shared(table, n)
     assert program is not None
     rows = program.splitlines()
     assert len(rows) * max(map(len, rows)) == area
@@ -680,19 +652,15 @@ def test_indexed_prefix_decoders_execute_every_row(
 
 
 def test_indexed_sharing_builds_four_classes_at_eleven_inputs() -> None:
-    from esolangs.languages.dig.generator._shared import _dig_indexed_shared
-
     blocks = ("01" * 32, "0011" * 16, "00001111" * 8, "0" * 64)
-    assert _dig_indexed_shared("".join(blocks) * 8, 11) is not None
+    assert indexed._dig_indexed_shared("".join(blocks) * 8, 11) is not None
 
 
 @pytest.mark.medium
 def test_indexed_six_bit_decoder_runs_four_classes() -> None:
-    from esolangs.languages.dig.generator._shared import _dig_indexed_shared
-
     blocks = ("01" * 32, "0011" * 16, "00001111" * 8, "0" * 64)
     table = "".join(blocks) * 16
-    program = _dig_indexed_shared(table, 12)
+    program = indexed._dig_indexed_shared(table, 12)
     assert program is not None
     rows = program.splitlines()
     worst = _check_rows(rows, table, 417)
@@ -705,7 +673,7 @@ def test_indexed_six_bit_decoder_runs_four_classes() -> None:
         str(int((row & 63) != 0 if (row >> 7).bit_count() % 2 else (row & 63) == 63))
         for row in range(8192)
     )
-    program = _dig_indexed_shared(table, 13)
+    program = indexed._dig_indexed_shared(table, 13)
     assert program is not None
     assert boolean.dig(table) == program
     _check_rows(
@@ -718,18 +686,16 @@ def test_indexed_six_bit_decoder_runs_four_classes() -> None:
 
 @pytest.mark.medium
 def test_indexed_sharing_builds_seven_and_eight_classes_at_twelve_inputs() -> None:
-    from esolangs.languages.dig.generator._shared import _dig_indexed_shared
-
     blocks = ["".join(str((row >> bit) & 1) for row in range(64)) for bit in range(6)]
     blocks.append("".join(str(row.bit_count() % 2) for row in range(64)))
     table = "".join(blocks[i % 7] for i in range(64))
-    program = _dig_indexed_shared(table, 12)
+    program = indexed._dig_indexed_shared(table, 12)
     assert program is not None
     rows = program.splitlines()
     worst = _check_rows(rows, table, 489)
     assert worst == 489
     blocks.append("0" * 64)
-    assert _dig_indexed_shared("".join(blocks) * 8, 12) is not None
+    assert indexed._dig_indexed_shared("".join(blocks) * 8, 12) is not None
 
 
 @pytest.mark.parametrize(
@@ -753,33 +719,28 @@ def test_shared_stamps_refuse_unsupported_shapes(
 @pytest.mark.parametrize("axis", [0, 1])
 def test_compaction_keeps_the_line_between_a_reader_and_a_digit(axis: int) -> None:
     """Dropping an empty run must not seat a digit beside a reader."""
-    from esolangs.languages.dig.generator._layout import (
-        _compaction_lines,
-        _Point,
-    )
 
-    def at(line: int, cross: int) -> _Point:
-        return _Point(line, cross) if axis == 0 else _Point(cross, line)
+    def at(line: int, cross: int) -> layout._Point:
+        return layout._Point(line, cross) if axis == 0 else layout._Point(cross, line)
 
     cells = {at(0, 0): "$", at(0, 1): "5", at(4, 0): "7", at(4, 1): "#", at(8, 0): "#"}
     reads = [(at(0, 0), at(0, 1), frozenset())]
     # the digit at 4 would land beside `$` once lines 1-3 go
-    assert _compaction_lines(cells, reads, axis) == [0, 1, 4, 8]
+    assert layout._compaction_lines(cells, reads, axis) == [0, 1, 4, 8]
     # no reader, a pending store, or a non-digit across: the run goes
-    assert _compaction_lines(cells, [], axis) == [0, 4, 8]
+    assert layout._compaction_lines(cells, [], axis) == [0, 4, 8]
     held = [(at(0, 0), at(0, 1), frozenset({at(4, 0)}))]
-    assert _compaction_lines(cells, held, axis) == [0, 4, 8]
-    assert _compaction_lines({**cells, at(4, 0): "#"}, reads, axis) == [0, 4, 8]
+    assert layout._compaction_lines(cells, held, axis) == [0, 4, 8]
+    assert layout._compaction_lines({**cells, at(4, 0): "#"}, reads, axis) == [0, 4, 8]
 
 
 @pytest.mark.medium
 def test_shared_leaves_around_constant_spans_keep_the_execution_bound() -> None:
     """A shared layout's constant read rows count toward the 220-step ledger."""
-    from esolangs.languages.dig.generator import _dig_lane_shared
 
     leaf = "01101001" * 8
     table = "0" * 64 + leaf + leaf + "0" * 64
-    program = _dig_lane_shared(table, 8)
+    program = boolean._dig_lane_shared(table, 8)
     assert program is not None
     rows = program.splitlines()
     worst = _check_rows(rows, table, 220)
@@ -787,7 +748,6 @@ def test_shared_leaves_around_constant_spans_keep_the_execution_bound() -> None:
 
 
 def _check_constants() -> None:
-    from esolangs.languages.dig.interpreter import run
 
     for n in range(1, 13):
         for bit in "01":
@@ -800,3 +760,33 @@ def _check_constants() -> None:
                     )
                     assert_constant_output(run, program.splitlines(), io, bit, n)
                     assert io.input_num() == 7
+
+
+@pytest.mark.parametrize("shared", [False, True])
+def test_row_weights_reach_native_output(monkeypatch, *, shared: bool) -> None:
+    module = indexed if shared else layout
+    original = module.binary_weights
+
+    def swapped(live):
+        weights = original(live)
+        kept = [i for i, weight in enumerate(weights) if weight]
+        if len(kept) >= 3:
+            a, b = kept[:2]
+            weights[a], weights[b] = weights[b], weights[a]
+        return weights
+
+    table = "".join(_blocks(4 if shared else 1))
+    n = len(table).bit_length() - 1
+    build = indexed._dig_indexed_shared if shared else boolean._dig_alternating
+    baseline = build(table, n)
+    assert baseline is not None
+    assert all(
+        run_dig(baseline, list(format(r, f"0{n}b"))) == bit
+        for r, bit in enumerate(table)
+    )
+    monkeypatch.setattr(module, "binary_weights", swapped)
+    mutant = build(table, n)
+    assert mutant is not None
+    assert any(
+        run_dig(mutant, list(format(r, f"0{n}b"))) != bit for r, bit in enumerate(table)
+    )

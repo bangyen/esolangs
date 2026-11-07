@@ -3,6 +3,7 @@
 from typing import NamedTuple
 
 from esolangs.generation.helpers import essential_inputs, read_at
+from esolangs.generation.lookup import binary_weights
 from esolangs.languages.dig.generator._layout import (
     _dig_alt_clear,
     _Point,
@@ -135,16 +136,6 @@ def _adder_prefix_decoder(bits: int, prefix: str) -> _PrefixDecoder:
 _BODY_ENTRY_COL = 11
 
 
-def _leaf_weights(live: list[bool]) -> list[int]:
-    """Place values over a leaf adder's inputs, an ignored one weighing 0."""
-    count = sum(live)
-    weights, seen = [], 0
-    for kept in live:
-        seen += kept
-        weights.append(1 << (count - seen) if kept else 0)
-    return weights
-
-
 def _indexed_classes(table: str, keep: list[int]) -> tuple[list[str], str] | None:
     """Return the distinct leaf classes and each block's class label.
 
@@ -204,8 +195,8 @@ def _indexed_build(
         live[:3] = [True] * 3
     if not (live[3] or live[4]):
         live[3:] = [True] * 3
-    high = [0] * lead + _leaf_weights(live[:3])
-    low = _leaf_weights(live[3:]) + [0] * trail
+    high = [0] * lead + binary_weights(live[:3])
+    low = binary_weights(live[3:]) + [0] * trail
     if not (_dig_adder_fits(high, 2) and _dig_adder_fits(low, 0)):
         return None
     classes = _indexed_classes(table, [i for i in range(6) if live[i]])
