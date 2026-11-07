@@ -7,14 +7,24 @@ custom operators remain in the raw suite; framing follows public Decisions.
 """
 
 from itertools import product
-from operator import add, mod, mul, sub, truediv
+from operator import add, mod, mul, sub
 
 import pytest
 
 from esolangs.languages.algebraic_programming_language.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, overread, stable_halt, stalled
 
-_OPERATORS = {"+": add, "-": sub, "*": mul, "/": truediv, "%": mod, "**": pow}
+
+def _divide(left, right):
+    if isinstance(left, int) and isinstance(right, int):
+        quotient, remainder = divmod(left, right)
+        if not remainder:
+            return quotient
+    quotient = left / right
+    return int(quotient) if quotient.is_integer() else quotient
+
+
+_OPERATORS = {"+": add, "-": sub, "*": mul, "/": _divide, "%": mod, "**": pow}
 
 
 class _ReturnedError(Exception):
@@ -133,6 +143,9 @@ def check_raw_algebraic_programming_language():
         ("**", 0, -1),
         ("+", 2**80, 1),
         ("exit_value", 9),
+        ("/", ("+", 2**80, 1), 1),
+        ("+", ("/", ("**", 10, 30), 1.0), 1),
+        ("+", 1, 1.0),
     ):
         _check(_Machine, (line,))
     _check(_Machine, ())

@@ -103,6 +103,17 @@ def machine(program: str, stdin: str = "") -> _Machine:
             "4\n",
             id="a_bare_uppercase_name_passes_the_function_itself",
         ),
+        # The postfix loop keeps matching until no pattern fits.
+        pytest.param("a@ = a * 2\n3@@", "12\n", id="postfix_twice"),
+        # ``F = 7`` defines a function, since only *lowercase* names assign.
+        pytest.param("F = 7\nF()", "7\n", id="bare_uppercase"),
+        # At depth 0 a blank line is dropped rather than joined.
+        pytest.param("1\n\n2", "1\n2\n", id="blank_line"),
+        # ``&`` with a function on the left proceeds to its right side.
+        pytest.param("F() = 1\nG(x) = x & 9\nG(F)", "9\n", id="function_truthy"),
+        # The ``**`` lookahead needs both tokens, not just the first.
+        pytest.param("2 * 3", "6\n", id="single_star"),
+        pytest.param("2 * 3 ** 2", "18\n", id="product_power"),
     ],
 )
 def test_output(program: str, expected: str) -> None:
@@ -282,32 +293,14 @@ class TestFrameBookkeeping:
 class TestCoveragePaths:
     """The error and shape paths the wiki's own examples do not reach."""
 
-    def test_a_postfix_operator_applies_twice(self) -> None:
-        """The postfix loop keeps matching until no pattern fits."""
-        assert run_and_capture("a@ = a * 2\n3@@") == "12\n"
-
-    def test_an_uppercase_name_without_parentheses_is_a_nullary_function(
-        self,
-    ) -> None:
-        """``F = 7`` defines a function, since only *lowercase* names assign."""
-        assert run_and_capture("F = 7\nF()") == "7\n"
-
     def test_printing_a_function_rather_than_calling_it_is_a_halt(self) -> None:
         """Only numbers are printable, so a bare function is an error."""
         with pytest.raises(HaltError):
             run_and_capture("F = 7\nF")
 
-    def test_a_blank_line_between_executed_lines_is_skipped(self) -> None:
-        """At depth 0 a blank line is dropped rather than joined."""
-        assert run_and_capture("1\n\n2") == "1\n2\n"
-
     def test_a_parameter_holding_a_function_is_looked_up_locally(self) -> None:
         """``F(c) = c()`` resolves ``c`` from the frame, not the globals."""
         assert run_and_capture("F(c) = c()\nG() = 5\nF(G)") == "5\n"
-
-    def test_a_function_value_is_truthy(self) -> None:
-        """``&`` with a function on the left proceeds to its right side."""
-        assert run_and_capture("F() = 1\nG(x) = x & 9\nG(F)") == "9\n"
 
     def test_the_evaluation_budget_is_enforced(self) -> None:
         """A runaway expression halts rather than allocating without bound."""
@@ -340,13 +333,6 @@ class TestMutationGaps:
 
     def test_a_shorter_pattern_still_matches_when_the_longer_cannot(self) -> None:
         assert run_and_capture("^a^ = a * 10\n^a^b^ = a + b\n^7^") == "70\n"
-
-    def test_a_single_star_is_multiplication_not_a_power(self) -> None:
-        """The ``**`` lookahead needs both tokens, not just the first."""
-        assert run_and_capture("2 * 3") == "6\n"
-
-    def test_a_power_of_a_product_binds_tighter_than_the_product(self) -> None:
-        assert run_and_capture("2 * 3 ** 2") == "18\n"
 
     def test_the_snapshot_line_cursor_varies(self) -> None:
         """Two programs differing only in how far they have got differ."""
