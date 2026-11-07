@@ -40,8 +40,6 @@ def test_constant_uses_one_empty_production_and_deletes_each_embedded_input(
 
 
 def _check_constants() -> None:
-    from esolangs.languages.cyclic_tag.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
         for bit in "01":

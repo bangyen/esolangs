@@ -110,7 +110,6 @@ def test_size_does_not_depend_on_the_table() -> None:
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_reads_each_input_and_prints_a_literal(n, bit) -> None:
-    from esolangs.generation.wrap import balance_score
     from esolangs.languages.b_tapemark.generator import _b_tapemark_program
     from esolangs.languages.b_tapemark.interpreter import _Machine
 
@@ -331,7 +330,6 @@ def test_the_default_is_the_least_by_area_of_the_strip_and_closed_forms() -> Non
 
 
 def test_balance_folds_a_random_table() -> None:
-    from esolangs.generation.wrap import balance_score
     from esolangs.languages.b_tapemark.generator import _b_tapemark_program
 
     table = "".join(str((value * 73 + value // 3) & 1) for value in range(64))
@@ -345,7 +343,6 @@ def test_balance_folds_a_random_table() -> None:
 @pytest.mark.parametrize("depth", range(4, 10))
 def test_fold_widths_match_the_swept_optimum(depth: int) -> None:
     """The closed-form copy length is within 3% of every copy and run swept."""
-    from esolangs.generation.wrap import balance_score
     from esolangs.languages.b_tapemark.generator import _b_tapemark_folded, _balance
 
     table = "".join(str((value * 73 + value // 3) & 1) for value in range(1 << depth))

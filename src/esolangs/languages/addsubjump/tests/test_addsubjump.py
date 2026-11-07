@@ -490,7 +490,6 @@ class TestWikiPrograms:
 
 def _machine(code: object) -> object:
     from esolangs.languages.addsubjump.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO())
 

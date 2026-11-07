@@ -8,7 +8,6 @@ from tests.support.event_io import ReadFirstIO
 
 @pytest.mark.parametrize("table", ["01101001", "00000000"])
 def test_program_stays_within_the_command_bound(table) -> None:
-    import esolangs
     from esolangs.debugger import make_vm
     from esolangs.languages.boolfuck.generator import _command_bound, boolfuck
 

@@ -118,14 +118,12 @@ class TestBrainIfGeneratedHelloWorld:
         assert run_and_capture(program, inputs=["0"]) == "0"
 
     def test_unknown_instruction_rejected(self) -> None:
-        import pytest
 
         for value in (0, 1):
             with pytest.raises(ValueError, match="unknown BrainIf command"):
                 run_and_capture([f"if {value} frobnicate"])
 
     def test_embedded_command_names_do_not_execute(self) -> None:
-        import pytest
 
         for command in ("incidental", "incrementoutput", "XinputY", "moveright"):
             with pytest.raises(ValueError, match="unknown BrainIf command"):
@@ -138,7 +136,6 @@ class TestBrainIfGeneratedHelloWorld:
             run_and_capture(["if"])
 
     def test_a_value_with_no_command_is_rejected(self) -> None:
-        import pytest
 
         with pytest.raises(ValueError, match="unknown BrainIf command"):
             run_and_capture(["if 0", "if 0 output"])
@@ -226,7 +223,6 @@ class TestContract(CycleContract, InputCursorContract, StateViewContract):
 
 
 def test_malformed_command_lines_are_rejected() -> None:
-    import pytest
 
     for line in (
         "garbage 0 output",
@@ -256,7 +252,6 @@ def test_canonical_move_commands_remain_valid() -> None:
 
 
 def test_nonpositive_goto_targets_are_rejected_by_run_and_vm() -> None:
-    import pytest
 
     for target in (0, -1):
         for guard in (0, 1):
@@ -288,7 +283,6 @@ def test_a_condition_past_the_int_str_digit_cap_parses() -> None:
 
 
 def test_goto_without_a_target_is_rejected() -> None:
-    import pytest
 
     with pytest.raises(ValueError, match="goto requires a target line"):
         run_and_capture(["if 0 goto"])

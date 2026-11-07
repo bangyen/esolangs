@@ -164,7 +164,6 @@ class TestStepMachine:
 
     def test_delete_last_cell_halts(self) -> None:
         """Deleting the last cell is an invalid operation."""
-        import pytest
 
         from esolangs.exceptions import HaltError
 

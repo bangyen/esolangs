@@ -108,7 +108,6 @@ def test_constant_deletes_inputs_and_literal_answer(n, bit) -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.bitwise_cyclic_tag.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 13):
         for bit in "01":

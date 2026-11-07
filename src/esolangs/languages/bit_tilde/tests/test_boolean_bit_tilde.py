@@ -28,7 +28,6 @@ def test_parity_source_at_most_doubles_per_input() -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", "01")
 def test_every_constant_row_within_written_state_bound(bit: str) -> None:
-    import esolangs
     from esolangs.languages.bit_tilde.interpreter import _Machine
     from scripts.benchmark import WrittenState
 

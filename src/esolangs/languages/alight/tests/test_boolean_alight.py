@@ -224,8 +224,6 @@ def test_postfix_settings_are_checked_and_do_not_leak() -> None:
 @pytest.mark.parametrize("update", ["in_place", "copy"])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_lookup_drops_every_index_input(syntax, update, bit) -> None:
-    import esolangs
-    from tests.support.evaluation import _evaluate
 
     _check_native_constants(syntax, update, bit)
     table = bit * 256
@@ -242,8 +240,6 @@ def test_constant_lookup_drops_every_index_input(syntax, update, bit) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [3, 8])
 def test_constant_lookup_executes_every_layout(syntax, bit, width, n) -> None:
-    import esolangs
-    from tests.support.evaluation import _evaluate
 
     table = bit * (1 << n)
     settings = esolangs.DialectSettings(expression_syntax=syntax)

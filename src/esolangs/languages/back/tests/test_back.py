@@ -28,7 +28,6 @@ class TestBack:
 class TestStepMachine:
     def test_step_tracks_beam_tape_and_direction(self) -> None:
         from esolangs.languages.back.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine(["-*"], ScriptedIO())
         assert (machine.row, machine.col, machine.a, machine.b) == (0, 0, 0, 1)
@@ -47,7 +46,6 @@ class TestStepMachine:
     def test_moving_left_from_cell_zero_grows_the_tape_left(self) -> None:
         """``<`` at the leftmost cell adds a zero cell there, not an underflow."""
         from esolangs.languages.back.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine(["-<-*"], ScriptedIO())
         machine.step()  # "-" flips the start cell
@@ -64,7 +62,6 @@ class TestStepMachine:
     def test_moving_right_grows_the_tape_only_at_its_end(self) -> None:
         """``>`` appends a cell when it steps past the last one, once."""
         from esolangs.languages.back.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine([">>*"], ScriptedIO())
         assert machine.tape == (0,)
@@ -84,7 +81,6 @@ class TestStepMachine:
 
 def _machine(code: object) -> object:
     from esolangs.languages.back.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO())
 

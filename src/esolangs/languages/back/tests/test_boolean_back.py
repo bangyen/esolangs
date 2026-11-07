@@ -324,7 +324,6 @@ def test_descending_loader_rendered_size_stays_linear() -> None:
 
 def test_descending_loader_walks_permuted_cells_in_name_order() -> None:
     from esolangs.generation.helpers import permute_truth_table
-    from esolangs.languages.back.generator import _back_ordered
 
     table = "00010011"
     order = (2, 0, 1)

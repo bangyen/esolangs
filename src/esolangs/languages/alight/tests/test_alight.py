@@ -19,6 +19,7 @@ from esolangs.languages.alight.interpreter._parse import (
     _replace_first,
     _Val,
 )
+from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
@@ -30,6 +31,7 @@ from tests.interpreters.oracle_support import observed, stable_halt
 from tests.interpreters.runner import run_program
 from tests.support.fixtures import grid
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
+from tests.support.workspace_oracle import WorkspaceWitness, workspace_model
 
 # The wiki's three examples, transcribed from the page source.  Trailing
 # spaces matter (each vertical ``turn right`` sits at a fixed column, and a
@@ -84,9 +86,35 @@ class TestExpressions:
     def _value(self, expr: str, stdin: str = "", expected: int | None = None) -> str:
         code = [f"begin;var v;set v {expr};out v;end;"]
         if expected is not None:
-            error, trace = observed(
-                _Machine, code, stdin, stable_halt(lambda m: dict(m.vars)), cap=12
+            witness = WorkspaceWitness(
+                workspace_model(
+                    "alight-v1", "walkers heap stopped input_cursor input_reads"
+                )
             )
+            positions = (5, 6, 12, len(code[0]) - 10, len(code[0]) - 4)
+            phase = 0
+
+            def view(machine):
+                nonlocal phase
+                bindings = frozenset()
+                if phase >= 2:
+                    value = (
+                        WorkspaceVariant("nil", ())
+                        if phase == 2
+                        else WorkspaceVariant("number", (expected, 1))
+                    )
+                    bindings = frozenset({("v", value)})
+                walker = WorkspaceVariant(
+                    "walker",
+                    (0, positions[min(phase, 4)], (0, 1), bindings, None, None),
+                )
+                witness.sample(
+                    machine.workspace_snapshot(), ((walker,), (), phase >= 5, 0, 0)
+                )
+                phase += 1
+                return dict(machine.vars)
+
+            error, trace = observed(_Machine, code, stdin, stable_halt(view), cap=12)
             assert error is None
             assert trace[-1] == ({"v": expected}, True, chr(expected), 0, 0)
         return _run(code, stdin)

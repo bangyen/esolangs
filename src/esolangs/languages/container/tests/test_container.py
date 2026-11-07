@@ -150,7 +150,6 @@ class TestStepMachine:
 
 def _machine(code: object) -> object:
     from esolangs.languages.container.interpreter import _Machine
-    from esolangs.runtime.io import IO
 
     return _Machine(code, IO())
 

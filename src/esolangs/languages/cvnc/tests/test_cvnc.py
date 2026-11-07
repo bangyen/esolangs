@@ -339,7 +339,6 @@ class TestIgnoredLF:
 
 def test_an_invalid_function_is_inert_even_after_a_division_by_zero() -> None:
     """``a/0+`` is invalid, so it leaves the accumulator; ``a/0`` halts."""
-    from esolangs.exceptions import HaltError
     from esolangs.languages.cvnc.interpreter import _applied
 
     assert _applied(5, ("a", "/", "0", "+")) == 5

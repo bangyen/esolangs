@@ -576,7 +576,6 @@ class TestCircuitDiagram:
     @pytest.mark.slow  # ~6s: three n=4 builds, sixteen interpreted rows each
     def test_h_layout_lanes_execute_at_four_inputs(self) -> None:
         """Fixed lanes lay a correct circuit where every wire class meets."""
-        import random
 
         from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
         from esolangs.languages.circuit_diagram.interpreter import run

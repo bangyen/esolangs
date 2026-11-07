@@ -137,7 +137,6 @@ def test_literal_counter_consumes_inputs_within_revised_bounds(n: int) -> None:
 
 
 def _check_constants() -> None:
-    import esolangs
     from esolangs.languages.brainfuck.interpreter import _Machine
     from scripts.benchmark import WrittenState
 
