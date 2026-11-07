@@ -5,6 +5,7 @@ from itertools import pairwise
 import pytest
 
 import esolangs
+from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs, runs
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
@@ -147,7 +148,6 @@ class TestParameterizedMinskySwap:
 
 def _check_constant_templates() -> None:
     import esolangs
-    from esolangs.generation.helpers import TEMPLATE_CHAR, runs
     from esolangs.languages.minsky_swap.generator import minsky_swap_setters
     from esolangs.languages.minsky_swap.interpreter import _Machine
 
@@ -226,7 +226,6 @@ def _check_pair_source_cap() -> None:
         table = "10" * ((1 << (n - 1)) - 1) + "11"
         assert len(minsky_swap(table)) == _full_chars(n, "")
 
-    from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
     from esolangs.languages.minsky_swap.generator import minsky_swap_setters
     from esolangs.languages.minsky_swap.interpreter import _Machine
     from esolangs.languages.minsky_swap.proof_formulas import execution, workspace

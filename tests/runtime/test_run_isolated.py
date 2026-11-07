@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.results import ExecutionResult
 from esolangs.runtime._isolated import _decode, _request_wire, _worker
+from esolangs.runtime._json import worker_dumps, worker_object
 from esolangs.runtime._lifecycle import HALTED_REPORT
 from esolangs.runtime._result_wire import encode_result
 from tests.support.generator_support import evaluate_generated, verify_generated
@@ -67,6 +68,26 @@ def test_decode_missing_result_and_notes() -> None:
         _decode(json.dumps(payload), expired=False)
     assert caught.value.__notes__ == ["row 1"]
     assert caught.value.execution is None
+
+    for text in ("\ud800\udfff", "\ud800", "\udfff", "\U000103ff"):
+        packet = {
+            "output": text,
+            "nested": [text, {"notes": [text]}],
+            "literal": {"$python_text": "eda080"},
+        }
+        assert (
+            json.loads(worker_dumps(packet), object_pairs_hook=worker_object) == packet
+        )
+    for payload in (0, None, "EDA080", "ed a0 80", "ff", "41", ""):
+        with pytest.raises(ValueError, match=r"worker text|decode"):
+            json.loads(
+                json.dumps({"$python_text": payload}), object_pairs_hook=worker_object
+            )
+    with pytest.raises(ValueError, match="duplicate field"):
+        json.loads(
+            '{"$python_text":"eda080","$python_text":"edbfbf"}',
+            object_pairs_hook=worker_object,
+        )
 
 
 def test_decode_truncated_write_on_timeout() -> None:

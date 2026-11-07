@@ -1,6 +1,7 @@
 """Suffolk through the shared API, CLI and machinery."""
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -8,6 +9,7 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import run
 from esolangs.debugger import complete_vm
+from esolangs.runtime._lifecycle import POST_HALT_REPORT, Completion
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import (
     make_vm,
@@ -121,7 +123,6 @@ def test_the_readme_suffolk_flow_completes(tmp_path: Path) -> None:
 
 def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     from esolangs.languages.suffolk.interpreter import _Machine
-    from esolangs.runtime._lifecycle import Completion
 
     machine = _Machine("<", ScriptedIO())
     state = machine.snapshot()
@@ -144,11 +145,8 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     assert ended.completion.cycle is None
     assert (ended.input_position, ended.input_reads, ended.input_past_end) == (0, 0, 1)
 
-    from types import SimpleNamespace
-
     from esolangs import vm
     from esolangs.languages.suffolk import interpreter
-    from esolangs.runtime._lifecycle import POST_HALT_REPORT
 
     with guarded_worker(expected=2):
         assert esolangs.run("Suffolk", "<", isolated=True) == result

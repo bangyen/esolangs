@@ -27,6 +27,7 @@ from esolangs.languages.streetcode.tests.streetcode_support import (
 )
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
+from tests.interpreters.cursorless_io import CursorlessIO
 from tests.support.raises import assert_rejected_with_hint
 
 
@@ -189,8 +190,6 @@ class TestStreetcodeWikiExamples:
 
     def test_a_cursorless_cat_is_not_a_cycle(self) -> None:
         """Reads count in the snapshot: the cat runs to EOF, not a false cycle."""
-        from tests.interpreters.cursorless_io import CursorlessIO
-
         machine = _Machine(["UOI ", "CIOU"], CursorlessIO("aaaaaaaa"))
         with pytest.raises(EOFError):
             run_until_halt_or_cycle(machine)

@@ -5,6 +5,9 @@ import random
 import pytest
 
 from esolangs.debugger import make_vm
+from esolangs.generation.helpers import permute_truth_table
+from esolangs.generation.shared_block import repeated_bank
+from esolangs.generation.shared_flag import flag_tree_body
 from tests.support.generator_support import measure_run
 from tests.support.reference import REFERENCE
 
@@ -30,9 +33,6 @@ def _bank_tables():
 @pytest.mark.parametrize("table", _bank_tables()[:2], ids=["two", "four"])
 def test_banked_residuals_execute_and_match_command_price(kind, table) -> None:
     import esolangs
-    from esolangs.generation.helpers import permute_truth_table
-    from esolangs.generation.shared_block import repeated_bank
-    from esolangs.generation.shared_flag import flag_tree_body
 
     served = 0
     n = len(table).bit_length() - 1
@@ -85,8 +85,6 @@ def test_banked_residuals_execute_and_match_command_price(kind, table) -> None:
     ],
 )
 def test_bank_requires_distinct_unused_descendant_flags(blocks, levels, result) -> None:
-    from esolangs.generation.shared_flag import flag_tree_body
-
     # A block at depth d may use any distinct unused flag at level >= d.  A
     # shallower flag would be rewritten by the ancestor that owns it before
     # the deferred dispatch runs, so that stays rejected; mixed depths do not.
@@ -97,8 +95,6 @@ def test_bank_requires_distinct_unused_descendant_flags(blocks, levels, result) 
 
 
 def test_duplicate_residual_definitions_abort() -> None:
-    from esolangs.generation.shared_flag import flag_tree_body
-
     with pytest.raises(ValueError, match="distinct residuals"):
         flag_tree_body(
             "01100110",

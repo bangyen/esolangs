@@ -2,12 +2,12 @@
 
 Brainfuck commands on a stack: ``>`` pushes 0, ``<`` pops, ``+``/``-``
 adjust the top (mod 256; the wiki gives no width), ``.`` prints it,
-``,`` pushes a byte, ``[ ]`` loop while the top is nonzero.  A ``[`` needs
+``,`` pushes a Unicode code point, ``[ ]`` loop while the top is nonzero.  A ``[`` needs
 no partner while entered, as in the original's forward scan (``>+[`` runs
 and halts).
 
 Input/output:
-    ``,`` reads one byte and ``.`` writes one.
+    ``,`` reads one raw Unicode character and ``.`` writes one.
 
 Errors:
     ProgramError: an unmatched ``[`` when skipped (top zero).

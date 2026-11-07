@@ -3,6 +3,7 @@
 import pytest
 
 from esolangs.languages.b_tapemark import interpreter as native
+from esolangs.languages.b_tapemark.interpreter import _workspace_grid
 from esolangs.runtime._result_wire import _state_from_wire, _state_wire
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
@@ -158,8 +159,6 @@ def test_the_data_tape_can_run_a_dash_command() -> None:
 
 
 def test_workspace_ignores_grid_hash_caches_and_readonly_dialect(monkeypatch):
-    from esolangs.languages.b_tapemark.interpreter import _workspace_grid
-
     machine = native._Machine(">*A+!", ScriptedIO())
     alternate = native._Machine(">*A+!", ScriptedIO(), swap_marker="old")
     assert machine.workspace_snapshot() == alternate.workspace_snapshot()

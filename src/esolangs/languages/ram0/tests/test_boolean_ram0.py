@@ -6,6 +6,7 @@ import re
 import pytest
 
 import esolangs
+from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.languages.ram0 import generator as boolean
 from esolangs.languages.ram0.generator import PAIR as RAM0_PAIR
 from esolangs.languages.ram0.generator import _ram0_ordered
@@ -40,7 +41,6 @@ class TestParameterizedRam0:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The template has one run per input, not hardcoded bits."""
-        from esolangs.generation.helpers import TEMPLATE_CHAR, runs
         from esolangs.languages.ram0 import generator as generators
 
         template = generators.ram0("0110")
@@ -113,7 +113,6 @@ def test_parity_source_at_most_doubles_per_input() -> None:
 @pytest.mark.medium
 def test_constants_execute_every_fixed_width_setter() -> None:
     import esolangs
-    from esolangs.generation.helpers import TEMPLATE_CHAR, runs
     from esolangs.languages.ram0.generator import PAIR
     from esolangs.languages.ram0.interpreter import _Machine
     from esolangs.languages.ram0.proof_formulas import workspace

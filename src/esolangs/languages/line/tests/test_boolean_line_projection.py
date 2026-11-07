@@ -4,6 +4,7 @@ import random
 
 import pytest
 
+from esolangs.generation.helpers import permute_truth_table
 from esolangs.languages.line.generator import balance, line, projected_boolean
 from esolangs.languages.line.interpreter import _Machine
 from esolangs.raster import Raster
@@ -110,8 +111,6 @@ def test_compact_loader_admits_a_shared_return_within_the_original_input_budget(
 
 @pytest.mark.medium
 def test_public_multiple_returns_reduce_mixed_residual_area() -> None:
-    from esolangs.generation.helpers import permute_truth_table
-
     rng = random.Random(15)
     a = "".join(rng.choice("01") for _ in range(64))
     b, c = ["".join(rng.choice("01") for _ in range(16)) * 4 for _ in range(2)]

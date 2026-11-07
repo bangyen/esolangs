@@ -4,6 +4,7 @@ from itertools import product
 
 import pytest
 
+from esolangs import run as run_public
 from esolangs.exceptions import HaltError
 from esolangs.languages.between.interpreter import run
 from tests.interpreters.runner import native_runner
@@ -33,11 +34,19 @@ def test_conditions_nest(code: str, printed: str) -> None:
     assert out(code) == printed
 
 
+@pytest.mark.medium
 def test_apostrophes_in_strings() -> None:
     """A string closes at the first apostrophe an operation follows."""
     assert out("'can't stop'p.") == "can't stop"
     with pytest.raises(ValueError, match="unterminated"):
         out("'it's'p.")
+    for text in ("\ud800\udfff", "\ud800", "\udfff", "\U000103ff"):
+        assert (
+            run_public(
+                "Between", f"'{text}'p.", isolated=True, max_output=len(text)
+            ).output
+            == text
+        )
 
 
 def test_groups_nest_and_compute() -> None:

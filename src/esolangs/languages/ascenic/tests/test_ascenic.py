@@ -9,6 +9,7 @@ from esolangs.languages.ascenic.interpreter import _Machine, prepare_machine, ru
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
 from tests.interpreters.runner import native_runner
+from tests.support.factories import reject_rng_options, rng_factory
 
 #: The wiki's Hello world as (SUB, ADD, PRINT, POP) arguments per character;
 #: its 52 lines are 35KB of ``s``.
@@ -100,10 +101,7 @@ def test_rnd_draws_zero_and_one() -> None:
         seen.add(io.getvalue())
     assert seen == {"0", "1"}
 
-    rng = Seeded(7)
-    before = rng._random.getstate()
-    options = {"rng": rng}
-    factory = prepare_machine(code, options)
+    rng, before, options, factory = rng_factory(prepare_machine, code)
     options.clear()
     assert rng._random.getstate() == before
     first_io, second_io = ScriptedIO(""), ScriptedIO("")
@@ -118,10 +116,7 @@ def test_rnd_draws_zero_and_one() -> None:
     assert second.snapshot() == initial
     assert second_io.getvalue() == ""
     assert second.stack == []
-    with pytest.raises(TypeError, match="text source"):
-        prepare_machine([], {})
-    with pytest.raises(TypeError, match="only the rng"):
-        prepare_machine("", {"unknown": True})
+    reject_rng_options(prepare_machine, [], "text source", "")
 
 
 @pytest.mark.parametrize(

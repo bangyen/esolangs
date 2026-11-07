@@ -14,9 +14,10 @@ from esolangs.languages.intercal.interpreter._semantics import (
     _NeedInput,
 )
 from esolangs.runtime.io import ScriptedIO
-from esolangs.runtime.randomness import FirstDraw, Seeded
+from esolangs.runtime.randomness import FirstDraw
 from esolangs.vm import run_until_halt_or_all_branches_cycle
 from tests.interpreters.runner import run_program
+from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.paths import ROOT
 
 _run = partial(run_program, run, suppress_eof=False)
@@ -763,10 +764,7 @@ def test_output_before_a_draw_is_flushed() -> None:
 
     source = "PLEASE %50 .1 <- #7\nDO READ OUT .1\nDO GIVE UP"
 
-    rng = Seeded(7)
-    before = rng._random.getstate()
-    options = {"rng": rng}
-    factory = prepare_machine(source, options)
+    rng, before, options, factory = rng_factory(prepare_machine, source)
     options.clear()
     first, second = factory(ScriptedIO()), factory(ScriptedIO())
     assert first is not second
@@ -778,7 +776,4 @@ def test_output_before_a_draw_is_flushed() -> None:
     assert first.memory == [7]
     assert second.memory == second.stack == []
     assert second.snapshot() == initial
-    with pytest.raises(TypeError, match="text source"):
-        prepare_machine([], {})
-    with pytest.raises(TypeError, match="only the rng"):
-        prepare_machine("", {"unknown": True})
+    reject_rng_options(prepare_machine, [], "text source", "")

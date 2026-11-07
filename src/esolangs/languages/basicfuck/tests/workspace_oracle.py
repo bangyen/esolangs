@@ -8,7 +8,7 @@ import pytest
 from esolangs.languages.basicfuck.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, overread, stalled
 from tests.support.workspace_oracle import (
-    WorkspaceOracle,
+    charged_bits,
     missing_workspace,
     workspace_model,
     workspace_view,
@@ -338,16 +338,12 @@ def check_raw_workspace_basicfuck():
     results = [_agrees(_Machine, *case) for case in corpus()]
     assert {error for error, _ in results} == {None, "syntax", "input", "halt"}
     source = _source("read -> a; a += 1; write <- a;")
-    peak = WorkspaceOracle(
-        _WORKSPACE.capture(instruction=0, cells=(0, 0), input_cursor=0)
-    )
-    for row in model(source, "AQQ")[1]:
-        peak.sample(
-            _WORKSPACE.capture(
-                instruction=row[0][0], cells=row[0][1], input_cursor=row[-1]
-            )
+    assert (
+        charged_bits(
+            _WORKSPACE, ((*row[0], row[-1]) for row in model(source, "AQQ")[1])
         )
-    assert peak.bits == 11
+        == 11
+    )
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _agrees(missing_workspace(_Machine, component), source, "AQQ", 64)
@@ -367,4 +363,3 @@ def check_raw_workspace_basicfuck():
     for factory, code in ((WrongOverflow, _source("a -= 1;")), (ExtraOutput, source)):
         with pytest.raises(AssertionError):
             _agrees(factory, code, "AQQ", 64)
-    return len(results), 7

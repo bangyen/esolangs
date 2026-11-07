@@ -1,10 +1,12 @@
 """A Painter Ant through the shared API, CLI and machinery."""
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 import esolangs
+from esolangs.runtime._lifecycle import HALTED_REPORT, Completion
 from esolangs.runtime.io import ScriptedIO
 from tests.support.cli_support import _program, call_both, call_main
 from tests.support.generator_support import evaluate_generated
@@ -91,7 +93,6 @@ def test_unsupported_stepping_candidate_is_bounded() -> None:
 def test_periodic_completion_renders_at_the_repeated_pass_boundary(source, expected):
     from esolangs.languages.a_painter_ant.interpreter import _Machine
     from esolangs.runtime._drive import drive_periodic
-    from esolangs.runtime._lifecycle import Completion
 
     io = ScriptedIO()
     machine = _Machine(source, io)
@@ -106,7 +107,6 @@ def test_periodic_completion_renders_at_the_repeated_pass_boundary(source, expec
 
 def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
     from esolangs.languages.a_painter_ant.interpreter import _execute, run
-    from esolangs.runtime._lifecycle import Completion
 
     io = ScriptedIO()
     report = _execute("P", io)
@@ -117,11 +117,8 @@ def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
     assert io.getvalue() == "@"
     assert run("P", ScriptedIO()) is None
 
-    from types import SimpleNamespace
-
     from esolangs import vm
     from esolangs.languages.a_painter_ant import interpreter
-    from esolangs.runtime._lifecycle import HALTED_REPORT
 
     native = esolangs.run("A Painter Ant", "P")
     assert esolangs.run("A Painter Ant", "P", isolated=True) == native

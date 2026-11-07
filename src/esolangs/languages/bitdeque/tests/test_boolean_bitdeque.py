@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import run as execute
+from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.proofs.conventions import _embedding, _tables
@@ -37,7 +38,6 @@ class TestParameterizedBitdeque:
 
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
-        from esolangs.generation.helpers import runs
         from esolangs.languages.bitdeque import generator as generators
         from esolangs.languages.bitdeque.generator import BITDEQUE_PAIR
 
@@ -164,7 +164,6 @@ def test_bitdeque_filled_template_is_one_width() -> None:
 
 @pytest.mark.medium
 def test_constant_native_and_short_loads_keep_all_slots() -> None:
-    from esolangs.generation.helpers import TEMPLATE_CHAR
     from esolangs.languages.bitdeque.generator import bitdeque_setters
     from esolangs.languages.bitdeque.interpreter import _Machine
     from esolangs.languages.bitdeque.proof_formulas import workspace

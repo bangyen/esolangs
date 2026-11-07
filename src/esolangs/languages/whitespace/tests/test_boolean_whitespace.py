@@ -105,8 +105,6 @@ def _check_power_steps() -> None:
                     assert io.past_end == 0
                     assert io.input_num() == 7
         assert peak == workspace(n, "")
-    from pathlib import Path
-
     saved = Path(__file__).parents[1] / "whitespace.txt"
     for source in (saved, saved.read_text()):
         assert run("Whitespace", source, stdin="0\n1\n").output == "0"

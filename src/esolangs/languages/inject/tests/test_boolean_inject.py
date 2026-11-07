@@ -2,6 +2,7 @@
 
 import random
 import re
+from collections import Counter
 from itertools import pairwise
 
 import pytest
@@ -52,8 +53,6 @@ class TestInject:
 
     def test_every_label_occurs_exactly_twice(self) -> None:
         """Inject's labels are strictly two-occurrence: an open and a close."""
-        from collections import Counter
-
         for table in ("01", "0001", "0110", "01101001", "11110000"):
             counts = Counter(
                 line

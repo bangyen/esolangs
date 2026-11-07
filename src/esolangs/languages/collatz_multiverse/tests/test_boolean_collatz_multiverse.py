@@ -1,10 +1,12 @@
 """collatz_multiverse generator tests."""
 
 import random
+from collections import Counter
 
 import pytest
 
 import esolangs
+from esolangs.generation.helpers import _validate_truth_table, grid_width
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.collatz_multiverse import generator as boolean
 from esolangs.languages.collatz_multiverse.generator import (
@@ -70,8 +72,6 @@ class TestCollatzMultiverse:
 
     def test_code_zero_follows_the_frequency_ranking(self) -> None:
         """The empty cell takes code 0 only when the ranking gives it."""
-        from collections import Counter
-
         codes = _cm_codes(Counter({0: 1, 8: 10, 1: 5}))
         assert codes[8] == 0
         assert codes[0] == 1
@@ -231,8 +231,6 @@ def test_cm_constants_print_the_right_value() -> None:
 
 def _swept_balance(table: str, default: str) -> str:
     """The retired balance: select among the spellings at every fit threshold."""
-    from esolangs.generation.helpers import _validate_truth_table, grid_width
-
     n = _validate_truth_table(table)
     wide = collatz_multiverse(table, len(default))
     narrow = _cm_candidates(table, n, narrow=True, expanded=True)

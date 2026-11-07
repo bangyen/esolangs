@@ -7,7 +7,16 @@ from itertools import product
 import pytest
 
 import esolangs
+from esolangs.generation.helpers import _ASCII_ZERO
 from esolangs.languages.rotfuck import generator as boolean
+from esolangs.languages.rotfuck.generator import (
+    _Builder,
+    _constant,
+    _groups,
+    _parse,
+    _rotfuck_rot,
+    _shows,
+)
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
@@ -51,7 +60,6 @@ class TestRotfuck:
     def test_the_rotation_cycle_is_the_interpreters_default(self) -> None:
         """The prose's ``+-><,.[]`` turned backward, and it is a cycle."""
         from esolangs.languages.rotfuck.dialect import ROTFUCK_CYCLES as CYCLES
-        from esolangs.languages.rotfuck.generator import _rotfuck_rot
 
         chain = CYCLES["backward"]
         assert not hasattr(boolean, "_ROTFUCK_CHAIN")
@@ -77,7 +85,6 @@ class TestRotfuck:
     ) -> None:
         """A command's rotation, seen from a seek's, must not be a bracket."""
         from esolangs.languages.rotfuck.dialect import ROTFUCK_CYCLES as CYCLES
-        from esolangs.languages.rotfuck.generator import _rotfuck_rot, _shows
 
         cycle = CYCLES[rotation]
         for seek in range(8):
@@ -155,9 +162,6 @@ class TestRotfuck:
     @pytest.mark.parametrize("trips", range(7))
     def test_a_loop_leaves_the_rotation_where_it_found_it(self, trips: int) -> None:
         """The invariant every loop rests on, checked by running one."""
-        from esolangs.generation.helpers import _ASCII_ZERO
-        from esolangs.languages.rotfuck.generator import _Builder, _parse
-
         out = _Builder()
         out.emit(_parse("+" * trips + "[->+<]>" + "+" * _ASCII_ZERO + "."))
         assert run_rotfuck(out.text(), []) == str(trips)
@@ -165,9 +169,6 @@ class TestRotfuck:
     @pytest.mark.parametrize("body", ["-", "-+-", ">+<-", "[-]"])
     def test_a_body_of_either_parity_closes_at_its_phase(self, body: str) -> None:
         """An even body opens with a ``[`` that cannot fire; an odd one does not."""
-        from esolangs.generation.helpers import _ASCII_ZERO
-        from esolangs.languages.rotfuck.generator import _Builder, _parse
-
         out = _Builder()
         out.emit(_parse(f"+++[{body}]" + "+" * _ASCII_ZERO + "."))
         assert run_rotfuck(out.text(), []) == "0"
@@ -313,8 +314,6 @@ def _is_net_zero(run: Iterable[str]) -> bool:
 
 def _targets(stack: tuple[int, ...], cycle: str) -> list[Callable[[int], bool]]:
     """Every ``done`` predicate the builder passes, for open seeks ``stack``."""
-    from esolangs.languages.rotfuck.generator import _shows
-
     hides = [
         lambda rot, cmd=cmd: not any(_shows(cmd, seek, rot, cycle) for seek in stack)
         for cmd in "+-<>,.[]"
@@ -389,7 +388,6 @@ def _check_native_constants(bit: str) -> None:
 
 def _check_symmetric_multipliers() -> None:
     from esolangs.languages.rotfuck import generator as g
-    from esolangs.languages.rotfuck.generator import _Builder, _constant, _parse
     from esolangs.languages.rotfuck.interpreter import _Machine
     from esolangs.languages.rotfuck.proof_formulas import workspace
 
@@ -438,7 +436,6 @@ def _check_symmetric_multipliers() -> None:
 
 def _check_raw_five_digits() -> None:
     from esolangs.languages.rotfuck import generator as g
-    from esolangs.languages.rotfuck.generator import _groups
     from esolangs.languages.rotfuck.interpreter import _Machine
     from esolangs.languages.rotfuck.proof_formulas import execution
 

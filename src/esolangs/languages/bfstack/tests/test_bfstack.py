@@ -2,7 +2,8 @@
 
 import pytest
 
-from esolangs.exceptions import HaltError
+from esolangs import run as run_public
+from esolangs.exceptions import ExecutionTimeoutError, HaltError
 from esolangs.languages.bfstack.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
@@ -49,9 +50,19 @@ class TestBFStack:
         assert run_and_capture(three + "-.") == "\x02"
         assert run_and_capture(three + "-<.") == "\x02"
 
+    @pytest.mark.medium
     def test_input(self) -> None:
-        """, pushes ASCII input onto the stack."""
+        """, pushes Unicode code points onto the stack."""
         assert run_and_capture(">,.", inputs=["Z"]) == "Z"
+        for text in ("\ud800\udfff", "\ud800", "\udfff", "\U000103ff"):
+            assert (
+                run_public(
+                    "BFStack", ",." * len(text), stdin=text, isolated=True
+                ).output
+                == text
+            )
+        with pytest.raises(ExecutionTimeoutError):
+            run_public("BFStack", "\ud800\udfff>", isolated=True, max_steps=2)
 
     def test_input_adds_a_cell_rather_than_overwriting_one(self) -> None:
         """``,`` pushes, so what was on top before is still underneath."""

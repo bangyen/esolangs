@@ -23,7 +23,7 @@ from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry import resolve
 from esolangs.results import ExecutionResult
 from esolangs.runtime._input import InputSource, read_input
-from esolangs.runtime._json import canonical_integer, unique_object
+from esolangs.runtime._json import canonical_integer, worker_dumps, worker_object
 from esolangs.runtime._program import Program
 from esolangs.runtime._proof import TerminationResult
 from esolangs.runtime._result_wire import (
@@ -154,7 +154,7 @@ def _decode(text: str, *, expired: bool) -> _WorkerResult:
     malformed = False
     for line in text.splitlines():
         try:
-            message = json.loads(line, object_pairs_hook=unique_object)
+            message = json.loads(line, object_pairs_hook=worker_object)
         except ValueError:
             malformed = True
             break  # A killed write may leave only part of its last JSON record.
@@ -299,7 +299,7 @@ def run_isolated_result(
                 settings if record else effective_settings(name, source, settings)
             )
             box.append(
-                json.dumps(
+                worker_dumps(
                     _request_wire(
                         name,
                         source,
@@ -455,7 +455,7 @@ def _bounded_output(
                 raise record
             output.append(record)
             try:
-                message = json.loads(record, object_pairs_hook=unique_object)
+                message = json.loads(record, object_pairs_hook=worker_object)
                 limited = (
                     isinstance(message, dict) and message.get("output_limit") is True
                 )
@@ -543,7 +543,7 @@ def termination_result_isolated(
 ) -> TerminationResult:
     """Retain worker IO and exact proof evidence; a deadline remains undecided."""
     check_memory(max_memory, isolated=True)
-    request = json.dumps(
+    request = worker_dumps(
         _request_wire(
             name,
             source,
@@ -607,7 +607,7 @@ def _worker() -> None:
 
 def _read_request(stream: TextIO) -> dict[str, Any]:
     """Decode the canonical request; omitted options are protocol errors."""
-    request = json.load(stream, object_pairs_hook=unique_object)
+    request = json.load(stream, object_pairs_hook=worker_object)
     if not isinstance(request, dict) or set(request) != _REQUEST_FIELDS:
         raise ValueError("invalid worker request fields")
     flags = (
@@ -695,7 +695,7 @@ def _serve_request() -> None:
     _exit_with_parent()
 
     def send(message: dict[str, Any]) -> None:
-        print(json.dumps(message), flush=True)
+        print(worker_dumps(message), flush=True)
 
     class StreamingIO(ScriptedIO):
         def __init__(self, stdin: InputSource = "") -> None:

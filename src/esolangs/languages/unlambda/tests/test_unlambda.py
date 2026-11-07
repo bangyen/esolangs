@@ -1,11 +1,19 @@
 """Execution tests for the Unlambda interpreter."""
 
 import re
+from collections import OrderedDict
 from itertools import product
 
 import pytest
 
 from esolangs.languages.unlambda import interpreter as native
+from esolangs.languages.unlambda.interpreter import (
+    _Arg,
+    _Cmd,
+    _Cont,
+    _Ret,
+    _workspace_value,
+)
 from esolangs.runtime._result_wire import _state_from_wire, _state_wire
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
@@ -155,9 +163,6 @@ def test_a_malformed_program_is_refused(program: str, message: str) -> None:
 
 def test_the_parser_is_iterative_over_a_long_chain() -> None:
     """Parsing and logical projection preserve deep terms and DAG multiplicity."""
-    from collections import OrderedDict
-
-    from esolangs.languages.unlambda.interpreter import _Cmd, _workspace_value
     from scripts.benchmark import state_bits
 
     depth = 5000
@@ -213,12 +218,6 @@ def test_snapshots_compare_continuations_by_their_frames() -> None:
     assert kont != kont.rest
     assert kont != kont.frames()
 
-    from esolangs.languages.unlambda.interpreter import (
-        _Arg,
-        _Cmd,
-        _Cont,
-        _Ret,
-    )
     from scripts.benchmark import state_bits
 
     continuation = native._Kont(_Arg(_Cmd("i")), None)

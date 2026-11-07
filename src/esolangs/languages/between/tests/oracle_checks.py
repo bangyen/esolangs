@@ -16,8 +16,8 @@ from esolangs.runtime._state import WorkspaceModel
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import observed
 from tests.support.workspace_oracle import (
-    WorkspaceOracle,
     WorkspaceWitness,
+    charged_bits,
     missing_workspace,
     workspace_view,
 )
@@ -222,6 +222,10 @@ def _model(program, stdin, cap=16):
     return None, trace
 
 
+def _parts(row):
+    return row[0][1], frozenset(row[0][0]), row[0][2], row[-1]
+
+
 def _check(factory, program, stdin="unused", cap=16):
     expected = _model(program, stdin, cap)
 
@@ -231,7 +235,7 @@ def _check(factory, program, stdin="unused", cap=16):
     checked = workspace_view(
         expected[1],
         _WORKSPACE,
-        lambda row: (row[0][1], frozenset(row[0][0]), row[0][2], row[-1]),
+        _parts,
         state,
     )
     assert observed(factory, _source(program), stdin, checked, cap=cap) == expected, (
@@ -381,19 +385,7 @@ def check_raw_between():
         ((("declare", "x"), ("read", "x")), "A\r\n", 20),
     ):
         rows = _check(_Machine, program, stdin)[1]
-        snapshots = [
-            _WORKSPACE.capture(
-                instruction=row[0][1],
-                variables=frozenset(row[0][0]),
-                exited=row[0][2],
-                input_cursor=row[-1],
-            )
-            for row in rows
-        ]
-        charged = WorkspaceOracle(snapshots[0])
-        for snapshot in snapshots[1:]:
-            charged.sample(snapshot)
-        assert charged.bits == bits
+        assert charged_bits(_WORKSPACE, map(_parts, rows)) == bits
 
     class Skips(_Machine):
         def step(self):

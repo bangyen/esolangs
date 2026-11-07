@@ -1,6 +1,7 @@
 """Unit tests for the Modulous interpreter."""
 
 from itertools import product
+from types import MappingProxyType
 
 import pytest
 
@@ -16,7 +17,6 @@ from esolangs.languages.modulous.interpreter import _Machine as Modulous
 from esolangs.runtime import _termination
 from esolangs.runtime._isolated import termination_result_isolated
 from esolangs.runtime.io import IO, ScriptedIO
-from esolangs.runtime.randomness import Seeded
 from esolangs.vm import (
     run_until_halt,
     run_until_halt_or_all_branches_cycle,
@@ -26,6 +26,7 @@ from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_lines
 from tests.support.certification_barrier import guarded_worker
+from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.raises import (
     assert_halts_with_hint,
     assert_rejected_with_hint,
@@ -67,8 +68,6 @@ def test_advance_end_sets_the_halt_flag() -> None:
 
 def test_stored_variables_are_frozen_and_do_not_mutate_retained_state() -> None:
     """A store returns a read-only map; a retained map never changes."""
-    from types import MappingProxyType
-
     state = _modulous_state()
     stored = _advance(_advance(state, "PSH INT 7"), "PSH VAR1")
     var = stored[0][1]
@@ -85,8 +84,6 @@ def test_stored_variables_are_frozen_and_do_not_mutate_retained_state() -> None:
 
 def test_a_retained_variable_map_does_not_change_under_a_step() -> None:
     """Stepping rebinds the map rather than writing through the old one."""
-    from types import MappingProxyType
-
     machine = Modulous("[PSH INT 7][PSH VAR1][PSH INT 3][PSH VAR2]", ScriptedIO())
     while machine.ind < 2 and not machine.halted:
         machine.step()
@@ -484,10 +481,9 @@ def test_rnd_one_still_consumes_a_draw() -> None:
     run("[RND 1][RND 100][PRT INT]", io, _Scripted(0, 7))
     assert io.getvalue() == "7"
 
-    rng = Seeded(7)
-    before = rng._random.getstate()
-    options = {"rng": rng}
-    factory = prepare_machine("[RND 9][PSH INT 4][PSH VAR1][END]", options)
+    rng, before, options, factory = rng_factory(
+        prepare_machine, "[RND 9][PSH INT 4][PSH VAR1][END]"
+    )
     options.clear()
     first, second = factory(ScriptedIO()), factory(ScriptedIO())
     assert first is not second
@@ -501,10 +497,7 @@ def test_rnd_one_still_consumes_a_draw() -> None:
     first.step()
     assert first.var != second.var
     assert second.snapshot() == initial
-    with pytest.raises(TypeError, match="text source"):
-        prepare_machine([], {})
-    with pytest.raises(TypeError, match="only the rng"):
-        prepare_machine("", {"unknown": True})
+    reject_rng_options(prepare_machine, [], "text source", "")
 
 
 def test_a_variable_change_moves_the_snapshot_at_the_same_cursor() -> None:

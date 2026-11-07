@@ -11,7 +11,7 @@ from esolangs.languages.befunge.interpreter import _Machine, run
 from tests.interpreters.memory_oracles import agrees_memory as _agrees_memory
 from tests.interpreters.memory_oracles import befunge
 from tests.support.workspace_oracle import (
-    WorkspaceOracle,
+    charged_bits,
     missing_workspace,
     workspace_model,
 )
@@ -212,13 +212,4 @@ def check_raw_befunge():
         (["~@"], "Q", 11),
     ):
         rows = agrees_memory(_Machine, befunge, code, stdin, grid=True)
-        snapshots = [
-            _WORKSPACE.capture(
-                **dict(zip(_WORKSPACE.components, _parts(row), strict=True))
-            )
-            for row in rows
-        ]
-        charged = WorkspaceOracle(snapshots[0])
-        for snapshot in snapshots[1:]:
-            charged.sample(snapshot)
-        assert charged.bits == bits
+        assert charged_bits(_WORKSPACE, map(_parts, rows)) == bits

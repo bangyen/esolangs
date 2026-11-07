@@ -7,6 +7,7 @@ from itertools import pairwise
 import pytest
 
 import esolangs
+from esolangs.generation.helpers import grid_width
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.container import generator as boolean
 from esolangs.languages.container.generator import (
@@ -316,8 +317,6 @@ def test_threshold_proof_executes_wide_inputs() -> None:
 
 def _swept_balance(table: str, default: str) -> str:
     """The retired balance: narrow at every rule-fit and decimal-budget threshold."""
-    from esolangs.generation.helpers import grid_width
-
     span = grid_width(default)
     programs = [default, _container_threshold(table)]
     thresholds = {1}

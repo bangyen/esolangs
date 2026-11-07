@@ -1814,3 +1814,53 @@ bindings stay local. No cases or assertions are removed. Independent review
 found no blocker in the bounded generated-AST scope; this is not a general
 parser model. This accounting scope is reviewed; language/catalog completion
 remains open.
+
+
+BFStack and bit~ share one frozen-wheel acceptance batch. BFStack retains
+all 3,580 original cases; ten additions bring its independent four-part
+corpus to 3,590 cases/9,957 boundaries at cap 64. Completed `,+.`/FF and
+`,-.`/NUL witnesses reach wrapping that the old 256-increment fixture's
+cap misses. Unicode input remains an unmasked code point until arithmetic.
+Six faults fail, including four erasures and unchanged-state/same-length
+wrong text. Seven literal charges are 0/2/5/3/11/11/20 bits. Skipped unmatched
+`[` moves IP to the end before raising: halted state does not declare
+successful completion or count the failed command. EOF retries and later
+steps after this syntax error preserve the predicted parts and counters.
+The legacy stack worktree's Underload/False edits remain separate.
+
+bit~ retains all 2,175 original cases and traces; ten additions bring its
+four-part corpus to 2,185 cases/18,465 boundaries at caps 64–192. Witnesses
+complete 81-position growth both ways and eighty reads, exercise Unicode
+truncation, CR/LF, XOR restoration and partial-output EOF. All twelve existing
+semantic/resource controls remain. Six literal charges are 0/9/11/10/11/103
+bits. Both languages write every declared component; observed maxima of
+37 and 103 bits are not global bounds.
+
+The batch found an isolation defect: JSON merged adjacent Python surrogate
+code points. BFStack native input D800/DFFF completed with two reads; the
+worker instead read U103FF once and raised EOF. The same merge changed source
+step counts. Worker-only canonical UTF-8/surrogatepass tags now preserve
+text values, including snapshots, errors and streamed output; literal tag
+objects are escaped. Duplicate fields, malformed tags and output caps stay
+strict. Lone surrogates and scalar non-BMP characters are positive controls.
+BFStack's IO docstring now states the executed Unicode behavior.
+
+The final 951-file wheel differs in three packaged modules: the IO docstring
+and two transport modules. Python 3.12.11, 3.13.15, 3.14.7 and final 3.15.0
+reuse that frozen wheel for 5,782 independent cases each. BFStack checks
+3,595 cases/11,721 boundaries: 497 completions, 3,081 failures (84 halted
+syntax failures) and seventeen bounded runs. bit~ checks 2,187 cases/18,476
+boundaries: 1,369 completions, 745 failures and 73 bounded runs. Raw/VM/debugger
+captures retain every snapshot; independent IO counters, command counts,
+public views and completion agree. All 159 guarded workers per version
+preserve native/isolated results, partial output and unfinished observations.
+Ten additional codec controls cover nested literal tags, malformed objects,
+periodic snapshot text and error arguments/notes; capped paired output is
+also executed.
+
+Shared charge recounts replace duplicate pin scaffolding; all four affected
+corpora and reference traces remain identical. Safe import hoisting recovers
+39 lines in 27 tests. Inlining two factory-test helpers preserves 548 assertion
+nodes and twenty error contexts across ten files, saving another 30 lines.
+No cases, assertions or budget limits are removed. Independent review found
+no blocker in the bounded scopes; language/catalog completion remains open.

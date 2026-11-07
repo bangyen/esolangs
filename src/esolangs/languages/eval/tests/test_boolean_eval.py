@@ -1,5 +1,8 @@
 """Covers :mod:`esolangs.languages.eval.generator`."""
 
+from collections import deque
+from math import factorial
+
 import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, permute_truth_table
 from esolangs.languages.eval import generator as boolean
@@ -100,8 +103,6 @@ class TestEvalBoolean:
 
     def test_stack_ops_reach_every_arrangement(self) -> None:
         """Two stacks with a reverse and a cross-move permute the bits."""
-        from math import factorial
-
         for n in (2, 3, 4):
             assert len(_eval_stack_programs(n)) == factorial(n)
         # The free arrangement is the one staging produces, and costs nothing.
@@ -116,8 +117,6 @@ class TestEvalBoolean:
 
     def test_reorder_catalog_matches_search(self) -> None:
         """The catalog fold reproduces the search it replaced, byte for byte."""
-        from collections import deque
-
         from esolangs.languages.eval.tests.eval_support import (
             _EVAL_MAX_OPS,
             _eval_stack_programs,

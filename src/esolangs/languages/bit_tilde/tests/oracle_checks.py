@@ -8,24 +8,20 @@ import pytest
 from esolangs.languages.bit_tilde.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support.workspace_oracle import (
+    charged_bits,
+    missing_workspace,
+    workspace_view,
+)
 
 _WORKSPACE = WorkspaceModel(
     "bit-tilde-v1", ("tape", "pointer", "instruction", "input_cursor")
 )
 
 
-def _model(source, stdin):
-    cells, position, low, high, pc, consumed, output, error = (
-        {},
-        0,
-        0,
-        7,
-        0,
-        0,
-        "",
-        None,
-    )
+def _model(source, stdin, cap=64):
+    cells = {}
+    position, low, high, pc, consumed, output, error = 0, 0, 7, 0, 0, "", None
 
     def view():
         pool = tuple(cells.get(i, 0) for i in range(low, high + 1))
@@ -38,7 +34,7 @@ def _model(source, stdin):
         )
 
     trace = [view()]
-    for _ in range(64):
+    for _ in range(cap):
         if pc == len(source):
             break
         command, next_pc = source[pc], pc + 1
@@ -84,27 +80,30 @@ def _model(source, stdin):
     return error, trace
 
 
-def _agrees(factory, source, stdin):
-    expected = _model(source, stdin)
+def _agrees(factory, source, stdin, cap=64):
+    expected = _model(source, stdin, cap)
     checked = workspace_view(
         expected[1],
         _WORKSPACE,
         lambda row: (row[0][2], row[0][1], row[0][0], row[-1]),
         lambda m: (*m.state, tuple(m.memory)),
     )
-    assert observed(factory, source, stdin, checked) == expected, (source, stdin)
+    assert observed(factory, source, stdin, checked, cap=cap) == expected, (
+        source,
+        stdin,
+    )
     return expected
 
 
-def check_raw_bit_tilde():
+def corpus():
     atoms = "~><)({}x"
-    corpus = ["".join(p) for n in range(4) for p in itertools.product(atoms, repeat=n)]
+    codes = ["".join(p) for n in range(4) for p in itertools.product(atoms, repeat=n)]
     rng = random.Random(20261103)
-    corpus += [
+    codes += [
         "".join(rng.choices(("~", ">", "<", ")", "(", "{}", "{~}", "{>}"), k=10))
         for _ in range(128)
     ]
-    corpus += [
+    codes += [
         "))(",
         "<~>(<(",
         "~{",
@@ -119,13 +118,40 @@ def check_raw_bit_tilde():
         "{{}}",
     ]
     inputs = ("", "\x81\x81", "λ\n")
-    results = [
-        _agrees(_Machine, source, stdin) for source in corpus for stdin in inputs
-    ]
+    yield from ((source, stdin, 64) for source in codes for stdin in inputs)
+    for source, stdin in (
+        (">" * 81 + "~(", ""),
+        ("<" * 81 + "~(", ""),
+        (")" * 80 + "(", "\xff" * 80),
+        (")(~(", "\U0001f600"),
+        (")(>)(<(", "\r\n"),
+        (")()(", "\u0100\xff"),
+        (")()", "\x81"),
+        ("λ\r\n\u2028~(", ""),
+        ("~{>}", ""),
+        ("~{~}", ""),
+    ):
+        yield source, stdin, 192
+
+
+def check_raw_bit_tilde():
+    results = [_agrees(_Machine, source, stdin, cap) for source, stdin, cap in corpus()]
     assert {error for error, _ in results} == {None, "syntax", "input"}
     assert any(not trace[-1][1] for error, trace in results if not error)
     assert _model("))(", "\x81\x81")[1][-1][2] == "\x00"
     assert _model("~{", "")[0] is None  # an untaken jump has no syntax error
+    anchors = {
+        ("", ""): 0,
+        ("~", ""): 9,
+        (">", ""): 11,
+        ("<", ""): 10,
+        (")(", "\xff"): 11,
+        (">" * 81 + "~(", ""): 103,
+    }
+    for (source, stdin), bits in anchors.items():
+        trace = _model(source, stdin, 192)[1]
+        parts = ((r[0][2], r[0][1], r[0][0], r[-1]) for r in trace)
+        assert charged_bits(_WORKSPACE, parts) == bits
     controls = {
         "store": ("))(", "\x81\x81"),
         "left": ("<~(", ""),
@@ -179,4 +205,3 @@ def check_raw_bit_tilde():
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _agrees(missing_workspace(_Machine, component), "~>~", "")
-    return len(results), len(controls) + 4

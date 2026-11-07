@@ -7,6 +7,7 @@ import pytest
 
 import esolangs
 from esolangs import run
+from esolangs.generation.helpers import input_weights
 from esolangs.generation.wrap import (
     wrap_program,
 )
@@ -239,8 +240,6 @@ def _check_constants() -> None:
 
 def _check_first_essential_read() -> None:
     """Ignored prefixes preserve zero coordinates before the first indexed read."""
-    from esolangs.generation.helpers import input_weights
-
     for selected in ((0, 1, 6), (2, 4, 6), (0, 3, 5)):
         table = "".join(
             "00110110"[

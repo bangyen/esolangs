@@ -17,9 +17,11 @@ from esolangs.languages.thisthat.interpreter import (
     run,
 )
 from esolangs.runtime.io import ScriptedIO
-from esolangs.runtime.randomness import FirstDraw, Seeded, draw
+from esolangs.runtime.randomness import FirstDraw, draw
 from esolangs.vm import run_until_halt
+from tests.interpreters.cursorless_io import CursorlessIO
 from tests.interpreters.oracle_support import check_terminal
+from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.paths import ROOT
 
 
@@ -286,10 +288,7 @@ def test_random_merge_selects_one_pointer_and_nands_data() -> None:
     assert machine.pointers[0].value == 0
 
     source = ["▣═◘═◇"]
-    rng = Seeded(7)
-    before = rng._random.getstate()
-    options = {"rng": rng}
-    factory = prepare_machine(source, options)
+    rng, before, options, factory = rng_factory(prepare_machine, source)
     source[0] = "▣"
     options.clear()
     first, second = factory(ScriptedIO()), factory(ScriptedIO())
@@ -308,10 +307,7 @@ def test_random_merge_selects_one_pointer_and_nands_data() -> None:
     assert first.pointers[0].value == 0
     assert second.snapshot() == initial
     assert second.memory == []
-    with pytest.raises(TypeError, match="split text"):
-        prepare_machine("invalid", {})
-    with pytest.raises(TypeError, match="only the rng"):
-        prepare_machine(["▣"], {"unknown": True})
+    reject_rng_options(prepare_machine, "invalid", "split text", ["▣"])
 
 
 @pytest.mark.parametrize(
@@ -466,8 +462,6 @@ def test_a_branch_from_another_program_is_rejected() -> None:
 
 def test_a_cursorless_read_loop_halts_at_eof() -> None:
     """Reads count in the snapshot: the 1-loop runs to EOF, not a false cycle."""
-    from tests.interpreters.cursorless_io import CursorlessIO
-
     io = CursorlessIO("11111111")
     loop = ["▣─▶─◇═◒", "  │   │", "  └───┘"]
     assert run_until_halt(_Machine(loop, io), limit=1000) is True

@@ -6,6 +6,8 @@ import pytest
 
 import esolangs
 from esolangs.debugger import make_vm
+from esolangs.generation.helpers import permute_truth_table
+from esolangs.generation.shared_block import repeated_bank
 from esolangs.languages.painfuck import generator as boolean
 from esolangs.languages.painfuck.generator import _constant, _painfuck_shared, painfuck
 from esolangs.runtime.io import ScriptedIO
@@ -83,9 +85,6 @@ def test_shared_residual_executes_within_ledger() -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("table", multiple_tables())
 def test_multiple_flags_execute_with_their_native_command_price(table) -> None:
-    from esolangs.generation.helpers import permute_truth_table
-    from esolangs.generation.shared_block import repeated_bank
-
     n = len(table).bit_length() - 1
     served = 0
     for perm in (tuple(range(n)), tuple(reversed(range(n)))):

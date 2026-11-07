@@ -17,6 +17,7 @@ from esolangs.vm import (
     run_until_halt_or_cycle,
 )
 from tests.interpreters.contract import SnapshotContract
+from tests.interpreters.cursorless_io import CursorlessIO
 from tests.support.paths import ROOT
 
 
@@ -261,8 +262,6 @@ class TestSnapshotProgress:
 
     def test_a_cursorless_read_ring_is_not_a_cycle(self) -> None:
         """``,`` re-reading ``a`` round a ring runs to EOF, not a false cycle."""
-        from tests.interpreters.cursorless_io import CursorlessIO
-
         ring = ["/o,\\", "\\  /"]
         machine = _Machine(ring, CursorlessIO("aaaaaaaa"), rng=FirstDraw(3, rest=0))
         with pytest.raises(EOFError):

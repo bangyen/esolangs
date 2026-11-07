@@ -15,6 +15,7 @@ from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Seeded
 from esolangs.vm import make_vm, run_until_halt, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
+from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
 
 
@@ -135,10 +136,7 @@ def test_a_seeded_run_is_reproducible() -> None:
     assert run_befunge(program, rng=Seeded(0)) == run_befunge(program, rng=Seeded(0))
 
     source = ["?@"]
-    rng = Seeded(7)
-    before = rng._random.getstate()
-    options = {"rng": rng}
-    factory = prepare_machine(source, options)
+    rng, before, options, factory = rng_factory(prepare_machine, source)
     source[0] = "@"
     options.clear()
     first, second = factory(IO()), factory(IO())
@@ -150,10 +148,7 @@ def test_a_seeded_run_is_reproducible() -> None:
     assert rng._random.getstate() != before
     assert second.snapshot() == initial
     assert not first.halted
-    with pytest.raises(TypeError, match="split text"):
-        prepare_machine("invalid", {})
-    with pytest.raises(TypeError, match="only the rng"):
-        prepare_machine([";"], {"unknown": True})
+    reject_rng_options(prepare_machine, "invalid", "split text", [";"])
 
 
 def test_empty_program_is_rejected() -> None:

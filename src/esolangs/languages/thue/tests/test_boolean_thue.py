@@ -8,6 +8,8 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
+from esolangs.generation.helpers import grid_width
+from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.thue import generator as boolean
 from esolangs.languages.thue.generator import thue
@@ -248,9 +250,6 @@ def test_the_emissions_grow_by_a_line() -> None:
 
 def _swept_balance(table: str, default: str) -> str:
     """The retired balance: every payload within CELL_ASPECT of each layout's root."""
-    from esolangs.generation.helpers import grid_width
-    from esolangs.generation.token_balance import CELL_ASPECT
-
     plain = min(
         (boolean._thue_layout(*layout, None) for layout in boolean._tables(table)),
         key=len,

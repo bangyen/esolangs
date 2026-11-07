@@ -62,6 +62,17 @@ class WorkspaceOracle:
         )
 
 
+def charged_bits(model, parts):
+    """Recount a predicted trace with the same component validation as capture."""
+    snapshots = (
+        model.capture(**dict(zip(model.components, row, strict=True))) for row in parts
+    )
+    oracle = WorkspaceOracle(next(snapshots))
+    for snapshot in snapshots:
+        oracle.sample(snapshot)
+    return oracle.bits
+
+
 class WorkspaceWitness:
     """Compare captures and charged peaks against an independently stepped model."""
 

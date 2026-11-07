@@ -7,6 +7,7 @@ import pytest
 
 from esolangs.languages.egl.interpreter import _advance, _Machine, run
 from esolangs.vm import run_until_halt_or_cycle
+from tests.interpreters.cursorless_io import CursorlessIO
 from tests.interpreters.runner import run_program
 
 execute = partial(run_program, run, suppress_eof=False)
@@ -39,8 +40,6 @@ def test_character_input() -> None:
 
 def test_a_cursorless_read_loop_is_not_a_cycle() -> None:
     """Reads count in the snapshot: ``(x)`` runs to EOF, not a false cycle."""
-    from tests.interpreters.cursorless_io import CursorlessIO
-
     machine = _Machine("1,1:+(x)", CursorlessIO("aaaaaaaa"))
     with pytest.raises(EOFError):
         run_until_halt_or_cycle(machine)

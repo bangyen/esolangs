@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import run
+from esolangs.generation.helpers import essential_inputs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.clockwise import generator as boolean
 from esolangs.languages.clockwise.generator import (
@@ -227,8 +228,6 @@ def test_balance_bands_a_random_table() -> None:
 @pytest.mark.medium
 def test_balance_split_rule_matches_the_split_search() -> None:
     """Oracle: the {k//3, k//3+1} contest is no wider than scanning every split."""
-    from esolangs.generation.helpers import essential_inputs
-
     rng = random.Random(5)
     for n in (4, 5, 6, 7, 8):
         table = format(rng.getrandbits(1 << n), f"0{1 << n}b")

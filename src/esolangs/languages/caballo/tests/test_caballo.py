@@ -7,6 +7,7 @@ from esolangs.languages.caballo.interpreter import _Machine, prepare_machine, ru
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
+from tests.support.factories import reject_rng_options, rng_factory
 
 #: The wiki's pairing function, as printed and with its last ``p`` dropped.
 PAIRING = "q2[d2ii2](1+di-)pi q3[d32[d2ii2](1+di-)3](1+di-)pp"
@@ -81,10 +82,7 @@ def test_the_output_is_drawn_by_weight() -> None:
     assert draws == {"[]", "[1]"}
     assert _run("(1+qi+qi)", "", 3) == _run("(1+qi+qi)", "", 3)
 
-    rng = Seeded(7)
-    before = rng._random.getstate()
-    options = {"rng": rng}
-    factory = prepare_machine("(1+qi+qi)", options)
+    rng, before, options, factory = rng_factory(prepare_machine, "(1+qi+qi)")
     options.clear()
     assert rng._random.getstate() == before
     first_io, second_io = ScriptedIO("3"), ScriptedIO("5")
@@ -102,10 +100,7 @@ def test_the_output_is_drawn_by_weight() -> None:
     assert second.snapshot() == initial
     assert second_io.getvalue() == ""
     assert second.stack == ["seq"]
-    with pytest.raises(TypeError, match="text source"):
-        prepare_machine([], {})
-    with pytest.raises(TypeError, match="only the rng"):
-        prepare_machine("", {"unknown": True})
+    reject_rng_options(prepare_machine, [], "text source", "")
 
 
 class _Fixed:

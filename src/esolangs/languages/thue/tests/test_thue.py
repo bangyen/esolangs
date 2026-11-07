@@ -15,6 +15,7 @@ from esolangs.languages.thue.interpreter import (
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import FirstDraw, Seeded
 from tests.interpreters.runner import run_program
+from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.raises import assert_rejected_with_hint
 
 #: Two print rules over ``ab``.  Both match the starting state, so which
@@ -62,10 +63,7 @@ def test_a_seeded_run_repeats_itself() -> None:
     first = [run_program(run, program, rng=Seeded(5)) for _ in range(5)]
     assert len(set(first)) == 1
 
-    rng = Seeded(7)
-    before = rng._random.getstate()
-    options = {"rng": rng}
-    factory = prepare_machine(program, options)
+    rng, before, options, factory = rng_factory(prepare_machine, program)
     options.clear()
     first_machine, second = factory(ScriptedIO()), factory(ScriptedIO())
     assert first_machine is not second
@@ -78,10 +76,7 @@ def test_a_seeded_run_repeats_itself() -> None:
     assert second.snapshot() == initial
     assert second.state == "aab"
     assert first_machine.state != second.state
-    with pytest.raises(TypeError, match="text source"):
-        prepare_machine([], {})
-    with pytest.raises(TypeError, match="only the rng"):
-        prepare_machine("", {"unknown": True})
+    reject_rng_options(prepare_machine, [], "text source", "")
 
 
 def test_input_is_substituted_by_the_triple_colon() -> None:

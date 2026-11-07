@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs.generation.branch_decoder import hoisted_tree
 from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.languages.subleq.generator import subleq
 from esolangs.languages.subleq.interpreter import _Machine
@@ -67,8 +68,6 @@ def test_shared_parity_uses_direct_jumps_at_sixteen_inputs() -> None:
 
 
 def _check_io_targets() -> None:
-    from esolangs.generation.branch_decoder import hoisted_tree
-
     for table in ("0110", "00110110", "0110" * 8):
         n = len(table).bit_length() - 1
         for program in (

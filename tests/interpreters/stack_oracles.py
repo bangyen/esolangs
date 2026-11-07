@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime.io import ScriptedIO
+from tests.support.workspace_oracle import WorkspaceWitness
 
 
 @dataclass(frozen=True)
@@ -132,13 +133,15 @@ def underload(code: str, _stdin: str, cap: int = 64) -> list[StackObservation]:
     return trace
 
 
-def observed_stack(machine_type, code, stdin, steps, *, dynamic=False):
+def observed_stack(machine_type, code, stdin, steps, *, dynamic=False, workspace=None):
     """Observe complete state after each step, including the failing step."""
     io = ScriptedIO(stdin)
     machine = machine_type(code, io)
     error = None
 
     def snapshot():
+        if workspace is not None:
+            workspace(machine)
         return StackObservation(
             machine.state[0] if dynamic else code,
             machine.ip,
@@ -168,10 +171,24 @@ def observed_stack(machine_type, code, stdin, steps, *, dynamic=False):
     return trace
 
 
-def agrees_stack(machine_type, oracle, code, stdin="", *, dynamic=False):
-    expected = oracle(code, stdin)
+def agrees_stack(
+    machine_type, oracle, code, stdin="", *, dynamic=False, cap=64, workspace=None
+):
+    expected = oracle(code, stdin, cap)
+    capture, retained = None, []
+    if workspace is not None:
+        model, project = workspace
+        witness, rows = WorkspaceWitness(model), iter(expected)
+
+        def capture(machine):
+            parts = project(next(rows))
+            captured = machine.workspace_snapshot()
+            witness.sample(captured, parts)
+            retained.append((captured, parts))
+
     actual = observed_stack(
-        machine_type, code, stdin, len(expected) - 1, dynamic=dynamic
+        machine_type, code, stdin, len(expected) - 1, dynamic=dynamic, workspace=capture
     )
+    assert all(captured.parts == parts for captured, parts in retained)
     assert actual == expected, (code, stdin, actual, expected)
     return expected

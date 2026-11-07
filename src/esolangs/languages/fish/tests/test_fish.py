@@ -9,8 +9,9 @@ from esolangs.languages.fish.interpreter import _advance, _Machine, prepare_mach
 from esolangs.runtime import _termination
 from esolangs.runtime._isolated import termination_result_isolated
 from esolangs.runtime.io import ScriptedIO
-from esolangs.runtime.randomness import FirstDraw, Seeded
+from esolangs.runtime.randomness import FirstDraw
 from tests.support.certification_barrier import guarded_worker
+from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.raises import assert_halts_with_hint
 
 
@@ -77,10 +78,7 @@ def test_advance_takes_its_random_draw_as_an_argument() -> None:
     assert first[2:4] == (-1, 0)
 
     source = ["x;"]
-    rng = Seeded(7)
-    before = rng._random.getstate()
-    options = {"rng": rng}
-    factory = prepare_machine(source, options)
+    rng, before, options, factory = rng_factory(prepare_machine, source)
     source[0] = ";"
     options.clear()
     first, second = factory(ScriptedIO()), factory(ScriptedIO())
@@ -92,10 +90,7 @@ def test_advance_takes_its_random_draw_as_an_argument() -> None:
     assert rng._random.getstate() != before
     assert second.snapshot() == initial
     assert not first.halted
-    with pytest.raises(TypeError, match="split text"):
-        prepare_machine("invalid", {})
-    with pytest.raises(TypeError, match="only the rng"):
-        prepare_machine([";"], {"unknown": True})
+    reject_rng_options(prepare_machine, "invalid", "split text", [";"])
 
 
 def test_advance_takes_its_input_value_as_an_argument() -> None:
