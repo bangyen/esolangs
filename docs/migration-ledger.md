@@ -1165,3 +1165,28 @@ heading witnesses satisfy their execution bounds. Installed Python 3.12.11,
 EOF after zero or one input preserves progress and agrees across native/isolated
 routes; certification imports stay blocked.
 Seven backend audits remain; catalog acceptance stays open.
+
+
+Line already uses canonical residual IDs, dependencies, projection and
+permutation. No analysis implementation needs replacement. Read schedules,
+correction opcodes, stroke extents, interior joins, return bays and layout
+selection remain native; this audit changes no executable code.
+
+All 572 artifacts execute through serialized PNGs with no retained graph
+payload: 4,312 PNG/VM/graph row comparisons retain 58,708 semantic samples.
+Default and balanced layouts cover every table through three inputs; scale two
+covers every table through two. Eighteen larger layouts execute 72 native/counted
+row pairs, including the 23,976,000-pixel anchor and sixteen-input projection.
+Five query faults change 114 bitmap-executed answers; two cost controls retain
+correct output across 256 runs while increasing actual pixel area.
+
+All 335 selected fast/medium owner tests, eight pins, three size anchors and eight
+resource/scaling nodes pass. Sixteen cases remain outside that selection;
+one support module defines no tests. Executable identity is checked against
+803b83ae8; measured acceptance scopes retain their original sixty-second caps,
+without claiming a before/after performance ratio for unchanged code.
+Installed Python 3.12.11, 3.13.15, 3.14.7 and cached 3.15.0rc1, with the declared
+image extra, each round-trip 572 artifacts and execute 344 rows from 76 programs,
+plus five guarded workers and all fault/cost controls. Native/isolated EOF
+observations agree after zero and one input; certification imports stay blocked.
+Six backend audits remain; catalog acceptance stays open.
