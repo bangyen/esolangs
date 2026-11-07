@@ -33,6 +33,7 @@ from __future__ import annotations
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.wrap import wrap_chars
 from esolangs.runtime.source_hints import with_hint
 
@@ -48,8 +49,8 @@ def malbolge(truth_table: str) -> str:
     constant on Hamming-weight classes; else ``n`` <= 16.
     """
     n = _validate_truth_table(truth_table)
-    if n <= _DIGITS_N + 1 and truth_table.count(truth_table[0]) == len(truth_table):
-        return _constant_program(n, int(truth_table[0]))
+    if n <= _DIGITS_N + 1 and (constant := constant_output(truth_table)) is not None:
+        return _constant_program(n, int(constant))
     if n > _DIGITS_N:
         if n == _DIGITS_N + 1 and (
             program := _seventeen_program(truth_table)

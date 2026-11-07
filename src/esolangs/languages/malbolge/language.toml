@@ -26,7 +26,6 @@ evidence = "docs/proofs/index.md#malbolge-bound"
 "11111110" = { commands = 6675, commands_by_row = { "0" = 6674, "1" = 6674, "2" = 6674, "3" = 6674, "4" = 6674, "5" = 6674, "6" = 6675, "7" = 6675 }, source_units = 13340 }
 
 [catalogue]
-folding_ignored = "fixed-size source; an extra input port adds no cells"
 folding_constant = "direct constant builder after all reads: 618..639 characters over n=1..17"
 
 

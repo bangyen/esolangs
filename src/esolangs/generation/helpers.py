@@ -471,6 +471,15 @@ def read_at(truth_table: str, inputs: tuple[int, ...] | list[int], n: int) -> st
     # shares one XOR base and is gathered and joined block by block.
     # Repeated slots (no caller passes any) keep the doubling verbatim.
     masks = [1 << (n - 1 - i) for i in inputs]
+    # Dropping one input needs block slices, not a gather per output row.
+    # Malbolge's 17-input projection otherwise lost over 10% generation speed.
+    if len(masks) == n - 1 and masks == sorted(set(masks), reverse=True):
+        missing = ((1 << n) - 1) ^ sum(masks)
+        if 0 < missing < 1 << n and missing.bit_count() == 1:
+            return "".join(
+                truth_table[i : i + missing]
+                for i in range(0, len(truth_table), 2 * missing)
+            )
     if len(set(masks)) != len(masks):
         originals = [0]
         for mask in masks:

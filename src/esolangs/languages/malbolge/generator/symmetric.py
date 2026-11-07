@@ -24,6 +24,7 @@ from functools import cache
 from itertools import product
 from typing import NamedTuple
 
+from esolangs.generation.lookup import symmetric_outputs
 from esolangs.languages.malbolge.interpreter import _crazy
 
 from .core import (
@@ -312,28 +313,6 @@ def _symmetric() -> _Symmetric:
     return _Symmetric(code, data, weights, labels)
 
 
-def _weight_classes(truth_table: str) -> tuple[str, ...] | None:
-    """Return the table's class values ``g[0..17]``, or ``None``.
-
-    ``None`` unless every row's answer is determined by the row's
-    Hamming weight (the count of its seventeen inputs that are set).
-    """
-    classes: list[str | None] = [None] * 18
-    for row, answer in enumerate(truth_table):
-        weight = row.bit_count()
-        if classes[weight] is None:
-            classes[weight] = answer
-        elif classes[weight] != answer:
-            return None
-    filled: list[str] = []
-    for entry in classes:
-        if entry is None:
-            # A weight no row attains (a short table): undetermined.
-            return None
-        filled.append(entry)
-    return tuple(filled)
-
-
 def _symmetric_program(truth_table: str) -> str | None:
     """Return a program for a seventeen-input weight-class table.
 
@@ -342,7 +321,9 @@ def _symmetric_program(truth_table: str) -> str | None:
     class pair: the answers for weights ``w`` and ``w + 1``, as the
     stub's input takes the total to one or the other.
     """
-    classes = _weight_classes(truth_table)
+    if len(truth_table) != 1 << 17:
+        return None
+    classes = symmetric_outputs(truth_table, 17)
     if classes is None:
         return None
     code, data, weights, labels = _symmetric()

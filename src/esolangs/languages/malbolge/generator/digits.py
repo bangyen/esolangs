@@ -59,6 +59,7 @@ from functools import cache
 from itertools import product
 from typing import NamedTuple
 
+from esolangs.generation.helpers import _depends_on, read_at
 from esolangs.languages.malbolge.descriptor import _DIGITS_N as _DIGITS_N
 from esolangs.languages.malbolge.interpreter import _crazy
 
@@ -859,32 +860,6 @@ def _digits_program(truth_table: str, n: int) -> str:
     return _render_build(truth_table, _digits(n))
 
 
-def _ignored_bit(truth_table: str) -> int | None:
-    """Return the lowest input bit ``truth_table`` ignores, or ``None``.
-
-    Bit 0 is the last input (the table is MSB first).  A table ignores
-    bit ``b`` when every block of ``2**b`` rows is followed by its twin:
-    the bit's two halves of each ``2**(b + 1)``-row block agree.
-    """
-    size = len(truth_table)
-    for bit in range(size.bit_length() - 1):
-        step = 1 << bit
-        if all(
-            truth_table[i : i + step] == truth_table[i + step : i + 2 * step]
-            for i in range(0, size, 2 * step)
-        ):
-            return bit
-    return None
-
-
-def _project(truth_table: str, bit: int) -> str:
-    """Return the table got by dropping ``bit``: each block's first half."""
-    step = 1 << bit
-    return "".join(
-        truth_table[i : i + step] for i in range(0, len(truth_table), 2 * step)
-    )
-
-
 def _seventeen_program(truth_table: str) -> str | None:
     """Return a program for a seventeen-input table ignoring an input.
 
@@ -894,13 +869,23 @@ def _seventeen_program(truth_table: str) -> str | None:
     in the gadget group that would have folded position ``p``.  Returns
     ``None`` when the table uses all seventeen inputs.
     """
-    bit = _ignored_bit(truth_table)
-    if bit is None:
+    # Preserve the last ignored stream position when several inputs are unused.
+    ignored = next(
+        (
+            i
+            for i in range(_DIGITS_N, -1, -1)
+            if not _depends_on(truth_table, 1 << (_DIGITS_N - i))
+        ),
+        None,
+    )
+    if ignored is None:
         return None
-    projected = _project(truth_table, bit)
-    if bit == 0:
+    projected = read_at(
+        truth_table, [i for i in range(_DIGITS_N + 1) if i != ignored], _DIGITS_N + 1
+    )
+    if ignored == _DIGITS_N:
         return _render_build(projected, _digits(_DIGITS_N, drain_last=True))
-    position = _DIGITS_N + 1 - bit
+    position = ignored + 1
     if position == _DIGITS_N:
         drop = (_D_GROUPS - 1, _DROP_TOKEN[4])
     else:

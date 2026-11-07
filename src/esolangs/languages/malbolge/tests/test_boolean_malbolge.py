@@ -13,7 +13,9 @@ from esolangs.languages.malbolge import generator as boolean
 from esolangs.languages.malbolge.generator import digits as _digits
 from esolangs.languages.malbolge.generator import symmetric as _symmetric
 from esolangs.languages.malbolge.generator.core import _table_char
+from esolangs.languages.malbolge.generator.isa import _first_free, _g
 from esolangs.languages.malbolge.interpreter import _XLAT1, _initial_memory, run
+from esolangs.languages.malbolge.tests.navigation_checks import check_navigation
 from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import dense, row_bits
 
@@ -97,19 +99,10 @@ def test_short_builds_end_at_their_highest_live_cell(n: int) -> None:
     assert len(boolean.malbolge("01" * 2 ** (n - 1))) == build.words
 
 
-def test_short_builds_share_one_length_above_their_tables() -> None:
-    """Every arity to thirteen shares one length, past the top table cell."""
-    lengths = {_digits._digits(n).words for n in range(1, 14)}
-    (length,) = lengths
-    assert 13114 <= length < 3**10
-
-
 @pytest.mark.parametrize("n", [14, 15])
 def test_hub_cells_pair_under_the_all_one_reswap(n: int) -> None:
-    """Each hub's seed has no 0 trit, so ``p`` under all-1 re-swaps its cells.
-
-    n=14 hubs at 19,687 did not: every second pointer cell read 0 and rows
-    28 and 29 of a random table never reached a stub.
+    """Seeds without 0 trits let ``p`` under all-1 re-swap the hub cells.
+    n=14 hubs at 19,687 read 0 on alternate pointers; random rows 28/29 missed stubs.
     """
     layout = _digits._short_layout(n)
     for seed in _digits._seed_values(layout).values():
@@ -129,24 +122,23 @@ def test_digit_readouts_are_distinct_and_clear_of_the_code() -> None:
     cells = _digits._readouts_cells()
     assert len(set(cells)) == len(cells) == 2**15
     assert (min(cells), max(cells)) == (6562, 59040)
-
-
-def test_digit_readouts_hold_three_bits_per_digit() -> None:
-    """Each two-trit digit takes eight values; the top one never ``(0, 0)``."""
+    lengths = {_digits._digits(n).words for n in range(1, 14)}
+    (length,) = lengths
+    assert 13114 <= length < 3**10
     readouts = [h - 1 for h in _digits._readouts_cells()]
     for k in range(5):
         values = {(s // 9**k) % 9 for s in readouts}
         assert len(values) == 8
     assert 0 not in {s // 9**4 for s in readouts}
-
-
-def test_held_reads_fill_groups_from_the_last() -> None:
-    """``16 - n`` reads are held, three per group from the last, leading first."""
     for n in range(1, 17):
         held = [_digits._held(n, group) for group in range(5)]
         assert sum(held) == 16 - n
         assert held == sorted(held)
         assert sum(0 < h < 3 for h in held) <= 1
+    weights = _symmetric._s_readouts()
+    assert len(weights) == 20480
+    assert (min(weights), max(weights)) == (6565, 59040)
+    assert sorted(set(weights.values())) == list(range(17))
 
 
 @pytest.mark.medium
@@ -166,10 +158,6 @@ def test_digit_builds_label_every_cell(n: int) -> None:
     for h in tables:
         for label in "01xn":
             _table_char(h, label, labels)
-
-
-def test_label_rule_admits_every_label_at_every_residue() -> None:
-    """The label rule covers all 94 residues, not only today's table cells."""
     _, _, _, labels, _ = _digits._digits(16)
     for h in range(94):
         for label in "01xn":
@@ -203,12 +191,8 @@ def test_past_sixteen_inputs_is_refused() -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", [0, 1, 5, 16])
 def test_seventeen_ignoring_an_input_builds_and_executes(bit: int) -> None:
-    """A 17-input table ignoring one input builds via its projection.
-
-    The lift drops the last input (the plain sixteen build), the
-    second-to-last (the final gadget group's own drop), a middle
-    positional input (a discarded read in its gadget group) and the
-    first input; boundary rows execute under both values of each.
+    """Drop last, next-last, middle and first inputs through their native gadgets.
+    Boundary rows execute under both values of each ignored input.
     """
     base = dense(16)
     table = "".join(
@@ -220,12 +204,8 @@ def test_seventeen_ignoring_an_input_builds_and_executes(bit: int) -> None:
 
 @pytest.mark.medium
 def test_seventeen_weight_constant_builds_and_executes() -> None:
-    """A 17-input weight-class table builds via the popcount fold.
-
-    Parity (the class pair alternates at every weight) and a seeded
-    class vector both execute at the boundary rows: the zero row,
-    every single-bit row (one per folded input and the stub's), the
-    half and full rows, and the two alternating rows.
+    """Execute parity and seeded classes at zero, single-bit, half/full boundaries
+    and the two alternating rows, covering every folded input and the stub's.
     """
     classes = "010111111000001011"
     tables = (
@@ -240,21 +220,28 @@ def test_seventeen_weight_constant_builds_and_executes() -> None:
         assert _rows(table, rows) == [table[row] for row in rows]
 
 
-def test_symmetric_readouts_cover_every_weight() -> None:
-    """The popcount build's cells name weights 0..16, clear of the code."""
-    weights = _symmetric._s_readouts()
-    assert len(weights) == 20480
-    assert (min(weights), max(weights)) == (6565, 59040)
-    assert sorted(set(weights.values())) == list(range(17))
+def test_symmetric_build_rejects_a_short_table() -> None:
+    """Short tables cannot determine all seventeen-input weight classes."""
+    assert _symmetric._symmetric_program("0110") is None
+    assert not any(hasattr(_digits, name) for name in ("_ignored_bit", "_project"))
+    assert not hasattr(_symmetric, "_weight_classes")
 
 
-def test_weight_classes_reject_a_short_table() -> None:
-    """A table too short to attain every weight is undetermined.
-
-    The generator only asks at seventeen inputs, where every weight
-    occurs; the helper's own contract still names the short case.
-    """
-    assert _symmetric._weight_classes("0110") is None
+@pytest.mark.parametrize("query", ["constant", "projection", "weights"])
+def test_analysis_fault_changes_output(
+    query: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Each shared query controls an executed answer, including both 17-bit builds."""
+    if query == "constant":
+        table = "00"
+        monkeypatch.setattr(boolean, "constant_output", lambda _: "1")
+    elif query == "projection":
+        table = "0011" * (1 << 15)
+        monkeypatch.setattr(_digits, "read_at", lambda *_: "1" * (1 << 16))
+    else:
+        table = "".join(str(row.bit_count() % 2) for row in range(1 << 17))
+        monkeypatch.setattr(_symmetric, "symmetric_outputs", lambda *_: "1" * 18)
+    assert _rows(table, [0]) != [table[0]]
 
 
 def test_seventeen_in_neither_family_and_eighteen_are_refused() -> None:
@@ -283,10 +270,8 @@ def test_boundary_rows_execute_at_every_arity(n: int) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("n", range(1, 17))
 def test_every_answer_label_executes_at_every_arity(n: int) -> None:
-    """A table of one repeated pair puts every row on one label's stubs.
-
-    Dense tables miss labels: an ``n`` operand cell overwritten by a working
-    cell passed them but failed n=14's last ``not x`` pair.
+    """Repeated pairs reach every label's stubs; dense tables missed an overwritten
+    ``n`` operand cell that failed n=14's last ``not x`` pair.
     """
     half = 2 ** (n - 1)
     rows = sorted({0, 1, half, half + 1, 2 * half - 2, 2 * half - 1} - {2 * half})
@@ -298,11 +283,7 @@ def test_every_answer_label_executes_at_every_arity(n: int) -> None:
 @pytest.mark.medium
 def test_first_free_matches_the_cell_scan() -> None:
     """The arithmetic progression equals the old first-fit scan over cells."""
-    from esolangs.languages.malbolge.tests.navigation_checks import check_navigation
-
     check_navigation()
-    from esolangs.languages.malbolge.generator.isa import _first_free, _g
-
     for value in range(33, 127):
         for lo, hi in ((34, 128), (128, 420), (150, 420)):
             for blocked in (frozenset(), frozenset(range(lo, lo + 94))):
@@ -320,16 +301,12 @@ def test_first_free_matches_the_cell_scan() -> None:
 @pytest.mark.parametrize("n", range(1, 18))
 @pytest.mark.parametrize("bit", "01")
 def test_constants_read_every_input(n: int, bit: str) -> None:
-    program = boolean.malbolge(bit * (1 << n))
+    table = bit * (1 << n)
+    program = boolean.malbolge(table)
     assert len(program) <= 639
     if n == 8:
         assert len(program) == (632 if bit == "0" else 625)
-    for stdin in ("0" * n, "1" * n, ("01" * n)[:n]):
-        io = _ReadFirstIO(stdin + "Q", n)
-        run(program, io)
-        assert io.getvalue() == bit
-        assert io.reads == n
-        assert io.input_char() == ord("Q")
+    assert _rows(table, [0, (1 << n) - 1, int(("01" * n)[:n], 2)]) == [bit] * 3
 
 
 @pytest.mark.medium
@@ -341,10 +318,5 @@ def test_seventeen_last_ignored_input_is_still_consumed(kind: str) -> None:
         else "00011011" * (1 << 13)
     )
     table = "".join(bit * 2 for bit in base)
-    program = boolean.malbolge(table)
-    for row in (*range(16), 65535, 65536, 131070, 131071):
-        io = _ReadFirstIO(f"{row:017b}" + "Q", 17)
-        run(program, io)
-        assert io.getvalue() == table[row]
-        assert io.reads == 17
-        assert io.input_char() == ord("Q")
+    rows = (*range(16), 65535, 65536, 131070, 131071)
+    assert _rows(table, rows) == [table[row] for row in rows]
