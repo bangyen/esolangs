@@ -1348,3 +1348,18 @@ or first repeated state. Graph exploration and Boolean verdicts stay unchanged;
 post-halt output finalization is not requested. Native/worker controls retain
 output, reject malformed decisions and detect disabled observation. Catalog-wide
 acceptance remains open.
+
+
+The current 951-file wheel passes the 117-runtime witness matrix on Python
+3.12.11, 3.13.15, 3.14.7 and final 3.15.0. Each version round-trips all 114
+Boolean backends, matches 116 stepped completions and one periodic boundary,
+and retains 13,778 complete accounting observations against the current source
+baseline. Native, debugger and bounded/isolated routes agree: 112 witnesses
+retain unfinished one-step observations and five complete. All 240 workers per
+version guard certification and proof imports with live positive controls;
+retired imports fail. An altered accounting width is rejected on final 3.15.
+The dependency cache contains the final interpreter without system shims.
+
+This replaces release-candidate-only installed witness evidence. It does not
+close independent component semantics, broader corpus/failure coverage, claims
+or the final retirement reconciliation. All language completion rows stay open.
