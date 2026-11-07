@@ -1215,3 +1215,24 @@ command/final workspace samples. Six guarded workers cover success, EOF-as-value
 and command-limit failures; three installed query faults fire. Certification
 imports stay blocked. Five backend audits remain; stable 3.15 final and the
 catalog-wide lifecycle/accounting acceptance stay open.
+
+
+Packlang already uses canonical dependency/projection weights and subtree IDs.
+No executable change is needed. Block offers, array writes, fill/punch/run costs,
+alias prices, alternating counters, literal spelling and token/statement packing
+remain native. Source identity is checked against 601fe5c7e; all original
+sixty-second acceptance caps hold, with no invented before/after timing ratio.
+
+Both literal policies pass all seven layouts through three inputs: 3,864
+artifacts, 29,680 native/VM row comparisons and 714,644 semantic samples.
+Thirty-two larger layouts retain 128 row comparisons, including sixteen-input
+gaps and repeated blocks. Three semantic faults change 207 answers. Disabling
+subtree sharing grows an executed witness from 2,892 to 3,621 characters across
+eighteen correct runs; two validation controls fire. All 140 owner/budget tests,
+eight pins, three size anchors and fifteen resource/scaling nodes pass.
+
+Installed Python 3.12.11, 3.13.15, 3.14.7 and cached 3.15.0rc1 each round-trip
+3,864 artifacts and execute 1,904 native/VM rows from 392 programs, plus twelve
+guarded workers and all fault/cost controls. EOF-as-value and command-limit
+failures agree across native/isolated routes; certification imports stay blocked.
+Four backend audits remain; stable 3.15 final and catalog acceptance stay open.
