@@ -27,27 +27,30 @@ class TestBack:
 
 class TestStepMachine:
     def test_step_tracks_beam_tape_and_direction(self) -> None:
-        from esolangs.languages.back.interpreter import _Machine
-
-        machine = _Machine(["-*"], ScriptedIO())
+        machine = Back(["-*"], ScriptedIO())
         assert (machine.row, machine.col, machine.a, machine.b) == (0, 0, 0, 1)
         assert machine.tape == (0,)
         machine.step()  # - flips the current bit
         assert machine.tape == (1,)
+        before = machine.workspace_snapshot()
         machine.step()  # * halts the beam
+        stopped = machine.workspace_snapshot()
+        assert stopped.parts[:6] == before.parts[:6]
+        assert stopped.parts[6:8] == (True, False)
         assert machine.halted
         assert machine.io.getvalue() == ""  # the dump is the next step's
         machine.step()  # the post-halt step prints the tape
         assert machine.io.getvalue() == "1"
+        dumped = machine.workspace_snapshot()
+        assert dumped.parts[:7] == stopped.parts[:7]
+        assert dumped.parts[7] is True
         machine.step()  # stepping again is a no-op; the dump fires once
         assert machine.io.getvalue() == "1"
         assert machine.row == 0
 
     def test_moving_left_from_cell_zero_grows_the_tape_left(self) -> None:
         """``<`` at the leftmost cell adds a zero cell there, not an underflow."""
-        from esolangs.languages.back.interpreter import _Machine
-
-        machine = _Machine(["-<-*"], ScriptedIO())
+        machine = Back(["-<-*"], ScriptedIO())
         machine.step()  # "-" flips the start cell
         machine.step()  # "<" grows a new cell 0 and lands on it
         assert (machine.cell, machine.tape) == (0, (0, 1))
@@ -61,9 +64,7 @@ class TestStepMachine:
 
     def test_moving_right_grows_the_tape_only_at_its_end(self) -> None:
         """``>`` appends a cell when it steps past the last one, once."""
-        from esolangs.languages.back.interpreter import _Machine
-
-        machine = _Machine([">>*"], ScriptedIO())
+        machine = Back([">>*"], ScriptedIO())
         assert machine.tape == (0,)
         machine.step()  # past the end: the tape grows
         assert machine.tape == (0, 0)
@@ -71,7 +72,7 @@ class TestStepMachine:
         assert machine.tape == (0, 0, 0)
 
         # Re-entering a cell that already exists leaves the tape alone.
-        revisit = _Machine(["><>*"], ScriptedIO())
+        revisit = Back(["><>*"], ScriptedIO())
         revisit.step()  # ">" grows to two cells
         assert revisit.tape == (0, 0)
         revisit.step()  # "<" back to cell 0
@@ -80,9 +81,7 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.languages.back.interpreter import _Machine
-
-    return _Machine(code, ScriptedIO())
+    return Back(code, ScriptedIO())
 
 
 class TestContract(SnapshotContract, CycleContract):

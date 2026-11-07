@@ -98,7 +98,7 @@ first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.back.generator:back"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}; equality at n = 1,2,3,6", formula = "n+5+bl(max(6n-2,T-1))+bl(3n+4)+bl(n)" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}; equality at n = 1,2,3,6", formula = "n+7+bl(max(6n-2,T-1))+bl(3n+4)+bl(n)" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.back.tests.formulas:_cells"

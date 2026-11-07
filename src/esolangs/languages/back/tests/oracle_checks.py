@@ -11,7 +11,8 @@ from tests.support import workspace_oracle
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
 _WORKSPACE = workspace_oracle.workspace_model(
-    "back-v1", "row column direction_row direction_column tape cell input_cursor"
+    "back-v2",
+    "row column direction_row direction_column tape cell stopped dumped input_cursor",
 )
 
 
@@ -70,7 +71,7 @@ def _agrees(factory, lines):
     checked = workspace_view(
         expected[1],
         _WORKSPACE,
-        lambda row: (*row[0][:6], row[-1]),
+        lambda row: (*row[0][:8], row[-1]),
         lambda m: (*m.state, m.dumped, tuple(m.memory), m.ip),
     )
     assert observed(factory, lines, "unused λ", checked) == expected, lines
@@ -147,4 +148,4 @@ def check_raw_back():
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _agrees(missing_workspace(_Machine, component), [">-* "])
-    return len(results), len(controls) + 7
+    return len(results), len(controls) + 9

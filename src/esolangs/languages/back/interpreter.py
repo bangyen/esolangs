@@ -103,7 +103,7 @@ def _advance(state: _State, code: Sequence[str], size: int) -> _State:
 
 
 _WORKSPACE_MODEL = WorkspaceModel(
-    "back-v1",
+    "back-v2",
     (
         "row",
         "column",
@@ -111,6 +111,8 @@ _WORKSPACE_MODEL = WorkspaceModel(
         "direction_column",
         "tape",
         "cell",
+        "stopped",
+        "dumped",
         "input_cursor",
     ),
 )
@@ -220,6 +222,8 @@ class _Machine:
             direction_column=self.state[3],
             tape=self.state[4],
             cell=self.state[5],
+            stopped=self.halted,
+            dumped=self.dumped,
             input_cursor=self.io.progress(),
         )
 

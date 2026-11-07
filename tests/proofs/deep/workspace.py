@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from esolangs import describe, encode_inputs, generate, instantiate
 from esolangs.debugger import make_vm
 from esolangs.registry import BY_BOOLEAN
-from esolangs.vm import _capture_workspace
+from esolangs.vm import _capture_workspace, complete_vm
 from scripts.benchmark import WrittenState
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep import deep_arities
@@ -93,6 +93,9 @@ def _written(name: str, table: str) -> int | None:
         machine = make_vm(name, source, stdin=stdin)
         state = WrittenState(_capture_workspace(machine))
         steps = run_to_answer(machine, STEP_CAP, state.sample)
+        if steps is not None and machine.dumps_on_the_post_halt_step:
+            complete_vm(machine, max_steps=0)
+            state.sample(_capture_workspace(machine))
         if steps is not None and (worst is None or state.bits > worst):
             worst = state.bits
     return worst

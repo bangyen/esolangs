@@ -87,7 +87,7 @@ class TestParameterizedBack:
             assert read_answer("Back", machine.output) == expected
             commands = max(commands, steps)
             bits = max(bits, written.bits)
-        assert (commands, bits) == (52, 24)
+        assert (commands, bits) == (52, 26)
         assert commands <= execution(6, template.source)
         assert bits <= workspace(6, template.source)
         _check_exact_preload_bounds()
@@ -191,13 +191,14 @@ class TestParameterizedBack:
                         assert machine.tape == (0,) * n + (int(bit),)
                         assert not io.getvalue()
                         machine.step()
+                        written.sample(machine.workspace_snapshot())
                         assert io.getvalue().split()[n] == bit
                         if not options:
                             assert steps + 1 == 3 * n + 2 + int(bit) - row.bit_count()
                             assert (
                                 written.bits
                                 == n
-                                + 1
+                                + 3
                                 + (3 * n + int(bit)).bit_length()
                                 + n.bit_length()
                             )
@@ -601,4 +602,6 @@ def _check_exact_preload_bounds() -> None:
             machine = make_vm("Back", source)
             state = WrittenState(_capture_workspace(machine))
             run_to_answer(machine, sample=state.sample)
+            machine.step()
+            state.sample(_capture_workspace(machine))
             assert state.bits == workspace(n, template.source)

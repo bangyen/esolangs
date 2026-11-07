@@ -30,17 +30,17 @@ def execution(n: int, program: str) -> int:
 
 
 def workspace(n: int, program: str) -> int:
-    """Global bit envelope, still attained at the original n=3/6 proof rungs.
+    """Global bit envelope including halt/dump flags, attained at n=3/6.
 
     Default area is below 16T from n=6, so beam-counter bit widths sum to at most
     n+5, within the old envelope. Small loaders cross no old bit threshold.
     """
     if _constant(n, program):
         bit = program.endswith("-*")
-        return n + 1 + (3 * n + bit).bit_length() + n.bit_length()
+        return n + 3 + (3 * n + bit).bit_length() + n.bit_length()
     return (
         n
-        + 5
+        + 7
         + max(6 * n - 2, (1 << n) - 1).bit_length()
         + (3 * n + 4).bit_length()
         + n.bit_length()

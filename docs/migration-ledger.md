@@ -1640,3 +1640,23 @@ input counters and source-command counts. Sixty-one guarded workers per
 version preserve both dialects, explicit completion, partial-output failures
 and unfinished observations. No runtime or test source changes. This bounded
 accounting scope is reviewed; language/catalog completion remains open.
+
+
+Back-v2 records stopped/dumped separately from its unchanged cycle key. A
+minimal `*` charged no bits through either phase; it now charges one for
+halt and one for the dump, stable on repeated finalization. Every generated
+halting run adds exactly two bits. Bounds and generated proof tables retain
+the original execution/area claims; resource witnesses pass through n=6.
+The deep workspace measurer now samples declared post-halt finalization.
+Owned regressions preserve all cases while reusing existing imports.
+
+All 5,195 generated/example/random programs retain execution traces across
+787,609 boundaries, including 3,359 clean halts. A mirror mutant changes
+3,040 programs. The initial monolithic trace run reached its unchanged 60 s
+cap; all priced 128-program cohorts pass. Native step speed is 0.99727 of
+baseline. Interpreter code outside workspace declaration/capture is
+AST-identical. The fresh 951-file wheel passes Python 3.12.11, 3.13.15,
+3.14.7 and final 3.15.0: three owned phase witnesses, 96 boundaries and three
+guarded workers per version, with exact 2/4/97-bit charges, held captures,
+input preservation and post-halt completion. Back's broader accounting and
+catalog acceptance remain open.
