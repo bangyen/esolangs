@@ -1575,3 +1575,29 @@ Three installed resource erasures fail; the declared semantic entry point
 retains a clean baseline and live output-fault detection. No runtime/test
 source changes. This bounded accounting scope is reviewed; completion stays
 open.
+
+
+ArrowQueue-v2 adds halt/dump flags: an empty pop changes only the former,
+and a post-halt dump changes only the latter. Each generated halting run
+writes both, adding two bits. Resource measurement now samples declared
+finalization while preserving source-command counts. This also exposes
+Stisp's rendered bit: its bounds add one. Exact resource checks pass at
+ArrowQueue n=1..6 and Stisp n=1..7; skipped finalization fails the new owned
+regression. The earlier global queue-bound investigation remains open.
+
+The independent complex-grid model matches 479 cases/3,089 raw boundaries,
+including explicit halting/sustaining rings and seventeen live controls.
+All six mutable components are written; input stays read-only. Literal
+charges are 2/1/4/6 bits; the bounded corpus peak is 71. Public line splitting
+normalizes one CR-bearing raw line; its 3,088-boundary model is checked
+separately. Two runs retain unfinished observations at 64 steps.
+
+The full 5,193-program corpus retains its execution traces: 4,097
+clean halts, 1,096 cycles, no 400-step cutoffs; a turn mutant changes 3,166.
+Native step speed ratio is 0.99976. The 951-file wheel passes Python 3.12.11,
+3.13.15, 3.14.7 and final 3.15.0: 477 native completions, 116 owned guarded
+workers and 240 catalog workers per version. All 117-runtime/13,778-sample
+catalog observations stay identical; only ArrowQueue accounting changes.
+An altered width is rejected. `just test` passes 16,260 tests in 230.6 seconds.
+This bounded accounting scope is reviewed; language/catalog completion stays
+open.
