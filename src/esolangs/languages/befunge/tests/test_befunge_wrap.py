@@ -18,7 +18,6 @@ from esolangs.languages.befunge.generator import (
     balance_befunge,
     befunge,
 )
-from tests.support.event_io import ReadFirstIO
 
 
 @pytest.mark.parametrize("inputs", [1, 4, 13])
@@ -226,8 +225,11 @@ def test_a_width_beyond_the_torus_still_fits_it(width: int) -> None:
 
 
 def _check_constants() -> None:
+    from esolangs.languages.befunge import generator
+
+    assert not hasattr(generator, "MAX_INPUTS")
     from esolangs.languages.befunge.interpreter import _Machine
-    from scripts.benchmark import WrittenState
+    from tests.support.generator_support import constant_layouts, constant_runs
 
     for n in range(1, 14):
         for bit in "01":
@@ -236,47 +238,32 @@ def _check_constants() -> None:
                 if not options:
                     assert len(program) == 2 * n + 3
                 peak = 0
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "Befunge", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "\n7\n", expected=n)
-                    machine = _Machine(program.splitlines(), io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps < 1000
-                    assert io.getvalue().strip() == bit
-                    assert io.past_end == 0
-                    assert io.input_num() == 7
+                for steps, written in constant_runs(
+                    "Befunge",
+                    lambda program, io: _Machine(program.splitlines(), io),
+                    program,
+                    n,
+                    bit,
+                    limit=1000,
+                    token=True,
+                    strip=True,
+                ):
                     if not options:
                         assert steps == 2 * n + 3
                         assert (
-                            written.bits
+                            written
                             <= 2 + (2 * n + 2).bit_length() + (2 * n - 1).bit_length()
                         )
-                        peak = max(peak, written.bits)
+                        peak = max(peak, written)
                 if not options:
                     assert (
                         peak == 2 + (2 * n + 2).bit_length() + (2 * n - 1).bit_length()
                     )
 
-            default = befunge(bit * (1 << n))
-            assert befunge(bit * (1 << n), len(default)) == default
-            balanced = balance_befunge(bit * (1 << n), default)
-            oracle = min(
-                (
-                    befunge(bit * (1 << n), width)
-                    for width in range(1, len(default) + 1)
-                ),
-                key=balance_score,
-            )
-            assert balance_score(balanced) == balance_score(oracle)
-            for width in range(1, len(default) + 1):
-                rows = befunge(bit * (1 << n), width).splitlines()
+            for source in constant_layouts(
+                befunge, balance_befunge, bit * (1 << n)
+            ).values():
+                rows = source.splitlines()
                 assert len(rows) <= 25
                 assert max(map(len, rows)) <= 80
 

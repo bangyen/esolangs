@@ -208,7 +208,12 @@ def test_public_record_is_immutable_and_the_old_import_is_retired():
     from esolangs import registry
 
     assert not hasattr(registry, "recover_setters")
-    for retired in ("esolangs.runtime._result", "esolangs.compat", "esolangs.tagged"):
+    for retired in (
+        "esolangs.runtime._result",
+        "esolangs.compat",
+        "esolangs.tagged",
+        "esolangs.generation.raster_lookup",
+    ):
         with pytest.raises(ModuleNotFoundError) as missing:
             import_module(retired)
         assert missing.value.name == retired

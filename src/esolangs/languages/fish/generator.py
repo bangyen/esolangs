@@ -37,6 +37,7 @@ from esolangs.generation.helpers import (
     input_weights,
     symmetric_weights,
 )
+from esolangs.generation.lookup import packed_cells
 from esolangs.generation.wrap import balance_score
 
 
@@ -134,12 +135,7 @@ def _packed(reads: str, truth_table: str) -> str:
     # Both the converted offset and every float coordinate must stay exact.
     if max(start + 14, start + 6 + (len(truth_table) - 1) // _WORD) > _EXACT:
         return "0" + reads + "1g68*-n;\n" + truth_table
-    cells = "".join(
-        chr(_BASE + sum((ch == "0") << j for j, ch in enumerate(word)))
-        for word in (
-            truth_table[i : i + _WORD] for i in range(0, len(truth_table), _WORD)
-        )
-    )
+    cells = packed_cells(truth_table, _WORD, offset=_BASE, complement=True)
     powers = "".join(chr(64 + (1 << bit)) for bit in range(_WORD))
     return code.ljust(start) + powers + cells
 
@@ -253,12 +249,7 @@ def _packed_folded(reads: str, truth_table: str, columns: int) -> str:
         # The packed float is no longer exact; an unpacked power-of-two fold
         # can split its integer index before converting a smaller quotient.
         return _folded(reads, truth_table, 1 << (columns.bit_length() - 1))
-    cells = "".join(
-        chr(_BASE + sum((ch == "0") << j for j, ch in enumerate(word)))
-        for word in (
-            truth_table[i : i + _WORD] for i in range(0, len(truth_table), _WORD)
-        )
-    )
+    cells = packed_cells(truth_table, _WORD, offset=_BASE, complement=True)
     powers = "".join(chr(64 + (1 << bit)) for bit in range(_WORD))
     snake: list[str] = []
     for offset in range(0, len(body), columns):

@@ -4,7 +4,7 @@ from math import isqrt
 from typing import NamedTuple
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.generation.raster_lookup import (
+from esolangs.languages.piet.generator.operations import (
     _INITIAL,
     _MULTIPLY,
     _POINTER,
@@ -16,7 +16,7 @@ from esolangs.generation.raster_lookup import (
     _Operation,
     _push,
 )
-from esolangs.generation.raster_lookup.packing import _raster_score, _shape_score, pack
+from esolangs.languages.piet.generator.packing import _raster_score, _shape_score, pack
 from esolangs.raster import Raster
 from esolangs.runtime._validate import check_width
 from esolangs.runtime.codels import BLACK

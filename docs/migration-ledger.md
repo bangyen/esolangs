@@ -29,6 +29,7 @@ Owners are workstreams, not individual contributors.
 | Unused generator-module descriptor re-exports | Registry | Retired; owned metadata consumers use descriptors; all-backend checks in `tests/api/test_certification_capability.py` reject unused imports and `LANGUAGE` exports | Independent descriptors; retain constants actually used by emitters |
 | Helpers' `AffineForm`, `affine_form`, `symmetric_outputs` re-exports | Analysis | Retired; callers migrated; negative export check in `tests/generators/test_symmetry.py` | `generation.algebraic` / `generation.lookup` |
 | Helpers' `_parity_bias` and duplicate parity recognizers | Analysis | Retired; audited backends and REFRACTRAN ablations use canonical analysis; independent affine oracle and removed-export checks | `generation.algebraic.parity_bias` |
+| `generation.raster_lookup` and its layout submodules | Analysis | Retired; Piet's generator and three owned test modules migrated; actual missing-import checks | `languages.piet.generator.operations`, `.balance` and `.packing` |
 | `brainfuck.bf_tree` and Grapheme's `_program` wrapper | Registry | Retired; owned tests and installed-package checks reject both imports | Owned `brainfuck` / `grapheme` entrypoints |
 | Quassaunt's `_short_name` clone | Analysis | Retired; size provider uses the canonical helper; owned and installed-package import refusals | `generation.helpers.short_name` |
 | `runtime._result.ExecutionResult` shim | Results | Retired; imports migrated; negative import check in `tests/api/test_run_results.py` | `esolangs.results.ExecutionResult` |
@@ -1038,3 +1039,23 @@ The ten-input Interprogck8 resource aggregate hits its unchanged 60-second
 cap; all twelve full families pass separately, retaining all 12,288 rows and
 the exact 18,878-command maximum. Other resource arities pass. Catalog
 acceptance remains open.
+
+Befunge, Fish and Piet use canonical little-endian packed cells, preserving
+partial-word complements. Piet's literal/majority classifiers and Ant's
+threshold classifier move to lookup analysis; reads, candidate prices, corridors,
+nibble interleaving, coordinate precision and codel geometry remain native.
+Piet's former generic raster package is deleted; its operations and layouts
+belong to the backend. Ant's `_near_unanimity` and Befunge's generator
+`MAX_INPUTS` exports disappear; the declared Befunge cap remains thirteen.
+
+All 2,628 artifacts, 8,552 paired rows and 434,724 semantic samples match,
+including periodic Ant evidence and Piet scale two. Six live query faults change
+50 executed answers; disabling Ant's threshold shortcut enlarges three executed
+programs. All 700 larger layouts, 191 size witnesses, 35 pins, ten anchors and
+original resource/scaling nodes retain their results. The twelve-input Ant
+parity aggregate hits its unchanged 60-second cap; separate layout checks retain
+all rows under that cap. All 60 timing comparisons pass (minimum ratio 0.9918),
+including separate cold and hot Piet construction. Installed Python 3.12–3.15
+checks execute 8,552 rows and fifteen isolated workers each with the image extra;
+retired imports fail and certification/proof imports remain blocked. Sixteen
+backend audits remain; catalog acceptance stays open.

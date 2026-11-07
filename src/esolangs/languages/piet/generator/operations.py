@@ -12,6 +12,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from esolangs.generation.helpers import essential_inputs, read_at
+from esolangs.generation.lookup import exceptional_row, majority_bias
 from esolangs.raster import Raster
 from esolangs.runtime.codels import BLACK, COLOURS
 
@@ -61,12 +62,10 @@ def _literal_product(
     Seeding with the first literal and reading from the entry block cut n=8
     strips from 39,168 to 34,560 codels (-11.76%, all 512 such tables).
     """
-    if table.count("1") == 1:
-        row, invert = table.index("1"), False
-    elif table.count("0") == 1:
-        row, invert = table.index("0"), True
-    else:
+    found = exceptional_row(table)
+    if found is None:
         return None
+    row, invert = found
     literals = {
         cell: (row >> (len(essential) - position - 1)) & 1
         for position, cell in enumerate(essential)
@@ -95,11 +94,8 @@ def _majority_count(
     table: str, essential: list[int], inputs: int
 ) -> list[_Operation] | None:
     """Count essential bits for majority or its complement, draining other reads."""
-    invert = table[0] == "1"
-    if any(
-        (bit == "1") != ((row.bit_count() > len(essential) // 2) ^ invert)
-        for row, bit in enumerate(table)
-    ):
+    invert = majority_bias(table, len(essential))
+    if invert is None:
         return None
     operations = []
     seeded = False

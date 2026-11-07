@@ -95,7 +95,7 @@ def test_piet_explicit_scale_resolves_ambiguous_image() -> None:
 
 
 def test_empty_piet_operation_path_halts() -> None:
-    from esolangs.generation.raster_lookup.balance import _emit, _plan
+    from esolangs.languages.piet.generator.balance import _emit, _plan
 
     image = _emit([], _plan([], 13, 14))
     assert run("Piet", image).output == ""

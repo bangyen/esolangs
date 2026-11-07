@@ -274,3 +274,40 @@ def measure_run(machine, *, limit=None):
         written.sample(capture())
         commands += 1
     return commands, written
+
+
+def constant_runs(
+    language, make_machine, program, n, bit, *, limit, token=False, strip=False
+):
+    """Yield steps and peak written bits, checking constant I/O and the next record."""
+    from scripts.benchmark import WrittenState
+
+    for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+        stdin = esolangs.encode_inputs(language, row_bits(row, n))
+        io = ReadFirstIO(stdin + ("\n7\n" if token else "7"), expected=n)
+        machine = make_machine(program, io)
+        written = WrittenState(machine.workspace_snapshot())
+        steps = 0
+        while not machine.halted:
+            machine.step()
+            written.sample(machine.workspace_snapshot())
+            steps += 1
+            assert steps < limit
+        assert (io.getvalue().strip() if strip else io.getvalue()) == bit
+        assert io.past_end == 0
+        assert (io.input_num() if token else io.input_char()) == (
+            7 if token else ord("7")
+        )
+        yield steps, written.bits
+
+
+def constant_layouts(build, balance, table):
+    """Check the default and exhaustive balance oracle; return every width's source."""
+    from esolangs.generation.wrap import balance_score
+
+    default = build(table)
+    assert build(table, len(default)) == default
+    layouts = {width: build(table, width) for width in range(1, len(default) + 1)}
+    oracle = min(layouts.values(), key=balance_score)
+    assert balance_score(balance(table, default)) == balance_score(oracle)
+    return layouts

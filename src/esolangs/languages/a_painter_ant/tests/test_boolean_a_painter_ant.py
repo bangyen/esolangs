@@ -189,6 +189,9 @@ def _check_constants() -> None:
 
 
 def _check_near_unanimity() -> None:
+    from esolangs.languages.a_painter_ant import generator
+
+    assert not hasattr(generator, "_near_unanimity")
     from esolangs.languages.a_painter_ant.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState

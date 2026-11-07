@@ -19,7 +19,6 @@ from esolangs.languages.fish.generator import (
 )
 from esolangs.languages.fish.interpreter import run
 from tests.support.evaluation import _evaluate
-from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import run_lines
 from tests.support.witness_tables import witnesses
 
@@ -182,7 +181,7 @@ def test_balance_folds_the_packed_row(n: int, side: int) -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.fish.interpreter import _Machine
-    from scripts.benchmark import WrittenState
+    from tests.support.generator_support import constant_layouts, constant_runs
 
     for n in range(1, 13):
         for bit in "01":
@@ -190,40 +189,23 @@ def _check_constants() -> None:
                 program = esolangs.generate("Fish", bit * (1 << n), **options).source
                 if not options:
                     assert len(program) == 2 * n + 3
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "Fish", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "7", expected=n)
-                    machine = _Machine(program.splitlines(), io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps < 2000
-                    assert io.getvalue() == bit
-                    assert io.past_end == 0
-                    assert io.input_char() == ord("7")
+                for steps, written in constant_runs(
+                    "Fish",
+                    lambda program, io: _Machine(program.splitlines(), io),
+                    program,
+                    n,
+                    bit,
+                    limit=2000,
+                    token=False,
+                    strip=False,
+                ):
                     if not options:
                         assert steps == 2 * n + 3
-                        assert (
-                            written.bits
-                            <= 7 + (2 * n + 3).bit_length() + n.bit_length()
-                        )
+                        assert written <= 7 + (2 * n + 3).bit_length() + n.bit_length()
 
-            table = bit * (1 << n)
-            default = fish(table)
-            assert fish(table, len(default)) == default
-            balanced = balance_fish(table, default)
-            oracle = min(
-                (fish(table, width) for width in range(1, len(default) + 1)),
-                key=balance_score,
-            )
-            assert balance_score(balanced) == balance_score(oracle)
-            for width in range(1, len(default) + 1):
-                source = fish(table, width)
+            for width, source in constant_layouts(
+                fish, balance_fish, bit * (1 << n)
+            ).items():
                 assert max(map(len, source.splitlines())) <= width
 
 

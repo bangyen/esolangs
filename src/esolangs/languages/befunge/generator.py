@@ -27,9 +27,10 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.lookup import packed_cells
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.befunge.descriptor import MAX_INPUTS as MAX_INPUTS
+from esolangs.languages.befunge import descriptor
 from esolangs.runtime.source_hints import with_hint
 
 #: ``6 * 8``: Befunge has no multi-digit literal, so 48 is built arithmetically.
@@ -51,7 +52,7 @@ _NATURAL_LAYOUT_MAX_COUNT = 2
 
 
 def _check_cap(n: int) -> None:
-    if n > MAX_INPUTS:
+    if n > descriptor.MAX_INPUTS:
         raise with_hint(
             GeneratorCapError(
                 "Befunge supports at most thirteen inputs on its 80x25 grid"
@@ -311,10 +312,7 @@ def _packed_befunge(truth_table: str, reads: str, width: int | None) -> str:
         + _END
     )
     folded = _fold_header(header, columns, header_rows)
-    data = "".join(
-        chr(32 + int(truth_table[base : base + 6][::-1], 2))
-        for base in range(0, len(truth_table), 6)
-    )
+    data = packed_cells(truth_table, 6, offset=32)
     folded.extend(data[base : base + columns] for base in range(0, count, columns))
     return "\n".join(folded)
 

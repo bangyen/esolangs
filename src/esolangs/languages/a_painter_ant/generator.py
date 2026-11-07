@@ -37,6 +37,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.lookup import near_unanimity
 
 __all__ = ["a_painter_ant"]
 
@@ -55,7 +56,7 @@ def _program(truth_table: str) -> str:
         return "P" + (TEMPLATE_CHAR + "S") * n + ("p" if truth_table[0] == "0" else "")
     # An ignored input walks no ``E``: the corridor is the essential inputs'.
     weights, table = input_weights(truth_table, n)
-    mirror = _westward_flipped if _near_unanimity(truth_table, n) else _flipped
+    mirror = _westward_flipped if near_unanimity(truth_table, n) else _flipped
     return min(
         (
             f(table, weights, invert=inv)
@@ -63,17 +64,6 @@ def _program(truth_table: str) -> str:
             for inv in (False, True)
         ),
         key=len,
-    )
-
-
-def _near_unanimity(table: str, n: int) -> bool:
-    """Whether all but at most one input must be one, or its negation."""
-    bit = "1" if table[0] == "0" else "0"
-    return (
-        n >= 2
-        and table.count(bit) == n + 1
-        and table[-1] == bit
-        and all(table[len(table) - 1 - (1 << i)] == bit for i in range(n))
     )
 
 

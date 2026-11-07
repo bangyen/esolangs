@@ -4,7 +4,12 @@ from bisect import bisect_right
 from itertools import pairwise, permutations, product
 
 from esolangs.generation import helpers
-from esolangs.generation.lookup import change_points, prefix_counts, symmetric_outputs
+from esolangs.generation.lookup import (
+    change_points,
+    packed_cells,
+    prefix_counts,
+    symmetric_outputs,
+)
 
 
 def test_symmetry_is_invariant_under_every_input_permutation():
@@ -21,6 +26,18 @@ def _check_permutations(n):
     orders = list(permutations(range(n)))
     for bits in product("01", repeat=1 << n):
         table = "".join(bits)
+        for width in (1, 3, 6):
+            for complement in (False, True):
+                cells = packed_cells(table, width, offset=32, complement=complement)
+                decoded = "".join(
+                    format(ord(cell) - 32, f"0{min(width, len(table) - start)}b")[::-1]
+                    for start, cell in zip(
+                        range(0, len(table), width), cells, strict=True
+                    )
+                )
+                assert decoded == (
+                    table.translate(str.maketrans("01", "10")) if complement else table
+                )
         boundaries = change_points(table)
         runs = [0, *boundaries, len(table)]
         assert boundaries == sorted(set(boundaries))

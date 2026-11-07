@@ -3,7 +3,7 @@
 Pushes three bits per entry, reads inputs into a row number, and ``roll``
 selects its chunk; integer division extracts the bit. Small lookups stay packed.
 One-hot and one-cold tables use literal products; majority and its complement
-sum and compare the essential inputs. See :mod:`esolangs.generation.raster_lookup`.
+sum and compare essential inputs; native operations own the codel encoding.
 
 Size:
     O(T) codels; n=10 parity: 6,477 codels, n=10 and: 66 codels.
@@ -16,7 +16,13 @@ Size:
 from functools import cache
 
 from esolangs.generation.helpers import _validate_truth_table, essential_inputs, read_at
-from esolangs.generation.raster_lookup import (
+from esolangs.generation.lookup import packed_cells
+from esolangs.languages.piet.generator.balance import (
+    _bounded_operations,
+    balance,
+    folded,
+)
+from esolangs.languages.piet.generator.operations import (
     _ADD,
     _DUPLICATE,
     _INITIAL,
@@ -35,12 +41,7 @@ from esolangs.generation.raster_lookup import (
     _select,
     strip,
 )
-from esolangs.generation.raster_lookup.balance import (
-    _bounded_operations,
-    balance,
-    folded,
-)
-from esolangs.generation.raster_lookup.packing import _raster_score, smallest
+from esolangs.languages.piet.generator.packing import _raster_score, smallest
 from esolangs.raster import Raster
 
 
@@ -76,10 +77,7 @@ def _chunks(
 ) -> list[_Operation]:
     """Store three bits per entry; retain the row to decode the selected bit."""
     op, push = _Operation, _push
-    values = [
-        sum(int(bit) << j for j, bit in enumerate(table[i : i + 3]))
-        for i in range(0, len(table), 3)
-    ]
+    values = list(map(ord, packed_cells(table, 3)))
     count = len(values)
     operations = []
     for value in values:

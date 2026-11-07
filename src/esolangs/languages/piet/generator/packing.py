@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from math import isqrt
 from typing import NamedTuple
 
-from esolangs.generation.raster_lookup import (
+from esolangs.languages.piet.generator.operations import (
     _INITIAL,
     _POINTER,
     _POP,
