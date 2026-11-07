@@ -1312,3 +1312,29 @@ workspace samples, plus six guarded workers and all fault/cost controls. EOF
 and command-limit failures agree across native/isolated routes; certification
 imports stay blocked. One backend audit remains; stable 3.15 final and
 catalog-wide acceptance stay open.
+
+
+Suffolk uses canonical constant recognition, dependency/projection and subtree
+IDs. Countdown transitions, NOR cells, pointer pricing and workspace admission
+stay native. All 2,072 artifact requests retain baseline bytes across seven
+layouts; 15,764 native rows execute correctly. All 119 bounded trace leaves
+retain 14,840 native/VM rows and 8,980,092 semantic samples, coupled to baseline
+source hashes; seventy-two saved baseline traces match exactly. Eight direct
+candidates cover stored/streaming sweeps, shared circuits, nonadjacent ignored
+inputs and pointer boundaries: thirty-two native/VM resource rows and twenty-four
+repeated native records pass.
+
+Four query faults change 268 answers; disabling DAG admission grows a correct
+witness from 214 to 373 characters across 512 runs. Sixteen timing contexts pass
+(minimum ratio 1.0006); eight pins, three anchors and sixteen resource/scaling
+nodes pass unchanged. Import consolidation preserves all seventeen prior
+assertions and cases while satisfying the line budget. `just test` passes in
+135.5 seconds after the initial line-budget failure.
+
+Installed Python 3.12.11, 3.13.15, 3.14.7 and cached 3.15.0rc1 each round-trip
+1,932 artifacts and execute 952 native/VM rows, 402,852 commands and 8,568
+workspace samples, plus six guarded workers and all fault/cost controls. EOF
+and command-limit routes agree; certification imports stay blocked. Every
+Boolean backend now has an analysis disposition. Final reconciliation, stable
+3.15 acceptance and catalog-wide lifecycle/accounting/evidence acceptance remain
+open.
