@@ -1660,3 +1660,23 @@ AST-identical. The fresh 951-file wheel passes Python 3.12.11, 3.13.15,
 guarded workers per version, with exact 2/4/97-bit charges, held captures,
 input preservation and post-halt completion. Back's broader accounting and
 catalog acceptance remain open.
+
+
+Back-v2's declared oracle retains 404 cases and fourteen live controls.
+Seven added witnesses cover completed 81-cell tapes grown in either
+direction, long beam walks and raw/public line normalization. Independent
+captures and charged peaks match 411 cases/16,895 raw boundaries under
+64–96-command caps. All eight mutable components are written; input remains
+read-only. Literal charges are 2/4/97/9 bits, with a 97-bit observed maximum
+rather than a global bound. Six raw-line cases change under public
+`splitlines()` preparation; their 16,986-boundary model is checked separately.
+
+Current source matches the tested 951-file wheel. Python 3.12.11, 3.13.15,
+3.14.7 and final 3.15.0 each pass 166 raw completions, 165 public completions,
+five constructor failures and 241 bounded public runs. Raw/VM/debugger
+captures retain held snapshots, post-halt stability, untouched input and
+source-command counts. Nine resource erasures and a same-state wrong-dump
+fault fail; forty-six guarded workers per version preserve post-halt results
+and unfinished/failure observations. No runtime or test source changes.
+This bounded accounting scope is reviewed; language/catalog completion
+remains open.
