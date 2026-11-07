@@ -11,15 +11,6 @@ from tests.interpreters.runner import native_runner
 out = native_runner(run)
 
 
-def test_goto_is_zero_based_and_skips_comments() -> None:
-    """Line 0 is the first instruction; blanks and ``#`` lines are not counted."""
-    assert out("# top\n\n|2|f.\n|1|p.\n|0|p.\n.x.") == "0"
-
-
-def test_unset_variable_is_zero() -> None:
-    assert out("'a'v.\n[a]p.") == "0"
-
-
 def test_goto_to_the_end_halts_and_beyond_raises() -> None:
     assert out("|1|f.") == ""
     with pytest.raises(HaltError, match="outside"):
@@ -33,6 +24,9 @@ def test_goto_to_the_end_halts_and_beyond_raises() -> None:
         ("|3|f(False)\n|1|p.\n.x.\n|2|p.", "1"),
         ("|3|f(((False)r(False))n.)\n|1|p.\n.x.\n|2|p.", "2"),
         ("|3|f(((False)r(True))n.)\n|1|p.\n.x.\n|2|p.", "1"),
+        # Line 0 is the first instruction; blanks and ``#`` lines are not counted.
+        ("# top\n\n|2|f.\n|1|p.\n|0|p.\n.x.", "0"),
+        ("'a'v.\n[a]p.", "0"),
     ],
 )
 def test_conditions_nest(code: str, printed: str) -> None:

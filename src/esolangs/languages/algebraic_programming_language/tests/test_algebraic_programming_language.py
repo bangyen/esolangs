@@ -114,6 +114,29 @@ def machine(program: str, stdin: str = "") -> _Machine:
         # The ``**`` lookahead needs both tokens, not just the first.
         pytest.param("2 * 3", "6\n", id="single_star"),
         pytest.param("2 * 3 ** 2", "18\n", id="product_power"),
+        # ``F(c) = c()`` resolves ``c`` from the frame, not the globals.
+        ("F(c) = c()\nG() = 5\nF(G)", "5\n"),
+        ("^a^ = a * 10\n^a^b^ = a + b\n^7^", "70\n"),
+        # The self-reference trick registers an empty body first.
+        ("F() = 42\nF()", "42\n"),
+        # Registering the name before parsing is what makes this parse.
+        ("x? = x & x?\n0?", "0\n"),
+        # ``-$1`` is a ``$`` under a ``neg``.
+        ("M() = {\n-$1\n9\n}\nM()", "1\n"),
+        # ``$1 + 2`` returns before the addition, and prints nothing.
+        ("M() = {\n$1 + 2\n9\n}\nM()", "1\n"),
+        # The other side of the same decision, at the same depth.
+        ("F(x) = x\nM() = {\nF(-(1 + 2))\n9\n}\nM()", "-3\n9\n"),
+        # Only a *zero* base refuses; 2 ** -1 is an ordinary fraction.
+        ("2 ** -1", "0.5\n"),
+        # ``0 ** 0`` is 1: the guard's ``right < 0`` excludes zero.
+        ("0 ** 0", "1\n"),
+        # Bracket depth counts up, not to one.
+        ("F(x) = x\nG(x) = F(F(x))\nG(4)", "4\n"),
+        # Statement advance is ``+= 1``, not a jump to a fixed index.
+        ("F(n) = {\n1\n2\n3\n4\n}\nF(0)", "1\n2\n3\n4\n"),
+        # The split keeps everything after the ``=``, sign included.
+        ("a=-3\na", "-3\n"),
     ],
 )
 def test_output(program: str, expected: str) -> None:
@@ -298,10 +321,6 @@ class TestCoveragePaths:
         with pytest.raises(HaltError):
             run_and_capture("F = 7\nF")
 
-    def test_a_parameter_holding_a_function_is_looked_up_locally(self) -> None:
-        """``F(c) = c()`` resolves ``c`` from the frame, not the globals."""
-        assert run_and_capture("F(c) = c()\nG() = 5\nF(G)") == "5\n"
-
     def test_the_evaluation_budget_is_enforced(self) -> None:
         """A runaway expression halts rather than allocating without bound."""
         machine_ = machine("F(x) = F(x + 1)\nF(0)")
@@ -330,9 +349,6 @@ class TestMutationGaps:
         """``^a^b^`` must not be matched as ``^a^`` followed by junk."""
         program = "^a^ = a * 10\n^a^b^ = a + b\n^1^2^"
         assert run_and_capture(program) == "3\n"
-
-    def test_a_shorter_pattern_still_matches_when_the_longer_cannot(self) -> None:
-        assert run_and_capture("^a^ = a * 10\n^a^b^ = a + b\n^7^") == "70\n"
 
     def test_the_snapshot_line_cursor_varies(self) -> None:
         """Two programs differing only in how far they have got differ."""
@@ -393,62 +409,18 @@ class TestMutationGaps:
         assert len(keys) == 2
         assert keys[0] != keys[1]
 
-    def test_a_definition_body_replaces_its_placeholder(self) -> None:
-        """The self-reference trick registers an empty body first."""
-        assert run_and_capture("F() = 42\nF()") == "42\n"
-
-    def test_a_recursive_operator_sees_its_own_pattern(self) -> None:
-        """Registering the name before parsing is what makes this parse."""
-        assert run_and_capture("x? = x & x?\n0?") == "0\n"
-
 
 class TestNestedTraversals:
     """The two tree walks, exercised at every branch they recurse through."""
-
-    def test_a_return_inside_a_negation_suppresses_the_print(self) -> None:
-        """``-$1`` is a ``$`` under a ``neg``."""
-        assert run_and_capture("M() = {\n-$1\n9\n}\nM()") == "1\n"
-
-    def test_a_return_in_a_binary_left_operand_suppresses_the_print(
-        self,
-    ) -> None:
-        """``$1 + 2`` returns before the addition, and prints nothing."""
-        assert run_and_capture("M() = {\n$1 + 2\n9\n}\nM()") == "1\n"
-
-    def test_a_statement_with_no_return_anywhere_still_prints(self) -> None:
-        """The other side of the same decision, at the same depth."""
-        assert run_and_capture("F(x) = x\nM() = {\nF(-(1 + 2))\n9\n}\nM()") == (
-            "-3\n9\n"
-        )
 
 
 class TestGuardsAndBoundaries:
     """The guards, boundaries, and lexer edges no earlier test pins."""
 
-    def test_a_nonzero_base_to_a_negative_power(self) -> None:
-        """Only a *zero* base refuses; 2 ** -1 is an ordinary fraction."""
-        assert run_and_capture("2 ** -1") == "0.5\n"
-
-    def test_zero_to_the_zeroth_power(self) -> None:
-        """``0 ** 0`` is 1: the guard's ``right < 0`` excludes zero."""
-        assert run_and_capture("0 ** 0") == "1\n"
-
-    def test_an_equals_after_nested_brackets_still_splits(self) -> None:
-        """Bracket depth counts up, not to one."""
-        assert run_and_capture("F(x) = x\nG(x) = F(F(x))\nG(4)") == "4\n"
-
-    def test_a_four_statement_body_runs_each_statement_once(self) -> None:
-        """Statement advance is ``+= 1``, not a jump to a fixed index."""
-        assert run_and_capture("F(n) = {\n1\n2\n3\n4\n}\nF(0)") == "1\n2\n3\n4\n"
-
     def test_arithmetic_on_a_function_names_the_value_it_refused(self) -> None:
         """The halt message carries the offending value, not a bare None."""
         with raises_message(HaltError, "expected a number, got <F/1>"):
             run_and_capture("F(x) = x\n1 + F")
-
-    def test_a_negative_right_hand_side_with_no_space(self) -> None:
-        """The split keeps everything after the ``=``, sign included."""
-        assert run_and_capture("a=-3\na") == "-3\n"
 
     def test_a_short_circuited_return_does_not_print_its_statement(self) -> None:
         """The control flag is read even when the ``$`` never evaluates."""

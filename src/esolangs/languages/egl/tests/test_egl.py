@@ -19,6 +19,8 @@ execute = partial(run_program, run, suppress_eof=False)
         pytest.param("2,1:+(->)=", "0", id="loop_tests_its_declaration_cell"),
         # ``^`` is the only mover the documented examples never exercise.
         pytest.param("10,10:v+^+=", "1", id="upward_movement"),
+        # A 5001-digit width (leading zeros) is still the valid width 1.
+        ("0" * 5000 + "1,1:+=", "1"),
     ],
 )
 def test_output(code: str, expected: str) -> None:
@@ -32,11 +34,6 @@ def test_character_input() -> None:
 
     check_raw_egl()
     assert execute("1,1:x=", "42\n") == "52"
-
-
-def test_dimensions_past_the_host_digit_limit_parse() -> None:
-    """A 5001-digit width (leading zeros) is still the valid width 1."""
-    assert execute("0" * 5000 + "1,1:+=") == "1"
 
 
 def test_a_cursorless_read_loop_is_not_a_cycle() -> None:

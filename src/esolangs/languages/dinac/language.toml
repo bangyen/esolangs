@@ -97,7 +97,6 @@ kind = "model"
 contract = "interpreter.py"
 tests = [
     "src/esolangs/languages/dinac/tests/oracle_checks.py::check_raw_dinac",
-    "src/esolangs/languages/dinac/tests/test_dinac.py::test_hello_world",
     "src/esolangs/languages/dinac/tests/test_dinac.py::test_truth_machine_one_loops_forever",
     "src/esolangs/languages/dinac/tests/test_dinac.py::test_expressions",
     "src/esolangs/languages/dinac/tests/test_dinac.py::test_runtime_errors",

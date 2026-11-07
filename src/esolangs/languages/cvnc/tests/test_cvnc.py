@@ -212,20 +212,16 @@ class TestControlFlow:
     ``ɰ̊`` falls through on 1 and repeats forever.
     """
 
-    def test_while_nonzero_runs_its_body_until_the_accumulator_empties(self) -> None:
-        """Print 3, 2, 1 and stop, decrementing once per pass."""
-        assert run_program("ci" * 3 + "ɰ̊u" + "θu" + "cə" + "ʋu") == "321"
-
-    def test_while_zero_skips_its_body_when_the_accumulator_is_set(self) -> None:
-        assert run_program("ci" * 3 + "ɰu" + "θu" + "ʋu" + "θi") == "3"
-
     @pytest.mark.parametrize(
         ("program", "expected"),
         [
             ("ci" * 3 + "ɰu" + "θu" + "ʋi" + "θi", "4"),
             ("ɰ̊u" + "θu" + "ʋi" + "θi", "1"),
+            # Print 3, 2, 1 and stop, decrementing once per pass.
+            ("ci" * 3 + "ɰ̊u" + "θu" + "cə" + "ʋu", "321"),
+            ("ci" * 3 + "ɰu" + "θu" + "ʋu" + "θi", "3"),
         ],
-        ids=["while-zero", "while-nonzero"],
+        ids=["while-zero", "while-nonzero", "countdown", "while-zero-exit"],
     )
     def test_a_skipped_loop_resumes_on_the_end_marker_s_own_vowel(
         self, program: str, expected: str

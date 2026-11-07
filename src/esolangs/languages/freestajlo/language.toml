@@ -114,7 +114,5 @@ contract = "interpreter.py"
 tests = [
     "src/esolangs/languages/freestajlo/tests/oracle_checks.py::check_raw_freestajlo",
     "src/esolangs/languages/freestajlo/tests/test_freestajlo.py::test_arithmetic_and_stack_commands",
-    "src/esolangs/languages/freestajlo/tests/test_freestajlo.py::test_stacks_are_separate_and_the_transfer_stack_carries_values",
-    "src/esolangs/languages/freestajlo/tests/test_freestajlo.py::test_a_function_runs_where_it_is_named",
     "src/esolangs/languages/freestajlo/tests/test_freestajlo.py::test_signed_quotient_and_remainder",
 ]

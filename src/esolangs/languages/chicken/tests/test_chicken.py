@@ -76,6 +76,8 @@ def test_empty_program_prints_the_pad() -> None:
         ((11, 1, 2, 11, 4), "NaN"),  # "1chicken" is not a number
         ((12, 1, 2, 1, 2), "2chickenchicken"),
         ((10 + 65, 9), "A"),
+        # lands past the array; the pad is on top
+        ((11, 13, 8), "0"),
     ],
 )
 def test_operators_follow_javascript(counts, output) -> None:
@@ -105,10 +107,6 @@ def test_load_reads_the_input_and_the_stack() -> None:
 def test_store_overwrites_a_cell_and_grows_the_array() -> None:
     assert _go((15, 10 + 20, 7, 10 + 20, 6, 0)) == "5"
     assert _go((15, 10 + 20, 7, 10 + 19, 6, 0)) == "undefined"
-
-
-def test_running_off_the_end_exits_and_prints() -> None:
-    assert _go((11, 13, 8)) == "0"  # lands past the array; the pad is on top
 
 
 def test_input_is_the_whole_stdin() -> None:

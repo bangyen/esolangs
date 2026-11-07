@@ -78,19 +78,15 @@ def _check_accumulator_arithmetic() -> None:
         ('"100{365_%#', "-65"),  # MOD keeps the dividend's sign.
         ('"3{27_;#', "-3"),  # an exact odd root of a negative value.
         ('"3{9_;#', "-3"),  # an inexact one floors away from zero.
+        # The page's "Starts at bottom right" is the last line's last non-space
+        # cell, heading right: what makes the wiki's marker-less Cat copy input.
+        # The ``/`` turns the IP up to ``#``; from the padded corner it would
+        # meet ``/`` moving left and leave downward, printing nothing.
+        ("#\n/  ", "0"),
     ],
 )
 def test_output(program: str, expected: str) -> None:
     assert run_super(program) == expected
-
-
-def test_without_a_start_marker_the_ip_starts_rightward_on_the_last_character() -> None:
-    """The page's "Starts at bottom right" is the last line's last non-space
-    cell, heading right: what makes the wiki's marker-less Cat copy input.
-    The ``/`` turns the IP up to ``#``; from the padded corner it would
-    meet ``/`` moving left and leave downward, printing nothing.
-    """
-    assert run_super("#\n/  ") == "0"
 
 
 def test_wiki_hello_world_reflects_at_both_mirrors() -> None:

@@ -82,6 +82,9 @@ class TestArgumentThreading:
                 "@@@AA@AA",
                 id="two_wildcards_expand_to_four_rows",
             ),
+            ("g { }\nmain { x = (g 0); out 0,1,0,0,0,0,0,x; }\n", "@"),
+            # ``out`` is a call like any other and yields a value.
+            ("main { x = (out 0,1,0,0,0,0,0,1); out 0,1,0,0,0,0,0,x; }", "A@"),
         ],
     )
     def test_output(self, code: str, expected: str) -> None:
@@ -127,16 +130,6 @@ class TestArgumentThreading:
 
 class TestCallResultDefaults:
     """What a call evaluates to when it returns nothing."""
-
-    def test_a_function_that_returns_nothing_evaluates_to_zero(self) -> None:
-        assert run_program("g { }\nmain { x = (g 0); out 0,1,0,0,0,0,0,x; }\n") == "@"
-
-    def test_out_evaluates_to_zero(self) -> None:
-        """``out`` is a call like any other and yields a value."""
-        assert (
-            run_program("main { x = (out 0,1,0,0,0,0,0,1); out 0,1,0,0,0,0,0,x; }")
-            == "A@"
-        )
 
 
 class TestPairedLengthsAreNotChecked:

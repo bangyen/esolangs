@@ -124,10 +124,6 @@ AND = "DEF/00 and a:00 b:00\n    IF a\n        GIVE ~~b\n    ELSE\n        GIVE 
 out = native_runner(run)
 
 
-def test_hello_world() -> None:
-    assert out(HELLO) == "Hello, World!\n"
-
-
 def test_truth_machine_prints_the_two_hex_digits() -> None:
     assert out(TRUTH, "0") == "00"
 
@@ -183,6 +179,7 @@ def test_add1_with_a_one_digit_literal_is_refused_and_both_repairs_run() -> None
         ("OUT $", "$"),
         ("OUT ~~05", "01"),
         ("OUT ~(01 = 01)", "00"),
+        (HELLO, "Hello, World!\n"),
     ],
 )
 def test_expressions(code: str, expected: str) -> None:

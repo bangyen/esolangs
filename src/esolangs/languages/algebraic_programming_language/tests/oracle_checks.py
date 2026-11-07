@@ -162,3 +162,68 @@ def check_raw_algebraic_programming_language():
     for factory in (stalled(_Machine), WrongOutput, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, (("+", 2, 3),))
+    check_continuation_accounting()
+
+
+def check_continuation_accounting():
+    from struct import pack
+
+    from esolangs.runtime import _state as ws
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+    from tests.support.workspace_oracle import missing_workspace
+
+    variant = ws.WorkspaceVariant
+    zero = variant("integer", (0,))
+    model = ws.WorkspaceModel(
+        "algebraic-programming-language-v1",
+        ("line", "globals", "frames", "input_cursor"),
+    )
+
+    def frame(site, value=zero, work=(), assign=None, locals_=()):
+        work = tuple((variant("instruction", (node,)), done) for node, done in work)
+        function = variant("function", (site,))
+        locals_ = frozenset(locals_)
+        return variant(
+            "frame", (function, 0, work, value, False, False, assign, locals_)
+        )
+
+    def activation(factory, stdin, value, width, *, operator=False):
+        header, call = ("a@", "n@") if operator else ("F(a)", "F(n)")
+        current = factory(
+            f"n\n{header}={{\na&$0\na+1\n}}\nx={call}\nx", ScriptedIO(stdin)
+        )
+        measured = WrittenState(current.workspace_snapshot())
+        for _ in range(8):
+            current.step()
+            measured.sample(current.workspace_snapshot())
+        # Postorder a=0, 0=1, $0=2, a&$0=3; caller waits for the callee.
+        expected = model.capture(
+            line=3,
+            globals=frozenset({("n", value)}),
+            frames=(
+                frame(2, value, assign="x"),
+                frame(1, work=((3, ()),), locals_=(("a", value),)),
+            ),
+            input_cursor=len(stdin),
+        )
+        assert current.workspace_snapshot() == expected
+        # Frames 2w+28, globals w+8, line 2; all four components are written.
+        assert measured.bits == 3 * width + 38 + len(stdin).bit_length()
+
+    for number, stdin in ((2, "2"), (2.0, "2.0")):
+        floating = isinstance(number, float)
+        value = variant(
+            "floating" if floating else "integer",
+            (pack("!d", number) if floating else number,),
+        )
+        for operator in (False, True):
+            activation(_Machine, stdin, value, 64 if floating else 2, operator=operator)
+    for component in model.components:
+        with pytest.raises(AssertionError):
+            activation(
+                missing_workspace(_Machine, component),
+                "2",
+                variant("integer", (2,)),
+                2,
+            )
