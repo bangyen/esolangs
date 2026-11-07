@@ -41,6 +41,7 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 
@@ -165,8 +166,8 @@ def thue(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     limit = _width_limit(width)
     constant = None
-    if len(set(truth_table)) == 1:
-        constant = _constant(n, truth_table[0], limit)
+    if (bit := constant_output(truth_table)) is not None:
+        constant = _constant(n, bit, limit)
         if limit is None or n > 3 or grid_width(constant) <= limit:
             return constant
     tables = _tables(truth_table)
@@ -212,10 +213,10 @@ def _fold(truth_table: str) -> tuple[str, str, tuple[str, ...]] | None:
     table = read_at(truth_table, essential, n)
     half = len(table) // 2
     low, high = table[:half], table[half:]
-    if len(set(high)) == 1:
-        kept, constant, keep = low, high[0], "0"
-    elif len(set(low)) == 1:
-        kept, constant, keep = high, low[0], "1"
+    if (constant := constant_output(high)) is not None:
+        kept, keep = low, "0"
+    elif (constant := constant_output(low)) is not None:
+        kept, keep = high, "1"
     else:
         return None
     other = "1" if keep == "0" else "0"

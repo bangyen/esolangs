@@ -1087,3 +1087,20 @@ turning them into a false divergence verdict. Native, Boolean, proof and result
 routes raise the same `HaltError`; valid halts and closed cycles remain accepted.
 Constructor, wire and worker-envelope controls retain partial-output assertions.
 Branching IO observation acceptance remains open.
+
+
+Thue uses canonical constants at the root and folded halves, alongside its
+canonical projection, subtree and residual queries. Bit-reversed entry emission,
+pair-expansion symbols, chunk names and native rule/layout prices remain owned.
+The parent replay binds all archived callbacks, including balancing: 1,932
+artifacts, 12,720 paired rows and 293,472 semantic samples match exactly.
+
+All 336 larger layouts and 1,344 executions retain bytes, answers, unique
+rewrites and input progress, including every twelve-input row leaf from the
+original timed-out aggregate. Sixty timing contexts pass (minimum ratio 0.9949).
+Six semantic faults change 263 executed answers; fifteen cost controls enlarge
+correct programs, including three actual subtree-sharing candidates. All eight
+pins, three size anchors and seven resource/scaling nodes pass unchanged.
+Installed Python 3.12–3.15 checks each execute 6,360 rows, five guarded workers
+and all fault controls; certification/proof imports stay blocked. Ten backend
+audits remain; catalog acceptance stays open.

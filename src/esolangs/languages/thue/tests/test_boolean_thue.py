@@ -2,6 +2,7 @@
 
 import itertools
 import random
+from unittest.mock import patch
 
 import pytest
 
@@ -19,10 +20,8 @@ from tests.support.witness_tables import witnesses
 
 
 def test_short_tree_interns_constant_residuals() -> None:
-    from esolangs.languages.thue.generator import _thue_short_tree
-
     _check_constants()
-    program = _thue_short_tree("0" * 8)
+    program = boolean._thue_short_tree("0" * 8)
     assert len(program.splitlines()) == 13
     for row in range(8):
         _execute("0" * 8, row, 1)
@@ -146,8 +145,6 @@ def test_thue_answers_the_same_under_every_draw(table: str) -> None:
 @pytest.mark.medium
 def test_an_ignored_input_reads_without_halving() -> None:
     """Its round is an ``S`` in the queue: read, delete, nothing to draw."""
-    from esolangs.languages.thue.interpreter import _Machine, _matches
-
     inner = "".join(str((row * 73 + row // 3) & 1) for row in range(64))
     # Seven inputs, the third ignored: 64 entries, not 128.
     table = "".join(inner[row >> 5 << 4 | row & 15] for row in range(128))
@@ -167,8 +164,6 @@ def test_an_ignored_input_reads_without_halving() -> None:
 @pytest.mark.medium
 def test_thue_contracted_heads_keep_a_unique_rewrite() -> None:
     """Ready and waiting symbols leave exactly one rewrite before each read."""
-    from esolangs.languages.thue.interpreter import _Machine, _matches
-
     assert max(map(len, boolean.thue("0110", 1).splitlines())) == 7
     for n in range(1, 4):
         for value in range(1 << (1 << n)):
@@ -187,8 +182,6 @@ def test_thue_contracted_heads_keep_a_unique_rewrite() -> None:
 @pytest.mark.medium
 def test_thue_fixed_width_chunk_names_expand_before_reading() -> None:
     """The marker alphabet excludes every table and control symbol."""
-    from esolangs.languages.thue.interpreter import _Machine, _matches
-
     for n in range(4, 7):
         table = "".join(
             str((row * 17 + row // 3).bit_count() % 2) for row in range(1 << n)
@@ -218,14 +211,12 @@ def test_narrow_layouts_drop_ignored_inputs() -> None:
 
 def test_a_constant_half_is_stored_once_and_stays_deterministic() -> None:
     """The fold's one-entry collapse still reads every line, one rule a step."""
-    from esolangs.languages.thue.generator import _fold, _thue_layout
-
     half = "01101001"
     tables = (half + "0" * 8, "1" * 8 + half, half[:4] * 2 + "1" * 8)
     for table, width in itertools.product(tables, (None, 8)):
-        fold = _fold(table)
+        fold = boolean._fold(table)
         assert fold is not None
-        program = _thue_layout(*fold, width)
+        program = boolean._thue_layout(*fold, width)
         n = len(table).bit_length() - 1
         for row in range(len(table)):
             io = ScriptedIO("\n".join(f"{row:0{n}b}"))
@@ -259,30 +250,24 @@ def _swept_balance(table: str, default: str) -> str:
     from esolangs.generation.helpers import grid_width
     from esolangs.generation.token_balance import CELL_ASPECT
     from esolangs.generation.wrap import balance_score
-    from esolangs.languages.thue.generator import (
-        _QUEUED_RULES,
-        _RULES,
-        _alphabet,
-        _marker_digits,
-        _tables,
-        _thue_layout,
-        thue,
-    )
 
-    plain = min((_thue_layout(*layout, None) for layout in _tables(table)), key=len)
+    plain = min(
+        (boolean._thue_layout(*layout, None) for layout in boolean._tables(table)),
+        key=len,
+    )
     candidates = [default, plain, thue(table, 1)]
     cap = max(grid_width(default), grid_width(plain))
-    for tab, rounds, extra in _tables(table):
+    for tab, rounds, extra in boolean._tables(table):
         size = len(tab)
-        digits = _marker_digits(size, len(_alphabet(rounds, extra)))
-        base = _RULES if rounds is None else _QUEUED_RULES
+        digits = boolean._marker_digits(size, len(boolean._alphabet(rounds, extra)))
+        base = boolean._RULES if rounds is None else boolean._QUEUED_RULES
         rules = len(base.splitlines()) + len(extra)
         offset = CELL_ASPECT * rules - 2 * digits
         root = (offset + isqrt(offset * offset + 4 * CELL_ASPECT * size)) // 2
         overhead = digits + max(digits, 2) + 3
         maximum = max(digits, cap - 1 - overhead)
         candidates.extend(
-            _thue_layout(
+            boolean._thue_layout(
                 tab, rounds, extra, min(maximum, max(digits, payload)) + overhead
             )
             for payload in range(root - CELL_ASPECT, root + 2 * CELL_ASPECT + 1)
@@ -350,12 +335,6 @@ def test_an_exactly_repeated_block_builds_below_the_block_alone() -> None:
 @pytest.mark.medium
 def test_packed_layouts_expand_before_reading_and_stay_deterministic() -> None:
     """Plain, queued, folded and shared layouts pack pairs yet draw nothing."""
-    from esolangs.languages.thue.generator import (
-        _is_packed,
-        _shared_layout,
-        _tables,
-        _thue_layout,
-    )
 
     rng = random.Random(4)
     plain = "".join(rng.choice("01") for _ in range(128))
@@ -370,11 +349,11 @@ def test_packed_layouts_expand_before_reading_and_stay_deterministic() -> None:
     for table in tables:
         n = len(table).bit_length() - 1
         programs = []
-        for layout in _tables(table):
-            if _is_packed(layout[2]):
+        for layout in boolean._tables(table):
+            if boolean._is_packed(layout[2]):
                 kinds.add("fold" if len(layout[2]) > 4 else layout[1] is not None)
-                programs.append(_thue_layout(*layout, None))
-                if (shared := _shared_layout(*layout, n)) is not None:
+                programs.append(boolean._thue_layout(*layout, None))
+                if (shared := boolean._shared_layout(*layout, n)) is not None:
                     kinds.add("shared")
                     programs.append(shared)
         for program in programs:
@@ -389,9 +368,6 @@ def test_packed_layouts_expand_before_reading_and_stay_deterministic() -> None:
 
 
 def _check_constants() -> None:
-    import esolangs
-    from esolangs.languages.thue.interpreter import _Machine, _matches
-    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     for n in range(1, 13):
@@ -422,10 +398,8 @@ def _check_constants() -> None:
                         assert written.bits == 8 * (n + 2) + (2 * n).bit_length()
 
     # Two-character expansion names must not overlap a queue/control marker.
-    from esolangs.languages.thue.generator import _constant
-
     n = 50
-    program = _constant(n, "0", 1)
+    program = boolean._constant(n, "0", 1)
     assert max(map(len, program.splitlines())) == 8
     io = ScriptedIO("1\n" * n + "7\n")
     machine = _Machine(program, io)
@@ -444,10 +418,8 @@ def test_single_entry_chunks_sweep_before_reading() -> None:
     for n, width, bit in (
         (n, w, b) for n, w in ((1, 1), (3, 7), (12, 13)) for b in "01"
     ):
-        from esolangs.languages.thue.generator import _thue_layout
-
         for limit in (None, width):
-            program = _thue_layout(bit, "S" * n, (), limit)
+            program = boolean._thue_layout(bit, "S" * n, (), limit)
             for input_bit in "01":
                 io = ScriptedIO(f"{input_bit}\n" * n + "7\n")
                 machine = _Machine(program, io, Seeded(0))
@@ -458,3 +430,32 @@ def test_single_entry_chunks_sweep_before_reading() -> None:
                     steps += 1
                     assert steps < 1000
                 assert (io.getvalue(), io.reads, io.input_str()) == (bit, n, "7")
+
+
+def test_constant_analysis_reaches_native_answers() -> None:
+    from esolangs.generation.lookup import constant_output
+
+    assert boolean.constant_output is constant_output
+    for table, row, folded in (
+        ("0000", 2, False),
+        ("01101001" + "0" * 8, 10, True),
+        ("1" * 8 + "01101001", 2, True),
+    ):
+
+        def broken(table: str) -> str | None:
+            bit = constant_output(table)
+            return None if bit is None else str(1 - int(bit))
+
+        with patch.object(boolean, "constant_output", side_effect=broken) as fault:
+            fold = boolean._fold(table)
+            assert not folded or fold is not None
+            program = (
+                boolean._thue_layout(*fold, None)
+                if fold is not None and folded
+                else thue(table)
+            )
+        assert fault.called
+        n = len(table).bit_length() - 1
+        io = ScriptedIO("\n".join(f"{row:0{n}b}"))
+        run_thue(program, io, Seeded(row))
+        assert (io.getvalue(), io.reads) == (str(1 - int(table[row])), n)
