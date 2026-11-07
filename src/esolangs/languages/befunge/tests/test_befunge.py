@@ -95,6 +95,7 @@ def test_bridge_skips_the_next_cell() -> None:
     assert run_befunge("5#9.@") == "5 "
 
 
+@pytest.mark.medium
 def test_put_writes_and_get_reads_the_grid() -> None:
     """``p`` pops y, x, v and writes a byte; ``g`` reads one back."""
     from esolangs.languages.befunge.tests.oracle_checks import check_raw_befunge

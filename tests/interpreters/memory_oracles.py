@@ -155,7 +155,11 @@ class _Befunge:
         digits = token[1:] if token.startswith(("+", "-")) else token
         if not digits or any(c not in "0123456789" for c in digits):
             raise _NumberError
-        return int(token)
+        value = 0
+        for start in range(0, len(digits), 9):
+            chunk = digits[start : start + 9]
+            value = value * 10 ** len(chunk) + int(chunk)
+        return -value if token.startswith("-") else value
 
     def arithmetic(self, command):
         a = self.pop()

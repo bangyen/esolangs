@@ -1751,3 +1751,33 @@ comparison preserves every non-import statement and binding origin; native
 imports move only where the same module was already imported unconditionally.
 No cases or assertions are removed. This bounded accounting scope is reviewed;
 language/catalog completion remains open.
+
+
+Befunge's independent byte-torus model now checks all nine workspace
+components: 1,068 cases/26,702 boundaries under 32-command caps, retaining
+all 1,048 original Cartesian cases and existing direction/range witnesses.
+Nine erasures and both original semantic controls fail. Chunked ASCII
+accumulation models 5,000-digit input without production parsing helpers.
+Halt advances the captured cursor. Equal-content and changed `p` writes
+charge 16 and 16,017 bits respectively, including different stack peaks;
+new backing storage alone never charges the grid. Other literal anchors
+are 2/4/11 bits. All nine components are written; the 16,163-bit observed
+scripted maximum is not a global bound.
+
+Current runtime source matches the tested 951-file wheel. Python 3.12.11,
+3.13.15, 3.14.7 and final 3.15.0 each pass an independently seeded
+1,078-case/27,817-boundary audit: 205 completions, 63 execution failures,
+24 constructor failures and 786 bounded runs. The model draws 148 actual
+seeded directions, including repeated draws across a full `?` torus.
+Raw/VM/debugger checks retain every boundary snapshot, preserve failing-step
+state and compare successful-read, past-end and consumed-character counters.
+Constructor metadata distinguishes unavailable VM/debugger observations
+from native zero-IO results. Ninety-six guarded workers per version preserve
+native/isolated results, partial output and unfinished observations. The
+seeded observed maximum is 16,017 bits, not a global bound.
+
+Independent review tightened constructor and held-snapshot checks. The
+expanded source check exceeded the fast limit alone (1.02 seconds), so its
+existing hook and admission helper use the medium band; no cases, assertions
+or limits change. This bounded accounting scope is reviewed; broader
+language/catalog completion remains open.
