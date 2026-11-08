@@ -8,10 +8,9 @@ import pytest
 
 from esolangs.languages.fackward.interpreter import Block, _Machine
 from tests.interpreters.oracle_support import observed, stalled
-from tests.support import workspace_oracle
-from tests.support.workspace_oracle import workspace_view
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = workspace_oracle.workspace_model(
+_WORKSPACE = workspace.workspace_model(
     "fackward-v1", "forward backward active swapped stopped input_cursor"
 )
 
@@ -115,7 +114,7 @@ def _check(factory, program, stdin):
         front, rear, active, swapped, *_ = machine.snapshot()
         return tuple(map(_value, front)), tuple(map(_value, rear)), active, swapped
 
-    checked = workspace_view(
+    checked = workspace.workspace_view(
         expected[1], _WORKSPACE, lambda row: (*row[0], row[1], row[-1]), state
     )
     assert observed(factory, _source(program), stdin, checked, cap=24) == expected, (
@@ -134,4 +133,4 @@ def check_raw_fackward():
 
     with pytest.raises(AssertionError):
         _check(stalled(_Machine), ("H",), "")
-    workspace_oracle.check_erasures(_WORKSPACE, _check, _Machine, (1, 2, "+"), "")
+    workspace.check_erasures(_WORKSPACE, _check, _Machine, (1, 2, "+"), "")

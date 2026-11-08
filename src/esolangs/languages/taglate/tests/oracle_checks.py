@@ -87,10 +87,9 @@ def _model(seed, tokens, stdin):
 
 
 def _check(factory, seed, tokens, stdin):
-    expected = _model(seed, tokens, stdin)
     code = [seed, "g?qq".join(tokens)]
     workspace_agrees(
-        expected,
+        _model(seed, tokens, stdin),
         (factory, code, stdin),
         (_WORKSPACE, lambda row: (*row[0], row[-1])),
         lambda m: (m.queue, m.ind),

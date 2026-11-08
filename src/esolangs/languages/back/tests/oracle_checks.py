@@ -6,10 +6,9 @@ import random
 import pytest
 
 from esolangs.languages.back.interpreter import _Machine
-from tests.support import workspace_oracle
-from tests.support.workspace_oracle import check_erasures
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = workspace_oracle.workspace_model(
+_WORKSPACE = workspace.workspace_model(
     "back-v2",
     "row column direction_row direction_column tape cell stopped dumped input_cursor",
 )
@@ -65,7 +64,7 @@ def _model(lines):
     return None, trace
 
 
-_agrees = workspace_oracle.source_checker(
+_agrees = workspace.source_checker(
     _model,
     (_WORKSPACE, lambda row: (*row[0][:8], row[-1])),
     lambda m: (*m.state, m.dumped, tuple(m.memory), m.ip),
@@ -140,5 +139,5 @@ def check_raw_back():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, lines)
-    check_erasures(_WORKSPACE, lambda f: _agrees(f, [">-* "]), _Machine)
+    workspace.check_erasures(_WORKSPACE, lambda f: _agrees(f, [">-* "]), _Machine)
     return len(results), len(controls) + 9

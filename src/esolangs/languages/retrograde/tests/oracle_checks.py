@@ -66,7 +66,6 @@ def _model(source):
 
 
 def _agrees(factory, source):
-    expected = _model(source)
     ones, previous = set(), 0
 
     def parts(row):
@@ -85,7 +84,7 @@ def _agrees(factory, source):
         return pc, pointer, direction, left, right, printed, row[-1]
 
     return workspace.agrees(
-        expected,
+        _model(source),
         (factory, source, "unused λ"),
         (_WORKSPACE, parts),
         lambda m: (*m.state[:3], tuple(m.memory), m.printed, m.ip),

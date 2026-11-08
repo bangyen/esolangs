@@ -14,12 +14,11 @@ import pytest
 import esolangs
 from esolangs.languages.dig.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
-from tests.interpreters.oracle_support import observed, overread, stalled
-from tests.support import workspace_oracle
+from tests.interpreters.oracle_support import observed, reject_faults
+from tests.support import workspace_oracle as workspace
 from tests.support.model_input import token_span
-from tests.support.workspace_oracle import check_erasures, workspace_view
 
-_WORKSPACE = workspace_oracle.workspace_model(
+_WORKSPACE = workspace.workspace_model(
     "dig-v2", "row column direction mole number grid input_cursor input_reads stopped"
 )
 
@@ -168,7 +167,7 @@ def _parts(row):
 
 def _check(factory, lines, stdin="unused"):
     expected = _model(lines, stdin)
-    checked = workspace_view(expected[1], _WORKSPACE, _parts, _view)
+    checked = workspace.workspace_view(expected[1], _WORKSPACE, _parts, _view)
     assert observed(factory, lines, stdin, checked, cap=48) == expected, (lines, stdin)
 
 
@@ -209,15 +208,13 @@ def check_raw_dig():
             super().step()
             self.mole += 1
 
-    for factory in (stalled(_Machine), WrongValue, overread(_Machine)):
-        with pytest.raises(AssertionError):
-            _check(factory, [">$2:@", " 2"])
-    check_erasures(_WORKSPACE, lambda f: _check(f, [">$2:@", " 2"]), _Machine)
+    reject_faults(_check, _Machine, WrongValue, [">$2:@", " 2"])
+    workspace.check_erasures(_WORKSPACE, lambda f: _check(f, [">$2:@", " 2"]), _Machine)
 
     latch = _model(["@"], "unused")[1]
     assert _parts(latch[0])[:-1] == _parts(latch[1])[:-1]
     assert [row[1] for row in latch[:2]] == [False, True]
-    assert workspace_oracle.charged_bits(_WORKSPACE, map(_parts, latch)) == 1
+    assert workspace.charged_bits(_WORKSPACE, map(_parts, latch)) == 1
     _check(_Machine, ["@"])
 
     for token in (

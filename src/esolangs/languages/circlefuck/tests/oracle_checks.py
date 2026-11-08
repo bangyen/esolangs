@@ -73,10 +73,9 @@ def _model(initial, stdin):
 
 
 def _check(factory, initial, stdin):
-    expected = _model(initial, stdin)
     source = "".join(f"\\x{byte:02x}" for byte in initial)
     workspace.agrees(
-        expected,
+        _model(initial, stdin),
         (factory, source, stdin),
         (_WORKSPACE, lambda row: (row[0][2], row[0][0], row[0][1], row[-1], row[0][3])),
         lambda vm: vm.state,

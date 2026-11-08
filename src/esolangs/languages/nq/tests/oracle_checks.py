@@ -147,9 +147,8 @@ def _model(source, stdin, binding):
 
 
 def _agrees(factory, source, stdin, binding):
-    expected = _model(source, stdin, binding)
     return workspace.agrees(
-        expected,
+        _model(source, stdin, binding),
         (partial(factory, guard_binding=binding), source, stdin),
         (_WORKSPACE, lambda row: (*row[0][:5], row[-1])),
         lambda m: (*m.state, tuple(m.memory), m.ip),

@@ -81,9 +81,8 @@ def _model(source, stdin, cap=16):
 
 
 def _agrees(factory, source, stdin, cap=16):
-    expected = _model(source, stdin, cap)
     return workspace.agrees(
-        expected,
+        _model(source, stdin, cap),
         (factory, source, stdin),
         (_WORKSPACE, lambda row: (row[0][0], row[1], row[0][1])),
         lambda m: (m.text, m.rendered, m.ip),

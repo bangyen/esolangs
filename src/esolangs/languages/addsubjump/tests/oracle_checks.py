@@ -6,10 +6,9 @@ import pytest
 
 from esolangs.languages.addsubjump.interpreter import _Machine
 from tests.interpreters.oracle_support import observed
-from tests.support import workspace_oracle
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = workspace_oracle.workspace_model(
+_WORKSPACE = workspace.workspace_model(
     "addsubjump-v1", "cells extent instruction zero negative flag_update input_cursor"
 )
 
@@ -87,7 +86,7 @@ def check_raw_addsubjump():
         expected = _model(words, "A")
         with pytest.raises(AssertionError):
             observed(
-                missing_workspace(_Machine, component),
+                workspace.missing_workspace(_Machine, component),
                 " ".join(map(str, words)),
                 "A",
                 _workspace_view(expected[1], state),
@@ -112,7 +111,7 @@ def check_raw_addsubjump():
 
 
 def _workspace_view(trace, view):
-    return workspace_view(
+    return workspace.workspace_view(
         trace,
         _WORKSPACE,
         lambda row: (

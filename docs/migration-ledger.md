@@ -2998,3 +2998,47 @@ Actual extra reads before native output reject in both old and shared guards,
 including empty writes; returned-object identity and tagged native exceptions
 remain intact. Tests/source stay 115,817/115,818; 38 accounting rows and all
 117 completion rows remain open.
+
+
+S*bleq's existing independent sparse-memory model now exposes its stopped
+latch alongside memory, instruction and input progress. All 773 cases, six
+native variants, cap12, the original output control and None return remain;
+four erasures add controls. Native/IO traces retain byte-identical 2,328 steps
+and 3,101 captures; the old negative retains four native calls. Exposing the
+existing model flag requires no second engine or private compatibility wrapper.
+
+Installed Python 3.12.11–final 3.15.0 passes all thirty-six leaves. Raw and
+native preparation each retain all 773 cases/3,101 boundaries, peak34 bits;
+765 finite native cases also run ordinarily and eight stay bounded. Actual
+VM/debug/public routes retain exactly the 133 registered-default cases,
+579 boundaries per stepped route, peak30 bits; 131 finite public cases run
+ordinarily and two stay bounded. The other 640 cases use native variants that
+public settings cannot express; they are never counted as public coverage.
+A source-only census of all 117 preparation declarations finds this sole
+unregistered semantic option pair, store/indirect. Public variant registration
+requires a separate whole generator migration; lifecycle/completion stays open.
+
+Sixty-four live masks and sixteen consistent reductions retain exact peaks.
+The default mask witness charges29 bits; late None loses zero for memory,
+input and stopped, while instruction loses one. A negative pointer write
+retains stopped=True outside memory; the nondefault erasure witness changes
+all four fields and charges27 bits. Sixty-four physical writer routes retain
+read-before-write/control-after-write behavior: failure leaves the instruction
+active; retry reads the next character or EOF0, then advances. Repeated
+output-before-negative-branch errors preserve control while accumulating IO.
+Two readonly-choice corruptions, detached factory options, nine unsupported
+settings/input/worker refusals and seven guarded workers pass. Broader parsing,
+huge/cell-limit inputs and arbitrary callbacks remain open.
+
+Thirteen complete funding scopes save fifteen lines against the fifteen-line
+bridge. Five sole expected aliases disappear, eight duplicate helper imports
+use their existing namespace, and Dig reuses the existing rejection helper.
+Every model, assertion, case, control order, cap and return remains. Dig's one
+shared literal list replaces three equal fresh lists; model/native copies
+preserve logical data without claiming source-allocation identity. Typed traces
+retain 9,646 constructor attempts, 103,596 native steps, 122,082 captures,
+102,037 meter samples, 14,443 IO events, 124 rejections and 96 public generator
+calls byte-identically. The codec retains all 1+i code fields, offset arrays
+and function identities. Correct-native, tagged-exception, returned-identity
+and codec-corruption controls pass. Tests/source remain 115,817/115,818;
+37 accounting rows and all 117 completion rows remain open.

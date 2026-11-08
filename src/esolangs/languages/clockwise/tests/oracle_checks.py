@@ -6,10 +6,9 @@ import random
 import pytest
 
 from esolangs.languages.clockwise.interpreter import _Machine
-from tests.support import workspace_oracle
-from tests.support.workspace_oracle import missing_workspace
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = workspace_oracle.workspace_model(
+_WORKSPACE = workspace.workspace_model(
     "clockwise-v1",
     "row column direction accumulator output_bits input_bits input_cursor",
 )
@@ -86,7 +85,7 @@ def _model(lines, stdin):
     return error, trace
 
 
-_agrees = workspace_oracle.checker(
+_agrees = workspace.checker(
     _model,
     (_WORKSPACE, lambda row: (*row[0][:6], row[-1])),
     lambda m: (*m.state, tuple(m.memory), m.ip),
@@ -170,5 +169,5 @@ def check_raw_clockwise():
             _agrees(Fault, lines, stdin)
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), ["+S"], "x")
+            _agrees(workspace.missing_workspace(_Machine, component), ["+S"], "x")
     return len(results), len(controls) + 7

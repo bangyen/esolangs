@@ -6,10 +6,9 @@ import pytest
 
 from esolangs.languages.hot.interpreter import _Machine
 from tests.interpreters.oracle_support import observed
-from tests.support import workspace_oracle
-from tests.support.workspace_oracle import workspace_view
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = workspace_oracle.workspace_model(
+_WORKSPACE = workspace.workspace_model(
     "hot-v1", "expression pending_bit input_ended output_odd stopped input_cursor"
 )
 
@@ -127,7 +126,7 @@ def _model(source, stdin):
 def _check(factory, code, stdin):
     expected = _model(code, stdin)
 
-    checked = workspace_view(
+    checked = workspace.workspace_view(
         expected[1],
         _WORKSPACE,
         lambda row: (
@@ -165,4 +164,4 @@ def check_raw_hot():
 
     with pytest.raises(AssertionError):
         _check(MissingMarker, "A K", "0")
-    workspace_oracle.check_erasures(_WORKSPACE, _check, _Machine, "A K", "0")
+    workspace.check_erasures(_WORKSPACE, _check, _Machine, "A K", "0")

@@ -5,7 +5,11 @@ from itertools import product
 import pytest
 
 from esolangs.languages.s_bleq.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model(
+    "s-bleq-v1", "memory instruction input_cursor stopped"
+)
 
 
 def _model(words, stdin, store, *, indirect):
@@ -18,7 +22,7 @@ def _model(words, stdin, store, *, indirect):
     trace = []
     for step in range(13):
         halted = stopped or not 0 <= ip <= size - 3
-        view = ip, tuple(cells.get(i, 0) for i in range(size))
+        view = ip, tuple(cells.get(i, 0) for i in range(size)), stopped
         trace.append((view, halted, output, cursor, cursor))
         if error:
             break
@@ -78,9 +82,14 @@ def _check(factory, words, stdin, store, *, indirect):
         return factory(code, io, store, indirect=indirect)
 
     code = " ".join(map(str, words))
-    assert observed(
-        machine, code, stdin, lambda m: (m.ip, tuple(m.memory)), cap=12
-    ) == _model(words, stdin, store, indirect=indirect), (words, stdin, store, indirect)
+    workspace.agrees(
+        _model(words, stdin, store, indirect=indirect),
+        (machine, code, stdin),
+        (_WORKSPACE, lambda row: (row[0][1], row[0][0], row[-1], row[0][2])),
+        lambda m: (m.ip, tuple(m.memory), m._halted),
+        cap=12,
+        context=(words, stdin, store, indirect),
+    )
 
 
 def check_raw_s_bleq():
@@ -99,3 +108,9 @@ def check_raw_s_bleq():
 
     with pytest.raises(AssertionError):
         _check(SuppressedOutput, [-3, -2, 0], "q", "a", indirect=False)
+
+    workspace.check_erasures(
+        _WORKSPACE,
+        lambda f: _check(f, [-2, 6, 0, 7, 6, 8, 0, 0, -1], "\x02", "b", indirect=False),
+        _Machine,
+    )
