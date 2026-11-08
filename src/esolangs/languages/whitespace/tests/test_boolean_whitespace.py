@@ -11,7 +11,7 @@ from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.cli_support import call_main
 from tests.support.event_io import ReadFirstIO, count_steps
-from tests.support.generator_support import assert_every_row
+from tests.support.generator_support import assert_every_row, constant_programs
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -29,33 +29,23 @@ def _check_constants() -> None:
     from esolangs.languages.whitespace.generator import _END
     from esolangs.languages.whitespace.interpreter import _Machine
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "Whitespace", bit * (1 << n), **options
-                ).source
-                assert len(program) == 7 * n + 11 + int(bit)
-                assert program.endswith(_END)
-                peak = 0
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "Whitespace", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "\n7\n", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = count_steps(machine, 2 * n + 3, written=written)
-                    assert steps == 2 * n + 3
-                    peak = max(peak, written.bits)
-                    assert (
-                        written.bits
-                        <= 5 + (2 * n + 3).bit_length() + (2 * n).bit_length()
-                    )
-                    assert io.getvalue() == bit
-                    assert io.past_end == 0
-                    assert io.input_num() == 7
-                assert peak == 5 + (2 * n + 3).bit_length() + (2 * n).bit_length()
+    for n, bit, _options, program in constant_programs("Whitespace", range(1, 13)):
+        assert len(program) == 7 * n + 11 + int(bit)
+        assert program.endswith(_END)
+        peak = 0
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            stdin = esolangs.encode_inputs("Whitespace", list(map(int, f"{row:0{n}b}")))
+            io = ReadFirstIO(stdin + "\n7\n", expected=n)
+            machine = _Machine(program, io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = count_steps(machine, 2 * n + 3, written=written)
+            assert steps == 2 * n + 3
+            peak = max(peak, written.bits)
+            assert written.bits <= 5 + (2 * n + 3).bit_length() + (2 * n).bit_length()
+            assert io.getvalue() == bit
+            assert io.past_end == 0
+            assert io.input_num() == 7
+        assert peak == 5 + (2 * n + 3).bit_length() + (2 * n).bit_length()
     assert (
         sum(len(esolangs.generate("Whitespace", f"{v:08b}").source) for v in range(256))
         == 22640

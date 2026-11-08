@@ -18,6 +18,7 @@ from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
     assert_parity_at_most_doubles,
+    constant_programs,
     evaluate_generated,
     measure_run,
 )
@@ -202,24 +203,21 @@ def test_constant_scratch_reuse_reads_first_and_preserves_the_next_line() -> Non
     from esolangs.languages.inject.interpreter import _Machine
     from esolangs.languages.inject.proof_formulas import workspace
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Inject", bit * (1 << n), **options).source
-                assert len(program) == 9 * n + 20
-                assert program.splitlines().count("readto a") == n
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "Inject", list(map(int, format(row, f"0{n}b")))
-                    )
-                    stream = ReadFirstIO(stdin + "Q\n", expected=n)
-                    machine = _Machine(program, stream)
-                    steps, written = measure_run(machine, limit=n + 7)
-                    assert machine.halted
-                    assert steps == n + 7
-                    assert written.bits == workspace(n, program)
-                    assert stream.getvalue() == bit + "\n"
-                    assert stream.input_str() == "Q"
+    for n, bit, _options, program in constant_programs("Inject", range(1, 13)):
+        assert len(program) == 9 * n + 20
+        assert program.splitlines().count("readto a") == n
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            stdin = esolangs.encode_inputs(
+                "Inject", list(map(int, format(row, f"0{n}b")))
+            )
+            stream = ReadFirstIO(stdin + "Q\n", expected=n)
+            machine = _Machine(program, stream)
+            steps, written = measure_run(machine, limit=n + 7)
+            assert machine.halted
+            assert steps == n + 7
+            assert written.bits == workspace(n, program)
+            assert stream.getvalue() == bit + "\n"
+            assert stream.input_str() == "Q"
     assert (
         sum(
             len(esolangs.generate("Inject", format(v, "08b")).source)

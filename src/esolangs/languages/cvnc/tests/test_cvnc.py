@@ -12,6 +12,7 @@ from esolangs.languages.cvnc.interpreter import (
     _tokenize,
     run,
 )
+from esolangs.languages.cvnc.tests.oracle_checks import check_raw_cvnc
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.runner import native_runner
@@ -287,6 +288,7 @@ class TestSpellings:
 class TestMachine:
     def test_the_snapshot_carries_the_deque_and_the_function(self) -> None:
         """Two machines differing only in memory must not look alike."""
+        check_raw_cvnc()
         empty = _Machine("cim", ScriptedIO(""))
         staged = _Machine("cim", ScriptedIO(""))
         while not staged.halted:

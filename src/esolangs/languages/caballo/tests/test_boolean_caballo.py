@@ -5,7 +5,7 @@ import pytest
 import esolangs
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_every_row
+from tests.support.generator_support import assert_every_row, constant_programs
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -21,21 +21,16 @@ def _check_constants() -> None:
     assert_analysis_complement("Caballo", "subtree_ids")
     from esolangs.languages.caballo.interpreter import run
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Caballo", bit * (1 << n), **options).source
-                assert program.replace("\n", "") == "p" * n + (
-                    "i" if bit == "1" else ""
-                )
-                for bits in ([0] * n, [1] * n):
-                    stdin = esolangs.encode_inputs("Caballo", bits)
-                    io = ReadFirstIO(stdin, expected=1)
-                    run(program, io)
-                    assert esolangs.read_answer("Caballo", io.getvalue()) == bit
-                    assert io.reads == 1
-                    assert io.position() == len(stdin)
-                    assert io.past_end == 0
+    for n, bit, _options, program in constant_programs("Caballo", range(1, 13)):
+        assert program.replace("\n", "") == "p" * n + ("i" if bit == "1" else "")
+        for bits in ([0] * n, [1] * n):
+            stdin = esolangs.encode_inputs("Caballo", bits)
+            io = ReadFirstIO(stdin, expected=1)
+            run(program, io)
+            assert esolangs.read_answer("Caballo", io.getvalue()) == bit
+            assert io.reads == 1
+            assert io.position() == len(stdin)
+            assert io.past_end == 0
 
     assert (
         sum(len(esolangs.generate("Caballo", f"{v:08b}").source) for v in range(256))

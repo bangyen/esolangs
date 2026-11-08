@@ -5,7 +5,6 @@ import random
 
 import pytest
 
-import esolangs
 from esolangs.languages.egl import generator as tools
 from esolangs.languages.egl.generator import _balance, _wrap
 from esolangs.languages.egl.interpreter import _Machine, run
@@ -16,6 +15,7 @@ from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
     assert_constant_output,
+    constant_programs,
 )
 
 
@@ -78,14 +78,11 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 
 
 def _check_constants() -> None:
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("EGL", bit * (1 << n), **options).source
-                for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row + "7", expected=n)
-                    assert_constant_output(run, program, io, bit, n)
-                    assert io.input_char() == ord("7")
+    for n, bit, _options, program in constant_programs("EGL", range(1, 13)):
+        for row in ("0" * n, "1" * n):
+            io = ReadFirstIO(row + "7", expected=n)
+            assert_constant_output(run, program, io, bit, n)
+            assert io.input_char() == ord("7")
 
 
 def _check_folded() -> None:

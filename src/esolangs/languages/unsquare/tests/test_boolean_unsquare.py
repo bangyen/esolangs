@@ -2,12 +2,11 @@
 
 import pytest
 
-import esolangs
 from esolangs.languages.unsquare import generator as boolean
 from tests.generators.boolean_runners import _runner
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output
+from tests.support.generator_support import assert_constant_output, constant_programs
 from tests.support.witness_tables import witnesses
 
 run_unsquare = _runner("unsquare")
@@ -75,13 +74,8 @@ def _check_constants() -> None:
     assert_analysis_complement("Unsquare", "input_weights")
     from esolangs.languages.unsquare.interpreter import run
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "Unsquare", bit * (1 << n), **options
-                ).source
-                for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row + "7", expected=n)
-                    assert_constant_output(run, program, io, bit, n)
-                    assert io.input_char() == ord("7")
+    for n, bit, _options, program in constant_programs("Unsquare", range(1, 13)):
+        for row in ("0" * n, "1" * n):
+            io = ReadFirstIO(row + "7", expected=n)
+            assert_constant_output(run, program, io, bit, n)
+            assert io.input_char() == ord("7")

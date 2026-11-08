@@ -15,6 +15,7 @@ from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import (
     assert_shared_program,
+    constant_programs,
     evaluate_generated,
     run_lines,
     verify_generated,
@@ -464,27 +465,22 @@ def test_coalescing_preserves_the_single_pointer_schedule() -> None:
 def _check_constants() -> None:
     from esolangs.languages.thisthat.proof_formulas import workspace
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "thisthat", bit * (1 << n), **options
-                ).source
-                if not options or "width" in options:
-                    assert (
-                        len(program.splitlines()) * max(map(len, program.splitlines()))
-                        == 2 * n + 5
-                    )
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    io = ReadFirstIO(f"{row:0{n}b}" + "1", expected=n)
-                    machine = _Machine(program.splitlines(), io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = count_steps(machine, 2 * n + 5, written=written)
-                    assert steps == 2 * n + 5
-                    assert written.bits <= workspace(n, program)
-                    assert io.getvalue() == bit
-                    assert io.reads == n
-                    assert io.input_char() == ord("1")
+    for n, bit, options, program in constant_programs("thisthat", range(1, 13)):
+        if not options or "width" in options:
+            assert (
+                len(program.splitlines()) * max(map(len, program.splitlines()))
+                == 2 * n + 5
+            )
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            io = ReadFirstIO(f"{row:0{n}b}" + "1", expected=n)
+            machine = _Machine(program.splitlines(), io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = count_steps(machine, 2 * n + 5, written=written)
+            assert steps == 2 * n + 5
+            assert written.bits <= workspace(n, program)
+            assert io.getvalue() == bit
+            assert io.reads == n
+            assert io.input_char() == ord("1")
     assert (
         sum(len(esolangs.generate("thisthat", f"{v:08b}").source) for v in range(256))
         == 47482

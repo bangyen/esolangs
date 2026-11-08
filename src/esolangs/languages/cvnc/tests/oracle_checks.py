@@ -23,14 +23,12 @@ _WORKSPACE = workspace.workspace_model(
 _SYMBOLS = {"d": "a", "b": "+", "t": "-", "ɡ": "×", "q": "÷", "ʔ": "(", "ʡ": ")"}
 
 
-def _evaluate(node, accumulator):
-    if isinstance(node, ast.Constant) and type(node.value) is int:
-        return node.value
-    if isinstance(node, ast.Name) and node.id == "a":
-        return accumulator
+def _evaluate(node, bindings):
+    if isinstance(node, ast.Name):
+        return bindings[node.id]
     if not isinstance(node, ast.BinOp):
         raise ValueError("invalid function")
-    left, right = _evaluate(node.left, accumulator), _evaluate(node.right, accumulator)
+    left, right = _evaluate(node.left, bindings), _evaluate(node.right, bindings)
     if isinstance(node.op, ast.Add):
         return left + right
     if isinstance(node.op, ast.Sub):
@@ -43,20 +41,36 @@ def _evaluate(node, accumulator):
 
 
 def _apply(function, accumulator):
-    # Keep each deque literal atomic; adjacent literals are not multiplication.
-    source = (
-        "".join("(" + token + ")" if token.isdecimal() else token for token in function)
-        .replace("×", "*")
-        .replace("÷", "//")
-    )
-    try:
-        parsed = ast.parse(source, mode="eval")
-    except SyntaxError:
+    """Validate tokens before AST evaluation; literal conversion keeps its phase."""
+    source, bindings = [], {"a": accumulator}
+    operators = {"+": "+", "-": "-", "×": "*", "÷": "//"}
+    operand, depth = True, 0
+    for token in function:
+        if operand:
+            if token == "(":
+                source.append(token)
+                depth += 1
+                continue
+            if token == "a":
+                source.append(token)
+            elif token.isdigit():
+                name = f"n{len(bindings)}"
+                bindings[name] = int(token)
+                source.append(name)
+            else:
+                return accumulator
+            operand = False
+        elif token in operators:
+            source.append(operators[token])
+            operand = True
+        elif token == ")" and depth:
+            source.append(token)
+            depth -= 1
+        else:
+            return accumulator
+    if operand or depth:
         return accumulator
-    try:
-        return _evaluate(parsed.body, accumulator)
-    except ValueError:
-        return accumulator
+    return _evaluate(ast.parse(" ".join(source), mode="eval").body, bindings)
 
 
 def _read(kind, stdin, cursor):
@@ -92,7 +106,9 @@ def _function(token, accumulator, queue, function):
     elif token == "c":
         function.clear()
     else:
-        function.append(str(queue.pop(0 if token == "p" else -1)))
+        at = 0 if token == "p" else -1
+        function.append(str(queue[at]))
+        queue.pop(at)
     return accumulator
 
 
@@ -169,6 +185,8 @@ def _model(syllables, stdin):
                 accumulator = _function(token, accumulator, queue, function)
         except (IndexError, ZeroDivisionError):
             return "halt", [*trace, row()]
+        except ValueError:
+            return "syntax", [*trace, row()]
     return None, trace
 
 
@@ -271,6 +289,24 @@ def check_raw_cvnc():
             "syntax",
             [(None, False, "", 0, 0)],
         )
+
+    numeric = (("s", "u"), ("ʒ", "u"), ("θ", "u"))
+    for stdin in (
+        "+" + "1" * 5000 + " Z",
+        "-" + "9" * 5000 + " Z",
+        "١_٢ X",
+        "1_0 X",
+        "bad X",
+        " \t",
+        "1" * 5000 + "x Z",
+    ):
+        _check(_Machine, numeric, stdin)
+    square = (("s", "u"),) + (("c", "æ"),) * 14
+    for suffix in ((("θ", "u"),), (("c", "u", "n"), ("p", "u"), ("θ", "u"))):
+        _check(_Machine, (*square, *suffix), "2")
+    _check(
+        _Machine, (("s", "u", "n"), ("d", "u"), ("b", "u"), ("p", "u"), ("θ", "u")), "3"
+    )
 
     class WrongFunction(_Machine):
         def step(self):

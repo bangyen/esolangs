@@ -23,7 +23,11 @@ from tests.generators.boolean_runners import _runner
 from tests.generators.sample_tables import five_input_sample
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_an_ignored_input_costs, measure_run
+from tests.support.generator_support import (
+    assert_an_ignored_input_costs,
+    constant_programs,
+    measure_run,
+)
 from tests.support.witness_tables import row_bits, witnesses
 
 run_container = _runner("container", lines=True)
@@ -381,29 +385,24 @@ def test_output_gate_rests_at_two_for_the_smallest_peak() -> None:
 def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
     from esolangs.languages.container.interpreter import _Machine
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "Container", bit * (1 << n), **options
-                ).source
-                if not options:
-                    assert len(program) == 87 + len(str(n))
-                rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
-                for row in rows:
-                    stdin = esolangs.encode_inputs(
-                        "Container", list(map(int, format(row, f"0{n}b")))
-                    )
-                    io = ReadFirstIO(stdin + "Q", expected=n)
-                    machine = _Machine(program.splitlines(), io)
-                    steps = 0
-                    while not machine.halted and steps < 4 * n + 10:
-                        machine.step()
-                        steps += 1
-                    assert machine.halted
-                    assert io.getvalue() == bit
-                    assert steps == 2 * n
-                    assert io.input_char() == ord("Q")
+    for n, bit, options, program in constant_programs("Container", range(1, 13)):
+        if not options:
+            assert len(program) == 87 + len(str(n))
+        rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+        for row in rows:
+            stdin = esolangs.encode_inputs(
+                "Container", list(map(int, format(row, f"0{n}b")))
+            )
+            io = ReadFirstIO(stdin + "Q", expected=n)
+            machine = _Machine(program.splitlines(), io)
+            steps = 0
+            while not machine.halted and steps < 4 * n + 10:
+                machine.step()
+                steps += 1
+            assert machine.halted
+            assert io.getvalue() == bit
+            assert steps == 2 * n
+            assert io.input_char() == ord("Q")
     assert (
         sum(
             len(esolangs.generate("Container", format(v, "08b")).source)

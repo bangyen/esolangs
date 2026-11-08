@@ -15,7 +15,10 @@ from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_an_ignored_input_costs
+from tests.support.generator_support import (
+    assert_an_ignored_input_costs,
+    constant_programs,
+)
 
 run_bfstack = _runner("bfstack")
 
@@ -233,35 +236,27 @@ def _check_identities() -> None:
 def _check_constants() -> None:
     from esolangs.languages.bfstack.interpreter import _Machine
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("BFStack", bit * (1 << n), **options).source
-                if not options:
-                    assert len(program.replace("\n", "")) == 2 * n + 50 + int(bit)
-                peak = 0
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "BFStack", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "7", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps < 1000
-                    assert io.getvalue() == bit
-                    assert io.past_end == 0
-                    assert io.input_char() == ord("7")
-                    if not options:
-                        assert steps == 2 * n + 50 + int(bit)
-                        assert (
-                            written.bits
-                            <= 6 + len(program).bit_length() + n.bit_length()
-                        )
-                        peak = max(peak, written.bits)
-                if not options:
-                    assert peak == 6 + len(program).bit_length() + n.bit_length()
+    for n, bit, options, program in constant_programs("BFStack", range(1, 13)):
+        if not options:
+            assert len(program.replace("\n", "")) == 2 * n + 50 + int(bit)
+        peak = 0
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            stdin = esolangs.encode_inputs("BFStack", list(map(int, f"{row:0{n}b}")))
+            io = ReadFirstIO(stdin + "7", expected=n)
+            machine = _Machine(program, io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                written.sample(machine.workspace_snapshot())
+                steps += 1
+                assert steps < 1000
+            assert io.getvalue() == bit
+            assert io.past_end == 0
+            assert io.input_char() == ord("7")
+            if not options:
+                assert steps == 2 * n + 50 + int(bit)
+                assert written.bits <= 6 + len(program).bit_length() + n.bit_length()
+                peak = max(peak, written.bits)
+        if not options:
+            assert peak == 6 + len(program).bit_length() + n.bit_length()

@@ -13,7 +13,7 @@ from tests.interpreters.runner import run_program
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output
+from tests.support.generator_support import assert_constant_output, constant_programs
 from tests.support.screen_support import corpus
 
 
@@ -217,14 +217,11 @@ def _check_constants() -> None:
     import esolangs
     from esolangs.languages.fargo.interpreter import run
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Fargo", bit * (1 << n), **options).source
-                for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(
-                        esolangs.encode_inputs("Fargo", [int(b) for b in row]) + "7\n",
-                        expected=1,
-                    )
-                    assert_constant_output(run, program, io, bit, 1)
-                    assert io.input_num() == 7
+    for n, bit, _options, program in constant_programs("Fargo", range(1, 13)):
+        for row in ("0" * n, "1" * n):
+            io = ReadFirstIO(
+                esolangs.encode_inputs("Fargo", [int(b) for b in row]) + "7\n",
+                expected=1,
+            )
+            assert_constant_output(run, program, io, bit, 1)
+            assert io.input_num() == 7

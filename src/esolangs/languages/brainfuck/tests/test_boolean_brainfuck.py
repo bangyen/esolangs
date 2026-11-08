@@ -10,6 +10,7 @@ from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_shared_program,
+    constant_programs,
     evaluate_generated,
     measure_run,
 )
@@ -140,32 +141,23 @@ def test_literal_counter_consumes_inputs_within_revised_bounds(n: int) -> None:
 def _check_constants() -> None:
     from esolangs.languages.brainfuck.interpreter import _Machine
 
-    for n in range(2, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "brainfuck", bit * (1 << n), **options
-                ).source
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "brainfuck", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "Q", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        command = machine.code[machine.ind]
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += int(command in "+-<>[],.")
-                        assert steps <= n + 82 + int(bit)
-                    assert steps == n + 82 + int(bit)
-                    assert io.getvalue() == bit
-                    assert (
-                        written.bits == 16 + len(program).bit_length() + n.bit_length()
-                    )
-                    assert io.input_char() == ord("Q")
+    for n, bit, _options, program in constant_programs("brainfuck", range(2, 13)):
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            stdin = esolangs.encode_inputs("brainfuck", list(map(int, f"{row:0{n}b}")))
+            io = ReadFirstIO(stdin + "Q", expected=n)
+            machine = _Machine(program, io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = 0
+            while not machine.halted:
+                command = machine.code[machine.ind]
+                machine.step()
+                written.sample(machine.workspace_snapshot())
+                steps += int(command in "+-<>[],.")
+                assert steps <= n + 82 + int(bit)
+            assert steps == n + 82 + int(bit)
+            assert io.getvalue() == bit
+            assert written.bits == 16 + len(program).bit_length() + n.bit_length()
+            assert io.input_char() == ord("Q")
     assert (
         sum(len(esolangs.generate("brainfuck", f"{v:08b}").source) for v in range(256))
         == 64098

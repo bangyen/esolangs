@@ -2369,3 +2369,43 @@ The existing frame-entry test carries a capped large-binding regression;
 no node is added. The complete independent frame model remains an archived
 proposal until funded within the test/source budget. Fargo's accounting row
 and all broader completion rows remain open.
+
+Collatz Multiverse's independent reader now folds signed ASCII digits without
+the host conversion cap. All 327 old cases/five controls retain identical
+typed traces; eight numeric/populated cases make 335 permanent cases at cap16.
+Three exact constructor refusals supplement installed acceptance. CVNC keeps
+its independent AST evaluator and validates tokens before converting reached
+literals to bindings. Formatting precedes deque removal; failed steps retain
+the advanced pointer. Its 535 old structured cases/seven constructor refusals,
+eight controls and ten extras give 552 cases at cap48. The previously orphaned
+hook now runs from an existing test. General source parsing remains open.
+
+The unchanged 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0: 890 cases/5,593 boundaries, 430 completions, 413 failed transitions,
+37 bounded runs and ten constructor refusals per version. Independent models
+match full state, cycle, declared views, IO, successful steps, completion,
+attached failures and held snapshots. Peak written charges are 33,333/32,777
+bits. Sixteen/seventeen guarded native/isolated pairs include cap-zero/cap-one
+boundaries. A separate CVNC shunting-yard predictor agrees on all 545 modeled
+cases; its seven constructor records remain exact-source refusal witnesses.
+
+Nine populated freezes lose their exact component charges; nine omissions
+fail. Literal anchors are 147/35 bits, with cursorless/position controls.
+Eight writer routes retain committed state, output prefix and failed-step
+metadata; following steps do not retry the lost write. CVNC's two host-format
+phases retain their distinct deque/output commit timing. Collatz accepts long
+signed ASCII tokens; CVNC deliberately keeps builtin integer grammar and its
+zero-on-invalid/capped-input policy. Host digit settings remain unchanged.
+
+Forty-one clients share constant-source fixture construction. Expanding the
+helper restores every original module after unused binding/import cleanup.
+All 399 enclosing tests pass. Forty-nine complete hook/inline invocations
+retain 3,474 fixtures, 8,232 generation calls, 11,631 constructors, 338,368
+native boundaries, 240,102 meter samples, 66,975 IO calls and 1,080 Taglate bulk
+transitions per side; typed dumps and emitted fixture bytes match exactly.
+An opposite-output source control fails the unchanged native assertions.
+
+Reuse saves 144 formatted test lines; the numeric corrections/cases/caller
+add 62. Tests/source are 115,722/115,808, with no node, assertion, case, control
+or cap removed. These bounded accounting scopes are reviewed; 60 accounting
+rows and all 117 completion rows remain open.

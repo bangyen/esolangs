@@ -55,7 +55,10 @@ def _model(program, stdin):
         cursor += len(word)
         if not re.fullmatch(r"[+-]?[0-9]+", word):
             raise ValueError
-        return int(word)
+        value = 0
+        for char in word.lstrip("+-"):
+            value = value * 10 + ord(char) - ord("0")
+        return -value if word.startswith("-") else value
 
     for step in range(17):
         halted = not 1 <= pc <= len(program)
@@ -134,6 +137,27 @@ def check_raw_collatz_multiverse():
     )
     _check(_Machine, (), "")
     _check(_Machine, (("x", "x", "lineNumber", True),), "")
+
+    program = (("x", "x", "input", False), ("x", "x", "negativeOne", True))
+    for stdin in (
+        "+" + "1" * 5000,
+        "-" + "9" * 5000,
+        "1_0 ",
+        "٣ ",
+        "1" * 5000 + "x ",
+        "  \t",
+        "0\nunused",
+    ):
+        _check(_Machine, program, stdin)
+    _check(
+        _Machine,
+        (
+            ("index", "index", "input", False),
+            ("x[index]", "x", "input", False),
+            ("x[index]", "x", "negativeOne", True),
+        ),
+        "1 3 unused",
+    )
 
     class OmittedRead(_Machine):
         def _collect_reads(self, _line):

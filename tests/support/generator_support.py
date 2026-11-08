@@ -316,3 +316,12 @@ def source_shape(source):
     """Return text characters, LF-separated rows and maximum row width."""
     rows = source.split("\n")
     return len(source), len(rows), max(map(len, rows))
+
+
+def constant_programs(language, arities):
+    """Yield each constant source with its arity, bit and exact option dictionary."""
+    for n in arities:
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate(language, bit * (1 << n), **options).source
+                yield n, bit, options, program

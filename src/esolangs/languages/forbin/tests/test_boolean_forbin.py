@@ -21,7 +21,7 @@ from tests.generators.boolean_runners import _runner
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import evaluate_generated
+from tests.support.generator_support import constant_programs, evaluate_generated
 from tests.support.witness_tables import witnesses
 
 run_forbin_boolean = _runner("forbin")
@@ -264,29 +264,26 @@ def test_constants_read_whole_bytes_then_print_inline() -> None:
     from esolangs.languages.forbin.interpreter import _Machine
     from esolangs.languages.forbin.proof_formulas import workspace
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Forbin", bit * (1 << n), **options).source
-                if not options:
-                    assert len(program) == (16 * n + 40 if n == 1 else 2 * n + 64)
-                rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
-                for row in rows:
-                    io = ReadFirstIO(format(row, f"0{n}b") + "Q", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted and steps < 4:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                    assert machine.halted
-                    assert machine.state.reads == 8 * n
-                    assert io.getvalue() == bit
-                    assert steps == (3 if options else 2)
-                    assert io.input_char() == ord("Q")
-                    if not options:
-                        assert written.bits == workspace(n, program)
+    for n, bit, options, program in constant_programs("Forbin", range(1, 13)):
+        if not options:
+            assert len(program) == (16 * n + 40 if n == 1 else 2 * n + 64)
+        rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+        for row in rows:
+            io = ReadFirstIO(format(row, f"0{n}b") + "Q", expected=n)
+            machine = _Machine(program, io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = 0
+            while not machine.halted and steps < 4:
+                machine.step()
+                written.sample(machine.workspace_snapshot())
+                steps += 1
+            assert machine.halted
+            assert machine.state.reads == 8 * n
+            assert io.getvalue() == bit
+            assert steps == (3 if options else 2)
+            assert io.input_char() == ord("Q")
+            if not options:
+                assert written.bits == workspace(n, program)
     assert (
         sum(
             len(esolangs.generate("Forbin", format(v, "08b")).source)

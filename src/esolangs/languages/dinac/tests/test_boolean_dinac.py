@@ -7,7 +7,7 @@ from esolangs import run as execute
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_native_rows
+from tests.support.generator_support import assert_native_rows, constant_programs
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -48,33 +48,26 @@ def _check_constants() -> None:
     assert_analysis_complement("DINAC", "prefix_counts")
     from esolangs.languages.dinac.interpreter import _Machine
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("DINAC", bit * (1 << n), **options).source
-                if not options:
-                    assert len(program) == 5 * n + 15
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "DINAC", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "7", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps < 2000
-                    assert io.getvalue() == bit
-                    assert io.past_end == 0
-                    assert io.input_char() == ord("7")
-                    if not options:
-                        assert steps == n + 3
-                        assert (
-                            written.bits <= 56 + (n + 2).bit_length() + n.bit_length()
-                        )
+    for n, bit, options, program in constant_programs("DINAC", range(1, 13)):
+        if not options:
+            assert len(program) == 5 * n + 15
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            stdin = esolangs.encode_inputs("DINAC", list(map(int, f"{row:0{n}b}")))
+            io = ReadFirstIO(stdin + "7", expected=n)
+            machine = _Machine(program, io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                written.sample(machine.workspace_snapshot())
+                steps += 1
+                assert steps < 2000
+            assert io.getvalue() == bit
+            assert io.past_end == 0
+            assert io.input_char() == ord("7")
+            if not options:
+                assert steps == n + 3
+                assert written.bits <= 56 + (n + 2).bit_length() + n.bit_length()
 
     assert (
         sum(len(esolangs.generate("DINAC", f"{v:08b}").source) for v in range(256))

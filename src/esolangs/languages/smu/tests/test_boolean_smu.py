@@ -12,6 +12,7 @@ from scripts.benchmark import WrittenState
 from tests.generators.sample_tables import five_input_sample
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
+from tests.support.generator_support import constant_programs
 
 
 def execute(program: str, row: int, n: int) -> tuple[str, int]:
@@ -133,16 +134,13 @@ def _check_constants() -> None:
     assert_analysis_complement("Smu", "decision_layers")
     from esolangs.languages.smu.proof_formulas import workspace
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Smu", bit * (1 << n), **options).source
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    io = ReadFirstIO(f"{row:0{n}b}", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = count_steps(machine, 55 * n + 5, written=written)
-                    assert steps == 55 * n + 5
-                    assert io.getvalue() == bit
-                    assert written.bits == workspace(n, program)
-                    assert io.past_end == 1
+    for n, bit, _options, program in constant_programs("Smu", range(1, 13)):
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            io = ReadFirstIO(f"{row:0{n}b}", expected=n)
+            machine = _Machine(program, io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = count_steps(machine, 55 * n + 5, written=written)
+            assert steps == 55 * n + 5
+            assert io.getvalue() == bit
+            assert written.bits == workspace(n, program)
+            assert io.past_end == 1

@@ -11,7 +11,7 @@ from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output
+from tests.support.generator_support import assert_constant_output, constant_programs
 from tests.support.witness_tables import row_bits, witnesses
 
 
@@ -200,14 +200,11 @@ def test_taglate_needs_a_seed_and_commands_below_it() -> None:
 def _check_constants() -> None:
     from esolangs.languages.taglate.interpreter import run
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Taglate", bit * (1 << n), **options).source
-                for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row + "7", expected=n)
-                    assert_constant_output(run, program.splitlines(), io, bit, n)
-                    assert io.input_char() == ord("7")
+    for n, bit, _options, program in constant_programs("Taglate", range(1, 13)):
+        for row in ("0" * n, "1" * n):
+            io = ReadFirstIO(row + "7", expected=n)
+            assert_constant_output(run, program.splitlines(), io, bit, n)
+            assert io.input_char() == ord("7")
 
 
 def _check_packed_leaves() -> None:

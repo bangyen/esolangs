@@ -8,7 +8,7 @@ import esolangs
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
-from tests.support.generator_support import assert_native_rows
+from tests.support.generator_support import assert_native_rows, constant_programs
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -30,24 +30,21 @@ def test_every_row_prints_its_answer(table: str) -> None:
 def _check_native_constants() -> None:
     from esolangs.languages.object_disoriented.interpreter import _Machine
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "Object disoriented", bit * (1 << n), **options
-                ).source
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "Object disoriented", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "Q", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = count_steps(machine, 16 * n + 28, written=written)
-                    assert steps == 16 * n + 28
-                    assert written.bits == 48 + 2 * n.bit_length()
-                    assert io.getvalue() == bit
-                    assert io.input_char() == ord("Q")
+    for n, bit, _options, program in constant_programs(
+        "Object disoriented", range(1, 13)
+    ):
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            stdin = esolangs.encode_inputs(
+                "Object disoriented", list(map(int, f"{row:0{n}b}"))
+            )
+            io = ReadFirstIO(stdin + "Q", expected=n)
+            machine = _Machine(program, io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = count_steps(machine, 16 * n + 28, written=written)
+            assert steps == 16 * n + 28
+            assert written.bits == 48 + 2 * n.bit_length()
+            assert io.getvalue() == bit
+            assert io.input_char() == ord("Q")
 
     from esolangs.languages.object_disoriented.generator import _NAME_CHARS, _names
 

@@ -13,7 +13,11 @@ from tests.generators.boolean_runners import _runner
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output, measure_run
+from tests.support.generator_support import (
+    assert_constant_output,
+    constant_programs,
+    measure_run,
+)
 
 run_circlefuck = _runner("circlefuck")
 
@@ -116,16 +120,11 @@ def test_run_uses_native_eof() -> None:
 def _check_constants() -> None:
     from esolangs.languages.circlefuck.interpreter import run
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "Circlefuck", bit * (1 << n), **options
-                ).source
-                for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row + "7", expected=n)
-                    assert_constant_output(run, program, io, bit, n)
-                    assert io.input_char() == ord("7")
+    for n, bit, _options, program in constant_programs("Circlefuck", range(1, 13)):
+        for row in ("0" * n, "1" * n):
+            io = ReadFirstIO(row + "7", expected=n)
+            assert_constant_output(run, program, io, bit, n)
+            assert io.input_char() == ord("7")
 
 
 def _check_reader() -> None:

@@ -19,7 +19,7 @@ from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import evaluate_generated
+from tests.support.generator_support import constant_programs, evaluate_generated
 from tests.support.witness_tables import witnesses
 
 run_dimensional = _runner("dimensional", newline=True)
@@ -204,38 +204,32 @@ def test_fourteen_input_lookup_stays_within_step_cap(kind: str) -> None:
 
 
 def _check_constants() -> None:
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "Dimensional", bit * (1 << n), **options
-                ).source
-                if not options:
-                    assert len(program) == n + 3
-                if options == {"width": 1}:
-                    assert max(map(len, program.splitlines())) == (1 if n <= 2 else 2)
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "Dimensional", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "\n7\n", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps < 2000
-                    assert io.getvalue() == bit
-                    assert io.past_end == 0
-                    assert io.input_num() == 7
-                    if not options:
-                        assert steps == n + 2
-                    assert (
-                        written.bits
-                        == 6 + len(program).bit_length() + (2 * n - 1).bit_length()
-                    )
+    for n, bit, options, program in constant_programs("Dimensional", range(1, 13)):
+        if not options:
+            assert len(program) == n + 3
+        if options == {"width": 1}:
+            assert max(map(len, program.splitlines())) == (1 if n <= 2 else 2)
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            stdin = esolangs.encode_inputs(
+                "Dimensional", list(map(int, f"{row:0{n}b}"))
+            )
+            io = ReadFirstIO(stdin + "\n7\n", expected=n)
+            machine = _Machine(program, io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                written.sample(machine.workspace_snapshot())
+                steps += 1
+                assert steps < 2000
+            assert io.getvalue() == bit
+            assert io.past_end == 0
+            assert io.input_num() == 7
+            if not options:
+                assert steps == n + 2
+            assert (
+                written.bits == 6 + len(program).bit_length() + (2 * n - 1).bit_length()
+            )
 
 
 def _check_first_essential_read() -> None:

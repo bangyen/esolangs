@@ -4,7 +4,7 @@ import pytest
 
 import esolangs
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_every_row
+from tests.support.generator_support import assert_every_row, constant_programs
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -33,29 +33,24 @@ def test_every_row_prints_its_answer(table: str, monkeypatch) -> None:
 def _check_constants() -> None:
     from esolangs.languages.kiss.interpreter import _Machine
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Kiss", bit * (1 << n), **options).source
-                if not options:
-                    assert len(program) == 9 * n
-                peak_steps = 0
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "Kiss", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "7", expected=n)
-                    machine = _Machine(program, io)
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        steps += 1
-                        assert steps < 1000
-                    assert io.getvalue().strip() == bit
-                    assert io.past_end == 0
-                    assert io.input_char() == ord("7")
-                    if not options:
-                        assert steps <= 4 * n - 1
-                        peak_steps = max(peak_steps, steps)
-                if not options:
-                    assert peak_steps == 4 * n - 1
+    for n, bit, options, program in constant_programs("Kiss", range(1, 13)):
+        if not options:
+            assert len(program) == 9 * n
+        peak_steps = 0
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            stdin = esolangs.encode_inputs("Kiss", list(map(int, f"{row:0{n}b}")))
+            io = ReadFirstIO(stdin + "7", expected=n)
+            machine = _Machine(program, io)
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                steps += 1
+                assert steps < 1000
+            assert io.getvalue().strip() == bit
+            assert io.past_end == 0
+            assert io.input_char() == ord("7")
+            if not options:
+                assert steps <= 4 * n - 1
+                peak_steps = max(peak_steps, steps)
+        if not options:
+            assert peak_steps == 4 * n - 1

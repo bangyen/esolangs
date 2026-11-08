@@ -11,6 +11,7 @@ from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_constant_output,
     assert_native_rows,
+    constant_programs,
     evaluate_generated,
 )
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -37,14 +38,11 @@ def _check_constants() -> None:
         sum(len(esolangs.generate("Balik", f"{k:08b}").source) for k in range(256))
         == 44929
     )
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Balik", bit * (1 << n), **options).source
-                for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row + "7", expected=n)
-                    assert_constant_output(run, program, io, bit, n)
-                    assert io.input_char() == ord("7")
+    for n, bit, _options, program in constant_programs("Balik", range(1, 13)):
+        for row in ("0" * n, "1" * n):
+            io = ReadFirstIO(row + "7", expected=n)
+            assert_constant_output(run, program, io, bit, n)
+            assert io.input_char() == ord("7")
 
 
 def _check_projection() -> None:

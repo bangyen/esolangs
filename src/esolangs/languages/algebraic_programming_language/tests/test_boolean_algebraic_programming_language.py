@@ -24,6 +24,7 @@ from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_constant_output,
     assert_parity_at_most_doubles,
+    constant_programs,
     verify_generated,
 )
 from tests.support.screen_support import corpus, execute
@@ -400,22 +401,19 @@ def test_a_wide_table_keeps_its_one_line_tail_under_the_frame_floor() -> None:
 
 
 def _check_constants() -> None:
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "Algebraic Programming Language", bit * (1 << n), **options
-                ).source
-                for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(
-                        esolangs.encode_inputs(
-                            "Algebraic Programming Language", [int(b) for b in row]
-                        )
-                        + "7\n",
-                        expected=n,
-                    )
-                    assert_constant_output(run, program, io, bit + "\n", n)
-                    assert io.input_num() == 7
+    for n, bit, _options, program in constant_programs(
+        "Algebraic Programming Language", range(1, 13)
+    ):
+        for row in ("0" * n, "1" * n):
+            io = ReadFirstIO(
+                esolangs.encode_inputs(
+                    "Algebraic Programming Language", [int(b) for b in row]
+                )
+                + "7\n",
+                expected=n,
+            )
+            assert_constant_output(run, program, io, bit + "\n", n)
+            assert io.input_num() == 7
 
 
 def _check_arithmetic_twins() -> None:

@@ -16,6 +16,7 @@ from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
+    constant_programs,
     evaluate_generated,
     verify_generated,
 )
@@ -167,39 +168,34 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 def _check_constants() -> None:
     from esolangs.languages.for_thorn.interpreter import _Machine
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Forþ", bit * (1 << n), **options).source
-                if not options:
-                    assert len(program) == 2 * n + 4
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "Forþ", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "7\n", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps < 2000
-                    assert io.getvalue() == bit
-                    assert io.past_end == 0
-                    assert io.input_str() == "7"
-                    if not options:
-                        assert steps == 2 * n + 5
-                    assert not machine.error
-                    assert not machine.stack
-                    assert not machine.table
-                    if not options:
-                        expected = (
-                            8 * len(program)
-                            + 10
-                            - int(bit)
-                            + 2 * (2 * n).bit_length()
-                            + n.bit_length()
-                        )
-                        assert written.bits == expected
+    for n, bit, options, program in constant_programs("Forþ", range(1, 13)):
+        if not options:
+            assert len(program) == 2 * n + 4
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            stdin = esolangs.encode_inputs("Forþ", list(map(int, f"{row:0{n}b}")))
+            io = ReadFirstIO(stdin + "7\n", expected=n)
+            machine = _Machine(program, io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                written.sample(machine.workspace_snapshot())
+                steps += 1
+                assert steps < 2000
+            assert io.getvalue() == bit
+            assert io.past_end == 0
+            assert io.input_str() == "7"
+            if not options:
+                assert steps == 2 * n + 5
+            assert not machine.error
+            assert not machine.stack
+            assert not machine.table
+            if not options:
+                expected = (
+                    8 * len(program)
+                    + 10
+                    - int(bit)
+                    + 2 * (2 * n).bit_length()
+                    + n.bit_length()
+                )
+                assert written.bits == expected

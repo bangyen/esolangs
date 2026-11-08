@@ -9,7 +9,11 @@ from esolangs.generation.decision import decision_layers
 from esolangs.languages.basicer import generator
 from scripts.benchmark import WrittenState
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_every_row, evaluate_generated
+from tests.support.generator_support import (
+    assert_every_row,
+    constant_programs,
+    evaluate_generated,
+)
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -34,31 +38,26 @@ def _check_constants() -> None:
         assert evaluate_generated("BASICER", "0001") == "1110"
         assert corrupted.called
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("BASICER", bit * (1 << n), **options).source
-                expected = [f"{i} GOTO {i + 1} {i + 1}" for i in range(1, n + 1)] + [
-                    f"{n + 1} PRINT {bit}"
-                ]
-                assert program.splitlines() == expected
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "BASICER", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "Q\n", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps <= n + 1
-                    assert steps == n + 1
-                    assert io.getvalue() == bit + "\n"
-                    assert written.bits == (n + 1).bit_length() + (2 * n).bit_length()
-                    assert io.input_str() == "Q"
+    for n, bit, _options, program in constant_programs("BASICER", range(1, 13)):
+        expected = [f"{i} GOTO {i + 1} {i + 1}" for i in range(1, n + 1)] + [
+            f"{n + 1} PRINT {bit}"
+        ]
+        assert program.splitlines() == expected
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            stdin = esolangs.encode_inputs("BASICER", list(map(int, f"{row:0{n}b}")))
+            io = ReadFirstIO(stdin + "Q\n", expected=n)
+            machine = _Machine(program, io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                written.sample(machine.workspace_snapshot())
+                steps += 1
+                assert steps <= n + 1
+            assert steps == n + 1
+            assert io.getvalue() == bit + "\n"
+            assert written.bits == (n + 1).bit_length() + (2 * n).bit_length()
+            assert io.input_str() == "Q"
     assert (
         sum(len(esolangs.generate("BASICER", f"{v:08b}").source) for v in range(256))
         == 23222

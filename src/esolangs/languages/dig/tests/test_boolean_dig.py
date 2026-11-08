@@ -19,7 +19,7 @@ from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output
+from tests.support.generator_support import assert_constant_output, constant_programs
 from tests.support.witness_tables import row_bits
 
 run_dig = _runner("dig", lines=True, newline=True)
@@ -749,17 +749,14 @@ def test_shared_leaves_around_constant_spans_keep_the_execution_bound() -> None:
 
 def _check_constants() -> None:
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Dig", bit * (1 << n), **options).source
-                for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(
-                        esolangs.encode_inputs("Dig", [int(b) for b in row]) + "7\n",
-                        expected=n,
-                    )
-                    assert_constant_output(run, program.splitlines(), io, bit, n)
-                    assert io.input_num() == 7
+    for n, bit, _options, program in constant_programs("Dig", range(1, 13)):
+        for row in ("0" * n, "1" * n):
+            io = ReadFirstIO(
+                esolangs.encode_inputs("Dig", [int(b) for b in row]) + "7\n",
+                expected=n,
+            )
+            assert_constant_output(run, program.splitlines(), io, bit, n)
+            assert io.input_num() == 7
 
 
 @pytest.mark.parametrize("shared", [False, True])

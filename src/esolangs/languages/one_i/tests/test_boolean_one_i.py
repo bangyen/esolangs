@@ -14,6 +14,7 @@ from esolangs.languages.one_i.tests.formulas import workspace_witness
 from scripts.benchmark import WrittenState
 from tests.support import generator_support as checks
 from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import constant_programs
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -27,17 +28,14 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 
 def _check_constants() -> None:
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("1 + i", bit * (1 << n), **options).source
-                for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(
-                        esolangs.encode_inputs("1 + i", [int(b) for b in row]) + "7\n",
-                        expected=n,
-                    )
-                    checks.assert_constant_output(native.run, program, io, bit, n)
-                    assert io.input_num() == 7
+    for n, bit, _options, program in constant_programs("1 + i", range(1, 13)):
+        for row in ("0" * n, "1" * n):
+            io = ReadFirstIO(
+                esolangs.encode_inputs("1 + i", [int(b) for b in row]) + "7\n",
+                expected=n,
+            )
+            checks.assert_constant_output(native.run, program, io, bit, n)
+            assert io.input_num() == 7
 
 
 def _check_arithmetic_tails() -> None:

@@ -22,7 +22,10 @@ from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _run_from, _runner
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_parity_at_most_doubles
+from tests.support.generator_support import (
+    assert_parity_at_most_doubles,
+    constant_programs,
+)
 from tests.support.witness_tables import row_bits, witnesses
 
 run_addsubjump = _runner("addsubjump")
@@ -310,29 +313,22 @@ def _check_native_constants() -> None:
     from esolangs.languages.addsubjump.interpreter import _Machine
     from esolangs.languages.addsubjump.proof_formulas import workspace
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "AddSubJump", bit * (1 << n), **options
-                ).source
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "AddSubJump", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "Q", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps <= n + 1
-                    assert steps == n + 1
-                    assert written.bits == workspace(n, program)
-                    assert io.getvalue() == bit
-                    assert io.input_char() == ord("Q")
+    for n, bit, _options, program in constant_programs("AddSubJump", range(1, 13)):
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            stdin = esolangs.encode_inputs("AddSubJump", list(map(int, f"{row:0{n}b}")))
+            io = ReadFirstIO(stdin + "Q", expected=n)
+            machine = _Machine(program, io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                written.sample(machine.workspace_snapshot())
+                steps += 1
+                assert steps <= n + 1
+            assert steps == n + 1
+            assert written.bits == workspace(n, program)
+            assert io.getvalue() == bit
+            assert io.input_char() == ord("Q")
 
 
 def _check_packed_reader() -> None:

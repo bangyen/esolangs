@@ -15,7 +15,7 @@ from tests.generators.reader_support import (
 from tests.generators.sample_tables import five_input_sample
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
-from tests.support.generator_support import verify_generated
+from tests.support.generator_support import constant_programs, verify_generated
 
 
 @pytest.mark.medium  # both builds of 456 tables: 0.95s alone
@@ -77,25 +77,18 @@ def _check_constants(arities: range) -> None:
     from esolangs.languages.unlambda.interpreter import _Machine
     from esolangs.languages.unlambda.tests.formulas import _workspace
 
-    for n in arities:
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "Unlambda", bit * (1 << n), **options
-                ).source
-                if not options:
-                    assert len(program) == 4 * n + 2
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "Unlambda", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "7", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = count_steps(machine, 999, written=written)
-                    assert io.getvalue() == bit
-                    assert io.past_end == 0
-                    assert io.input_char() == ord("7")
-                    if not options:
-                        assert steps == 14 * n + 2
-                        assert written.bits == _workspace(n, program)
+    for n, bit, options, program in constant_programs("Unlambda", arities):
+        if not options:
+            assert len(program) == 4 * n + 2
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            stdin = esolangs.encode_inputs("Unlambda", list(map(int, f"{row:0{n}b}")))
+            io = ReadFirstIO(stdin + "7", expected=n)
+            machine = _Machine(program, io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = count_steps(machine, 999, written=written)
+            assert io.getvalue() == bit
+            assert io.past_end == 0
+            assert io.input_char() == ord("7")
+            if not options:
+                assert steps == 14 * n + 2
+                assert written.bits == _workspace(n, program)

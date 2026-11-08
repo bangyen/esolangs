@@ -9,7 +9,11 @@ import esolangs
 from esolangs import run
 from scripts.benchmark import WrittenState
 from tests.support.event_io import ReadFirstIO, count_steps
-from tests.support.generator_support import assert_every_row, evaluate_generated
+from tests.support.generator_support import (
+    assert_every_row,
+    constant_programs,
+    evaluate_generated,
+)
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -41,33 +45,28 @@ def test_a_table_past_the_low_input_cap_labels_its_blocks() -> None:
 def _check_constants() -> None:
     from esolangs.languages.what.interpreter import _Machine
 
-    for n in range(1, 17):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("What!?", bit * (1 << n), **options).source
-                if not options:
-                    assert len(program.replace("\n", "")) <= 3 * n + 2
-                peak = 0
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "What!?", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "\n7\n", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = count_steps(machine, 999, written=written)
-                    assert io.getvalue() == bit
-                    assert io.past_end == 0
-                    assert io.input_num() == 7
-                    if not options:
-                        assert steps == n + 2
-                        assert (
-                            written.bits
-                            <= 256 + (n + 2).bit_length() + (2 * n - 1).bit_length()
-                        )
-                        peak = max(peak, written.bits)
-                if not options:
-                    assert peak == 256 + (n + 2).bit_length() + (2 * n - 1).bit_length()
+    for n, bit, options, program in constant_programs("What!?", range(1, 17)):
+        if not options:
+            assert len(program.replace("\n", "")) <= 3 * n + 2
+        peak = 0
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            stdin = esolangs.encode_inputs("What!?", list(map(int, f"{row:0{n}b}")))
+            io = ReadFirstIO(stdin + "\n7\n", expected=n)
+            machine = _Machine(program, io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = count_steps(machine, 999, written=written)
+            assert io.getvalue() == bit
+            assert io.past_end == 0
+            assert io.input_num() == 7
+            if not options:
+                assert steps == n + 2
+                assert (
+                    written.bits
+                    <= 256 + (n + 2).bit_length() + (2 * n - 1).bit_length()
+                )
+                peak = max(peak, written.bits)
+        if not options:
+            assert peak == 256 + (n + 2).bit_length() + (2 * n - 1).bit_length()
 
 
 def _check_copyless() -> None:

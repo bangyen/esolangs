@@ -6,7 +6,11 @@ import esolangs
 from esolangs.languages.codesick.generator import codesick
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output, assert_every_row
+from tests.support.generator_support import (
+    assert_constant_output,
+    assert_every_row,
+    constant_programs,
+)
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -40,13 +44,8 @@ def _check_constants() -> None:
     assert_analysis_complement("Codesick", "decision_layers")
     from esolangs.languages.codesick.interpreter import run
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "Codesick", bit * (1 << n), **options
-                ).source
-                for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row, expected=1)
-                    assert_constant_output(run, program, io, bit, 1)
-                    assert io.position() == n
+    for n, bit, _options, program in constant_programs("Codesick", range(1, 13)):
+        for row in ("0" * n, "1" * n):
+            io = ReadFirstIO(row, expected=1)
+            assert_constant_output(run, program, io, bit, 1)
+            assert io.position() == n

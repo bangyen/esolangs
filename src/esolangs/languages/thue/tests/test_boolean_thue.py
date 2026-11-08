@@ -20,6 +20,7 @@ from esolangs.runtime.randomness import Seeded
 from scripts.benchmark import WrittenState
 from tests.generators.reader_support import _TABLES
 from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import constant_programs
 from tests.support.witness_tables import row_bits as _bits
 from tests.support.witness_tables import witnesses
 
@@ -363,32 +364,27 @@ def test_packed_layouts_expand_before_reading_and_stay_deterministic() -> None:
 
 
 def _check_constants() -> None:
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Thue", bit * (1 << n), **options).source
-                if not options:
-                    assert len(program) == n + 35
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "Thue", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "7\n", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        assert len(_matches(machine.state, machine.rules)) == 1
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps < 1000
-                    assert io.getvalue() == bit
-                    assert io.past_end == 0
-                    assert io.input_str() == "7"
-                    if not options:
-                        assert steps == 2 * n + 1
-                        assert written.bits == 8 * (n + 2) + (2 * n).bit_length()
+    for n, bit, options, program in constant_programs("Thue", range(1, 13)):
+        if not options:
+            assert len(program) == n + 35
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            stdin = esolangs.encode_inputs("Thue", list(map(int, f"{row:0{n}b}")))
+            io = ReadFirstIO(stdin + "7\n", expected=n)
+            machine = _Machine(program, io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = 0
+            while not machine.halted:
+                assert len(_matches(machine.state, machine.rules)) == 1
+                machine.step()
+                written.sample(machine.workspace_snapshot())
+                steps += 1
+                assert steps < 1000
+            assert io.getvalue() == bit
+            assert io.past_end == 0
+            assert io.input_str() == "7"
+            if not options:
+                assert steps == 2 * n + 1
+                assert written.bits == 8 * (n + 2) + (2 * n).bit_length()
 
     # Two-character expansion names must not overlap a queue/control marker.
     n = 50

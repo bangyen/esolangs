@@ -6,7 +6,7 @@ import esolangs
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_every_row
+from tests.support.generator_support import assert_every_row, constant_programs
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -43,32 +43,25 @@ def test_equal_subtables_are_one_block() -> None:
 def _check_constants() -> None:
     from esolangs.languages.between.interpreter import _Machine
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Between", bit * (1 << n), **options).source
-                if not options:
-                    assert len(program) == 6 * n + 11
-                peak = 0
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "Between", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "7\n", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps <= n + 2
-                    assert io.getvalue() == bit
-                    assert io.past_end == 0
-                    assert io.input_str() == "7"
-                    assert steps == n + 2
-                    assert (
-                        written.bits <= 16 + (n + 2).bit_length() + (2 * n).bit_length()
-                    )
-                    peak = max(peak, written.bits)
-                assert peak == 16 + (n + 2).bit_length() + (2 * n).bit_length()
+    for n, bit, options, program in constant_programs("Between", range(1, 13)):
+        if not options:
+            assert len(program) == 6 * n + 11
+        peak = 0
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            stdin = esolangs.encode_inputs("Between", list(map(int, f"{row:0{n}b}")))
+            io = ReadFirstIO(stdin + "7\n", expected=n)
+            machine = _Machine(program, io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                written.sample(machine.workspace_snapshot())
+                steps += 1
+                assert steps <= n + 2
+            assert io.getvalue() == bit
+            assert io.past_end == 0
+            assert io.input_str() == "7"
+            assert steps == n + 2
+            assert written.bits <= 16 + (n + 2).bit_length() + (2 * n).bit_length()
+            peak = max(peak, written.bits)
+        assert peak == 16 + (n + 2).bit_length() + (2 * n).bit_length()

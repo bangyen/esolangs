@@ -27,7 +27,7 @@ from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _run_from, _runner
 from tests.generators.sample_tables import five_input_sample
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output
+from tests.support.generator_support import assert_constant_output, constant_programs
 from tests.support.witness_tables import dense as _dense
 from tests.support.witness_tables import row_bits, witnesses
 
@@ -503,14 +503,11 @@ def test_internal_route_budget_is_not_a_generator_restriction() -> None:
 def _check_constants() -> None:
     from esolangs.languages.six_five.interpreter import run
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("6-5", bit * (1 << n), **options).source
-                for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row + "7", expected=n)
-                    assert_constant_output(run, program, io, bit, n)
-                    assert io.input_char() == ord("7")
+    for n, bit, _options, program in constant_programs("6-5", range(1, 13)):
+        for row in ("0" * n, "1" * n):
+            io = ReadFirstIO(row + "7", expected=n)
+            assert_constant_output(run, program, io, bit, n)
+            assert io.input_char() == ord("7")
 
 
 def _check_one_input_walk_returns_without_a_home_loop() -> None:

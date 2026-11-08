@@ -7,7 +7,7 @@ from esolangs import run
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
-from tests.support.generator_support import assert_every_row
+from tests.support.generator_support import assert_every_row, constant_programs
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -41,23 +41,20 @@ def _check_constants() -> None:
     assert_analysis_complement("Sonata", "read_at", "0010")
     from esolangs.languages.sonata.interpreter import _Machine
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Sonata", bit * (1 << n), **options).source
-                assert len(program) == (16 if n == 2 else 2 * n + 5)
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    io = ScriptedIO(f"{row:0{n}b}")
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    for _ in range(2):
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                    assert machine.halted
-                    assert io.getvalue() == "=" + bit
-                    assert written.bits == 8 * max(n, 2) + 2
-                invalid = "0" * (n + 1)
-                assert run("Sonata", program, stdin=invalid).output == invalid
+    for n, bit, _options, program in constant_programs("Sonata", range(1, 13)):
+        assert len(program) == (16 if n == 2 else 2 * n + 5)
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            io = ScriptedIO(f"{row:0{n}b}")
+            machine = _Machine(program, io)
+            written = WrittenState(machine.workspace_snapshot())
+            for _ in range(2):
+                machine.step()
+                written.sample(machine.workspace_snapshot())
+            assert machine.halted
+            assert io.getvalue() == "=" + bit
+            assert written.bits == 8 * max(n, 2) + 2
+        invalid = "0" * (n + 1)
+        assert run("Sonata", program, stdin=invalid).output == invalid
     total_chars = total_steps = 0
     for value in range(256):
         table = f"{value:08b}"

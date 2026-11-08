@@ -9,6 +9,7 @@ from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_constant_output,
     assert_native_rows,
+    constant_programs,
     measure_run,
 )
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -32,15 +33,12 @@ def _check_constants() -> None:
     assert_analysis_complement("Aprknia", "subtree_ids")
     from esolangs.languages.aprknia.interpreter import run
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate("Aprknia", bit * (1 << n), **options).source
-                assert isinstance(program, str)
-                for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(row + "7", expected=n)
-                    assert_constant_output(run, program, io, bit, n)
-                    assert io.input_char() == ord("7")
+    for n, bit, _options, program in constant_programs("Aprknia", range(1, 13)):
+        assert isinstance(program, str)
+        for row in ("0" * n, "1" * n):
+            io = ReadFirstIO(row + "7", expected=n)
+            assert_constant_output(run, program, io, bit, n)
+            assert io.input_char() == ord("7")
 
 
 def _check_quotient_guard() -> None:

@@ -19,7 +19,11 @@ from esolangs.languages.grapheme.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output, evaluate_generated
+from tests.support.generator_support import (
+    assert_constant_output,
+    constant_programs,
+    evaluate_generated,
+)
 from tests.support.witness_tables import _one_minterm
 
 
@@ -151,21 +155,15 @@ def test_generator_literals_are_exact(mode: str) -> None:
 def _check_constants() -> None:
     import esolangs
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "Grapheme", bit * (1 << n), **options
-                ).source
-                assert isinstance(program, str)
-                for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(
-                        esolangs.encode_inputs("Grapheme", [int(b) for b in row])
-                        + "7\n",
-                        expected=n,
-                    )
-                    assert_constant_output(run, program, io, bit, n)
-                    assert io.input_char() == ord("7")
+    for n, bit, _options, program in constant_programs("Grapheme", range(1, 13)):
+        assert isinstance(program, str)
+        for row in ("0" * n, "1" * n):
+            io = ReadFirstIO(
+                esolangs.encode_inputs("Grapheme", [int(b) for b in row]) + "7\n",
+                expected=n,
+            )
+            assert_constant_output(run, program, io, bit, n)
+            assert io.input_char() == ord("7")
 
 
 def _check_seed() -> None:

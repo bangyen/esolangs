@@ -6,7 +6,11 @@ import esolangs
 from esolangs.generation.wrap import balance_score
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output, assert_every_row
+from tests.support.generator_support import (
+    assert_constant_output,
+    assert_every_row,
+    constant_programs,
+)
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -45,17 +49,11 @@ def _check_constants() -> None:
     assert_analysis_complement("Freestajlo", "symmetric_weights", "0110")
     from esolangs.languages.freestajlo.interpreter import run
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "Freestajlo", bit * (1 << n), **options
-                ).source
-                for row in ("0" * n, "1" * n):
-                    io = ReadFirstIO(
-                        esolangs.encode_inputs("Freestajlo", [int(b) for b in row])
-                        + "7\n",
-                        expected=2 * n,
-                    )
-                    assert_constant_output(run, program, io, bit, 2 * n)
-                    assert io.input_num() == 7
+    for n, bit, _options, program in constant_programs("Freestajlo", range(1, 13)):
+        for row in ("0" * n, "1" * n):
+            io = ReadFirstIO(
+                esolangs.encode_inputs("Freestajlo", [int(b) for b in row]) + "7\n",
+                expected=2 * n,
+            )
+            assert_constant_output(run, program, io, bit, 2 * n)
+            assert io.input_num() == 7
