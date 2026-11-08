@@ -6,7 +6,11 @@ import random
 import pytest
 
 from esolangs.languages.qrain.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model(
+    "qrain-v1", "control queues output_bits input_cursor"
+)
 
 
 def _model(source, stdin):
@@ -79,23 +83,18 @@ def _model(source, stdin):
 
 
 def _agrees(factory, source, stdin):
-    expected = _model(source, stdin)
-    assert (
-        observed(
-            factory,
-            source,
-            stdin,
-            lambda m: (
-                *m.state,
-                tuple(sorted((i, tuple(q)) for i, q in m.queues.items() if q)),
-                tuple(m.out),
-                tuple(m.memory),
-                m.ip,
-            ),
-        )
-        == expected
-    ), (source, stdin)
-    return expected
+    return workspace.agrees(
+        _model(source, stdin),
+        (factory, source, stdin),
+        (_WORKSPACE, lambda r: (r[0][:2], frozenset(r[0][2]), r[0][3], r[-1])),
+        lambda m: (
+            *m.state,
+            tuple(sorted((i, tuple(q)) for i, q in m.queues.items() if q)),
+            tuple(m.out),
+            tuple(m.memory),
+            m.ip,
+        ),
+    )
 
 
 def check_raw_qrain():
@@ -130,6 +129,8 @@ def check_raw_qrain():
     assert any(not trace[-1][1] for error, trace in results if error is None)
     assert _model(",.", "λ")[1][-1][2] == chr(ord("λ") % 256)
     assert _model("+.+++++++.", "")[1][-1][2] == "\x01"
+    _agrees(_Machine, "+.>,", "\x81")
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, "+.>,", "\x81")
     controls = {
         "equal": ("+", ""),
         "outfront": ("+.+", ""),

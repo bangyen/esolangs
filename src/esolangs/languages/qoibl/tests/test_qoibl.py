@@ -242,6 +242,9 @@ class TestQoiblIncompleteTokens:
 
     def test_stepping_an_empty_statement_advances_the_cursor(self) -> None:
         """An empty statement is a no-op, not a parse of nothing."""
+        from esolangs.languages.qoibl.tests.oracle_checks import check_raw_qoibl
+
+        check_raw_qoibl()
         state = _Machine("w", ScriptedIO(""))
         assert state.code == ([],)
         state.step()

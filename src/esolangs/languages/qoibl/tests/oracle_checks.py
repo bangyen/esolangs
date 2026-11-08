@@ -12,6 +12,9 @@ import pytest
 
 from esolangs.languages.qoibl.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model("qoibl-v1", "instruction variables input_cursor")
 
 _ARITH = dict(zip("+-*/", (add, sub, mul, floordiv), strict=True))
 _COMPARE = dict(zip(("=", ">", "<", "!"), (eq, gt, lt, ne), strict=True))
@@ -140,9 +143,12 @@ def _view(machine):
 def _check(factory, statements, stdin="unused"):
     assert len(statements) <= 32
     code = "\n".join(_source(statement) for statement in statements)
-    assert observed(factory, code, stdin, _view, cap=32) == _model(statements, stdin), (
-        code,
-        stdin,
+    workspace.agrees(
+        _model(statements, stdin),
+        (factory, code, stdin),
+        (_WORKSPACE, lambda r: (r[0][0], frozenset(r[0][1]), r[-1])),
+        _view,
+        cap=32,
     )
 
 
@@ -186,3 +192,11 @@ def check_raw_qoibl():
     for factory in (stalled(_Machine), WrongStore, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, (("store", 7, 65), ("emit", ("at", 7))))
+
+    workspace.check_erasures(
+        _WORKSPACE,
+        _check,
+        _Machine,
+        (("store", 0, ("read",)), ("emit", ("at", 0))),
+        "A",
+    )

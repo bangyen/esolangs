@@ -7,7 +7,11 @@ from fractions import Fraction
 import pytest
 
 from esolangs.languages.refractran.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model(
+    "refractran-v1", "instruction integer direction printed input_cursor"
+)
 
 
 def _tokens(source):
@@ -91,17 +95,13 @@ def _model(source):
 
 
 def _agrees(factory, source):
-    expected = _model(source)
-    assert (
-        observed(
-            factory,
-            source,
-            "unused λ",
-            lambda m: (*m.state, m.printed, tuple(m.memory), m.ip),
-        )
-        == expected
-    ), source
-    return expected
+    return workspace.agrees(
+        _model(source),
+        (factory, source, "unused λ"),
+        (_WORKSPACE, lambda r: (*r[0][:4], r[-1])),
+        lambda m: (*m.state, m.printed, tuple(m.memory), m.ip),
+        context=source,
+    )
 
 
 def check_raw_refractran():
@@ -140,6 +140,7 @@ def check_raw_refractran():
     assert {error for error, _ in results} == {None, "syntax"}
     assert any(not trace[-1][1] for error, trace in results if error is None)
     assert _model("2 3/5 3/2")[1][-1][2] == "101"
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, "2 3/2")
     controls = {
         "turn": "2 3/2",
         "inverse": "2 3/5 3/2",

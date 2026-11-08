@@ -2085,3 +2085,28 @@ Shared erasure reuse saves 82 test lines across 35 clients/36 loops. Typed
 trace dumps and all 146 ordered erasures match before/after, retaining every
 case, assertion and cap. Tests/source remain 115,668/115,702 lines. These bounded
 accounting scopes are reviewed; broader language/catalog completion stays open.
+
+Qoibl, Qrain and REFRACTRAN now compare independent workspace projections
+at every modeled boundary. All 5,374 original cases retain state, cycle, IO
+and resource traces; all 25 controls remain live. Qrain adds one populated
+FIFO/output probe. Caps stay 32/64/64, including eight-evaluation finite loops.
+Qoibl's previously uncalled oracle now runs through an existing pytest node.
+Permanent omissions cover all twelve components; REFRACTRAN's input cursor
+stays zero and its required presence is checked separately from charged writes.
+
+One unchanged 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0: 5,375 cases/18,145 native boundaries and 21 guarded native/isolated
+pairs per version. Every local public result also matches. Full captures,
+state/cycle keys, views, IO counters, step/completion timing and held snapshots
+agree with independent models and width recounts. Eleven populated freezes
+lose their predicted charge; omitting REFRACTRAN's constant cursor changes no
+charge but fails capture equality. Corpus peaks are 17/44/17 bits, not bounds.
+
+Qoibl has 125 completions, eighteen execution failures and four constructor
+failures; Qrain has 1,632/595/2,580 and nineteen bounded runs; REFRACTRAN has
+389/0/12 and one bounded run. Canonical program artifacts preserve exact source
+bytes including `.x`; the raw filename guard still rejects it. A valid
+4,301-digit REFRACTRAN literal separately confirms host-limit refusal rather
+than malformed syntax. All production bytes and generator pins are unchanged.
+Tests/source remain 115,687/115,702 lines with no new collected node. These
+bounded accounting scopes are reviewed; general catalog completion stays open.
