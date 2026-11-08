@@ -81,14 +81,11 @@ def _model(lines, stdin):
 def _check(factory, lines, stdin):
     expected = _model(lines, stdin)
 
-    def state(machine):
-        return machine.ind, machine.ptr, machine.cells
-
     checked = workspace_view(
         expected[1],
         _WORKSPACE,
         lambda row: (row[0][2], row[0][0], row[0][1], row[-1]),
-        state,
+        lambda machine: (machine.ind, machine.ptr, machine.cells),
     )
     assert observed(factory, lines, stdin, checked, cap=32) == expected, lines
 

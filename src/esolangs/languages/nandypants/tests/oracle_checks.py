@@ -13,10 +13,6 @@ _WORKSPACE = workspace.workspace_model(
 )
 
 
-def _parts(row):
-    return *row[0], row[-1]
-
-
 def _pack(bits):
     return sum(bit * 2**index for index, bit in enumerate(bits))
 
@@ -111,7 +107,7 @@ def _check(factory, code, stdin):
     workspace.agrees(
         _model(code, stdin),
         (factory, code, stdin),
-        (_WORKSPACE, _parts),
+        (_WORKSPACE, lambda row: (*row[0], row[-1])),
         state,
         cap=32,
         context=(code, stdin),

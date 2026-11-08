@@ -14,10 +14,6 @@ _WORKSPACE = workspace.workspace_model(
 )
 
 
-def _parts(row):
-    return *row[0], row[1], row[-1]
-
-
 def _integers(text):
     numbers = []
     for token in text.split():
@@ -85,7 +81,7 @@ def _model(source, stdin):
 
 _agrees = workspace.checker(
     _model,
-    (_WORKSPACE, _parts),
+    (_WORKSPACE, lambda row: (*row[0], row[1], row[-1])),
     lambda m: (m.ind, None if m.queue is None else tuple(m.queue)),
 )
 

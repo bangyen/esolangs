@@ -2819,3 +2819,36 @@ complete bridge at four test lines; the necessary native correction removes
 one obsolete source line overall. Tests/source are 115,817/115,818. No node,
 case, cap or old assertion is removed. Giant-target/register and broader source
 policies remain open; 43 accounting rows and all 117 completion rows remain open.
+
+
+NQ's independent hook now checks all six workspace components under both
+guard bindings. All 1,573 cases, cap64, eight controls and return(1573,8)
+remain; six erasures add controls. Complete ordinary traces retain byte-identical
+23,536 step attempts and 24,994 valid captures, including IO/newline state.
+
+Installed Python 3.12.11–final 3.15.0 retains 24,994 boundaries per raw/VM/debug
+route, 115 constructor refusals and peak 130 bits. Invalid guard settings refuse
+before IO or worker launch; raw constructors retain their distinct ValueError.
+Full histories, readonly parsed/source metadata, seven views, active commands,
+cycle keys and independent component recounts agree. All 1,573 bounded public
+cases remain; 1,272 also run ordinarily, while 301 uncertified cases stay bounded.
+Seventy-two actual masks retain complete canonical trajectories; monotone flags
+retain their initial one-bit charge under late None. Three queue omissions from
+construction lose four bits, and three recursive-binding positives remain.
+
+Sixty writer routes plus six wrapped-write routes verify state commits before
+writer failures and next-instruction retries. EOF, invalid-input and underflow
+retries retain their distinct states and IO counters; whole-input reads count
+once even when empty or invalid. Fourteen literal anchors, six real metadata
+corruptions and seventeen guarded workers retain active caps and output prefixes.
+Two finite 5,001-trit supplements attain 10,005/10,018 bits without widening the
+original corpus; arbitrary source grammar and unbounded execution remain open.
+
+Four complete Suffolk/Nandypants/NOR/BrainIf hooks inline single-use projections,
+saving thirteen formatted lines against the nine-line NQ bridge. Typed ordered
+traces retain 7,771 constructor attempts, 158,329 step attempts, 173,765 captures,
+158,304 meter samples, 8,994 IO events and all 44 rejection controls byte-identically.
+Each actual callback rejects a concrete erased field; ordered dictionaries,
+deque capacity and bool/int identity have positive codec controls. No case,
+assertion, node or cap is removed. Tests/source are 115,813/115,818; 42 accounting
+rows and all 117 completion rows remain open.

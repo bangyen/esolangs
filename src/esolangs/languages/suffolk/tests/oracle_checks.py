@@ -16,10 +16,6 @@ _WORKSPACE = workspace.workspace_model(
 )
 
 
-def _parts(row):
-    return *row[0][:4], row[-1], row[1]
-
-
 def _model(source, stdin):
     if not source:
         return "syntax", [(None, False, "", 0, 0)]
@@ -72,7 +68,9 @@ def _model(source, stdin):
 
 
 _agrees = workspace.checker(
-    _model, (_WORKSPACE, _parts), lambda m: (*m.state, tuple(m.memory), m.ip)
+    _model,
+    (_WORKSPACE, lambda row: (*row[0][:4], row[-1], row[1])),
+    lambda m: (*m.state, tuple(m.memory), m.ip),
 )
 
 

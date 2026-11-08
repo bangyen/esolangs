@@ -8,7 +8,12 @@ from functools import partial
 import pytest
 
 from esolangs.languages.nq.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model(
+    "nq-v1", "instruction flag first_lap stopped queue input_cursor"
+)
+
 
 _LEX = re.compile(
     r"(?P<load>[+l])\s*(?P<data>[012]|\([^)]*\))"
@@ -147,10 +152,13 @@ def _state(machine):
 
 def _agrees(factory, source, stdin, binding):
     expected = _model(source, stdin, binding)
-    assert (
-        observed(partial(factory, guard_binding=binding), source, stdin, _state)
-        == expected
-    ), (source, stdin, binding)
+    workspace.agrees(
+        expected,
+        (partial(factory, guard_binding=binding), source, stdin),
+        (_WORKSPACE, lambda row: (*row[0][:5], row[-1])),
+        _state,
+        context=(source, stdin, binding),
+    )
     return expected
 
 
@@ -246,4 +254,5 @@ def check_raw_nq():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin, "opcode")
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, "+2-rH", "2", "opcode")
     return len(results), len(controls)
