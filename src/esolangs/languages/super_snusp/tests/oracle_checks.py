@@ -12,6 +12,7 @@ import pytest
 
 from esolangs.languages.super_snusp.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.support.model_input import token_span
 
 
 class _Draw:
@@ -65,11 +66,7 @@ def _read(command, stdin, cursor):
         if cursor == len(stdin):
             return None, cursor, "input"
         return ord(stdin[cursor]), cursor + 1, None
-    while cursor < len(stdin) and stdin[cursor].isspace():
-        cursor += 1
-    begin = cursor
-    while cursor < len(stdin) and not stdin[cursor].isspace():
-        cursor += 1
+    begin, cursor = token_span(stdin, cursor)
     if cursor == begin:
         return None, cursor, "input"
     token = stdin[begin:cursor]

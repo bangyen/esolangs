@@ -12,6 +12,7 @@ import pytest
 
 from esolangs.languages.sendstuff.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.support.model_input import token_span
 
 
 def _assemble(forest):
@@ -50,11 +51,7 @@ def _read(command, stdin, cursor):
         if cursor == len(stdin):
             return [], cursor, None
         return [ord(stdin[cursor])], cursor + 1, None
-    while cursor < len(stdin) and stdin[cursor].isspace():
-        cursor += 1
-    start = cursor
-    while cursor < len(stdin) and not stdin[cursor].isspace():
-        cursor += 1
+    start, cursor = token_span(stdin, cursor)
     if start == cursor:
         return [], cursor, None
     text = stdin[start:cursor]

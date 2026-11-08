@@ -14,6 +14,7 @@ from esolangs.languages.dimensional.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceSnapshot
 from tests.interpreters.oracle_support import observed, overread, stalled
 from tests.support import workspace_oracle as workspace
+from tests.support.model_input import token_span
 
 _WORKSPACE = workspace.workspace_model(
     "dimensional-v1", "instruction comment axis height hierarchy input_cursor"
@@ -64,11 +65,7 @@ def _read(command, stdin, cursor):
         if cursor == len(stdin):
             return None, cursor, "input"
         return ord(stdin[cursor]), cursor + 1, None
-    while cursor < len(stdin) and stdin[cursor].isspace():
-        cursor += 1
-    begin = cursor
-    while cursor < len(stdin) and not stdin[cursor].isspace():
-        cursor += 1
+    begin, cursor = token_span(stdin, cursor)
     text = stdin[begin:cursor]
     if not text:
         return None, cursor, "input"

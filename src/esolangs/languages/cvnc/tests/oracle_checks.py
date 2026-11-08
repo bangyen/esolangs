@@ -14,6 +14,7 @@ import pytest
 from esolangs.languages.cvnc.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, overread, stalled
 from tests.support import workspace_oracle as workspace
+from tests.support.model_input import token_span
 
 _WORKSPACE = workspace.workspace_model(
     "cvnc-v1", "instruction accumulator deque function input_cursor"
@@ -63,11 +64,7 @@ def _read(kind, stdin, cursor):
         if cursor == len(stdin):
             return None, cursor, "input"
         return ord(stdin[cursor]) % 256, cursor + 1, None
-    while cursor < len(stdin) and stdin[cursor].isspace():
-        cursor += 1
-    start = cursor
-    while cursor < len(stdin) and not stdin[cursor].isspace():
-        cursor += 1
+    start, cursor = token_span(stdin, cursor)
     if start == cursor:
         return None, cursor, "input"
     try:

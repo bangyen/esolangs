@@ -7,6 +7,7 @@ from decimal import Decimal
 import pytest
 
 from esolangs.languages.lol_waht_i_cant_edit_talk_pages.interpreter import _Machine
+from tests.support.model_input import token_span
 from tests.support.workspace_oracle import (
     charged_bits,
     check_erasures,
@@ -90,11 +91,7 @@ def _value(env, name):
 
 
 def _input(stdin, at):
-    while at < len(stdin) and stdin[at].isspace():
-        at += 1
-    start = at
-    while at < len(stdin) and not stdin[at].isspace():
-        at += 1
+    start, at = token_span(stdin, at)
     token = stdin[start:at]
     if not token:
         return None, at, "input"

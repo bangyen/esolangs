@@ -7,6 +7,7 @@ import pytest
 
 from esolangs.languages.movesum.interpreter import _Machine
 from tests.interpreters.oracle_support import checker as oracle_checker
+from tests.support.model_input import token_span
 
 
 def _parse(source):
@@ -36,11 +37,7 @@ def _parse(source):
 
 
 def _number(stdin, at):
-    while at < len(stdin) and stdin[at].isspace():
-        at += 1
-    start = at
-    while at < len(stdin) and not stdin[at].isspace():
-        at += 1
+    start, at = token_span(stdin, at)
     token = stdin[start:at]
     if not token:
         return 0, at, None

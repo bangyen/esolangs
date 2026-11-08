@@ -8,6 +8,7 @@ import pytest
 
 from esolangs.languages.creativescript_v2.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
+from tests.support.model_input import token_span
 from tests.support.workspace_oracle import check_erasures
 from tests.support.workspace_oracle import checker as workspace_checker
 
@@ -54,11 +55,7 @@ def _parse(source):
 
 
 def _input(stdin, at):
-    while at < len(stdin) and stdin[at].isspace():
-        at += 1
-    start = at
-    while at < len(stdin) and not stdin[at].isspace():
-        at += 1
+    start, at = token_span(stdin, at)
     token = stdin[start:at]
     if not token:
         return None, at, "input"

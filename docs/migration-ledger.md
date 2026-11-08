@@ -2268,3 +2268,39 @@ No case, assertion, control, cap or node is removed.
 Helper reuse saves 32 formatted test lines; Eval adds 33. Tests/source are
 115,696/115,702. This bounded accounting scope is reviewed; 65 accounting rows
 and all 117 completion rows remain open.
+
+CARP's independent parser and input reader now fold validated ASCII digits
+without the host conversion cap. Three numeric regressions join its old
+1,800 cases; every old typed trace and ten controls remain. IEBEL retains
+2,719 cases/fifteen controls. Both keep cap 64 and their existing callers.
+
+The unchanged 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0: 4,522 cases/41,514 boundaries, 3,057 completions, 1,128 failed
+transitions, 242 bounded runs and 95 constructor refusals per version. Full
+registers, source positions, cycle records, captures, declared debugger views,
+IO counters, successful steps, completion, attached failures and held histories
+match independent predictions. Six populated capture freezes lose their exact
+component charges. Measured corpus peaks are 30/294 written bits; literal
+anchors are 2/21/30 and 0/1/265. Eighteen guarded native/isolated pairs include
+cap-zero/cap-one boundaries.
+
+Six cursorless cases and four position substitutions preserve progress. Eight
+writer probes retain prefixes, committed halted state and unsuccessful-step
+metadata; idle calls neither retry the write nor clear the debugger fault.
+Signed host-format controls distinguish capped CARP diagnostics from ordinary
+range errors and restore the initial policy. IEBEL's rewritten constructor
+message retains its chained host-limit classification; ordinary malformed
+literals remain ProgramError. These are executed checks, not inferred phases.
+
+Fourteen independent readers share only whitespace/token span scanning; grammar,
+conversion, EOF and commit policy stay local. Expanding the helper restores
+each entire original module AST. Complete typed replays match: 17,853 observed
+calls, 160,234 returned boundaries, 127,149 resource samples, 158,976 recorded
+native boundaries, 112,702 meter samples, 114 live assertion controls and 39
+ordered component controls per side. All cached fields remain; fixed hash
+seeds resolve process-randomized native caches. Original Line PNG fixture bytes
+are retained. Each reader also rejects a wrong-span positive control.
+
+Reuse saves 31 test lines; CARP adds sixteen. Tests/source are 115,681/115,702;
+no case, assertion, control, cap or node is removed. These bounded accounting
+scopes are reviewed; 63 accounting rows and all 117 completion rows remain open.

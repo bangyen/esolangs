@@ -3,6 +3,7 @@
 import itertools
 import random
 import re
+import sys
 
 import pytest
 
@@ -10,6 +11,14 @@ from esolangs.languages.carp.interpreter import _Machine
 from tests.support import workspace_oracle as workspace
 
 _WORKSPACE = workspace.workspace_model("carp-v1", "instruction registers input_cursor")
+
+
+def _decimal(text):
+    """Parse already validated ASCII digits independently of the host cap."""
+    value = 0
+    for char in text.lstrip("+-"):
+        value = value * 10 + ord(char) - ord("0")
+    return -value if text.startswith("-") else value
 
 
 def _parse(source):
@@ -21,10 +30,10 @@ def _parse(source):
         match = re.fullmatch(r"(\S+)\s+[rR]([0-9]+)\s+([0-9]+)", text)
         if not match or match[1].upper() not in {"INC", "DEC", "CLR", "OUT", "INP"}:
             raise ValueError("instruction")
-        register = int(match[2])
+        register = _decimal(match[2])
         if not 1 <= register <= 15:
             raise ValueError("register")
-        program.append((match[1].upper(), register - 1, int(match[3])))
+        program.append((match[1].upper(), register - 1, _decimal(match[3])))
     if not program:
         raise ValueError("empty")
     return program
@@ -42,8 +51,12 @@ def _number(stdin, cursor):
     digits = token[1:] if token[:1] in "+-" else token
     if not digits or any(c not in "0123456789" for c in digits):
         return 0, cursor, "argument"
-    value = int(token)
-    return value, cursor, None if 0 <= value <= 15 else "halt"
+    value = _decimal(token)
+    if 0 <= value <= 15:
+        return value, cursor, None
+    limit = sys.get_int_max_str_digits()
+    error = "syntax" if limit and abs(value) >= 10**limit else "halt"
+    return value, cursor, error
 
 
 def _model(source, stdin):
@@ -146,6 +159,9 @@ def check_raw_carp():
         "halt",
     }
     assert any(not trace[-1][1] for error, trace in results if not error)
+    _agrees(_Machine, "OUT r1 " + "0" * 4301, "")
+    _agrees(_Machine, "INP r1 0", "0" * 4301 + "1")
+    _agrees(_Machine, "INP r1 0", "1" * 4301)
     controls = {
         "inc": ("INP r1 0\nINC r1 0", "15"),
         "dec": ("DEC r1 1", ""),

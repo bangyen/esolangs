@@ -16,14 +16,11 @@ from esolangs.languages.line.interpreter import _execute, _Machine
 from esolangs.raster import Raster
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import observed, overread, stable_halt, stalled
+from tests.support.model_input import token_span
 
 
 def _read(stdin, cursor):
-    while cursor < len(stdin) and stdin[cursor].isspace():
-        cursor += 1
-    start = cursor
-    while cursor < len(stdin) and not stdin[cursor].isspace():
-        cursor += 1
+    start, cursor = token_span(stdin, cursor)
     if start == cursor:
         return None, cursor, "input"
     text = stdin[start:cursor]

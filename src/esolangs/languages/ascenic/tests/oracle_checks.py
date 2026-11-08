@@ -8,6 +8,7 @@ import pytest
 
 from esolangs.languages.ascenic.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
+from tests.support.model_input import token_span
 from tests.support.workspace_oracle import agrees as workspace_agrees
 from tests.support.workspace_oracle import check_erasures
 
@@ -49,11 +50,7 @@ def _input(stdin, at, numeric):
         return (
             (ord(stdin[at]), at + 1, None) if at < len(stdin) else (None, at, "input")
         )
-    while at < len(stdin) and stdin[at].isspace():
-        at += 1
-    start = at
-    while at < len(stdin) and not stdin[at].isspace():
-        at += 1
+    start, at = token_span(stdin, at)
     token = stdin[start:at]
     if not token:
         return None, at, "input"

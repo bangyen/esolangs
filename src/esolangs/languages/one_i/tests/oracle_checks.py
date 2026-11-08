@@ -12,6 +12,7 @@ import pytest
 
 from esolangs.languages.one_i.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.support.model_input import token_span
 from tests.support.workspace_oracle import agrees as workspace_agrees
 from tests.support.workspace_oracle import missing_workspace, workspace_model
 
@@ -86,11 +87,7 @@ def _read(command, stdin, cursor):
         if cursor == len(stdin):
             return _I, cursor, None
         return (Fraction(ord(stdin[cursor])), Fraction(0)), cursor + 1, None
-    while cursor < len(stdin) and stdin[cursor].isspace():
-        cursor += 1
-    start = cursor
-    while cursor < len(stdin) and not stdin[cursor].isspace():
-        cursor += 1
+    start, cursor = token_span(stdin, cursor)
     if start == cursor:
         return None, cursor, "input"
     try:

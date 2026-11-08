@@ -11,6 +11,7 @@ import pytest
 
 from esolangs.languages.modulous.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.support.model_input import token_span
 
 
 def _source(modules, curly):
@@ -26,11 +27,7 @@ def _source(modules, curly):
 
 def _read(mode, stdin, cursor):
     if mode == "INT":
-        while cursor < len(stdin) and stdin[cursor].isspace():
-            cursor += 1
-        start = cursor
-        while cursor < len(stdin) and not stdin[cursor].isspace():
-            cursor += 1
+        start, cursor = token_span(stdin, cursor)
         return stdin[start:cursor], cursor, start == cursor
     if cursor == len(stdin):
         return "", cursor, True

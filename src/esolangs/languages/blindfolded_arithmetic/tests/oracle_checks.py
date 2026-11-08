@@ -9,6 +9,7 @@ import pytest
 from esolangs.languages.blindfolded_arithmetic.interpreter import _Machine
 from tests.interpreters.oracle_support import observed
 from tests.support import workspace_oracle as workspace
+from tests.support.model_input import token_span
 
 _WORKSPACE = workspace.workspace_model(
     "blindfolded-arithmetic-v1", "configuration stopped input_cursor"
@@ -42,11 +43,7 @@ def _parse(source):
 
 def _read(stdin):
     at = 0
-    while at < len(stdin) and stdin[at].isspace():
-        at += 1
-    start = at
-    while at < len(stdin) and not stdin[at].isspace():
-        at += 1
+    start, at = token_span(stdin, at)
     token = stdin[start:at]
     if not token:
         return None, at, "input"
