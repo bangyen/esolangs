@@ -174,3 +174,9 @@ def agrees(machine_type, oracle, code, stdin, *, dump=False):
         return error
     assert observed(machine_type, code, stdin, dump=dump) == expected, (code, stdin)
     return expected
+
+
+def signed32(value):
+    """Wrap an independent integer value to signed 32-bit range."""
+    value %= 2**32
+    return value - 2**32 if value >= 2**31 else value

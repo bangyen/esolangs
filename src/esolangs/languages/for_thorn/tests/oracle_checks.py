@@ -11,6 +11,7 @@ import pytest
 
 from esolangs.languages.for_thorn.interpreter import _Machine
 from tests.interpreters.oracle_support import decorate_io, overread, stalled
+from tests.interpreters.semantic_oracles import signed32 as _wrap
 from tests.support import workspace_oracle as workspace
 from tests.support.model_input import matching_delimiter
 
@@ -23,11 +24,6 @@ def _number(value):
     digits = format(abs(value), "X")
     code = digits[0] + "".join("F1+*" + c + "+" for c in digits[1:])
     return "0" + code + "-" if value < 0 else code
-
-
-def _wrap(value):
-    value %= 2**32
-    return value - 2**32 if value >= 2**31 else value
 
 
 def _math(command, left, right):

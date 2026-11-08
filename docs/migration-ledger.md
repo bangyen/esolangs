@@ -3077,3 +3077,45 @@ constructor refusals and actual-class patches. The helper is appended to preserv
 all existing shared-contract code positions. Production and generators remain
 byte-identical. Tests/source are 115,806/115,818; 36 accounting rows and all 117
 completion rows remain open.
+
+
+Painfuck's existing independent tape/conditional model now predicts all nine
+workspace fields. All 1,951 original cases, three constructor translation
+assertions, cap32, three old controls and None return remain; nine erasures add
+controls. Ordinary traces retain byte-identical 11,530 steps and 13,484 captures,
+including the three constructor-only checks. Old negatives still reject, now
+after two native steps rather than eleven. A 19-bit supplemental witness writes
+all nine fields, including origin, repeat, input reads and RNG draws.
+
+Installed Python 3.12.11–final 3.15.0 passes all thirty-six leaves. Constant-coin
+raw/prepared routes each retain 1,951 cases/13,481 boundaries. Genuine VM/debug
+routes separately predict both seeds for every original source/input, yielding
+3,902 cases/26,966 boundaries each; original-corpus peak16 bits. All 3,902 bounded
+public runs execute; ordinary runs cover 1,947 finite native cases and 5,821
+finite public projections, with four native and twelve public projections kept
+bounded. Public default None is used only without random commands; seeded
+routes retain actual providers and independently checked stdlib RNG states.
+
+One hundred forty-four live masks and thirty-six reductions retain exact peaks.
+Forty-eight stepped writer trajectories, twenty public writer trajectories,
+four provider refusals and nine guarded workers pass. Physical refusal retains
+pre-step control while completed IO/draws persist; retry consumes fresh RNG.
+V1's supplemental continuation wrongly executed the command after repeat0.
+Independent installed probes and V2's thirty-two error/loop continuations plus
+eight public continuations establish its actual no-effect command consumption,
+including repeated EOF and two consumed invalid tokens. The original model
+still stops at its first error and remains unchanged. Repeat families c/t,
+broader source/numeric grammar, huge formatting and arbitrary callbacks stay
+open; trailing y/py/yy remain included.
+
+FALSE, Forþ and LaserFuck share their exact signed32 scalar rule, saving five
+lines against the fifteen-line bridge. Full hooks retain 3,974 constructor
+attempts, 22,022 steps, 29,962 captures, 4,119 meter samples, 2,291 IO calls and
+fourteen rejections. Complete flow traces match after the proved source-line
+relocations: the two injected IO lambdas move four lines, with all other code
+and closure fields unchanged; raw metadata is retained separately. No full
+metadata byte identity is claimed. Fifty-one signed boundary values and eleven
+codec controls pass. The shared helper is appended, preserving all existing
+shared code positions. Production/generators remain byte-identical.
+Tests/source are 115,816/115,818; 35 accounting rows and all 117 completion rows
+remain open.

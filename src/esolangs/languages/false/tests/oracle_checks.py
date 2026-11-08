@@ -11,11 +11,7 @@ import pytest
 
 from esolangs.languages.false.interpreter import _Machine
 from tests.interpreters.oracle_support import decorate_io, observed, overread, stalled
-
-
-def _signed(value):
-    value %= 2**32
-    return value - 2**32 if value >= 2**31 else value
+from tests.interpreters.semantic_oracles import signed32 as _signed
 
 
 def _math(command, left, right):

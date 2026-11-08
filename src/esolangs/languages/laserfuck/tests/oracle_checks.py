@@ -11,6 +11,7 @@ import pytest
 
 from esolangs.languages.laserfuck.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, stalled
+from tests.interpreters.semantic_oracles import signed32
 
 
 class _Draw:
@@ -65,11 +66,7 @@ class _Model:
         return self.state(), self.halted, self.output, self.cursor, self.cursor
 
     def write(self, value):
-        unsigned = value % 2**32
-        self.tape[self.pointer] = (
-            unsigned - 2**32 if unsigned >= 2**31 else unsigned,
-            1,
-        )
+        self.tape[self.pointer] = signed32(value), 1
 
     def operate(self, command, y, x, direction, byte):
         if command == "x":

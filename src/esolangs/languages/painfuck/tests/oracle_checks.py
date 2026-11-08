@@ -13,8 +13,14 @@ import pytest
 
 from esolangs.languages.painfuck.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
-from tests.interpreters.oracle_support import observed, stalled
+from tests.interpreters.oracle_support import stalled
+from tests.support import workspace_oracle as workspace
 from tests.support.model_input import token_span
+
+_WORKSPACE = workspace.workspace_model(
+    "painfuck-v1",
+    "tape loops pointer instruction repeat origin input_cursor input_reads draws",
+)
 
 _BEFORE = "pysrlijouavbtkzhwqdec"
 _AFTER = "euopdhzbclkqsjwariyvt"
@@ -212,9 +218,14 @@ def _check(factory, commands, stdin="unused", coin=0):
     def build(source, io):
         return factory(source, io, _Coin(coin))
 
-    assert observed(build, _encode(commands), stdin, _view, cap=32) == _model(
-        commands, stdin, coin
-    ), (commands, stdin, coin)
+    workspace.agrees(
+        _model(commands, stdin, coin),
+        (build, _encode(commands), stdin),
+        (_WORKSPACE, lambda row: (*row[0][:6], row[-1], *row[0][6:8])),
+        _view,
+        cap=32,
+        context=(commands, stdin, coin),
+    )
 
 
 def check_raw_painfuck():
@@ -271,3 +282,7 @@ def check_raw_painfuck():
     ):
         with pytest.raises(AssertionError):
             _check(factory, code)
+
+    workspace.check_erasures(
+        _WORKSPACE, lambda f: _check(f, "lriypasbue", "2"), _Machine
+    )
