@@ -16,6 +16,7 @@ from tests.interpreters.contract import (
     EmptyProgramContract,
     InputCursorContract,
     machine_factory,
+    reader_factory,
 )
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program as _run_program
@@ -90,10 +91,6 @@ class TestStepMachine:
         assert [frame.code for frame in machine.frames] == ["1;", ""]
 
 
-def _reader(code: object, stdin: str) -> object:
-    return _Machine(code, ScriptedIO(stdin))
-
-
 def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle() -> None:
     """A port with no cursor reports position 0; the snapshot counts reads."""
     with pytest.raises(EOFError):
@@ -105,7 +102,7 @@ class TestContract(EmptyProgramContract, CycleContract, InputCursorContract):
 
     run = staticmethod(run_program)
     machine = staticmethod(machine_factory(_Machine, ScriptedIO))
-    reader = staticmethod(_reader)
+    reader = staticmethod(reader_factory(_Machine, ScriptedIO))
     reading_program = ","
     reading_stdin = "hi"
     position_after_read = 2

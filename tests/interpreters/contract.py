@@ -237,3 +237,12 @@ def machine_factory(native, io_factory):
         return native(code, io_factory())
 
     return build
+
+
+def reader_factory(native, io_factory):
+    """Build each contract reader with explicit source and fresh stdin IO."""
+
+    def build(code, stdin):
+        return native(code, io_factory(stdin))
+
+    return build

@@ -6,6 +6,7 @@ import random
 import pytest
 
 from esolangs.languages.balik.interpreter import _Machine
+from esolangs.languages.balik.tests.source_fixtures import _page_loop
 from tests.support import workspace_oracle as workspace
 
 _WORKSPACE = workspace.workspace_model(
@@ -83,17 +84,6 @@ _agrees = workspace.checker(
     (_WORKSPACE, lambda row: (*row[0][:5], row[-1])),
     lambda m: (*m.state, tuple(m.memory), m.ip),
 )
-
-
-def _page_loop(before, body, after):
-    return "\n".join(
-        [
-            before + "**" + body + "**" + after,
-            "   @@   @@",
-            "  *       *",
-            "  ***   ***",
-        ]
-    )
 
 
 def check_raw_balik():

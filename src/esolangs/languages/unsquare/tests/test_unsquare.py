@@ -16,6 +16,7 @@ from tests.interpreters.contract import (
     CycleContract,
     InputCursorContract,
     StateViewContract,
+    reader_factory,
 )
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.support.raises import raises_message
@@ -152,15 +153,11 @@ def _machine(code: object) -> object:
     return _Machine(code, ScriptedIO())
 
 
-def _reader(code: object, stdin: str) -> object:
-    return _Machine(code, ScriptedIO(stdin))
-
-
 class TestContract(CycleContract, InputCursorContract, StateViewContract):
     """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
-    reader = staticmethod(_reader)
+    reader = staticmethod(reader_factory(_Machine, ScriptedIO))
     reading_program = "i"
     reading_stdin = "hi"
     halting_program = "Io"

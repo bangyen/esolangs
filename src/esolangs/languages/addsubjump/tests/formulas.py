@@ -1,12 +1,6 @@
 """AddSubJump's emitted characters: P, the packed decoder; R, shared residuals."""
 
-
-def _tests(n: int) -> int:
-    """Most distinct split residuals: differing halves at each depth."""
-    return sum(
-        min(2**d, 2 ** (2 ** (n - d)) - 2 ** (2 ** (n - d - 1))) for d in range(n)
-    )
-
+from tests.support.witness_tables import split_residuals as _tests
 
 #: Packed decoder tail: (branch start, positive target, zero target) and the
 #: plain jumps (index -> target), relative to the first of its 53 instructions.

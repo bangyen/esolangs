@@ -3119,3 +3119,47 @@ codec controls pass. The shared helper is appended, preserving all existing
 shared code positions. Production/generators remain byte-identical.
 Tests/source are 115,816/115,818; 35 accounting rows and all 117 completion rows
 remain open.
+
+
+Fish's existing independent linear model now exposes its stopped flag in both
+rich state and halt status. All 471 cases, including one constructor refusal,
+cap48, three old controls and None return remain; twelve erasures add controls.
+Transition code is unchanged. Projecting only the added flag from rich views
+retains byte-identical 3,727 native steps and 4,197 captures; old negatives still
+reject, now after four native steps rather than fourteen.
+
+Installed Python 3.12.11–final 3.15.0 passes all thirty-six leaves. Raw, prepared,
+VM and debug routes each cover 471 cases/4,197 captured boundaries, peak82 bits,
+with constructor refusals checked separately. All bounded public cases run;
+467 finite native/public cases also run ordinarily, plus the empty constructor,
+while three remain bounded. Actual public seeded/ordinary-None providers stay
+intact; injected NoDraw protects raw/prepared routes. The real random-turn guard
+fires once, without certifying random-turn semantics.
+
+Ninety-six mutable masks, twenty-four reductions and forty-eight readonly
+trajectories retain exact peaks. The 27-bit witness writes x, stacks, registers,
+quote, stopped and input cursor; y/dx/dy/cells/width/height remain readonly.
+Fifty-six stepped writer routes and twenty-eight public routes retain committed
+pop/advance before physical output: refusal leaves the next command active;
+resume never repeats the failed write. Sixteen repeated halts, four provider
+refusals and twelve extra EOF/quoted-command traces pass. Nine guarded children
+cover eight native/worker parity pairs and one isolated output-limit witness.
+V2's rejected in-process output limit is retained as a zero-IO preflight control;
+V3 compares its separate step-bounded prefix only as execution metadata, without
+claiming equal control after the failed write. Multidimensional movement, code
+writes, random turns, huge arithmetic/formatting and general grid grammar stay open.
+
+Four funding scopes save seventeen lines against the seventeen-line bridge:
+shared residual-count math, explicit reader factories, Dimensional factory reuse
+and Balik page-source construction. All thirty inherited/constructor nodes retain
+27 constructor attempts, 79 steps, 129 captures and 28 IO calls byte-identically,
+including both malformed-constructor refusals and full Dimensional slot graphs.
+Twenty-one scaling nodes retain all 217 bound calls and intermediate math values.
+Balik retains its full 1,744-case/eighteen-control hook and all seven raw tests;
+raw-test flows retain 8,601 steps, 12,057 captures, 8,499 meter samples and 1,291
+IO calls. Two injected IO callbacks move ten source lines; all other code/closure
+fields agree and raw metadata is retained. No full metadata byte identity is
+claimed. Ten old/new constructor routes, eleven codec controls and a live bad
+residual-count control pass. Shared helpers are appended, retaining existing code
+positions. Production/generators stay byte-identical. Tests/source remain
+115,816/115,818; 34 accounting rows and all 117 completion rows remain open.

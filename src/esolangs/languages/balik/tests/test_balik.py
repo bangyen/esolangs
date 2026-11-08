@@ -3,21 +3,10 @@
 import pytest
 
 from esolangs.languages.balik.interpreter import run
+from esolangs.languages.balik.tests.source_fixtures import _page_loop
 from tests.interpreters.runner import native_runner
 
 _out = native_runner(run)
-
-
-def _page_loop(before: str, body: str, after: str) -> str:
-    """The page's ``abc[def]ghi`` diagram at depth 0."""
-    return "\n".join(
-        [
-            before + "**" + body + "**" + after,
-            "   @@   @@",
-            "  *       *",
-            "  ***   ***",
-        ]
-    )
 
 
 def test_increment_wraps_at_three() -> None:

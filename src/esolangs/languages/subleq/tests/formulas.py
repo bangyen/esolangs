@@ -1,12 +1,6 @@
 """Subleq's emitted characters: the shorter of packed decoder and hoisted tree."""
 
-
-def _tests(n: int) -> int:
-    """Most distinct split residuals: differing halves at each depth."""
-    return sum(
-        min(2**d, 2 ** (2 ** (n - d)) - 2 ** (2 ** (n - d - 1))) for d in range(n)
-    )
-
+from tests.support.witness_tables import split_residuals as _tests
 
 #: Original decode-part C addresses past the 8n reads, before zeroing output C,
 #: plus the self-modified load operand (instruction 14).

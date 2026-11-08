@@ -9,7 +9,13 @@ from itertools import product
 from operator import add, eq, gt, lt, mod, mul, sub, truediv
 
 from esolangs.languages.fish.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, reject_faults
+from tests.interpreters.oracle_support import reject_faults
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model(
+    "fish-v1",
+    "x y dx dy cells stacks registers quote stopped width height input_cursor",
+)
 
 
 def _whole(value):
@@ -104,6 +110,7 @@ def _model(source, stdin):
             tuple(stacks),
             tuple(registers),
             quote,
+            done,
             len(source),
             1,
         )
@@ -169,15 +176,23 @@ def _view(machine):
         tuple(tuple(s) for s in machine.stacks),
         tuple(machine.registers),
         machine.quote,
+        machine.state[8],
         machine.width,
         machine.height,
     )
 
 
 def _check(factory, source, stdin="unused"):
-    assert observed(factory, [source], stdin, _view, cap=48) == _model(source, stdin), (
-        source,
-        stdin,
+    workspace.agrees(
+        _model(source, stdin),
+        (factory, [source], stdin),
+        (
+            _WORKSPACE,
+            lambda row: (*row[0][:4], frozenset(row[0][4]), *row[0][5:], row[-1]),
+        ),
+        _view,
+        cap=48,
+        context=(source, stdin),
     )
 
 
@@ -239,3 +254,5 @@ def check_raw_fish():
                 self.state = tuple(state)
 
     reject_faults(_check, _Machine, WrongSum, "12+n;")
+
+    workspace.check_erasures(_WORKSPACE, lambda f: _check(f, "'a'&i;", "B"), _Machine)

@@ -9,7 +9,7 @@ from esolangs.languages.dimensional.interpreter import _Machine
 from esolangs.languages.dimensional.interpreter import _Machine as Dimensional
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
-from tests.interpreters.contract import SnapshotContract
+from tests.interpreters.contract import SnapshotContract, machine_factory
 from tests.interpreters.runner import run_lines
 from tests.support.raises import assert_rejected_with_hint, raises_message
 
@@ -186,8 +186,7 @@ class TestStepMachine:
         assert len(seen) > 1
 
 
-def _machine(code: object) -> object:
-    return _Machine(code, IO())
+_machine = machine_factory(_Machine, IO)
 
 
 class TestContract(SnapshotContract):
