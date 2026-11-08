@@ -8,6 +8,7 @@ import pytest
 from esolangs.languages.collatz_multiverse.interpreter import _Machine
 from tests.interpreters.oracle_support import observed
 from tests.support import workspace_oracle as workspace
+from tests.support.model_input import decimal_value
 
 _WORKSPACE = workspace.workspace_model(
     "collatz-multiverse-v1", "registers arrays instruction input_cursor"
@@ -55,10 +56,7 @@ def _model(program, stdin):
         cursor += len(word)
         if not re.fullmatch(r"[+-]?[0-9]+", word):
             raise ValueError
-        value = 0
-        for char in word.lstrip("+-"):
-            value = value * 10 + ord(char) - ord("0")
-        return -value if word.startswith("-") else value
+        return decimal_value(word)
 
     for step in range(17):
         halted = not 1 <= pc <= len(program)

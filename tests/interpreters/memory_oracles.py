@@ -1,12 +1,12 @@
 """Independent bounded models of self-modifying numeric and grid programs."""
 
 import re
-import unicodedata
 from dataclasses import dataclass
 from struct import calcsize
 
 from esolangs.exceptions import ArgumentError, HaltError, InterpreterLimitError
 from esolangs.runtime.io import ScriptedIO
+from tests.support.model_input import decimal_value
 from tests.support.workspace_oracle import WorkspaceWitness
 
 
@@ -43,11 +43,7 @@ def decimal_fold(word):
     """Fold signed Unicode Nd/underscored decimal text without host digit caps."""
     if re.fullmatch(r"[+-]?\d(?:_?\d)*", word) is None:
         raise ValueError("invalid decimal token")
-    value = 0
-    for char in word.lstrip("+-"):
-        if char != "_":
-            value = value * 10 + unicodedata.decimal(char)
-    return -value if word.startswith("-") else value
+    return decimal_value(word)
 
 
 def decleq(code: str, stdin: str, cap: int = 32):

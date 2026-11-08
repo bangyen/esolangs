@@ -9,16 +9,9 @@ import pytest
 
 from esolangs.languages.carp.interpreter import _Machine
 from tests.support import workspace_oracle as workspace
+from tests.support.model_input import decimal_value as _decimal
 
 _WORKSPACE = workspace.workspace_model("carp-v1", "instruction registers input_cursor")
-
-
-def _decimal(text):
-    """Parse already validated ASCII digits independently of the host cap."""
-    value = 0
-    for char in text.lstrip("+-"):
-        value = value * 10 + ord(char) - ord("0")
-    return -value if text.startswith("-") else value
 
 
 def _parse(source):

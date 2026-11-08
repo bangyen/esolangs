@@ -2450,3 +2450,31 @@ run another 32 rows; the opposite vector is specifically rejected. Exact-node
 collection, completion, JUnit and hash-pinned duration/companion receipts agree.
 This supplies two workspace claim receipts; other execution/scaling claims,
 arities and the four-version claim matrix remain open.
+
+BrainIf/Deadfish bounded accounting passes the unchanged 951-file wheel on
+Python 3.12.11, 3.13.15, 3.14.7 and final 3.15.0. BrainIf checks 995 cases at
+cap32; Deadfish checks 1,823 at cap64. Per version: 22,040 boundaries, 2,665
+completions, 49 failed transitions and 104 bounded runs. State, cycle, declared
+views, IO counters, failure envelopes and held captures match independent
+predictions; complete-width recounts match the meter. Peaks are 23/25,974 bits.
+Nine/six guarded worker pairs include cap-zero/cap-one boundaries.
+
+Seven populated freezes and nine omissions fail with exact lost charges;
+Deadfish's source and unused input cursor remain readonly and uncharged.
+Literal anchors are 13/5 bits. BrainIf's cursorless input retains real progress.
+Twelve writer routes preserve commit order: BrainIf retries before commit;
+Deadfish commits before refusal, with distinct idle/active debugger recovery.
+Three Deadfish routes retry capped decimal formatting before commit. Separate
+640-digit/disabled-limit source and worker runs preserve the policy; disabling
+it completes the large output witness and adds three checked idle boundaries.
+Named decimal views are predicted independently through base-10^9 chunks.
+
+Deadfish's existing model now captures decimal-format refusal and includes
+both large arithmetic/output witnesses. Four lines saved by reusing a pure
+validated decimal fold fund its four-line addition. CARP, Collatz, SwitchCase
+and Decleq retain local validation; IEBEL's capped conversion stays unchanged.
+All 9,003 original cases/53 controls retain byte-identical replay data. No node,
+assertion or cap is removed; tests/source remain 115,807/115,808. BrainIf's huge
+numeric-source parser and unbounded Deadfish growth remain outside this cohort.
+These bounded accounting scopes are reviewed; 56 accounting rows and all 117
+completion rows remain open.

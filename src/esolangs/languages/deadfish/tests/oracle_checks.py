@@ -39,7 +39,10 @@ def _model(source):
             if value in {-1, 256}:
                 value = 0
             if command == "o":
-                output += str(value) + "\n"
+                try:
+                    output += str(value) + "\n"
+                except ValueError:
+                    return "syntax", [*trace, view()]
             position += 1
         trace.append(view())
     if stopped or position == len(source):
@@ -82,6 +85,7 @@ def check_raw_deadfish():
         "diissisoxo",
         "i" * 80,
     ]
+    corpus += ["iii" + "s" * 14, "iii" + "s" * 14 + "o"]
     for source in corpus:
         _agrees(_Machine, source)
     assert _model("iissso")[1][-1][2] == "0\n"

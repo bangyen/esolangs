@@ -8,6 +8,7 @@ import pytest
 from esolangs.languages.switchcase.interpreter import _Machine
 from tests.interpreters.oracle_support import observed
 from tests.support import workspace_oracle as workspace
+from tests.support.model_input import decimal_value
 
 _WORKSPACE = workspace.workspace_model("switchcase-v1", "activation input_cursor")
 
@@ -93,10 +94,7 @@ def _model(cases, stdin):
                 if not re.fullmatch(r"[+-]?[0-9]+", word):
                     error = "argument"
                     continue
-                number = 0
-                for char in word.lstrip("+-"):
-                    number = number * 10 + ord(char) - ord("0")
-                env[name] = -number if word.startswith("-") else number
+                env[name] = decimal_value(word)
             case "'":
                 if not 1 <= arg <= len(cases):
                     error = "halt"
