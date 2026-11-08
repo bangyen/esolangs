@@ -8,7 +8,7 @@ import pytest
 
 from esolangs.languages.six_five.interpreter import _Machine
 from tests.support.workspace_oracle import agrees as workspace_agrees
-from tests.support.workspace_oracle import missing_workspace, workspace_model
+from tests.support.workspace_oracle import check_erasures, workspace_model
 
 _WORKSPACE = workspace_model("six-five-v1", "accumulator tape instruction input_cursor")
 
@@ -192,7 +192,5 @@ def check_raw_six_five():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), "B13B", "λA")
+    check_erasures(_WORKSPACE, _agrees, _Machine, "B13B", "λA")
     return len(results), len(controls) + 4

@@ -7,7 +7,7 @@ import pytest
 from esolangs.languages.nope.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import WorkspaceWitness, missing_workspace
+from tests.support.workspace_oracle import WorkspaceWitness, check_erasures
 
 _WORKSPACE = WorkspaceModel("nope-v1", ("emitted", "input_cursor"))
 
@@ -66,7 +66,5 @@ def check_raw_nope():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, "", "unused")
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), "", "unused")
+    check_erasures(_WORKSPACE, _agrees, _Machine, "", "unused")
     return len(sources) * len(inputs), 7

@@ -40,15 +40,15 @@ def execution(n: int, program: str) -> int:
 
 
 def _dig(n: int, p: str) -> int:
-    """The R by C grid at a byte a cell, its two coordinates, two counters."""
+    """Byte grid, coordinates, two counters and the halt latch."""
     bl = int.bit_length
     lines = p.split("\n")
     rows, cols = len(lines), max(map(len, lines))
-    return 8 * rows * cols + bl(rows - 1) + bl(cols - 1) + bl(2 * n - 1) + bl(n) + 10
+    return 8 * rows * cols + bl(rows - 1) + bl(cols - 1) + bl(2 * n - 1) + bl(n) + 11
 
 
 def workspace(n: int, p: str) -> int:
-    """The stated workspace bound, evaluated for n and the program."""
+    """The v2 bound, including its one-bit native halt latch."""
     if chain := _parity_chain(n, p):
         core, _ = chain
         # The off-path XNOR operand adds a column, never a visited coordinate.
@@ -65,7 +65,7 @@ def workspace(n: int, p: str) -> int:
             + bl(4 * core - 5)
             + bl(2 * n - 1)
             + bl(n)
-            + 6
+            + 7
             + mole
         )
     # This capture opcode occurs only in indexed bodies. Class<=9, stride<=8:

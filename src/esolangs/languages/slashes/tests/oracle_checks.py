@@ -7,7 +7,7 @@ import pytest
 
 from esolangs.languages.slashes.interpreter import _Machine
 from tests.support.workspace_oracle import agrees as workspace_agrees
-from tests.support.workspace_oracle import missing_workspace, workspace_model
+from tests.support.workspace_oracle import check_erasures, workspace_model
 
 _WORKSPACE = workspace_model("slashes-v1", "source pattern replacement input_cursor")
 
@@ -139,7 +139,5 @@ def check_raw_slashes():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), "/a/b/aaa")
+    check_erasures(_WORKSPACE, _agrees, _Machine, "/a/b/aaa")
     return len(corpus), len(controls) + 4

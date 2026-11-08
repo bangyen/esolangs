@@ -13,7 +13,7 @@ import pytest
 from esolangs.languages.dinac.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from tests.interpreters.oracle_support import observed, overread, stalled
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support.workspace_oracle import check_erasures, workspace_view
 
 _WORKSPACE = WorkspaceModel("dinac-v1", ("frames", "input_cursor"))
 
@@ -269,9 +269,7 @@ def check_raw_dinac():
         with pytest.raises(AssertionError):
             _check(factory, (("out", ("wubyte", 1)),))
 
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(missing_workspace(_Machine, component), (("out", ("wubyte", 1)),))
+    check_erasures(_WORKSPACE, _check, _Machine, (("out", ("wubyte", 1)),))
 
     class MissingNullType(_Machine):
         def workspace_snapshot(self):

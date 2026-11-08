@@ -195,7 +195,5 @@ def check_raw_aprknia():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin, 64)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(workspace.missing_workspace(_Machine, component), "11*", "")
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, "11*", "")
     return len(results), len(controls) + 3

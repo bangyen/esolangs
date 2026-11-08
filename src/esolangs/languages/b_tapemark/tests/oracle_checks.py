@@ -161,6 +161,4 @@ def check_raw_b_tapemark():
 
     with pytest.raises(AssertionError):
         _check(WrongMarker, ">?!", "", "new")
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(workspace.missing_workspace(_Machine, component), ">-!", "x", "new")
+    workspace.check_erasures(_WORKSPACE, _check, _Machine, ">-!", "x", "new")

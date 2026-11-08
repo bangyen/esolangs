@@ -239,10 +239,6 @@ def check_raw_hq9_with_headers():
         with pytest.raises(AssertionError):
             _check(factory, (("set", "v", 1),), (("out", "v"),))
 
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(
-                workspace.missing_workspace(_Machine, component),
-                (("set", "v", 1),),
-                (("out", "v"),),
-            )
+    workspace.check_erasures(
+        _WORKSPACE, _check, _Machine, (("set", "v", 1),), (("out", "v"),)
+    )

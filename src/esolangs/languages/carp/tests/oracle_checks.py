@@ -195,7 +195,5 @@ def check_raw_carp():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(workspace.missing_workspace(_Machine, component), "INC r1 0", "")
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, "INC r1 0", "")
     return len(results), len(controls) + 3

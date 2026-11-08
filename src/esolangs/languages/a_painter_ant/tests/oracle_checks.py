@@ -8,7 +8,7 @@ from esolangs.languages.a_painter_ant.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from tests.support.workspace_oracle import (
     WorkspaceWitness,
-    missing_workspace,
+    check_erasures,
     workspace_model,
 )
 
@@ -110,6 +110,4 @@ def check_raw_a_painter_ant():
 
     with pytest.raises(AssertionError):
         _check(ReversedColours, "P e W")
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(missing_workspace(_Machine, component), "P e p s")
+    check_erasures(_WORKSPACE, _check, _Machine, "P e p s")

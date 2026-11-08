@@ -128,7 +128,5 @@ def check_raw_deadfish():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(workspace.missing_workspace(_Machine, component), "iissso")
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, "iissso")
     return len(corpus), len(controls) + 5

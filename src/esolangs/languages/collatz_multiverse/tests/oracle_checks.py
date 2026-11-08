@@ -141,10 +141,6 @@ def check_raw_collatz_multiverse():
 
     with pytest.raises(AssertionError):
         _check(OmittedRead, (("x", "x", "input", True),), "42")
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(
-                workspace.missing_workspace(_Machine, component),
-                (("x", "x", "input", False),),
-                "2",
-            )
+    workspace.check_erasures(
+        _WORKSPACE, _check, _Machine, (("x", "x", "input", False),), "2"
+    )

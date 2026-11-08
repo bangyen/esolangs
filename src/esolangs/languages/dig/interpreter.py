@@ -299,7 +299,7 @@ def _advance(
 
 
 _WORKSPACE_MODEL = WorkspaceModel(
-    "dig-v1",
+    "dig-v2",
     (
         "row",
         "column",
@@ -309,6 +309,7 @@ _WORKSPACE_MODEL = WorkspaceModel(
         "grid",
         "input_cursor",
         "input_reads",
+        "stopped",
     ),
 )
 
@@ -378,6 +379,7 @@ class _Machine:
             grid=tuple(tuple(row) for row in self.code),
             input_cursor=self.io.progress(),
             input_reads=self._input_reads,
+            stopped=self._done,
         )
 
     def snapshot(self) -> tuple[object, ...]:

@@ -283,10 +283,6 @@ def check_raw_cvnc():
     for factory in (stalled(_Machine), WrongFunction, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, (("d", "u"), ("b", "u"), ("d", "u")))
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(
-                workspace.missing_workspace(_Machine, component),
-                (("s", "u"), ("c", "i", "n")),
-                "3",
-            )
+    workspace.check_erasures(
+        _WORKSPACE, _check, _Machine, (("s", "u"), ("c", "i", "n")), "3"
+    )

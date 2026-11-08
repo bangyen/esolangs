@@ -91,7 +91,7 @@ first = 3
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.ram0.generator:ram0"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}, S the token count", formula = "n + bl(S) + 2max(1,bl(n-1)) + Σ_{a<n} max(1,bl(a))" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}, S the token count", formula = "1 + n + bl(S) + 2max(1,bl(n-1)) + Σ_{a<n} max(1,bl(a))" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.ram0.tests.formulas:_chars"

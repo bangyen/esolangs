@@ -106,7 +106,7 @@ first = 5
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.dig.generator:dig"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n={previous}: byte grid, coordinates and derived transient maxima; equality at n=5", formula = "W" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n={previous}: byte grid, coordinates, halt latch and derived transient maxima; equality at n=5", formula = "W" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.dig.tests.formulas:_cells"

@@ -57,8 +57,8 @@ type _Index = dict[int, int]
 class _State(NamedTuple):
     """An immutable value, rebound per step.
 
-    ``dumped`` is state because the dump happens after the cursor runs off
-    the end; it stays out of ``snapshot``.  Tokens are a parameter, not a field.
+    The posthalt ``dumped`` latch is counted only by workspace snapshots.
+    Tokens are a parameter, not a field.
     """
 
     ind: int
@@ -127,8 +127,15 @@ def _advance(state: _State, op: str, index: _Index) -> _State:
 
 
 _WORKSPACE_MODEL = WorkspaceModel(
-    "ram0-v1",
-    ("instruction", "zero_register", "number_register", "cells", "input_cursor"),
+    "ram0-v2",
+    (
+        "instruction",
+        "zero_register",
+        "number_register",
+        "cells",
+        "input_cursor",
+        "dumped",
+    ),
 )
 
 
@@ -208,6 +215,7 @@ class _Machine:
             number_register=self.state.n,
             cells=flatten(self.state.ram),
             input_cursor=self.io.progress(),
+            dumped=self.state.dumped,
         )
 
     def snapshot(self) -> tuple[object, ...]:

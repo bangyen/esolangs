@@ -10,7 +10,7 @@ import pytest
 from esolangs.languages.taglate.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
 from tests.support.workspace_oracle import agrees as workspace_agrees
-from tests.support.workspace_oracle import missing_workspace
+from tests.support.workspace_oracle import check_erasures
 
 _WORKSPACE = WorkspaceModel("taglate-v1", ("queue", "instruction", "input_cursor"))
 
@@ -118,6 +118,4 @@ def check_raw_taglate():
 
     with pytest.raises(AssertionError):
         _check(MissingInput, "", ("h", "i"), "x")
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(missing_workspace(_Machine, component), "A", ("a", "i"), "")
+    check_erasures(_WORKSPACE, _check, _Machine, "A", ("a", "i"), "")

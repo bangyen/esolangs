@@ -105,7 +105,5 @@ def check_raw_hq9():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(workspace.missing_workspace(_Machine, component), "++Q")
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, "++Q")
     return len(corpus), len(controls) + 3

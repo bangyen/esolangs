@@ -72,6 +72,4 @@ def check_raw_crement():
     with pytest.raises(AssertionError):
         _check(SkippedWrite, (("D", 1, 0, 0),))
 
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(workspace.missing_workspace(_Machine, component), (("D", 1, 0, 0),))
+    workspace.check_erasures(_WORKSPACE, _check, _Machine, (("D", 1, 0, 0),))

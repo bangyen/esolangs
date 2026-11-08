@@ -192,6 +192,9 @@ class TestDigEdgeCases:
 
 class TestStepMachine:
     def test_step_tracks_position_direction_and_mole(self) -> None:
+        from .oracle_checks import check_raw_dig
+
+        check_raw_dig()
         machine = _Machine([">$5:", " 2 "], IO())
         assert (machine.row, machine.col, machine.move, machine.mole) == (0, 0, 1, 0)
         machine.step()  # > keeps facing right

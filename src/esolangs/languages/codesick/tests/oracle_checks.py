@@ -8,7 +8,7 @@ import pytest
 from esolangs.languages.codesick.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
 from tests.support.workspace_oracle import agrees as workspace_agrees
-from tests.support.workspace_oracle import missing_workspace
+from tests.support.workspace_oracle import check_erasures
 
 _WORKSPACE = WorkspaceModel("codesick-v1", ("instruction", "variables", "input_cursor"))
 
@@ -253,7 +253,5 @@ def check_raw_codesick():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), 'codesick out "x" * *;', "")
+    check_erasures(_WORKSPACE, _agrees, _Machine, 'codesick out "x" * *;', "")
     return len(results), len(controls) + 3

@@ -5,17 +5,21 @@ Work, steering, mutable cells, input and boundary halts; initial rightward
 heading, division and output retain the public contract's choices.
 """
 
+import re
+from decimal import Decimal
 from itertools import product
 
 import pytest
 
+import esolangs
 from esolangs.languages.dig.interpreter import _Machine
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import observed, overread, stalled
 from tests.support import workspace_oracle
 from tests.support.workspace_oracle import missing_workspace, workspace_view
 
 _WORKSPACE = workspace_oracle.workspace_model(
-    "dig-v1", "row column direction mole number grid input_cursor input_reads"
+    "dig-v2", "row column direction mole number grid input_cursor input_reads stopped"
 )
 
 
@@ -42,11 +46,12 @@ def _read(command, stdin, cursor):
     if start == cursor:
         return None, cursor, "input"
     text = stdin[start:cursor]
-    try:
-        value = int(text)
-    except ValueError:
+    if re.fullmatch(r"[+-]?\d(?:_?\d)*", text) is None:
         return None, cursor, "syntax"
-    return value, cursor, None
+    value = 0
+    for digit in text.lstrip("+-").replace("_", ""):
+        value = 10 * value + int(digit)
+    return value * (-1 if text.startswith("-") else 1), cursor, None
 
 
 def _work(command, value, cells, point):
@@ -114,7 +119,7 @@ def _model(lines, stdin):
                     mole = value
                 else:
                     if command == ":":
-                        output += str(mole) if mole < 10 else chr(mole)
+                        output += format(Decimal(mole), "f") if mole < 10 else chr(mole)
                     mole = _work(command, mole, cells, point)
                 underground -= 1
             elif command in ("^", ">", "'", "<"):
@@ -128,6 +133,9 @@ def _model(lines, stdin):
             elif command == "@":
                 done = True
                 continue
+        except (OverflowError, ValueError) as error:
+            kind = "overflow" if isinstance(error, OverflowError) else "syntax"
+            return kind, [*trace, row()]
         except ArithmeticError:
             return "halt", [*trace, row()]
         point += direction
@@ -146,23 +154,24 @@ def _view(machine):
     )
 
 
+def _parts(row):
+    grid, point, direction, mole, number, reads = row[0]
+    return (
+        int(point.imag),
+        int(point.real),
+        (-1j, 1, 1j, -1).index(direction),
+        mole,
+        number,
+        grid,
+        row[-1],
+        reads,
+        row[1],
+    )
+
+
 def _check(factory, lines, stdin="unused"):
     expected = _model(lines, stdin)
-    checked = workspace_view(
-        expected[1],
-        _WORKSPACE,
-        lambda row: (
-            int(row[0][1].imag),
-            int(row[0][1].real),
-            (-1j, 1, 1j, -1).index(row[0][2]),
-            row[0][3],
-            row[0][4],
-            row[0][0],
-            row[-1],
-            row[0][5],
-        ),
-        _view,
-    )
+    checked = workspace_view(expected[1], _WORKSPACE, _parts, _view)
     assert observed(factory, lines, stdin, checked, cap=48) == expected, (lines, stdin)
 
 
@@ -209,3 +218,61 @@ def check_raw_dig():
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _check(missing_workspace(_Machine, component), [">$2:@", " 2"])
+
+    latch = _model(["@"], "unused")[1]
+    assert _parts(latch[0])[:-1] == _parts(latch[1])[:-1]
+    assert [row[1] for row in latch[:2]] == [False, True]
+    assert workspace_oracle.charged_bits(_WORKSPACE, map(_parts, latch)) == 1
+    _check(_Machine, ["@"])
+
+    for token in (
+        "1" + "0" * 5000,
+        "+" + "_".join("\u0669" * 5000),
+        "-00_\u0661_\u0662",
+        "1" + "0" * 5000 + "__1",
+        "+" + "\u0669" * 5000 + "x",
+        "0x10",
+        "²",
+        "+",
+        "1_",
+    ):
+        _check(_Machine, [">$~0:@", " 3"], token + " Z")
+    for token in ("-" + "9" * 5000, "-" + "\uff19" * 5000):
+        _check(_Machine, [">$~:=:@", " 4"], token + " Z")
+    for stdin in ("", " \t\n"):
+        _check(_Machine, [">$~0:@", " 3"], stdin)
+    assert _read("~", "-00_\u0661_\u0662 Z", 0) == (-12, 7, None)
+    assert (
+        _model([">$~:=:@", " 4"], "-" + "\uff19" * 5000 + " Z")[1][-1][2]
+        == "-" + "9" * 5000 + " "
+    )
+    lines = [">$~:@", " 2"]
+    for token, value in (("1114112", 1114112), ("1" + "0" * 5000, 10**5000)):
+        with pytest.raises((ValueError, OverflowError)) as builtin:
+            chr(value)
+        raw = type(builtin.value)
+        public = (
+            esolangs.InterpreterLimitError
+            if raw is OverflowError
+            else esolangs.ProgramError
+        )
+        kind = "overflow" if raw is OverflowError else "syntax"
+        failure, rows = _model(lines, token)
+        assert failure == kind
+        io = ScriptedIO(token)
+        machine = _Machine(lines, io)
+        for _ in range(3):
+            machine.step()
+        captured = machine.workspace_snapshot()
+        assert captured.parts == _parts(rows[-1])
+        assert not machine.halted
+        for _ in range(2):
+            with pytest.raises(raw):
+                machine.step()
+            assert machine.workspace_snapshot() == captured
+        assert io.getvalue() == ""
+        usage = io.position(), io.progress(), io.reads, io.past_end
+        assert usage == (len(token), len(token), 1, 0)
+        with pytest.raises(public) as caught:
+            esolangs.run("Dig", "\n".join(lines), stdin=token)
+        assert caught.value.execution == esolangs.ExecutionResult("", len(token), 1, 0)

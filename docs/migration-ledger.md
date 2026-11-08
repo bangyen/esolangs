@@ -2051,3 +2051,37 @@ before/after: 35,151 observed calls, 260,527 returned boundaries, 257,031
 workspace samples and 293 live assertion controls per side. No cases,
 assertions or caps are removed. This funds Chicken's 35 test lines and one
 source line; tests remain 115,636 lines against 115,692 source lines.
+
+Dig-v2 counts its halt latch, including the silent `@` transition whose old
+parts/cycle key stay unchanged. Both workspace formulas rise by one bit.
+Its independent numeric model accepts native unlimited signed Unicode decimal
+input and formats large negative output; character failures follow the exact
+host `chr` policy. Python 3.12 raises OverflowError for a huge code point;
+3.13–3.15 raise ValueError. The previously uncalled oracle now runs through
+an existing pytest node. All 474 original cases/eleven controls remain;
+v2/numeric additions and a separate bounded ring give 491 installed cases.
+
+RAM0-v2 counts its posthalt dump latch and raises both workspace bounds by one
+bit. Its model converts only executed numeric tokens, preserving native host
+limits and skipped huge literals. All 1,386 cases/six controls remain; empty
+phase and lazy-token probes give 1,393 installed cases. A controlled writer
+failure leaves the latch false and charge zero; retry commits one bit once.
+Both models pass default-cap positive controls and uncapped model checks.
+
+One frozen 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0: 1,884 cases/29,321 raw/VM/debugger boundaries and 46 guarded
+native/isolated pairs per version. Every public result also matches; failed
+steps, constructors, unfinished runs and pending/finalized dumps stay distinct.
+Fourteen populated freezes and ten schema omissions fail. Dig has 458
+completions, 28 execution failures, three constructor failures and two bounded
+runs; RAM0 has 812/292/0/289. Corpus peaks are 16,633/335 bits, not global bounds.
+
+All 1,656 templates and 12,720 instantiated programs retain bytes, outputs,
+native traces and IO; finalized charges rise by exactly one bit. RAM0's
+width-one NAND circuits use their loopless token-count bound. Both eight-table
+size baselines pass all 152 rows; n=10 anchors retain 405/7,097 and 557/3,885
+characters with executed boundary rows. Declared workspace witnesses pass.
+Shared erasure reuse saves 82 test lines across 35 clients/36 loops. Typed
+trace dumps and all 146 ordered erasures match before/after, retaining every
+case, assertion and cap. Tests/source remain 115,668/115,702 lines. These bounded
+accounting scopes are reviewed; broader language/catalog completion stays open.

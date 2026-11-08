@@ -412,12 +412,9 @@ def check_raw_between():
     ):
         with pytest.raises(AssertionError):
             _check(factory, program, "1\n0\n")
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(
-                workspace.missing_workspace(_Machine, component),
-                (("declare", "x"), ("assign", "x", 3)),
-            )
+    workspace.check_erasures(
+        _WORKSPACE, _check, _Machine, (("declare", "x"), ("assign", "x", 3))
+    )
 
     class BeforeRead(_Machine):
         def step(self):
@@ -442,13 +439,13 @@ def check_raw_between():
     ):
         with pytest.raises(AssertionError):
             _check(factory, program, "line\n")
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(
-                workspace.missing_workspace(_Machine, component),
-                (("declare", "x"), ("read", "x"), ("exit",)),
-                "line\n",
-            )
+    workspace.check_erasures(
+        _WORKSPACE,
+        _check,
+        _Machine,
+        (("declare", "x"), ("read", "x"), ("exit",)),
+        "line\n",
+    )
     machine = _Machine(_source((("declare", "x"), ("read", "x"))), ScriptedIO(""))
     witness = workspace.WorkspaceWitness(_WORKSPACE)
     witness.sample(machine.workspace_snapshot(), (0, frozenset(), False, 0))

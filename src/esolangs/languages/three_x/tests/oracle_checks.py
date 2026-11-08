@@ -9,7 +9,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.three_x.interpreter import _Machine
 from tests.support.workspace_oracle import agrees as workspace_agrees
-from tests.support.workspace_oracle import missing_workspace, workspace_model
+from tests.support.workspace_oracle import check_erasures, workspace_model
 
 _WORKSPACE = workspace_model(
     "three-x-v1", "instruction operands loop_returns variables input_cursor"
@@ -255,7 +255,5 @@ def check_raw_three_x():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), "??v?^", "2/3 5/7 2/3")
+    check_erasures(_WORKSPACE, _agrees, _Machine, "??v?^", "2/3 5/7 2/3")
     return len(results), len(controls) + 5

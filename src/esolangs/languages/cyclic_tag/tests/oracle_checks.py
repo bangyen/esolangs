@@ -150,7 +150,5 @@ def check_raw_cyclic_tag():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(workspace.missing_workspace(_Machine, component), "1;0,1")
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, "1;0,1")
     return len(results), len(controls) + 4

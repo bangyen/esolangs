@@ -3,6 +3,8 @@
 from dataclasses import fields, is_dataclass
 from fractions import Fraction
 
+import pytest
+
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from scripts.benchmark import WrittenState
 from tests.interpreters.oracle_support import observed
@@ -151,3 +153,9 @@ def agrees(expected, execution, workspace, state, *, context=None, **options):
         (code, stdin) if context is None else context
     )
     return expected
+
+
+def check_erasures(model, check, factory, *args, **options):
+    for component in model.components:
+        with pytest.raises(AssertionError):
+            check(missing_workspace(factory, component), *args, **options)

@@ -136,7 +136,5 @@ def check_raw_home_row():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(workspace.missing_workspace(_Machine, component), "asdf;")
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, "asdf;")
     return len(results), len(controls) + 3

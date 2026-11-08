@@ -9,7 +9,7 @@ import pytest
 from esolangs.languages.creativescript_v2.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
 from tests.support.workspace_oracle import agrees as workspace_agrees
-from tests.support.workspace_oracle import missing_workspace
+from tests.support.workspace_oracle import check_erasures
 
 _WORKSPACE = WorkspaceModel(
     "creativescript-v2-v1", ("variables", "instruction", "input_cursor")
@@ -256,7 +256,5 @@ def check_raw_creativescript_v2():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), "set! a 1\nout! a", "")
+    check_erasures(_WORKSPACE, _agrees, _Machine, "set! a 1\nout! a", "")
     return len(results), len(controls) + 3

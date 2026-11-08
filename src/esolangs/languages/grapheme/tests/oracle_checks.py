@@ -296,6 +296,4 @@ def check_raw_grapheme():
     ):
         with pytest.raises(AssertionError):
             _check(factory, code, "ab")
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(workspace.missing_workspace(_Machine, component), "I")
+    workspace.check_erasures(_WORKSPACE, _check, _Machine, "I")

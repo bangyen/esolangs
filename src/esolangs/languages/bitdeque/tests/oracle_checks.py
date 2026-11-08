@@ -9,11 +9,7 @@ from esolangs.languages.bitdeque.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import (
-    charged_bits,
-    missing_workspace,
-    workspace_view,
-)
+from tests.support.workspace_oracle import charged_bits, check_erasures, workspace_view
 
 _WORKSPACE = WorkspaceModel(
     "bitdeque-v2", ("instruction", "register", "deque", "rendered", "input_cursor")
@@ -220,6 +216,4 @@ def check_raw_bitdeque():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, code)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), "INVERT PUSH")
+    check_erasures(_WORKSPACE, _agrees, _Machine, "INVERT PUSH")

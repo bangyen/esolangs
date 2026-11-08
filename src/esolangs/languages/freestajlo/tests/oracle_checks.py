@@ -13,7 +13,7 @@ import pytest
 from esolangs.languages.freestajlo.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, overread, stalled
 from tests.support import workspace_oracle
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support.workspace_oracle import workspace_view
 
 _WORKSPACE = workspace_oracle.workspace_model(
     "freestajlo-v1",
@@ -229,6 +229,4 @@ def check_raw_freestajlo():
     ):
         with pytest.raises(AssertionError):
             _check(factory, code, "ab")
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(missing_workspace(_Machine, component), "1 2 + :")
+    workspace_oracle.check_erasures(_WORKSPACE, _check, _Machine, "1 2 + :")

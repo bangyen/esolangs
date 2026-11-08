@@ -7,11 +7,7 @@ import pytest
 
 from esolangs.languages.underload.interpreter import _Machine
 from tests.interpreters.stack_oracles import agrees_stack, underload
-from tests.support.workspace_oracle import (
-    charged_bits,
-    missing_workspace,
-    workspace_model,
-)
+from tests.support.workspace_oracle import charged_bits, check_erasures, workspace_model
 
 _WORKSPACE = workspace_model("underload-v1", "program instruction stack input_cursor")
 
@@ -62,9 +58,7 @@ def check_raw_underload() -> None:
     with pytest.raises(AssertionError):
         _check(MissingSplice, "((yes)S)^")
 
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(missing_workspace(_Machine, component), "((yes)S)^")
+    check_erasures(_WORKSPACE, _check, _Machine, "((yes)S)^")
     for code, bits in (
         ("", 0),
         ("(x)", 10),

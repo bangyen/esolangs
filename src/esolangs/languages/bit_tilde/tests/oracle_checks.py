@@ -191,6 +191,4 @@ def check_raw_bit_tilde():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(workspace.missing_workspace(_Machine, component), "~>~", "")
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, "~>~", "")

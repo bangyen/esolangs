@@ -245,7 +245,5 @@ def check_raw_basicer():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(workspace.missing_workspace(_Machine, component), "PRINT x", "")
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, "PRINT x", "")
     return len(results), len(controls) + 2

@@ -7,6 +7,16 @@ import pytest
 
 from esolangs.languages.ram0.interpreter import _Machine
 from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import (
+    charged_bits,
+    missing_workspace,
+    workspace_model,
+    workspace_view,
+)
+
+_WORKSPACE = workspace_model(
+    "ram0-v2", "instruction zero_register number_register cells input_cursor dumped"
+)
 
 
 def _model(source):
@@ -16,7 +26,7 @@ def _model(source):
             digits += char
             continue
         if digits:
-            commands.append(int(digits))
+            commands.append(digits)
             digits = ""
         if char in "ZANCLS":
             commands.append(char)
@@ -39,9 +49,13 @@ def _model(source):
         if pc >= len(commands):
             break
         command, next_pc = commands[pc], pc + 1
-        if isinstance(command, int):
-            if command:
-                next_pc = command - 1
+        if command.isdecimal():
+            try:
+                target = int(command)
+            except ValueError:
+                return "syntax", [*trace, view()]
+            if target:
+                next_pc = target - 1
             else:
                 error = "halt"
         elif command == "A":
@@ -84,9 +98,14 @@ def _state(machine):
     )
 
 
+def _parts(row):
+    return (*row[0][:4], row[-1], row[0][4])
+
+
 def _agrees(factory, source):
     expected = _model(source)
-    assert observed(factory, source, "λ\nunused", _state) == expected, source
+    checked = workspace_view(expected[1], _WORKSPACE, _parts, _state)
+    assert observed(factory, source, "λ\nunused", checked) == expected, source
     return expected
 
 
@@ -120,6 +139,31 @@ def check_raw_ram0():
     assert {error for error, _ in results} == {None, "halt"}
     assert any(not trace[-1][1] for error, trace in results if not error)
     assert _model("A N A S Z N A S")[1][-1][0][3] == ((1, 2), (0, 1))
+    for source, bits in (("", 1), ("A", 3), ("A N A S", 10)):
+        trace = _model(source)[1]
+        assert charged_bits(_WORKSPACE, map(_parts, trace)) == bits
+    trace = _agrees(_Machine, "")[1]
+    assert not trace[0][0][4]
+    assert all(row[0][4] for row in trace[1:])
+
+    class MissingDump(missing_workspace(_Machine, "dumped")):
+        def workspace_snapshot(self):
+            if not self.dumped:
+                return _Machine.workspace_snapshot(self)
+            return super().workspace_snapshot()
+
+    with pytest.raises(AssertionError):
+        _agrees(MissingDump, "")
+    wide = "1" * 4301
+    for source in (
+        "C " + wide + " A",
+        "0 " + wide,
+        "3 " + wide + " A",
+        "A " + wide,
+        "\u0661" * 4301,
+        "C " + "0" * 4301 + " A",
+    ):
+        _agrees(_Machine, source)
     controls = {
         "skip": "C A",
         "load": "A N A S Z A L",

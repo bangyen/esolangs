@@ -94,6 +94,4 @@ def check_raw_circlefuck():
 
     with pytest.raises(AssertionError):
         _check(stalled(_Machine), b"@", "")
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(workspace.missing_workspace(_Machine, component), b"+.@", "")
+    workspace.check_erasures(_WORKSPACE, _check, _Machine, b"+.@", "")

@@ -8,7 +8,6 @@ import pytest
 
 from esolangs.languages.egl.interpreter import _Machine
 from tests.support import workspace_oracle
-from tests.support.workspace_oracle import missing_workspace
 
 _WORKSPACE = workspace_oracle.workspace_model(
     "egl-v1", "instruction row column cells loops input_cursor input_reads"
@@ -228,7 +227,5 @@ def check_raw_egl():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), "2,3:+", "")
+    workspace_oracle.check_erasures(_WORKSPACE, _agrees, _Machine, "2,3:+", "")
     return len(results), len(controls) + 7
