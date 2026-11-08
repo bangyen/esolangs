@@ -5,6 +5,24 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## 2.0.0
+
+- **Breaking:** `generate`, `instantiate` and `load_program` return explicit
+  program/template artifacts. Use `.source` for native code; retain the artifact
+  when binding inputs or executing to preserve provenance and dialect settings.
+- **Breaking:** `run` returns `ExecutionResult`; use `.output` for printed text.
+- **Breaking:** Unfilled templates require explicit bindings and cannot execute.
+  Tagged-string wrappers, inferred bindings and temporary compatibility aliases
+  are removed. Use canonical artifact APIs and supported imports.
+- Declare interpreter lifecycle, source-loading, dialect and accounting
+  capabilities independently of generator implementations.
+- Tighten worker, snapshot and persistence validation. Supported version-1
+  JSON/PNG formats and ordinary native source files remain readable.
+- Correct missing native completion-phase accounting in affected languages.
+- Add optional gzip text export through `save_program(..., gzip=True)` and
+  `generate --gzip`. Raster exports retain PNG; compressed bytes do not redefine
+  expanded program size or workspace accounting.
+
 ## 1.6.0
 
 - **Breaking:** Remove Minifuck. Pin `esolangs==1.5.1` to generate or run
