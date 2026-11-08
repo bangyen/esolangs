@@ -12,6 +12,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal
 
+from esolangs.runtime._source import text_source
 from esolangs.runtime.io import IO
 
 #: How ``run`` wants the source: the whole string, the lines with newlines
@@ -30,12 +31,14 @@ def script_main(
 
     A missing argument is a no-op; a non-``None`` return becomes the exit
     status (the language's halt).  Read as UTF-8, not the locale encoding.
+    Default text decoding accepts gzip and retains universal-newline behavior,
+    including the final newline. Explicit loaders own their decoding policy.
     """
     if len(sys.argv) < 2:
         return
     if loader is None:
-        with open(sys.argv[1], encoding="utf-8") as file:
-            source: Any = file.read()
+        source: Any = text_source(Path(sys.argv[1]).read_bytes())
+        source = source.replace("\r\n", "\n").replace("\r", "\n")
     else:
         source = loader(Path(sys.argv[1]))
     if shape == "keep":

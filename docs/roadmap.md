@@ -134,8 +134,6 @@ require a versioned cutover and caller migration; moving adapters into
 
 Remaining closure work (track evidence in the ledger and CSV, not declarations alone):
 
-- [ ] Finish every pending Boolean-backend analysis audit; delete duplicate analysis
-  or record why the construction must remain target-specific.
 - [ ] Complete lifecycle and exact accounting acceptance for all 117 languages:
   native, stepped and isolated traces, input progress, workspace witnesses,
   snapshot isolation, errors and completion evidence.
@@ -154,14 +152,6 @@ Remaining closure work (track evidence in the ledger and CSV, not declarations a
   acceptance rows open.
 
 ## Engineering
-
-- [ ] Add optional gzip input/export across text languages through shared loading
-  and export infrastructure. Preserve artifact metadata, exact source round trips
-  and execution results; distinguish compressed bytes from expanded program size
-  and workspace accounting. Keep streaming generation/execution selective,
-  backed by measured memory savings. Retain PNG for raster sources. Acceptance
-  requires catalog-wide text-route checks, malformed-input controls and existing
-  resource limits; price a representative pilot before rollout.
 
 Next experiments; budgets are wall time, not permission for an unpriced search.
 

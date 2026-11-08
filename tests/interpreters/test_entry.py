@@ -1,10 +1,12 @@
 """Unit tests for the shared interpreter ``__main__`` body."""
 
+import gzip
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from esolangs import ProgramError
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 
@@ -27,33 +29,26 @@ def _written(tmp_path: Path) -> Path:
     return path
 
 
-class TestSourceShape:
-    """Each shape hands ``run`` the form that language's parser expects."""
-
-    def test_text_is_the_whole_file(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        seen, run = _spy()
-        monkeypatch.setattr("sys.argv", ["prog", str(_written(tmp_path))])
-        script_main(run)
-        assert seen == [PROGRAM]
-
-    def test_keep_retains_the_newlines(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        seen, run = _spy()
-        monkeypatch.setattr("sys.argv", ["prog", str(_written(tmp_path))])
-        script_main(run, shape="keep")
-        assert seen == [["one\n", "two\n"]]
-
-
-def test_strip_drops_the_newlines(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+@pytest.mark.parametrize(
+    ("shape", "expected"),
+    [("text", PROGRAM), ("keep", ["one\n", "two\n"]), ("strip", ["one", "two"])],
+)
+def test_source_shape(tmp_path, monkeypatch, shape, expected):
     seen, run = _spy()
-    monkeypatch.setattr("sys.argv", ["prog", str(_written(tmp_path))])
-    script_main(run, shape="strip")
-    assert seen == [["one", "two"]]
+    path = tmp_path / "source"
+    monkeypatch.setattr("sys.argv", ["prog", str(path)])
+    for newline in ("\n", "\r\n", "\r"):
+        for compressed in (False, True):
+            source = PROGRAM.replace("\n", newline).encode()
+            path.write_bytes(gzip.compress(source, mtime=0) if compressed else source)
+            seen.clear()
+            script_main(run, shape=shape)
+            assert seen == [expected]
+    path.write_bytes(b"\x1f\x8b")
+    seen.clear()
+    with pytest.raises(ProgramError, match="gzip"):
+        script_main(run, shape=shape)
+    assert not seen
 
 
 class TestArgumentHandling:

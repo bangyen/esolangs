@@ -22,6 +22,8 @@ Releases before 0.10.0 are described on the
 - Add optional gzip text export through `save_program(..., gzip=True)` and
   `generate --gzip`. Raster exports retain PNG; compressed bytes do not redefine
   expanded program size or workspace accounting.
+- Standalone text interpreter entry points also accept gzip with their original
+  newline handling.
 
 ## 1.6.0
 
