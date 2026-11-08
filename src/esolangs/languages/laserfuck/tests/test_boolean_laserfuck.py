@@ -14,7 +14,7 @@ from esolangs.languages.laserfuck.generator import MARGIN
 from esolangs.languages.laserfuck.tests.runners import run_laserfuck
 from esolangs.runtime.io import ScriptedIO
 from tests.support.evaluation import _evaluate
-from tests.support.generator_support import measure_run
+from tests.support.generator_support import measure_run, three_input_corpus_size
 from tests.support.witness_tables import row_bits, witnesses
 
 
@@ -506,13 +506,7 @@ def test_constants_drain_before_dump_at_every_heading(n, bit) -> None:
 
 
 def test_three_input_corpus_size() -> None:
-    assert (
-        sum(
-            len(esolangs.generate("LaserFuck", format(value, "08b")).source)
-            for value in range(256)
-        )
-        == 87555
-    )
+    assert three_input_corpus_size("LaserFuck") == 87555
 
 
 def test_constant_analysis_reaches_dump(monkeypatch) -> None:

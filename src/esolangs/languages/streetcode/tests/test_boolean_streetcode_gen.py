@@ -14,6 +14,7 @@ from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import three_input_corpus_size
 from tests.support.witness_tables import row_bits
 
 run_streetcode = _runner("streetcode", lines=True)
@@ -374,10 +375,4 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
 
 
 def test_three_input_corpus_size() -> None:
-    assert (
-        sum(
-            len(esolangs.generate("Streetcode", format(value, "08b")).source)
-            for value in range(256)
-        )
-        == 227464
-    )
+    assert three_input_corpus_size("Streetcode") == 227464

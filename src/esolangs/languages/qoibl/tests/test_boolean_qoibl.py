@@ -16,6 +16,7 @@ from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
     assert_parity_at_most_doubles,
+    three_input_corpus_size,
 )
 from tests.support.witness_tables import witnesses
 
@@ -207,12 +208,7 @@ def test_constant_audit_read_first_and_sentinel() -> None:
 
 
 def test_constant_audit_three_input_corpus_size() -> None:
-    assert (
-        sum(
-            len(esolangs.generate("Qoibl", format(v, "08b")).source) for v in range(256)
-        )
-        == 51216
-    )
+    assert three_input_corpus_size("Qoibl") == 51216
 
 
 def _check_compact_input_tokens() -> None:

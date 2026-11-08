@@ -3,7 +3,12 @@
 from itertools import product
 
 from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model(
+    "slow-acv-mammalian-v1",
+    "instruction arrays pointer accumulator input_cursor stopped",
+)
 
 _COMMANDS = (
     "SEED",
@@ -42,7 +47,7 @@ def _model(code, stdin, modulus, io_modulus, resume):
     for step in range(25):
         halted = stopped or pc >= len(code)
         row = (
-            (tuple(map(tuple, arrays)), pointer, acc, pc),
+            (tuple(map(tuple, arrays)), pointer, acc, pc, stopped),
             halted,
             output,
             cursor,
@@ -92,6 +97,22 @@ def _model(code, stdin, modulus, io_modulus, resume):
     return None, trace
 
 
+def _check(factory, code, stdin, cell, port, resume):
+    def build(source, io, cell=cell, port=port, resume=resume):
+        return factory(
+            source, io, cell_modulus=cell, io_modulus=port, leapfrog_resume=resume
+        )
+
+    workspace.agrees(
+        _model(code, stdin, cell, port, resume),
+        (build, " ".join(code), stdin),
+        (_WORKSPACE, lambda row: (row[0][3], *row[0][:3], row[-1], row[0][4])),
+        lambda m: (m.lst, m.ptr, m.acc, m.ind, m._halted_by_command),
+        cap=24,
+        context=(code, stdin),
+    )
+
+
 def check_raw_slow_acv_mammalian():
     for tail, stdin, cell, port, resume in product(
         product(_COMMANDS, repeat=2),
@@ -104,12 +125,9 @@ def check_raw_slow_acv_mammalian():
         if not stdin:
             code = code[2:]
 
-        def build(source, io, cell=cell, port=port, resume=resume):
-            return _Machine(
-                source, io, cell_modulus=cell, io_modulus=port, leapfrog_resume=resume
-            )
+        _check(_Machine, code, stdin, cell, port, resume)
 
-        actual = observed(
-            build, " ".join(code), stdin, lambda m: (m.lst, m.ptr, m.acc, m.ind), cap=24
-        )
-        assert actual == _model(code, stdin, cell, port, resume), (code, stdin)
+    witness = ("SEED", "SPRINT", "ACCEPT", "DIGEST", "LEAPFROG")
+    workspace.check_erasures(
+        _WORKSPACE, _check, _Machine, witness, "A", 256, 255, "after"
+    )

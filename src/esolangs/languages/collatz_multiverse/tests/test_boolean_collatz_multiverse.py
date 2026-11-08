@@ -24,7 +24,11 @@ from esolangs.languages.collatz_multiverse.generator import (
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner, assert_runner_rows
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_parity_at_most_doubles, measure_run
+from tests.support.generator_support import (
+    assert_parity_at_most_doubles,
+    measure_run,
+    three_input_corpus_size,
+)
 from tests.support.witness_tables import row_bits, witnesses
 
 run_collatz_multiverse = _runner("collatz_multiverse", newline=True)
@@ -347,13 +351,7 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
 
 
 def test_three_input_corpus_size() -> None:
-    assert (
-        sum(
-            len(esolangs.generate("Collatz Multiverse", format(value, "08b")).source)
-            for value in range(256)
-        )
-        == 194290
-    )
+    assert three_input_corpus_size("Collatz Multiverse") == 194290
 
 
 def _check_affine_stream() -> None:

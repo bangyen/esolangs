@@ -16,6 +16,7 @@ from esolangs.vm import _capture_workspace
 from scripts.benchmark import WrittenState
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import three_input_corpus_size
 from tests.support.witness_tables import witnesses
 
 
@@ -800,13 +801,7 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
 
 
 def test_three_input_corpus_size() -> None:
-    assert (
-        sum(
-            len(esolangs.generate("Circuit Diagram", format(value, "08b")).source)
-            for value in range(256)
-        )
-        == 144382
-    )
+    assert three_input_corpus_size("Circuit Diagram") == 144382
 
 
 def _check_complemented_projection_inverts_a_bare_input_rail() -> None:

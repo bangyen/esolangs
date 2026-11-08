@@ -8,7 +8,7 @@ import pytest
 import esolangs
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_every_row
+from tests.support.generator_support import assert_every_row, three_input_corpus_size
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -78,10 +78,4 @@ def test_constant_audit_read_first_and_sentinel() -> None:
 
 
 def test_constant_audit_three_input_corpus_size() -> None:
-    assert (
-        sum(
-            len(esolangs.generate("Pointless", format(v, "08b")).source)
-            for v in range(256)
-        )
-        == 121551
-    )
+    assert three_input_corpus_size("Pointless") == 121551

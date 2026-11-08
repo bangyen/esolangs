@@ -3181,3 +3181,51 @@ backend children; this adds complete record/default/reference reconciliation.
 Formula values, resource claims and broader certification/runtime acceptance are
 not established by declaration loading. All claims remain pending; 34 accounting
 rows and all 117 completion rows remain open.
+
+
+SLOW ACV MAMMALIAN's independent array model now exposes its existing stopped
+flag and checks all six workspace components. All 1,600 cases/eight dialect
+profiles, cap24, zero old controls and None return remain; six erasures add
+controls. Projecting only the added rich-state flag retains byte-identical
+12,240 native steps and 13,840 captures. The 104-bit witness writes all six
+components and stops at instruction four within five tokens.
+
+Installed Python 3.12.11–final 3.15.0 passes all thirty-six SAM leaves. Raw,
+prepared, VM and debug routes each retain 1,600 cases/13,840 boundaries, peak143
+bits. All 1,600 native/public cases also run ordinarily, retaining modeled
+errors. Actual dialect settings cover all eight profiles; defaults remain
+implicit. Ninety-six mutable masks and twenty-four reductions retain exact
+peaks, including three zero-loss late-None fields. Across eight profiles,
+128 stepped writer routes and 64 public routes retain precommit refusal and
+retry. Thirty-two repeated EOF, thirty-two provider refusal and thirty-two
+empty-program traces pass. Sixteen unknown-word constructor routes and explicit
+invalid-option preflights pass; fourteen guarded children cover thirteen parity
+pairs and one isolated output-limit witness. General source grammar and arbitrary
+external failures remain open.
+
+Freestajlo's existing eight-component bridge needs no source change. All 1,494
+linear cases, seven syntax refusals, cap64, three old controls, eight erasures
+and None return remain. Thirty-two installed leaves pass on the same four
+versions: raw, prepared, VM and debug routes each retain 1,494 cases/17,830
+boundaries, peak27 bits; all 1,494 cases run ordinarily on native/public routes.
+Independent literal IR predicts token positions, operands and source offsets.
+Calls/functions remain readonly throughout this vocabulary; no populated-frame
+coverage is claimed. The six mutable components have a 23-bit witness.
+
+Ninety-six actual masks, twenty-four reductions and sixteen readonly
+trajectories pass. Fifty-six stepped writer routes and twenty-eight public
+routes retain postcommit pop/advance across physical refusal. Sixteen repeated
+halts, eight provider refusals, four partial scanner refusals, eight surrogate
+continuations and twelve extra IO traces pass. Ten guarded children cover nine
+parity pairs and one isolated output-limit witness. Function/control/string
+grammar, huge numeric policy and arbitrary external failures remain open.
+
+Nine existing size nodes share an appended helper, saving thirty-three lines
+against SAM's eighteen-line bridge. Their full 2,304 generated artifacts and
+portable records remain byte-identical, totaling 1,564,386 source characters;
+all nine local literal assertions remain. Separate ordinary execution checks
+all 18,432 input rows with actual defaults; random provider paths are sampled,
+not exhaustive. A real appended source character at table137 is rejected after
+all 256 generation calls. All 951 production files stay byte-identical; no
+case, assertion, cap or node is removed. Tests/source are 115,801/115,818;
+32 accounting rows and all 117 completion rows remain open.

@@ -10,7 +10,7 @@ from esolangs.generation.wrap import balance_score
 from esolangs.languages.abcdirection.generator import _floor, _plan, abcdirection
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_native_rows
+from tests.support.generator_support import assert_native_rows, three_input_corpus_size
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -127,10 +127,4 @@ def test_constant_teeth_consume_whole_bytes(n, bit, balanced) -> None:
 
 
 def test_three_input_corpus_size() -> None:
-    assert (
-        sum(
-            len(esolangs.generate("ABCDirection", format(value, "08b")).source)
-            for value in range(256)
-        )
-        == 133684
-    )
+    assert three_input_corpus_size("ABCDirection") == 133684

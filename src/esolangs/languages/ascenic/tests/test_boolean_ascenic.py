@@ -6,7 +6,11 @@ import pytest
 
 import esolangs
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_native_rows, evaluate_generated
+from tests.support.generator_support import (
+    assert_native_rows,
+    evaluate_generated,
+    three_input_corpus_size,
+)
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -72,10 +76,4 @@ def test_named_tables_read_first_and_leave_the_next_record(n) -> None:
 
 
 def test_three_input_corpus_size() -> None:
-    assert (
-        sum(
-            len(esolangs.generate("Ascenic", format(value, "08b")).source)
-            for value in range(256)
-        )
-        == 264468
-    )
+    assert three_input_corpus_size("Ascenic") == 264468

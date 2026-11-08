@@ -11,6 +11,7 @@ from esolangs.exceptions import GeneratorCapError
 from esolangs.languages.interprogck8 import descriptor, generator
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import three_input_corpus_size
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -181,13 +182,7 @@ def test_constants_read_before_the_arithmetic_tail(n, bit) -> None:
 
 
 def test_three_input_corpus_size() -> None:
-    assert (
-        sum(
-            len(esolangs.generate("Interprogck8", format(value, "08b")).source)
-            for value in range(256)
-        )
-        == 339776
-    )
+    assert three_input_corpus_size("Interprogck8") == 339776
 
 
 def test_flight_column_floor_above_the_ceiling_is_rejected() -> None:
