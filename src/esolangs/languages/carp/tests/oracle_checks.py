@@ -10,6 +10,7 @@ import pytest
 from esolangs.languages.carp.interpreter import _Machine
 from tests.support import workspace_oracle as workspace
 from tests.support.model_input import decimal_value as _decimal
+from tests.support.model_input import token_span
 
 _WORKSPACE = workspace.workspace_model("carp-v1", "instruction registers input_cursor")
 
@@ -33,13 +34,9 @@ def _parse(source):
 
 
 def _number(stdin, cursor):
-    while cursor < len(stdin) and stdin[cursor].isspace():
-        cursor += 1
-    if cursor == len(stdin):
+    start, cursor = token_span(stdin, cursor)
+    if start == cursor:
         return 0, cursor, "input"
-    start = cursor
-    while cursor < len(stdin) and not stdin[cursor].isspace():
-        cursor += 1
     token = stdin[start:cursor]
     digits = token[1:] if token[:1] in "+-" else token
     if not digits or any(c not in "0123456789" for c in digits):

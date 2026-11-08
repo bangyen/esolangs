@@ -2615,3 +2615,41 @@ complete bridge/hook costs twelve. Tests/source are 115,808/115,814. No node,
 case or cap is removed; initial adapter/lint failures are archived. This bounded
 accounting scope is reviewed; 50 accounting rows and all 117 completion rows
 remain open.
+
+
+Kiss's collected independent hook captures complete expression trees, ended
+input, bits, exit code and input progress at cap16. Its lossless DAG decoder
+preserves shared subterms; all 835 cases, five old controls and return(835,5)
+remain. Five schema erasures add controls. All 835 ordinary native/state/output
+traces remain byte-identical; no parser, model, corpus, node or cap is removed.
+
+Python 3.12.11–final 3.15.0 installed checks retain 507 completions, 154 input
+failures, 126 argument failures, 42 constructor refusals and six bounded runs:
+5,360 valid boundaries plus 42 unavailable constructor states, peak 352 bits.
+Full raw/VM/debug/public captures, cycles, views, exit codes, IO counters,
+success-only steps, held histories and independent full-width recounts agree.
+Compact DAG preflight retains every case and a shared-node positive control;
+the full native accounting hook passes in 0.270s under its 60s limit.
+
+Five late initial-value substitutions and five always-None native omissions
+retain full witness trajectories, cycles, IO and histories; measured and
+independent charges lose each component's exact peak. The monotone ended flag
+uses late False substitution at True. A native 43-bit anchor counts expression
+40 plus bits/exit/cursor 1 each; shared-reference decoding retains multiplicity.
+Seven read and six writer phases preserve repeated EOF/newline, invalid-input
+recovery and expression commit before writer refusal, followed by exit/idle
+without retry. Nine guarded pairs retain actual failures, bounded runs and
+live cap-zero/cap-one execution, checking exit codes alongside HALTED completion.
+
+Five token-scan clients reuse unchanged token_span, saving eighteen
+formatted lines. Full ordinary/mutant replays retain 6,594 constructor attempts,
+63,437 steps, 76,357 observations, 50,978 meter samples, 4,832 IO events and
+42 rejection controls with byte-identical typed streams. Scripted coin and
+random-direction objects retain every field/draw; Befunge before/after leaves
+finish in 41.84/42.54s under separate 60s limits. Numeric grammar, host caps,
+invalid-token consumption, character reads and unread whitespace are unchanged.
+
+The complete bridge costs twenty-one lines; tests/source 115,811/115,814.
+Initial serializer and installed-alias setup failures are archived. This bounded
+accounting scope is reviewed; 49 accounting rows and all 117 completion rows
+remain open.

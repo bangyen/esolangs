@@ -8,7 +8,7 @@ import pytest
 from esolangs.languages.switchcase.interpreter import _Machine
 from tests.interpreters.oracle_support import observed
 from tests.support import workspace_oracle as workspace
-from tests.support.model_input import decimal_value
+from tests.support.model_input import decimal_value, token_span
 
 _WORKSPACE = workspace.workspace_model("switchcase-v1", "activation input_cursor")
 
@@ -83,14 +83,11 @@ def _model(cases, stdin):
                 env[name] = ord(stdin[cursor])
                 cursor += 1
             case "#":
-                rest = stdin[cursor:]
-                token = rest.split(maxsplit=1)
-                if not token:
-                    cursor = len(stdin)
+                start, cursor = token_span(stdin, cursor)
+                if start == cursor:
                     error = "input"
                     continue
-                word = token[0]
-                cursor += len(rest) - len(rest.lstrip()) + len(word)
+                word = stdin[start:cursor]
                 if not re.fullmatch(r"[+-]?[0-9]+", word):
                     error = "argument"
                     continue

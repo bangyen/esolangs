@@ -8,6 +8,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.three_x.interpreter import _Machine
+from tests.support.model_input import token_span
 from tests.support.workspace_oracle import check_erasures, workspace_model
 from tests.support.workspace_oracle import checker as workspace_checker
 
@@ -17,13 +18,9 @@ _WORKSPACE = workspace_model(
 
 
 def _input(stdin, consumed):
-    while consumed < len(stdin) and stdin[consumed].isspace():
-        consumed += 1
-    if consumed == len(stdin):
+    start, consumed = token_span(stdin, consumed)
+    if start == consumed:
         return None, consumed, "input"
-    start = consumed
-    while consumed < len(stdin) and not stdin[consumed].isspace():
-        consumed += 1
     numerator, slash, denominator = stdin[start:consumed].partition("/")
     sign = -1 if numerator.startswith("-") else 1
     digits = numerator[1:] if numerator[:1] in "+-" else numerator

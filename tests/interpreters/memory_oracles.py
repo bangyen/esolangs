@@ -6,7 +6,7 @@ from struct import calcsize
 
 from esolangs.exceptions import ArgumentError, HaltError, InterpreterLimitError
 from esolangs.runtime.io import ScriptedIO
-from tests.support.model_input import decimal_value
+from tests.support.model_input import decimal_value, token_span
 from tests.support.workspace_oracle import WorkspaceWitness
 
 
@@ -151,15 +151,9 @@ class _Befunge:
         return self.stack.pop() if self.stack else 0
 
     def number(self):
-        while self.consumed < len(self.stdin) and self.stdin[self.consumed].isspace():
-            self.consumed += 1
-        if self.consumed == len(self.stdin):
+        start, self.consumed = token_span(self.stdin, self.consumed)
+        if start == self.consumed:
             raise EOFError
-        start = self.consumed
-        while (
-            self.consumed < len(self.stdin) and not self.stdin[self.consumed].isspace()
-        ):
-            self.consumed += 1
         token = self.stdin[start : self.consumed]
         digits = token[1:] if token.startswith(("+", "-")) else token
         if not digits or any(c not in "0123456789" for c in digits):

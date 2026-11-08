@@ -14,6 +14,7 @@ import pytest
 from esolangs.languages.painfuck.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import observed, stalled
+from tests.support.model_input import token_span
 
 _BEFORE = "pysrlijouavbtkzhwqdec"
 _AFTER = "euopdhzbclkqsjwariyvt"
@@ -77,11 +78,7 @@ class _Model:
             value = ord(stdin[self.cursor])
             self.cursor += 1
         else:
-            while self.cursor < len(stdin) and stdin[self.cursor].isspace():
-                self.cursor += 1
-            start = self.cursor
-            while self.cursor < len(stdin) and not stdin[self.cursor].isspace():
-                self.cursor += 1
+            start, self.cursor = token_span(stdin, self.cursor)
             if self.cursor == start:
                 return "input"
             token = stdin[start : self.cursor]

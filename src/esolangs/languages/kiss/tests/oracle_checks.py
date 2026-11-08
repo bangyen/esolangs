@@ -6,7 +6,24 @@ import random
 import pytest
 
 from esolangs.languages.kiss.interpreter import _Machine
-from tests.interpreters.oracle_support import checker as oracle_checker
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model(
+    "kiss-v1", "expression input_ended input_bits exit_code input_cursor"
+)
+
+
+def _parts(row):
+    roots, edges = row[0][0]
+    terms = []
+
+    def term(ref):
+        return terms[ref] if isinstance(ref, int) else ref
+
+    for left, right in edges:
+        terms.append((term(left), term(right)))
+    head, *args = map(term, roots)
+    return (head, tuple(args)), *row[0][1:4], row[-1]
 
 
 def _parse(source):
@@ -114,8 +131,11 @@ def _model(source, stdin):
     return error, trace
 
 
-_agrees = oracle_checker(
-    _model, lambda m: (_dag(m.stack), m.ended, m.bits, m.exit_code, m.ip), cap=16
+_agrees = workspace.checker(
+    _model,
+    (_WORKSPACE, _parts),
+    lambda m: (_dag(m.stack), m.ended, m.bits, m.exit_code, m.ip),
+    cap=16,
 )
 
 
@@ -184,4 +204,5 @@ def check_raw_kiss():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, "S K S", "0")
     return len(results), len(controls)
