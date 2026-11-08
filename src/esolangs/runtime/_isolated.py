@@ -134,6 +134,11 @@ def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.Esolang
             raise ValueError("invalid input-exhaustion error arguments")
         args, options = [_counter(args[0]), _counter(args[1])], {"unit": args[2]}
     error: exceptions.EsolangError = cls(*args, **options)
+    if result["output_limit"] != (
+        isinstance(error, exceptions.InterpreterLimitError)
+        and str(error) == _OUTPUT_LIMIT
+    ):
+        raise ValueError("inconsistent isolated output-limit marker")
     error.partial_output = partial
     error.__notes__ = list(result["notes"])
     if isinstance(error, exceptions.ExecutionTimeoutError):

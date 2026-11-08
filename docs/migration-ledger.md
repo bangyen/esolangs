@@ -22,7 +22,7 @@ Owners are workstreams, not individual contributors.
 | Tagged-source `load_program` | Persistence | Retired; canonical loader preserves the existing version-1 format | Canonical artifact loading |
 | Temporary `esolangs.compat` API | Artifact API | Retired; actual missing-import checks and live import barriers | Canonical API |
 | Temporary `generate_artifact` / `load_artifact` aliases | Registry | Retired; tools use canonical names; public and bound-method absence checks | `generate` / `load_program` |
-| Shared plain-text fixture filler `tests.generators.fills` | Artifact API | Retired; native fixtures declare their bindings; negative import check in `tests/generators/test_generator_support.py` | Explicit `TemplateBindings` from declared native setters |
+| Shared plain-text fixture filler `tests.generators.fills` | Artifact API | Retired; native fixtures declare their bindings; module lookup check in `tests/generators/test_generator_support.py` | Explicit `TemplateBindings` from declared native setters |
 | `BooleanBackend(generate=...)` constructor alias | Registry | Retired; callers use `entrypoint`; negative constructor/replacement checks in `tests/api/test_boolean_backend.py` | Canonical entrypoint field |
 | `_table.Generator` / `_table.SourceKind` forwarding imports | Registry | Retired; public registry imports canonical owners; actual old imports fail in deferred catalog controls | `registry._backend.Generator` / `runtime._definition.SourceKind`; supported public registry names retained |
 | `registry.GENERATORS` | Registry | Retired; negative index checks in `tests/api/test_deferred_catalog.py` | Descriptor/backend entrypoints |
@@ -47,7 +47,7 @@ Owners are workstreams, not individual contributors.
 | Noninteger cycle counters and unhashable cycle snapshots | Results | Retired; constructor, JSON and parent-decoder controls retain zero-stride completion and partial output | Integer ordered boundaries and hashable snapshots |
 | Empty, disconnected, mutable or draw-dependent branch verdicts | Results | Retired; constructor, wire and parent-decoder refusal controls preserve partial output | Immutable root-reachable graphs; run-specific termination decisions |
 | Legacy worker-field defaults | Results | Retired; complete typed requests and explicit success/error observations; omission, flag, integer-tag and raster-run controls in `tests/runtime/test_worker_results.py` | Explicit canonical fields, including unavailable observations |
-| Permissive worker envelopes and nested proof fields | Results | Retired; missing/extra fields, unknown error kinds, duplicate terminals and contradictory output fail with retained prefixes | Exact canonical stream, result and evidence schemas |
+| Permissive worker envelopes and nested proof fields | Results | Retired; missing/extra fields, unknown error kinds, duplicate terminals, inconsistent output-limit markers and contradictory output fail with retained prefixes | Exact canonical stream, result and evidence schemas |
 | Normalized worker hex spellings and duplicate snapshot-set members | Results | Retired; request, result and parent-decoder refusals retain signed huge integers, byte snapshots and partial output | Encoder spellings and distinct immutable members |
 | Malformed PNG metadata version downgrade | Persistence | Retired; missing, mistyped and nonpositive versions fail with live controls in `tests/runtime/raster/test_png.py` | Plain PNG, valid v1 provenance and future positive-integer versions |
 | Absent gzip member accepted as an empty program | Persistence | Retired; constructor, portable and worker refusals retain actual empty members and explicit unavailable execution | Valid UTF-8 gzip members, including empty and concatenated streams |
@@ -2653,3 +2653,23 @@ The complete bridge costs twenty-one lines; tests/source 115,811/115,814.
 Initial serializer and installed-alias setup failures are archived. This bounded
 accounting scope is reviewed; 49 accounting rows and all 117 completion rows
 remain open.
+
+
+Worker output-limit flags now match the producer's exact error-class/message
+predicate in both directions. Six contradictory envelopes were accepted before;
+all six are now rejected. The real capped worker retains its output byte and
+two successful steps. Python 3.12.11–final 3.15.0 installed probes each cover
+49 observations, including that real worker; all 24 canonical results remain
+identical, with notes, bounds, prefixes, trailing records and reap behavior.
+Three guard mutants fail the retained regression node. The rebuilt 951-file
+wheel changes only the decoder module; no request, persistence or native format
+changes. Tests/source 115,818/115,819; no node or old case is removed. The
+38-family source inventory still needs final acceptance reconciliation;
+49 accounting rows and all 117 completion rows remain open.
+
+The rebuilt wheel also retains the unchanged installed catalog regression:
+117 runtimes, 114 one-bit generator roundtrips, 13,778 accounting samples,
+9,033 ordinary views and 240 guarded workers per version on Python 3.12–3.15.
+Twelve leaves pass in 58.26s total, maximum 10.78s against separate 60s caps;
+all old golden data is unchanged, including Fargo's eleven ordinary samples.
+This is native regression evidence, not independent semantic model closure.

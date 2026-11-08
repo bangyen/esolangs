@@ -511,10 +511,16 @@ def test_worker_error_requires_explicit_unavailable_observation_and_options():
         ("notes", [1]),
         ("bound", "unknown"),
         ("output_limit", 1),
+        ("output_limit", True),
     ):
         with pytest.raises(esolangs.InterpreterLimitError, match="invalid isolated"):
             _decode(json.dumps({**payload, field: value}), expired=False)
     for kind, valid, malformed in (
+        (
+            "InterpreterLimitError",
+            ["other limit"],
+            [["isolated output limit exceeded"]],
+        ),
         (
             "UnknownLanguageError",
             ["missing", ["Brainfuck"]],
@@ -535,8 +541,9 @@ def test_worker_error_requires_explicit_unavailable_observation_and_options():
     ):
         envelope = {key: value for key, value in payload.items() if key != "bound"}
         envelope.update(error=kind, args=valid)
-        with pytest.raises(getattr(esolangs, kind)):
+        with pytest.raises(getattr(esolangs, kind)) as caught:
             _decode(json.dumps(envelope), expired=False)
+        assert caught.value.__notes__ == ["row 1"]
         for args in malformed:
             with pytest.raises(
                 esolangs.InterpreterLimitError, match="invalid isolated"
