@@ -10,7 +10,7 @@ from esolangs.languages.lol_waht_i_cant_edit_talk_pages.interpreter import _Mach
 from tests.support.workspace_oracle import agrees as workspace_agrees
 from tests.support.workspace_oracle import (
     charged_bits,
-    missing_workspace,
+    check_erasures,
     workspace_model,
 )
 
@@ -289,7 +289,5 @@ def check_raw_lol_waht_i_cant_edit_talk_pages():
         rows = _agrees(_Machine, source, stdin)[1]
         parts = ((row[0][0], frozenset(row[0][1]), row[-1]) for row in rows)
         assert charged_bits(_WORKSPACE, parts) == bits
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), read, "5")
+    check_erasures(_WORKSPACE, _agrees, _Machine, read, "5")
     return len(results) + 4, len(controls) + len(_WORKSPACE.components)

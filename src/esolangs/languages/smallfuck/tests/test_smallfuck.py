@@ -10,7 +10,7 @@ from esolangs.languages.smallfuck.tests.oracle_checks import _WORKSPACE, check, 
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
 from tests.interpreters.semantic_oracles import STDINS, agrees
-from tests.support.workspace_oracle import charged_bits, missing_workspace
+from tests.support.workspace_oracle import charged_bits, check_erasures
 
 _run = native_runner(run)
 
@@ -84,9 +84,7 @@ def test_oracle_controls(code, output) -> None:
     assert result.output == output if output else isinstance(result, ValueError)
     assert not agrees(_Machine, oracle, "*[]", "", dump=True).halted
     if code == ">>*":
-        for component in _WORKSPACE.components:
-            with pytest.raises(AssertionError):
-                check(missing_workspace(_Machine, component), ">>*", "")
+        check_erasures(_WORKSPACE, check, _Machine, ">>*", "")
         for source, bits in (
             ("", 1),
             ("<", 2),

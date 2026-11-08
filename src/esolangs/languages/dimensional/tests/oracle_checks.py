@@ -312,9 +312,7 @@ def check_raw_dimensional():
         with pytest.raises(AssertionError):
             _check(factory, "+$3>0+<0.")
 
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(workspace.missing_workspace(_Machine, component), "+$3>0+<0.")
+    workspace.check_erasures(_WORKSPACE, _check, _Machine, "+$3>0+<0.")
     for fault, code in (("zero", "."), ("empty", "$5>0"), ("height", "$5>0.")):
 
         class Fault(_Machine):

@@ -13,7 +13,7 @@ from tests.interpreters.stack_oracles import bfstack
 from tests.support.workspace_oracle import (
     WorkspaceWitness,
     charged_bits,
-    missing_workspace,
+    check_erasures,
     workspace_model,
 )
 
@@ -86,9 +86,7 @@ def check_raw_bfstack() -> None:
     with pytest.raises(AssertionError):
         agrees_stack(WrongPush, bfstack, ">+.")
 
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            agrees_stack(missing_workspace(_Machine, component), bfstack, ",[.-]", "A")
+    check_erasures(_WORKSPACE, agrees_stack, _Machine, bfstack, ",[.-]", "A")
 
     class WrongText(_Machine):
         def __init__(self, code, io):

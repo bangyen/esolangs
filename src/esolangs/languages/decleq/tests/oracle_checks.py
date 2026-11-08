@@ -98,6 +98,4 @@ def check_raw_decleq():
     with pytest.raises(AssertionError):
         _agrees(OldEnd, decleq, "-1 3 99", "\0")
 
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(workspace.missing_workspace(_Machine, component), decleq, "0 0 -1")
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, decleq, "0 0 -1")

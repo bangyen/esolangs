@@ -2110,3 +2110,32 @@ bytes including `.x`; the raw filename guard still rejects it. A valid
 than malformed syntax. All production bytes and generator pins are unchanged.
 Tests/source remain 115,687/115,702 lines with no new collected node. These
 bounded accounting scopes are reviewed; general catalog completion stays open.
+
+Clockwise, Codesick and CreativeScript v2 pass bounded independent accounting
+review. All 2,915 original cases and 37 semantic/schema controls remain; eight
+extra IO/resource cases give 2,923. Caps stay 64/8/64. All original hooks also
+run against the installed wheel with their exact frozen test helpers.
+
+Clockwise separately checks 998 raw lists and 998 public-prepared inputs:
+130 original shapes change through join/splitlines. Raw outcomes are 33 clean,
+955 failed transitions, five constructors and five bounded; prepared outcomes
+are 33/950/10/5. Codesick has 598/0/12/208; CreativeScript has 452/639/11/5.
+Whole-input constructor cursors stay read-only; failed internal bit reads do
+not increment IO EOF counters. String maps remain in Codesick's workspace
+despite its empty debugger memory view. Invalid numeric tokens count as reads;
+EOF and whitespace progress remain distinct. The 5,000-digit numeric probe passes.
+
+One unchanged 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0: 23,021 native boundaries including raw/prepared, anchor and selected
+probes, with 21 guarded native/isolated pairs per version. Every prepared
+public result matches. State/cycle keys, captures, declared views, IO counters,
+step/completion timing and held snapshots match independent predictions.
+Eleven populated freezes and two read-only cursor omissions fail; six IO
+faults detect wrong output or extra reads. Five executed written-bit anchors
+are 4/70, 1/25 and 6; observed corpus peaks 225/6,184/16,625 are not bounds.
+
+Six clients reuse the existing erasure helper, saving twelve test lines.
+Expanded ASTs and full typed before/after dumps agree, including all 23
+ordered erasures and nonstandard stack/memory observers. Every case, control,
+cap and return remains. Tests/source are 115,675/115,702 lines; no node is added.
+These accounting scopes are reviewed; all broader completion rows stay open.

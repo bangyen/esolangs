@@ -9,7 +9,7 @@ from esolangs.languages.basicfuck.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, overread, stalled
 from tests.support.workspace_oracle import (
     charged_bits,
-    missing_workspace,
+    check_erasures,
     workspace_model,
     workspace_view,
 )
@@ -344,9 +344,7 @@ def check_raw_workspace_basicfuck():
         )
         == 11
     )
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), source, "AQQ", 64)
+    check_erasures(_WORKSPACE, _agrees, _Machine, source, "AQQ", 64)
     for factory in (stalled(_Machine), overread(_Machine)):
         with pytest.raises(AssertionError):
             _agrees(factory, source, "AQQ", 64)
