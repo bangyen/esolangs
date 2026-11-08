@@ -2169,3 +2169,37 @@ the original module AST. Typed before/after dumps match, retaining every case,
 assertion, cap, return and all 54 ordered component faults. Reuse saves 21 lines;
 DINAC adds twelve. Tests/source are 115,666/115,702 lines, with no new node.
 This bounded accounting scope is reviewed; broader completion stays open.
+
+Grapheme's independent model now retains deferred X skips, clamps negative V
+counts and commits state before Y rendering. N uses independent unlimited
+decimal formatting. All 300 original cases/eight controls remain; seventeen
+new cases give 317/fourteen, still capped at 64. The previously uncalled
+checker now runs through an existing pytest node. Both integer dialects remain.
+
+One unchanged 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0: 323 cases including six signed/dialect numeric cross-cases, 3,343 native
+boundaries and fifteen guarded native/isolated pairs per version. All public
+results, captures, cycle state, debugger views, IO counters, successful steps,
+completion, attached failures and held snapshots match independent predictions.
+Outcomes are 249 clean, 68 failed transitions, two bounded and four constructors;
+the 40,059-bit corpus peak is a measurement. Five populated component freezes
+lose their exact peak charge; five required-field omissions fail. Literal
+written-bit witnesses are 4/70/73. Twelve cursorless cases, eight populated
+position substitutions and eight repeated EOF attempts preserve IO semantics.
+
+Builtin positive controls distinguish successful decimal formatting from the
+configured host limit and restore it; no fixed host setting is required. Y
+failures keep committed state and no completion, while large N succeeds. A
+second-write refusal retains its output prefix and failure metadata on raw,
+VM, debugger and public routes. Idle calls neither retry it nor turn a failed
+final write into successful completion.
+
+A shared checker factory replaces ten repeated observer wrappers, saving
+fourteen test lines net. Existing required calls, defaults, return identity,
+assertion contexts and fresh witnesses remain; stateless views and predictors
+bind once. Private callable metadata changes. Typed native/observer/resource
+before/after dumps are byte-identical; every case, control and cap remains.
+Grapheme adds forty formatted test lines, leaving tests/source at
+115,692/115,702 with no new node. The queued usage correction identifies saving
+as top-level save_program. This accounting scope is reviewed; general catalog
+completion stays open.

@@ -82,19 +82,17 @@ def _model(source, stdin):
     return error, trace
 
 
-def _agrees(factory, source, stdin):
-    return workspace.agrees(
-        _model(source, stdin),
-        (factory, source, stdin),
-        (_WORKSPACE, lambda r: (r[0][:2], frozenset(r[0][2]), r[0][3], r[-1])),
-        lambda m: (
-            *m.state,
-            tuple(sorted((i, tuple(q)) for i, q in m.queues.items() if q)),
-            tuple(m.out),
-            tuple(m.memory),
-            m.ip,
-        ),
-    )
+_agrees = workspace.checker(
+    _model,
+    (_WORKSPACE, lambda r: (r[0][:2], frozenset(r[0][2]), r[0][3], r[-1])),
+    lambda m: (
+        *m.state,
+        tuple(sorted(((i, tuple(q)) for i, q in m.queues.items() if q))),
+        tuple(m.out),
+        tuple(m.memory),
+        m.ip,
+    ),
+)
 
 
 def check_raw_qrain():

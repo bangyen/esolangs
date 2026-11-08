@@ -7,8 +7,8 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.pilas.interpreter import _Machine
-from tests.support.workspace_oracle import agrees as workspace_agrees
 from tests.support.workspace_oracle import charged_bits, check_erasures, workspace_model
+from tests.support.workspace_oracle import checker as workspace_checker
 
 _WORKSPACE = workspace_model(
     "pilas-v1", "instruction_pointers stacks turn input_cursor"
@@ -91,13 +91,9 @@ def _model(source, stdin):
     return error, trace
 
 
-def _agrees(factory, source, stdin):
-    return workspace_agrees(
-        _model(source, stdin),
-        (factory, source, stdin),
-        (_WORKSPACE, lambda row: (*row[0][:3], row[-1])),
-        lambda m: (*m.state, m.ip),
-    )
+_agrees = workspace_checker(
+    _model, (_WORKSPACE, lambda row: (*row[0][:3], row[-1])), lambda m: (*m.state, m.ip)
+)
 
 
 def check_raw_pilas():

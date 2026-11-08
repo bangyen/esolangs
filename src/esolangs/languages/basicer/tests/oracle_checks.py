@@ -119,13 +119,9 @@ def _model(source, stdin):
     return error, trace
 
 
-def _agrees(factory, source, stdin):
-    return workspace.agrees(
-        _model(source, stdin),
-        (factory, source, stdin),
-        (_WORKSPACE, lambda row: (row[0], row[-1])),
-        lambda m: m.ind,
-    )
+_agrees = workspace.checker(
+    _model, (_WORKSPACE, lambda row: (row[0], row[-1])), lambda m: m.ind
+)
 
 
 def check_raw_basicer():

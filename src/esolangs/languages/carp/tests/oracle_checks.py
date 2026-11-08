@@ -95,13 +95,11 @@ def _model(source, stdin):
     return error, trace
 
 
-def _agrees(factory, source, stdin):
-    return workspace.agrees(
-        _model(source, stdin),
-        (factory, source, stdin),
-        (_WORKSPACE, lambda row: (row[0][0], row[0][1], row[-1])),
-        lambda m: (*m.state, tuple(m.registers)),
-    )
+_agrees = workspace.checker(
+    _model,
+    (_WORKSPACE, lambda row: (row[0][0], row[0][1], row[-1])),
+    lambda m: (*m.state, tuple(m.registers)),
+)
 
 
 def check_raw_carp():

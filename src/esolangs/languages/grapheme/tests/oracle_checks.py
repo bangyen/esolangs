@@ -2,14 +2,16 @@
 
 https://esolangs.org/wiki/Grapheme. Both public integer dialects, strings,
 variables, arithmetic, calls and literal flushes, bounded to 64 commands.
-Skip-X scheduling and negative skip counts remain in the existing raw suite.
+Tracks deferred X skips and clamps negative V counts to zero.
 """
 
+from decimal import Decimal
 from itertools import product
 
 import pytest
 
 from esolangs.languages.grapheme.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceSnapshot
 from tests.interpreters.oracle_support import overread, stalled
 from tests.support import workspace_oracle as workspace
 
@@ -90,7 +92,8 @@ def _data(command, stack, variables, dialect):
         elif isinstance(value, int):
             if value < 0:
                 raise ValueError("halt")
-            value = "".join(chr(ord("A") + (int(c) - 1) % 10) for c in str(value))
+            digits = format(Decimal(value), "f")
+            value = "".join(chr(ord("A") + (int(c) - 1) % 10) for c in digits)
         stack.append(value)
     elif command == "O":
         value = stack.pop()
@@ -103,11 +106,11 @@ def _data(command, stack, variables, dialect):
         value = stack.pop()
         if isinstance(value, tuple):
             raise ValueError("halt")
-        return str(value)
+        return value
     return None
 
 
-def _control(command, stack, dialect):
+def _control(command, stack, dialect, pc, pending):
     skip, body, repeat = 0, None, False
     if command == "G":
         value = stack.pop()
@@ -133,10 +136,14 @@ def _control(command, stack, dialect):
     elif command == "V":
         a, b = stack.pop(), stack.pop()
         if not _truth(a):
-            skip = _to_int(b, dialect)
+            skip = max(0, _to_int(b, dialect))
+    elif command == "X":
+        skip = 0 if _truth(stack.pop()) else 1
+        if not skip:
+            pending = pc
     else:
         raise ValueError("syntax")
-    return skip, body, repeat
+    return skip, body, repeat, pending
 
 
 def _finish(frames, stack, dialect):
@@ -155,13 +162,8 @@ def _model(source, stdin, dialect):
     cursor = progress = reads = 0
 
     def row():
-        return (
-            (tuple(stack), frozenset(variables.items()), tuple(frames), reads),
-            not frames,
-            output,
-            cursor,
-            progress,
-        )
+        state = tuple(stack), frozenset(variables.items()), tuple(frames), reads
+        return state, not frames, output, cursor, progress
 
     for tick in range(65):
         trace.append(row())
@@ -201,18 +203,26 @@ def _model(source, stdin, dialect):
             elif command in "ABCDJKLMNOPRSTY":
                 text = _data(command, changed, memory, dialect)
             else:
-                skip, body, call_repeat = _control(command, changed, dialect)
+                skip, body, call_repeat, pending = _control(
+                    command, changed, dialect, pc, pending
+                )
         except (IndexError, ZeroDivisionError):
             return "halt", [*trace, row()]
         except ValueError as error:
             return str(error), [*trace, row()]
-        calls[-1] = code, pc + 1 + skip, mode, buf, pending, repeat
+        destination = pc + 1 + skip
+        if pending >= 0 and destination == pending + 2:
+            destination, pending = destination + 1, -1
+        calls[-1] = code, destination, mode, buf, pending, repeat
         if body is not None:
             calls.append((body, 0, "", (), -1, call_repeat))
         _finish(calls, changed, dialect)
         stack, variables, frames = changed, memory, calls
         if text is not None:
-            output += text
+            try:
+                output += str(text)
+            except ValueError:
+                return "syntax", [*trace, row()]
     return None, trace
 
 
@@ -297,3 +307,31 @@ def check_raw_grapheme():
         with pytest.raises(AssertionError):
             _check(factory, code, "ab")
     workspace.check_erasures(_WORKSPACE, _check, _Machine, "I")
+
+    for dialect, code in product(
+        ("between_letters", "after_each_letter"),
+        (
+            "FAFFFXKY",
+            "FAFFBFFCFXYKY",
+            "FAFFBFHXYKHI",
+            "FAFFZFBFZFVFAFY",
+            "FAFXEABEY",
+            "FAFKKXXKMY",
+            "FZFFAFXXKFAFY",
+        ),
+    ):
+        _check(_Machine, code, dialect=dialect)
+    _check(_Machine, "WEKECEKEDY", "A\nremaining")
+    _check(_Machine, "WJY", "A" * 5000)
+    _check(_Machine, "WJNY", "A" * 5000)
+    workspace.check_erasures(_WORKSPACE, _check, _Machine, "WEKECEKEDY", "A\nremaining")
+
+    class NoPending(_Machine):
+        def workspace_snapshot(self):
+            saved = super().workspace_snapshot()
+            parts = list(saved.parts)
+            parts[2] = tuple((*frame[:4], -1, frame[5]) for frame in parts[2])
+            return WorkspaceSnapshot(saved.model, tuple(parts))
+
+    with pytest.raises(AssertionError):
+        _check(NoPending, "FAFXKMY")

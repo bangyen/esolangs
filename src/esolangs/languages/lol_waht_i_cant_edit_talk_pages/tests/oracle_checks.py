@@ -7,12 +7,12 @@ from decimal import Decimal
 import pytest
 
 from esolangs.languages.lol_waht_i_cant_edit_talk_pages.interpreter import _Machine
-from tests.support.workspace_oracle import agrees as workspace_agrees
 from tests.support.workspace_oracle import (
     charged_bits,
     check_erasures,
     workspace_model,
 )
+from tests.support.workspace_oracle import checker as workspace_checker
 
 _WORKSPACE = workspace_model(
     "lol-waht-i-cant-edit-talk-pages-v1", "instruction variables input_cursor"
@@ -170,13 +170,11 @@ def _model(source, stdin):
     return error, trace
 
 
-def _agrees(factory, source, stdin):
-    return workspace_agrees(
-        _model(source, stdin),
-        (factory, source, stdin),
-        (_WORKSPACE, lambda row: (row[0][0], frozenset(row[0][1]), row[-1])),
-        lambda machine: (*machine.state, machine.ip),
-    )
+_agrees = workspace_checker(
+    _model,
+    (_WORKSPACE, lambda row: (row[0][0], frozenset(row[0][1]), row[-1])),
+    lambda machine: (*machine.state, machine.ip),
+)
 
 
 def check_raw_lol_waht_i_cant_edit_talk_pages():

@@ -113,13 +113,11 @@ def _model(source, stdin):
     return error, trace
 
 
-def _agrees(factory, source, stdin):
-    return workspace_oracle.agrees(
-        _model(source, stdin),
-        (factory, source, stdin),
-        (_WORKSPACE, lambda row: (*row[0][:5], row[-1], row[0][-1])),
-        lambda m: (*m.state, tuple(m.memory), m.ip, m.snapshot()[-1]),
-    )
+_agrees = workspace_oracle.checker(
+    _model,
+    (_WORKSPACE, lambda row: (*row[0][:5], row[-1], row[0][-1])),
+    lambda m: (*m.state, tuple(m.memory), m.ip, m.snapshot()[-1]),
+)
 
 
 def check_raw_egl():

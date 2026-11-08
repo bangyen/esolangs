@@ -9,6 +9,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.grapheme.interpreter import _advance, _Machine, run
 from esolangs.languages.grapheme.interpreter import _Machine as Grapheme
+from esolangs.languages.grapheme.tests.oracle_checks import check_raw_grapheme
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_ancestor, run_until_halt_or_cycle
 from tests.interpreters.contract import (
@@ -155,6 +156,7 @@ class TestStack:
 class TestSkips:
     def test_the_command_u_skips_is_one_that_would_have_printed(self) -> None:
         """Which way ``U`` skips, read from the output rather than the stack."""
+        check_raw_grapheme()
         assert run_program("FAFFFUY") == ""  # falsy: the Y is skipped
         assert run_program("FBFFAFUY") == "2"  # truthy: the Y runs
 

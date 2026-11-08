@@ -159,3 +159,13 @@ def check_erasures(model, check, factory, *args, **options):
     for component in model.components:
         with pytest.raises(AssertionError):
             check(missing_workspace(factory, component), *args, **options)
+
+
+def checker(predict, workspace, state):
+    """Bind a two-input predictor to fixed independent component and state views."""
+
+    def check(factory, source, stdin):
+        expected = predict(source, stdin)
+        return agrees(expected, (factory, source, stdin), workspace, state)
+
+    return check

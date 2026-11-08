@@ -92,7 +92,8 @@ Both carry explicit `.source`, language and dialect settings; raster programs
 also retain scale. `TemplateArtifact.fill(bits)` returns a runnable record.
 `run`, `instantiate`, `dump_program` and `save_program` accept records;
 `load_program` restores them, including template bindings. Unfilled templates
-cannot run. `Language` binds the same operations.
+cannot run. `Language` binds language-specific operations; saving uses the
+top-level `save_program` function.
 
 `save_program(record, path, gzip=True)` compresses native text exports;
 `generate --gzip` does the same on the CLI. Both retain native file newlines.

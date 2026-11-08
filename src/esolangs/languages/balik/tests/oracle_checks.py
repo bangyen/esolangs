@@ -78,13 +78,11 @@ def _model(source, stdin):
     return error, trace
 
 
-def _agrees(factory, source, stdin):
-    return workspace.agrees(
-        _model(source, stdin),
-        (factory, source, stdin),
-        (_WORKSPACE, lambda row: (*row[0][:5], row[-1])),
-        lambda m: (*m.state, tuple(m.memory), m.ip),
-    )
+_agrees = workspace.checker(
+    _model,
+    (_WORKSPACE, lambda row: (*row[0][:5], row[-1])),
+    lambda m: (*m.state, tuple(m.memory), m.ip),
+)
 
 
 def _page_loop(before, body, after):

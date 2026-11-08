@@ -7,8 +7,8 @@ import re
 import pytest
 
 from esolangs.languages.six_five.interpreter import _Machine
-from tests.support.workspace_oracle import agrees as workspace_agrees
 from tests.support.workspace_oracle import check_erasures, workspace_model
+from tests.support.workspace_oracle import checker as workspace_checker
 
 _WORKSPACE = workspace_model("six-five-v1", "accumulator tape instruction input_cursor")
 
@@ -93,13 +93,11 @@ def _model(source, stdin):
     return error, trace
 
 
-def _agrees(factory, source, stdin):
-    return workspace_agrees(
-        _model(source, stdin),
-        (factory, source, stdin),
-        (_WORKSPACE, lambda row: (row[0][1], row[0][2], row[0][0], row[-1])),
-        lambda m: (*m.state, tuple(m.memory), m.ip),
-    )
+_agrees = workspace_checker(
+    _model,
+    (_WORKSPACE, lambda row: (row[0][1], row[0][2], row[0][0], row[-1])),
+    lambda m: (*m.state, tuple(m.memory), m.ip),
+)
 
 
 def check_raw_six_five():
