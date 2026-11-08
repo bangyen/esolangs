@@ -52,7 +52,7 @@ USAGE = f"""usage: esolangs <command> [...]
 commands:
   Generator-made (the API invents source from a truth table):
     generate [--width [N] | --balance] [--bits BITS] [--scale N]
-             [--settings JSON] [--set KEY=VALUE] [--plain]
+             [--settings JSON] [--set KEY=VALUE] [--plain | --gzip]
              <language> <truth-table>
                                 print a program computing a truth table
                                 (--width wraps it; --bits fills a template)
@@ -158,7 +158,7 @@ examples:
 """,
     "generate": f"""usage: esolangs generate [--width [N] | --balance] [--bits BITS]
                          [--scale N] [--settings JSON] [--set KEY=VALUE]
-                         [--plain] <language> <truth-table>
+                         [--plain | --gzip] <language> <truth-table>
 
 Print a program in <language> computing <truth-table>.
 
@@ -188,6 +188,8 @@ options:
   --plain      export compressed text as ordinary source text.  Without it,
                compressed text is written as gzip and a raster as PNG --
                binary bytes, so redirect them to a file.
+  --gzip       export any text program as gzip; excludes --plain.
+               Raster programs retain PNG and reject this option.
   --balance    pick the layout fitting the smallest on-screen square: text
                minimizes max(columns, 2 * rows) (a cell is about twice as
                tall as wide), a raster max(width, height). Ties prefer shorter

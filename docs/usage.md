@@ -24,6 +24,7 @@ Options, each explained in full by its command's `--help`:
 | `--balance` | generate | pick the layout fitting the smallest on-screen square; excludes `--width` |
 | `--bits BITS` | generate | fill a template's input slots, printing a runnable program |
 | `--plain` | generate | write compressed text as plain text instead of gzip |
+| `--gzip` | generate | compress any text export; excludes `--plain` and raster PNGs |
 | `--scale N` | generate, run | enlarge raster pixels after layout; on `run`, override the detected scale |
 | `-s`, `--settings JSON` | generate, run | dialect overrides as JSON |
 | `--set KEY=VALUE` | generate, run | one dialect override, repeatable, applied after `--settings` |
@@ -92,6 +93,10 @@ also retain scale. `TemplateArtifact.fill(bits)` returns a runnable record.
 `run`, `instantiate`, `dump_program` and `save_program` accept records;
 `load_program` restores them, including template bindings. Unfilled templates
 cannot run. `Language` binds the same operations.
+
+`save_program(record, path, gzip=True)` compresses native text exports;
+`generate --gzip` does the same on the CLI. Both retain native file newlines.
+Use `dump_program` to preserve dialect settings and template bindings on disk.
 
 `Language.from_source(source)` declares runnable source explicitly, including
 text that resembles a filename. `Language.from_file(path)` reads native source

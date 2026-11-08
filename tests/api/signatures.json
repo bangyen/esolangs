@@ -45,5 +45,5 @@
   "esolangs.load_program": "(language: 'str', document: 'str') -> 'Artifact'",
   "esolangs.read_answer": "(language: str, output: str) -> str",
   "esolangs.run": "(language: str, program: ProgramSource, *, stdin: InputSource = '', timeout: float | None = None, seed: int | None = None, isolated: bool = False, max_steps: int | None = None, scale: int | None = None, max_output: int | None = None, max_memory: int | None = None, settings: esolangs.settings.DialectSettings | None = None) -> esolangs.results.ExecutionResult",
-  "esolangs.save_program": "(program: 'Program | Artifact', path: 'str | PathLike[str]') -> 'None'"
+  "esolangs.save_program": "(program: 'Program | Artifact', path: 'str | PathLike[str]', *, gzip: 'bool' = False) -> 'None'"
 }

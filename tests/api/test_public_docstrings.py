@@ -123,6 +123,12 @@ type _Probe = tuple[Callable[[], object], _Setup | None]
 TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]] = [
     (
         "save_program",
+        x.ArgumentError,
+        lambda: esolangs.save_program("", ".", gzip=1),
+        None,
+    ),
+    (
+        "save_program",
         x.ProgramError,
         lambda: esolangs.save_program("+.", _MISSING),
         None,

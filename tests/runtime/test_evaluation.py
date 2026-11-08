@@ -26,10 +26,16 @@ def _kinds() -> list[str]:
 
 
 @pytest.mark.parametrize("name", _kinds())
-def test_evaluate_files(name: str, tmp_path: Path) -> None:
+@pytest.mark.parametrize("gzip", [False, True])
+def test_evaluate_files(name: str, tmp_path: Path, *, gzip: bool) -> None:
     table = probe_table(name)
     program = esolangs.generate(name, table)
     path = tmp_path / "source"
+    if gzip and esolangs.describe(name)["source_kind"] == "raster":
+        with pytest.raises(esolangs.ProgramError, match="rasters use PNG"):
+            esolangs.save_program(program, path, gzip=True)
+        assert not path.exists()
+        return
     inputs = len(table).bit_length() - 1
     if isinstance(program, esolangs.TemplateArtifact):
         path.write_text(esolangs.dump_program(name, program))
@@ -46,11 +52,13 @@ def test_evaluate_files(name: str, tmp_path: Path) -> None:
         )
         for row, expected in enumerate(table):
             bits = [row >> shift & 1 for shift in reversed(range(inputs))]
-            esolangs.save_program(esolangs.instantiate(name, restored, bits), path)
+            esolangs.save_program(
+                esolangs.instantiate(name, restored, bits), path, gzip=gzip
+            )
             loaded = esolangs.Language(name).from_file(path, settings=program.settings)
             assert answer(loaded, "", 30) == expected
         return
-    esolangs.save_program(program, path)
+    esolangs.save_program(program, path, gzip=gzip)
     assert _evaluate(name, path, inputs=inputs) == table
 
 

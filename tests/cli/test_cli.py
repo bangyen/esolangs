@@ -1,5 +1,6 @@
 """Unit tests for the esolangs command-line interface."""
 
+import gzip
 import json
 import sys
 from io import StringIO
@@ -9,7 +10,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs.cli import main
+from esolangs.cli import _generate, main
 from esolangs.registry import LANGUAGES
 from tests.support.cli_support import _program, _refused, call_main, run_cli
 from tests.support.pick import first
@@ -229,6 +230,12 @@ class TestProgramFailuresAreReported:
 class TestOutputAndAbridging:
     """The two output conventions: byte-exact when piped, readable when not."""
 
+    def test_gzip_export(self, capsysbinary) -> None:
+        _generate([REFERENCE, "01", "--gzip"])
+        data = capsysbinary.readouterr().out
+        expected = esolangs.generate(REFERENCE, "01").source + "\n"
+        assert gzip.decompress(data).decode() == expected
+
     def test_a_trailing_newline_is_added_only_for_a_terminal(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -243,7 +250,11 @@ class TestOutputAndAbridging:
     ) -> None:
         """PNG and gzip bytes went to the terminal unannounced."""
         with patch.object(sys.stdout, "isatty", lambda: True):
-            for args in (["generate", _RASTER, "0110"], ["generate", _GZIP, "01"]):
+            for args in (
+                ["generate", _RASTER, "0110"],
+                ["generate", _GZIP, "01"],
+                ["generate", REFERENCE, "01", "--gzip"],
+            ):
                 with pytest.raises(SystemExit) as exit_:
                     call_main(args, capsys)
                 assert exit_.value.code == 2
@@ -262,6 +273,8 @@ class TestGenerateArgumentTypes:
 #: Commands refused with exit code 2, and what stderr must say.
 #: ``prog:SRC`` is a file holding SRC; a third item is stdin.
 _REFUSALS = {
+    "gzip_plain": (f"generate {REFERENCE} 01 --gzip --plain", "mutually exclusive"),
+    "gzip_raster": (f"generate {RASTER} 01 --gzip", "rasters use PNG"),
     "generate_bits_refuses_a_raster": (
         f"generate {RASTER} 0110 --bits 01",
         "raster programs read bits",

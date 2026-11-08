@@ -258,9 +258,12 @@ def _layout_ignored(language: str, *, balance: bool) -> bool:
     )
 
 
-def _emit(artifact: Artifact, *, plain: bool) -> None:
+def _emit(artifact: Artifact, *, plain: bool, gzip: bool = False) -> None:
     """Write native source using the artifact's declared file convention."""
     program = artifact.source
+    if gzip and isinstance(program, str):
+        ending = "\n" if LANGUAGES[artifact.language].runtime.file_newline else ""
+        program = CompressedText.from_chunks((program, ending))
     if isinstance(program, CompressedText):
         if plain:
             for chunk in program.plain_chunks():
@@ -282,11 +285,14 @@ def _emit(artifact: Artifact, *, plain: bool) -> None:
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
     value_options = {"--bits", "--scale", "--settings"}
-    flag_options = {"--balance", "--plain"}
+    flag_options = {"--balance", "--plain", "--gzip"}
     rest, set_pairs = _pop_set_pairs(rest)
     rest, options = _pop_options(rest, value_options)
     rest, flags = _pop_flags(rest, flag_options)
     balance = "--balance" in flags
+    gzip = "--gzip" in flags
+    if gzip and "--plain" in flags:
+        _fail("--gzip and --plain are mutually exclusive")
     scale = _scale_of(options)
     before = list(rest)
     rest, width, bare = _pop_width(rest)
@@ -327,6 +333,8 @@ def _generate(rest: list[str]) -> None:
                 settings=settings,
             )
         program = artifact.source
+        if gzip and isinstance(program, Raster):
+            _fail("gzip export requires text; rasters use PNG")
         if isinstance(program, CompressedText) and "--plain" in flags:
             program.plain_chunks()  # Check the export budget before writing anything.
     except EsolangError as exc:
@@ -339,8 +347,10 @@ def _generate(rest: list[str]) -> None:
             f"{describe(rest[0])['name']} -- "
             f"the generator retains its original layout\n"
         )
-    binary = isinstance(program, Raster) or (
-        isinstance(program, CompressedText) and "--plain" not in flags
+    binary = (
+        gzip
+        or isinstance(program, Raster)
+        or (isinstance(program, CompressedText) and "--plain" not in flags)
     )
     if binary and sys.stdout.isatty():
         # Unary's gzip once landed on a terminal unannounced.
@@ -351,7 +361,7 @@ def _generate(rest: list[str]) -> None:
             + ("" if isinstance(program, Raster) else " or pass --plain")
         )
     with _errors():  # A raster renders here, and may exceed the pixel limit.
-        _emit(artifact, plain="--plain" in flags)
+        _emit(artifact, plain="--plain" in flags, gzip=gzip)
 
 
 def _printable(value: object) -> str:

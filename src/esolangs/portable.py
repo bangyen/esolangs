@@ -28,18 +28,26 @@ from esolangs.settings import DialectSettings, dialect_options, effective_settin
 _FORMAT = "esolangs.program"
 
 
-def save_program(program: Program | Artifact, path: str | PathLike[str]) -> None:
+def save_program(
+    program: Program | Artifact, path: str | PathLike[str], *, gzip: bool = False
+) -> None:
     """Write a program as a native source file.
 
     Text is UTF-8 with a language-permitted terminator, compressed source stays gzip,
-    and rasters are PNG. An existing file is replaced after encoding and
+    and rasters are PNG. ``gzip=True`` compresses ordinary text exports too.
+    Compression is explicit; a ``.gz`` suffix alone does not enable it.
+    Gzip exports follow the same file-newline policy as plain exports.
+    An existing file is replaced after encoding and
     writing succeed. Use :func:`dump_program` for a portable document that
     preserves dialect settings and template setters.
 
     Raises:
+        ArgumentError: ``gzip`` is not a Boolean flag.
         ProgramError: The source cannot be encoded or the file cannot be written.
         MissingDependencyError: A raster needs ``esolangs[image]`` for PNG.
     """
+    if type(gzip) is not bool:
+        raise ArgumentError("gzip must be a boolean")
     try:
         record = (
             program
@@ -52,6 +60,8 @@ def save_program(program: Program | Artifact, path: str | PathLike[str]) -> None
         if isinstance(program, CompressedText):
             source = program.to_gzip()
         elif isinstance(program, Raster):
+            if gzip:
+                raise ProgramError("gzip export requires text; rasters use PNG")
             source = png.write_source(
                 program.rows,
                 record.language if record is not None else program.language,
@@ -62,7 +72,11 @@ def save_program(program: Program | Artifact, path: str | PathLike[str]) -> None
             ending = (
                 "\n" if origin is None or LANGUAGES[origin].runtime.file_newline else ""
             )
-            source = (program + ending).encode("utf-8")
+            source = (
+                CompressedText.from_chunks((program, ending)).to_gzip()
+                if gzip
+                else (program + ending).encode("utf-8")
+            )
         else:
             raise ProgramError("expected text, compressed source, or a raster")
         target = Path(path)
