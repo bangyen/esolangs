@@ -3163,3 +3163,21 @@ claimed. Ten old/new constructor routes, eleven codec controls and a live bad
 residual-count control pass. Shared helpers are appended, retaining existing code
 positions. Production/generators stay byte-identical. Tests/source remain
 115,816/115,818; 34 accounting rows and all 117 completion rows remain open.
+
+
+Positive installed certification consumers now reconcile all 117 languages on
+macOS Python 3.12.11, 3.13.15, 3.14.7 and final 3.15.0. Thirteen owned records
+and 104 default fallbacks match all eleven source-declared fields, including
+callable identity/signatures. All 185 declared callable references match their
+exact dataclass field paths and load their declared signatures across all 114
+backends. Deferred metadata reads leave implementations unloaded; explicit
+loading observes target mutation without restoring signature proxies.
+
+Twelve fresh installed checks retain the unchanged 951-file wheel and actual
+host numeric policy. Genuine owned/default loading, wrong-record TypeError,
+nested dependency propagation and five malformed parameter declarations pass
+live controls. Existing release smokes already load certification in their 114
+backend children; this adds complete record/default/reference reconciliation.
+Formula values, resource claims and broader certification/runtime acceptance are
+not established by declaration loading. All claims remain pending; 34 accounting
+rows and all 117 completion rows remain open.
