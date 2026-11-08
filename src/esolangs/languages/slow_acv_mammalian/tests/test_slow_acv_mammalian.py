@@ -16,7 +16,7 @@ from esolangs.languages.slow_acv_mammalian.interpreter import (
 )
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
-from tests.interpreters.contract import SnapshotContract
+from tests.interpreters.contract import SnapshotContract, machine_factory
 from tests.interpreters.runner import run_printing
 from tests.support.paths import ROOT
 from tests.support.raises import assert_rejected_with_hint, raises_message
@@ -214,14 +214,10 @@ class TestLeapfrog:
         assert machine.ind == 1  # fell through rather than jumping to 8
 
 
-def _machine(code: object) -> object:
-    return _Machine(code, IO())
-
-
 class TestContract(SnapshotContract):
     """The shared shapes, with this language's own programs."""
 
-    machine = staticmethod(_machine)
+    machine = staticmethod(machine_factory(_Machine, IO))
     stepping_program = "SEED PRONOUNCE"
 
 

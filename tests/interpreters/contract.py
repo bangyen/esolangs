@@ -228,3 +228,12 @@ class StateViewContract:
             f"views that moved: {sorted(moved)}; "
             f"expected to move: {sorted(set(names) - declared)}"
         )
+
+
+def machine_factory(native, io_factory):
+    """Build each contract machine with fresh IO from explicit callbacks."""
+
+    def build(code):
+        return native(code, io_factory())
+
+    return build

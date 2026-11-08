@@ -12,6 +12,7 @@ from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
     SnapshotContract,
+    machine_factory,
 )
 
 #: The default (backward) direction's cycle, each character turning into the next.
@@ -186,15 +187,11 @@ class TestStepMachine:
             _advance(((0,), 0, 0, 0), tuple("["))
 
 
-def _machine(code: object) -> object:
-    return _Machine(code, ScriptedIO())
-
-
 class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
     """The shared empty-program shape, with this language's data."""
 
     run = staticmethod(run_program)
-    machine = staticmethod(_machine)
+    machine = staticmethod(machine_factory(_Machine, ScriptedIO))
     stepping_program = "."
     halting_program = "."
     no_cycle_reason = "ROTfuck snapshots retain the increasing rotation count."

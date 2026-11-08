@@ -3042,3 +3042,38 @@ calls byte-identically. The codec retains all 1+i code fields, offset arrays
 and function identities. Correct-native, tagged-exception, returned-identity
 and codec-corruption controls pass. Tests/source remain 115,817/115,818;
 37 accounting rows and all 117 completion rows remain open.
+
+
+Modulous's existing independent assembled-module model now predicts instruction,
+stack, variables, input cursor, stopped and input reads; draws remains readonly0.
+All 127 cases, five constructor syntax cases, cap48, three old controls and None
+return remain; seven erasures add controls. Ordinary traces retain byte-identical
+1,047 steps and 1,174 captures. The old controls still reject, now after two
+native steps rather than twelve. The 140-bit witness populates six mutable fields;
+it makes no populated-draw claim.
+
+Installed Python 3.12.11–final 3.15.0 passes all thirty-six leaves. Raw, prepared,
+VM and debug routes each cover 127 cases/1,174 boundaries, peak142 bits. All
+bounded public cases run; 119 independently finite cases also run through native
+and public ordinary entry points, while eight stay bounded. Ninety-six live
+masks, twenty-four consistent reductions and eight readonly-draw trajectories
+retain exact peaks. Forty native/prepared/VM/debug writer trajectories and eight
+public writer trajectories retain print-before-transition behavior: failure
+leaves the command active and stack intact; retry can repeat a partial prefix.
+Twelve repeated EOF/character-error routes, four consumed-token retries,
+detached preparations and eight guarded workers pass. A verifier ownership fix
+retains actual bounded Seeded and ordinary None public providers; injected
+NoDraw remains mandatory. The rejecting RND guard fires once, without certifying
+RND semantics. Named RND, bare INP, missing operands, huge numeric inputs,
+broader grammar and arbitrary callbacks remain open.
+
+Twelve contract clients share an explicit native/IO constructor factory, saving
+thirty lines against the nineteen-line bridge. Fresh IO is created on every
+call; all 78 inherited nodes remain, with 77 passes and one existing skip.
+Typed traces retain 66 constructors, 120 steps, 252 captures and 55 IO calls
+byte-identically, including full injected snapshot-function metadata. Twenty-four
+old/new constructor controls retain object identity, IO-before-native ordering,
+constructor refusals and actual-class patches. The helper is appended to preserve
+all existing shared-contract code positions. Production and generators remain
+byte-identical. Tests/source are 115,806/115,818; 36 accounting rows and all 117
+completion rows remain open.

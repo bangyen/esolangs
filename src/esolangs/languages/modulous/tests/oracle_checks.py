@@ -9,7 +9,12 @@ from itertools import product
 
 from esolangs.languages.modulous.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, reject_faults
+from tests.support import workspace_oracle as workspace
 from tests.support.model_input import token_span
+
+_WORKSPACE = workspace.workspace_model(
+    "modulous-v1", "instruction stack variables input_cursor stopped input_reads draws"
+)
 
 
 def _source(modules, curly):
@@ -144,9 +149,17 @@ def _view(machine):
 
 
 def _check(factory, modules, stdin="unused", *, curly=False):
-    assert observed(factory, _source(modules, curly), stdin, _view, cap=48) == _model(
-        modules, stdin
-    ), (modules, stdin)
+    workspace.agrees(
+        _model(modules, stdin),
+        (factory, _source(modules, curly), stdin),
+        (
+            _WORKSPACE,
+            lambda row: (*row[0][:2], frozenset(row[0][2]), row[-1], *row[0][3:]),
+        ),
+        _view,
+        cap=48,
+        context=(modules, stdin),
+    )
 
 
 def check_raw_modulous():
@@ -242,4 +255,10 @@ def check_raw_modulous():
 
     reject_faults(
         _check, _Machine, WrongSum, (("PSH", "INT", "2"), ("ADD", "3"), ("PRT", "INT"))
+    )
+
+    workspace.check_erasures(
+        _WORKSPACE,
+        lambda f: _check(f, (("INP", "INT"), ("PSH", "VAR1"), ("END",)), "2"),
+        _Machine,
     )

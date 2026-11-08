@@ -8,6 +8,7 @@ from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,
     StateViewContract,
+    machine_factory,
 )
 from tests.interpreters.runner import run_program
 from tests.support.generator_support import measure_run
@@ -122,14 +123,10 @@ class TestBitwiseCyclicTag:
         assert early.snapshot()[2] == late.snapshot()[2]
 
 
-def _machine(code: object) -> object:
-    return _Machine(code, IO())
-
-
 class TestContract(SnapshotContract, CycleContract, StateViewContract):
     """The shared shapes, with this language's own programs."""
 
-    machine = staticmethod(_machine)
+    machine = staticmethod(machine_factory(_Machine, IO))
     stepping_program = "00,11"
     halting_program = "0,1"
     # A genuine snapshot revisit, which is narrower here than "does not

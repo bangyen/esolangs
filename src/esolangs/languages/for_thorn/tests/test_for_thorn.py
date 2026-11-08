@@ -15,6 +15,7 @@ from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
     InputCursorContract,
+    machine_factory,
 )
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program as _run_program
@@ -89,10 +90,6 @@ class TestStepMachine:
         assert [frame.code for frame in machine.frames] == ["1;", ""]
 
 
-def _machine(code: object) -> object:
-    return _Machine(code, ScriptedIO())
-
-
 def _reader(code: object, stdin: str) -> object:
     return _Machine(code, ScriptedIO(stdin))
 
@@ -107,7 +104,7 @@ class TestContract(EmptyProgramContract, CycleContract, InputCursorContract):
     """The shared empty-program shape, with this language's data."""
 
     run = staticmethod(run_program)
-    machine = staticmethod(_machine)
+    machine = staticmethod(machine_factory(_Machine, ScriptedIO))
     reader = staticmethod(_reader)
     reading_program = ","
     reading_stdin = "hi"

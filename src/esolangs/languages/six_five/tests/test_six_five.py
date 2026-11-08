@@ -9,7 +9,7 @@ from esolangs.languages.six_five.interpreter import _Machine
 from esolangs.languages.six_five.interpreter import _Machine as SixFive
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_growth
-from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.interpreters.contract import CycleContract, SnapshotContract, machine_factory
 from tests.interpreters.runner import run_lines
 
 sixfive = importlib.import_module("esolangs.languages.six_five.interpreter")
@@ -174,14 +174,10 @@ class TestStepMachine:
         assert machine.ind == 3
 
 
-def _machine(code: object) -> object:
-    return _Machine(code, ScriptedIO())
-
-
 class TestContract(SnapshotContract, CycleContract):
     """The shared shapes, with this language's own programs."""
 
-    machine = staticmethod(_machine)
+    machine = staticmethod(machine_factory(_Machine, ScriptedIO))
     stepping_program = "55A"
     halting_program = "55A"
     looping_program = "481"

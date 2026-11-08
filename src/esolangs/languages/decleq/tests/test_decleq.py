@@ -13,6 +13,7 @@ from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
     SnapshotContract,
+    machine_factory,
 )
 from tests.interpreters.oisc import memory, run_program
 
@@ -166,15 +167,11 @@ class TestStepMachine:
         assert machine.pc == 65
 
 
-def _machine(code: object) -> object:
-    return _Machine(code, ScriptedIO())
-
-
 class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
     """The shared empty-program shape, with this language's data."""
 
     run = staticmethod(_run)
-    machine = staticmethod(_machine)
+    machine = staticmethod(machine_factory(_Machine, ScriptedIO))
     stepping_program = "-2 5 9 9 9 65 0 0"
     halting_program = "-2 5 9 9 9 65 0 0"
     looping_program = "3 4 0 0 -1"

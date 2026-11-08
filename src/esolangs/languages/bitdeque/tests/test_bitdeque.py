@@ -13,6 +13,7 @@ from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,
     StateViewContract,
+    machine_factory,
 )
 from tests.interpreters.runner import run_printing
 from tests.support.fixtures import text
@@ -97,14 +98,10 @@ class TestStepMachine:
         assert io_obj.getvalue() == "0"
 
 
-def _machine(code: object) -> object:
-    return _Machine(code, IO())
-
-
 class TestContract(SnapshotContract, CycleContract, StateViewContract):
     """The shared shapes, with this language's own programs."""
 
-    machine = staticmethod(_machine)
+    machine = staticmethod(machine_factory(_Machine, IO))
     stepping_program = "PUSH"
     halting_program = "INVERT PUSH"
     looping_program = "INVERT GOTO 2"

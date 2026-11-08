@@ -12,6 +12,7 @@ from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
     SnapshotContract,
+    machine_factory,
 )
 
 run_program = partial(runner.run_program, run, suppress_eof=False)
@@ -259,15 +260,11 @@ class TestStepMachine:
         assert len(set(seen)) == len(seen)
 
 
-def _machine(code: object) -> object:
-    return _Machine(code, ScriptedIO())
-
-
 class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
     """The shared empty-program shape, with this language's data."""
 
     run = staticmethod(run_program)
-    machine = staticmethod(_machine)
+    machine = staticmethod(machine_factory(_Machine, ScriptedIO))
     stepping_program = "x = y x + z, DO PRINT."
     halting_program = "x = y x + z, DO PRINT."
     # A line that jumps to itself, so the state repeats rather than advancing.

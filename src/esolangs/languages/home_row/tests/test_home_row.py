@@ -11,6 +11,7 @@ from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
     StateViewContract,
+    machine_factory,
 )
 
 run_program = partial(runner.run_program, run, suppress_eof=False)
@@ -100,15 +101,11 @@ class TestStepMachine:
         assert machine.grid[0] == 1
 
 
-def _machine(code: object) -> object:
-    return _Machine(code, ScriptedIO())
-
-
 class TestContract(EmptyProgramContract, CycleContract, StateViewContract):
     """The shared empty-program shape, with this language's data."""
 
     run = staticmethod(run_program)
-    machine = staticmethod(_machine)
+    machine = staticmethod(machine_factory(_Machine, ScriptedIO))
     halting_program = "ak;"
     looping_program = "all"
     state_views = ("ind", "ip", "memory")

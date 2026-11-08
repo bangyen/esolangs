@@ -14,6 +14,7 @@ from tests.interpreters.contract import (
     CycleContract,
     InputCursorContract,
     StateViewContract,
+    machine_factory,
 )
 from tests.interpreters.runner import run_lines
 from tests.support.raises import assert_rejected_with_hint, raises_message
@@ -180,10 +181,6 @@ def test_run_reuses_a_parsed_line_after_a_backward_goto() -> None:
     assert run_and_capture(code) == ""
 
 
-def _machine(code: object) -> object:
-    return _Machine(code, ScriptedIO())
-
-
 def _reader(code: object, stdin: str) -> object:
     return _Machine(code, ScriptedIO(stdin))
 
@@ -191,7 +188,7 @@ def _reader(code: object, stdin: str) -> object:
 class TestContract(CycleContract, InputCursorContract, StateViewContract):
     """The shared shapes, with this language's own programs."""
 
-    machine = staticmethod(_machine)
+    machine = staticmethod(machine_factory(_Machine, ScriptedIO))
     reader = staticmethod(_reader)
     reading_program: ClassVar[list[str]] = ["if 0 input"]
     reading_stdin = "A"

@@ -11,6 +11,7 @@ from tests.interpreters.contract import (
     CycleContract,
     InputCursorContract,
     StateViewContract,
+    machine_factory,
 )
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_lines
@@ -128,10 +129,6 @@ class TestStepMachine:
         assert machine.ind == 2
 
 
-def _machine(code: object) -> object:
-    return _Machine(code, ScriptedIO())
-
-
 def _reader(code: object, stdin: str) -> object:
     return _Machine(code, ScriptedIO(stdin))
 
@@ -139,7 +136,7 @@ def _reader(code: object, stdin: str) -> object:
 class TestContract(CycleContract, InputCursorContract, StateViewContract):
     """The shared shapes, with this language's own programs."""
 
-    machine = staticmethod(_machine)
+    machine = staticmethod(machine_factory(_Machine, ScriptedIO))
     halting_program = ">+."
     looping_program = ">+[]"
     state_views = ("lst", "ip")
