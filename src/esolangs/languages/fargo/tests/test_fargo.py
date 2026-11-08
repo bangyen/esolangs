@@ -1,5 +1,6 @@
 """Unit tests for the Fargo interpreter."""
 
+import sys
 from dataclasses import replace
 from itertools import product
 from operator import and_, or_, xor
@@ -383,6 +384,30 @@ class TestMachine:
             if other.frames:
                 others.append(other.frame_entry_key(other.frames[-1]))
         assert keys != others
+
+        policy = sys.get_int_max_str_digits()
+        try:
+            sys.set_int_max_str_digits(0)
+            expected = str((1 << 2200) - 1)
+            sys.set_int_max_str_digits(640)
+            machine = _Machine("f x | x 0\nf " + "1" * 2200, ScriptedIO("0"))
+            populated = 0
+            while not machine.halted:
+                snapshot = machine.snapshot()
+                hash(snapshot)
+                for frame in machine.frames:
+                    hash(machine.frame_entry_key(frame))
+                    shown = repr(frame)
+                    if frame.result == (1 << 2200) - 1:
+                        assert expected in shown
+                        assert expected in repr(snapshot)
+                        populated += 1
+                machine.step()
+            assert populated
+            assert machine.io.getvalue() == ""
+            assert sys.get_int_max_str_digits() == 640
+        finally:
+            sys.set_int_max_str_digits(policy)
 
 
 @pytest.mark.medium

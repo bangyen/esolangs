@@ -46,7 +46,8 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Callable, Hashable, Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, fields, replace
+from reprlib import recursive_repr
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -58,6 +59,7 @@ from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import syntax_error
 
 # The wiki renders the truth machine with zero-width spaces inside two of
@@ -124,6 +126,19 @@ _BUILTINS: dict[str, _Func] = {
 }
 
 
+def _value_repr(value: object) -> str:
+    """Keep value spelling usable for cycles and views beyond the digit cap."""
+    if type(value) is int:
+        try:
+            return repr(value)
+        except ValueError:
+            return format_integer(value)
+    if type(value) is tuple:
+        text = ", ".join(map(_value_repr, value))
+        return "(" + text + ("," if len(value) == 1 else "") + ")"
+    return repr(value)
+
+
 @dataclass
 class _Def:
     """One user-defined function: its parameters and its code tokens."""
@@ -148,6 +163,16 @@ class _Frame:
     binds: tuple[tuple[str, _Value], ...] = ()
     fn_name: str = ""
     result: _Value = 0
+
+    @recursive_repr()
+    def __repr__(self) -> str:
+        """Render owned frame values without changing the host digit policy."""
+        values = ", ".join(
+            f"{field.name}={_value_repr(getattr(self, field.name))}"
+            for field in fields(self)
+            if field.repr
+        )
+        return f"{type(self).__qualname__}({values})"
 
     def bound(self, name: str) -> _Value | None:
         """Return ``name``'s bound value, or ``None`` when it is unbound."""
@@ -379,7 +404,7 @@ class _Machine:
     def snapshot(self) -> Hashable:
         """Return the complete internal state, hashable for cycle detection.
 
-        Arguments are captured via ``repr()``.  A non-returning recursion
+        Values retain their ordinary spelling. A non-returning recursion
         grows the frame tuple, so it is never mistaken for a repeat.
         """
         return (
@@ -391,12 +416,12 @@ class _Machine:
                     frame.tokens,
                     frame.pos,
                     frame.fn_name,
-                    repr(frame.result),
+                    _value_repr(frame.result),
                     tuple(
-                        (fn.name, tuple(repr(a) for a in args))
+                        (fn.name, tuple(_value_repr(a) for a in args))
                         for fn, args in frame.pending
                     ),
-                    tuple(sorted((k, repr(v)) for k, v in frame.binds)),
+                    tuple(sorted((k, _value_repr(v)) for k, v in frame.binds)),
                 )
                 for frame in self.state.frames
             ),
@@ -411,7 +436,7 @@ class _Machine:
         """
         return (
             frame.fn_name,
-            tuple(sorted((k, repr(v)) for k, v in frame.binds)),
+            tuple(sorted((k, _value_repr(v)) for k, v in frame.binds)),
             self.io.progress(),
         )
 

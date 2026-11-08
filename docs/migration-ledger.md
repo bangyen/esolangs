@@ -2350,3 +2350,22 @@ and input commit; raw/VM/debug retries attempt the write again and retain the
 old capture. General source parsing and unbounded growth remain open.
 No tracked code or test changes are needed; 62 accounting rows and all 117
 completion rows remain open.
+
+Fargo's owned frame/value renderer now preserves ordinary cycle and ancestor
+keys while formatting large integers without changing the host digit policy.
+A valid 20,000-bit literal previously halted in three steps but made its
+second-step cycle and VM/debugger views raise ValueError. Frame text retains
+field order, tuple spelling, custom callable repr and recursive markers;
+workspace encoding and language output/error semantics stay separate.
+
+The complete tracediff corpus retains 5,195 programs, 2,290 clean halts and
+zero ordinary differences; the stalled control differs on 2,553 programs.
+Measured stepping speed is 210,653 to 211,781 steps/s. One of 951 wheel files
+changes. Python 3.12.11, 3.13.15, 3.14.7 and final 3.15.0 each pass the prepared
+independent model's 266 cases/10,398 boundaries and 33 guarded route pairs,
+plus populated frame, callable, array, IO and failure-phase controls.
+
+The existing frame-entry test carries a capped large-binding regression;
+no node is added. The complete independent frame model remains an archived
+proposal until funded within the test/source budget. Fargo's accounting row
+and all broader completion rows remain open.
