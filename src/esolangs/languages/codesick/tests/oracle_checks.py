@@ -7,8 +7,8 @@ import pytest
 
 from esolangs.languages.codesick.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
-from tests.support.workspace_oracle import agrees as workspace_agrees
 from tests.support.workspace_oracle import check_erasures
+from tests.support.workspace_oracle import checker as workspace_checker
 
 _WORKSPACE = WorkspaceModel("codesick-v1", ("instruction", "variables", "input_cursor"))
 
@@ -141,14 +141,12 @@ def _model(source, stdin):
     return None, trace
 
 
-def _agrees(factory, source, stdin):
-    return workspace_agrees(
-        _model(source, stdin),
-        (factory, source, stdin),
-        (_WORKSPACE, lambda row: (row[0][0], frozenset(row[0][1]), row[-1])),
-        lambda m: (m.pc, tuple(sorted(m.memory.items())), m.ip),
-        cap=8,
-    )
+_agrees = workspace_checker(
+    _model,
+    (_WORKSPACE, lambda row: (row[0][0], frozenset(row[0][1]), row[-1])),
+    lambda m: (m.pc, tuple(sorted(m.memory.items())), m.ip),
+    cap=8,
+)
 
 
 def _quoted(text):

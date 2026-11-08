@@ -65,14 +65,12 @@ def _model(lines):
     return None, trace
 
 
-def _agrees(factory, lines):
-    return workspace_oracle.agrees(
-        _model(lines),
-        (factory, lines, "unused λ"),
-        (_WORKSPACE, lambda row: (*row[0][:8], row[-1])),
-        lambda m: (*m.state, m.dumped, tuple(m.memory), m.ip),
-        context=lines,
-    )
+_agrees = workspace_oracle.source_checker(
+    _model,
+    (_WORKSPACE, lambda row: (*row[0][:8], row[-1])),
+    lambda m: (*m.state, m.dumped, tuple(m.memory), m.ip),
+    "unused λ",
+)
 
 
 def check_raw_back():

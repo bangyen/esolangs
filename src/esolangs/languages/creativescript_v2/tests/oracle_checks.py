@@ -8,8 +8,8 @@ import pytest
 
 from esolangs.languages.creativescript_v2.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
-from tests.support.workspace_oracle import agrees as workspace_agrees
 from tests.support.workspace_oracle import check_erasures
+from tests.support.workspace_oracle import checker as workspace_checker
 
 _WORKSPACE = WorkspaceModel(
     "creativescript-v2-v1", ("variables", "instruction", "input_cursor")
@@ -129,13 +129,11 @@ def _model(source, stdin):
     return error, trace
 
 
-def _agrees(factory, source, stdin):
-    return workspace_agrees(
-        _model(source, stdin),
-        (factory, source, stdin),
-        (_WORKSPACE, lambda row: (row[0][0], row[0][1], row[-1])),
-        lambda m: (m.state, m.cursor, tuple(m.memory), m.ip),
-    )
+_agrees = workspace_checker(
+    _model,
+    (_WORKSPACE, lambda row: (row[0][0], row[0][1], row[-1])),
+    lambda m: (m.state, m.cursor, tuple(m.memory), m.ip),
+)
 
 
 def check_raw_creativescript_v2():

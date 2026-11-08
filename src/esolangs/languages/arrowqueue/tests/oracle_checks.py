@@ -70,14 +70,12 @@ def _model(lines):
     return None, trace
 
 
-def _agrees(factory, lines):
-    return workspace.agrees(
-        _model(lines),
-        (factory, lines, "unused λ"),
-        (_WORKSPACE, lambda row: (*row[0][:6], row[-1])),
-        lambda m: (*m.state, m.dumped, m.ip, tuple(m.stack)),
-        context=lines,
-    )
+_agrees = workspace.source_checker(
+    _model,
+    (_WORKSPACE, lambda row: (*row[0][:6], row[-1])),
+    lambda m: (*m.state, m.dumped, m.ip, tuple(m.stack)),
+    "unused λ",
+)
 
 
 def check_raw_arrowqueue():

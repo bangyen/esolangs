@@ -94,14 +94,12 @@ def _model(source):
     return None, trace
 
 
-def _agrees(factory, source):
-    return workspace.agrees(
-        _model(source),
-        (factory, source, "unused λ"),
-        (_WORKSPACE, lambda r: (*r[0][:4], r[-1])),
-        lambda m: (*m.state, m.printed, tuple(m.memory), m.ip),
-        context=source,
-    )
+_agrees = workspace.source_checker(
+    _model,
+    (_WORKSPACE, lambda r: (*r[0][:4], r[-1])),
+    lambda m: (*m.state, m.printed, tuple(m.memory), m.ip),
+    "unused λ",
+)
 
 
 def check_raw_refractran():

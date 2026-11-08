@@ -86,13 +86,11 @@ def _model(lines, stdin):
     return error, trace
 
 
-def _agrees(factory, lines, stdin):
-    return workspace_oracle.agrees(
-        _model(lines, stdin),
-        (factory, lines, stdin),
-        (_WORKSPACE, lambda row: (*row[0][:6], row[-1])),
-        lambda m: (*m.state, tuple(m.memory), m.ip),
-    )
+_agrees = workspace_oracle.checker(
+    _model,
+    (_WORKSPACE, lambda row: (*row[0][:6], row[-1])),
+    lambda m: (*m.state, tuple(m.memory), m.ip),
+)
 
 
 def _ring(body):

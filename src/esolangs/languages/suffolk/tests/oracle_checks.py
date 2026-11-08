@@ -9,7 +9,7 @@ import pytest
 from esolangs.languages.suffolk import interpreter as suffolk
 from esolangs.languages.suffolk.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import checker as oracle_checker
 
 
 def _model(source, stdin):
@@ -63,13 +63,7 @@ def _model(source, stdin):
     return error, trace
 
 
-def _agrees(factory, source, stdin):
-    expected = _model(source, stdin)
-    assert (
-        observed(factory, source, stdin, lambda m: (*m.state, tuple(m.memory), m.ip))
-        == expected
-    ), (source, stdin)
-    return expected
+_agrees = oracle_checker(_model, lambda m: (*m.state, tuple(m.memory), m.ip))
 
 
 def _run_agrees(runner, source, stdin):

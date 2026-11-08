@@ -2234,3 +2234,37 @@ constructor do not establish general escape parsing. Only three permanent
 test lines are added, with every existing case/control/cap retained.
 Tests/source are 115,695/115,702; no node is added. These accounting scopes
 are reviewed; 66 accounting rows and all 117 completion rows remain open.
+
+Eval's unchanged independent two-stack/suspended-reader model now checks all
+four workspace components. All 2,751 old cases and the caller-discard fault
+remain; three added cases and six controls give 2,754/seven at cap 24. Old
+typed traces stay identical; the existing pytest hook remains the caller.
+
+The unchanged 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0: 2,754 core cases/10,159 boundaries, 633 completions and 2,121 failed
+transitions per version. Separate probes retain a bounded run; ten guarded
+native/isolated pairs include cap-zero/cap-one boundaries. Full stacks, frames,
+pointer, input progress, cycle records, declared views, IO counters, successful
+steps, completion, attached errors and retained snapshots match independent
+predictions and full-width recounts. The measured corpus peak is 80,037 bits.
+
+Three populated freezes lose their predicted component charge; a required
+read-only cursor omission fails. Output, caught-EOF and discarded-caller faults
+are live. Executed literal written-bit anchors are 0/19/10/88. A second-write
+refusal preserves the output prefix and the pre-transition stack/frame state
+on raw/VM/debug/public routes. A successful active retry prints and commits;
+frame return then completes with the predicted step count.
+
+Fourteen wrappers share fixed-option workspace, source-context workspace or
+plain full-trace checkers. Twenty-four complete hook replays, including ten
+existing clients, retain 38,303 observed calls, 403,275 returned boundaries,
+215,299 resource samples, 399,016 native boundaries, 191,738 meter samples,
+299 live assertion controls and 84 ordered component controls per side. Typed
+traces match byte-for-byte after binding observation defaults through the
+unchanged signature; four plain wrappers make cap 64 explicit. Model, view,
+context, return and call order remain; private callable metadata is excluded.
+No case, assertion, control, cap or node is removed.
+
+Helper reuse saves 32 formatted test lines; Eval adds 33. Tests/source are
+115,696/115,702. This bounded accounting scope is reviewed; 65 accounting rows
+and all 117 completion rows remain open.

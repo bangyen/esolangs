@@ -98,3 +98,17 @@ def check_terminal(factory, code, stdin, view, expected, *, cap=64):
     error, trace = observed(factory, code, stdin, stable_halt(view), cap=cap)
     assert error is None
     assert trace[-1] == expected
+
+
+def checker(predict, state, *, cap=64):
+    """Bind a full-trace predictor and native view to a fixed observation cap."""
+
+    def check(factory, source, stdin):
+        expected = predict(source, stdin)
+        assert observed(factory, source, stdin, state, cap=cap) == expected, (
+            source,
+            stdin,
+        )
+        return expected
+
+    return check

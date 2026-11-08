@@ -6,12 +6,11 @@ import random
 import pytest
 
 from esolangs.languages.ram0.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
 from tests.support.workspace_oracle import (
     charged_bits,
     missing_workspace,
+    source_checker,
     workspace_model,
-    workspace_view,
 )
 
 _WORKSPACE = workspace_model(
@@ -102,11 +101,7 @@ def _parts(row):
     return (*row[0][:4], row[-1], row[0][4])
 
 
-def _agrees(factory, source):
-    expected = _model(source)
-    checked = workspace_view(expected[1], _WORKSPACE, _parts, _state)
-    assert observed(factory, source, "λ\nunused", checked) == expected, source
-    return expected
+_agrees = source_checker(_model, (_WORKSPACE, _parts), _state, "λ\nunused")
 
 
 def check_raw_ram0():

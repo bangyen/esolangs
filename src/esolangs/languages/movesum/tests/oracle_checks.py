@@ -6,7 +6,7 @@ import random
 import pytest
 
 from esolangs.languages.movesum.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import checker as oracle_checker
 
 
 def _parse(source):
@@ -131,10 +131,7 @@ def _view(machine):
     return state, machine.ip, tuple(sorted(machine.memory.items()))
 
 
-def _agrees(factory, source, stdin):
-    expected = _model(source, stdin)
-    assert observed(factory, source, stdin, _view) == expected, (source, stdin)
-    return expected
+_agrees = oracle_checker(_model, _view)
 
 
 def check_raw_movesum():

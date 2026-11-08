@@ -7,7 +7,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.nor_machine.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import checker as oracle_checker
 
 
 def _integers(text):
@@ -75,18 +75,9 @@ def _model(source, stdin):
     return error, trace
 
 
-def _agrees(factory, source, stdin):
-    expected = _model(source, stdin)
-    assert (
-        observed(
-            factory,
-            source,
-            stdin,
-            lambda m: (m.ind, None if m.queue is None else tuple(m.queue)),
-        )
-        == expected
-    ), (source, stdin)
-    return expected
+_agrees = oracle_checker(
+    _model, lambda m: (m.ind, None if m.queue is None else tuple(m.queue))
+)
 
 
 def check_raw_nor_machine():

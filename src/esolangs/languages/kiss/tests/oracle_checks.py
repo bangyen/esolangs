@@ -6,7 +6,7 @@ import random
 import pytest
 
 from esolangs.languages.kiss.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import checker as oracle_checker
 
 
 def _parse(source):
@@ -114,19 +114,9 @@ def _model(source, stdin):
     return error, trace
 
 
-def _agrees(factory, source, stdin):
-    expected = _model(source, stdin)
-    assert (
-        observed(
-            factory,
-            source,
-            stdin,
-            lambda m: (_dag(m.stack), m.ended, m.bits, m.exit_code, m.ip),
-            cap=16,
-        )
-        == expected
-    ), (source, stdin)
-    return expected
+_agrees = oracle_checker(
+    _model, lambda m: (_dag(m.stack), m.ended, m.bits, m.exit_code, m.ip), cap=16
+)
 
 
 def check_raw_kiss():

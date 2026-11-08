@@ -161,11 +161,23 @@ def check_erasures(model, check, factory, *args, **options):
             check(missing_workspace(factory, component), *args, **options)
 
 
-def checker(predict, workspace, state):
+def checker(predict, workspace, state, **options):
     """Bind a two-input predictor to fixed independent component and state views."""
 
     def check(factory, source, stdin):
         expected = predict(source, stdin)
-        return agrees(expected, (factory, source, stdin), workspace, state)
+        return agrees(expected, (factory, source, stdin), workspace, state, **options)
+
+    return check
+
+
+def source_checker(predict, workspace, state, stdin):
+    """Bind a one-source predictor with a source-only failure context."""
+
+    def check(factory, source):
+        expected = predict(source)
+        return agrees(
+            expected, (factory, source, stdin), workspace, state, context=source
+        )
 
     return check
