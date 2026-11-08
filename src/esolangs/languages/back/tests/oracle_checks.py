@@ -7,7 +7,7 @@ import pytest
 
 from esolangs.languages.back.interpreter import _Machine
 from tests.support import workspace_oracle
-from tests.support.workspace_oracle import missing_workspace
+from tests.support.workspace_oracle import check_erasures
 
 _WORKSPACE = workspace_oracle.workspace_model(
     "back-v2",
@@ -142,7 +142,5 @@ def check_raw_back():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, lines)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), [">-* "])
+    check_erasures(_WORKSPACE, lambda f: _agrees(f, [">-* "]), _Machine)
     return len(results), len(controls) + 9

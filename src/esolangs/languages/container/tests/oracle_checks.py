@@ -97,10 +97,8 @@ def check_raw_container():
 
     with pytest.raises(AssertionError):
         _check(stalled(_Machine), {"OUT": (0, ((1, "OUT", ">=", 0),))}, "")
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(
-                workspace.missing_workspace(_Machine, component),
-                {"EXIT": (0, ((1, "EXIT", ">=", 0),))},
-                "",
-            )
+    workspace.check_erasures(
+        _WORKSPACE,
+        lambda f: _check(f, {"EXIT": (0, ((1, "EXIT", ">=", 0),))}, ""),
+        _Machine,
+    )

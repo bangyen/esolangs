@@ -2139,3 +2139,33 @@ Expanded ASTs and full typed before/after dumps agree, including all 23
 ordered erasures and nonstandard stack/memory observers. Every case, control,
 cap and return remains. Tests/source are 115,675/115,702 lines; no node is added.
 These accounting scopes are reviewed; all broader completion rows stay open.
+
+DINAC now checks 403 independent straight-line cases and forty small-step
+call cases, including nullable declarations inside suspended calls. The old
+38 call traces stay identical; all eighteen semantic/schema controls pass.
+The previously uncalled straight-line checker now runs in an existing pytest
+node. Both source caps stay 48; nested overloads, recursion, WHILE, void returns,
+failed overload/return and partial output remain covered.
+
+One unchanged 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0: 443 modeled cases plus three literal constructor refusals, 3,032 native
+boundaries and 52 guarded native/isolated pairs per version. All public results,
+state/cycle keys, captures, debugger views, input counters, successful-step and
+completion timing, attached failure observations and held snapshots match.
+There are 372 completions, 71 failed transitions and three failed constructors;
+the observed 1,874-bit corpus peak is not a global bound.
+
+Both populated component freezes lose their exact predicted charge; both schema
+omissions fail. A nested nullable declaration costs 49 bits: full frames change
+119 to 169 bits, while omitting that retained type yields 120. Four cursorless
+IO cases preserve progress independently of reported position; three populated
+position substitutions fail. Injected writer failures preserve committed state,
+partial output and successful-step counts, normalize exactly on wrapped routes,
+and do not retry the lost write when execution resumes.
+
+Nine clients reuse the erasure helper without hoisting fresh source or variant
+arguments out of their exception contexts. Full lambda/helper expansion restores
+the original module AST. Typed before/after dumps match, retaining every case,
+assertion, cap, return and all 54 ordered component faults. Reuse saves 21 lines;
+DINAC adds twelve. Tests/source are 115,666/115,702 lines, with no new node.
+This bounded accounting scope is reviewed; broader completion stays open.

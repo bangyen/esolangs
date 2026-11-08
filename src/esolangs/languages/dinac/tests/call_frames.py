@@ -24,6 +24,7 @@ def _frame(fn, scope, body):
         "blocks": ((body, 0),),
         "pending": None,
         "returned": None,
+        "null_types": (),
     }
 
 
@@ -36,10 +37,8 @@ class _Trace:
         self.save()
 
     def save(self):
-        frames = tuple(
-            (f["fn"], f["scope"], f["blocks"], f["pending"], f["returned"], ())
-            for f in self.frames
-        )
+        names = "fn", "scope", "blocks", "pending", "returned", "null_types"
+        frames = tuple(tuple(f[key] for key in names) for f in self.frames)
         self.rows.append((frames, self.output, self.cursor, self.reads, self.past_end))
 
     def push(self, fn, scope, body, expression):
@@ -187,21 +186,27 @@ def _failures():
     yield code, "unused", t.rows, True
 
 
-def _input(stdin):
+def _input(stdin, *, null=False):
     t = _Trace(1)
     t.push(1, (None,), 0, _call("read"))
     t.resume(((0, 1),), scope=(("wubyte", 0),))
+    if null:
+        t.frames[0]["null_types"] = ((0, "wubyte"),)
+        t.resume(((0, 2),), scope=(("snuval", 0),))
     text = stdin.partition("\n")[0].strip()
     value = int(text) if text.isascii() and text.isdigit() and len(text) <= 3 else 0
     value = value if value <= 255 else 0
     t.cursor = stdin.index("\n") + 1 if "\n" in stdin else len(stdin)
     t.reads, t.past_end = int(bool(stdin)), int(not stdin)
-    t.resume(((0, 2),), scope=(("wubyte", value),))
+    t.frames[0]["null_types"] = ()
+    t.resume(((0, 2 + null),), scope=(("wubyte", value),))
     t.leave(("wubyte", value))
     t.resume(((1, 1),), f"{value:02X}")
     t.end()
     return (
-        "DEF/00 read\n    SET n:00\n    IN n\n    GIVE n\nOUT read()",
+        "DEF/00 read\n    SET n:00\n"
+        + ("    n . $\n" if null else "")
+        + "    IN n\n    GIVE n\nOUT read()",
         stdin,
         t.rows,
         False,
@@ -222,7 +227,8 @@ def _cases():
     cases += [_loop(n) for n in (0, 1, 2, 5)]
     cases += [_void(), *_failures()]
     cases += [_input(text) for text in ("", "12\nunused", "256\n", "λ\n", "7")]
-    assert len(cases) == 38
+    cases += [_input(text, null=True) for text in ("", "7")]
+    assert len(cases) == 40
     assert all(
         (
             len(rows) - 1
@@ -326,6 +332,7 @@ def check_call_frames():
         with ThreadPoolExecutor(max_workers=4) as workers:
             list(workers.map(partial(_execution, isolated=True), cases))
     controls = ("caller", "pending", "returned", "blocks", "function", "scope", "order")
+    controls += ("null_types",)
     for fault in controls:
 
         class Fault(_Machine):
@@ -352,12 +359,15 @@ def check_call_frames():
                             row[0] = 0
                         elif self.mode == "scope":
                             row[1] = ()
+                        elif self.mode == "null_types":
+                            row[5] = ()
                         changed.append(tuple(row))
                     frames = tuple(changed)
                 return WorkspaceSnapshot(saved.model, (frames, cursor))
 
+        case = _input("7", null=True) if fault == "null_types" else _recursive(2)
         with pytest.raises(AssertionError):
-            _raw(_recursive(2), Fault)
+            _raw(case, Fault)
 
     class WrongOutput(_Machine):
         def step(self):

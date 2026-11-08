@@ -16,7 +16,7 @@ from esolangs.languages.dig.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import observed, overread, stalled
 from tests.support import workspace_oracle
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support.workspace_oracle import check_erasures, workspace_view
 
 _WORKSPACE = workspace_oracle.workspace_model(
     "dig-v2", "row column direction mole number grid input_cursor input_reads stopped"
@@ -215,9 +215,7 @@ def check_raw_dig():
     for factory in (stalled(_Machine), WrongValue, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, [">$2:@", " 2"])
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(missing_workspace(_Machine, component), [">$2:@", " 2"])
+    check_erasures(_WORKSPACE, lambda f: _check(f, [">$2:@", " 2"]), _Machine)
 
     latch = _model(["@"], "unused")[1]
     assert _parts(latch[0])[:-1] == _parts(latch[1])[:-1]

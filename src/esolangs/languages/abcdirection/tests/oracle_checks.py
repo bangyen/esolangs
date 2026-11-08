@@ -10,7 +10,7 @@ from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import stalled
 from tests.support.workspace_oracle import (
     WorkspaceWitness,
-    missing_workspace,
+    check_erasures,
     workspace_model,
 )
 
@@ -174,6 +174,4 @@ def check_raw_abcdirection():
 
     with pytest.raises(AssertionError):
         _check(stalled(_Machine), ["DDDDDD"], "")
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(missing_workspace(_Machine, component), grids[3], "\x01")
+    check_erasures(_WORKSPACE, lambda f: _check(f, grids[3], "\x01"), _Machine)

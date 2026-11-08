@@ -171,7 +171,7 @@ def check_continuation_accounting():
     from esolangs.runtime import _state as ws
     from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
-    from tests.support.workspace_oracle import missing_workspace
+    from tests.support.workspace_oracle import check_erasures
 
     variant = ws.WorkspaceVariant
     zero = variant("integer", (0,))
@@ -219,11 +219,6 @@ def check_continuation_accounting():
         )
         for operator in (False, True):
             activation(_Machine, stdin, value, 64 if floating else 2, operator=operator)
-    for component in model.components:
-        with pytest.raises(AssertionError):
-            activation(
-                missing_workspace(_Machine, component),
-                "2",
-                variant("integer", (2,)),
-                2,
-            )
+    check_erasures(
+        model, lambda f: activation(f, "2", variant("integer", (2,)), 2), _Machine
+    )

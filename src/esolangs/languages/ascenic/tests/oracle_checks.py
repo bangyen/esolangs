@@ -9,7 +9,7 @@ import pytest
 from esolangs.languages.ascenic.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
 from tests.support.workspace_oracle import agrees as workspace_agrees
-from tests.support.workspace_oracle import missing_workspace
+from tests.support.workspace_oracle import check_erasures
 
 _WORKSPACE = WorkspaceModel("ascenic-v1", ("instruction", "stack", "input_cursor"))
 
@@ -236,7 +236,5 @@ def check_raw_ascenic():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), _source(((3, 1),)), "")
+    check_erasures(_WORKSPACE, lambda f: _agrees(f, _source(((3, 1),)), ""), _Machine)
     return len(results), len(controls) + 3

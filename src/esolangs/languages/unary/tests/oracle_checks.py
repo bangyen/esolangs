@@ -10,7 +10,7 @@ from tests.interpreters.oracle_support import observed
 from tests.interpreters.semantic_oracles import bracket_pairs
 from tests.support.workspace_oracle import (
     charged_bits,
-    missing_workspace,
+    check_erasures,
     workspace_model,
     workspace_view,
 )
@@ -172,9 +172,7 @@ def check_raw_unary():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, raw, stdin)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), _source(">,+"), "A")
+    check_erasures(_WORKSPACE, lambda f: _agrees(f, _source(">,+"), "A"), _Machine)
     rows = _agrees(_Machine, _source(">,+"), "A")[1]
     assert charged_bits(_WORKSPACE, ((*row[0][:3], row[-1]) for row in rows)) == 12
     return len(results) + 1, len(controls) + len(_WORKSPACE.components)

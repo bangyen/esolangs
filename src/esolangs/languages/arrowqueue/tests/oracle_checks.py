@@ -161,7 +161,5 @@ def check_raw_arrowqueue():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, lines)
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(workspace.missing_workspace(_Machine, component), ["~~*"])
+    workspace.check_erasures(_WORKSPACE, lambda f: _agrees(f, ["~~*"]), _Machine)
     return len(results), len(controls) + 7

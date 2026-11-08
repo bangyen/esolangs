@@ -7,7 +7,7 @@ import pytest
 from esolangs.languages.brainif.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support.workspace_oracle import check_erasures, workspace_view
 
 _WORKSPACE = WorkspaceModel(
     "brainif-v1", ("cells", "instruction", "pointer", "input_cursor")
@@ -117,8 +117,6 @@ def check_raw_brainif():
 
     with pytest.raises(AssertionError):
         _check(StaleGuard, ["if 0 inc", "if 1 output"], "")
-    for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _check(
-                missing_workspace(_Machine, component), ["if 0 inc", "if 1 right"], ""
-            )
+    check_erasures(
+        _WORKSPACE, lambda f: _check(f, ["if 0 inc", "if 1 right"], ""), _Machine
+    )

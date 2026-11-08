@@ -6,6 +6,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.dinac.interpreter import _Machine, run
+from esolangs.languages.dinac.tests.oracle_checks import check_raw_dinac
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.runner import native_runner
@@ -187,6 +188,7 @@ def test_expressions(code: str, expected: str) -> None:
 
 
 def test_lowercase_hex_is_a_name() -> None:
+    check_raw_dinac()
     with pytest.raises(HaltError, match="undeclared name 'ff'"):
         run("OUT ff", ScriptedIO())
 
