@@ -21,7 +21,11 @@ from tests.generators.boolean_runners import _runner
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import constant_programs, evaluate_generated
+from tests.support.generator_support import (
+    constant_programs,
+    evaluate_generated,
+    three_input_corpus_size,
+)
 from tests.support.witness_tables import witnesses
 
 run_forbin_boolean = _runner("forbin")
@@ -284,10 +288,4 @@ def test_constants_read_whole_bytes_then_print_inline() -> None:
             assert io.input_char() == ord("Q")
             if not options:
                 assert written.bits == workspace(n, program)
-    assert (
-        sum(
-            len(esolangs.generate("Forbin", format(v, "08b")).source)
-            for v in range(256)
-        )
-        == 46690
-    )
+    assert three_input_corpus_size("Forbin") == 46690

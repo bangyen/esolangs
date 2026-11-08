@@ -13,6 +13,7 @@ from tests.support.generator_support import (
     assert_native_rows,
     constant_programs,
     evaluate_generated,
+    three_input_corpus_size,
 )
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
@@ -34,10 +35,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
 def _check_constants() -> None:
     from esolangs.languages.balik.interpreter import run
 
-    assert (
-        sum(len(esolangs.generate("Balik", f"{k:08b}").source) for k in range(256))
-        == 44929
-    )
+    assert three_input_corpus_size("Balik") == 44929
     for n, bit, _options, program in constant_programs("Balik", range(1, 13)):
         for row in ("0" * n, "1" * n):
             io = ReadFirstIO(row + "7", expected=n)

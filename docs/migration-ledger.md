@@ -3337,3 +3337,40 @@ A real extra-character fault and forty-two complete graph-codec controls pass.
 All 951 production files stay byte-identical. Tests/source are 115,813/115,818;
 no case, assertion, control, node or cap is removed. 29 accounting rows and
 all 117 completion rows remain open.
+
+
+FALSE's unchanged linear model now checks stack, variables, retained raw
+frames and input cursor. All 201 normal/four syntax cases, cap64, three old
+controls and None return remain; four erasures add controls. All 1,814 steps/
+2,015 captures stay byte-identical. The input-A witness writes all four
+components at 11+4+8+1=24 bits; its completed raw frame remains(8,8).
+
+Thirty-six V2 installed leaves pass on Python 3.12.11–final 3.15.0. Raw,
+prepared, VM and debug each retain 201 cases/2,015 boundaries, peak76 bits.
+All 201 independently finite cases run ordinarily through native/public
+entrypoints and publicly bounded. V1's wrong raw-constructor error expectation
+remains archived; V2 requires exact ValueError for raw/prepared syntax refusal
+and retains ProgramError's distinct public envelopes and original hints.
+
+Sixty-four actual masks, sixteen reduced schemas and sixteen constructor-None
+trajectories retain snapshots, cycles, IO, histories and meters. Thirty-two
+physical writer trajectories and sixteen public routes preserve postcommit
+state. Four provider refusals, eight repeated-failure routes, twelve EOF traces
+and actual frame-end, future-source and empty-closer corruptions pass. Twelve
+guarded children cover eleven bounded parity pairs and an output-limit witness.
+General lambda/call/loop values and huge numeric host policies remain open.
+
+Six size assertions reuse the unchanged helper, saving fourteen lines against
+the eighteen-line bridge. Complete owning nodes retain 2,124 artifacts,
+252 instantiations, 1,528 native constructions, 24,503 steps, 26,031 captures
+and 17,738 IO calls in matching complete graph streams. Forbin's function-ID
+keys are validated against full function objects before relocation; raw address
+sidecars remain archived. Callback-code sidecars match without relocation.
+All 1,536 measured programs execute 12,288 ordinary rows, including 4,096
+template fills, retaining all six character-count pins (477,319 total).
+INTERCAL retains 2,048 default-None provider bindings and makes zero draws in
+this corpus; random paths are not exhaustive. A real extra-character size
+fault and ninety-nine graph-codec controls pass. All 951 production files stay
+byte-identical. Tests/source are 115,817/115,818; no case, assertion, control,
+node or cap is removed. 28 accounting rows and all 117 completion rows remain
+open.

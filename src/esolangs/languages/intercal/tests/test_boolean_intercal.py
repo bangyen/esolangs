@@ -30,7 +30,11 @@ from tests.proofs._witnesses import _intercal_worst
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import count_steps
-from tests.support.generator_support import measure_run, run_filled
+from tests.support.generator_support import (
+    measure_run,
+    run_filled,
+    three_input_corpus_size,
+)
 
 
 def _run(table: str, row: int) -> str:
@@ -219,13 +223,7 @@ def test_constants_reuse_one_variable_and_print_the_literal() -> None:
                     assert esolangs.read_answer("INTERCAL", stream.getvalue()) == bit
                     if not options:
                         assert written.bits == workspace(n, template.source)
-    assert (
-        sum(
-            len(esolangs.generate("INTERCAL", format(v, "08b")).source)
-            for v in range(256)
-        )
-        == 34795
-    )
+    assert three_input_corpus_size("INTERCAL") == 34795
 
 
 def _check_emitted_resource_routes() -> None:

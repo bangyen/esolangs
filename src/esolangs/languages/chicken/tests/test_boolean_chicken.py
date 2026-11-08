@@ -8,7 +8,7 @@ from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import count_steps
-from tests.support.generator_support import assert_every_row
+from tests.support.generator_support import assert_every_row, three_input_corpus_size
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -52,7 +52,4 @@ def _check_constants() -> None:
                     assert io.getvalue() == bit
                     assert written.bits == 8 * n + 5 + 4 * int(bit)
                     assert io.past_end == 0
-    assert (
-        sum(len(esolangs.generate("Chicken", f"{v:08b}").source) for v in range(256))
-        == 305139
-    )
+    assert three_input_corpus_size("Chicken") == 305139

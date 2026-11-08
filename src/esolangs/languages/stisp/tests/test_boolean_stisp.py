@@ -9,6 +9,7 @@ from esolangs.languages.stisp.proof_formulas import workspace
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
+from tests.support.generator_support import three_input_corpus_size
 
 #: Every one- and two-input table; a diagram's folding bugs show here first.
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -59,10 +60,7 @@ def test_an_ignored_input_still_selects_one_of_two_identical_children() -> None:
 
 def _check_constants() -> None:
     assert_analysis_complement("Stisp", "decision_layers")
-    assert (
-        sum(len(esolangs.generate("Stisp", f"{i:08b}").source) for i in range(256))
-        == 20552
-    )
+    assert three_input_corpus_size("Stisp") == 20552
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):

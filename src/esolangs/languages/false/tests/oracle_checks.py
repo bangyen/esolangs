@@ -12,6 +12,11 @@ import pytest
 from esolangs.languages.false.interpreter import _Machine
 from tests.interpreters.oracle_support import decorate_io, observed, overread, stalled
 from tests.interpreters.semantic_oracles import signed32 as _signed
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model(
+    "false-v1", "stack variables frames input_cursor"
+)
 
 
 def _math(command, left, right):
@@ -123,9 +128,20 @@ def _check(factory, source, stdin="unused"):
     def state(machine):
         return machine.ip, tuple(machine.stack), machine.state[1]
 
-    assert observed(factory, source, stdin, state, cap=64) == _model(source, stdin), (
-        source,
-        stdin,
+    workspace.agrees(
+        _model(source, stdin),
+        (factory, source, stdin),
+        (
+            _WORKSPACE,
+            lambda row: (
+                row[0][1],
+                row[0][2],
+                ((len(source) if row[0][0] is None else row[0][0], len(source)),),
+                row[-1],
+            ),
+        ),
+        state,
+        cap=64,
     )
 
 
@@ -166,3 +182,5 @@ def check_raw_false():
     ):
         with pytest.raises(AssertionError):
             _check(factory, code, "ab")
+
+    workspace.check_erasures(_WORKSPACE, _check, _Machine, "12a:a;^.", "A")
