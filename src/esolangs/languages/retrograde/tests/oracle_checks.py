@@ -6,7 +6,11 @@ import random
 import pytest
 
 from esolangs.languages.retrograde.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model(
+    "retrograde-v1", "instruction pointer direction left right printed input_cursor"
+)
 
 
 def _model(source):
@@ -63,15 +67,30 @@ def _model(source):
 
 def _agrees(factory, source):
     expected = _model(source)
-    assert (
-        observed(
-            factory,
-            source,
-            "unused λ",
-            lambda m: (*m.state[:3], tuple(m.memory), m.printed, m.ip),
-        )
-        == expected
-    ), source
+    ones, previous = set(), 0
+
+    def parts(row):
+        nonlocal previous
+        pc, pointer, direction, memory, printed, _ = row[0]
+        change = sum(memory) - len(ones)
+        if change:
+            assert abs(change) == 1
+            assert pointer == previous
+            assert (previous in ones) == (change < 0)
+            ones.symmetric_difference_update({previous})
+        assert sum(memory) == len(ones)
+        previous = pointer
+        left = sum(1 << (-cell - 1) for cell in ones if cell < 0)
+        right = sum(1 << cell for cell in ones if cell >= 0)
+        return pc, pointer, direction, left, right, printed, row[-1]
+
+    workspace.agrees(
+        expected,
+        (factory, source, "unused λ"),
+        (_WORKSPACE, parts),
+        lambda m: (*m.state[:3], tuple(m.memory), m.printed, m.ip),
+        context=source,
+    )
     return expected
 
 
@@ -158,4 +177,5 @@ def check_raw_retrograde():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source)
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, "*<*>{*}")
     return len(results), len(controls)

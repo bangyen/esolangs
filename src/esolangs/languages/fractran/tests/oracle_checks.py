@@ -53,12 +53,9 @@ def _check(factory, start, rules, *, powers=False):
         offsets.append(at)
         at += len(token) + 2
 
-    def state(m):
-        return m.value, m.printed, m.ip
-
-    assert observed(factory, source, "unused\n", state, cap=12) == _model(
-        start, rules, offsets
-    ), source
+    assert observed(
+        factory, source, "unused\n", lambda m: (m.value, m.printed, m.ip), cap=12
+    ) == _model(start, rules, offsets), source
 
 
 def check_raw_fractran():

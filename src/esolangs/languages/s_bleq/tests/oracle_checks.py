@@ -77,13 +77,10 @@ def _check(factory, words, stdin, store, *, indirect):
     def machine(code, io):
         return factory(code, io, store, indirect=indirect)
 
-    def state(vm):
-        return vm.ip, tuple(vm.memory)
-
     code = " ".join(map(str, words))
-    assert observed(machine, code, stdin, state, cap=12) == _model(
-        words, stdin, store, indirect=indirect
-    ), (words, stdin, store, indirect)
+    assert observed(
+        machine, code, stdin, lambda m: (m.ip, tuple(m.memory)), cap=12
+    ) == _model(words, stdin, store, indirect=indirect), (words, stdin, store, indirect)
 
 
 def check_raw_s_bleq():

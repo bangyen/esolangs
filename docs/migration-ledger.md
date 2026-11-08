@@ -2852,3 +2852,39 @@ Each actual callback rejects a concrete erased field; ordered dictionaries,
 deque capacity and bool/int identity have positive codec controls. No case,
 assertion, node or cap is removed. Tests/source are 115,813/115,818; 42 accounting
 rows and all 117 completion rows remain open.
+
+
+Retrograde's seven components are reconstructed from complete independent
+legacy histories. Popcount changes toggle the previous signed coordinate;
+encoding those coordinates gives both packed tape halves without another engine.
+Actual '*<<*>>>>'/'*>>*<<>>' runs share the boundary-six legacy memory view but
+have halves(2,1)/(0,5) and future outputs0/1. Full histories distinguish them.
+Actual '<<>>' returns blank memory(0): visited extent is not persistent state.
+The original model remains unchanged, with all 543 cases, cap64, ten controls
+and return(543,10); seven component erasures add controls.
+
+Installed Python 3.12.11–final 3.15.0 retains 3,334 valid boundaries per raw/VM/debug
+route, 231 constructor refusals and peak sixteen bits. All 543 bounded public
+cases remain; 311 completed runs and 231 constructor refusals also run ordinarily,
+while one uncertified case stays bounded. Full state, readonly source/pairs/offsets,
+cycle keys, views, held histories, active commands and independent recounts agree.
+Eighty-four actual masks distinguish six written fields from the read-only zero
+cursor; freezing that cursor is a no-op, while late None adds a phantom bit.
+Three cursor omissions from construction retain the ten-bit native charge.
+Three actual caller-read trajectories change cycle keys and add two cursor bits
+without replacing native state.
+
+The final dump is active and latches printed only after successful output.
+Six writer refusals retain state, retry the same bit and preserve partial prefixes;
+ten guarded workers retain live caps and a real output-limit refusal. Literal
+charges empty1/<**6/<<>>7 retain cleared-cell peaks; pair corruption changes
+real future execution. Complete original callers pass before and after, retaining
+2,947/2,954 constructor attempts, including all Boolean and serialized witnesses.
+
+Five FRACTRAN/HOT/Container/Sbleq/RAM0 hooks inline only single-use native views,
+saving eighteen lines against the twenty-line bridge. Complete typed traces retain
+5,273 constructor attempts, 57,028 steps, 67,510 captures, 28,147 meter samples,
+2,658 IO events and all 23 controls byte-identically. Concrete callback erasures
+reject; no case, assertion, node or cap is removed. Tests/source are 115,815/115,818.
+Broader grammar and unbounded execution remain open; 41 accounting rows and all
+117 completion rows remain open.

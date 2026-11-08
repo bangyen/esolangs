@@ -67,14 +67,11 @@ def _model(network, stdin):
 def _check(factory, network, stdin):
     expected = _model(network, stdin)
 
-    def state(machine):
-        return machine.var, machine.exit_code, machine.tick, machine.state[3]
-
     checked = workspace.workspace_view(
         expected[1],
         _WORKSPACE,
         lambda row: (frozenset(row[0][0].items()), row[0][1], row[-1], row[0][3]),
-        state,
+        lambda m: (m.var, m.exit_code, m.tick, m.state[3]),
     )
     assert observed(factory, _source(network), stdin, checked, cap=8) == expected, (
         network

@@ -86,22 +86,16 @@ def _model(source):
     return error, trace
 
 
-def _state(machine):
-    return (
-        machine.ind,
-        machine.z,
-        machine.n,
-        tuple(machine.ram.items()),
-        machine.dumped,
-        tuple(machine.memory),
-    )
-
-
 def _parts(row):
     return (*row[0][:4], row[-1], row[0][4])
 
 
-_agrees = source_checker(_model, (_WORKSPACE, _parts), _state, "λ\nunused")
+_agrees = source_checker(
+    _model,
+    (_WORKSPACE, _parts),
+    lambda m: (m.ind, m.z, m.n, tuple(m.ram.items()), m.dumped, tuple(m.memory)),
+    "λ\nunused",
+)
 
 
 def check_raw_ram0():
