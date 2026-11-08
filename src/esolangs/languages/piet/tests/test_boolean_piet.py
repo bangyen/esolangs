@@ -314,13 +314,7 @@ def _check_majority() -> None:
         image = esolangs.generate("Piet", table, **options).source
         assert isinstance(image, Raster)
         for row in (0, 1, 170, 511):
-
-            class ProjectedIO(ScriptedIO):
-                def _write(self, value):
-                    assert self.reads == 9
-                    super()._write(value)
-
-            io = ProjectedIO("\n".join(f"{row:09b}") + "\n7\n")
+            io = ReadFirstIO("\n".join(f"{row:09b}") + "\n7\n", expected=9)
             machine = _Machine(image, io, scale=1)
             steps = count_steps(machine, 9999)
             assert io.getvalue() == table[row]

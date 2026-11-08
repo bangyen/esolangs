@@ -6,14 +6,9 @@ import pytest
 
 from esolangs.compressed import CompressedText
 from esolangs.languages.unary.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
 from tests.interpreters.semantic_oracles import bracket_pairs
-from tests.support.workspace_oracle import (
-    charged_bits,
-    check_erasures,
-    workspace_model,
-    workspace_view,
-)
+from tests.support.workspace_oracle import agrees as workspace_agrees
+from tests.support.workspace_oracle import charged_bits, check_erasures, workspace_model
 
 _WORKSPACE = workspace_model("brainfuck-v1", "instruction pointer tape input_cursor")
 
@@ -76,18 +71,14 @@ def _source(program):
 
 def _agrees(factory, raw, stdin, *, cap=64, compressed=False):
     source = CompressedText(gzip.compress(raw.encode(), mtime=0)) if compressed else raw
-    expected = _model(raw, stdin, cap)
-    checked = workspace_view(
-        expected[1],
-        _WORKSPACE,
-        lambda row: (*row[0][:3], row[-1]),
+    return workspace_agrees(
+        _model(raw, stdin, cap),
+        (factory, source, stdin),
+        (_WORKSPACE, lambda row: (*row[0][:3], row[-1])),
         lambda machine: (*machine.state, tuple(machine.memory), machine.ip),
+        cap=cap,
+        context=(len(raw), stdin),
     )
-    assert observed(factory, source, stdin, checked, cap=cap) == expected, (
-        len(raw),
-        stdin,
-    )
-    return expected
 
 
 def check_raw_unary():

@@ -101,9 +101,6 @@ def _model(program, stdin):
 def _check(factory, program, stdin):
     expected = _model(program, stdin)
 
-    def state(machine):
-        return machine.ip, machine.registers, machine.arrays
-
     checked = workspace.workspace_view(
         expected[1],
         _WORKSPACE,
@@ -115,7 +112,7 @@ def _check(factory, program, stdin):
             row[0][0],
             row[-1],
         ),
-        state,
+        lambda m: (m.ip, m.registers, m.arrays),
     )
     assert observed(factory, _source(program), stdin, checked, cap=16) == expected, (
         program,

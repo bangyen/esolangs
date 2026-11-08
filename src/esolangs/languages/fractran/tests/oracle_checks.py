@@ -10,7 +10,19 @@ from itertools import product
 import pytest
 
 from esolangs.languages.fractran.interpreter import _Machine
+from esolangs.languages.fractran.tests.prime_factors import _factor
+from esolangs.runtime._state import WorkspaceVariant
 from tests.interpreters.oracle_support import observed, overread
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model("fractran-v1", "register printed input_cursor")
+
+
+def _register(value, indexed):
+    return WorkspaceVariant(
+        "prime_exponents" if indexed else "integer",
+        (frozenset(_factor(value).items()) if indexed else value,),
+    )
 
 
 def _model(start, rules, offsets):
@@ -53,9 +65,16 @@ def _check(factory, start, rules, *, powers=False):
         offsets.append(at)
         at += len(token) + 2
 
-    assert observed(
-        factory, source, "unused\n", lambda m: (m.value, m.printed, m.ip), cap=12
-    ) == _model(start, rules, offsets), source
+    bases = (start, *(part for rule in rules for part in rule))
+    indexed = max(bases) <= max(256, len(source))
+    workspace.agrees(
+        _model(start, rules, offsets),
+        (factory, source, "unused\n"),
+        (_WORKSPACE, lambda row: (_register(row[0][0], indexed), row[0][1], row[-1])),
+        lambda m: (m.value, m.printed, m.ip),
+        cap=12,
+        context=source,
+    )
 
 
 def check_raw_fractran():
@@ -88,3 +107,8 @@ def check_raw_fractran():
     ):
         with pytest.raises(AssertionError):
             _check(factory, start, rules)
+
+    _check(_Machine, 257, ((1, 257),))
+    _check(_Machine, 2, ((1, 2),) * 17)
+
+    workspace.check_erasures(_WORKSPACE, _check, _Machine, 2, ((3, 2), (1, 3)))

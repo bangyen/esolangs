@@ -2961,3 +2961,40 @@ mutation. Correct-native, tagged-exception, concrete-erasure and codec corruptio
 controls reject. The original and reused counters both fail after 10,001 real
 steps with empty assertion arguments. Tests/source remain 115,817/115,818;
 39 accounting rows and all 117 completion rows remain open.
+
+
+FRACTRAN's independent integer history now predicts source-selected integer or
+prime-exponent register variants, the printed latch and input cursor. Literal
+source bounds choose the representation; native values never supply expected
+factors. All 2,576 original cases, seven syntax cases, cap12, three old controls
+and None return remain. Two finite positives reach integer fallback and indexed
+scan alongside Cursor; three erasures add controls. Ordinary traces retain
+byte-identical 26,535 steps and 29,111 captures. The old negatives still reject,
+now after five native steps in total rather than eight.
+
+Installed Python 3.12.11–final 3.15.0 passes all thirty-six leaves: 2,578 cases
+and 29,123 boundaries per raw/VM/debug route, peak14 bits. All bounded public
+cases run; 616 independently certified finite cases also run ordinarily, while
+1,962 remain bounded. Source-derived rule/index maps, selected-rule caches,
+Cursor cleanup trees, cycle keys, views, IO and retained histories agree with
+independent recounts. Twenty-four actual masks, six reduced trajectories and
+six readonly-cursor trajectories retain exact peaks; late None loses zero on
+the four-bit witness. Fifteen literal/backend anchors, nine metadata corruptions,
+detached preparation, a real caller read and twelve guarded workers pass.
+Thirty writer routes retain printed-before-write behavior: failure leaves the
+machine halted; retries never repeat even a partial prefix. Broader Unicode,
+huge formatting/materialization and arbitrary IO callbacks remain open.
+
+The unchanged trial factorizer moves from its proof module to a stdlib-only
+owned test helper. All sixteen original proof cases retain byte-identical calls
+and results, including 217,322 choices and 6,502 factorizations. Five complete
+funding scopes save thirty lines against the thirty-line bridge: Unary/Between
+reuse agrees, Collatz inlines its actual view, and Piet/Super SNUSP reuse the
+existing read-call guard. Models, assertions, cases, caps and returns remain.
+Traces retain 6,913 constructor attempts, 23,799 native steps, 29,981 captures,
+23,354 meter samples, 4,764 IO events, 33 rejections and 362 public generator
+calls byte-identically, including full lazy raster closures and RGB source.
+Actual extra reads before native output reject in both old and shared guards,
+including empty writes; returned-object identity and tagged native exceptions
+remain intact. Tests/source stay 115,817/115,818; 38 accounting rows and all
+117 completion rows remain open.

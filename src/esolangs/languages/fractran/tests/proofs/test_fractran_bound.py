@@ -13,6 +13,7 @@ from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.fractran.descriptor import PAIR
 from esolangs.languages.fractran.generator import fractran
 from esolangs.languages.fractran.interpreter import _choose, _parse
+from esolangs.languages.fractran.tests.prime_factors import _factor
 from esolangs.languages.fractran.tests.proof_fractran import (
     row_addressed,
     rows,
@@ -48,20 +49,6 @@ def _trace(start: int, fractions: _Fractions) -> tuple[Counter[int], int]:
 def _guard(numerator: int, denominator: int) -> int:
     """The integer that must divide the value, per Lemma 1."""
     return denominator // gcd(numerator, denominator)
-
-
-def _factor(value: int) -> Counter[int]:
-    """``value``'s prime factorisation, by trial division."""
-    found: Counter[int] = Counter()
-    rest, divisor = value, 2
-    while divisor * divisor <= rest:
-        while rest % divisor == 0:
-            found[divisor] += 1
-            rest //= divisor
-        divisor += 1
-    if rest > 1:
-        found[rest] += 1
-    return found
 
 
 def _primes_of(start: int, fractions: _Fractions) -> list[int]:

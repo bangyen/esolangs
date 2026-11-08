@@ -8,6 +8,7 @@ from esolangs.languages.super_snusp import generator as boolean
 from esolangs.languages.super_snusp.generator import balance_super_snusp, super_snusp
 from esolangs.runtime.io import ScriptedIO
 from tests.support.analysis_support import assert_analysis_complement
+from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_constant_roots, measure_run
 
 
@@ -223,15 +224,6 @@ class TestSuperSNUSPSweepPins:
 def _check_stacked_operands() -> None:
     from esolangs.languages.super_snusp.interpreter import _Machine
 
-    class ReadFirstIO(ScriptedIO):
-        def __init__(self, bits: str) -> None:
-            super().__init__(bits + "Q")
-            self.expected = len(bits)
-
-        def _write(self, value: object) -> None:
-            assert self.reads == self.expected
-            super()._write(value)
-
     tables = ["00110110", "01111111", "00000011"]
     tables.extend(
         "".join(str(row.bit_count() % 2) for row in range(1 << n)) for n in (5, 6)
@@ -243,7 +235,7 @@ def _check_stacked_operands() -> None:
         for options in ({}, {"width": 1}, {"width": 17}, {"balance": True}):
             program = str(esolangs.generate("Super SNUSP", table, **options).source)
             for row in (0, (1 << n) // 3, (1 << n) - 1):
-                io = ReadFirstIO(f"{row:0{n}b}")
+                io = ReadFirstIO(f"{row:0{n}b}" + "Q", expected=n)
                 machine = _Machine(program.splitlines(), io)
                 steps, written = measure_run(machine)
                 assert io.getvalue() == table[row]

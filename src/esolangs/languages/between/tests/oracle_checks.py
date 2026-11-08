@@ -221,19 +221,15 @@ def _parts(row):
 
 
 def _check(factory, program, stdin="unused", cap=16):
-    expected = _model(program, stdin, cap)
 
-    checked = workspace.workspace_view(
-        expected[1],
-        _WORKSPACE,
-        _parts,
+    return workspace.agrees(
+        _model(program, stdin, cap),
+        (factory, _source(program), stdin),
+        (_WORKSPACE, _parts),
         lambda m: (tuple(sorted(m.variables.items())), m.ind, m.exited),
+        cap=cap,
+        context=(program, stdin),
     )
-    assert observed(factory, _source(program), stdin, checked, cap=cap) == expected, (
-        program,
-        stdin,
-    )
-    return expected
 
 
 def corpus():
