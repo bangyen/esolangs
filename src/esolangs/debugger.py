@@ -187,11 +187,13 @@ class Debugger:
     def snapshot(self) -> Hashable:
         """Return the wrapped machine's complete *internal* state, hashable.
 
-        ``output`` is excluded, so equal internal state means the same future
-        computation.  The post-halt dump writes output without changing the
-        snapshot on most such languages (Cyclic tag records it).  A repeated snapshot
-        proves a loop, which settles a termination language
-        (``describe(name)["answer_mode"] == "termination"``) in microseconds.
+        For deterministic machines with the same program and input, a repeated
+        live snapshot proves a loop. Output history is excluded. Thue captures
+        its rewrite relation, excluding an external provider's future draws;
+        random-machine cycle proofs require the branching protocol.
+
+        The post-halt dump writes output without changing most snapshots
+        (Cyclic tag records the dump in its snapshot).
         """
         return cast(SnapshotVM, self.vm).snapshot()
 

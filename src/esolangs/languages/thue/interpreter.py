@@ -385,7 +385,7 @@ class _Machine:
         )
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        """Return rewrite-relation state and input progress; draws remain external."""
         return (self.state, self.io.progress())
 
     # The all-draws search, over the string alone: a ``:::`` rule declines to

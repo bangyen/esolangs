@@ -2478,3 +2478,34 @@ assertion or cap is removed; tests/source remain 115,807/115,808. BrainIf's huge
 numeric-source parser and unbounded Deadfish growth remain outside this cohort.
 These bounded accounting scopes are reviewed; 56 accounting rows and all 117
 completion rows remain open.
+
+Thue's existing independent hook is now collected and checks text/input progress
+at cap12. All 511 original records/three controls retain byte-identical traces;
+two component erasures add controls without adding nodes. Model/choice/matching
+ASTs and complete ordered original constructions are unchanged.
+
+A fresh 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final 3.15.0:
+518 cases/2,574 boundaries, 457 completions, thirty failed transitions, 27 bounded
+runs and four constructor refusals per version. Full state, cycle, views, IO,
+steps, failures, held captures and complete-width recounts agree; peak136,000
+bits. Fifteen guarded pairs include both live and halted cap-zero/cap-one cases.
+Every indexed match and ordered branching successor is checked, retaining
+duplicates; input-rule branches decline without drawing.
+
+Two populated freezes/two live omissions lose exact charges. Literal workspace
+is ten bits; cursorless input retains real progress. A corrupted derived match
+count is rejected despite an unchanged capture. Four writer routes commit the
+rewrite before refusal; idle stepping neither retries output nor clears the
+debugger's fault/completion. An actual equal-capture rewrite followed by a
+different external draw confirms the relation scope. Snapshot docs now limit
+same-future/loop guarantees to deterministic live execution. Provider futures
+and general whitespace-left-side grammar remain outside this cohort.
+
+Seven fixture modules reuse the existing step/sample helper, saving 34 formatted
+lines with equivalent integer caps. Fourteen full hook invocations retain exact
+sources/native/IO/meter traces: 3,170 public generation calls, 48 directly emitted
+INTERCAL texts, 2,270 native instances and 60,807 steps. Private caller-frame
+locals on escaping exceptions are excluded. Thue's formatted bridge/hook costs
+fourteen lines; tests/source are 115,787/115,814, with no node or cap removed.
+This bounded accounting scope is reviewed; 55 accounting rows and all 117
+completion rows remain open.

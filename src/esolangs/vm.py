@@ -392,10 +392,13 @@ class SnapshotVM(VM, Protocol):
     def snapshot(self) -> Hashable:
         """Return the internal state cycle detection compares, hashable.
 
-        ``output`` is excluded, so equal internal state means the same future
-        computation.  The post-halt dump (``dumps_on_the_post_halt_step``)
-        writes output without changing the snapshot on most such languages
-        (Cyclic tag records the dump, so its snapshot changes).
+        For deterministic machines with the same program and input, equal live
+        snapshots imply the same future transitions. Output history is excluded.
+        Thue captures its rewrite relation; external draws are excluded.
+        Random-machine cycle proofs require the branching protocol.
+
+        The post-halt dump (``dumps_on_the_post_halt_step``) writes output without
+        changing most snapshots (Cyclic tag records the dump in its snapshot).
         """
 
 

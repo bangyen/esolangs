@@ -11,6 +11,9 @@ import pytest
 
 from esolangs.languages.thue.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, stalled
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model("thue-v1", "text input_cursor")
 
 
 class _Choices:
@@ -73,9 +76,14 @@ def _check(factory, rules, text, stdin, choices=(0,)):
     def build(code, io):
         return factory(code, io, _Choices(choices))
 
-    assert observed(build, source, stdin, lambda m: (m.state, m.ip), cap=12) == _model(
-        rules, text, stdin, choices
-    ), (rules, text, stdin, choices)
+    workspace.agrees(
+        _model(rules, text, stdin, choices),
+        (build, source, stdin),
+        (_WORKSPACE, lambda row: (row[0][0], row[-1])),
+        lambda machine: (machine.state, machine.ip),
+        context=(rules, text, stdin, choices),
+        cap=12,
+    )
 
 
 def check_raw_thue():
@@ -119,3 +127,7 @@ def check_raw_thue():
     ):
         with pytest.raises(AssertionError):
             _check(factory, rules, text, "")
+
+    workspace.check_erasures(
+        _WORKSPACE, _check, _Machine, (("a", ":::"), ("x", "~!")), "a", "x\n"
+    )

@@ -12,6 +12,7 @@ from esolangs.languages.thue.interpreter import (
     prepare_machine,
     run,
 )
+from esolangs.languages.thue.tests.oracle_checks import check_raw_thue
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import FirstDraw, Seeded
 from tests.interpreters.runner import run_program
@@ -24,6 +25,7 @@ GREETING = "a::=~Hello\nb::=~ world\n::=\nab"
 
 
 def test_a_rule_prints_and_deletes_its_match() -> None:
+    check_raw_thue()
     assert run_program(run, "a::=~Hello\n::=\na") == "Hello"
 
 

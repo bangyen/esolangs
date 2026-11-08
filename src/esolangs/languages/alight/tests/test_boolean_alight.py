@@ -19,7 +19,7 @@ from esolangs.languages.alight.interpreter import run as alight_run
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.evaluation import _evaluate
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import assert_an_ignored_input_costs
 
 
@@ -292,12 +292,7 @@ def _check_native_constants(syntax: str, update: str, bit: str) -> None:
                     program, io, expression_syntax=syntax, list_update=update
                 )
                 written = WrittenState(machine.workspace_snapshot())
-                steps = 0
-                while not machine.halted:
-                    machine.step()
-                    written.sample(machine.workspace_snapshot())
-                    steps += 1
-                    assert steps <= 1000
+                steps = count_steps(machine, 1000, written=written)
                 assert io.getvalue() == bit
                 assert io.reads == n
                 assert io.input_char() == ord("Q")

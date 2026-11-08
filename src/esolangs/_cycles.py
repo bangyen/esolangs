@@ -34,12 +34,13 @@ class _SteppableMachine(Protocol):
 class _StepMachine(_SteppableMachine, Protocol):
     """The minimal step-capable surface the hang detector steps on.
 
-    ``snapshot()`` must be the *complete* state, input cursor included, or a
-    "repeat" is not a real cycle.
+    Deterministic snapshots must contain complete state, input cursor included,
+    or a repeat is not a cycle. Random machines require branching analysis
+    rather than a concrete-path snapshot repeat.
     """
 
     def snapshot(self) -> Hashable:
-        """Return the complete internal state, hashable for cycle detection.
+        """Return complete state, hashable for deterministic cycle detection.
 
         Opaque; ``ip``, ``memory``, ``stack`` and ``output`` are the views.
         """

@@ -29,6 +29,7 @@ from scripts.benchmark import WrittenState
 from tests.proofs._witnesses import _intercal_worst
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.evaluation import _evaluate
+from tests.support.event_io import count_steps
 from tests.support.generator_support import measure_run, run_filled
 
 
@@ -260,12 +261,7 @@ def _check_emitted_resource_routes() -> None:
                 io = ScriptedIO("Q")
                 machine = _Machine(program, io)
                 written = WrittenState(machine.workspace_snapshot())
-                steps = 0
-                while not machine.halted:
-                    machine.step()
-                    written.sample(machine.workspace_snapshot())
-                    steps += 1
-                    assert steps < 1000
+                steps = count_steps(machine, 999, written=written)
                 assert io.getvalue() == "I\n"
                 assert io.reads == 0
                 assert io.input_char() == ord("Q")

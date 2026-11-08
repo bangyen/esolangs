@@ -13,7 +13,7 @@ from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.generators.sample_tables import five_input_sample
 from tests.support.analysis_support import assert_analysis_complement
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
     constant_programs,
@@ -176,12 +176,7 @@ def _check_constants() -> None:
             io = ReadFirstIO(stdin + "7\n", expected=n)
             machine = _Machine(program, io)
             written = WrittenState(machine.workspace_snapshot())
-            steps = 0
-            while not machine.halted:
-                machine.step()
-                written.sample(machine.workspace_snapshot())
-                steps += 1
-                assert steps < 2000
+            steps = count_steps(machine, 1999, written=written)
             assert io.getvalue() == bit
             assert io.past_end == 0
             assert io.input_str() == "7"
