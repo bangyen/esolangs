@@ -2746,3 +2746,38 @@ tagged exceptions escape after a real native step. Tests/source are
 115,814/115,819. Probe-format, bookkeeping and import-order failures are
 archived. These bounded accounting scopes are reviewed; 45 accounting rows
 and all 117 completion rows remain open.
+
+
+Suffolk's collected independent hook now checks all six workspace components.
+All 1,985 cases, four native runner witnesses, cap64, twelve original controls
+and return(1989,12) remain; six erasures add controls. Complete ordinary hook
+traces retain byte-identical 69,139 step attempts and 71,124 captures.
+
+Installed Python 3.12.11–final 3.15.0 retains 71,104 valid boundaries per
+raw/VM/debug route, five constructor refusals and peak 79 bits. Full captures,
+cycles, IO/newline state, successful steps, seven named views and independent
+component recounts agree. All 1,985 bounded public cases remain. Independent
+certificates admit 1,096 EOF halts, 430 periodic returns, 54 character errors
+and five constructor refusals to ordinary execution; 400 uncertified cases
+stay bounded. Native periodic reports retain their exact cycle witnesses.
+
+Seventy-two actual masked trajectories retain all canonical state/IO/views and
+histories. Whole-schema omissions lose exact component peaks; late schema
+switches reject, while late None retains initial width, including exhausted's
+one-bit charge. Ten writer probes retry preadvance failures, including partial
+prefixes; EOF provider and invalid-character retries retain their distinct
+states. Six literal anchors include a 17-bit all-field witness; read-only code,
+progress-only IO and two real cycle corruptions are checked separately. Ten
+guarded workers retain active cap-zero/cap-one and a real output-limit prefix.
+Unbounded growth, huge-integer character/view policy and arbitrary IO providers
+remain open.
+
+Back, Kiss and two Suffolk loops reuse count_steps, saving twelve formatted
+lines; the complete bridge costs eleven. Full hooks retain 137 public generation
+calls, two direct lookup builds, 37 instantiations, 321 native instances,
+159,080 step attempts, 159,722 captures, 61,275 meter samples and 2,628 IO events
+with byte-identical typed traces. Inert helpers reject and tagged exceptions
+escape after real steps. Exact integer counter probes preserve the original
+1,000/5,000-step failures and empty assertion arguments. No case, assertion,
+node or cap is removed. Tests/source are 115,813/115,819; 44 accounting rows
+and all 117 completion rows remain open.

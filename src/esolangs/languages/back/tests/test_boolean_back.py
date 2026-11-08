@@ -16,6 +16,7 @@ from esolangs.vm import _capture_workspace
 from scripts.benchmark import WrittenState
 from tests.proofs.deep.execution import run_to_answer
 from tests.support.evaluation import _evaluate
+from tests.support.event_io import count_steps
 from tests.support.witness_tables import _drawing, row_bits, witnesses
 
 
@@ -546,11 +547,7 @@ def _check_held_input_and_dump() -> None:
                 source = esolangs.instantiate("Back", template, row_bits(row, n))
                 io = ScriptedIO("Q")
                 machine = _Machine(source.source.splitlines(), io)
-                steps = 0
-                while not machine.halted:
-                    machine.step()
-                    steps += 1
-                    assert steps < 5000
+                count_steps(machine, 4999)
                 machine.step()
                 assert len(machine.tape) == n + 1
                 assert io.getvalue().split()[n] == table[row]

@@ -8,7 +8,7 @@ from esolangs.languages.suffolk.tests.lookup_support import _suffolk_lookup
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.witness_tables import row_bits
 
 run_suffolk = _runner("suffolk")
@@ -107,12 +107,11 @@ def _check_stored_input_records() -> None:
                 io = ScriptedIO("".join(f"{r:0{n}b}" for r in records))
                 machine = _Machine(commands, io)
                 written = WrittenState(machine.workspace_snapshot())
-                steps = 0
-                while not machine.halted:
-                    machine.step()
-                    written.sample(machine.workspace_snapshot())
-                    steps += 1
-                    assert steps <= 3 * len(commands) + commands.index(",") + 1
+                count_steps(
+                    machine,
+                    3 * len(commands) + commands.index(",") + 1,
+                    written=written,
+                )
                 assert io.getvalue() == "".join(table[r] for r in records)
                 assert io.progress() == 3 * n
                 assert io.past_end == 1
@@ -136,10 +135,6 @@ def _check_reader_cutoff() -> None:
         assert program.index(",") + 1 == (51 if n == 10 else 153)
         records = (0, (1 << n) - 1, (1 << n) // 3)
         machine = _Machine(program, ScriptedIO("".join(f"{r:0{n}b}" for r in records)))
-        steps = 0
-        while not machine.halted:
-            machine.step()
-            steps += 1
-            assert steps <= 3 * len(program) + program.index(",") + 1
+        count_steps(machine, 3 * len(program) + program.index(",") + 1)
         assert machine.io.getvalue() == "".join(table[r] for r in records)
         assert machine.io.past_end == 1

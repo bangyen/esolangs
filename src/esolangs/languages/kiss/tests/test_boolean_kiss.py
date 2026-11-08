@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import assert_every_row, constant_programs
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
@@ -41,11 +41,7 @@ def _check_constants() -> None:
             stdin = esolangs.encode_inputs("Kiss", list(map(int, f"{row:0{n}b}")))
             io = ReadFirstIO(stdin + "7", expected=n)
             machine = _Machine(program, io)
-            steps = 0
-            while not machine.halted:
-                machine.step()
-                steps += 1
-                assert steps < 1000
+            steps = count_steps(machine, 999)
             assert io.getvalue().strip() == bit
             assert io.past_end == 0
             assert io.input_char() == ord("7")

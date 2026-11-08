@@ -9,7 +9,15 @@ import pytest
 from esolangs.languages.suffolk import interpreter as suffolk
 from esolangs.languages.suffolk.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
-from tests.interpreters.oracle_support import checker as oracle_checker
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model(
+    "suffolk-v1", "instruction pointer accumulator tape input_cursor exhausted"
+)
+
+
+def _parts(row):
+    return *row[0][:4], row[-1], row[1]
 
 
 def _model(source, stdin):
@@ -63,7 +71,9 @@ def _model(source, stdin):
     return error, trace
 
 
-_agrees = oracle_checker(_model, lambda m: (*m.state, tuple(m.memory), m.ip))
+_agrees = workspace.checker(
+    _model, (_WORKSPACE, _parts), lambda m: (*m.state, tuple(m.memory), m.ip)
+)
 
 
 def _run_agrees(runner, source, stdin):
@@ -192,4 +202,5 @@ def check_raw_suffolk():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, ",>!<.", "B")
     return len(results) + _runner_checks(), len(controls) + 1
