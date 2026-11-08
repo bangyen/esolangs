@@ -1941,3 +1941,52 @@ matrix. Empty finalization charges one bit while cycle keys stay unchanged.
 Both models write four logical components and keep input read-only. Generator
 code, source size and execution claims stay unchanged; these bounded accounting
 scopes are reviewed, while broader language/catalog completion stays open.
+
+
+Blindfolded Arithmetic retains all 5,690 cases, thirteen controls and its
+16-command squaring cap; three populated erasures supplement the original
+three. Its independent decimal fold handles long input. Permanent probes
+retain constructor counters, unread delimiters and native halt-before-write
+failure timing without retry. Literal charges are 1/9 bits; declared exact
+workspace witnesses at n=3/5 pass. Six installed additions cover long valid
+input, a surrogate token and positive-output/negative-diagnostic host limits
+under CPython's explicit 4,300-digit configuration.
+
+Monotonic Boolfuck retains 2,563 cases/nine controls at 64 commands. Shared
+observation preserves its original flattened traces and adds full capture
+history; literal charges are 0/7/8/15 bits. Unary retains 5,283 cases/fourteen
+controls, 64/600-command caps and 81 compressed sources. Its octal encoder
+matches the old recurrence; the independent 12-bit charge remains exact.
+Independent bracket matching replaces duplicate test parsers, preserving
+54 error/positive controls. No production parser is reused.
+
+Smallfuck-v2 counts its native dump latch, deliberately adding one bit to
+the workspace bound. The `>>*` cycle key stays identical across finalization,
+but only the earlier phase prints on the next native step. All 582 original
+corpus traces/cycle keys/IO remain identical: 543 completed charges rise by
+one; 39 bounded charges stay unchanged. All old assertions/controls remain;
+four populated erasures and 1/2/3/5/8-bit pins pass. Two factored generated
+resource checks retain all 28 original parameters and assertions.
+
+A frozen 951-file wheel passes the accounting matrix on Python 3.12.11,
+3.13.15, 3.14.7 and final 3.15.0: 14,124 cases/132,428 boundaries and 146 guarded
+native/isolated workers
+per version. Held raw/VM/debugger captures, independent width/charge recounts,
+views, input counters and source-step/completion timing agree. Fourteen
+populated installed erasures fail. A later CLI usage-only rebuild preserves
+the other 950 packaged files and all non-usage AST. Installed gzip/help checks
+on all four versions verify the final 951 files; the accounting runtime is
+unchanged. Blindfolded has 3,517 completions, one
+execution failure, 105 constructor failures and 2,073 bounded runs; its cursor
+is read-only after construction. Monotonic/Smallfuck/Unary completions are
+1,403/543/1,478; constructors 921/0/3,781; bounded runs 239/39/24. Their observed
+peaks are 67/45/30 bits; Blindfolded's is 267,882, not global bounds.
+
+Existing workspace helper reuse in 22 owned oracles saves forty test lines.
+Expanded non-import ASTs, namespace-binding checks and all old/new cohort
+digests agree: 28,018 observations/199,702 boundaries and 191 rejected controls
+per side. This funds Blindfolded's forty permanent lines; final combined tests are
+115,687 lines against 115,688 source lines. No cases, assertions, caps or
+budget limits are removed. Generator code and size pins stay unchanged;
+Smallfuck is the only accounting implementation changed. These bounded
+accounting scopes are reviewed; language/catalog completion remains open.

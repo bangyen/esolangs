@@ -10,12 +10,11 @@ from itertools import product
 import pytest
 
 from esolangs.languages.hq9_with_headers.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed, overread, stalled
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = WorkspaceModel(
-    "hq9-with-headers-v1", ("instruction", "cells", "input_cursor")
+_WORKSPACE = workspace.workspace_model(
+    "hq9-with-headers-v1", "instruction cells input_cursor"
 )
 
 
@@ -177,7 +176,7 @@ def _view(machine):
 def _check(factory, startup, body, stdin="unused", flow="once"):
     source, ops, places = _assemble(startup, body, flow)
     expected = _model(ops, places, stdin)
-    checked = workspace_view(
+    checked = workspace.workspace_view(
         expected[1], _WORKSPACE, lambda row: (row[0][0], row[0][1], row[-1]), _view
     )
     assert observed(factory, source, stdin, checked, cap=64) == expected, (
@@ -245,7 +244,7 @@ def check_raw_hq9_with_headers():
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _check(
-                missing_workspace(_Machine, component),
+                workspace.missing_workspace(_Machine, component),
                 (("set", "v", 1),),
                 (("out", "v"),),
             )

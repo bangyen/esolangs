@@ -5,11 +5,10 @@ from itertools import product
 import pytest
 
 from esolangs.languages.b_tapemark.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = WorkspaceModel("b-tapemark-v1", ("configuration", "input_cursor"))
+_WORKSPACE = workspace.workspace_model("b-tapemark-v1", "configuration input_cursor")
 
 _HEADINGS = (1, 1j, -1, -1j)
 _SYMBOLS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -126,7 +125,7 @@ def _check(factory, source, stdin, dialect):
             grids,
         )
 
-    checked = workspace_view(expected[1], _WORKSPACE, _workspace_parts, state)
+    checked = workspace.workspace_view(expected[1], _WORKSPACE, _workspace_parts, state)
     assert observed(build, source, stdin, checked, cap=24) == expected, (
         source,
         stdin,
@@ -164,4 +163,4 @@ def check_raw_b_tapemark():
         _check(WrongMarker, ">?!", "", "new")
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
-            _check(missing_workspace(_Machine, component), ">-!", "x", "new")
+            _check(workspace.missing_workspace(_Machine, component), ">-!", "x", "new")

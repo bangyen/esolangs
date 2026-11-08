@@ -8,11 +8,10 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.basicer.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = WorkspaceModel("basicer-v1", ("instruction", "input_cursor"))
+_WORKSPACE = workspace.workspace_model("basicer-v1", "instruction input_cursor")
 
 
 def _instruction(body):
@@ -123,7 +122,7 @@ def _model(source, stdin):
 
 def _agrees(factory, source, stdin):
     expected = _model(source, stdin)
-    checked = workspace_view(
+    checked = workspace.workspace_view(
         expected[1], _WORKSPACE, lambda row: (row[0], row[-1]), lambda m: m.ind
     )
     assert observed(factory, source, stdin, checked) == expected, (source, stdin)
@@ -249,5 +248,5 @@ def check_raw_basicer():
             _agrees(Fault, source, stdin)
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), "PRINT x", "")
+            _agrees(workspace.missing_workspace(_Machine, component), "PRINT x", "")
     return len(results), len(controls) + 2

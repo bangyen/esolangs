@@ -6,13 +6,11 @@ import random
 import pytest
 
 from esolangs.languages.arrowqueue.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = WorkspaceModel(
-    "arrowqueue-v2",
-    ("row", "column", "direction", "queue", "stopped", "dumped", "input_cursor"),
+_WORKSPACE = workspace.workspace_model(
+    "arrowqueue-v2", "row column direction queue stopped dumped input_cursor"
 )
 
 
@@ -75,7 +73,7 @@ def _model(lines):
 
 def _agrees(factory, lines):
     expected = _model(lines)
-    checked = workspace_view(
+    checked = workspace.workspace_view(
         expected[1],
         _WORKSPACE,
         lambda row: (*row[0][:6], row[-1]),
@@ -168,5 +166,5 @@ def check_raw_arrowqueue():
             _agrees(Fault, lines)
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), ["~~*"])
+            _agrees(workspace.missing_workspace(_Machine, component), ["~~*"])
     return len(results), len(controls) + 7

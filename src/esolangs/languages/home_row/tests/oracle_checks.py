@@ -6,11 +6,10 @@ import random
 import pytest
 
 from esolangs.languages.home_row.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = WorkspaceModel("home-row-v1", ("instruction", "pointer", "grid"))
+_WORKSPACE = workspace.workspace_model("home-row-v1", "instruction pointer grid")
 
 
 def _model(source, cap=64):
@@ -54,7 +53,7 @@ def _model(source, cap=64):
 
 def _agrees(factory, source, *, cap=64):
     expected = _model(source, cap)
-    checked = workspace_view(
+    checked = workspace.workspace_view(
         expected[1], _WORKSPACE, lambda row: row[0][:3], lambda m: (*m.state, m.ip)
     )
     assert observed(factory, source, "unused λ", checked, cap=cap) == expected, source
@@ -139,5 +138,5 @@ def check_raw_home_row():
             _agrees(Fault, source)
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), "asdf;")
+            _agrees(workspace.missing_workspace(_Machine, component), "asdf;")
     return len(results), len(controls) + 3

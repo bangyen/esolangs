@@ -5,13 +5,11 @@ from itertools import product
 import pytest
 
 from esolangs.languages.circlefuck.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed, stalled
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = WorkspaceModel(
-    "circlefuck-v1",
-    ("cells", "instruction", "pointer", "input_cursor", "stopped"),
+_WORKSPACE = workspace.workspace_model(
+    "circlefuck-v1", "cells instruction pointer input_cursor stopped"
 )
 
 
@@ -75,7 +73,7 @@ def _model(initial, stdin):
 def _check(factory, initial, stdin):
     expected = _model(initial, stdin)
     source = "".join(f"\\x{byte:02x}" for byte in initial)
-    checked = workspace_view(
+    checked = workspace.workspace_view(
         expected[1],
         _WORKSPACE,
         lambda row: (row[0][2], row[0][0], row[0][1], row[-1], row[0][3]),
@@ -100,4 +98,4 @@ def check_raw_circlefuck():
         _check(stalled(_Machine), b"@", "")
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
-            _check(missing_workspace(_Machine, component), b"+.@", "")
+            _check(workspace.missing_workspace(_Machine, component), b"+.@", "")

@@ -7,11 +7,10 @@ from fractions import Fraction
 import pytest
 
 from esolangs.languages.aprknia.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = WorkspaceModel("aprknia-v1", ("instruction", "stack", "input_cursor"))
+_WORKSPACE = workspace.workspace_model("aprknia-v1", "instruction stack input_cursor")
 
 
 def _balanced(source):
@@ -92,7 +91,7 @@ def _model(source, stdin, cap=16):
 
 def _agrees(factory, source, stdin, cap=16):
     expected = _model(source, stdin, cap)
-    checked = workspace_view(
+    checked = workspace.workspace_view(
         expected[1],
         _WORKSPACE,
         lambda row: (row[0][0], row[0][1], row[-1]),
@@ -204,5 +203,5 @@ def check_raw_aprknia():
             _agrees(Fault, source, stdin, 64)
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), "11*", "")
+            _agrees(workspace.missing_workspace(_Machine, component), "11*", "")
     return len(results), len(controls) + 3

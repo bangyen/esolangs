@@ -7,6 +7,15 @@ import pytest
 from esolangs.compressed import CompressedText
 from esolangs.languages.unary.interpreter import _Machine
 from tests.interpreters.oracle_support import observed
+from tests.interpreters.semantic_oracles import bracket_pairs
+from tests.support.workspace_oracle import (
+    charged_bits,
+    missing_workspace,
+    workspace_model,
+    workspace_view,
+)
+
+_WORKSPACE = workspace_model("brainfuck-v1", "instruction pointer tape input_cursor")
 
 
 def _decode(raw):
@@ -19,32 +28,22 @@ def _decode(raw):
     if octal[0] != "1":
         raise ValueError
     program = "".join("><+-.,[]"[int(c)] for c in octal[1:])
-    depth = 0
-    for char in program:
-        depth += (char == "[") - (char == "]")
-        if depth < 0:
-            raise ValueError
-    if depth:
-        raise ValueError
+    bracket_pairs(program)
     return program
 
 
 def _model(raw, stdin, cap=64):
     try:
         program = _decode(raw)
+        pairs = bracket_pairs(program)
     except ValueError:
         return "syntax", [(None, False, "", 0, 0)]
     pc, pointer, low, high, cells, consumed, output = 0, 0, 0, 0, {}, 0, ""
 
     def view():
         tape = tuple(cells.get(i, 0) for i in range(low, high + 1))
-        return (
-            (pc, pointer - low, tape, tape, pc),
-            pc == len(program),
-            output,
-            consumed,
-            consumed,
-        )
+        state = pc, pointer - low, tape, tape, pc
+        return state, pc == len(program), output, consumed, consumed
 
     trace = [view()]
     for _ in range(cap):
@@ -63,12 +62,7 @@ def _model(raw, stdin, cap=64):
         elif command == ".":
             output += chr(value)
         elif (command == "[" and value == 0) or (command == "]" and value != 0):
-            at, depth, step = pc, 1, 1 if command == "[" else -1
-            other = "]" if command == "[" else "["
-            while depth:
-                at += step
-                depth += (program[at] == command) - (program[at] == other)
-            next_pc = at + 1
+            next_pc = pairs[pc] + 1
         pc = next_pc
         trace.append(view())
     if pc == len(program):
@@ -83,12 +77,16 @@ def _source(program):
 def _agrees(factory, raw, stdin, *, cap=64, compressed=False):
     source = CompressedText(gzip.compress(raw.encode(), mtime=0)) if compressed else raw
     expected = _model(raw, stdin, cap)
-    assert (
-        observed(
-            factory, source, stdin, lambda m: (*m.state, tuple(m.memory), m.ip), cap=cap
-        )
-        == expected
-    ), (len(raw), stdin)
+    checked = workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (*row[0][:3], row[-1]),
+        lambda machine: (*machine.state, tuple(machine.memory), machine.ip),
+    )
+    assert observed(factory, source, stdin, checked, cap=cap) == expected, (
+        len(raw),
+        stdin,
+    )
     return expected
 
 
@@ -174,4 +172,9 @@ def check_raw_unary():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, raw, stdin)
-    return len(results), len(controls)
+    for component in _WORKSPACE.components:
+        with pytest.raises(AssertionError):
+            _agrees(missing_workspace(_Machine, component), _source(">,+"), "A")
+    rows = _agrees(_Machine, _source(">,+"), "A")[1]
+    assert charged_bits(_WORKSPACE, ((*row[0][:3], row[-1]) for row in rows)) == 12
+    return len(results) + 1, len(controls) + len(_WORKSPACE.components)

@@ -6,13 +6,11 @@ import random
 import pytest
 
 from esolangs.languages.deadfish.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import WorkspaceWitness, missing_workspace
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = WorkspaceModel(
-    "deadfish-v1",
-    ("source", "instruction", "accumulator", "stopped", "input_cursor"),
+_WORKSPACE = workspace.workspace_model(
+    "deadfish-v1", "source instruction accumulator stopped input_cursor"
 )
 
 
@@ -52,7 +50,7 @@ def _model(source):
 def _agrees(factory, source):
     expected = _model(source)
     views = iter(expected[1])
-    witness = WorkspaceWitness(_WORKSPACE)
+    witness = workspace.WorkspaceWitness(_WORKSPACE)
 
     def state(m):
         view, _halted, _output, _position, progress = next(views)
@@ -132,5 +130,5 @@ def check_raw_deadfish():
             _agrees(Fault, source)
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), "iissso")
+            _agrees(workspace.missing_workspace(_Machine, component), "iissso")
     return len(corpus), len(controls) + 5

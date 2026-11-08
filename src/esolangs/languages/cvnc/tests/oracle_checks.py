@@ -12,13 +12,11 @@ from itertools import product
 import pytest
 
 from esolangs.languages.cvnc.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed, overread, stalled
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = WorkspaceModel(
-    "cvnc-v1",
-    ("instruction", "accumulator", "deque", "function", "input_cursor"),
+_WORKSPACE = workspace.workspace_model(
+    "cvnc-v1", "instruction accumulator deque function input_cursor"
 )
 
 _SYMBOLS = {"d": "a", "b": "+", "t": "-", "ɡ": "×", "q": "÷", "ʔ": "(", "ʡ": ")"}
@@ -194,7 +192,7 @@ def _view(machine):
 def _check(factory, syllables, stdin="unused"):
     expected = _model(syllables, stdin)
     source = "\n".join("".join(s) for s in syllables)
-    checked = workspace_view(
+    checked = workspace.workspace_view(
         expected[1],
         _WORKSPACE,
         lambda row: (
@@ -288,7 +286,7 @@ def check_raw_cvnc():
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _check(
-                missing_workspace(_Machine, component),
+                workspace.missing_workspace(_Machine, component),
                 (("s", "u"), ("c", "i", "n")),
                 "3",
             )

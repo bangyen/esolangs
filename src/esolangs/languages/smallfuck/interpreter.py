@@ -56,7 +56,9 @@ def _advance(
     return (ind + (ind < len(code)), ptr, tape, dumped), None
 
 
-_WORKSPACE_MODEL = WorkspaceModel("smallfuck-v1", ("instruction", "pointer", "tape"))
+_WORKSPACE_MODEL = WorkspaceModel(
+    "smallfuck-v2", ("instruction", "pointer", "tape", "dumped")
+)
 
 
 class _Machine:
@@ -92,9 +94,12 @@ class _Machine:
         return list(self.state[2])
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
-        """Capture semantic components independently of cycle grouping."""
+        """Capture the logical tape, cursor, and native output phase."""
         return _WORKSPACE_MODEL.capture(
-            instruction=self.state[0], pointer=self.state[1], tape=self.state[2]
+            instruction=self.state[0],
+            pointer=self.state[1],
+            tape=self.state[2],
+            dumped=self.state[3],
         )
 
     def snapshot(self) -> tuple[object, ...]:

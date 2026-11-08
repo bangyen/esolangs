@@ -12,18 +12,12 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.between.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import (
-    WorkspaceWitness,
-    charged_bits,
-    missing_workspace,
-    workspace_view,
-)
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = WorkspaceModel(
-    "between-v1", ("instruction", "variables", "exited", "input_cursor")
+_WORKSPACE = workspace.workspace_model(
+    "between-v1", "instruction variables exited input_cursor"
 )
 
 
@@ -232,7 +226,7 @@ def _check(factory, program, stdin="unused", cap=16):
     def state(machine):
         return tuple(sorted(machine.variables.items())), machine.ind, machine.exited
 
-    checked = workspace_view(
+    checked = workspace.workspace_view(
         expected[1],
         _WORKSPACE,
         _parts,
@@ -385,7 +379,7 @@ def check_raw_between():
         ((("declare", "x"), ("read", "x")), "A\r\n", 20),
     ):
         rows = _check(_Machine, program, stdin)[1]
-        assert charged_bits(_WORKSPACE, map(_parts, rows)) == bits
+        assert workspace.charged_bits(_WORKSPACE, map(_parts, rows)) == bits
 
     class Skips(_Machine):
         def step(self):
@@ -421,7 +415,7 @@ def check_raw_between():
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _check(
-                missing_workspace(_Machine, component),
+                workspace.missing_workspace(_Machine, component),
                 (("declare", "x"), ("assign", "x", 3)),
             )
 
@@ -451,12 +445,12 @@ def check_raw_between():
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
             _check(
-                missing_workspace(_Machine, component),
+                workspace.missing_workspace(_Machine, component),
                 (("declare", "x"), ("read", "x"), ("exit",)),
                 "line\n",
             )
     machine = _Machine(_source((("declare", "x"), ("read", "x"))), ScriptedIO(""))
-    witness = WorkspaceWitness(_WORKSPACE)
+    witness = workspace.WorkspaceWitness(_WORKSPACE)
     witness.sample(machine.workspace_snapshot(), (0, frozenset(), False, 0))
     machine.step()
     for attempt in range(1, 4):

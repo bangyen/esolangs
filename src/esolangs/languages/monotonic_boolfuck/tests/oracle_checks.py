@@ -1,4 +1,4 @@
-"""Revision 182685 rules; dense tape, explicit bit streams and scanned loops."""
+"""Revision 182685 rules; dense tape, explicit bits and independent brackets."""
 
 import itertools
 import random
@@ -6,22 +6,21 @@ import random
 import pytest
 
 from esolangs.languages.monotonic_boolfuck.interpreter import _Machine
-from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.oracle_support import observed
+from tests.interpreters.semantic_oracles import bracket_pairs
+from tests.support import workspace_oracle as resources
+
+_WORKSPACE = resources.workspace_model(
+    "monotonic-boolfuck-v1", "control ones input_cursor"
+)
 
 _CAP = 64
 
 
-def _balanced(code):
-    depth = 0
-    for command in code:
-        depth += (command == "[") - (command == "]")
-        if depth < 0:
-            return False
-    return depth == 0
-
-
 def _model(code, stdin):
-    if not _balanced(code):
+    try:
+        pairs = bracket_pairs(code)
+    except ValueError:
         return "syntax", []
     incoming = [int(b) for c in stdin for b in f"{ord(c) % 256:08b}"[::-1]]
     tape, origin, pc, ptr, reads, bits = [0], 0, 0, 0, 0, []
@@ -45,14 +44,8 @@ def _model(code, stdin):
         pending = bits[complete:]
         if halted and pending:
             output += chr(packed(pending))
-        state = (
-            pc,
-            ptr,
-            buffered,
-            remaining,
-            0 if halted else packed(pending),
-            0 if halted else len(pending),
-        )
+        outgoing = (0, 0) if halted else (packed(pending), len(pending))
+        state = pc, ptr, buffered, remaining, *outgoing
         return state, ones, memory, halted, output, consumed, consumed
 
     trace = [view()]
@@ -76,15 +69,7 @@ def _model(code, stdin):
             elif ptr == origin + len(tape):
                 tape.append(0)
         elif (command == "[" and not tape[index]) or command == "]":
-            direction = 1 if command == "[" else -1
-            depth, at = 1, pc
-            while depth:
-                at += direction
-                if code[at] == command:
-                    depth += 1
-                elif code[at] in "[]":
-                    depth -= 1
-            next_pc = at + (command == "[")
+            next_pc = pairs[pc] + (command == "[")
         pc = next_pc
         trace.append(view())
     if pc == len(code):
@@ -92,41 +77,29 @@ def _model(code, stdin):
     return None, trace
 
 
-def _observed(machine_type, code, stdin):
-    io = ScriptedIO(stdin)
-    try:
-        machine = machine_type(code, io)
-    except ValueError:
-        return "syntax", []
-
-    def view():
+def _observed(machine_type, code, stdin, expected):
+    def view(machine):
         state, ones, progress = machine.snapshot()
-        return (
-            tuple(state),
-            tuple(sorted(ones)),
-            tuple(machine.memory),
-            machine.halted,
-            io.getvalue(),
-            io.position(),
-            progress,
-        )
+        assert progress == machine.io.progress()
+        return tuple(state), tuple(sorted(ones)), tuple(machine.memory)
 
-    trace = [view()]
-    for _ in range(_CAP):
-        if machine.halted:
-            break
-        machine.step()
-        trace.append(view())
-    if machine.halted:
-        for _ in range(3):
-            machine.step()
-            trace.append(view())
-    return None, trace
+    checked = resources.workspace_view(
+        expected,
+        _WORKSPACE,
+        lambda row: (row[0], frozenset(row[1]), row[-1]),
+        view,
+    )
+    error, rows = observed(machine_type, code, stdin, checked, cap=_CAP)
+    if rows[0][0] is None:
+        assert error == "syntax"
+        return error, []
+    assert error is None
+    return None, [(*row[0], *row[1:]) for row in rows]
 
 
 def _agrees(machine_type, code, stdin):
     expected = _model(code, stdin)
-    assert _observed(machine_type, code, stdin) == expected, (code, stdin)
+    assert _observed(machine_type, code, stdin, expected[1]) == expected, (code, stdin)
     return expected
 
 
@@ -204,4 +177,18 @@ def check_raw_monotonic():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, code, stdin)
-    return len(results), len(controls)
+    for component in _WORKSPACE.components:
+
+        class MissingAtHalt(resources.missing_workspace(_Machine, component)):
+            def workspace_snapshot(self):
+                if not self.halted:
+                    return _Machine.workspace_snapshot(self)
+                return super().workspace_snapshot()
+
+        with pytest.raises(AssertionError):
+            _agrees(MissingAtHalt, "1,;", "A")
+    for code, stdin, bits in (("", "", 0), ("1", "", 7), ("1;", "", 8), (",", "A", 15)):
+        rows = _agrees(_Machine, code, stdin)[1]
+        parts = ((row[0], frozenset(row[1]), row[-1]) for row in rows)
+        assert resources.charged_bits(_WORKSPACE, parts) == bits
+    return len(results) + 4, len(controls) + len(_WORKSPACE.components)

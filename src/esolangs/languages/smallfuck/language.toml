@@ -93,14 +93,14 @@ construction = "esolangs.languages.smallfuck.generator:smallfuck"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, one prefix path, forward guards and a two-input tail" }
 
 [resource_evidence.workspace]
-expression = "L + bl(L) + bl(3n)"
+expression = "L + bl(L) + bl(3n) + 1"
 exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.smallfuck.generator:smallfuck"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one tape bit per source character" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one tape bit per source character and one native output-phase bit" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.smallfuck.tests.formulas:_chars"

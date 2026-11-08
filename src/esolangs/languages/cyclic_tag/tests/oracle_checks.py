@@ -8,13 +8,11 @@ from collections import deque
 import pytest
 
 from esolangs.languages.cyclic_tag.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = WorkspaceModel(
-    "cyclic-tag-v1",
-    ("head", "live_bits", "answer_latch", "input_cursor"),
+_WORKSPACE = workspace.workspace_model(
+    "cyclic-tag-v1", "head live_bits answer_latch input_cursor"
 )
 
 
@@ -65,7 +63,7 @@ def _model(source):
 
 def _agrees(factory, source):
     expected = _model(source)
-    checked = workspace_view(
+    checked = workspace.workspace_view(
         expected[1],
         _WORKSPACE,
         lambda row: (row[0][0], row[0][1], (row[0][2], row[0][3]), row[-1]),
@@ -154,5 +152,5 @@ def check_raw_cyclic_tag():
             _agrees(Fault, source)
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), "1;0,1")
+            _agrees(workspace.missing_workspace(_Machine, component), "1;0,1")
     return len(results), len(controls) + 4

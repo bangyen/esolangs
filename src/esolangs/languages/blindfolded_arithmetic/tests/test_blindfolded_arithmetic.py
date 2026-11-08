@@ -17,19 +17,50 @@ def test_division_truncates_toward_zero(
     assert trunc_div(dividend, divisor) == quotient
 
 
-def test_an_empty_program_is_refused_before_reading() -> None:
-    """Blank lines and bare separators are no instruction; stdin stays unread."""
+def test_constructor_and_output_failures_preserve_native_phase() -> None:
+    """Constructor and output failures retain their input and halt boundaries."""
     io = ScriptedIO("")
     with pytest.raises(ValueError, match="at least one instruction"):
         _Machine("\n;  \n", io)
+    for source, stdin, kind, expected in (
+        ("", "7", ValueError, (0, 0, 0, 0)),
+        ("i=i/a", "", EOFError, (0, 0, 0, 1)),
+        ("i=i/a", "x 7", ValueError, (1, 1, 1, 0)),
+    ):
+        io = ScriptedIO(stdin)
+        with pytest.raises(kind):
+            _Machine(source, io)
+        assert (io.position(), io.progress(), io.reads, io.past_end) == expected
+        assert io.getvalue() == ""
+    io = ScriptedIO("1 7")
+    machine = _Machine("i=i/a", io)
+    assert (io.position(), io.progress(), io.reads) == (1, 1, 1)
+
+    def rejected(_value):
+        assert machine.halted
+        raise EOFError("output rejected")
+
+    io.print_num = rejected
+    with pytest.raises(EOFError, match="output rejected"):
+        machine.step()
+    assert machine.halted
+    assert io.getvalue() == ""
+    captured = machine.workspace_snapshot()
+    assert captured.parts == (((0, 0, 0, 0, 0, 1), 0), True, 1)
+    machine.step()
+    assert machine.workspace_snapshot() == captured
+    assert io.input_char() == ord(" ")
+    assert io.input_num() == 7
 
 
 def test_ip_is_the_next_instructions_source_offset() -> None:
     from esolangs.languages.blindfolded_arithmetic.tests.oracle_checks import (
+        _agrees,
         check_raw_blindfolded_arithmetic,
     )
 
     check_raw_blindfolded_arithmetic()
+    _agrees(_Machine, "i=i/i;i=i/a", "1" + "0" * 4400)
     machine = _Machine("a=i/i;  b=a+a", ScriptedIO("1\n"))
     assert machine.ip == 0
     machine.step()

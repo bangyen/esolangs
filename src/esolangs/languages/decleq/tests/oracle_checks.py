@@ -6,11 +6,10 @@ import random
 import pytest
 
 from esolangs.languages.decleq.interpreter import _Machine, run
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.memory_oracles import agrees_memory, decleq
-from tests.support.workspace_oracle import missing_workspace
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = WorkspaceModel("decleq-v1", ("memory", "instruction", "input_cursor"))
+_WORKSPACE = workspace.workspace_model("decleq-v1", "memory instruction input_cursor")
 
 
 def _agrees(factory, oracle, code, stdin="", **options):
@@ -101,4 +100,4 @@ def check_raw_decleq():
 
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), decleq, "0 0 -1")
+            _agrees(workspace.missing_workspace(_Machine, component), decleq, "0 0 -1")

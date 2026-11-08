@@ -11,13 +11,12 @@ from itertools import product
 import pytest
 
 from esolangs.languages.dimensional.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceSnapshot
 from tests.interpreters.oracle_support import observed, overread, stalled
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = WorkspaceModel(
-    "dimensional-v1",
-    ("instruction", "comment", "axis", "height", "hierarchy", "input_cursor"),
+_WORKSPACE = workspace.workspace_model(
+    "dimensional-v1", "instruction comment axis height hierarchy input_cursor"
 )
 
 
@@ -234,7 +233,7 @@ def _view(machine):
 
 def _check(factory, code, stdin="unused"):
     error, rows = _model(code, stdin)
-    checked = workspace_view(
+    checked = workspace.workspace_view(
         rows, _WORKSPACE, lambda row: (*row[0][:3], *row[0][5:], row[-1]), _view
     )
     expected = (
@@ -307,7 +306,7 @@ def check_raw_dimensional():
 
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
-            _check(missing_workspace(_Machine, component), "+$3>0+<0.")
+            _check(workspace.missing_workspace(_Machine, component), "+$3>0+<0.")
     for fault, code in (("zero", "."), ("empty", "$5>0"), ("height", "$5>0.")):
 
         class Fault(_Machine):

@@ -2,36 +2,32 @@
 
 import itertools
 import random
-from functools import partial
 
 import pytest
 
 from esolangs.languages.smallfuck.interpreter import _advance, _Machine, run
+from esolangs.languages.smallfuck.tests.oracle_checks import _WORKSPACE, check, oracle
 from esolangs.runtime.io import ScriptedIO
-from tests.interpreters.runner import run_program
+from tests.interpreters.runner import native_runner
 from tests.interpreters.semantic_oracles import STDINS, agrees
-from tests.interpreters.semantic_oracles import smallfuck as oracle
+from tests.support.workspace_oracle import charged_bits, missing_workspace
 
-_run = partial(run_program, run, suppress_eof=False)
+_run = native_runner(run)
 
 
-def test_flip_move_loop_and_final_tape() -> None:
-    machine = _Machine("*>*[*]", ScriptedIO(""))
+@pytest.mark.parametrize(
+    ("source", "memory"), [("*>*[*]", [1, 0, 0, 0, 0, 0]), ("*x", [1, 0])]
+)
+def test_flip_move_loop_and_final_tape(source, memory) -> None:
+    machine = _Machine(source, ScriptedIO(""))
     while not machine.halted:
         machine.step()
-    assert machine.memory == [1, 0, 0, 0, 0, 0]
+    assert machine.memory == memory
 
 
 @pytest.mark.parametrize("source", ["<*", ">>"])
 def test_crossing_a_tape_end_halts(source: str) -> None:
     assert _run(source) == "0"
-
-
-def test_noncommands_are_ignored_but_take_tape_cells() -> None:
-    machine = _Machine("*x", ScriptedIO(""))
-    while not machine.halted:
-        machine.step()
-    assert machine.memory == [1, 0]
 
 
 def test_halted_step_dumps_once() -> None:
@@ -40,6 +36,12 @@ def test_halted_step_dumps_once() -> None:
     machine.step()
     machine.step()
     machine.step()
+    before = machine.snapshot(), machine.workspace_snapshot()
+    machine.step()
+    assert machine.snapshot() == before[0]
+    assert machine.workspace_snapshot().parts == (*before[1].parts[:3], True)
+    assert before[1].parts[-1] is False
+    assert io.getvalue() == "1"
     machine.step()
     assert io.getvalue() == "1"
 
@@ -70,6 +72,7 @@ def _corpus():
 def test_bounded_programs_match_the_oracle(stdin) -> None:
     for code in _corpus():
         agrees(_Machine, oracle, code, stdin, dump=True)
+        check(_Machine, code, stdin)
 
 
 @pytest.mark.parametrize(
@@ -80,6 +83,20 @@ def test_oracle_controls(code, output) -> None:
     result = agrees(_Machine, oracle, code, "\x81", dump=True)
     assert result.output == output if output else isinstance(result, ValueError)
     assert not agrees(_Machine, oracle, "*[]", "", dump=True).halted
+    if code == ">>*":
+        for component in _WORKSPACE.components:
+            with pytest.raises(AssertionError):
+                check(missing_workspace(_Machine, component), ">>*", "")
+        for source, bits in (
+            ("", 1),
+            ("<", 2),
+            (">", 3),
+            ("*", 3),
+            ("*x", 5),
+            (">>*", 8),
+        ):
+            rows = check(_Machine, source, "untouched")
+            assert charged_bits(_WORKSPACE, (row[0] for row in rows)) == bits
 
 
 def test_transition_preserves_its_state_and_reports_output() -> None:

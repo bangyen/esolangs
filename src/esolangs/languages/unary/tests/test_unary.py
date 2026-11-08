@@ -3,16 +3,10 @@
 import pytest
 
 from esolangs.languages.unary.interpreter import _Machine, decode, run
+from esolangs.languages.unary.tests.oracle_checks import _source
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_rejected_with_hint
-
-
-def _source(brainfuck: str) -> str:
-    number = 1
-    for command in brainfuck:
-        number = 8 * number + "><+-.,[]".index(command)
-    return "0" * number
 
 
 def test_wiki_echo_and_command_order() -> None:

@@ -7,13 +7,11 @@ from fractions import Fraction
 import pytest
 
 from esolangs.languages.blindfolded_arithmetic.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = WorkspaceModel(
-    "blindfolded-arithmetic-v1",
-    ("configuration", "stopped", "input_cursor"),
+_WORKSPACE = workspace.workspace_model(
+    "blindfolded-arithmetic-v1", "configuration stopped input_cursor"
 )
 
 
@@ -55,11 +53,14 @@ def _read(stdin):
     digits = token[1:] if token[:1] in "+-" else token
     if not digits or any(c not in "0123456789" for c in digits):
         return None, at, "argument"
-    value = int(token)
+    value = 0
+    for digit in digits:
+        value = 10 * value + ord(digit) - ord("0")
+    value *= -1 if token.startswith("-") else 1
     return value, at, None if value > 0 else "argument"
 
 
-def _model(source, stdin):
+def _model(source, stdin, *, cap=16):
     try:
         program, offsets = _parse(source)
     except ValueError:
@@ -77,7 +78,7 @@ def _model(source, stdin):
 
     trace = [view()]
     # Sixteen steps bound repeated squaring; 64 can exhaust memory.
-    for _ in range(16):
+    for _ in range(cap):
         if halted:
             break
         target, left, op, right = program[pc]
@@ -99,8 +100,8 @@ def _model(source, stdin):
     return None, trace
 
 
-def _agrees(factory, source, stdin):
-    expected = _model(source, stdin)
+def _agrees(factory, source, stdin, *, cap=16):
+    expected = _model(source, stdin, cap=cap)
     configuration = None
 
     def parts(row):
@@ -111,20 +112,18 @@ def _agrees(factory, source, stdin):
             configuration = current
         return configuration, row[1], row[-1]
 
-    checked = workspace_view(
+    checked = workspace.workspace_view(
         expected[1],
         _WORKSPACE,
         parts,
         lambda m: (*m.state, tuple(m.memory), m.ip),
     )
-    assert observed(factory, source, stdin, checked, cap=16) == expected, (
-        source,
-        stdin,
-    )
+    actual = observed(factory, source, stdin, checked, cap=cap)
+    assert actual == expected, (source, stdin)
     return expected
 
 
-def check_raw_blindfolded_arithmetic():
+def blindfolded_arithmetic_cases():
     atoms = [
         f"{dest}={left}{op}{right}"
         for dest, left, right in itertools.product("abcdei", repeat=3)
@@ -142,11 +141,6 @@ def check_raw_blindfolded_arithmetic():
         "a=i/i;\t b=a+a\n i=i/b;a=a/a",
         "a=i+i;" * 20,
     ]
-    results = [
-        _agrees(_Machine, code, stdin)
-        for code in corpus
-        for stdin in ("1", " 3 trailing", "+17\n2")
-    ]
     invalid = (
         "",
         " ; \n",
@@ -161,11 +155,20 @@ def check_raw_blindfolded_arithmetic():
         "a=i+i\v",
         "a=i+i\u00a0",
     )
-    results.extend(
-        _agrees(_Machine, code, stdin)
+    return [
+        (code, stdin, 16) for code in corpus for stdin in ("1", " 3 trailing", "+17\n2")
+    ] + [
+        (code, stdin, 16)
         for code in (*invalid, "i=i/a")
         for stdin in ("", " \n", "0", "-1", "x", "1_0", "٣", "  +2 extra")
-    )
+    ]
+
+
+def check_raw_blindfolded_arithmetic():
+    results = [
+        _agrees(_Machine, code, stdin, cap=cap)
+        for code, stdin, cap in blindfolded_arithmetic_cases()
+    ]
     assert {error for error, _ in results} == {None, "syntax", "input", "argument"}
     assert _model("b=i+i;c=a-i;i=c/b;a=a/a", "3")[1][-1][2] == "0"
     assert any(not trace[-1][1] for error, trace in results if error is None)
@@ -227,6 +230,12 @@ def check_raw_blindfolded_arithmetic():
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
     for component in _WORKSPACE.components:
-        with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), "i=i/i", "1")
-    return len(results), len(controls) + 3
+        erased = workspace.missing_workspace(_Machine, component)
+        for source in ("i=i/i", "a=i+i;a=a/a;i=i/e"):
+            with pytest.raises(AssertionError):
+                _agrees(erased, source, "1")
+    for source, bits in (("i=i/a", 1), ("a=i+i;a=a/a;i=i/e", 9)):
+        trace = _model(source, "1")[1]
+        parts = ((row[0][:2], row[1], row[-1]) for row in trace)
+        assert workspace.charged_bits(_WORKSPACE, parts) == bits
+    return len(results), len(controls) + 6

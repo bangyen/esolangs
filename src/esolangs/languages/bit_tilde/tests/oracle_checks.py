@@ -6,16 +6,11 @@ import random
 import pytest
 
 from esolangs.languages.bit_tilde.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import (
-    charged_bits,
-    missing_workspace,
-    workspace_view,
-)
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = WorkspaceModel(
-    "bit-tilde-v1", ("tape", "pointer", "instruction", "input_cursor")
+_WORKSPACE = workspace.workspace_model(
+    "bit-tilde-v1", "tape pointer instruction input_cursor"
 )
 
 
@@ -82,7 +77,7 @@ def _model(source, stdin, cap=64):
 
 def _agrees(factory, source, stdin, cap=64):
     expected = _model(source, stdin, cap)
-    checked = workspace_view(
+    checked = workspace.workspace_view(
         expected[1],
         _WORKSPACE,
         lambda row: (row[0][2], row[0][1], row[0][0], row[-1]),
@@ -151,7 +146,7 @@ def check_raw_bit_tilde():
     for (source, stdin), bits in anchors.items():
         trace = _model(source, stdin, 192)[1]
         parts = ((r[0][2], r[0][1], r[0][0], r[-1]) for r in trace)
-        assert charged_bits(_WORKSPACE, parts) == bits
+        assert workspace.charged_bits(_WORKSPACE, parts) == bits
     controls = {
         "store": ("))(", "\x81\x81"),
         "left": ("<~(", ""),
@@ -204,4 +199,4 @@ def check_raw_bit_tilde():
             _agrees(Fault, source, stdin)
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
-            _agrees(missing_workspace(_Machine, component), "~>~", "")
+            _agrees(workspace.missing_workspace(_Machine, component), "~>~", "")

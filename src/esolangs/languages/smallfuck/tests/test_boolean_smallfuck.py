@@ -147,7 +147,7 @@ def test_shared_residual_executes_within_ledger() -> None:
         table,
         plain,
         1396,
-        lambda p: len(p) + len(p).bit_length() + (3 * 8).bit_length(),
+        lambda p: len(p) + len(p).bit_length() + (3 * 8).bit_length() + 1,
     )
 
 
@@ -165,7 +165,7 @@ def test_complemented_shared_arm_contributes_its_constant_first() -> None:
         table,
         None,
         564,
-        lambda p: len(p) + len(p).bit_length() + (12).bit_length(),
+        lambda p: len(p) + len(p).bit_length() + (12).bit_length() + 1,
     )
 
 
@@ -196,20 +196,10 @@ def test_multiple_residuals_preserve_bands_and_native_bounds(
     template, limit = _smallfuck_tree(
         ordered, perm, shared_blocks=blocks, flag_levels=flags
     )
-    bound = len(template) + len(template).bit_length() + (3 * n).bit_length()
     width = len(table) // 2
-    for row in range(half * width, (half + 1) * width):
-        bits = [int(bit) for bit in f"{row:0{n}b}"]
-        program = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, bits)
-        machine = make_vm("Smallfuck", program)
-        commands, written = measure_run(machine, limit=limit)
-        assert machine.halted
-        machine.step()
-        written.sample(_capture_workspace(machine))
-        commands += 1
-        assert machine.output == table[row]
-        assert commands <= limit
-        assert written.bits <= bound
+    _check_completed_rows(
+        template, limit, n, table, range(half * width, (half + 1) * width)
+    )
 
 
 @pytest.mark.parametrize(
@@ -257,7 +247,7 @@ def test_multiple_residuals_reduce_tiled_cap_program_within_ledger() -> None:
         table,
         previous,
         bound,
-        lambda p: len(p) + len(p).bit_length() + (3 * n).bit_length(),
+        lambda p: len(p) + len(p).bit_length() + (3 * n).bit_length() + 1,
         rows=rows,
     )
 
@@ -277,11 +267,16 @@ def test_all_two_input_complement_pairs_and_ignored_prefixes(swap_suffix, half) 
     pairs = _paired_roots(ordered)
     assert {code for code, _ in pairs} == set(range(1, 8))
     template, limit = _smallfuck_tree(ordered, perm, paired_roots=pairs)
-    bound = len(template) + len(template).bit_length() + (3 * n).bit_length()
-    for row in range(half * 128, (half + 1) * 128):
-        program = fill_runs(
-            template, TEMPLATE_CHAR, [PAIR] * n, [int(bit) for bit in f"{row:08b}"]
-        )
+    _check_completed_rows(
+        template, limit, n, table, range(half * 128, (half + 1) * 128)
+    )
+
+
+def _check_completed_rows(template, limit, n, table, rows):
+    bound = len(template) + len(template).bit_length() + (3 * n).bit_length() + 1
+    for row in rows:
+        bits = [int(bit) for bit in f"{row:0{n}b}"]
+        program = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, bits)
         machine = make_vm("Smallfuck", program)
         commands, written = measure_run(machine, limit=limit)
         assert machine.halted

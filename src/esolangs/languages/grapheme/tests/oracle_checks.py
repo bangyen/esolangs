@@ -10,13 +10,11 @@ from itertools import product
 import pytest
 
 from esolangs.languages.grapheme.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed, overread, stalled
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support import workspace_oracle as workspace
 
-_WORKSPACE = WorkspaceModel(
-    "grapheme-v1",
-    ("stack", "variables", "frames", "input_cursor", "input_reads"),
+_WORKSPACE = workspace.workspace_model(
+    "grapheme-v1", "stack variables frames input_cursor input_reads"
 )
 
 
@@ -237,7 +235,7 @@ def _check(factory, code, stdin="unused", dialect="between_letters"):
         if all("A" <= c <= "Z" for c in normalized)
         else ("syntax", [(None, False, "", 0, 0)])
     )
-    checked = workspace_view(
+    checked = workspace.workspace_view(
         expected[1],
         _WORKSPACE,
         lambda row: (row[0][0], row[0][1], row[0][2], row[-1], row[0][3]),
@@ -306,4 +304,4 @@ def check_raw_grapheme():
             _check(factory, code, "ab")
     for component in _WORKSPACE.components:
         with pytest.raises(AssertionError):
-            _check(missing_workspace(_Machine, component), "I")
+            _check(workspace.missing_workspace(_Machine, component), "I")
