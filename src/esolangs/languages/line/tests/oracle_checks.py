@@ -15,7 +15,7 @@ import pytest
 from esolangs.languages.line.interpreter import _execute, _Machine
 from esolangs.raster import Raster
 from esolangs.runtime.io import ScriptedIO
-from tests.interpreters.oracle_support import observed, overread, stable_halt, stalled
+from tests.interpreters.oracle_support import observed, reject_faults, stable_halt
 from tests.support.model_input import token_span
 
 
@@ -101,6 +101,4 @@ def check_raw_line():
                 cells[pointer] = cells.get(pointer, 0) + 1
                 self.state = node, at, pointer, tuple(sorted(cells.items()))
 
-    for factory in (stalled(_Machine), WrongTape, overread(_Machine)):
-        with pytest.raises(AssertionError):
-            _check(factory, "addition", "2 3 99")
+    reject_faults(_check, _Machine, WrongTape, "addition", "2 3 99")

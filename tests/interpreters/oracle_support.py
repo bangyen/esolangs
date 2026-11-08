@@ -1,5 +1,7 @@
 """Observe production only; independent models supply their own expected traces."""
 
+import pytest
+
 from esolangs.exceptions import ArgumentError, HaltError, InterpreterLimitError
 from esolangs.runtime.io import ScriptedIO
 
@@ -135,3 +137,10 @@ def after_step(factory, change):
             change(self)
 
     return Fault
+
+
+def reject_faults(check, native, wrong, *args):
+    """Reject each stalled, altered and overreading native run independently."""
+    for factory in (stalled(native), wrong, overread(native)):
+        with pytest.raises(AssertionError):
+            check(factory, *args)

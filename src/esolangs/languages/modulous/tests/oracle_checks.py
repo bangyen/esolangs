@@ -7,10 +7,8 @@ Random draws remain in raw tests; backward wrap and bare PRT follow Decisions.
 
 from itertools import product
 
-import pytest
-
 from esolangs.languages.modulous.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import observed, reject_faults
 from tests.support.model_input import token_span
 
 
@@ -242,6 +240,6 @@ def check_raw_modulous():
             if self.stk:
                 self.stk = (*self.stk[:-1], self.stk[-1] + 1)
 
-    for factory in (stalled(_Machine), WrongSum, overread(_Machine)):
-        with pytest.raises(AssertionError):
-            _check(factory, (("PSH", "INT", "2"), ("ADD", "3"), ("PRT", "INT")))
+    reject_faults(
+        _check, _Machine, WrongSum, (("PSH", "INT", "2"), ("ADD", "3"), ("PRT", "INT"))
+    )

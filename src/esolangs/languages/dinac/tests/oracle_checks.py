@@ -12,7 +12,7 @@ import pytest
 
 from esolangs.languages.dinac.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from tests.interpreters.oracle_support import after_step, observed, overread, stalled
+from tests.interpreters.oracle_support import after_step, observed, reject_faults
 from tests.support.workspace_oracle import check_erasures, workspace_view
 
 _WORKSPACE = WorkspaceModel("dinac-v1", ("frames", "input_cursor"))
@@ -262,9 +262,7 @@ def check_raw_dinac():
 
     wrong_output = after_step(_Machine, lambda self: self.io.print_str("!"))
 
-    for factory in (stalled(_Machine), wrong_output, overread(_Machine)):
-        with pytest.raises(AssertionError):
-            _check(factory, (("out", ("wubyte", 1)),))
+    reject_faults(_check, _Machine, wrong_output, (("out", ("wubyte", 1)),))
 
     check_erasures(_WORKSPACE, _check, _Machine, (("out", ("wubyte", 1)),))
 

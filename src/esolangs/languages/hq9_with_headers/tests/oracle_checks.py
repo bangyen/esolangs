@@ -8,10 +8,8 @@ at 64 ops. Forks, hex conditionals and song formatting retain raw tests.
 from decimal import Decimal
 from itertools import product
 
-import pytest
-
 from esolangs.languages.hq9_with_headers.interpreter import _Machine
-from tests.interpreters.oracle_support import decorate_io, observed, overread, stalled
+from tests.interpreters.oracle_support import decorate_io, observed, reject_faults
 from tests.support import workspace_oracle as workspace
 
 _WORKSPACE = workspace.workspace_model(
@@ -254,9 +252,7 @@ def check_raw_hq9_with_headers():
         _Machine, "print_num", lambda write: lambda value: write(value + 1)
     )
 
-    for factory in (stalled(_Machine), wrong_output, overread(_Machine)):
-        with pytest.raises(AssertionError):
-            _check(factory, (("set", "v", 1),), (("out", "v"),))
+    reject_faults(_check, _Machine, wrong_output, (("set", "v", 1),), (("out", "v"),))
 
     workspace.check_erasures(
         _WORKSPACE, _check, _Machine, (("set", "v", 1),), (("out", "v"),)

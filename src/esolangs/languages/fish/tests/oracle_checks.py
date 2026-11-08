@@ -8,10 +8,8 @@ random turns and code writes remain in the raw grid regression suite.
 from itertools import product
 from operator import add, eq, gt, lt, mod, mul, sub, truediv
 
-import pytest
-
 from esolangs.languages.fish.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import observed, reject_faults
 
 
 def _whole(value):
@@ -240,6 +238,4 @@ def check_raw_fish():
                 state[5] = ((*state[5][-1][:-1], state[5][-1][-1] + 1),)
                 self.state = tuple(state)
 
-    for factory in (stalled(_Machine), WrongSum, overread(_Machine)):
-        with pytest.raises(AssertionError):
-            _check(factory, "12+n;")
+    reject_faults(_check, _Machine, WrongSum, "12+n;")

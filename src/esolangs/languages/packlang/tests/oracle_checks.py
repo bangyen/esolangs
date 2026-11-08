@@ -7,10 +7,8 @@ package calls and structured control remain in raw tests; see Decisions.
 
 from itertools import product
 
-import pytest
-
 from esolangs.languages.packlang.interpreter import _Machine
-from tests.interpreters.oracle_support import after_step, observed, overread, stalled
+from tests.interpreters.oracle_support import after_step, observed, reject_faults
 
 
 def _expr(expr):
@@ -154,6 +152,6 @@ def check_raw_packlang():
 
     wrong_output = after_step(_Machine, lambda self: self.io.print_str("!"))
 
-    for factory in (stalled(_Machine), wrong_output, overread(_Machine)):
-        with pytest.raises(AssertionError):
-            _check(factory, "Integer", (("INCR", "cell"), ("write", "cell")))
+    reject_faults(
+        _check, _Machine, wrong_output, "Integer", (("INCR", "cell"), ("write", "cell"))
+    )

@@ -7,10 +7,8 @@ lane geometry and junctions remain in raw tests. Movement follows Decisions.
 
 from itertools import product
 
-import pytest
-
 from esolangs.languages.streetcode.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import observed, reject_faults
 
 
 def _model(source, stdin):
@@ -111,6 +109,4 @@ def check_raw_streetcode():
             super().step()
             self.cells = {**self.cells, self.cp: self.cells.get(self.cp, 0) + 1}
 
-    for factory in (stalled(_Machine), WrongCell, overread(_Machine)):
-        with pytest.raises(AssertionError):
-            _check(factory, "^O;")
+    reject_faults(_check, _Machine, WrongCell, "^O;")

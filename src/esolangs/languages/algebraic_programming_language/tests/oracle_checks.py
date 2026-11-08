@@ -9,10 +9,8 @@ custom operators remain in the raw suite; framing follows public Decisions.
 from itertools import product
 from operator import add, mod, mul, sub
 
-import pytest
-
 from esolangs.languages.algebraic_programming_language.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stable_halt, stalled
+from tests.interpreters.oracle_support import observed, reject_faults, stable_halt
 from tests.support.model_input import token_span
 
 
@@ -156,9 +154,7 @@ def check_raw_algebraic_programming_language():
             super().step()
             self.io.print_str("!")
 
-    for factory in (stalled(_Machine), WrongOutput, overread(_Machine)):
-        with pytest.raises(AssertionError):
-            _check(factory, (("+", 2, 3),))
+    reject_faults(_check, _Machine, WrongOutput, (("+", 2, 3),))
     check_continuation_accounting()
 
 

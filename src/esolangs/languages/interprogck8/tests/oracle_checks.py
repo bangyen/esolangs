@@ -8,10 +8,8 @@ restart. Random commands stay in raw tests; dialect choices are explicit.
 from dataclasses import replace
 from itertools import product
 
-import pytest
-
 from esolangs.languages.interprogck8.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import observed, reject_faults
 
 
 class _Port:
@@ -227,6 +225,4 @@ def check_raw_interprogck8():
             super().step()
             self.state = replace(self.state, acc=(self.state.acc + 1) % 256)
 
-    for factory in (stalled(_Machine), WrongAccumulator, overread(_Machine)):
-        with pytest.raises(AssertionError):
-            _check(factory, ("@nd", "div"))
+    reject_faults(_check, _Machine, WrongAccumulator, ("@nd", "div"))

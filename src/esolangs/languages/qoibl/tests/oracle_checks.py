@@ -8,10 +8,8 @@ decreasing loops. Fused token ambiguity remains in the raw regression suite.
 from itertools import product
 from operator import add, eq, floordiv, gt, lt, mul, ne, sub
 
-import pytest
-
 from esolangs.languages.qoibl.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import observed, reject_faults
 from tests.support import workspace_oracle as workspace
 
 _WORKSPACE = workspace.workspace_model("qoibl-v1", "instruction variables input_cursor")
@@ -189,9 +187,7 @@ def check_raw_qoibl():
             super().step()
             self.var = {**self.var, 7: 66}
 
-    for factory in (stalled(_Machine), WrongStore, overread(_Machine)):
-        with pytest.raises(AssertionError):
-            _check(factory, (("store", 7, 65), ("emit", ("at", 7))))
+    reject_faults(_check, _Machine, WrongStore, (("store", 7, 65), ("emit", ("at", 7))))
 
     workspace.check_erasures(
         _WORKSPACE,

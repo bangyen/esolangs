@@ -11,6 +11,9 @@ import pytest
 
 from esolangs.languages.stisp.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, overread
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model("stisp-v1", "expression frames rendered")
 
 
 def _text(term):
@@ -88,6 +91,24 @@ def _view(machine):
     return _decode(machine.head), tuple(frames), machine.rendered
 
 
+def _encode(term):
+    if isinstance(term, str):
+        return term
+    result = ()
+    for part in reversed(term):
+        result = (_encode(part), result)
+    return result
+
+
+def _parts(row):
+    head, frames, rendered = row[0]
+    return (
+        _encode(head),
+        tuple((name, tuple(map(_encode, args))) for name, args in frames),
+        rendered,
+    )
+
+
 def _check(factory, equations, head, frames):
     source = (
         "\n".join(
@@ -103,9 +124,14 @@ def _check(factory, equations, head, frames):
         + _text(head)
         + _frames(frames)
     )
-    assert observed(factory, source, "unused", _view, cap=12) == _model(
-        equations, head, frames
-    ), source
+    workspace.agrees(
+        _model(equations, head, frames),
+        (factory, source, "unused"),
+        (_WORKSPACE, _parts),
+        _view,
+        context=source,
+        cap=12,
+    )
 
 
 def check_raw_stisp():
@@ -156,3 +182,7 @@ def check_raw_stisp():
     ):
         with pytest.raises(AssertionError):
             _check(factory, equations, "A", frames)
+
+    workspace.check_erasures(
+        _WORKSPACE, _check, _Machine, equations, "A", (("pair", ("B",)),)
+    )

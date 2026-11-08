@@ -9,10 +9,8 @@ import ast
 import math
 from itertools import product
 
-import pytest
-
 from esolangs.languages.cvnc.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import observed, reject_faults
 from tests.support import workspace_oracle as workspace
 from tests.support.model_input import token_span
 
@@ -313,9 +311,7 @@ def check_raw_cvnc():
             super().step()
             self.function = tuple("*" if c == "+" else c for c in self.function)
 
-    for factory in (stalled(_Machine), WrongFunction, overread(_Machine)):
-        with pytest.raises(AssertionError):
-            _check(factory, (("d", "u"), ("b", "u"), ("d", "u")))
+    reject_faults(_check, _Machine, WrongFunction, (("d", "u"), ("b", "u"), ("d", "u")))
     workspace.check_erasures(
         _WORKSPACE, _check, _Machine, (("s", "u"), ("c", "i", "n")), "3"
     )

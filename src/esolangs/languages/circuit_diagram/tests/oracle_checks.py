@@ -7,10 +7,8 @@ and event lifetime follow Decisions; arbitrary topology stays in raw tests.
 
 from itertools import product
 
-import pytest
-
 from esolangs.languages.circuit_diagram.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import observed, reject_faults
 
 
 def _source(kind, width):
@@ -118,6 +116,4 @@ def check_raw_circuit_diagram():
                 for value in self.values
             )
 
-    for factory in (stalled(_Machine), WrongBit, overread(_Machine)):
-        with pytest.raises(AssertionError):
-            _check(factory, "a", 1)
+    reject_faults(_check, _Machine, WrongBit, "a", 1)

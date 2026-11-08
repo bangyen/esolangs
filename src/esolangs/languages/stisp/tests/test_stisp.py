@@ -3,6 +3,7 @@
 from itertools import product
 
 from esolangs.languages.stisp.interpreter import _Machine, run
+from esolangs.languages.stisp.tests.oracle_checks import check_raw_stisp
 from esolangs.runtime.io import ScriptedIO
 
 
@@ -13,6 +14,7 @@ def _result(code: str) -> str:
 
 
 def test_the_first_matching_equation_wins() -> None:
+    check_raw_stisp()
     assert _result("x -> f[] = FIRST; A -> f[] = SECOND; A -> f[]") == "FIRST"
 
 

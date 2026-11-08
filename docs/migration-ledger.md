@@ -2673,3 +2673,40 @@ The rebuilt wheel also retains the unchanged installed catalog regression:
 Twelve leaves pass in 58.26s total, maximum 10.78s against separate 60s caps;
 all old golden data is unchanged, including Fargo's eleven ordinary samples.
 This is native regression evidence, not independent semantic model closure.
+
+
+Stisp's independent proper-list hook is now collected, preserving all 257 cases,
+cap12, three old controls and implicit None return. Three schema erasures add
+controls. Complete cons heads, ordered frames/arguments and rendered latch are
+predicted independently; all old ordinary/native traces remain byte-identical.
+Python 3.12.11–final 3.15.0 installed checks retain 180 completions, 36 unmatched
+frame failures, 36 bounded runs and five constructor refusals: 1,620 valid
+boundaries per raw/VM/debug route, peak 113 bits. All captures, cycles, views,
+IO, successful active steps, held histories and independent full-width recounts
+agree. All 257 bounded public calls and 221 terminating/error cases through both
+native entrypoints and unbounded public execution retain their envelopes.
+
+Fixed source-index schemas/lookups are checked independently; two real cache
+corruptions change future behavior while captures stay initially equal. Late
+head/frame freezes, argument-only loss and omissions reject. Constructor
+omissions lose exact 24/72/1-bit peaks. Monotone rendered distinguishes late
+False substitution (one-bit loss), late None (no loss), and always-None schema
+erasure (one-bit loss). Ten writer probes retain dump-before-latch retries and
+partial-prefix duplication without counting a dump as an active command.
+Literal charges 1/57/97/0/416/257 are executed; eleven guarded workers retain
+live cap-zero/cap-one and a real one-character output-limit prefix. The separate
+14-rewrite drain does not change the original cap12 corpus. Improper-cons,
+general unbound grammar and deep independent accounting remain open.
+
+Thirteen rejection loops reuse the exact stalled/wrong/overread cohort, saving
+33 formatted lines. Full ordinary/mutant replays retain 5,295 constructor
+attempts, 45,838 steps, 56,280 observations, 10,394 meter samples, 24,721 IO events
+and all 67 rejection controls, including 39 moved calls. A real correct native
+middle factory fails its expected-assertion context; a tagged RuntimeError
+escapes with committed state intact. Line's first 60s replay timed out after
+1.39GB of diagnostic serialization. Lossless raster-row run lengths preserve
+all fields/caches and roundtrip every unique immutable row tuple; complete
+before/after hooks finish in 0.922/0.946s, including all 84 compiled execution
+calls. No source, case, cap or assertion is dropped. The complete 32-line
+bridge leaves tests/source 115,817/115,819. This bounded accounting scope is
+reviewed; 48 accounting rows and all 117 completion rows remain open.
