@@ -1990,3 +1990,19 @@ per side. This funds Blindfolded's forty permanent lines; final combined tests a
 budget limits are removed. Generator code and size pins stay unchanged;
 Smallfuck is the only accounting implementation changed. These bounded
 accounting scopes are reviewed; language/catalog completion remains open.
+
+Home Row, Hot and HQ9+ retain their 725/446/395 cases, 14/7/9 controls and
+64–300/16/64-command caps. Their independent models check all declared state,
+IO counters, views, source-step timing and retained raw/VM/debugger captures.
+HQ9+ reuses the existing observer, preserving every old trace while adding
+complete snapshot-history checks and saving four test lines.
+
+A frozen 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0: 1,566 cases/13,295 boundaries and 44 guarded native/isolated pairs
+per version. Home Row has 482 completions, 239 constructor failures and four
+bounded runs; Hot has 377 completions, 25 execution failures, 25 constructor
+failures and nineteen bounded runs; HQ9+ has 393 completions and two bounded
+runs. Eleven frozen-written components and one omitted constant cursor fail.
+HQ9+'s cursor is read-only. Observed peaks are 42/352/14 bits, not global
+bounds. Runtime, generators and size pins stay unchanged; these bounded
+accounting scopes are reviewed, while language/catalog completion stays open.

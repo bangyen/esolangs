@@ -49,17 +49,13 @@ def _model(source):
 
 def _agrees(factory, source):
     expected = _model(source)
-
-    views = iter(expected[1])
-    witness = workspace.WorkspaceWitness(_WORKSPACE)
-
-    def state(m):
-        view, _halted, _output, _position, progress = next(views)
-        instruction, accumulator, _source, _memory = view
-        witness.sample(m.workspace_snapshot(), (instruction, accumulator, progress))
-        return (*m.state, m.code, tuple(m.memory))
-
-    assert observed(factory, source, "λ\nunused", state) == expected, source
+    checked = workspace.workspace_view(
+        expected[1],
+        _WORKSPACE,
+        lambda row: (*row[0][:2], row[-1]),
+        lambda m: (*m.state, m.code, tuple(m.memory)),
+    )
+    assert observed(factory, source, "λ\nunused", checked) == expected, source
 
 
 def check_raw_hq9():
