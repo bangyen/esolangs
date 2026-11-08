@@ -5,7 +5,7 @@ import pytest
 import esolangs
 from esolangs.runtime.io import ScriptedIO
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_every_row
+from tests.support.generator_support import assert_every_row, three_input_corpus_size
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -66,13 +66,7 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
 
 def test_three_input_corpus_size(monkeypatch) -> None:
     _check_majority()
-    assert (
-        sum(
-            len(esolangs.generate("Hot", format(value, "08b")).source)
-            for value in range(256)
-        )
-        == 98234
-    )
+    assert three_input_corpus_size("Hot") == 98234
     from esolangs.languages.hot import generator
 
     table = "00010111"

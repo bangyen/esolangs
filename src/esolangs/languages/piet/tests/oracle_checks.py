@@ -11,7 +11,12 @@ from operator import add, floordiv, gt, mod, mul, sub
 
 from esolangs.languages.piet.interpreter import _Machine
 from esolangs.raster import Raster
-from tests.interpreters.oracle_support import observed, reject_faults
+from tests.interpreters.oracle_support import reject_faults
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model(
+    "piet-v1", "position direction chooser stack input_cursor stopped input_reads"
+)
 
 _HEX = (
     ("ffc0c0", "ff0000", "c00000"),
@@ -183,9 +188,14 @@ def _check(factory, rows, stdin="unused"):
     def actual(program, io):
         return factory(program, io, scale=1)
 
-    assert observed(actual, Raster(rows), stdin, _view, cap=32) == _model(
-        rows, stdin
-    ), (rows, stdin)
+    workspace.agrees(
+        _model(rows, stdin),
+        (actual, Raster(rows), stdin),
+        (_WORKSPACE, lambda row: (*row[0][:4], row[-1], row[1], row[0][4])),
+        _view,
+        cap=32,
+        context=(rows, stdin),
+    )
 
 
 def _strip(changes, size=1):
@@ -245,3 +255,7 @@ def check_raw_piet():
             self.state = point, dp, cc, (*stack, 99), done
 
     reject_faults(_check, _Machine, WrongStack, ((_PALETTE[0][0], _PALETTE[0][1]),))
+
+    workspace.check_erasures(
+        _WORKSPACE, _check, _Machine, _strip(((4, 2), (5, 1))), "3 A"
+    )

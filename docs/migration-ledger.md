@@ -3266,3 +3266,40 @@ character is rejected and ten typed codec controls pass. All 951 production
 files stay byte-identical. Tests/source are 115,816/115,818; no case, assertion,
 control, node or cap is removed. 31 accounting rows and all 117 completion rows
 remain open.
+
+
+Piet's existing independent flood-fill/stack model now checks all seven
+workspace components. All 911 cases, cap32, three old controls and None return
+remain; seven erasures add controls. All 22,304 native steps/23,215 captures
+remain byte-identical. Separate numeric, chooser and halt pictures collectively
+write every component; their charges are 9, 7 and 1 bits. Initial black charges
+zero written bits despite eight bits of initial width.
+
+Thirty-six V2 installed leaves pass on Python 3.12.11–final 3.15.0. Raw,
+prepared, VM and debug routes each retain 911 cases/23,215 boundaries, peak67
+bits. All 911 public cases run bounded; 255 independently finite cases also run
+ordinarily through native/public entrypoints. The other 656 remain bounded.
+Independent Port events supply EOF attempts, successful reads and newline flags;
+all RGB cells, source keys, dimensions and explicit scale1 agree. V2 preserves
+byte keys and tuples in mask receipts; V1's encoding failure remains archived.
+Its ordinary-public counter names calls already present in V1.
+
+One hundred twelve actual masks and twenty-eight reductions use separate
+populated witnesses. Sixteen propagating writer refusals and eight public
+routes retain precommit control; eight character ValueError routes instead
+retain the native swallowed-error commit. Character RuntimeError remains plain;
+numeric ValueError retains its ProgramError envelope. Eight provider refusals
+and twenty extra IO traces pass. Nine guarded children cover eight parity pairs
+and an isolated output-limit witness. White/sliding paths, inferred scales,
+huge valid numeric input and broader grid acceptance remain open.
+
+Basicfuck, Hot and CARP share the unchanged size helper, saving fifteen lines
+against the fourteen-line bridge. Their complete owning nodes retain 997
+artifacts, 582 native constructions, 13,188 steps, 13,770 captures and 21,086
+IO calls byte-identically, including constant/majority cases and live controls.
+All 768 size-corpus programs execute all 6,144 input rows. A real source-length
+fault and thirteen graph-codec controls pass; graph sharing and complete typed
+fields remain captured without changing test bands. All 951 production files
+stay byte-identical. Tests/source are 115,815/115,818; no case, assertion,
+control, node or cap is removed. 30 accounting rows and all 117 completion rows
+remain open.

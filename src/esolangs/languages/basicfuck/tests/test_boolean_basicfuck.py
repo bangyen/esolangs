@@ -5,7 +5,7 @@ import pytest
 import esolangs
 from esolangs import run
 from tests.support.event_io import ReadFirstIO, count_steps
-from tests.support.generator_support import assert_every_row
+from tests.support.generator_support import assert_every_row, three_input_corpus_size
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -68,13 +68,7 @@ def test_constant_reads_precede_output_and_preserve_the_next_character() -> None
     ) as corrupted:
         assert evaluate_generated("Basicfuck", table) == "1110"
         assert corrupted.called
-    assert (
-        sum(
-            len(esolangs.generate("Basicfuck", format(v, "08b")).source)
-            for v in range(256)
-        )
-        == 38742
-    )
+    assert three_input_corpus_size("Basicfuck") == 38742
 
 
 @pytest.mark.medium

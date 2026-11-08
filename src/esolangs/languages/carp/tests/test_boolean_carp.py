@@ -6,7 +6,7 @@ import esolangs
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
-from tests.support.generator_support import assert_every_row
+from tests.support.generator_support import assert_every_row, three_input_corpus_size
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -48,7 +48,4 @@ def _check_constants() -> None:
                     assert written.bits <= bound
                     assert io.input_num() == 7
                 assert peak == bound
-    assert (
-        sum(len(esolangs.generate("CARP", f"{v:08b}").source) for v in range(256))
-        == 77033
-    )
+    assert three_input_corpus_size("CARP") == 77033
