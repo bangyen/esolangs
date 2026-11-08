@@ -7,7 +7,7 @@ from esolangs.debugger import make_vm
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import (
     assert_shared_program,
     constant_programs,
@@ -233,9 +233,5 @@ def _check_shared_body_must_be_strictly_shorter(monkeypatch) -> None:
         for row in range(4):
             io = ScriptedIO(f"{row:02b}")
             machine = _Machine(source, io)
-            steps = 0
-            while not machine.halted:
-                machine.step()
-                steps += 1
-                assert steps <= 69 * 2 + 44
+            count_steps(machine, 69 * 2 + 44)
             assert io.getvalue() == table[row]

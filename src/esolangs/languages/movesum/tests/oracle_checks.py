@@ -6,8 +6,21 @@ import random
 import pytest
 
 from esolangs.languages.movesum.interpreter import _Machine
-from tests.interpreters.oracle_support import checker as oracle_checker
+from tests.support import workspace_oracle as workspace
 from tests.support.model_input import token_span
+
+_WORKSPACE = workspace.workspace_model(
+    "movesum-v1", "instruction cells quiet printed input_cursor"
+)
+
+
+def _parts(row):
+    state = row[0][0]
+    return (
+        (-1, frozenset(), 0, False, row[-1])
+        if state is None
+        else (state[0], frozenset(state[1]), *state[2:], row[-1])
+    )
 
 
 def _parse(source):
@@ -128,7 +141,7 @@ def _view(machine):
     return state, machine.ip, tuple(sorted(machine.memory.items()))
 
 
-_agrees = oracle_checker(_model, _view)
+_agrees = workspace.checker(_model, (_WORKSPACE, _parts), _view)
 
 
 def check_raw_movesum():
@@ -246,4 +259,5 @@ def check_raw_movesum():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, "0=1\nmove 0 -1", "")
     return len(results), len(controls)

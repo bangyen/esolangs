@@ -6,7 +6,15 @@ from itertools import product
 import pytest
 
 from esolangs.languages.nandypants.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model(
+    "nandypants-v1", "control first_tape second_tape input_cursor"
+)
+
+
+def _parts(row):
+    return *row[0], row[-1]
 
 
 def _pack(bits):
@@ -100,9 +108,13 @@ def _check(factory, code, stdin):
             frozenset(machine.b_ones),
         )
 
-    assert observed(factory, code, stdin, state, cap=32) == _model(code, stdin), (
-        code,
-        stdin,
+    workspace.agrees(
+        _model(code, stdin),
+        (factory, code, stdin),
+        (_WORKSPACE, _parts),
+        state,
+        cap=32,
+        context=(code, stdin),
     )
 
 
@@ -133,3 +145,5 @@ def check_raw_nandypants():
 
     with pytest.raises(AssertionError):
         _check(LostOutput, "^\\", "")
+
+    workspace.check_erasures(_WORKSPACE, _check, _Machine, "^\\", "A")

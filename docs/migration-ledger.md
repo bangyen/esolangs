@@ -2710,3 +2710,39 @@ before/after hooks finish in 0.922/0.946s, including all 84 compiled execution
 calls. No source, case, cap or assertion is dropped. The complete 32-line
 bridge leaves tests/source 115,817/115,819. This bounded accounting scope is
 reviewed; 48 accounting rows and all 117 completion rows remain open.
+
+
+NOR machine, Movesum and Nandypants now check complete independently predicted
+workspace components in their collected hooks. All 3,176/2,297/1,569 cases,
+64/64/32 caps, 24 original controls and returns remain; thirteen schema erasures
+add controls. Ordinary native traces retain byte-identical 96,255 steps and
+103,238 captures. No model, source case, assertion, node or cap is removed.
+
+Installed Python 3.12.11–final 3.15.0 checks retain 75,810/16,976/10,452 valid
+boundaries per raw/VM/debug route, peaks 232/37/23 bits, and 59 unavailable
+constructor states. Full views, cycles, IO, successful steps, held histories
+and independent component recounts agree. Read-only commands, lexical seeds,
+label maps and Movesum's insertion-ordered memory keys are checked separately.
+All 7,042 bounded public cases remain; finite ordinary/native entrypoints and
+34 selected guarded workers retain their envelopes and live cap-zero/cap-one
+controls. Separate NOR huge-number probes add four guarded pairs.
+
+Populated freezes, omissions and literal anchors distinguish state errors from
+lost charges. Nandypants additionally retains 48 complete masked trajectories,
+including actual schema omissions and rejected late schema switches. Its twelve
+writer probes distinguish preadvance byte output from postadvance final flush.
+NOR's twenty writer probes retry before its done latch; Movesum's ten retain
+command/quiet/printed commits and advance past a failed print. Separate
+5,001-digit probes preserve default/640 formatting failures and disabled-cap
+success: NOR retains its queued value for retry; Movesum commits before format.
+Physical writer refusal uses an explicit independent formatter where needed.
+Broader numeric/source grammar and huge Nandypants labels remain open.
+
+Nine existing step loops reuse count_steps, saving 42 formatted lines; complete
+bridges cost 39. Full hooks retain 1,556 public and 608 direct generator calls,
+3,033 native instances, 129,155 steps, 135,221 captures, 80,528 meter samples and
+32,087 IO events with byte-identical traces. Every inert helper is rejected;
+tagged exceptions escape after a real native step. Tests/source are
+115,814/115,819. Probe-format, bookkeeping and import-order failures are
+archived. These bounded accounting scopes are reviewed; 45 accounting rows
+and all 117 completion rows remain open.

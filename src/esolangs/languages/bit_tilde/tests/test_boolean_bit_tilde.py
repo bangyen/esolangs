@@ -9,7 +9,7 @@ from esolangs.languages.bit_tilde import generator as boolean
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import (
     assert_parity_at_most_doubles,
     evaluate_generated,
@@ -50,12 +50,7 @@ def test_every_constant_row_within_written_state_bound(bit: str) -> None:
                 io = ReadFirstIO(stdin + "Q", expected=n)
                 machine = _Machine("".join(program.split()), io)
                 written = WrittenState(machine.workspace_snapshot())
-                steps = 0
-                while not machine.halted:
-                    machine.step()
-                    written.sample(machine.workspace_snapshot())
-                    steps += 1
-                    assert steps <= commands
+                steps = count_steps(machine, commands, written=written)
                 assert steps == commands
                 assert written.bits == workspace
                 assert io.getvalue() == bit

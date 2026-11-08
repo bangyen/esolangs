@@ -4,7 +4,7 @@ import pytest
 
 import esolangs
 from esolangs import run
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import assert_every_row
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
@@ -49,12 +49,7 @@ def test_constant_reads_precede_output_and_preserve_the_next_character() -> None
                     io = ReadFirstIO(stdin + "Q", expected=n)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps <= commands
+                    steps = count_steps(machine, commands, written=written)
                     assert steps == commands
                     assert written.bits == workspace
                     assert io.getvalue() == bit

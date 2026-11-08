@@ -10,7 +10,7 @@ from esolangs.languages.taglate.wrapping import _taglate
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import assert_constant_output, constant_programs
 from tests.support.witness_tables import row_bits, witnesses
 
@@ -258,13 +258,8 @@ def _check_resource_layouts() -> None:
             io = ScriptedIO(f"{row:0{n}b}!")
             machine = _Machine(program.splitlines(), io)
             written = WrittenState(machine.workspace_snapshot())
-            steps = 0
             bound = execution(n, program)
-            while not machine.halted:
-                machine.step()
-                written.sample(machine.workspace_snapshot())
-                steps += 1
-                assert steps <= bound
+            steps = count_steps(machine, bound, written=written)
             assert io.getvalue() == table[row]
             assert io.reads == n
             assert io.input_char() == ord("!")

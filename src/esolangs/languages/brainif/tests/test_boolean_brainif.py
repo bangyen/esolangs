@@ -15,7 +15,7 @@ from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
 from tests.support.evaluation import _evaluate
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import (
     assert_parity_at_most_doubles,
     evaluate_generated,
@@ -310,12 +310,7 @@ def _check_or_zero_entries() -> None:
             io = ReadFirstIO(f"{row:0{n}b}Q", expected=n)
             machine = _Machine(program.split("\n"), io)
             written = WrittenState(machine.workspace_snapshot())
-            steps = 0
-            while not machine.halted:
-                machine.step()
-                written.sample(machine.workspace_snapshot())
-                steps += 1
-                assert steps <= 4 * n + 50
+            count_steps(machine, 4 * n + 50, written=written)
             assert io.getvalue() == table[row]
             assert io.past_end == 0
             assert io.input_char() == ord("Q")

@@ -7,7 +7,15 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.nor_machine.interpreter import _Machine
-from tests.interpreters.oracle_support import checker as oracle_checker
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model(
+    "nor-machine-v1", "instruction queue stopped input_cursor"
+)
+
+
+def _parts(row):
+    return *row[0], row[1], row[-1]
 
 
 def _integers(text):
@@ -75,8 +83,10 @@ def _model(source, stdin):
     return error, trace
 
 
-_agrees = oracle_checker(
-    _model, lambda m: (m.ind, None if m.queue is None else tuple(m.queue))
+_agrees = workspace.checker(
+    _model,
+    (_WORKSPACE, _parts),
+    lambda m: (m.ind, None if m.queue is None else tuple(m.queue)),
 )
 
 
@@ -161,4 +171,5 @@ def check_raw_nor_machine():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, "V", "5")
     return len(results), len(controls)

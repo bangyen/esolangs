@@ -26,7 +26,7 @@ from esolangs.languages.six_five.generator import (
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _run_from, _runner
 from tests.generators.sample_tables import five_input_sample
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import assert_constant_output, constant_programs
 from tests.support.witness_tables import dense as _dense
 from tests.support.witness_tables import row_bits, witnesses
@@ -397,11 +397,7 @@ def _check_and_label_boundary() -> None:
         ):
             stream = ScriptedIO(bits + "Q")
             machine = _Machine(source, stream)
-            commands = 0
-            while not machine.halted:
-                machine.step()
-                commands += 1
-                assert commands <= len(source)
+            count_steps(machine, len(source))
             assert stream.getvalue() == str(int("0" not in bits))
             assert stream.reads == n
             assert stream.input_char() == ord("Q")
