@@ -7,7 +7,6 @@ from functools import cache
 import pytest
 
 from esolangs.languages.hq9.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
 from tests.support import workspace_oracle as workspace
 
 _WORKSPACE = workspace.workspace_model("hq9-v1", "instruction accumulator input_cursor")
@@ -48,14 +47,13 @@ def _model(source):
 
 
 def _agrees(factory, source):
-    expected = _model(source)
-    checked = workspace.workspace_view(
-        expected[1],
-        _WORKSPACE,
-        lambda row: (*row[0][:2], row[-1]),
+    workspace.agrees(
+        _model(source),
+        (factory, source, "λ\nunused"),
+        (_WORKSPACE, lambda row: (*row[0][:2], row[-1])),
         lambda m: (*m.state, m.code, tuple(m.memory)),
+        context=source,
     )
-    assert observed(factory, source, "λ\nunused", checked) == expected, source
 
 
 def check_raw_hq9():

@@ -7,12 +7,11 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.pilas.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.support.workspace_oracle import agrees as workspace_agrees
 from tests.support.workspace_oracle import (
     charged_bits,
     missing_workspace,
     workspace_model,
-    workspace_view,
 )
 
 _WORKSPACE = workspace_model(
@@ -97,16 +96,12 @@ def _model(source, stdin):
 
 
 def _agrees(factory, source, stdin):
-    expected = _model(source, stdin)
-    checked = workspace_view(
-        expected[1],
-        _WORKSPACE,
-        lambda row: (*row[0][:3], row[-1]),
+    return workspace_agrees(
+        _model(source, stdin),
+        (factory, source, stdin),
+        (_WORKSPACE, lambda row: (*row[0][:3], row[-1])),
         lambda m: (*m.state, m.ip),
     )
-
-    assert observed(factory, source, stdin, checked) == expected, (source, stdin)
-    return expected
 
 
 def check_raw_pilas():

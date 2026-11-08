@@ -9,7 +9,6 @@ import pytest
 from esolangs.languages.bitwise_cyclic_tag.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
 from esolangs.runtime.io import ScriptedIO
-from tests.interpreters.oracle_support import observed
 from tests.support import workspace_oracle as workspace
 
 _WORKSPACE = WorkspaceModel(
@@ -69,15 +68,14 @@ def _parts(row):
 
 
 def _agrees(factory, source, *, cap=64):
-    expected = _model(source, cap=cap)
-    checked = workspace.workspace_view(
-        expected[1],
-        _WORKSPACE,
-        _parts,
+    return workspace.agrees(
+        _model(source, cap=cap),
+        (factory, source, "unused λ"),
+        (_WORKSPACE, _parts),
         lambda m: (m.head, m.read, m.live, m.answer, m.printed, tuple(m.memory), m.ip),
+        cap=cap,
+        context=source,
     )
-    assert observed(factory, source, "unused λ", checked, cap=cap) == expected, source
-    return expected
 
 
 def bitwise_cyclic_tag_cases():

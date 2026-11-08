@@ -8,8 +8,8 @@ import pytest
 
 from esolangs.languages.creativescript_v2.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
-from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support.workspace_oracle import agrees as workspace_agrees
+from tests.support.workspace_oracle import missing_workspace
 
 _WORKSPACE = WorkspaceModel(
     "creativescript-v2-v1", ("variables", "instruction", "input_cursor")
@@ -130,15 +130,12 @@ def _model(source, stdin):
 
 
 def _agrees(factory, source, stdin):
-    expected = _model(source, stdin)
-    checked = workspace_view(
-        expected[1],
-        _WORKSPACE,
-        lambda row: (row[0][0], row[0][1], row[-1]),
+    return workspace_agrees(
+        _model(source, stdin),
+        (factory, source, stdin),
+        (_WORKSPACE, lambda row: (row[0][0], row[0][1], row[-1])),
         lambda m: (m.state, m.cursor, tuple(m.memory), m.ip),
     )
-    assert observed(factory, source, stdin, checked) == expected, (source, stdin)
-    return expected
 
 
 def check_raw_creativescript_v2():

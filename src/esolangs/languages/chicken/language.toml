@@ -70,7 +70,7 @@ construction = "esolangs.languages.chicken.generator:chicken"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
-expression = "3T/2 + 80n + 300"
+expression = "3T/2 + 80n + 301"
 exact = false
 arities = [1, 2, 3, 5]
 first = 1

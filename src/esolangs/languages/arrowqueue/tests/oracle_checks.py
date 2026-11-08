@@ -6,7 +6,6 @@ import random
 import pytest
 
 from esolangs.languages.arrowqueue.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
 from tests.support import workspace_oracle as workspace
 
 _WORKSPACE = workspace.workspace_model(
@@ -72,15 +71,13 @@ def _model(lines):
 
 
 def _agrees(factory, lines):
-    expected = _model(lines)
-    checked = workspace.workspace_view(
-        expected[1],
-        _WORKSPACE,
-        lambda row: (*row[0][:6], row[-1]),
+    return workspace.agrees(
+        _model(lines),
+        (factory, lines, "unused λ"),
+        (_WORKSPACE, lambda row: (*row[0][:6], row[-1])),
         lambda m: (*m.state, m.dumped, m.ip, tuple(m.stack)),
+        context=lines,
     )
-    assert observed(factory, lines, "unused λ", checked) == expected, lines
-    return expected
 
 
 def check_raw_arrowqueue():

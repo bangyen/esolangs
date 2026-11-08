@@ -175,15 +175,13 @@ def _view(machine):
 
 def _check(factory, startup, body, stdin="unused", flow="once"):
     source, ops, places = _assemble(startup, body, flow)
-    expected = _model(ops, places, stdin)
-    checked = workspace.workspace_view(
-        expected[1], _WORKSPACE, lambda row: (row[0][0], row[0][1], row[-1]), _view
-    )
-    assert observed(factory, source, stdin, checked, cap=64) == expected, (
-        startup,
-        body,
-        stdin,
-        flow,
+    workspace.agrees(
+        _model(ops, places, stdin),
+        (factory, source, stdin),
+        (_WORKSPACE, lambda row: (row[0][0], row[0][1], row[-1])),
+        _view,
+        cap=64,
+        context=(startup, body, stdin, flow),
     )
 
 

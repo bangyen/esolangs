@@ -7,7 +7,6 @@ import re
 import pytest
 
 from esolangs.languages.carp.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
 from tests.support import workspace_oracle as workspace
 
 _WORKSPACE = workspace.workspace_model("carp-v1", "instruction registers input_cursor")
@@ -97,15 +96,12 @@ def _model(source, stdin):
 
 
 def _agrees(factory, source, stdin):
-    expected = _model(source, stdin)
-    checked = workspace.workspace_view(
-        expected[1],
-        _WORKSPACE,
-        lambda row: (row[0][0], row[0][1], row[-1]),
+    return workspace.agrees(
+        _model(source, stdin),
+        (factory, source, stdin),
+        (_WORKSPACE, lambda row: (row[0][0], row[0][1], row[-1])),
         lambda m: (*m.state, tuple(m.registers)),
     )
-    assert observed(factory, source, stdin, checked) == expected, (source, stdin)
-    return expected
 
 
 def check_raw_carp():

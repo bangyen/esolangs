@@ -240,7 +240,7 @@ def _parse(code: str) -> list[int]:
 
 
 _WORKSPACE_MODEL = WorkspaceModel(
-    "chicken-v1", ("instruction", "cells", "input_cursor")
+    "chicken-v2", ("instruction", "cells", "stopped", "input_cursor")
 )
 
 
@@ -277,6 +277,7 @@ class _Machine:
         return _WORKSPACE_MODEL.capture(
             instruction=self.pointer,
             cells=tuple(() if value is SELF else value for value in self.cells),
+            stopped=self.done,
             input_cursor=self.io.progress(),
         )
 

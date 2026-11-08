@@ -10,7 +10,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.grapheme.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import overread, stalled
 from tests.support import workspace_oracle as workspace
 
 _WORKSPACE = workspace.workspace_model(
@@ -230,21 +230,15 @@ def _check(factory, code, stdin="unused", dialect="between_letters"):
             machine._input_reads,
         )
 
-    expected = (
+    workspace.agrees(
         _model(normalized, stdin, dialect)
         if all("A" <= c <= "Z" for c in normalized)
-        else ("syntax", [(None, False, "", 0, 0)])
-    )
-    checked = workspace.workspace_view(
-        expected[1],
-        _WORKSPACE,
-        lambda row: (row[0][0], row[0][1], row[0][2], row[-1], row[0][3]),
+        else ("syntax", [(None, False, "", 0, 0)]),
+        (build, code, stdin),
+        (_WORKSPACE, lambda row: (row[0][0], row[0][1], row[0][2], row[-1], row[0][3])),
         state,
-    )
-    assert observed(build, code, stdin, checked, cap=64) == expected, (
-        code,
-        stdin,
-        dialect,
+        cap=64,
+        context=(code, stdin, dialect),
     )
 
 

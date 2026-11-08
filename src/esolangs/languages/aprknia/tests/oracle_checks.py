@@ -7,7 +7,6 @@ from fractions import Fraction
 import pytest
 
 from esolangs.languages.aprknia.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
 from tests.support import workspace_oracle as workspace
 
 _WORKSPACE = workspace.workspace_model("aprknia-v1", "instruction stack input_cursor")
@@ -90,18 +89,13 @@ def _model(source, stdin, cap=16):
 
 
 def _agrees(factory, source, stdin, cap=16):
-    expected = _model(source, stdin, cap)
-    checked = workspace.workspace_view(
-        expected[1],
-        _WORKSPACE,
-        lambda row: (row[0][0], row[0][1], row[-1]),
+    return workspace.agrees(
+        _model(source, stdin, cap),
+        (factory, source, stdin),
+        (_WORKSPACE, lambda row: (row[0][0], row[0][1], row[-1])),
         lambda m: (*m.state, tuple(m.stack)),
+        cap=cap,
     )
-    assert observed(factory, source, stdin, checked, cap=cap) == expected, (
-        source,
-        stdin,
-    )
-    return expected
 
 
 def check_raw_aprknia():

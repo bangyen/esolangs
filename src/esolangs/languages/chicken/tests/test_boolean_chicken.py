@@ -54,7 +54,7 @@ def _check_constants() -> None:
                         assert steps <= 1 + int(bit)
                     assert steps == 1 + int(bit)
                     assert io.getvalue() == bit
-                    assert written.bits == 8 * n + 4 + 4 * int(bit)
+                    assert written.bits == 8 * n + 5 + 4 * int(bit)
                     assert io.past_end == 0
     assert (
         sum(len(esolangs.generate("Chicken", f"{v:08b}").source) for v in range(256))

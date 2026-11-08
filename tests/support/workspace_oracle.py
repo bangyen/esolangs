@@ -5,6 +5,7 @@ from fractions import Fraction
 
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from scripts.benchmark import WrittenState
+from tests.interpreters.oracle_support import observed
 
 
 class WorkspaceOracle:
@@ -140,3 +141,13 @@ def workspace_view(trace, model, parts, view):
 def workspace_model(name, components):
     """Declare ordered component names separated by spaces."""
     return WorkspaceModel(name, tuple(components.split()))
+
+
+def agrees(expected, execution, workspace, state, *, context=None, **options):
+    factory, code, stdin = execution
+    model, parts = workspace
+    checked = workspace_view(expected[1], model, parts, state)
+    assert observed(factory, code, stdin, checked, **options) == expected, (
+        (code, stdin) if context is None else context
+    )
+    return expected

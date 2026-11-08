@@ -6,9 +6,8 @@ import random
 import pytest
 
 from esolangs.languages.clockwise.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
 from tests.support import workspace_oracle
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support.workspace_oracle import missing_workspace
 
 _WORKSPACE = workspace_oracle.workspace_model(
     "clockwise-v1",
@@ -88,15 +87,12 @@ def _model(lines, stdin):
 
 
 def _agrees(factory, lines, stdin):
-    expected = _model(lines, stdin)
-    checked = workspace_view(
-        expected[1],
-        _WORKSPACE,
-        lambda row: (*row[0][:6], row[-1]),
+    return workspace_oracle.agrees(
+        _model(lines, stdin),
+        (factory, lines, stdin),
+        (_WORKSPACE, lambda row: (*row[0][:6], row[-1])),
         lambda m: (*m.state, tuple(m.memory), m.ip),
     )
-    assert observed(factory, lines, stdin, checked) == expected, (lines, stdin)
-    return expected
 
 
 def _ring(body):

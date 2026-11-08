@@ -8,12 +8,8 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.three_x.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import (
-    missing_workspace,
-    workspace_model,
-    workspace_view,
-)
+from tests.support.workspace_oracle import agrees as workspace_agrees
+from tests.support.workspace_oracle import missing_workspace, workspace_model
 
 _WORKSPACE = workspace_model(
     "three-x-v1", "instruction operands loop_returns variables input_cursor"
@@ -144,15 +140,12 @@ def _model(source, stdin):
 
 
 def _agrees(factory, source, stdin):
-    expected = _model(source, stdin)
-    checked = workspace_view(
-        expected[1],
-        _WORKSPACE,
-        lambda row: (*row[0][:3], frozenset(row[0][3]), row[-1]),
+    return workspace_agrees(
+        _model(source, stdin),
+        (factory, source, stdin),
+        (_WORKSPACE, lambda row: (*row[0][:3], frozenset(row[0][3]), row[-1])),
         lambda m: (*m.state, tuple(sorted(m.variables.items())), m.ip),
     )
-    assert observed(factory, source, stdin, checked) == expected, (source, stdin)
-    return expected
 
 
 def check_raw_three_x():

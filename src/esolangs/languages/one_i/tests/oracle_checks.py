@@ -12,11 +12,8 @@ import pytest
 
 from esolangs.languages.one_i.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, overread, stalled
-from tests.support.workspace_oracle import (
-    missing_workspace,
-    workspace_model,
-    workspace_view,
-)
+from tests.support.workspace_oracle import agrees as workspace_agrees
+from tests.support.workspace_oracle import missing_workspace, workspace_model
 
 _ZERO, _I = (Fraction(0), Fraction(0)), (Fraction(0), Fraction(1))
 _WORKSPACE = workspace_model("one-i-v2", "frames values input_cursor")
@@ -207,18 +204,20 @@ def _view(machine):
 
 def _check(factory, code, stdin="unused"):
     assert all(c.isspace() or c in "ic+*/^><%:()$ABpo?[]" for c in code)
-    expected = _model(code, stdin)
-    checked = workspace_view(
-        expected[1],
-        _WORKSPACE,
-        lambda row: (
-            tuple((start, nth) for start, _, nth in row[0][0]),
-            row[0][1],
-            row[-1],
+    workspace_agrees(
+        _model(code, stdin),
+        (factory, code, stdin),
+        (
+            _WORKSPACE,
+            lambda row: (
+                tuple(((start, nth) for start, _, nth in row[0][0])),
+                row[0][1],
+                row[-1],
+            ),
         ),
         _view,
+        cap=64,
     )
-    assert observed(factory, code, stdin, checked, cap=64) == expected, (code, stdin)
 
 
 def check_raw_one_i():

@@ -6,12 +6,8 @@ import random
 import pytest
 
 from esolangs.languages.slashes.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import (
-    missing_workspace,
-    workspace_model,
-    workspace_view,
-)
+from tests.support.workspace_oracle import agrees as workspace_agrees
+from tests.support.workspace_oracle import missing_workspace, workspace_model
 
 _WORKSPACE = workspace_model("slashes-v1", "source pattern replacement input_cursor")
 
@@ -72,15 +68,13 @@ def _model(code):
 
 
 def _agrees(factory, source):
-    expected = _model(source)
-    checked = workspace_view(
-        expected[1],
-        _WORKSPACE,
-        lambda row: (row[0][0], *(row[0][1] or (None, "")), row[-1]),
+    return workspace_agrees(
+        _model(source),
+        (factory, source, "λ\nunused"),
+        (_WORKSPACE, lambda row: (row[0][0], *(row[0][1] or (None, "")), row[-1])),
         lambda m: (*m.state, tuple(m.memory), m.ip),
+        context=source,
     )
-    assert observed(factory, source, "λ\nunused", checked) == expected, source
-    return expected
 
 
 def check_raw_slashes():

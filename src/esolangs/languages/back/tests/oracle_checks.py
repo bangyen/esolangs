@@ -6,9 +6,8 @@ import random
 import pytest
 
 from esolangs.languages.back.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
 from tests.support import workspace_oracle
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support.workspace_oracle import missing_workspace
 
 _WORKSPACE = workspace_oracle.workspace_model(
     "back-v2",
@@ -67,15 +66,13 @@ def _model(lines):
 
 
 def _agrees(factory, lines):
-    expected = _model(lines)
-    checked = workspace_view(
-        expected[1],
-        _WORKSPACE,
-        lambda row: (*row[0][:8], row[-1]),
+    return workspace_oracle.agrees(
+        _model(lines),
+        (factory, lines, "unused λ"),
+        (_WORKSPACE, lambda row: (*row[0][:8], row[-1])),
         lambda m: (*m.state, m.dumped, tuple(m.memory), m.ip),
+        context=lines,
     )
-    assert observed(factory, lines, "unused λ", checked) == expected, lines
-    return expected
 
 
 def check_raw_back():

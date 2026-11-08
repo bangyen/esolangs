@@ -6,7 +6,6 @@ import random
 import pytest
 
 from esolangs.languages.bit_tilde.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
 from tests.support import workspace_oracle as workspace
 
 _WORKSPACE = workspace.workspace_model(
@@ -76,18 +75,13 @@ def _model(source, stdin, cap=64):
 
 
 def _agrees(factory, source, stdin, cap=64):
-    expected = _model(source, stdin, cap)
-    checked = workspace.workspace_view(
-        expected[1],
-        _WORKSPACE,
-        lambda row: (row[0][2], row[0][1], row[0][0], row[-1]),
+    return workspace.agrees(
+        _model(source, stdin, cap),
+        (factory, source, stdin),
+        (_WORKSPACE, lambda row: (row[0][2], row[0][1], row[0][0], row[-1])),
         lambda m: (*m.state, tuple(m.memory)),
+        cap=cap,
     )
-    assert observed(factory, source, stdin, checked, cap=cap) == expected, (
-        source,
-        stdin,
-    )
-    return expected
 
 
 def corpus():

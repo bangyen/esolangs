@@ -3,8 +3,12 @@
 from itertools import product
 from operator import add, eq, mul, sub
 
+import pytest
+
 from esolangs.languages.chicken.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceModel
 from esolangs.runtime.io import ScriptedIO
+from tests.support.workspace_oracle import WorkspaceWitness, missing_workspace
 
 _OPERATIONS = {2: add, 3: sub, 4: mul, 5: eq}
 
@@ -42,6 +46,9 @@ def check_raw_chicken():
     _output_case((11, 12, 8, 1, 0, 11, 10, 17, 3, 8), "", "chicken")
     _output_case((11, 15, 7, 10), "", "chicken")
     _output_case((12, 6, 0, 10, 2), "", "12")
+    _latch_witness(_Machine)
+    with pytest.raises(AssertionError):
+        _latch_witness(missing_workspace(_Machine, "stopped"))
 
 
 def _output_case(counts, stdin, expected):
@@ -55,3 +62,31 @@ def _output_case(counts, stdin, expected):
     assert machine.halted, counts
     assert io.position() == len(stdin)
     assert io.getvalue() == expected, (counts, stdin)
+
+
+def _latch_witness(factory):
+    io = ScriptedIO()
+    machine = factory("chicken", io)
+    model = WorkspaceModel(
+        "chicken-v2", ("instruction", "cells", "stopped", "input_cursor")
+    )
+    witness = WorkspaceWitness(model)
+    cells = ((), "", 1, 0)
+    final = (4, cells, True, "chicken")
+    rows = [
+        (2, cells, False, ""),
+        (3, (*cells, "chicken"), False, ""),
+        final,
+        *[final] * 3,
+    ]
+    for index, (pointer, expected_cells, stopped, output) in enumerate(rows):
+        witness.sample(
+            machine.workspace_snapshot(), (pointer, expected_cells, stopped, 0)
+        )
+        assert (machine.ip, machine.halted, io.getvalue()) == (pointer, stopped, output)
+        assert (io.reads, io.past_end, io.position(), io.progress()) == (1, 0, 0, 0)
+        if index + 1 < len(rows):
+            machine.step()
+    witness.finish()
+    assert witness.expected.written[2]
+    assert witness.measured.bits == witness.expected.bits == 62

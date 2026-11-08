@@ -9,8 +9,8 @@ import pytest
 
 from esolangs.languages.taglate.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
-from tests.interpreters.oracle_support import observed
-from tests.support.workspace_oracle import missing_workspace, workspace_view
+from tests.support.workspace_oracle import agrees as workspace_agrees
+from tests.support.workspace_oracle import missing_workspace
 
 _WORKSPACE = WorkspaceModel("taglate-v1", ("queue", "instruction", "input_cursor"))
 
@@ -90,16 +90,13 @@ def _model(seed, tokens, stdin):
 def _check(factory, seed, tokens, stdin):
     expected = _model(seed, tokens, stdin)
     code = [seed, "g?qq".join(tokens)]
-    checked = workspace_view(
-        expected[1],
-        _WORKSPACE,
-        lambda row: (*row[0], row[-1]),
+    workspace_agrees(
+        expected,
+        (factory, code, stdin),
+        (_WORKSPACE, lambda row: (*row[0], row[-1])),
         lambda m: (m.queue, m.ind),
-    )
-    assert observed(factory, code, stdin, checked, cap=16) == expected, (
-        seed,
-        tokens,
-        stdin,
+        cap=16,
+        context=(seed, tokens, stdin),
     )
 
 

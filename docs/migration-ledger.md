@@ -2026,3 +2026,28 @@ Fackward has 388/7/3/1. Fackward's exhausted reading swap halts normally with
 an EOF attempt; explicit halt need not read. Observed peaks are 110/41/157
 bits, not global bounds. Runtime, generators and size pins stay unchanged;
 these bounded accounting scopes are reviewed. Broader completion stays open.
+
+Chicken-v2 counts its existing halt latch. After nonempty `chicken` halts,
+resetting only `done` preserves the old capture/cycle key but makes the next
+step print `0`. The conservative workspace bound rises by one bit; constant
+charges become 8n+5/8n+9. All 102 original families retain identical native
+traces across 586 boundaries. Forty templates retain bytes; 496 generated
+programs retain outputs, traces and IO, with exactly one added charged bit.
+All eight size-baseline tables/76 rows pass. All 256 three-input tables execute
+2,048 rows correctly and retain their 305,139-character total; four-input
+parity remains 1,678 characters. Declared resource witnesses pass at n=1/2/3/5.
+
+The frozen 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0: 496 generated programs/10,404 raw boundaries, twelve independent
+raw/VM/debugger literal boundaries and fourteen guarded native/isolated pairs
+per version. Halt-before-output failure, bounded execution and constructor
+observations remain distinct. Two populated latch faults fail; the nonempty
+literal charges 62 bits. The generated corpus peaks at 344 bits, not a global
+bound. General independent Chicken accounting and broader completion stay open.
+
+Shared observer reuse in 25 oracles saves 85 test lines. Expanded module ASTs,
+import bindings, contexts and returns agree; every original cohort executes
+before/after: 35,151 observed calls, 260,527 returned boundaries, 257,031
+workspace samples and 293 live assertion controls per side. No cases,
+assertions or caps are removed. This funds Chicken's 35 test lines and one
+source line; tests remain 115,636 lines against 115,692 source lines.

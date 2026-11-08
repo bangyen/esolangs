@@ -5,7 +5,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.circlefuck.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, stalled
+from tests.interpreters.oracle_support import stalled
 from tests.support import workspace_oracle as workspace
 
 _WORKSPACE = workspace.workspace_model(
@@ -73,15 +73,13 @@ def _model(initial, stdin):
 def _check(factory, initial, stdin):
     expected = _model(initial, stdin)
     source = "".join(f"\\x{byte:02x}" for byte in initial)
-    checked = workspace.workspace_view(
-        expected[1],
-        _WORKSPACE,
-        lambda row: (row[0][2], row[0][0], row[0][1], row[-1], row[0][3]),
+    workspace.agrees(
+        expected,
+        (factory, source, stdin),
+        (_WORKSPACE, lambda row: (row[0][2], row[0][0], row[0][1], row[-1], row[0][3])),
         lambda vm: vm.state,
-    )
-    assert observed(factory, source, stdin, checked, cap=24) == expected, (
-        initial,
-        stdin,
+        cap=24,
+        context=(initial, stdin),
     )
 
 

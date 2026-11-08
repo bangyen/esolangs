@@ -15,7 +15,7 @@ Size:
     O(T+n^2) characters for m essential inputs and T=2**m rows: eight per
     stored one-line, one per blank, plus fewer than T/2 alignment lines.
     n=4 parity: 1,678 chars. Constants: 1/24 chars, 1/2 commands and
-    8n+4/8n+8 written bits for zero/one.
+    8n+5/8n+9 written bits for zero/one, including the halt latch.
 
 Decisions:
     * Rows are the cheaper of the two polarities, inverted only past the 112
