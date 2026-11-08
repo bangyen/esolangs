@@ -6,7 +6,7 @@ import esolangs
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
-from tests.support.generator_support import assert_native_rows
+from tests.support.generator_support import assert_native_rows, three_input_corpus_size
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -51,10 +51,4 @@ def _check_constants() -> None:
                     assert io.getvalue() == bit
                     assert (machine.state.remaining, io.past_end) == (0, 0)
                     assert io.input_char() == ord("Q")
-    assert (
-        sum(
-            len(esolangs.generate("Monotonic Boolfuck", f"{v:08b}").source)
-            for v in range(256)
-        )
-        == 36526
-    )
+    assert three_input_corpus_size("Monotonic Boolfuck") == 36526

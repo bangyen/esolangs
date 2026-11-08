@@ -3303,3 +3303,37 @@ fields remain captured without changing test bands. All 951 production files
 stay byte-identical. Tests/source are 115,815/115,818; no case, assertion,
 control, node or cap is removed. 30 accounting rows and all 117 completion rows
 remain open.
+
+
+SendStuff's unchanged eager-message model now reconstructs canonical lazy
+frames from independent history and graph, including singleton CountUp/Down
+steps, fanout cursors and residual ancestors. All 263 normal/five syntax cases,
+caps48/64, three old controls and None return remain; two workspace erasures
+add controls. All 1,750 steps/2,013 captures stay byte-identical. The input2
+witness writes both components, charging 7+1 bits.
+
+Thirty-six installed leaves pass on Python 3.12.11–final 3.15.0. Raw, prepared,
+VM and debug retain 263 cases/2,013 boundaries each, peak471 bits. All 263 run
+publicly bounded; 262 independently finite cases also run ordinarily through
+native/public entrypoints. The growing Add cycle remains bounded. Thirty-two
+actual masks, eight reduced schemas and eight constructor-None trajectories
+retain captures, cycles, IO and meter histories.
+
+Thirty-two physical writer trajectories and sixteen public routes retain
+postcommit refusal state, including fanout retry printing13 after refused12.
+Eight provider refusals, eight token-error/EOF continuations, four repeated-EOF
+routes and two readonly-program corruptions pass. Thirteen guarded children
+cover twelve bounded parity pairs and an isolated output-limit witness.
+Macros, extended syntax, huge numeric host policies and unbounded growth
+remain outside this independent cohort.
+
+Ten size assertions reuse the unchanged helper, saving fifty-four lines
+against the fifty-two-line bridge. Their complete owning nodes retain 3,936
+artifacts, 821 instantiations, 4,974 native constructions, 150,080 steps,
+155,054 captures and 66,447 IO calls byte-identically. Raw callback-code
+sidecars also match. All 2,560 measured programs execute all 20,480 input rows,
+including template filling; all ten local character-count pins remain.
+A real extra-character fault and forty-two complete graph-codec controls pass.
+All 951 production files stay byte-identical. Tests/source are 115,813/115,818;
+no case, assertion, control, node or cap is removed. 29 accounting rows and
+all 117 completion rows remain open.

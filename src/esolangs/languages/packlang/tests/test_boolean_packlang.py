@@ -17,6 +17,7 @@ from esolangs.languages.packlang.wrapping import _packlang
 from esolangs.runtime.io import ScriptedIO
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import three_input_corpus_size
 
 
 class TestPacklangPaintedArray:
@@ -228,13 +229,7 @@ def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
                         assert io.getvalue() == bit
                         assert steps == n + 2
                         assert io.input_char() == ord("Q")
-    assert (
-        sum(
-            len(esolangs.generate("Packlang", format(v, "08b")).source)
-            for v in range(256)
-        )
-        == 77662
-    )
+    assert three_input_corpus_size("Packlang") == 77662
 
 
 def _check_refolding_leaves_foreign_or_incomplete_bodies_alone() -> None:

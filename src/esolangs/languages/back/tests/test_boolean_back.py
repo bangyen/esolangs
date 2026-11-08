@@ -17,6 +17,7 @@ from scripts.benchmark import WrittenState
 from tests.proofs.deep.execution import run_to_answer
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import count_steps
+from tests.support.generator_support import three_input_corpus_size
 from tests.support.witness_tables import _drawing, row_bits, witnesses
 
 
@@ -201,13 +202,7 @@ class TestParameterizedBack:
                                 + (3 * n + int(bit)).bit_length()
                                 + n.bit_length()
                             )
-        assert (
-            sum(
-                len(esolangs.generate("Back", format(v, "08b")).source)
-                for v in range(256)
-            )
-            == 61542
-        )
+        assert three_input_corpus_size("Back") == 61542
 
     def test_tree_uses_tape_decision_nodes(self) -> None:
         """The reflected decision tree retains its skip and both mirrors."""

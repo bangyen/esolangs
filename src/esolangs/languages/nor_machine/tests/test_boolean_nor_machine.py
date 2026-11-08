@@ -7,7 +7,7 @@ from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import count_steps
-from tests.support.generator_support import assert_every_row
+from tests.support.generator_support import assert_every_row, three_input_corpus_size
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(1, 2**2**n - 1)]
@@ -59,13 +59,7 @@ def test_constants_consume_the_queue_then_print_once() -> None:
                     assert io.getvalue() == bit
                     assert steps == n + 4 + 5 * int(bit)
                     assert written.bits <= workspace(n, "".join(program.split()))
-    assert (
-        sum(
-            len(esolangs.generate("NOR machine", format(v, "08b")).source)
-            for v in range(256)
-        )
-        == 83041
-    )
+    assert three_input_corpus_size("NOR machine") == 83041
 
 
 def _check_single_accumulator_boundaries() -> None:

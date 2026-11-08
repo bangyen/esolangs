@@ -10,7 +10,10 @@ from itertools import product
 
 from esolangs.languages.sendstuff.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, reject_faults
+from tests.support import workspace_oracle as workspace
 from tests.support.model_input import token_span
+
+_WORKSPACE = workspace.workspace_model("sendstuff-v1", "frames input_cursor")
 
 
 def _assemble(forest):
@@ -147,11 +150,57 @@ def _view(machine):
     return ((program.commands, program.params, program.targets), tuple(pending))
 
 
+def _parts(expected):
+    error, trace = expected
+    program = trace[0][0][0]
+    targets = program[2]
+    frames = [(0, (0, 0, 1), 0, 0)] if targets[0] else []
+    for index, row in enumerate(trace):
+        if index and frames and not (error and index == len(trace) - 1):
+            before, after = trace[index - 1][0][1], row[0][1]
+            node, results, k, j = frames.pop(0)
+            first, step, count = results
+            assert before[0] == (node, targets[node][j], first + step * k)
+            j += 1
+            if j == len(targets[node]):
+                k, j = k + 1, 0
+            if k < count:
+                frames.insert(0, (node, results, k, j))
+            length = len(after) - len(before) + 1
+            assert length >= 0
+            assert after[length:] == before[1:]
+            child = after[:length]
+            if child:
+                receiver = before[0][1]
+                outputs = targets[receiver]
+                assert outputs
+                assert length % len(outputs) == 0
+                count = length // len(outputs)
+                first = child[0][2]
+                command = program[0][receiver]
+                step = (
+                    1 if command == "CountUp" else -1 if command == "CountDown" else 0
+                )
+                assert child == tuple(
+                    (receiver, target, first + step * value)
+                    for value in range(count)
+                    for target in outputs
+                )
+                frames.insert(0, (receiver, (first, step, count), 0, 0))
+        yield tuple(frames), row[-1]
+
+
 def _check(factory, forest, stdin="unused"):
     source, program = _assemble(forest)
-    assert observed(factory, source, stdin, _view, cap=48) == _model(program, stdin), (
-        source,
-        stdin,
+    expected = _model(program, stdin)
+    parts = iter(_parts(expected))
+    workspace.agrees(
+        expected,
+        (factory, source, stdin),
+        (_WORKSPACE, lambda _row: next(parts)),
+        _view,
+        cap=48,
+        context=(source, stdin),
     )
 
 
@@ -222,3 +271,6 @@ def check_raw_sendstuff():
                 self.state = ((node, (first + 1, step, count), k, j), rest)
 
     reject_faults(_check, _Machine, WrongSend, ((">", _node("Constant", 2, (sink,))),))
+
+    witness = ((">", _node("InputNumber", children=((">", _node("OutputNumber")),))),)
+    workspace.check_erasures(_WORKSPACE, _check, _Machine, witness, "2")

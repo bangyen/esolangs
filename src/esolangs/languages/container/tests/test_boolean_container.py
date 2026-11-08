@@ -27,6 +27,7 @@ from tests.support.generator_support import (
     assert_an_ignored_input_costs,
     constant_programs,
     measure_run,
+    three_input_corpus_size,
 )
 from tests.support.witness_tables import row_bits, witnesses
 
@@ -403,10 +404,4 @@ def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
             assert io.getvalue() == bit
             assert steps == 2 * n
             assert io.input_char() == ord("Q")
-    assert (
-        sum(
-            len(esolangs.generate("Container", format(v, "08b")).source)
-            for v in range(256)
-        )
-        == 78589
-    )
+    assert three_input_corpus_size("Container") == 78589

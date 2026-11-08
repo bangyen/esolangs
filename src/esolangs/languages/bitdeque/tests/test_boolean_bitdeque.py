@@ -11,6 +11,7 @@ from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.proofs.conventions import _embedding, _tables
 from tests.support.analysis_support import assert_analysis_complement
+from tests.support.generator_support import three_input_corpus_size
 from tests.support.witness_tables import witnesses
 
 
@@ -200,10 +201,4 @@ def test_constant_native_and_short_loads_keep_all_slots() -> None:
                     if not options:
                         assert steps + 1 == 3 * n + 3 + int(bit)
                         assert written.bits == workspace(n, template.source)
-    assert (
-        sum(
-            len(esolangs.generate("Bitdeque", format(v, "08b")).source)
-            for v in range(256)
-        )
-        == 51358
-    )
+    assert three_input_corpus_size("Bitdeque") == 51358

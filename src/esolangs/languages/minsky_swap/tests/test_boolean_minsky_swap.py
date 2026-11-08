@@ -10,7 +10,7 @@ from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import count_steps
-from tests.support.generator_support import measure_run
+from tests.support.generator_support import measure_run, three_input_corpus_size
 from tests.support.witness_tables import witnesses
 
 
@@ -178,12 +178,7 @@ def _check_constant_templates() -> None:
                         == (3 * n + 3 * int(bit)).bit_length() + 3 * int(bit) + 1
                     )
                 assert len(sizes) == 1
-    assert (
-        sum(
-            len(esolangs.generate("Minsky Swap", f"{v:08b}").source) for v in range(256)
-        )
-        == 21396
-    )
+    assert three_input_corpus_size("Minsky Swap") == 21396
 
 
 def _check_pair_leaves() -> None:

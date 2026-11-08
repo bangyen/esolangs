@@ -4,7 +4,11 @@ import pytest
 
 import esolangs
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_native_rows, constant_programs
+from tests.support.generator_support import (
+    assert_native_rows,
+    constant_programs,
+    three_input_corpus_size,
+)
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -64,14 +68,4 @@ def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
             assert io.getvalue() == bit
             assert steps == n + 2
             assert io.input_token() == "Q"
-    assert (
-        sum(
-            len(
-                esolangs.generate(
-                    "lol waht i cant edit talk pages", format(v, "08b")
-                ).source
-            )
-            for v in range(256)
-        )
-        == 110463
-    )
+    assert three_input_corpus_size("lol waht i cant edit talk pages") == 110463

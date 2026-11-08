@@ -7,7 +7,7 @@ from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
-from tests.support.generator_support import assert_every_row
+from tests.support.generator_support import assert_every_row, three_input_corpus_size
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -45,13 +45,7 @@ def test_constant_reads_precede_output_and_preserve_the_next_character() -> None
                     assert written.bits == workspace
                     assert io.getvalue() == bit
                     assert io.input_char() == ord("Q")
-    assert (
-        sum(
-            len(esolangs.generate("SwitchCase", format(v, "08b")).source)
-            for v in range(256)
-        )
-        == 31572
-    )
+    assert three_input_corpus_size("SwitchCase") == 31572
 
     _check_shared_residuals()
 

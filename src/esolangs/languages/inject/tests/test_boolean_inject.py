@@ -21,6 +21,7 @@ from tests.support.generator_support import (
     constant_programs,
     evaluate_generated,
     measure_run,
+    three_input_corpus_size,
 )
 
 run_inject = _runner("inject", newline=True)
@@ -218,10 +219,4 @@ def test_constant_scratch_reuse_reads_first_and_preserves_the_next_line() -> Non
             assert written.bits == workspace(n, program)
             assert stream.getvalue() == bit + "\n"
             assert stream.input_str() == "Q"
-    assert (
-        sum(
-            len(esolangs.generate("Inject", format(v, "08b")).source)
-            for v in range(256)
-        )
-        == 47658
-    )
+    assert three_input_corpus_size("Inject") == 47658
