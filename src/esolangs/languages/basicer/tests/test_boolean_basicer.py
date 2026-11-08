@@ -8,7 +8,7 @@ import esolangs
 from esolangs.generation.decision import decision_layers
 from esolangs.languages.basicer import generator
 from scripts.benchmark import WrittenState
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import (
     assert_every_row,
     constant_programs,
@@ -48,12 +48,7 @@ def _check_constants() -> None:
             io = ReadFirstIO(stdin + "Q\n", expected=n)
             machine = _Machine(program, io)
             written = WrittenState(machine.workspace_snapshot())
-            steps = 0
-            while not machine.halted:
-                machine.step()
-                written.sample(machine.workspace_snapshot())
-                steps += 1
-                assert steps <= n + 1
+            steps = count_steps(machine, n + 1, written=written)
             assert steps == n + 1
             assert io.getvalue() == bit + "\n"
             assert written.bits == (n + 1).bit_length() + (2 * n).bit_length()

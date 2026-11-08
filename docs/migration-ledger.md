@@ -2509,3 +2509,42 @@ locals on escaping exceptions are excluded. Thue's formatted bridge/hook costs
 fourteen lines; tests/source are 115,787/115,814, with no node or cap removed.
 This bounded accounting scope is reviewed; 55 accounting rows and all 117
 completion rows remain open.
+
+Sonata/SStack now compare complete independent text/stopped/rendered and
+pc/seven-stack/input-progress states. Their 1,332/2,063 originals and nine/five
+controls remain; three component erasures each add controls without new nodes.
+Sonata retains default cap16 and the separate original growth cap8; SStack
+retains cap64. All model/parser/transition helpers and complete ordered
+construction records remain unchanged.
+
+HQ9+ headers' existing orphan hook is collected. Independent Decimal conversion
+fixes capped model assignment spelling, ASCII-prefix readn and numeric output;
+native arithmetic/input/output already lift those caps. Ten permanent numeric
+cases give 101 records/six controls at cap64; installed extras give 106. All 91
+old records retain exact traces. Ordinary host-capped flow/jump literals stay
+distinct from unlimited data; signs/Unicode/underscores stop readn immediately.
+
+The unchanged 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0: 3,501 cases/32,823 boundaries per version, 2,317 completions, 201 failed
+transitions, 957 bounded runs and 26 constructor refusals. Full native/VM/debug/
+public state, cycles, named views, IO counters, steps, failures and retained
+histories agree with independent predictions and complete-width recounts.
+Sonata/SStack/HQ9 peaks are 4,096/16,611/33,226 bits; 37 guarded pairs include
+live cap-zero/cap-one boundaries. Nine populated freezes/nine live omissions
+lose exact charges; literal anchors are 18/9/10 bits, with cursorless probes.
+
+Twenty-eight writer routes retain halt-before-render retry for Sonata,
+preassignment retry for SStack and postcommit no-retry/idle/active recovery for
+HQ9. Separate 640/disabled digit-policy model and installed/worker profiles
+retain exact errors and restore policy, including huge diagnostics/output.
+All 3,486 old cases/twenty controls retain byte-identical replay data; SStack's
+omitted/explicit default is normalized only in recorded call metadata.
+
+Two existing constant-fixture loops reuse count_steps, saving ten formatted
+lines with loop-invariant integer cap n+1. Full hooks retain 449 generation
+calls, 496 native instances, 3,505 steps and 3,492 meter samples with identical
+traces. The three complete proposals cost 35 lines; tests/source 115,812/115,814.
+Initial copied-support and lint/default-metadata adapter failures are archived.
+No generator, node, case or cap is removed. General HQ9 fork/conditional/song
+parsing remains outside this structured cohort. These bounded accounting scopes
+are reviewed; 52 accounting rows and all 117 completion rows remain open.

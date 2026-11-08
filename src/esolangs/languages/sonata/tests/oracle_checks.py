@@ -8,7 +8,9 @@ from dataclasses import replace
 import pytest
 
 from esolangs.languages.sonata.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model("sonata-v1", "text stopped rendered")
 
 
 def _parse(source):
@@ -80,10 +82,13 @@ def _model(source, stdin, cap=16):
 
 def _agrees(factory, source, stdin, cap=16):
     expected = _model(source, stdin, cap)
-    assert (
-        observed(factory, source, stdin, lambda m: (m.text, m.rendered, m.ip), cap=cap)
-        == expected
-    ), (source, stdin)
+    workspace.agrees(
+        expected,
+        (factory, source, stdin),
+        (_WORKSPACE, lambda row: (row[0][0], row[1], row[0][1])),
+        lambda m: (m.text, m.rendered, m.ip),
+        cap=cap,
+    )
     return expected
 
 
@@ -196,4 +201,5 @@ def check_raw_sonata():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, "a->b", "a")
     return len(results), len(controls)

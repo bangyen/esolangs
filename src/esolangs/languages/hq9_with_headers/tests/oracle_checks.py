@@ -5,6 +5,7 @@ semantic lists, arithmetic, text/code output, input, jumps and halt, capped
 at 64 ops. Forks, hex conditionals and song formatting retain raw tests.
 """
 
+from decimal import Decimal
 from itertools import product
 
 import pytest
@@ -23,7 +24,7 @@ def _spell(operation):
     if kind in {"ADD", "SUB", "MUL", "DIV"}:
         return "[" + kind + " " + " ".join(args) + "]"
     if kind == "set":
-        return args[0] + " = " + str(args[1])
+        return args[0] + " = " + str(Decimal(args[1]))
     if kind == "inc":
         return args[0] + "++"
     if kind == "out":
@@ -98,7 +99,7 @@ def _read(kind, stdin, cursor):
         if not "0" <= c <= "9":
             break
         digits += c
-    return int(digits), cursor
+    return int(Decimal(digits)), cursor
 
 
 def _math(kind, left, right):
@@ -145,7 +146,7 @@ def _model(ops, places, stdin):
             elif kind == "inc":
                 variables[args[0]] = get(args[0]) + 1
             elif kind == "out":
-                output += str(get(args[0]))
+                output += str(Decimal(get(args[0])))
             elif kind == "text":
                 output += args[0]
             elif kind == "code":
@@ -217,6 +218,26 @@ def check_raw_hq9_with_headers():
         )
     for body in ((("out", "v"),), (("inc", "v"),), (("DIV", "v", "v", "v"),)):
         _check(_Machine, (("nop",),), body)
+    long = "1" * 5000
+    for stdin in (
+        long + "Zremaining",
+        long,
+        "+" + long,
+        "-" + long,
+        "\u0661unused",
+        "1_0rest",
+        " \t",
+        "\n",
+    ):
+        _check(
+            _Machine,
+            (("nop",),),
+            (("readn", "v"), ("out", "v"), ("readc", "v"), ("out", "v")),
+            stdin,
+        )
+    for value in (10**5000, -(10**5000)):
+        _check(_Machine, _assign("v", value), (("out", "v"),))
+
     source, _, _ = _assemble((("nop",),), (("nop",),), "once")
     for broken in (
         "",

@@ -90,6 +90,9 @@ def _steps(code: str, stdin: str, count: int) -> _Machine:
 
 def test_wiki_hq9_example_prints_its_title() -> None:
     # Labelled 'Print "Hello, World!QHQQHQ"': flow 2,1,3 runs H, Q, Q.
+    from .oracle_checks import check_raw_hq9_with_headers
+
+    check_raw_hq9_with_headers()
     assert _run(_HQ) == "Hello, World!QHQQHQ"
 
     # Startup supplies the operands. Flow executes the arithmetic before print

@@ -8,7 +8,9 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.sstack.interpreter import _Machine
-from tests.interpreters.oracle_support import checker as oracle_checker
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model("sstack-v1", "instruction stacks input_cursor")
 
 
 def _parse(source):
@@ -134,8 +136,10 @@ def _model(source, stdin):
     return error, trace
 
 
-_agrees = oracle_checker(
-    _model, lambda m: (m.ind, tuple(((k, tuple(v)) for k, v in m.stacks.items())))
+_agrees = workspace.checker(
+    _model,
+    (_WORKSPACE, lambda row: (row[0][0], tuple(v for _, v in row[0][1]), row[-1])),
+    lambda m: (m.ind, tuple(((k, tuple(v)) for k, v in m.stacks.items()))),
 )
 
 
@@ -223,4 +227,5 @@ def check_raw_sstack():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, ";a;", "A")
     return len(results), len(controls)
