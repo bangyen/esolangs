@@ -1,5 +1,7 @@
 """Independent bounded models of self-modifying numeric and grid programs."""
 
+import re
+import unicodedata
 from dataclasses import dataclass
 from struct import calcsize
 
@@ -37,11 +39,22 @@ def _load_error():
     ]
 
 
+def decimal_fold(word):
+    """Fold signed Unicode Nd/underscored decimal text without host digit caps."""
+    if re.fullmatch(r"[+-]?\d(?:_?\d)*", word) is None:
+        raise ValueError("invalid decimal token")
+    value = 0
+    for char in word.lstrip("+-"):
+        if char != "_":
+            value = value * 10 + unicodedata.decimal(char)
+    return -value if word.startswith("-") else value
+
+
 def decleq(code: str, stdin: str, cap: int = 32):
     """Copy-decrement with runtime memory growth, negative writes and I/O."""
     try:
         cells = [
-            int(word)
+            decimal_fold(word)
             for line in code.splitlines()
             for word in line.partition("#")[0].split()
         ]

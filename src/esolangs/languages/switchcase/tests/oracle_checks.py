@@ -7,6 +7,9 @@ import pytest
 
 from esolangs.languages.switchcase.interpreter import _Machine
 from tests.interpreters.oracle_support import observed
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model("switchcase-v1", "activation input_cursor")
 
 
 def _source(cases):
@@ -17,6 +20,19 @@ def _source(cases):
             prefix = "!" if key == "!" else f"{key}?"
             lines.append(prefix + "".join(op + str(arg) for op, arg in commands))
     return "\n".join(lines)
+
+
+def _output(op, value):
+    """Render output or the range diagnostic before committing the activation."""
+    try:
+        if op == "@":
+            return str(value), None
+        if not 0 <= value < 0x110000:
+            str(value)
+            return "", "halt"
+        return chr(value), None
+    except ValueError:
+        return "", "syntax"
 
 
 def _model(cases, stdin):
@@ -54,13 +70,11 @@ def _model(cases, stdin):
                 env[name] += arg if op == "+" else -arg
             case "=":
                 env[arg] = 0
-            case "@":
-                output += str(value)
-            case ".":
-                if not 0 <= value < 0x110000:
-                    error = "halt"
+            case "@" | ".":
+                fragment, error = _output(op, value)
+                if error:
                     continue
-                output += chr(value)
+                output += fragment
             case ",":
                 if cursor == len(stdin):
                     error = "input"
@@ -79,7 +93,10 @@ def _model(cases, stdin):
                 if not re.fullmatch(r"[+-]?[0-9]+", word):
                     error = "argument"
                     continue
-                env[name] = int(word)
+                number = 0
+                for char in word.lstrip("+-"):
+                    number = number * 10 + ord(char) - ord("0")
+                env[name] = -number if word.startswith("-") else number
             case "'":
                 if not 1 <= arg <= len(cases):
                     error = "halt"
@@ -96,6 +113,12 @@ def _check(factory, cases, stdin):
         return case, arm, index, machine.memory
 
     code = _source(cases)
+    state = workspace.workspace_view(
+        _model(cases, stdin)[1],
+        _WORKSPACE,
+        lambda row: ((*row[0][:3], frozenset(row[0][3].items())), row[-1]),
+        state,
+    )
     assert observed(factory, code, stdin, state, cap=24) == _model(cases, stdin), code
 
 
@@ -129,6 +152,38 @@ def check_raw_switchcase():
         "",
     )
 
+    numeric = [("_", {0: (("#", ""), ("@", ""))})]
+    for stdin in (
+        "3",
+        "+" + "1" * 5000,
+        "-" + "9" * 5000,
+        "\u0661",
+        "1_0",
+        "1" * 5000 + "x",
+        " \t",
+    ):
+        _check(_Machine, numeric, stdin)
+    _check(_Machine, [("_", {0: (("#", ""), (".", ""))})], "1" * 5000)
+    _check(
+        _Machine,
+        [("_", {0: ((",", ""), (".", ""), (",", ""), (".", ""))})],
+        "\ud800\udfff",
+    )
+    for source in ("0?@", "$_\n!@", "$_\n0?@\n0?.", "$_\n0?x"):
+        assert observed(_Machine, source, "", lambda m: m.state, cap=24) == (
+            "syntax",
+            [(None, False, "", 0, 0)],
+        )
+    literal = "1" * 5000
+    try:
+        target = int(literal)
+    except ValueError:
+        assert observed(
+            _Machine, "$_\n0?'" + literal, "", lambda m: m.state, cap=24
+        ) == ("syntax", [(None, False, "", 0, 0)])
+    else:
+        _check(_Machine, [("_", {0: (("'", target),)})], "")
+
     class LostSelection(_Machine):
         def step(self):
             super().step()
@@ -138,3 +193,7 @@ def check_raw_switchcase():
 
     with pytest.raises(AssertionError):
         _check(LostSelection, [("_", {0: (("@", ""),)})], "")
+
+    workspace.check_erasures(
+        _WORKSPACE, _check, _Machine, [("_", {0: (("#", ""), ("@", ""))})], "3"
+    )

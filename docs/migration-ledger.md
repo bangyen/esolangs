@@ -2409,3 +2409,44 @@ Reuse saves 144 formatted test lines; the numeric corrections/cases/caller
 add 62. Tests/source are 115,722/115,808, with no node, assertion, case, control
 or cap removed. These bounded accounting scopes are reviewed; 60 accounting
 rows and all 117 completion rows remain open.
+
+Decleq's independent numeric loader now folds signed Unicode decimal digits
+and underscores without host conversion caps. All 1,141 old cases/four controls
+retain identical traces; eight extras give 1,149 at cap32. Its existing dense
+allocation cutoff remains explicit: the sole 4096-target witness checks only
+construction/initial state and a cap-zero public refusal. Writes into valid
+large stores remain unverified; no allocation closure follows from that case.
+
+SwitchCase now captures the full case/arm/command/environment activation and
+input progress. All 169 old cases and the lost-selection control remain;
+fourteen extras and two erasures give 183 cases/three controls at
+cap24. Input keeps signed ASCII grammar with unlimited folding. Decimal
+output and invalid-character diagnostic formatting fail before activation
+commit; physical writer refusal follows it. Both existing callers remain.
+
+The unchanged 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0: 1,332 cases/10,015 boundaries, 837 completions, 358 failed transitions,
+125 bounded runs and twelve constructor refusals per version. Full state,
+cycle, declared views, IO counters, steps, failures and held histories match
+independent predictions and complete-width recounts. Fifteen/twenty guarded
+pairs include cap-zero/cap-one boundaries and two separate surrogate values.
+Five populated freezes lose exact charges; five omissions and all four
+activation-subfield faults fail. Literal anchors are 23/15 bits. Default-policy
+peaks are 16,612/16,635 bits; disabled-limit SwitchCase reaches 16,636.
+
+Eight writer routes preserve the predicted committed/uncommitted state and
+failure envelope. Decleq retries refused output; SwitchCase does not. Separate
+640-digit/disabled-limit source and worker runs retain exact numeric, formatting
+and constructor phases, restoring the host policy. All 1,310 old semantic
+traces remain byte-identical; old controls remain live. The complete additions
+cost 85 test lines; tests/source are 115,807/115,808, with no node or cap removed.
+These bounded accounting scopes are reviewed; 58 accounting rows and all 117
+completion rows remain open.
+
+Codesick's n4/n5 workspace checks also pass a Python 3.14.7 calibration: all
+22 generated witnesses/528 measured rows return their literal truth-table bits
+while retaining every resource inequality. Real positive/opposite programs
+run another 32 rows; the opposite vector is specifically rejected. Exact-node
+collection, completion, JUnit and hash-pinned duration/companion receipts agree.
+This supplies two workspace claim receipts; other execution/scaling claims,
+arities and the four-version claim matrix remain open.

@@ -86,6 +86,19 @@ def check_raw_decleq():
     assert not loop[-1].halted
     assert loop[-1].error is None
 
+    long = "1" * 5000
+    for source, stdin in (
+        ("-1 5 0 -2 5", "Z"),
+        ("0 " + long + " 0", ""),
+        ("-1 " + long + " 0", "X"),
+        ("0 -" + long + " 0", ""),
+        (long + " 0 -1", ""),
+        ("\u0661_\u0660 0 -1", ""),
+        ("1__0 0 -1", ""),
+        ("0 4096 -1", ""),
+    ):
+        _agrees(_Machine, decleq, source, stdin)
+
     class OldEnd(_Machine):
         def __init__(self, code, io):
             super().__init__(code, io)
