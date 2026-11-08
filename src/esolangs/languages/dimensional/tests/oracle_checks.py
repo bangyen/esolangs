@@ -12,7 +12,7 @@ import pytest
 
 from esolangs.languages.dimensional.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceSnapshot
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import after_step, observed, overread, stalled
 from tests.support import workspace_oracle as workspace
 from tests.support.model_input import token_span
 
@@ -300,12 +300,11 @@ def check_raw_dimensional():
     for code in (":", "=", "=f", "=xy", "[", "}", "*:*:", "[=zz]"):
         _check(_Machine, code)
 
-    class WrongByte(_Machine):
-        def step(self):
-            super().step()
-            self.tape.set_value(self.tape.peek_value() + 1)
+    wrong_byte = after_step(
+        _Machine, lambda self: self.tape.set_value(self.tape.peek_value() + 1)
+    )
 
-    for factory in (stalled(_Machine), WrongByte, overread(_Machine)):
+    for factory in (stalled(_Machine), wrong_byte, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, "+$3>0+<0.")
 

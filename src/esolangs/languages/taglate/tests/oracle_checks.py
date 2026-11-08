@@ -9,6 +9,7 @@ import pytest
 
 from esolangs.languages.taglate.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
+from tests.support.model_input import matching_delimiter
 from tests.support.workspace_oracle import agrees as workspace_agrees
 from tests.support.workspace_oracle import check_erasures
 
@@ -20,14 +21,12 @@ _ARITHMETIC = dict(zip("abcd", (add, sub, mul, floordiv), strict=True))
 def _partner(tokens, pc):
     opening = tokens[pc]
     direction = 1 if opening == "gy" else -1
-    depth = 1
     stop = len(tokens) if direction > 0 else -1
-    for index in range(pc + direction, stop, direction):
-        if tokens[index] in ("gy", "gz"):
-            depth += 1 if tokens[index] == opening else -1
-            if not depth:
-                return index
-    return None
+    indices = range(pc + direction, stop, direction)
+    span = matching_delimiter(
+        (tokens[index] for index in indices), opening, "gz" if opening == "gy" else "gy"
+    )
+    return None if span is None else pc + direction * span
 
 
 def _model(seed, tokens, stdin):

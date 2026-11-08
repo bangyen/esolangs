@@ -5,16 +5,17 @@ from itertools import product
 import pytest
 
 from esolangs.languages.unsquare.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.support import workspace_oracle as workspace
+from tests.support.model_input import matching_delimiter
+
+_WORKSPACE = workspace.workspace_model(
+    "unsquare-v1", "instruction accumulator stack jumps input_cursor input_reads"
+)
 
 
 def _closer(code, pc):
-    depth = 1
-    for index in range(pc + 1, len(code)):
-        depth += (code[index] == ">") - (code[index] == "<")
-        if depth == 0:
-            return index
-    return None
+    span = matching_delimiter(code[pc + 1 :], ">", "<")
+    return None if span is None else pc + span
 
 
 def _model(code, stdin):
@@ -86,9 +87,13 @@ def _model(code, stdin):
 
 def check_raw_unsquare():
     def check(factory, code, stdin):
-        assert observed(factory, code, stdin, lambda m: m.state, cap=32) == _model(
-            code, stdin
-        ), (code, stdin)
+        workspace.agrees(
+            _model(code, stdin),
+            (factory, code, stdin),
+            (_WORKSPACE, lambda row: (*row[0], row[-1], row[-1])),
+            lambda m: m.state,
+            cap=32,
+        )
 
     corpus = ["".join(chars) for chars in product("OIAS+-xPoi><?", repeat=3)]
     corpus += ["+>><-<", "+>-<Po", "++><", "OIA>i<o", "iAxxPo", "-Po", "io", "OOIS"]
@@ -103,3 +108,5 @@ def check_raw_unsquare():
 
     with pytest.raises(AssertionError):
         check(LostLoop, "+>-<", "")
+
+    workspace.check_erasures(_WORKSPACE, check, _Machine, "iA+>i<", "AA")

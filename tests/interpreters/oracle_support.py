@@ -124,3 +124,14 @@ def decorate_io(factory, method, decorate):
             super().__init__(source, io)
 
     return Fault
+
+
+def after_step(factory, change):
+    """Return a fault applying change only after a successful native step."""
+
+    class Fault(factory):
+        def step(self):
+            super().step()
+            change(self)
+
+    return Fault

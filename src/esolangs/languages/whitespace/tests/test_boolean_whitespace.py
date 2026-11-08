@@ -77,12 +77,7 @@ def _check_power_steps() -> None:
                     io = ScriptedIO(stdin)
                     machine = _Machine(program, io)
                     written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += 1
-                        assert steps <= execution(n, program)
+                    count_steps(machine, execution(n, program), written=written)
                     peak = max(peak, written.bits)
                     assert written.bits <= workspace(n, program)
                     assert io.getvalue() == table[row]

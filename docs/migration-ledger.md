@@ -2587,3 +2587,31 @@ seventeen savings fund the complete seventeen-line Forþ bridge/hook. Tests/sour
 remain 115,812/115,814. Initial setup and naming-adapter failures are archived.
 This bounded accounting scope is reviewed; 51 accounting rows and all 117 broader
 completion rows remain open.
+
+
+Unsquare's independent hook is now collected at cap32, preserving all 6,615
+cases and its loop fault. Six erasures check instruction, accumulator, stack,
+jumps, input progress and own successful reads. Python 3.12.11–final 3.15.0
+installed checks cover 25,907 boundaries: 1,919 completions, 4,684 failed
+transitions and twelve bounded runs; peak 43 bits. Raw/VM/debug/public state,
+source/partner cache, cycles, views, IO, success-only steps, held histories and
+independent full-width recounts agree. Eight guarded pairs retain live cap-zero,
+cap-one, bounded and surrogate-input probes.
+
+Six populated freezes/native omissions lose exact charges against a separate
+23-bit anchor (component peaks 3/7/7/2/2/2). Cursorless input, corrupted partner
+cache, unmatched-loop idle and repeated EOF remain distinct. Eight writer routes
+retry preadvance failures and recover. Separate load probes retain detached
+stacks and unchanged control/input fields; signed 5,001-digit outputs retain
+exact formatting failures or success under default, 640 and disabled policies.
+Loaded states are explicit supplements, not empty-state or guarded-worker claims.
+
+Six fault callbacks now reuse after_step; delimiter scans share only their
+first-zero recurrence. Full ordinary/mutant hook replays are byte-identical:
+30,122/46,747 steps and 41/26 rejection controls respectively. Whitespace's full
+fixture retains 96 generation calls, 218 native instances and 6,650 steps with
+a total invariant integer cap. This saves sixteen formatted test lines; the
+complete bridge/hook costs twelve. Tests/source are 115,808/115,814. No node,
+case or cap is removed; initial adapter/lint failures are archived. This bounded
+accounting scope is reviewed; 50 accounting rows and all 117 completion rows
+remain open.

@@ -20,3 +20,13 @@ def decimal_value(text):
         if char != "_":
             value = value * 10 + unicodedata.decimal(char)
     return -value if text.startswith("-") else value
+
+
+def matching_delimiter(tokens, opening, closing):
+    """Return tokens consumed through the matching closer, or None."""
+    depth = 1
+    for span, token in enumerate(tokens, 1):
+        depth += (token == opening) - (token == closing)
+        if depth == 0:
+            return span
+    return None

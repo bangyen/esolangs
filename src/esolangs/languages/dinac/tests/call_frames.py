@@ -12,7 +12,7 @@ from esolangs.results import Completion, CompletionReport
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_observation, _capture_workspace, make_vm
-from tests.interpreters.oracle_support import overread, stalled
+from tests.interpreters.oracle_support import after_step, overread, stalled
 from tests.support.certification_barrier import guarded_worker
 from tests.support.workspace_oracle import WorkspaceWitness
 
@@ -369,12 +369,9 @@ def check_call_frames():
         with pytest.raises(AssertionError):
             _raw(case, Fault)
 
-    class WrongOutput(_Machine):
-        def step(self):
-            super().step()
-            self.io.print_str("!")
+    wrong_output = after_step(_Machine, lambda self: self.io.print_str("!"))
 
-    for factory in (stalled(_Machine), overread(_Machine), WrongOutput):
+    for factory in (stalled(_Machine), overread(_Machine), wrong_output):
         with pytest.raises(AssertionError):
             _raw(cases[0], factory)
     return len(cases), sum(len(case[2]) for case in cases), len(controls) + 3

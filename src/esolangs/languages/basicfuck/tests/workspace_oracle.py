@@ -6,7 +6,7 @@ import re
 import pytest
 
 from esolangs.languages.basicfuck.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import after_step, observed, overread, stalled
 from tests.support.workspace_oracle import (
     charged_bits,
     check_erasures,
@@ -353,11 +353,8 @@ def check_raw_workspace_basicfuck():
         def __init__(self, code, io):
             super().__init__(code.replace("o=wrap", "o=nearest"), io)
 
-    class ExtraOutput(_Machine):
-        def step(self):
-            super().step()
-            self.io.print_str("!")
+    extra_output = after_step(_Machine, lambda self: self.io.print_str("!"))
 
-    for factory, code in ((WrongOverflow, _source("a -= 1;")), (ExtraOutput, source)):
+    for factory, code in ((WrongOverflow, _source("a -= 1;")), (extra_output, source)):
         with pytest.raises(AssertionError):
             _agrees(factory, code, "AQQ", 64)

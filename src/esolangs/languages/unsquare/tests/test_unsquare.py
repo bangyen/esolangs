@@ -7,6 +7,7 @@ import pytest
 import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.languages.unsquare.interpreter import _Machine, run
+from esolangs.languages.unsquare.tests.oracle_checks import check_raw_unsquare
 from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
@@ -24,6 +25,7 @@ run_program = partial(runner.run_program, run, suppress_eof=False)
 
 class TestUnsquare:
     def test_push_and_print(self) -> None:
+        check_raw_unsquare()
         assert run_program("Io") == "\x01"
         assert run_program("Oo") == "\x00"
 

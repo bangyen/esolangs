@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime.io import ScriptedIO
+from tests.support.model_input import matching_delimiter
 from tests.support.workspace_oracle import WorkspaceWitness
 
 
@@ -62,13 +63,12 @@ def bfstack(code: str, stdin: str, cap: int = 64) -> list[StackObservation]:
                 if stack[-1]:
                     loops.append(pc)
                 else:
-                    depth = 1
-                    while depth and pc + 1 < len(code):
-                        pc += 1
-                        depth += (code[pc] == "[") - (code[pc] == "]")
-                    if depth:
+                    span = matching_delimiter(code[pc + 1 :], "[", "]")
+                    if span is None:
                         pc = len(code)
                         error = "syntax"
+                    else:
+                        pc += span
             elif command == "]":
                 pc = loops.pop() - 1
             if not error:
@@ -97,15 +97,12 @@ def underload(code: str, _stdin: str, cap: int = 64) -> list[StackObservation]:
         command = code[pc]
         after = pc + 1
         if command == "(":
-            depth, end = 1, after
-            while end < len(code) and depth:
-                depth += (code[end] == "(") - (code[end] == ")")
-                end += 1
-            if depth:
+            span = matching_delimiter(code[after:], "(", ")")
+            if span is None:
                 error = "halt"
             else:
-                stack.append(code[after : end - 1])
-                after = end
+                stack.append(code[after : after + span - 1])
+                after += span
         elif command.isspace():
             pass
         elif command not in "~:!*a^S" or len(stack) < (2 if command in "~*" else 1):

@@ -10,7 +10,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.packlang.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import after_step, observed, overread, stalled
 
 
 def _expr(expr):
@@ -152,11 +152,8 @@ def check_raw_packlang():
         _check(_Machine, "Integer", (("write", expr),))
     _check(_Machine, "Integer", (("write", 104), ("write", 105), ("value", 0)))
 
-    class WrongOutput(_Machine):
-        def step(self):
-            super().step()
-            self.io.print_str("!")
+    wrong_output = after_step(_Machine, lambda self: self.io.print_str("!"))
 
-    for factory in (stalled(_Machine), WrongOutput, overread(_Machine)):
+    for factory in (stalled(_Machine), wrong_output, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, "Integer", (("INCR", "cell"), ("write", "cell")))

@@ -12,6 +12,7 @@ import pytest
 from esolangs.languages.for_thorn.interpreter import _Machine
 from tests.interpreters.oracle_support import decorate_io, overread, stalled
 from tests.support import workspace_oracle as workspace
+from tests.support.model_input import matching_delimiter
 
 _WORKSPACE = workspace.workspace_model(
     "for-thorn-v1", "stack scopes frames input_cursor input_reads"
@@ -54,15 +55,8 @@ def _finish(frames, stack):
 def _body(code, start):
     opener = code[start]
     closer = {"(": ")", "[": "]", "{": "}"}[opener]
-    depth = 1
-    for end in range(start + 1, len(code)):
-        if code[end] == opener:
-            depth += 1
-        if code[end] == closer:
-            depth -= 1
-        if depth == 0:
-            return code[start + 1 : end], end + 1
-    return None
+    span = matching_delimiter(code[start + 1 :], opener, closer)
+    return None if span is None else (code[start + 1 : start + span], start + span + 1)
 
 
 def _operator(command, stack):

@@ -5,7 +5,8 @@ from itertools import product
 import pytest
 
 from esolangs.languages.rotfuck.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import after_step, observed
+from tests.support.model_input import matching_delimiter
 
 _COMMANDS = "+-><,.[]"
 
@@ -13,14 +14,10 @@ _COMMANDS = "+-><,.[]"
 def _partner(code, pc):
     token = code[pc]
     indices = range(pc + 1, len(code)) if token == "[" else range(pc - 1, -1, -1)
-    depth = 1
-    for index in indices:
-        char = code[index]
-        if char in "[]":
-            depth += 1 if char == token else -1
-            if not depth:
-                return index
-    return None
+    span = matching_delimiter(
+        (code[index] for index in indices), token, "]" if token == "[" else "["
+    )
+    return None if span is None else pc + (span if token == "[" else -span)
 
 
 def _model(source, stdin, direction):
@@ -93,10 +90,7 @@ def check_raw_rotfuck():
     # Each effective command is +, including the ninth after a full rotation.
     _check(_Machine, "+][.,<>-+", "", "forward")
 
-    class NoRotation(_Machine):
-        def step(self):
-            super().step()
-            self.prog.set_rotation(0)
+    no_rotation = after_step(_Machine, lambda self: self.prog.set_rotation(0))
 
     with pytest.raises(AssertionError):
-        _check(NoRotation, "++", "", "forward")
+        _check(no_rotation, "++", "", "forward")
