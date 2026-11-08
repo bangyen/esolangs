@@ -8,10 +8,8 @@ Aliasing and general object functions remain in the raw regression suite.
 
 from itertools import product
 
-import pytest
-
 from esolangs.languages.object_disoriented.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stable_halt, stalled
+from tests.interpreters.oracle_support import observed, reject_faults, stable_halt
 
 
 def _expression(value, zero):
@@ -111,6 +109,4 @@ def check_raw_object_disoriented():
             super().step()
             self.state = self.state._replace(out_bits=(*self.state.out_bits, 1))
 
-    for factory in (stalled(_Machine), WrongBit, overread(_Machine)):
-        with pytest.raises(AssertionError):
-            _check(factory, (("write", 0),) * 8)
+    reject_faults(_check, _Machine, WrongBit, (("write", 0),) * 8)

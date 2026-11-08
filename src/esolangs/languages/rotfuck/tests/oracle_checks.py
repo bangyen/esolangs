@@ -5,10 +5,14 @@ from itertools import product
 import pytest
 
 from esolangs.languages.rotfuck.interpreter import _Machine
-from tests.interpreters.oracle_support import after_step, observed
+from tests.interpreters.oracle_support import after_step
+from tests.support import workspace_oracle as workspace
 from tests.support.model_input import matching_delimiter
 
 _COMMANDS = "+-><,.[]"
+_WORKSPACE = workspace.workspace_model(
+    "rotfuck-v1", "rotation tape pointer instruction input_cursor"
+)
 
 
 def _partner(code, pc):
@@ -68,6 +72,21 @@ def _model(source, stdin, direction):
     return None, trace
 
 
+def _parts(expected):
+    error, trace = expected
+    rotation = 0
+    for index, row in enumerate(trace):
+        if (
+            index
+            and not trace[index - 1][1]
+            and not (error and index == len(trace) - 1)
+        ):
+            state = trace[index - 1][0]
+            rotation += state[3][state[0]] in _COMMANDS
+        state = row[0]
+        yield rotation, state[2], state[1], state[0], row[-1]
+
+
 def _check(factory, source, stdin, direction):
     def machine(code, io):
         return factory(code, io, rotation=direction)
@@ -76,9 +95,16 @@ def _check(factory, source, stdin, direction):
         effective = "".join(vm.prog.at(i) for i in range(len(source)))
         return vm.ind, vm.ptr, vm.tape, effective
 
-    assert observed(machine, source, stdin, state, cap=24) == _model(
-        source, stdin, direction
-    ), (source, stdin, direction)
+    expected = _model(source, stdin, direction)
+    parts = iter(_parts(expected))
+    workspace.agrees(
+        expected,
+        (machine, source, stdin),
+        (_WORKSPACE, lambda _row: next(parts)),
+        state,
+        cap=24,
+        context=(source, stdin, direction),
+    )
 
 
 def check_raw_rotfuck():
@@ -94,3 +120,5 @@ def check_raw_rotfuck():
 
     with pytest.raises(AssertionError):
         _check(no_rotation, "++", "", "forward")
+
+    workspace.check_erasures(_WORKSPACE, _check, _Machine, ",-<+", "Ł", "forward")

@@ -9,11 +9,9 @@ import re
 from itertools import product
 from operator import add, floordiv, gt, mod, mul, sub
 
-import pytest
-
 from esolangs.languages.piet.interpreter import _Machine
 from esolangs.raster import Raster
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import observed, reject_faults
 
 _HEX = (
     ("ffc0c0", "ff0000", "c00000"),
@@ -246,6 +244,4 @@ def check_raw_piet():
             point, dp, cc, stack, done = self.state
             self.state = point, dp, cc, (*stack, 99), done
 
-    for factory in (stalled(_Machine), WrongStack, overread(_Machine)):
-        with pytest.raises(AssertionError):
-            _check(factory, ((_PALETTE[0][0], _PALETTE[0][1]),))
+    reject_faults(_check, _Machine, WrongStack, ((_PALETTE[0][0], _PALETTE[0][1]),))

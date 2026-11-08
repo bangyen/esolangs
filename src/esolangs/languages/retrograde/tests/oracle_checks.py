@@ -84,14 +84,13 @@ def _agrees(factory, source):
         right = sum(1 << cell for cell in ones if cell >= 0)
         return pc, pointer, direction, left, right, printed, row[-1]
 
-    workspace.agrees(
+    return workspace.agrees(
         expected,
         (factory, source, "unused λ"),
         (_WORKSPACE, parts),
         lambda m: (*m.state[:3], tuple(m.memory), m.printed, m.ip),
         context=source,
     )
-    return expected
 
 
 def check_raw_retrograde():

@@ -146,20 +146,15 @@ def _model(source, stdin, binding):
     return error, trace
 
 
-def _state(machine):
-    return (*machine.state, tuple(machine.memory), machine.ip)
-
-
 def _agrees(factory, source, stdin, binding):
     expected = _model(source, stdin, binding)
-    workspace.agrees(
+    return workspace.agrees(
         expected,
         (partial(factory, guard_binding=binding), source, stdin),
         (_WORKSPACE, lambda row: (*row[0][:5], row[-1])),
-        _state,
+        lambda m: (*m.state, tuple(m.memory), m.ip),
         context=(source, stdin, binding),
     )
-    return expected
 
 
 def check_raw_nq():

@@ -8,10 +8,8 @@ in raw tests. Interleave orientation and input framing follow Decisions.
 import re
 from itertools import product
 
-import pytest
-
 from esolangs.languages.sendstuff.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import observed, reject_faults
 from tests.support.model_input import token_span
 
 
@@ -223,6 +221,4 @@ def check_raw_sendstuff():
                 (node, (first, step, count), k, j), rest = self.state
                 self.state = ((node, (first + 1, step, count), k, j), rest)
 
-    for factory in (stalled(_Machine), WrongSend, overread(_Machine)):
-        with pytest.raises(AssertionError):
-            _check(factory, ((">", _node("Constant", 2, (sink,))),))
+    reject_faults(_check, _Machine, WrongSend, ((">", _node("Constant", 2, (sink,))),))

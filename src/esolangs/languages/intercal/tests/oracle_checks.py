@@ -11,7 +11,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.intercal.interpreter import _Machine
-from tests.interpreters.oracle_support import decorate_io, observed, overread, stalled
+from tests.interpreters.oracle_support import decorate_io, observed, reject_faults
 
 _WORDS = [
     "ZERO",
@@ -272,9 +272,7 @@ def check_raw_intercal():
     )
 
     ops = (("set", (".", 1), 1), ("print", (".", 1)), ("halt",))
-    for factory in (stalled(_Machine), wrong_output, overread(_Machine)):
-        with pytest.raises(AssertionError):
-            _check(factory, ops)
+    reject_faults(_check, _Machine, wrong_output, ops)
 
     class TruncatesWidth(_Machine):
         def step(self):

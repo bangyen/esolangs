@@ -9,10 +9,8 @@ in raw tests. This evaluator uses no production term or continuation objects.
 from dataclasses import replace
 from itertools import product
 
-import pytest
-
 from esolangs.languages.unlambda.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stable_halt, stalled
+from tests.interpreters.oracle_support import observed, reject_faults, stable_halt
 
 
 class _ExitError(Exception):
@@ -166,6 +164,4 @@ def check_raw_unlambda():
                     done,
                 )
 
-    for factory in (stalled(_Machine), WrongValue, overread(_Machine)):
-        with pytest.raises(AssertionError):
-            _check(factory, _app("i", "i"))
+    reject_faults(_check, _Machine, WrongValue, _app("i", "i"))

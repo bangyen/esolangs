@@ -2923,3 +2923,41 @@ slot, undo links, sentinel and unset keys; real root reversals and concrete
 callback erasures are positive controls. No case, assertion, node or cap is
 removed. Tests/source are 115,817/115,818; 40 accounting rows and all 117 completion
 rows remain open.
+
+
+ROTfuck's full rotation count is reconstructed from successful command
+transitions in the unchanged independent rewrite history. Comments, idle steps,
+EOF and firing partnerless brackets do not increment it. An actual ninth-command
+run retains twelve written bits; truncating the counter modulo eight preserves
+the legacy view but drops the charge to eleven. All 2,933 cases, both directions,
+cap24, the original control and None return remain; five erasures add controls.
+Ordinary native/IO traces retain byte-identical 12,773 steps and 15,706 captures;
+the original negative still rejects, now after one native step rather than five.
+
+Installed Python 3.12.11–final 3.15.0 retains 15,706 boundaries per raw/VM/debug
+route, peak 22 bits. All 2,933 bounded cases also run ordinarily: 1,765 complete,
+730 raise HaltError and 438 reach EOF. Full state, immutable source/direction,
+cycle keys, views, IO/newline counters, held histories and independent recounts
+agree. Sixty actual masks plus fifteen reduced-model trajectories retain exact
+peaks, including late None's initial-width charge. Both-direction sixteen-bit
+witnesses, ten literal anchors, six metadata corruptions, detached preparation
+and eleven guarded workers retain actual states, live caps and output prefixes.
+Sixty writer routes preserve output-before-restore failures and same-command
+retries, including duplicate partial prefixes. Broader grammar and unbounded
+execution remain open.
+
+Nine complete funding scopes save twenty-eight lines against the twenty-eight-line
+bridge. Existing reject_faults replaces five identical control loops; three
+checkers reuse agrees' exact returned object, NQ inlines its sole actual view,
+and BrainIf research reuses count_steps. All module inverses preserve models,
+cases, assertions, control order, caps and returns. Complete typed traces retain
+12,504 constructor attempts, 523,597 native step calls, 547,851 captures, 43,243
+meter samples, 39,502 IO events and 59 rejections byte-identically. BrainIf's
+594 generator calls retain exact emitted programs and all 5,808 executed runs.
+
+Codecs retain persistent-map buckets, continuation depth, cache order and exact
+node bindings, regex metadata and RGB data; checked program dictionaries reject
+mutation. Correct-native, tagged-exception, concrete-erasure and codec corruption
+controls reject. The original and reused counters both fail after 10,001 real
+steps with empty assertion arguments. Tests/source remain 115,817/115,818;
+39 accounting rows and all 117 completion rows remain open.

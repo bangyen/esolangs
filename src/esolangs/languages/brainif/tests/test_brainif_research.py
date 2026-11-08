@@ -14,6 +14,7 @@ from esolangs.languages.brainif.generator import (
 )
 from esolangs.languages.brainif.interpreter import _Machine as BrainIf
 from esolangs.runtime.io import ScriptedIO
+from tests.support.event_io import count_steps
 from tests.support.generator_support import evaluate_generated
 
 
@@ -56,11 +57,7 @@ def test_brainif_selection_size_and_steps_never_regress() -> None:
                 for row in range(1 << n):
                     io = ScriptedIO("".join(format(row, f"0{n}b")))
                     machine = BrainIf(code.splitlines(), io)
-                    count = 0
-                    while not machine.halted:
-                        machine.step()
-                        count += 1
-                        assert count <= 10000
+                    count = count_steps(machine, 10000)
                     assert io.getvalue() == table[row]
                     assert io.reads == n
                     total += count
