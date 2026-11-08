@@ -2203,3 +2203,34 @@ Grapheme adds forty formatted test lines, leaving tests/source at
 115,692/115,702 with no new node. The queued usage correction identifies saving
 as top-level save_program. This accounting scope is reviewed; general catalog
 completion stays open.
+
+Crement, Cyclic tag and Circlefuck retain independent resolved-instruction,
+FIFO and mutable-byte-ring models at caps 16/64/24. All original cases and
+21 semantic/erasure controls remain. Circlefuck adds an empty-program
+constructor prediction and one regression: 347 cases; its old 346 typed
+traces stay identical. All three hooks already have collected callers.
+
+The unchanged 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0: 6,013 cases/46,459 native boundaries, all local public results and
+27 guarded native/isolated pairs per version, including caps zero and one.
+Full state, component captures, cycle records, debugger views, IO counters,
+step counts, completion, attached failures and held captures match independent
+predictions. Outcomes: 3,372 completions, 1,875 failed transitions, 760 bounded
+runs and six constructors. Corpus peaks are 34/1,067/56 written bits.
+
+Eleven populated capture faults and two required read-only omissions retain
+execution while rejecting lost component/subfield writes or missing fields. Literal written-bit anchors are
+0/12/31, 0/17/18 and 1/3 respectively. Five cursorless runs, three populated
+position substitutions and three repeated caught-EOF attempts preserve IO
+progress. Eight raw/VM/debug/public writer probes distinguish Circlefuck's
+pre-transition failure from Cyclic tag's failed post-halt print; successful
+active/dump retries recover with the predicted prefix, state and step counts.
+Cyclic tag's initially empty queue reports completion only after the post-halt
+call, even when its state and printed flag never change.
+
+The bounded Crement corpus uses resolved rows and canonical labeled source;
+general label/term parsing remains open. Circlefuck's byte encoder and empty
+constructor do not establish general escape parsing. Only three permanent
+test lines are added, with every existing case/control/cap retained.
+Tests/source are 115,695/115,702; no node is added. These accounting scopes
+are reviewed; 66 accounting rows and all 117 completion rows remain open.

@@ -26,6 +26,8 @@ def _branch(ring, pc, token):
 
 
 def _model(initial, stdin):
+    if not initial:
+        return "syntax", [(None, False, "", 0, 0)]
     ring = bytearray(initial)
     pc = head = cursor = 0
     halted = False
@@ -91,6 +93,7 @@ def check_raw_circlefuck():
         _check(_Machine, initial, "\0")
 
     _check(_Machine, b",+.@", "ÿ")
+    _check(_Machine, b"", "")
 
     with pytest.raises(AssertionError):
         _check(stalled(_Machine), b"@", "")
