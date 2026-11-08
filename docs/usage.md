@@ -493,8 +493,8 @@ Use `run(...).output` for output text; `run_result` is replaced by `run`.
 
 The CLI is a deliberate subset of the Python API, not a mirror of it:
 every command calls public functions, a capability lands in the API first,
-and the CLI gains a flag only for a shell workflow. Filtering, stepping and
-saving programs stay in Python.
+and the CLI gains a flag only for a shell workflow. Stepping and programmatic
+saving stay in Python; `list` supports the documented catalog filters.
 
 The public API is `esolangs.__all__`, `esolangs.__version__` and
 `esolangs.debugger.__all__`, plus the documented CLI. Every other module (`esolangs.vm`, `esolangs.registry`,

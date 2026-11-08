@@ -39,6 +39,9 @@ order. This one is XOR. `generate` wrote a brainfuck program for it, and
 
 Image-based programs built in memory need no extra.
 
+Examples reflect this checkout. Use `pip install .` from the repository to try
+unreleased APIs.
+
 ## Command line
 
 ```bash
