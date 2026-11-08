@@ -9,7 +9,13 @@ from dataclasses import replace
 from itertools import product
 
 from esolangs.languages.interprogck8.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, reject_faults
+from tests.interpreters.oracle_support import reject_faults
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model(
+    "interprogck8-v1",
+    "program instruction accumulator captured_body call_frames input_cursor",
+)
 
 
 class _Port:
@@ -154,9 +160,14 @@ def _view(machine):
 
 
 def _check(factory, source, stdin="unused"):
-    assert observed(factory, list(source), stdin, _view, cap=48) == _model(
-        source, stdin
-    ), (source, stdin)
+    workspace.agrees(
+        _model(source, stdin),
+        (factory, list(source), stdin),
+        (_WORKSPACE, lambda row: (*row[0], row[-1])),
+        _view,
+        cap=48,
+        context=(source, stdin),
+    )
 
 
 def check_raw_interprogck8():
@@ -226,3 +237,7 @@ def check_raw_interprogck8():
             self.state = replace(self.state, acc=(self.state.acc + 1) % 256)
 
     reject_faults(_check, _Machine, WrongAccumulator, ("@nd", "div"))
+
+    workspace.check_erasures(
+        _WORKSPACE, _check, _Machine, ("<", "u", ">", "EXE", "X", "z"), "A"
+    )

@@ -223,14 +223,11 @@ def _parts(row):
 def _check(factory, program, stdin="unused", cap=16):
     expected = _model(program, stdin, cap)
 
-    def state(machine):
-        return tuple(sorted(machine.variables.items())), machine.ind, machine.exited
-
     checked = workspace.workspace_view(
         expected[1],
         _WORKSPACE,
         _parts,
-        state,
+        lambda m: (tuple(sorted(m.variables.items())), m.ind, m.exited),
     )
     assert observed(factory, _source(program), stdin, checked, cap=cap) == expected, (
         program,

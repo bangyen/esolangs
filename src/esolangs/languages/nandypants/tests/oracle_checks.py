@@ -97,18 +97,12 @@ def _model(code, stdin):
 
 
 def _check(factory, code, stdin):
-    def state(machine):
-        return (
-            tuple(machine.state),
-            frozenset(machine.a_ones),
-            frozenset(machine.b_ones),
-        )
 
     workspace.agrees(
         _model(code, stdin),
         (factory, code, stdin),
         (_WORKSPACE, lambda row: (*row[0], row[-1])),
-        state,
+        lambda m: (tuple(m.state), frozenset(m.a_ones), frozenset(m.b_ones)),
         cap=32,
         context=(code, stdin),
     )

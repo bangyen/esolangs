@@ -2888,3 +2888,38 @@ saving eighteen lines against the twenty-line bridge. Complete typed traces reta
 reject; no case, assertion, node or cap is removed. Tests/source are 115,815/115,818.
 Broader grammar and unbounded execution remain open; 41 accounting rows and all
 117 completion rows remain open.
+
+
+Interprogck8's independent hook now checks all six workspace components.
+All 461 cases, cap48, three original controls and the None return remain;
+six component erasures add controls. The complete original model, helpers and
+corpus are unchanged. Ordinary native/IO traces retain byte-identical 2,423
+step attempts and 2,884 captures.
+
+Installed Python 3.12.11–final 3.15.0 retains 2,884 boundaries per raw/VM/debug
+route, peak 196 bits. All 461 bounded public cases remain; 355 completed runs,
+97 native halts and eight EOF failures also run ordinarily. One uncertified case
+stays bounded. Full state, cycle keys, views, held histories, IO/newline counters,
+active commands and independent recounts agree. Readonly compiled metadata tracks
+the old program immediately after z, then reloads before the next active step,
+including a failed input step; no eager-refresh assumption is introduced.
+
+Seventy-two actual masks and eighteen complete reduced-model trajectories retain
+a 92-bit all-field witness. Late None retains initial widths, including the full
+64-bit program charge; schema omissions lose the independently predicted peaks.
+Thirty writer routes plus six final-write/idle routes retain commit-before-write
+behavior: continuation advances, while a failed final write leaves an already
+halted machine whose retries do not print. EOF retries, malformed reads, readonly
+corruptions, two prepared-source routes, three literal anchors and seven guarded
+workers retain exact states, prefixes and active caps. Deterministic developer,
+random/range commands and broader grammar remain outside the independent scope.
+
+Three Nandypants/Between/Forþ hooks inline only single-use actual views, saving
+thirteen lines against the fifteen-line bridge. Complete typed ordered traces
+retain 2,872 constructor attempts, 15,619 steps, 21,281 captures, 15,615 meter
+samples, 1,593 IO events, 27 assertion controls and Between's three EOF retries
+byte-identically. The codec retains mutable aliasing, every Forþ scope backing
+slot, undo links, sentinel and unset keys; real root reversals and concrete
+callback erasures are positive controls. No case, assertion, node or cap is
+removed. Tests/source are 115,817/115,818; 40 accounting rows and all 117 completion
+rows remain open.

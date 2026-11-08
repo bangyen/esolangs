@@ -175,16 +175,6 @@ def _model(source, stdin):
     return None, trace
 
 
-def _view(machine):
-    return (
-        machine.stack,
-        tuple(sorted(machine.table.items())),
-        tuple((f.code, f.pc, f.loop) for f in machine.frames),
-        machine.error,
-        machine._input_reads,
-    )
-
-
 def _parts(row):
     stack, scopes, frames, _error, reads = row[0]
     return stack, frozenset(scopes), frames, row[-1], reads
@@ -195,7 +185,13 @@ def _check(factory, code, stdin="unused"):
         _model(code, stdin),
         (factory, code, stdin),
         (_WORKSPACE, _parts),
-        _view,
+        lambda m: (
+            m.stack,
+            tuple(sorted(m.table.items())),
+            tuple((f.code, f.pc, f.loop) for f in m.frames),
+            m.error,
+            m._input_reads,
+        ),
         cap=96,
     )
 
