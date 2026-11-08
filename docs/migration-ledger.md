@@ -2304,3 +2304,27 @@ are retained. Each reader also rejects a wrong-span positive control.
 Reuse saves 31 test lines; CARP adds sixteen. Tests/source are 115,681/115,702;
 no case, assertion, control, cap or node is removed. These bounded accounting
 scopes are reviewed; 63 accounting rows and all 117 completion rows remain open.
+
+Declared VM views now render host-capped integers inside exact builtin data
+graphs without changing the process digit limit. A valid Container initial
+value with 5,001 digits previously made VM/debugger views raise ValueError;
+it now displays the correct decimal prefix. Its 16,610-bit typed value,
+workspace, cycle state, memory and IO remain unchanged.
+
+Ordinary repr stays the fast path. On a confirmed digit-cap failure, a full
+plain-data check precedes recursive formatting; unsupported custom repr is
+never retried or reconstructed. Identity checks prevent overloaded metaclass
+equality from admitting custom types. Cycles and aliases retain their markers;
+scalar truncation at 60 characters and the first-eight sequence rule stay.
+Custom dataclasses, namedtuples and subclasses retain their existing repr and
+errors. No record adapter or global policy mutation is introduced.
+
+Only one of 951 packaged files changes. The fresh wheel passes Python 3.12.11,
+3.13.15, 3.14.7 and final 3.15.0: 117 runtime witnesses, 114 artifact round
+trips, 116 stepped completions, one periodic boundary and 13,778 accounting
+samples per version. All 9,033 ordinary view renderings match the previous
+formatter on the same values. The 240 guarded workers per version retain
+112 unfinished one-step results, five completions and partial-output failures.
+Large-value, cyclic/aliased builtin and custom-error controls pass separately.
+Existing test nodes carry the regressions; no generator or accounting schema
+changes. Broader language/accounting completion remains open.

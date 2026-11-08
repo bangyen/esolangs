@@ -505,6 +505,39 @@ class TestViews:
         assert cut.endswith("...")
         assert len(cut) == 60
 
+        import sys
+
+        from esolangs.runtime._vm_views import _view_repr
+
+        cap = sys.get_int_max_str_digits()
+        huge = 10**700
+        cycle = [huge]
+        cycle.append(cycle)
+        values = [
+            huge,
+            -huge,
+            (huge,),
+            {"n": [huge, -huge]},
+            {huge},
+            frozenset({huge}),
+            cycle,
+            [huge] * 9,
+        ]
+        try:
+            sys.set_int_max_str_digits(0)
+            expected = [repr(value) for value in values]
+            abbreviated = [_abbreviate(value) for value in values]
+            sys.set_int_max_str_digits(640)
+            with pytest.raises(ValueError, match="Exceeds the limit"):
+                repr(huge)
+            assert [_view_repr(value) for value in values] == expected
+            assert [_abbreviate(value) for value in values] == abbreviated
+            assert cycle[1] is cycle
+            assert values[-1][0] is huge
+        finally:
+            sys.set_int_max_str_digits(cap)
+        assert sys.get_int_max_str_digits() == cap
+
     def test_a_view_that_raises_is_skipped_rather_than_fatal(self) -> None:
         """One broken property must not take the whole screen down."""
         from esolangs.runtime._vm_views import machine_views
@@ -521,3 +554,47 @@ class TestViews:
         assert machine_views(_Machine(), ("broken", "fine")) == (("fine", "7"),)
         with pytest.raises(TypeError):
             machine_views(_Machine())
+
+        import sys
+        from collections import namedtuple
+        from dataclasses import dataclass
+
+        from esolangs.runtime._vm_views import _view_repr
+
+        @dataclass
+        class Custom:
+            value: object
+            calls: int = 0
+
+            def __repr__(self):
+                self.calls += 1
+                return "custom(" + repr(self.value) + ")"
+
+        class CustomList(list):
+            def __repr__(self):
+                return "custom" + super().__repr__()
+
+        class Equal(type):
+            __hash__ = None
+
+            def __eq__(cls, other):
+                return True
+
+        impostor_type = Equal("Impostor", (Custom,), {})
+        cap = sys.get_int_max_str_digits()
+        huge = 10**700
+        direct, contained, impostor = Custom(huge), Custom(2), impostor_type(huge)
+        custom_list = CustomList([huge])
+        record = namedtuple("Record", "value")(huge)
+        try:
+            sys.set_int_max_str_digits(640)
+            for value in (direct, [contained, huge], record, custom_list, impostor):
+                with pytest.raises(ValueError, match="Exceeds the limit"):
+                    _view_repr(value)
+            assert direct.calls == contained.calls == impostor.calls == 1
+            sys.set_int_max_str_digits(0)
+            assert _view_repr(record) == repr(record)
+            assert _view_repr(custom_list).startswith("custom[1000")
+            assert _view_repr(direct).startswith("custom(1000")
+        finally:
+            sys.set_int_max_str_digits(cap)

@@ -130,6 +130,27 @@ class TestStepMachine:
         machine = _Machine(["A=1" + "0" * 5000 + ":"], IO())
         assert machine.var["A"] == 10**5000
 
+        import sys
+
+        from esolangs import ProgramArtifact
+        from esolangs.debugger import make_debugger
+        from esolangs.vm import _capture_workspace, make_vm
+
+        cap = sys.get_int_max_str_digits()
+        digits = "1" + "0" * max(5000, cap)
+        program = ProgramArtifact("A=" + digits + ":\n", "Container")
+        vm = make_vm("Container", program, stdin="")
+        debug = make_debugger("Container", program, stdin="")
+        for wrapped in (vm, debug.vm):
+            before = wrapped.snapshot(), _capture_workspace(wrapped), wrapped.memory
+            assert dict(wrapped.views)["var"] == ("{'A': " + digits + "}")[:57] + "..."
+            assert (
+                wrapped.snapshot(),
+                _capture_workspace(wrapped),
+                wrapped.memory,
+            ) == before
+        assert sys.get_int_max_str_digits() == cap
+
 
 def _machine(code: object) -> object:
     return _Machine(code, IO())
