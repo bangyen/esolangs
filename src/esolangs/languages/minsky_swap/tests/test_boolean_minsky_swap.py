@@ -134,7 +134,6 @@ class TestParameterizedMinskySwap:
         emits: every later stage's skip target is counted from it, so
         a drift of one lands each later skip a command too far.
         """
-
         assert_analysis_complement("Minsky Swap", "input_weights")
         assert_analysis_complement("Minsky Swap", "symmetric_weights", "0001")
         _check_pair_leaves()
@@ -174,9 +173,10 @@ def _check_constant_templates() -> None:
                     machine.step()
                     written.sample(machine.workspace_snapshot())
                     assert esolangs.read_answer("Minsky Swap", io.getvalue()) == bit
-                    assert written.bits == (
-                        3 * n + 3 * int(bit)
-                    ).bit_length() + 3 * int(bit)
+                    assert (
+                        written.bits
+                        == (3 * n + 3 * int(bit)).bit_length() + 3 * int(bit) + 1
+                    )
                 assert len(sizes) == 1
     assert (
         sum(

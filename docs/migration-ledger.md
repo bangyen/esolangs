@@ -2781,3 +2781,41 @@ escape after real steps. Exact integer counter probes preserve the original
 1,000/5,000-step failures and empty assertion arguments. No case, assertion,
 node or cap is removed. Tests/source are 115,813/115,819; 44 accounting rows
 and all 117 completion rows remain open.
+
+
+Minsky Swap's v2 workspace and cycle key retain the post-halt dump latch.
+Two actual '+' runs previously had equal captures but different next-step
+outputs ('1 0' versus empty); v2 distinguishes them and counts four completed
+bits instead of three. Parser and transition/output logic are unchanged.
+All 610 independent cases, cap64, seven controls and return(610,7) remain;
+five erasures add controls. Complete native state, readonly program/targets,
+IO and outputs retain byte-identical 11,872 step attempts/12,477 captures;
+intentionally corrected public projections are archived separately.
+
+Installed Python 3.12.11–final 3.15.0 retains 475 completed runs, 130 bounded
+runs, five constructor refusals and 12,477 valid boundaries per raw/VM/debug
+route, peak eleven bits. Full views, successful active steps, post-halt
+completion, IO, held histories and independent recounts agree. Sixty actual
+masking trajectories distinguish charged fields from the ordinary read-only
+zero cursor: freezing it is a no-op, late None adds a phantom bit, and a
+constructor omission charges zero. Three actual caller-read supplements add
+two cursor bits without inventing native input instructions or replacing state.
+Six writer refusals preserve dump-before-latch retries and partial prefixes;
+nine guarded workers retain live caps and a real output-limit prefix.
+
+The completed-run bound and constant pins add one bit. Per version, 246 constant
+runs, 2,124 pinned/exhaustive-three-input runs and 856 arity1/2/3/6 bound runs
+retain exact source bytes, full outputs and active commands; every completed
+charge adds exactly one. Measured attained bounds are 10/12/12/16 bits.
+All committed generator size/command pins remain unchanged: commands selects
+the last input row; worst_row_commands is separate. An initially incorrect
+new verifier compared that selected pin to the maximum; producer/consumer
+review corrected the verifier, preserving all per-row assertions and evidence.
+Generated proof docs are current. The rebuilt 951-file wheel changes only the
+interpreter and workspace formula modules.
+
+Existing source_checker plus a single-use independent projection keeps the
+complete bridge at four test lines; the necessary native correction removes
+one obsolete source line overall. Tests/source are 115,817/115,818. No node,
+case, cap or old assertion is removed. Giant-target/register and broader source
+policies remain open; 43 accounting rows and all 117 completion rows remain open.

@@ -8,7 +8,7 @@ admitted = 2020-07-25T21:13:52-04:00
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "uniform ++/** runs; weighted stages index higher essential inputs while the last essential input stays in scratch through bounded ignored-tail macros, and a cascade routes row pairs to four fixed leaves; symmetric tables count set inputs"
-definitions = ["N = 40n+11 through n=5; global ceiling beyond", "W = n+3+bl(max(T+6n+12,16n+4)), minus 1 from n=3"]
+definitions = ["N = 40n+11 through n=5; global ceiling beyond", "W = n+4+bl(max(T+6n+12,16n+4)), minus 1 from n=3"]
 
 [generator_sizes]
 "00000001" = { commands = 30, commands_by_row = { "0" = 13, "1" = 18, "2" = 18, "3" = 23, "4" = 18, "5" = 23, "6" = 23, "7" = 30 }, source_units = 65 }
@@ -112,7 +112,7 @@ first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.minsky_swap.generator:minsky_swap"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}; equality at n=1,2,3,6: registers, pointer, cursor", formula = "W" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}; equality at n=1,2,3,6: registers, pointer, cursor and dump latch", formula = "W" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.minsky_swap.tests.formulas:_chars"

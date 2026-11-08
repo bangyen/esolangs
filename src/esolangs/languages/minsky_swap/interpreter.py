@@ -45,8 +45,8 @@ _NUMBERS = re.compile(r"\d+")
 #:
 #: ``dumped`` is state because the dump is a once-per-run effect that
 #: happens *after* the cursor has run off the end, so the position alone
-#: cannot tell "about to dump" from "already dumped".  It stays out of
-#: ``snapshot``.
+#: cannot tell "about to dump" from "already dumped".  Both semantic
+#: captures include it.
 #:
 #: The program and its jump table are deliberately not in here.  Neither
 #: changes during a run, so carrying them would put constant data in every
@@ -111,7 +111,7 @@ def _parse(code: str) -> tuple[str, list[int]]:
 
 
 _WORKSPACE_MODEL = WorkspaceModel(
-    "minsky-swap-v1", ("instruction", "selected", "registers", "input_cursor")
+    "minsky-swap-v2", ("instruction", "selected", "registers", "dumped", "input_cursor")
 )
 
 
@@ -190,14 +190,13 @@ class _Machine:
             instruction=self.state[0],
             selected=self.state[1],
             registers=self.state[2],
+            dumped=self.state[3],
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # ``dumped`` stays out: the detector compares states of a running
-        # machine, and a stopped run is not something it is asked about.
-        return self.state[:3]
+        return self.state
 
     def step(self) -> None:
         """Execute one command, dumping the registers once the cursor ends.

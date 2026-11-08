@@ -6,7 +6,11 @@ import random
 import pytest
 
 from esolangs.languages.minsky_swap.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model(
+    "minsky-swap-v2", "instruction selected registers dumped input_cursor"
+)
 
 
 def _parse(source):
@@ -88,13 +92,12 @@ def _model(source):
     return None, trace
 
 
-def _agrees(factory, source):
-    expected = _model(source)
-    assert (
-        observed(factory, source, "λ\nunused", lambda m: (*m.state, tuple(m.memory)))
-        == expected
-    ), source
-    return expected
+_agrees = workspace.source_checker(
+    _model,
+    (_WORKSPACE, lambda row: (*row[0][:4], row[-1])),
+    lambda m: (*m.state, tuple(m.memory)),
+    "λ\nunused",
+)
 
 
 def check_raw_minsky():
@@ -182,4 +185,5 @@ def check_raw_minsky():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source)
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, "+*+")
     return len(corpus), len(controls)
