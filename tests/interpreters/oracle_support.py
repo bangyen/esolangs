@@ -112,3 +112,15 @@ def checker(predict, state, *, cap=64):
         return expected
 
     return check
+
+
+def decorate_io(factory, method, decorate):
+    """Return a fault class decorating IO before positional source/IO init."""
+
+    class Fault(factory):
+        def __init__(self, source, io):
+            original = getattr(io, method)
+            setattr(io, method, decorate(original))
+            super().__init__(source, io)
+
+    return Fault

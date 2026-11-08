@@ -10,7 +10,12 @@ from itertools import product
 import pytest
 
 from esolangs.languages.for_thorn.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import decorate_io, overread, stalled
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model(
+    "for-thorn-v1", "stack scopes frames input_cursor input_reads"
+)
 
 
 def _number(value):
@@ -186,10 +191,18 @@ def _view(machine):
     )
 
 
+def _parts(row):
+    stack, scopes, frames, _error, reads = row[0]
+    return stack, frozenset(scopes), frames, row[-1], reads
+
+
 def _check(factory, code, stdin="unused"):
-    assert observed(factory, code, stdin, _view, cap=96) == _model(code, stdin), (
-        code,
-        stdin,
+    workspace.agrees(
+        _model(code, stdin),
+        (factory, code, stdin),
+        (_WORKSPACE, _parts),
+        _view,
+        cap=96,
     )
 
 
@@ -259,16 +272,16 @@ def check_raw_for_thorn():
         _check(_Machine, code, stdin)
     _check(_Machine, "")
 
-    class WrongOutput(_Machine):
-        def __init__(self, code, io):
-            write = io.print_char
-            io.print_char = lambda c: write(c + "!")
-            super().__init__(code, io)
+    wrong_output = decorate_io(
+        _Machine, "print_char", lambda write: lambda c: write(c + "!")
+    )
 
     for factory, code in (
         (stalled(_Machine), "12+"),
-        (WrongOutput, "1."),
+        (wrong_output, "1."),
         (overread(_Machine), ","),
     ):
         with pytest.raises(AssertionError):
             _check(factory, code, "ab")
+
+    workspace.check_erasures(_WORKSPACE, _check, _Machine, "1{2},", "A")

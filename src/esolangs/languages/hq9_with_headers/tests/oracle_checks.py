@@ -11,7 +11,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.hq9_with_headers.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import decorate_io, observed, overread, stalled
 from tests.support import workspace_oracle as workspace
 
 _WORKSPACE = workspace.workspace_model(
@@ -250,13 +250,11 @@ def check_raw_hq9_with_headers():
             [(None, False, "", 0, 0)],
         )
 
-    class WrongOutput(_Machine):
-        def __init__(self, code, io):
-            write = io.print_num
-            io.print_num = lambda value: write(value + 1)
-            super().__init__(code, io)
+    wrong_output = decorate_io(
+        _Machine, "print_num", lambda write: lambda value: write(value + 1)
+    )
 
-    for factory in (stalled(_Machine), WrongOutput, overread(_Machine)):
+    for factory in (stalled(_Machine), wrong_output, overread(_Machine)):
         with pytest.raises(AssertionError):
             _check(factory, (("set", "v", 1),), (("out", "v"),))
 

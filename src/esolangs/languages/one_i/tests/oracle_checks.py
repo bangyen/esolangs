@@ -11,7 +11,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.one_i.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import decorate_io, observed, overread, stalled
 from tests.support.model_input import token_span
 from tests.support.workspace_oracle import agrees as workspace_agrees
 from tests.support.workspace_oracle import missing_workspace, workspace_model
@@ -249,15 +249,13 @@ def check_raw_one_i():
             [(None, False, "", 0, 0)],
         )
 
-    class WrongOutput(_Machine):
-        def __init__(self, code, io):
-            write = io.print_str
-            io.print_str = lambda text: write(text + "!")
-            super().__init__(code, io)
+    wrong_output = decorate_io(
+        _Machine, "print_str", lambda write: lambda text: write(text + "!")
+    )
 
     for factory, code in (
         (stalled(_Machine), "ii+"),
-        (WrongOutput, "ip"),
+        (wrong_output, "ip"),
         (overread(_Machine), "Ap"),
         *(
             (missing_workspace(_Machine, field), "Ap")

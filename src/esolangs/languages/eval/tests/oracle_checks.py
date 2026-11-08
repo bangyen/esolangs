@@ -5,7 +5,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.eval.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import decorate_io, observed
 from tests.support import workspace_oracle
 
 _WORKSPACE = workspace_oracle.workspace_model(
@@ -109,17 +109,15 @@ def _resource_checks():
     for source in ('"' + "x" * 5000 + '".', "0.0!"):
         _check(_Machine, source)
 
-    class WrongOutput(_Machine):
-        def __init__(self, source, io):
-            write = io.print_value
-            io.print_value = lambda value: write(str(value) + "?")
-            super().__init__(source, io)
+    wrong_output = decorate_io(
+        _Machine, "print_value", lambda write: lambda value: write(str(value) + "?")
+    )
 
     class ExtraRead(_Machine):
         def __init__(self, source, io):
             io.input_char()
             super().__init__(source, io)
 
-    for factory in (WrongOutput, ExtraRead):
+    for factory in (wrong_output, ExtraRead):
         with pytest.raises(AssertionError):
             _check(factory, "0.")

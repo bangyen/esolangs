@@ -21,7 +21,7 @@ from esolangs.vm import run_until_halt_or_cycle
 from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _run_from, _runner
 from tests.support.evaluation import _evaluate
-from tests.support.event_io import ReadFirstIO
+from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import (
     assert_parity_at_most_doubles,
     constant_programs,
@@ -319,12 +319,7 @@ def _check_native_constants() -> None:
             io = ReadFirstIO(stdin + "Q", expected=n)
             machine = _Machine(program, io)
             written = WrittenState(machine.workspace_snapshot())
-            steps = 0
-            while not machine.halted:
-                machine.step()
-                written.sample(machine.workspace_snapshot())
-                steps += 1
-                assert steps <= n + 1
+            steps = count_steps(machine, n + 1, written=written)
             assert steps == n + 1
             assert written.bits == workspace(n, program)
             assert io.getvalue() == bit

@@ -13,7 +13,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.between.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
-from tests.interpreters.oracle_support import observed
+from tests.interpreters.oracle_support import decorate_io, observed
 from tests.support import workspace_oracle as workspace
 
 _WORKSPACE = workspace.workspace_model(
@@ -392,23 +392,21 @@ def check_raw_between():
                 self.io.input_char()
             super().step()
 
-    class Repeats(_Machine):
-        def __init__(self, code, io):
-            write = io.print_str
-            io.print_str = lambda text: write(text + "!")
-            super().__init__(code, io)
+    repeats = decorate_io(
+        _Machine, "print_str", lambda write: lambda text: write(text + "!")
+    )
 
-    class WrongText(_Machine):
-        def __init__(self, code, io):
-            write = io.print_str
-            io.print_str = lambda text: write(text.translate(str.maketrans("01", "10")))
-            super().__init__(code, io)
+    wrong_text = decorate_io(
+        _Machine,
+        "print_str",
+        lambda write: lambda text: write(text.translate(str.maketrans("01", "10"))),
+    )
 
     for factory, program in (
         (Skips, (("declare", "x"),)),
         (ReadsExtra, truth),
-        (Repeats, (("print", 1),)),
-        (WrongText, (("print", 1),)),
+        (repeats, (("print", 1),)),
+        (wrong_text, (("print", 1),)),
     ):
         with pytest.raises(AssertionError):
             _check(factory, program, "1\n0\n")

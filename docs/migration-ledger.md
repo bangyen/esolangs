@@ -2548,3 +2548,42 @@ Initial copied-support and lint/default-metadata adapter failures are archived.
 No generator, node, case or cap is removed. General HQ9 fork/conditional/song
 parsing remains outside this structured cohort. These bounded accounting scopes
 are reviewed; 52 accounting rows and all 117 completion rows remain open.
+
+Forþ's independent hook is now collected and captures stack, stored scopes,
+all frame code/pc/loop fields, input progress and logical reads at cap96.
+The raw view also checks the terminal abort flag. All 278 cases/three controls
+retain byte-identical traces; five component erasures add controls. Model and
+parser-free dispatch/scan helpers remain unchanged; no node or cap is removed.
+
+The unchanged 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0: 278 cases/4,391 boundaries, 225 completions, 51 failed transitions and
+two bounded runs per version. Full raw/VM/debug/public state, persistent scope
+maps, frame-entry keys, cycles, views, IO, success-only steps, failure envelopes,
+held histories and independent full-width recounts agree; peak 971 bits.
+Seven guarded pairs include live cap-zero/cap-one and real bounded cases.
+
+Five populated freezes/five native omissions lose exact charges. Literal 63-bit
+workspace has component peaks 8/9/44/1/1; additional anchors are 30/29/10 bits.
+Cursorless CRLF input retains offset 3/progress 1. Twelve EOF/conditional/abort
+routes preserve preadvanced frames and consumed operands; EOF/conditional
+failures finalize on the next active step without new IO and clear debug fault,
+while top abort idles retain it. Eight writer routes keep advanced pc/unpopped
+stack without retry, distinguishing terminal and active recovery.
+
+Eleven IO fault constructors across ten full hooks now share bound-method
+setup before native init. Both ordinary and mutant trajectories remain byte
+identical: 11,752 constructor attempts, 54,020 steps, 77,386 observations, 36,876
+meter samples and 17,392 IO events; all 63 old rejection controls remain live.
+The exact callbacks/call order expand to the original ASTs after private alias
+renaming. A real HQ9 constructor refusal leaves the replacement installed;
+a tagged bound-method failure survives restoring the class method. Only
+positional source/IO calls are admitted; private signatures/names/tracebacks
+are excluded. All hooks were invoked explicitly; collection is not inferred.
+
+That reuse saves seven lines; two constant-fixture loops save ten more through
+unchanged count_steps with total invariant integer caps n+2/n+1. Both full hooks
+retain 192 generation calls/492 native instances/3,738 steps and samples. These
+seventeen savings fund the complete seventeen-line Forþ bridge/hook. Tests/source
+remain 115,812/115,814. Initial setup and naming-adapter failures are archived.
+This bounded accounting scope is reviewed; 51 accounting rows and all 117 broader
+completion rows remain open.

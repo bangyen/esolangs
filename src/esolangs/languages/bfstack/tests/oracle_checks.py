@@ -8,6 +8,7 @@ import pytest
 
 from esolangs.languages.bfstack.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.oracle_support import decorate_io
 from tests.interpreters.stack_oracles import agrees_stack as _agrees_stack
 from tests.interpreters.stack_oracles import bfstack
 from tests.support.workspace_oracle import (
@@ -88,14 +89,12 @@ def check_raw_bfstack() -> None:
 
     check_erasures(_WORKSPACE, agrees_stack, _Machine, bfstack, ",[.-]", "A")
 
-    class WrongText(_Machine):
-        def __init__(self, code, io):
-            write = io.print_char
-            io.print_char = lambda char: write(chr(ord(char) ^ 1))
-            super().__init__(code, io)
+    wrong_text = decorate_io(
+        _Machine, "print_char", lambda write: lambda char: write(chr(ord(char) ^ 1))
+    )
 
     with pytest.raises(AssertionError):
-        agrees_stack(WrongText, bfstack, ",.", "A")
+        agrees_stack(wrong_text, bfstack, ",.", "A")
     for code, stdin in ((",", ""), (">[", "")):
         machine = _Machine(code, ScriptedIO(stdin))
         witness = WorkspaceWitness(_WORKSPACE)

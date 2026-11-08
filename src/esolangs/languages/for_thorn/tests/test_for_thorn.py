@@ -7,6 +7,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.for_thorn.interpreter import _advance, _Machine, run
 from esolangs.languages.for_thorn.interpreter import _Machine as Forth
+from esolangs.languages.for_thorn.tests.oracle_checks import check_raw_for_thorn
 from esolangs.runtime._result_wire import _state_from_wire, _state_wire
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_ancestor, run_until_halt_or_cycle
@@ -30,6 +31,7 @@ class TestStepMachine:
         assert list(machine.stack) == [-501334399]
 
     def test_step_tracks_stack_and_active_frame_cursor(self) -> None:
+        check_raw_for_thorn()
         machine = _Machine("65.", ScriptedIO())
         assert (list(machine.stack), machine.frames[0].pc) == ([], 0)
         machine.step()  # 6 pushes

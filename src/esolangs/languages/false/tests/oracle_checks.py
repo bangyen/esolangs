@@ -10,7 +10,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.false.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.interpreters.oracle_support import decorate_io, observed, overread, stalled
 
 
 def _signed(value):
@@ -159,15 +159,13 @@ def check_raw_false():
             [(None, False, "", 0, 0)],
         )
 
-    class WrongOutput(_Machine):
-        def __init__(self, code, io):
-            write = io.print_num
-            io.print_num = lambda n: write(n + 1)
-            super().__init__(code, io)
+    wrong_output = decorate_io(
+        _Machine, "print_num", lambda write: lambda n: write(n + 1)
+    )
 
     for factory, code in (
         (stalled(_Machine), "12+"),
-        (WrongOutput, "1."),
+        (wrong_output, "1."),
         (overread(_Machine), "^,"),
     ):
         with pytest.raises(AssertionError):
