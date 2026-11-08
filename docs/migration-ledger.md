@@ -2328,3 +2328,25 @@ formatter on the same values. The 240 guarded workers per version retain
 Large-value, cyclic/aliased builtin and custom-error controls pass separately.
 Existing test nodes carry the regressions; no generator or accounting schema
 changes. Broader language/accounting completion remains open.
+
+Container retains its independent simultaneous-network model, all 55 original
+cases, five controls and the existing pytest caller at cap eight. Seven
+supplements cover populated input/EOF, a 5,001-digit initial value, three
+constructor refusals and an undeclared condition's first-tick failure.
+
+The unchanged 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0: 62 cases/495 boundaries, ten completions, one failed transition,
+48 bounded runs and three constructor refusals per version. Eleven guarded
+native/isolated pairs include cap-zero/cap-one boundaries. Full state, tick,
+cycle, four workspace components, fixed rules, declared views, IO counters,
+step counts, completion, attached errors and held snapshots match independent
+predictions. Full-width recounts match WrittenState; peak charge is 16,668 bits.
+The large-value view succeeds without changing the host digit policy.
+
+Four populated freezes lose their exact component charges; four populated
+omissions fail. A literal 135-bit anchor and cursorless position substitution
+are live. Writer refusal on raw/VM/debug/public routes precedes state, tick
+and input commit; raw/VM/debug retries attempt the write again and retain the
+old capture. General source parsing and unbounded growth remain open.
+No tracked code or test changes are needed; 62 accounting rows and all 117
+completion rows remain open.
