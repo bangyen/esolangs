@@ -73,9 +73,14 @@ def _read(command, stdin, cursor):
     if not text:
         return None, cursor, "input"
     try:
-        if command == "d" and not re.fullmatch(r"[+-]?[0-9]+", text):
-            raise ValueError("decimal")
-        return int(text, 10 if command == "d" else 16), cursor, None
+        if command == "d":
+            if not re.fullmatch(r"[+-]?[0-9]+", text):
+                raise ValueError("decimal")
+            value = 0
+            for digit in text.lstrip("+-"):
+                value = 10 * value + ord(digit) - ord("0")
+            return value * (-1 if text.startswith("-") else 1), cursor, None
+        return int(text, 16), cursor, None
     except ValueError:
         return None, cursor, "argument" if command == "d" else "syntax"
 
@@ -292,6 +297,9 @@ def check_raw_dimensional():
         ("", " \n", "Aλ", "-257 Z", "+256\n", "ff A", "1_0 A", "٣ A", "0x10 Z"),
     ):
         _check(_Machine, command, stdin)
+    for prefix in ("", "-", "  +"):
+        _check(_Machine, "d.,.", prefix + "1" + "0" * 4400 + " Z")
+        _check(_Machine, "d.,.", prefix + "1" + "0" * 4400 + "_ Z")
     for code in (":", "=", "=f", "=xy", "[", "}", "*:*:", "[=zz]"):
         _check(_Machine, code)
 

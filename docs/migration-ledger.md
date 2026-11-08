@@ -2006,3 +2006,23 @@ runs. Eleven frozen-written components and one omitted constant cursor fail.
 HQ9+'s cursor is read-only. Observed peaks are 42/352/14 bits, not global
 bounds. Runtime, generators and size pins stay unchanged; these bounded
 accounting scopes are reviewed, while language/catalog completion stays open.
+
+EGL, Dimensional and Fackward retain all 2,606/355/395 cases, 18/12/7 controls
+and 64/64/24-command caps. Dimensional's independent ASCII decimal fold removes
+its model-only host digit limit; six added cases check long signed input,
+unread delimiters and rejected tokens. All old observer traces remain exact.
+EGL adds a populated movement/input witness; Fackward adds a cat witness and
+three constructor failures. Dimensional's scope remains axes 2–5; Fackward's
+transition model uses canonical integer/operator/block programs.
+
+The unchanged 951-file wheel passes Python 3.12.11, 3.13.15, 3.14.7 and final
+3.15.0: 3,367 cases/16,275 boundaries and 87 guarded native/isolated pairs per
+version. Independent models check all workspace components, state/cycle keys,
+declared views, IO counters, step/completion timing and retained captures.
+Nineteen frozen-written component controls fail, including a consumed-input
+failure boundary. EGL has 1,074 completions, 731 execution failures, 791
+constructor failures and eleven bounded runs; Dimensional has 300/52/8/1;
+Fackward has 388/7/3/1. Fackward's exhausted reading swap halts normally with
+an EOF attempt; explicit halt need not read. Observed peaks are 110/41/157
+bits, not global bounds. Runtime, generators and size pins stay unchanged;
+these bounded accounting scopes are reviewed. Broader completion stays open.
