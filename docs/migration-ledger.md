@@ -3229,3 +3229,40 @@ not exhaustive. A real appended source character at table137 is rejected after
 all 256 generation calls. All 951 production files stay byte-identical; no
 case, assertion, cap or node is removed. Tests/source are 115,801/115,818;
 32 accounting rows and all 117 completion rows remain open.
+
+
+Super SNUSP's existing independent single-row model now checks all nine
+workspace components. All 231 normal cases, two constructor refusals, cap64,
+three old controls and None return remain; nine erasures add controls.
+Model transitions and constructor callbacks stay unchanged; all 2,211 native
+steps/2,442 captures remain byte-identical. The 22-bit witness writes seven
+components; row and heading remain readonly.
+
+Thirty-six V2 installed leaves pass on Python 3.12.11–final 3.15.0. Raw and
+prepared routes each retain 231 cases/2,442 boundaries, peak89 bits. Actual
+seeded VM/debug routes each retain 462 cases/4,884 boundaries. All 231 public cases
+run ordinarily with the real default None provider, including eighteen
+single-draw sources checked against independently enumerated finite full-trace
+and result relations. Explicit seeded public profiles add 462 bounded and
+462 ordinary runs. Wrong output, wrong draw upper and double draws fail live
+controls; random paths are sampled, not exhaustive. V1's missing frozen helper
+binding is retained; V2 binds it and checks every removed import before loading.
+
+One hundred twelve mutable masks, twenty-eight reductions and sixteen readonly
+trajectories pass. Fifty-six stepped and twenty-eight public writer routes
+retain committed control across physical refusal. Eight repeated EOF, eight
+provider refusals, twelve repeated halts and four argument retries pass.
+Eleven guarded children cover ten parity pairs and an isolated output-limit
+witness. Mirrors, general grids, huge valid numeric input and output policy
+remain outside this independent cohort.
+
+Rubic and IEBEL reuse the unchanged size helper, saving seven lines against
+the twenty-two-line bridge. Their complete owning nodes retain 706 artifacts,
+including 48 nested balance calls, plus 498 native constructions, 6,072 steps,
+6,570 captures and 8,000 IO calls byte-identically. Both local literals,
+all constant arities/options/rows and IEBEL's analysis-complement control remain.
+All 512 size-corpus programs execute all 4,096 input rows; an appended source
+character is rejected and ten typed codec controls pass. All 951 production
+files stay byte-identical. Tests/source are 115,816/115,818; no case, assertion,
+control, node or cap is removed. 31 accounting rows and all 117 completion rows
+remain open.

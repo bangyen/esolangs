@@ -12,7 +12,13 @@ import pytest
 
 from esolangs.languages.super_snusp.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, overread, stalled
+from tests.support import workspace_oracle as workspace
 from tests.support.model_input import token_span
+
+_WORKSPACE = workspace.workspace_model(
+    "super-snusp-v1",
+    "row column heading pointer cells values digit stopped input_cursor",
+)
 
 
 class _Draw:
@@ -172,9 +178,23 @@ def _check(factory, source, stdin="unused", choice=0):
     def build(code, io):
         return factory([code], io, _Draw(choice))
 
-    assert observed(build, source, stdin, lambda m: tuple(m.state), cap=64) == _model(
-        source, stdin, choice
-    ), (source, stdin, choice)
+    workspace.agrees(
+        _model(source, stdin, choice),
+        (build, source, stdin),
+        (
+            _WORKSPACE,
+            lambda row: (
+                *row[0][0],
+                row[0][1][0],
+                frozenset(row[0][1][1]),
+                *row[0][2:],
+                row[-1],
+            ),
+        ),
+        lambda m: tuple(m.state),
+        cap=64,
+        context=(source, stdin, choice),
+    )
 
 
 def check_raw_super_snusp():
@@ -225,3 +245,5 @@ def check_raw_super_snusp():
     ):
         with pytest.raises(AssertionError):
             _check(factory, code, "ab")
+
+    workspace.check_erasures(_WORKSPACE, _check, _Machine, "\"1{>2{,@#'", "A 3")
