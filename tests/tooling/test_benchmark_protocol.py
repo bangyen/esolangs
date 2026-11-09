@@ -1,6 +1,7 @@
 """Reject malformed worker records without losing legitimate row deadlines."""
 
 import json
+import signal
 import sys
 
 import pytest
@@ -66,7 +67,9 @@ def test_valid_multiline_protocol_runs_all_rows(monkeypatch, capsys) -> None:
     record["peak_stack_items"] = 3
     assert benchmark.main(["Brainfuck", "01", "--all-rows"]) == 1
     assert json.loads(capsys.readouterr().out) == record
-    _check_store_sampling(monkeypatch)
+    with monkeypatch.context() as patch:
+        patch.delattr(signal, "SIGALRM", raising=False)
+        _check_store_sampling(patch)
 
 
 @pytest.mark.medium
@@ -196,7 +199,15 @@ def _check_store_sampling(monkeypatch) -> None:
                 if phase == "refuse-active":
                     patch.setattr(benchmark.debugger_api, "make_vm", refusing_factory)
                 record = benchmark._execute(
-                    name, program, "01", 0, 10000, 5, track_store=True
+                    # Like the supervised worker, rely on the outer deadline;
+                    # an inner alarm is POSIX-only. The step cap remains live.
+                    name,
+                    program,
+                    "01",
+                    0,
+                    10000,
+                    None,
+                    track_store=True,
                 )
             assert record["peak_written_bits"] == (
                 active_peak if phase == "refuse-active" else written.bits
