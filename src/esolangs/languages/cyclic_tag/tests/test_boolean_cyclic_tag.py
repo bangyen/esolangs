@@ -6,6 +6,7 @@ import esolangs
 from esolangs.languages.cyclic_tag.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from tests.support.evaluation import _evaluate
+from tests.support.generator_support import constant_artifacts
 
 
 @pytest.mark.medium
@@ -41,26 +42,23 @@ def test_constant_uses_one_empty_production_and_deletes_each_embedded_input(
 
 def _check_constants() -> None:
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                template = esolangs.generate("Cyclic tag", bit * (1 << n), **options)
-                assert template.source.count("$") == n
-                for bits in ([0] * n, [1] * n):
-                    program = esolangs.instantiate("Cyclic tag", template, bits)
-                    io = ScriptedIO("7")
-                    machine = _Machine(program.source, io)
-                    assert machine.data == [str(b) for b in bits] + [bit]
-                    for count in range(n + 1):
-                        assert machine.read == count
-                        machine.step()
-                        assert not io.getvalue()
-                    assert machine.halted
-                    assert machine.read == n + 1
-                    machine.step()
-                    assert io.getvalue() == bit
-                    assert io.reads == 0
-                    assert io.input_char() == ord("7")
+    for n, bit, _options, template in constant_artifacts("Cyclic tag", range(1, 13)):
+        assert template.source.count("$") == n
+        for bits in ([0] * n, [1] * n):
+            program = esolangs.instantiate("Cyclic tag", template, bits)
+            io = ScriptedIO("7")
+            machine = _Machine(program.source, io)
+            assert machine.data == [str(b) for b in bits] + [bit]
+            for count in range(n + 1):
+                assert machine.read == count
+                machine.step()
+                assert not io.getvalue()
+            assert machine.halted
+            assert machine.read == n + 1
+            machine.step()
+            assert io.getvalue() == bit
+            assert io.reads == 0
+            assert io.input_char() == ord("7")
 
 
 @pytest.mark.medium

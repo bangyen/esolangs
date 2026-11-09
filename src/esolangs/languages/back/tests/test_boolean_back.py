@@ -17,7 +17,7 @@ from scripts.benchmark import WrittenState
 from tests.proofs.deep.execution import run_to_answer
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import count_steps
-from tests.support.generator_support import three_input_corpus_size
+from tests.support.generator_support import constant_artifacts, three_input_corpus_size
 from tests.support.witness_tables import _drawing, row_bits, witnesses
 
 
@@ -167,41 +167,35 @@ class TestParameterizedBack:
         from esolangs.languages.back.interpreter import _Machine
 
         _check_held_input_and_dump()
-        for n in range(1, 13):
-            for bit in "01":
-                for options in ({}, {"width": 1}, {"balance": True}):
-                    template = esolangs.generate("Back", bit * (1 << n), **options)
-                    assert template.source.count(TEMPLATE_CHAR) == n
-                    if not options:
-                        assert len(template.source) == 3 * n + 1 + int(bit)
-                    rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
-                    for row in rows:
-                        bits = list(map(int, format(row, f"0{n}b")))
-                        program = esolangs.instantiate("Back", template, bits)
-                        assert len(program.source) == len(template.source)
-                        io = ScriptedIO()
-                        machine = _Machine(program.source.splitlines(), io)
-                        written = WrittenState(machine.workspace_snapshot())
-                        steps = 0
-                        while not machine.halted and steps < 3 * n + 4:
-                            machine.step()
-                            written.sample(machine.workspace_snapshot())
-                            steps += 1
-                        assert machine.halted
-                        assert machine.tape == (0,) * n + (int(bit),)
-                        assert not io.getvalue()
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        assert io.getvalue().split()[n] == bit
-                        if not options:
-                            assert steps + 1 == 3 * n + 2 + int(bit) - row.bit_count()
-                            assert (
-                                written.bits
-                                == n
-                                + 3
-                                + (3 * n + int(bit)).bit_length()
-                                + n.bit_length()
-                            )
+        for n, bit, options, template in constant_artifacts("Back", range(1, 13)):
+            assert template.source.count(TEMPLATE_CHAR) == n
+            if not options:
+                assert len(template.source) == 3 * n + 1 + int(bit)
+            rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+            for row in rows:
+                bits = list(map(int, format(row, f"0{n}b")))
+                program = esolangs.instantiate("Back", template, bits)
+                assert len(program.source) == len(template.source)
+                io = ScriptedIO()
+                machine = _Machine(program.source.splitlines(), io)
+                written = WrittenState(machine.workspace_snapshot())
+                steps = 0
+                while not machine.halted and steps < 3 * n + 4:
+                    machine.step()
+                    written.sample(machine.workspace_snapshot())
+                    steps += 1
+                assert machine.halted
+                assert machine.tape == (0,) * n + (int(bit),)
+                assert not io.getvalue()
+                machine.step()
+                written.sample(machine.workspace_snapshot())
+                assert io.getvalue().split()[n] == bit
+                if not options:
+                    assert steps + 1 == 3 * n + 2 + int(bit) - row.bit_count()
+                    assert (
+                        written.bits
+                        == n + 3 + (3 * n + int(bit)).bit_length() + n.bit_length()
+                    )
         assert three_input_corpus_size("Back") == 61542
 
     def test_tree_uses_tape_decision_nodes(self) -> None:

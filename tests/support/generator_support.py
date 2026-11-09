@@ -320,11 +320,8 @@ def source_shape(source):
 
 def constant_programs(language, arities):
     """Yield each constant source with its arity, bit and exact option dictionary."""
-    for n in arities:
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(language, bit * (1 << n), **options).source
-                yield n, bit, options, program
+    for n, bit, options, program in constant_artifacts(language, arities):
+        yield n, bit, options, program.source
 
 
 def three_input_corpus_size(language):
@@ -333,3 +330,12 @@ def three_input_corpus_size(language):
         len(esolangs.generate(language, format(value, "08b")).source)
         for value in range(256)
     )
+
+
+def constant_artifacts(language, arities):
+    """Yield each constant artifact with its arity, bit and exact options."""
+    for n in arities:
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate(language, bit * (1 << n), **options)
+                yield n, bit, options, program

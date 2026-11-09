@@ -13,6 +13,7 @@ from esolangs.languages.eval.tests.eval_support import (
 )
 from esolangs.runtime.io import ScriptedIO
 from tests.support.analysis_support import assert_analysis_complement
+from tests.support.generator_support import constant_artifacts
 from tests.support.witness_tables import row_bits
 
 #: One input's run, as the template spells it.
@@ -203,16 +204,13 @@ class TestEvalBoolean:
 def _check_constants() -> None:
     from esolangs.languages.eval.interpreter import run
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                template = esolangs.generate("Eval", bit * (1 << n), **options)
-                assert template.source.count("$") == n
-                assert eval_setters(template.source, n) == (("0", "`"),) * n
-                for bits in ([0] * n, [1] * n):
-                    program = esolangs.instantiate("Eval", template, bits)
-                    io = ScriptedIO("7")
-                    run(program.source, io)
-                    assert io.getvalue() == bit
-                    assert io.reads == 0
-                    assert io.input_char() == ord("7")
+    for n, bit, _options, template in constant_artifacts("Eval", range(1, 13)):
+        assert template.source.count("$") == n
+        assert eval_setters(template.source, n) == (("0", "`"),) * n
+        for bits in ([0] * n, [1] * n):
+            program = esolangs.instantiate("Eval", template, bits)
+            io = ScriptedIO("7")
+            run(program.source, io)
+            assert io.getvalue() == bit
+            assert io.reads == 0
+            assert io.input_char() == ord("7")

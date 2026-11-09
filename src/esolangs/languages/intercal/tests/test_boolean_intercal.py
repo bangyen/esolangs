@@ -31,6 +31,7 @@ from tests.support.analysis_support import assert_analysis_complement
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import count_steps
 from tests.support.generator_support import (
+    constant_artifacts,
     measure_run,
     run_filled,
     three_input_corpus_size,
@@ -201,28 +202,25 @@ def test_constants_reuse_one_variable_and_print_the_literal() -> None:
     _check_emitted_resource_routes()
     from esolangs.languages.intercal.proof_formulas import workspace
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                template = esolangs.generate("INTERCAL", bit * (1 << n), **options)
-                assert template.source.count(TEMPLATE_CHAR) == 2 * n
-                if not options:
-                    assert template.source.count(".1 <-") == n
-                    assert f"READ OUT #{bit}" in template.source
-                    if n == 8:
-                        assert len(template.source) == 129
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    inputs = list(map(int, format(row, f"0{n}b")))
-                    program = esolangs.instantiate("INTERCAL", template, inputs)
-                    assert len(program.source) == len(template.source)
-                    stream = ScriptedIO()
-                    machine = _Machine(program.source, stream)
-                    steps, written = measure_run(machine, limit=n + 2)
-                    assert machine.halted
-                    assert steps == n + 2
-                    assert esolangs.read_answer("INTERCAL", stream.getvalue()) == bit
-                    if not options:
-                        assert written.bits == workspace(n, template.source)
+    for n, bit, options, template in constant_artifacts("INTERCAL", range(1, 13)):
+        assert template.source.count(TEMPLATE_CHAR) == 2 * n
+        if not options:
+            assert template.source.count(".1 <-") == n
+            assert f"READ OUT #{bit}" in template.source
+            if n == 8:
+                assert len(template.source) == 129
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            inputs = list(map(int, format(row, f"0{n}b")))
+            program = esolangs.instantiate("INTERCAL", template, inputs)
+            assert len(program.source) == len(template.source)
+            stream = ScriptedIO()
+            machine = _Machine(program.source, stream)
+            steps, written = measure_run(machine, limit=n + 2)
+            assert machine.halted
+            assert steps == n + 2
+            assert esolangs.read_answer("INTERCAL", stream.getvalue()) == bit
+            if not options:
+                assert written.bits == workspace(n, template.source)
     assert three_input_corpus_size("INTERCAL") == 34795
 
 

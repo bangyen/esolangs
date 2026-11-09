@@ -3451,3 +3451,34 @@ character pins; twenty-five codec controls and two real extra-character faults
 pass. Tests/source are 115,814/115,820; no pre-existing case, assertion, control, node or cap
 is removed. This fixes the latch, not the full LaserFuck accounting review:
 27 accounting rows and all 117 completion rows remain open.
+
+
+Constant fixtures now retain actual artifacts in a shared iterator. Eight
+clients use it directly; the source iterator delegates and projects `.source`
+once. All 42 existing consumers and eight new clients retain their full
+58 owning cases. Module expansion restores every old body, assertion, control,
+cap and marker; private frames and artifact lifetime changes are explicit.
+
+Both complete replays retain 12,254 artifacts, 3,784 instantiations, 32,295
+constructions, 2,893,863 steps, 2,952,317 captures, 477,118 IO calls, 2,757
+public runs and 340 direct generations in matching graph streams. Raw address
+records remain; 54,764 binding records compare after proved object relocation.
+Callback source metadata stays byte-identical; arbitrary callback-object
+equivalence is not claimed.
+
+Deferred recording preserves the existing bands: Brainfuck 4.56/4.57 seconds,
+Circlefuck 4.42/4.30, Unlambda's larger owner 2.21/2.18 and What!? 0.93/0.91.
+Circlefuck retains all 711,449 edits, including 808 equal-valued writes; its
+full transcript agrees with all 2,139 actual workspace captures. Immutable
+Unlambda graphs retain complete cache contents and LRU order. Source-qualified
+readonly descriptors remain distinct from logical accounting.
+
+All 5,632 measured programs execute all 45,056 ordinary rows, including
+8,192 template fills, preserving 919,606 source characters. Random-capable
+corpora retain 6,144 ordinary-None bindings; random paths are not exhaustive.
+Identity, lazy iteration, fresh options, failure prefixes, hidden template
+spans and live recorder faults pass; a real extra-character size fault is
+rejected and its modified program executes all eight rows. All 951 production
+files remain unchanged. The net twenty-two test lines leave tests/source
+115,792/115,820 and twenty-seven strict spare lines. LaserFuck's full accounting
+review remains pending: 27 accounting rows and all 117 completion rows stay open.

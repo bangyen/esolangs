@@ -22,7 +22,7 @@ from tests.generators.sample_tables import five_input_sample
 from tests.support.divergence import diverges
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import count_steps
-from tests.support.generator_support import source_shape
+from tests.support.generator_support import constant_artifacts, source_shape
 from tests.support.witness_tables import dense, parity
 
 
@@ -139,25 +139,22 @@ class TestCrementTree:
         """One control instruction precedes all fixed-width, unreachable slots."""
         from esolangs.languages.crement.proof_formulas import workspace
 
-        for n in range(1, 13):
-            for bit in "01":
-                for options in ({}, {"width": 1}, {"balance": True}):
-                    template = esolangs.generate("Crement", bit * (1 << n), **options)
-                    for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                        bits = list(map(int, f"{row:0{n}b}"))
-                        program = esolangs.instantiate("Crement", template, bits)
-                        assert len(program.source.split()) == 3 * (n + 1)
-                        assert program.source.split()[3:] == [
-                            v for b in bits for v in ("+J", "0", str(b))
-                        ]
-                        machine = _Machine(program.source)
-                        before = machine.snapshot()
-                        written = WrittenState(machine.workspace_snapshot())
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        assert machine.halted == (bit == "0")
-                        assert (machine.snapshot() == before) == (bit == "1")
-                        assert written.bits == workspace(n, template.source)
+        for n, bit, _options, template in constant_artifacts("Crement", range(1, 13)):
+            for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                bits = list(map(int, f"{row:0{n}b}"))
+                program = esolangs.instantiate("Crement", template, bits)
+                assert len(program.source.split()) == 3 * (n + 1)
+                assert program.source.split()[3:] == [
+                    v for b in bits for v in ("+J", "0", str(b))
+                ]
+                machine = _Machine(program.source)
+                before = machine.snapshot()
+                written = WrittenState(machine.workspace_snapshot())
+                machine.step()
+                written.sample(machine.workspace_snapshot())
+                assert machine.halted == (bit == "0")
+                assert (machine.snapshot() == before) == (bit == "1")
+                assert written.bits == workspace(n, template.source)
 
     def test_constant_subtrees_fold(self) -> None:
         """A one-dependency table is one node; parity is five, shared."""

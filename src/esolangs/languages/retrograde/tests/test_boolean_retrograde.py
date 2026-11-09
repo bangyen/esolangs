@@ -7,7 +7,7 @@ import esolangs
 from esolangs import run as execute
 from esolangs.runtime.io import ScriptedIO
 from tests.support.analysis_support import assert_analysis_complement
-from tests.support.generator_support import evaluate_generated
+from tests.support.generator_support import constant_artifacts, evaluate_generated
 
 
 def _reference(code: str) -> tuple[int, int, set[int]]:
@@ -77,20 +77,15 @@ def _check_constants() -> None:
     assert_analysis_complement("Retrograde", "subtree_ids")
     from esolangs.languages.retrograde.interpreter import run
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                template = esolangs.generate("Retrograde", bit * (1 << n), **options)
-                assert template.source.count("$") == n
-                for bits in ([0] * n, [1] * n):
-                    source = esolangs.instantiate("Retrograde", template, bits)
-                    pointer, direction, tape = _reference(
-                        source.source.replace("\n", "")
-                    )
-                    assert (pointer, direction) == (n, 1)
-                    assert [int(i in tape) for i in range(n)] == bits
-                    io = ScriptedIO("7")
-                    run(source.source, io)
-                    assert io.getvalue() == bit
-                    assert io.reads == 0
-                    assert io.input_char() == ord("7")
+    for n, bit, _options, template in constant_artifacts("Retrograde", range(1, 13)):
+        assert template.source.count("$") == n
+        for bits in ([0] * n, [1] * n):
+            source = esolangs.instantiate("Retrograde", template, bits)
+            pointer, direction, tape = _reference(source.source.replace("\n", ""))
+            assert (pointer, direction) == (n, 1)
+            assert [int(i in tape) for i in range(n)] == bits
+            io = ScriptedIO("7")
+            run(source.source, io)
+            assert io.getvalue() == bit
+            assert io.reads == 0
+            assert io.input_char() == ord("7")

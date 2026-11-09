@@ -9,7 +9,7 @@ from esolangs.languages.stisp.proof_formulas import workspace
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
-from tests.support.generator_support import three_input_corpus_size
+from tests.support.generator_support import constant_artifacts, three_input_corpus_size
 
 #: Every one- and two-input table; a diagram's folding bugs show here first.
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -61,38 +61,35 @@ def test_an_ignored_input_still_selects_one_of_two_identical_children() -> None:
 def _check_constants() -> None:
     assert_analysis_complement("Stisp", "decision_layers")
     assert three_input_corpus_size("Stisp") == 20552
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                template = esolangs.generate("Stisp", bit * (1 << n), **options)
-                assert template.source.count("$") == n
-                if not options:
-                    assert len(template.source) == (15 if n == 1 else 2 * n + 15)
-                peak = 0
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    bits = list(map(int, f"{row:0{n}b}"))
-                    program = template.fill(bits)
-                    io = ScriptedIO("7")
-                    machine = _Machine(program.source, io)
-                    head = machine.head
-                    values = [head] if n == 1 else []
-                    if n > 1:
-                        while head != ():
-                            value, head = head
-                            values.append(value)
-                    assert values == list(map(str, bits))
-                    written = WrittenState(machine.workspace_snapshot())
-                    machine.step()
-                    written.sample(machine.workspace_snapshot())
-                    assert machine.halted
-                    assert machine.head == bit
-                    assert io.getvalue() == ""
-                    assert written.bits <= 8 * n + 8
-                    peak = max(peak, written.bits)
-                    machine.step()
-                    written.sample(machine.workspace_snapshot())
-                    assert io.getvalue() == bit
-                    assert io.reads == io.past_end == 0
-                    assert io.input_num() == 7
-                    assert written.bits <= 8 * n + 9
-                assert peak == 8 * n + 8
+    for n, bit, options, template in constant_artifacts("Stisp", range(1, 13)):
+        assert template.source.count("$") == n
+        if not options:
+            assert len(template.source) == (15 if n == 1 else 2 * n + 15)
+        peak = 0
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            bits = list(map(int, f"{row:0{n}b}"))
+            program = template.fill(bits)
+            io = ScriptedIO("7")
+            machine = _Machine(program.source, io)
+            head = machine.head
+            values = [head] if n == 1 else []
+            if n > 1:
+                while head != ():
+                    value, head = head
+                    values.append(value)
+            assert values == list(map(str, bits))
+            written = WrittenState(machine.workspace_snapshot())
+            machine.step()
+            written.sample(machine.workspace_snapshot())
+            assert machine.halted
+            assert machine.head == bit
+            assert io.getvalue() == ""
+            assert written.bits <= 8 * n + 8
+            peak = max(peak, written.bits)
+            machine.step()
+            written.sample(machine.workspace_snapshot())
+            assert io.getvalue() == bit
+            assert io.reads == io.past_end == 0
+            assert io.input_num() == 7
+            assert written.bits <= 8 * n + 9
+        assert peak == 8 * n + 8

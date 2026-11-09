@@ -21,7 +21,7 @@ from scripts.benchmark import WrittenState
 from tests.generators.reader_support import _TABLES
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.evaluation import _evaluate
-from tests.support.generator_support import evaluate_generated
+from tests.support.generator_support import constant_artifacts, evaluate_generated
 from tests.support.witness_tables import row_bits as _bits
 from tests.support.witness_tables import witnesses
 
@@ -180,31 +180,26 @@ def test_fractran_parity_two_balances_and_executes() -> None:
 def _check_native_constants() -> None:
     from esolangs.languages.fractran.proof_formulas import workspace
 
-    for n in range(1, 13):
-        for bit in "01":
-            for options in ({}, {"width": 1}, {"balance": True}):
-                template = esolangs.generate("FRACTRAN", bit * (1 << n), **options)
-                assert (
-                    len(runs(template.source, TEMPLATE_CHAR, [FRACTRAN_PAIR] * n)) == n
-                )
-                assert len(template.source.split()) == n + 1
-                peak = 0
-                sizes = set()
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    bits = list(map(int, f"{row:0{n}b}"))
-                    program = esolangs.instantiate("FRACTRAN", template, bits)
-                    sizes.add(len(program.source))
-                    machine = make_vm("FRACTRAN", program)
-                    written = WrittenState(_capture_workspace(machine))
-                    steps = 0
-                    while not machine.halted:
-                        machine.step()
-                        written.sample(_capture_workspace(machine))
-                        steps += 1
-                        assert steps <= n + 1
-                    assert steps == 1 + sum(bits)
-                    assert esolangs.read_answer("FRACTRAN", machine.output) == bit
-                    assert written.bits <= workspace(n, template.source)
-                    peak = max(peak, written.bits)
-                assert len(sizes) == 1
-                assert peak == workspace(n, template.source)
+    for n, bit, _options, template in constant_artifacts("FRACTRAN", range(1, 13)):
+        assert len(runs(template.source, TEMPLATE_CHAR, [FRACTRAN_PAIR] * n)) == n
+        assert len(template.source.split()) == n + 1
+        peak = 0
+        sizes = set()
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            bits = list(map(int, f"{row:0{n}b}"))
+            program = esolangs.instantiate("FRACTRAN", template, bits)
+            sizes.add(len(program.source))
+            machine = make_vm("FRACTRAN", program)
+            written = WrittenState(_capture_workspace(machine))
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                written.sample(_capture_workspace(machine))
+                steps += 1
+                assert steps <= n + 1
+            assert steps == 1 + sum(bits)
+            assert esolangs.read_answer("FRACTRAN", machine.output) == bit
+            assert written.bits <= workspace(n, template.source)
+            peak = max(peak, written.bits)
+        assert len(sizes) == 1
+        assert peak == workspace(n, template.source)
