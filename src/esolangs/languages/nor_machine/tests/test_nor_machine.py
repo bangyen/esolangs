@@ -13,12 +13,13 @@ def test_lone_nor_prints_the_value_itself() -> None:
     assert _out("V", "5") == "5"
 
 
-def test_nor_is_twos_complement() -> None:
+@pytest.mark.parametrize("part", [0, 1])
+def test_nor_is_twos_complement(part) -> None:
     from esolangs.languages.nor_machine.tests.oracle_checks import (
         check_raw_nor_machine,
     )
 
-    check_raw_nor_machine()
+    check_raw_nor_machine(part)
     # ~(5 | 2) = -8.
     assert _out("V V", "5 2") == "-8"
 
@@ -50,11 +51,8 @@ def test_program_repeats_until_a_lone_nor() -> None:
     assert not machine.halted
 
 
-def test_whitespace_is_skipped() -> None:
+def test_whitespace_is_skipped_and_bad_source_is_rejected() -> None:
     assert _out(" L\n V ", "3") == "6"
-
-
-def test_unknown_and_empty_programs_are_rejected() -> None:
     with pytest.raises(ValueError, match="unknown command"):
         _out("Lx", "1")
     with pytest.raises(ValueError, match="no command"):

@@ -86,12 +86,16 @@ _agrees = workspace.checker(
 )
 
 
-def check_raw_nor_machine():
+@pytest.mark.parametrize("part", [0, 1])
+def check_raw_nor_machine(part):
     corpus = [
         "".join(p) for n in range(1, 4) for p in itertools.product("IAXVLR", repeat=n)
     ]
     rng = random.Random(20261103)
     corpus += [" \n".join(rng.choices("IAXVLR", k=12)) for _ in range(128)]
+    # Keep every program and boundary; two batches fit the unchanged fast band
+    # after the combined oracle took 3.16s/3.92s on CI. Edges run in both.
+    corpus = corpus[part::2]
     corpus += ["", " \n", "rot", "A#", "v", "λ", "I" * 80, "V V", "XLRVV", "IRVV"]
     inputs = ("", "1", "-3", "0 1", "4 3 -2", " +1 \n -2 \t3 ", "1 x 3", "٣")
     results = [_agrees(_Machine, code, stdin) for code in corpus for stdin in inputs]
@@ -103,6 +107,8 @@ def check_raw_nor_machine():
     assert any(not trace[-1][1] for error, trace in results if error is None)
     assert _model("XLRVV", "4 3")[1][-1][2] == "-7"
     assert _model("IRVV", "8 1")[1][-1][2] == "-9"
+    if part:
+        return len(results), 0
     controls = {
         "rotate": ("I", "1 2"),
         "dup": ("A", "1"),
