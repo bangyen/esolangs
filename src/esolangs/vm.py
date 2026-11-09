@@ -43,6 +43,7 @@ from esolangs._cycles import (
 )
 from esolangs.artifacts import ProgramArtifact
 from esolangs.exceptions import ArgumentError, InterpreterLimitError
+from esolangs.exceptions import EsolangError as _EsolangError
 from esolangs.registry import LANGUAGES, resolve
 from esolangs.results import ExecutionResult
 from esolangs.runtime._capabilities import IpShape as IpShape
@@ -231,7 +232,28 @@ class _DelegatingVM:
         )
         preparation = LANGUAGES[language].runtime.machine_preparation
         prepare = cast(MachinePreparation, getattr(module, preparation))
-        self._machine = prepare(code, options)(self._io)
+        try:
+            self._machine = prepare(code, options)(self._io)
+        except Exception as error:
+            # Initializers can print/read before construction fails.
+            # Refusals with no observed IO keep their unavailable observation.
+            if isinstance(error, _EsolangError) and error.execution is not None:
+                raise
+            observed = _DelegatingVM._result(self, None)
+            if (
+                observed.output
+                or observed.input_position
+                or observed.input_reads
+                or observed.input_past_end
+            ):
+                with interpreter_errors(
+                    f"the {language} interpreter recursed deeper than CPython's stack "
+                    "limit allows while loading this program",
+                    self._io,
+                    language=language,
+                ):
+                    raise
+            raise
 
     @property
     def output(self) -> str:

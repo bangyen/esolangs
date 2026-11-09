@@ -297,7 +297,10 @@ def interpreter_errors(
             # A host limit: Fackward's ``$`` repeating past sys.maxsize
             # escaped bare.
             error = InterpreterLimitError(str(original))
-        elif _hit_digit_cap(original):
+        # Nested loading contexts must retain a normalized error's IO observation.
+        elif not isinstance(original, InterpreterLimitError) and _hit_digit_cap(
+            original
+        ):
             # A valid Ascenic PRINT of a 4300-digit number was reported as a
             # load error.
             error = InterpreterLimitError(
@@ -317,6 +320,9 @@ def interpreter_errors(
             error = ProgramError(str(original))
             for note in getattr(original, "__notes__", ()):
                 error.add_note(note)
+        if error is not original and isinstance(original, EsolangError):
+            error.partial_output = original.partial_output
+            error.execution = original.execution
         if isinstance(original, ValueError) and not any(
             note.startswith("hint:") for note in getattr(error, "__notes__", ())
         ):

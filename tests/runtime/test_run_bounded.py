@@ -94,6 +94,50 @@ def test_a_program_error_echoing_the_digit_cap_text_stays_a_program_error() -> N
         raise ValueError("invalid expression: Exceeds the limit (")
     assert not isinstance(caught.value, esolangs.InterpreterLimitError)
 
+    from esolangs.results import ExecutionResult
+    from esolangs.runtime.io import ScriptedIO
+
+    def normalize_twice(wrapped, supplied, port, normalized):
+        with interpreter_errors("outer loading"):
+            try:
+                with interpreter_errors(
+                    "inner loading", None if supplied is not None else port
+                ):
+                    try:
+                        raise ValueError(
+                            "Exceeds the limit (4300 digits) "
+                            "for integer string conversion"
+                        )
+                    except ValueError as digit_error:
+                        if wrapped:
+                            error = esolangs.ProgramError("wrapped digit cap")
+                            if supplied is not None:
+                                error.partial_output = port.getvalue()
+                                error.execution = supplied
+                            raise error from digit_error
+                        raise
+            except esolangs.InterpreterLimitError as error:
+                normalized.append(error)
+                raise
+
+    for wrapped, reported in ((False, False), (True, False), (True, True)):
+        port = ScriptedIO()
+        port.print_str("A")
+        supplied = (
+            ExecutionResult(port.getvalue(), port.position(), port.reads, port.past_end)
+            if reported
+            else None
+        )
+        normalized = []
+        with pytest.raises(esolangs.InterpreterLimitError) as limited:
+            normalize_twice(wrapped, supplied, port, normalized)
+        assert type(limited.value) is esolangs.InterpreterLimitError
+        assert limited.value is normalized[0]
+        assert limited.value.partial_output == "A"
+        assert limited.value.execution == ExecutionResult("A", 0, 0, 0)
+        if reported:
+            assert limited.value.execution is supplied
+
 
 def test_worker_budgets_validate_before_acquisition_and_keep_output_limits():
     class Unread:

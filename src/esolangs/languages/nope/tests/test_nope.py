@@ -42,3 +42,18 @@ def test_empty_source_has_one_output_transition() -> None:
     machine.step()
     assert machine.snapshot() == after
     assert io.getvalue() == "Nope."
+
+    from esolangs import ProgramArtifact
+    from esolangs.results import Completion, CompletionReport, ExecutionResult
+    from esolangs.vm import SnapshotVM, _capture_observation, complete_vm, make_vm
+
+    vm = make_vm("Nope.", ProgramArtifact("", "Nope."), stdin="λ")
+    assert isinstance(vm, SnapshotVM)
+    assert vm.snapshot() == (False, 0)
+    assert not vm.halted
+    assert _capture_observation(vm) == ExecutionResult("", 0, 0, 0)
+    assert complete_vm(vm, max_steps=1) == "Nope."
+    assert vm.snapshot() == (True, 0)
+    assert _capture_observation(
+        vm, CompletionReport(Completion.HALTED)
+    ) == ExecutionResult("Nope.", 0, 0, 0, CompletionReport(Completion.HALTED))

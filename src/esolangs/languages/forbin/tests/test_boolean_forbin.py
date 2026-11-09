@@ -289,3 +289,9 @@ def test_constants_read_whole_bytes_then_print_inline() -> None:
             if not options:
                 assert written.bits == workspace(n, program)
     assert three_input_corpus_size("Forbin") == 46690
+
+    from esolangs.languages.forbin.tests.forbin_support import (
+        check_constructor_error_observations,
+    )
+
+    check_constructor_error_observations()
