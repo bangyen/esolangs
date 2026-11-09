@@ -9,7 +9,7 @@ from esolangs.runtime.io import ScriptedIO
 
 
 class TestDiscardTarget:
-    """``_`` as an assignment target evaluates the value and drops it."""
+    """Assignment to ``_`` skips that right-hand evaluation."""
 
     def test_discard_in_a_paired_assignment(self) -> None:
         """The remaining name still takes the value opposite *its* position."""
@@ -23,6 +23,22 @@ class TestDiscardTarget:
         """One value for several targets skips the ``_`` and fills the rest."""
         code = "main { _, x = 1; out 0,0,0,0,0,0,0,x; }"
         assert run_program(code) == "\x01"
+
+        for target in ("_", "x"):
+            io = ScriptedIO("")
+            source = f"main {{ {target} = (in 0); }}"
+            if target == "_":
+                run(source, io)
+            else:
+                with pytest.raises(EOFError):
+                    run(source, io)
+            assert (
+                io.getvalue(),
+                io.position(),
+                io.progress(),
+                io.reads,
+                io.past_end,
+            ) == ("", 0, 0, 0, int(target == "x"))
 
     def test_discard_is_not_readable_afterwards(self) -> None:
         """``_`` is dropped rather than stored, so reading it is an error."""
