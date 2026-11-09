@@ -380,6 +380,14 @@ class TestCircuitDiagramLayoutGuards:
                     run(program.splitlines(), io)
                     assert io.getvalue() == expected
                     assert io.reads == n
+        table = "0011110011000011"  # XOR of three inputs, with a fourth discarded.
+        program = affine_circuit(table, 1)
+        assert program is not None
+        for row, expected in enumerate(table):
+            io = ScriptedIO(f"{row:04b}Q")
+            run(program.splitlines(), io)
+            assert io.getvalue() == expected
+            assert io.input_char() == ord("Q")
 
     def test_output_columns_fit_the_affine_and_mux_boundary(self) -> None:
 

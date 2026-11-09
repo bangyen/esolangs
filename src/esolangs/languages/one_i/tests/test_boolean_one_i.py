@@ -38,7 +38,7 @@ def _check_constants() -> None:
 
 
 def _check_arithmetic_tails() -> None:
-
+    assert generator._parity_reader("0", [], 2) is None
     assert generator.parity_bias is parity_bias
     with patch.object(
         generator,

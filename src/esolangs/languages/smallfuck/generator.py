@@ -739,10 +739,6 @@ def _smallfuck_tree(
         for i, (depth, row) in enumerate(blocks)
     }
     pairs = dict(paired_roots)
-    if pairs and (n < 4 or blocks):
-        raise ValueError(
-            "paired roots need two retired levels and no other definitions"
-        )
     tree = _Tree(
         n,
         truth_table,

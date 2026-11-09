@@ -320,6 +320,9 @@ def test_davio_weights_use_spare_band_cells(
 ) -> None:
     """The three Davio weights require the spare cells of a five-level band."""
     assert BAND == 5
+    if n == 4:
+        with pytest.raises(ValueError, match="five-level bands"):
+            _smallfuck_tree("0110", (0, 1), band=4)
     rng = random.Random(8)
     table = "".join(rng.choice("01") for _ in range(1 << n))
     template = in_input_order(table, _smallfuck_ordered)

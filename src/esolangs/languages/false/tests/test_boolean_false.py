@@ -127,10 +127,17 @@ def _check_lookup_and_cached_formula() -> None:
         _expression,
         _ExpressionSearch,
         _lookup,
+        _splits,
     )
 
-    for table in ("1" + "0" * 31, "0" * 31 + "1", "1" * 32, "01" * 16):
-        program = _lookup(table, 5, list(range(5)))
+    assert tuple(_splits("0" * 512, tuple(range(9)))) == tuple(range(9))
+    assert _splits("0" * 1024, tuple(range(10))) == (0,)
+    cases = [
+        (5, table) for table in ("1" + "0" * 31, "0" * 31 + "1", "1" * 32, "01" * 16)
+    ]
+    cases.append((6, "01" * 32))
+    for n, table in cases:
+        program = _lookup(table, n, list(range(n)))
         assert LANGUAGE.backend.wrap is not None
         for source in (
             program,
@@ -138,10 +145,10 @@ def _check_lookup_and_cached_formula() -> None:
             LANGUAGE.backend.wrap(program, 1),
         ):
             for row, expected in enumerate(table):
-                io = ScriptedIO(f"{row:05b}7")
+                io = ScriptedIO(f"{row:0{n}b}7")
                 run(source, io)
                 assert io.getvalue() == expected
-                assert io.reads == 5
+                assert io.reads == n
                 assert io.past_end == 0
                 assert io.input_char() == ord("7")
     for source, expected in (
@@ -159,8 +166,14 @@ def _check_lookup_and_cached_formula() -> None:
     assert ";!" not in _ExpressionSearch(dict(enumerate("abcdefg"))).text(
         table, tuple(range(7)), budget=0
     )
-    for row, expected in enumerate(table):
-        io = ScriptedIO(f"{row:07b}")
-        run(program, io)
-        assert io.getvalue() == expected
-        assert io.reads == 7
+    uncached = _ExpressionSearch(dict(enumerate("abcdefghijklmnopqrstuvwxyz"))).text(
+        table, tuple(range(7))
+    )
+    assert ";!" not in uncached
+    uncached = "".join(f"^1&{letter}:" for letter in "abcdefg") + uncached + "1&."
+    for source in (program, uncached):
+        for row, expected in enumerate(table):
+            io = ScriptedIO(f"{row:07b}")
+            run(source, io)
+            assert io.getvalue() == expected
+            assert io.reads == 7

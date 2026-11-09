@@ -53,6 +53,9 @@ def test_and_uses_two_reads_multiply_and_output(*, balanced: bool) -> None:
 @pytest.mark.parametrize("table", ["0001", "0010", "0100", "1000", "1110"])
 @pytest.mark.parametrize("width", [None, 13])
 def test_literal_product_keeps_ignored_inputs(table: str, width: int | None) -> None:
+    from esolangs.languages.piet.generator.operations import _literal_product
+
+    assert _literal_product("1", [], 2, summed=True) is None
     for expanded in (
         table + table,
         "".join(bit * 2 for bit in table),

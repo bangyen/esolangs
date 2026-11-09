@@ -304,6 +304,29 @@ def test_shared_residual_buses_execute_within_ledger(monkeypatch) -> None:
     from esolangs.generation.decision import decision_layers
     from esolangs.languages.thisthat import generator
 
+    rotated = generator._rotate_tree(plain)
+    for source in (plain, rotated):
+        for row in (0, 85, 255):
+            io = ScriptedIO(f"{row:08b}")
+            run(source.splitlines(), io)
+            assert io.getvalue() == table[row]
+    with monkeypatch.context() as packed:
+        packed.setattr(generator, "_coalesce", lambda source: source)
+        packed.setattr(generator, "_admit_shared", lambda *_args: True)
+        layouts = iter((plain, rotated))
+        calls = []
+
+        def narrow(_table, source, _width):
+            calls.append(source)
+            return next(layouts)
+
+        packed.setattr(generator, "_narrow_tree", narrow)
+        # A packed-area tie retains the plain candidate; both drawings execute.
+        packed.setattr(generator, "grid_area", lambda _source: 1)
+        width = max(map(len, (plain + "\n" + rotated).splitlines()))
+        assert generator._diagram(table, width) == plain
+        assert len(calls) == 2
+
     assert generator.decision_layers is decision_layers
     monkeypatch.setattr(
         generator,

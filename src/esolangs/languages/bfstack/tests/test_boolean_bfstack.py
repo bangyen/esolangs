@@ -153,6 +153,10 @@ def test_constant_leaf_preserves_shape_and_input_consumption(n: int, bit: str) -
     if n == 1 and bit == "0":
         _check_constants()
         _check_identities()
+    if n == 8 and bit == "1":
+        with pytest.raises(StopIteration):
+            boolean._start("1" * 256)
+        assert boolean._start("1" * 255 + "0") == 1
     program = boolean.bfstack(bit * (1 << n))
     assert len(program) == 2 * n + 50 + int(bit)
     for row in range(1 << n):

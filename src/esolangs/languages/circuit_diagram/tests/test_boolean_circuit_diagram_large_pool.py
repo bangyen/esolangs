@@ -55,6 +55,8 @@ def test_large_pool_routes_mixed_constant_and_shared_atoms() -> None:
 
 @pytest.mark.medium
 def test_compact_pool_retains_its_definition_and_clearance(monkeypatch) -> None:
+    from copy import copy
+
     from esolangs import run
     from esolangs.languages.circuit_diagram.generator import hpool
 
@@ -73,6 +75,19 @@ def test_compact_pool_retains_its_definition_and_clearance(monkeypatch) -> None:
     )
     assert _compact_pool_layout("0" * 512) is None
     assert _compact_pool_layout(dense(8)) is None
+    projection = "01" * 256
+    simple = _compact_pool_layout(projection)
+    assert simple is not None
+    assert "M" not in simple.glyphs.values()
+    assert not simple.prefix
+    _execute(projection, simple.render(), (0, 1, 510, 511))
+    overrun = copy(model)
+    width = model.bounds()[1]
+    overrun.glyphs = dict(model.glyphs)
+    overrun.glyphs.update({(width + 2 * i, 0): "a" for i in range(len(table) + 10)})
+    with monkeypatch.context() as fault:
+        fault.setattr(hpool, "_finish_pool", lambda _build: overrun)
+        assert _compact_pool_layout(table) is None
     monkeypatch.setattr(hpool, "_large_leaf_height", lambda _k: 8)
     assert _compact_pool_layout(table) is None
 

@@ -27,6 +27,12 @@ class TestBitTilde:
         assert program.count(")") == 2
         assert program.count("(") == 1
         assert program.endswith("(")
+        for bit in "01":
+            source = boolean._single_lookup([], bit, 2)
+            for row in range(4):
+                result = esolangs.run("bit~", source, stdin=f"{row:02b}Q")
+                assert result.output == bit
+                assert result.input_position == 2
 
 
 @pytest.mark.medium

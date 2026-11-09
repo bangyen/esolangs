@@ -265,6 +265,20 @@ def _swept_balance(table: str, default: str) -> str:
 
 def test_balance_scores_the_spellings_without_a_threshold_sweep() -> None:
     """Per table, 1..5 inputs: never worse than the retired threshold sweep."""
+    from esolangs.languages.collatz_multiverse.generator import (
+        _cm_constant_program,
+        _cm_layout,
+    )
+
+    original = _cm_constant_program(1, 48)
+    spaced = "\n".join("  " + line for line in original.splitlines())
+    assert _cm_layout(spaced, max(map(len, original.splitlines()))) == original
+    narrowed = _cm_layout(original, len("_=z x+negativeOne,NOT PRINT."))
+    assert narrowed.startswith("_=z x+negativeOne,NOT PRINT.\n")
+    for source in (original, spaced, narrowed):
+        result = esolangs.run("Collatz Multiverse", source, stdin="1")
+        assert result.output == "0"
+        assert result.input_position == 1
     rng = random.Random(3)
     for n in (1, 2, 3, 4, 5):
         for _ in range(6):

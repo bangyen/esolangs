@@ -261,11 +261,29 @@ class TestRotfuck:
 
 
 def test_rotation_is_checked() -> None:
+    from unittest.mock import patch
+
     from .oracle_checks import check_raw_rotfuck
 
     check_raw_rotfuck()
     with pytest.raises(ValueError, match="rotation"):
         boolean.rotfuck("01", rotation="sideways")
+    for rotation, runner in (
+        ("backward", run_rotfuck),
+        ("forward", run_rotfuck_forward),
+    ):
+        for amount in (3, 64):
+            builder = _Builder(boolean.ROTFUCK_CYCLES[rotation])
+            _constant(builder, "+" * amount)
+            builder.emit(_parse("."))
+            assert runner("".join(builder.src), []) == chr(amount)
+    builder = _Builder()
+    with (
+        patch.object(builder, "_unit", return_value=None),
+        patch.object(builder, "_wrapped", return_value=None),
+        pytest.raises(boolean._UnplaceableError, match="no neutral pad"),
+    ):
+        builder._pad(4)
 
 
 @pytest.mark.medium

@@ -69,6 +69,14 @@ def test_constant_reads_precede_output_and_preserve_the_next_character() -> None
         assert evaluate_generated("Basicfuck", table) == "1110"
         assert corrupted.called
     assert three_input_corpus_size("Basicfuck") == 38742
+    from esolangs.languages.basicfuck.generator import _program
+
+    for bit in "01":
+        source = _program(bit * 4, 2, "+", 48)
+        for row in range(4):
+            result = run("Basicfuck", source, stdin=f"{row:02b}Q")
+            assert result.output == bit
+            assert result.input_position == 2
 
 
 @pytest.mark.medium

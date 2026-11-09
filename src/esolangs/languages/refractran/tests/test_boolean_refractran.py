@@ -93,6 +93,8 @@ def test_tables_and_reference() -> None:
 
 
 def _check_constants() -> None:
+    for bit in "01":
+        assert generator._diagram(bit, 0) == ([], int(bit))
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):

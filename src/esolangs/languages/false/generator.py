@@ -144,11 +144,13 @@ def _shared(truth_table: str, n: int) -> str:
         if node < 2:
             size = 2 * (n - level) + 2
         else:
-            match nodes[key]:
-                case _Fold(child):
-                    size = 2 + (3 if child in names else sizes[child])
-                case _Split(zero, one):
-                    size = 8 + half_size(one) + half_size(zero)
+            branch = nodes[key]
+            if isinstance(branch, _Fold):
+                child = branch.child
+                size = 2 + (3 if child in names else sizes[child])
+            else:
+                zero, one = branch
+                size = 8 + half_size(one) + half_size(zero)
         sizes[key] = size
         gain = uses[key] * size - 3 * inner.get(key, 0) - size - 4
         if gain > 0 and (name := next(free, None)):
@@ -182,19 +184,21 @@ def _render_diagram(
         if node < 2:
             output.append(_SKIP * (n - level) + str(node) + ".")
             return
-        match nodes[key]:
-            case _Fold(child):
-                output.append(_SKIP)
-                if child in names:
-                    output.append(names[child] + ";!")
-                else:
-                    emit(child)
-            case _Split(zero, one):
-                output.append(_OPEN)
-                half(one)
-                output.append(_BETWEEN)
-                half(zero)
-                output.append(_CLOSE)
+        branch = nodes[key]
+        if isinstance(branch, _Fold):
+            child = branch.child
+            output.append(_SKIP)
+            if child in names:
+                output.append(names[child] + ";!")
+            else:
+                emit(child)
+        else:
+            zero, one = branch
+            output.append(_OPEN)
+            half(one)
+            output.append(_BETWEEN)
+            half(zero)
+            output.append(_CLOSE)
 
     emit(key)
     return "".join(output)

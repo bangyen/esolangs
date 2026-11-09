@@ -155,6 +155,10 @@ class TestQoiblSweepPins:
         expanded = _horner_lines(lines, 4)
         assert expanded[0].startswith("we ye we ")
         assert any("qe ye qe" in line for line in expanded)
+        program = boolean.qoibl("0001")
+        assert boolean._fit(program, None) == program
+        for row, answer in enumerate("0001"):
+            assert run_qoibl(program, list(f"{row:02b}")) == answer
 
     @pytest.mark.parametrize(
         ("table", "shape"),
