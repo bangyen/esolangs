@@ -44,10 +44,12 @@ jobs:
         # Python 3.14 runs the full corpus in deadcode-scan below.
         python-version: ["3.12", "3.13", "3.15"]
         shard: [0, 1]
-    # Run 42675320187: a Flowchart witness took 15.78s against its 15s
-    # medium cap alongside workers. Keep its band and execute it serially.
+    # Band overruns in run 42675320187 match per-push CI's serial cohort.
+    # Keep those bands and execute the same witnesses without workers.
     env:
       CI_SERIAL_NODES: >-
+        src/esolangs/languages/blindfolded_arithmetic/tests/test_blindfolded_arithmetic.py::test_ip_is_the_next_instructions_source_offset
+        tests/proofs/test_workspace_formulas.py::test_execution_and_workspace_formulas_hold[Malbolge-2]
         src/esolangs/languages/flowchart/tests/test_boolean_flowchart.py::test_constant_lookup_reads_without_deque_or_selector[0]
         src/esolangs/languages/flowchart/tests/test_boolean_flowchart.py::test_constant_lookup_reads_without_deque_or_selector[1]
 
@@ -77,7 +79,7 @@ jobs:
         for node in "${nodes[@]}"; do excluded+=(--exclude-node "$node"); done
         uv run python scripts/ci/shard.py shard --marker "" --durations snapshot.json --shard ${{ matrix.shard }} --shards 2 --manifest notes/ci/weekly.shard.json "${excluded[@]}" -- -n auto -p scripts.ci.shard --duration-output notes/ci/test-durations.json
 
-    - name: Check Flowchart witnesses without competing workers
+    - name: Check witnesses without competing workers
       if: ${{ !cancelled() && matrix.shard == 0 }}
       run: |
         read -r -a nodes <<< "$CI_SERIAL_NODES"
