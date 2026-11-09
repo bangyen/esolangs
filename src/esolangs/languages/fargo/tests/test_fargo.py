@@ -282,6 +282,22 @@ class TestInput:
         io = ScriptedIO("3\n")
         run("% 0 1\n$\n", io)
         assert io.position() == 1
+        policy = sys.get_int_max_str_digits()
+        for token, output in (
+            ("65", "1"),
+            ("0" * 5000 + "65", "1"),
+            ("+" + "\u0660" * 5000 + "\u0666\u0665", "1"),
+            ("0_" * 2500 + "65", "1"),
+            ("0" * 5000 + "x65", "0"),
+            ("0" * 5000 + "__65", "0"),
+        ):
+            io = ScriptedIO(token + "\nQ")
+            run("% 0 @ 0\n$", io)
+            assert io.getvalue() == output
+            assert (io.position(), io.reads, io.past_end) == (len(token), 1, 0)
+            assert io.input_char() == ord("\n")
+            assert io.input_char() == ord("Q")
+        assert sys.get_int_max_str_digits() == policy
 
     def test_empty_input_is_zero(self) -> None:
         assert run_program("% 0 @ 0\n$", "") == "0"

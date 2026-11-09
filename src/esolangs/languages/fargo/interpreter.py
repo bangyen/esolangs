@@ -59,7 +59,7 @@ from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
-from esolangs.runtime.memory import format_integer
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 # The wiki renders the truth machine with zero-width spaces inside two of
@@ -346,7 +346,7 @@ class _Machine:
         except EOFError:
             return 0
         try:
-            return int(text.strip())
+            return parse_integer(text.strip())
         except ValueError:
             return 0
 
