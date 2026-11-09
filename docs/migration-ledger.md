@@ -3681,3 +3681,41 @@ reconcile under the 952-file guard. Active leaf time is 478.13s against unchange
 unchanged. Flowchart's bounded accounting review is complete; general layouts,
 arbitrary providers and broader completion remain open. Accounting reviews
 pending: 20; 116 completion rows remain open.
+
+
+Deadfish, HQ9+, CARP and AddSubJump completion rows are closed on Python 3.12.11,
+3.13.15, 3.14.7 and final 3.15.0. Their independent corpora retain
+1,823/395/1,803/194 cases and 13,456/4,491/16,517/1,028 boundaries; step caps
+remain 64 for the first three and 16 for AddSubJump. Raw,
+prepared, VM and debugger captures, fresh siblings and held histories agree;
+physical IO failures and selected real workers retain committed state and
+partial output. Existing owners retain all 11/9/10/8 fault controls.
+
+The unchanged API/CLI/persistence consumer cases pass in the current wheel;
+all 952 packaged files match the frozen source. Exact certification-import
+refusals, source-qualified retirement checks and relocated saved readers pass.
+Backend claims are inapplicable to Deadfish and HQ9+. CARP's ten and
+AddSubJump's sixteen named size/resource/scaling owners reuse source-identical
+CI at `5f4dfb781`:
+3.12/3.13/3.15 passes are explicit; 3.14 passes are source-derived from complete
+successful receipts and the absence of skip/xfail paths. Scope remains the
+declared witnesses. Evidence: `notes/migration-completion-batch-1`; shared
+retirement scope: `notes/retirement-imports-8e4e4632b`.
+Accounting reviews pending: 20; 112 completion rows remain open.
+
+
+Declared certification scopes are reconciled for 114 Boolean backends: 259
+source anchors and 1,499 distinct finite owner nodes retain their named
+arities, units, exactness and construction on CI run 42682388228 (5f4dfb781).
+Python 3.12, 3.13 and 3.15 have explicit PASS outcomes, including the four-node
+serial batch containing Malbolge n=2. Python 3.14.10 is SOURCE_DERIVED_PASS:
+all owner nodes finished without failure, and pinned owner, marker, fixture
+and reachable runtime sources exclude skip/xfail paths; raw outcome labels
+remain unrecorded. Nine qualitative scaling cells retain their existing
+named construction or explicit lower-bound/cap argument, separately source
+reviewed; finite probes do not supply their asymptotic proof.
+
+Deadfish, HQ9+ and Nope. have no Boolean backend, so these generator claims
+are not applicable. Runtime-isolation and declaration scopes remain separate.
+This reconciliation strengthens no declared claim and closes no language
+completion, lifecycle/accounting or whole-catalog retirement row.
