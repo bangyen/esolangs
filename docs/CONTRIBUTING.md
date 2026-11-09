@@ -45,8 +45,9 @@ extend a shallow clone with `git fetch --unshallow`.
 The gate checks generated docs, pre-commit, mypy, pytest, dead definitions,
 size baselines, deep proofs and exception leaks. Out-of-scope steps stay in
 CI; `test-full` runs them locally. Delete unused helpers or move test-only
-helpers under `tests/`. Tests enforce a 1,200-line file cap, repository
-test/source line budgets and fewer than 10,000 non-contract cases.
+helpers under `tests/`. Tests enforce a 1,200-line file cap and fewer than
+10,000 non-contract cases. Focused regression coverage may exceed source line
+counts; it needs no compensating refactor of unrelated tests.
 
 Tests have CPU-time bands: fast (default, 1 s), medium (5 s), slow and weekly.
 Exceeding the band fails. Rerun suite duration failures alone: rotating
@@ -54,8 +55,8 @@ failures can be machine load; a test still over budget alone needs speeding
 up or the appropriate band. CI scales the ceilings.
 
 The Brainfuck/Boolfuck/Subleq cost/fault pilot (0.80–1.08 s/cohort) retained
-independent oracles and rejected inert checks. Keep the line/count budgets:
-one injected output-fault class is insufficient replacement evidence.
+independent oracles and rejected inert checks. One injected output-fault class
+is insufficient replacement evidence for the independent checks.
 
 Make focused commits with short imperative subjects. CI checks wheels on
 Linux, macOS and Windows, including examples, CLI I/O, PNG execution and

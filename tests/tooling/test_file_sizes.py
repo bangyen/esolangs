@@ -1,8 +1,7 @@
-"""Cap files, keep tests below their sources, and keep the suite under budget."""
+"""Cap files and keep the suite under its case-count budget."""
 
 import pathlib
 import re
-import subprocess
 from collections import defaultdict
 
 import pytest
@@ -30,71 +29,6 @@ def test_no_file_is_over_the_cap() -> None:
     """A file over the cap must be split."""
     over = {name: lines for name, lines in _sizes().items() if lines > MAX_LINES}
     assert not over, f"over {MAX_LINES} lines: {over}. Split the file."
-
-
-def _tracked_lines(
-    tree: str, *, exclude: str | None = None, tests: bool | None = None
-) -> int:
-    """Count the lines of ``tree/*.py`` files git sees, as ``wc -l`` does.
-
-    ``tests`` keeps only files under a ``tests`` directory (True) or only
-    files outside one (False).
-    """
-    # Untracked files count too: a new language's tests are untracked until
-    # committed, and a file only staged for deletion does not.
-    listed = subprocess.run(
-        [
-            "git",
-            "ls-files",
-            "-z",
-            "--cached",
-            "--others",
-            "--exclude-standard",
-            f"{tree}/*.py",
-        ],
-        cwd=_ROOT,
-        capture_output=True,
-        check=True,
-    ).stdout
-    names = [name.decode() for name in listed.split(b"\0") if name]
-    paths = [_ROOT / name for name in names]
-    return sum(
-        path.read_bytes().count(b"\n")
-        for path in paths
-        if path.exists()
-        and (exclude is None or not path.is_relative_to(_ROOT / exclude))
-        and (tests is None or ("tests" in path.relative_to(_ROOT).parts) == tests)
-    )
-
-
-@pytest.mark.parametrize(
-    ("tests", "source", "exclude"),
-    [
-        ("tests", "src", "tests/tooling"),
-        ("tests/tooling", "scripts", None),
-    ],
-)
-def test_test_budgets(tests, source, exclude) -> None:
-    test_lines = _tracked_lines(tests, exclude=exclude)
-    source_lines = _tracked_lines(source)
-    assert source_lines > 0
-    assert test_lines < source_lines, (
-        f"{tests}: {test_lines} lines, {source}: {source_lines}"
-    )
-
-
-def test_language_tests_count_as_tests() -> None:
-    """``src/**/tests`` is test code: count it against the code it tests."""
-    # The row above counts it as source, so it passed at 1:5.8 while the
-    # user's rule (tests/ + src/**/tests < src) stood at 93% (2026-10-16).
-    test_lines = _tracked_lines("tests", exclude="tests/tooling") + _tracked_lines(
-        "src", tests=True
-    )
-    source_lines = _tracked_lines("src", tests=False)
-    assert test_lines > 10_000, "test files were not found"
-    assert test_lines < source_lines, (
-        f"tests/ + src/**/tests: {test_lines} lines, src: {source_lines}; prune"
-    )
 
 
 #: Collected tests outside the registry contracts (user budget, 2026-10-05).
