@@ -84,6 +84,25 @@ def test_a_count_past_sys_maxsize_is_a_limit() -> None:
     """``[x] * count`` raised a bare OverflowError (CLI exit 70)."""
     with pytest.raises(InterpreterLimitError, match="index-sized"):
         execute("Fackward", "$ 99999999999999999999 1", timeout=2)
+    machine = _Machine("$4096H", ScriptedIO())
+    machine.step()
+    assert machine.ip == (0, 4096)
+    machine.step()
+    machine.step()
+    assert machine.halted
+
+    from scripts.tracediff import _random_programs, corpus
+
+    canonical = corpus("Fackward", count=0)
+    full = corpus("Fackward")
+    assert full[: len(canonical)] == canonical
+    random = full[len(canonical) :]
+    assert len(random) == 3000
+    assert all(sum(char.isdigit() for char in code) <= 3 for code, _ in random)
+    assert any(
+        sum(char.isdigit() for char in code) > 3
+        for code, _ in _random_programs(canonical, 3000)
+    )
 
 
 def test_workspace_keeps_nested_block_contents_without_link_cells():
