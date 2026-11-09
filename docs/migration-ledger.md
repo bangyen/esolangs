@@ -3558,3 +3558,28 @@ raw and declared prepared routes: 1,406 paired runs and 10,316 boundaries.
 All 30,948 positive-budget outcomes agree; 10,316 zero-budget calls refuse.
 A stale-successor mutant is detected. Caballo's accounting review remains
 pending; the 25 accounting and 116 completion counts are unchanged.
+
+
+Caballo's independent AST/path/frame oracle now checks all four workspace
+components. All 687 original records, 703 weighted tickets, cap 256, old
+assertions and None return remain. Pure model extraction preserves 5,805
+modeled boundaries and twenty supplemental cases; twelve permanent controls
+reject semantic, capture, draw-bound and Boolean/integer faults.
+
+Forty installed leaves pass on Python 3.12.11–final 3.15.0. Per version,
+raw/prepared cover 1,406 trajectories and 10,316 boundaries; seeded VM and
+debugger each cover 1,374 trajectories and 9,790 boundaries. All 687 records
+run bounded with default seed zero, ordinary with seed one, and ordinary
+with a genuine None provider checked against independently computed finite
+alternatives. Eighty capture-mask trajectories include readonly-cursor
+controls; populated witnesses measure 29/35/37/30 written bits.
+
+Twenty-eight constructor refusals, method/physical writer phases, provider
+refusals, prepared siblings and a readonly-program future control preserve
+state, IO and retry history. Seventeen real workers check fifteen selected
+parities and two output limits. Raw host-digit limits stay distinct from
+unverified public huge-format normalization. The permanent oracle adds 874
+lines with no collected nodes; the 951-file runtime wheel is unchanged.
+Caballo's bounded accounting review is complete; general grammar, public
+fault matrices and full branching acceptance remain open. Accounting reviews
+pending: 24; 116 completion rows remain open.
