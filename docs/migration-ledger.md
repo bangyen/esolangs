@@ -3507,3 +3507,22 @@ All 951 production files remain unchanged. The permanent bridge adds exactly
 twenty-seven test lines: tests/source are 115,819/115,820, with no strict spare
 line. No existing case, assertion, control, node or cap is removed. Accounting
 reviews still pending: 26; all 117 completion rows remain open.
+
+
+Nope.'s completion row is closed on Python 3.12.11, 3.13.15, 3.14.7 and
+final 3.15.0. Its source-independent two-state semantics retain exact one-bit
+accounting. Per version, all 210 cases and five boundaries agree across raw,
+prepared, VM and debugger routes: 4,200 captures, fresh siblings and immutable
+histories. Twelve physical failure routes retain committed state and partial
+output without retry; four real workers check step and output limits, and
+five native entrypoints check UTF-8/gzip acquisition. Source-matched earlier
+erasure, resource and semantic controls remain applicable. Current installed
+persistence, CLI and retirement controls pass; backend analysis and proof
+claims are inapplicable. The other 116 completion rows and 26 accounting
+reviews remain open.
+
+The same 951-file wheel passes 776 additional API/CLI leaves across 97 runtimes
+and all four Python versions: 6,208 cases, 31,816 startup markers, 7,130 seconds
+and a 19.82-second maximum against the unchanged 60-second leaf cap. This
+closes that default-profile execution batch, not the remaining dialect,
+accounting or catalog acceptance work.
