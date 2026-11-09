@@ -38,8 +38,8 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from collections.abc import Hashable, Mapping
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, fields
+from typing import Any, cast
 
 from esolangs.languages.unlambda.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
@@ -51,6 +51,96 @@ from esolangs.runtime._snapshot import SnapshotCodec
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
+
+
+class _ValueBase:
+    """Hash persistent values once and compare their full contents iteratively."""
+
+    __slots__ = ("_hash",)
+
+    _hash: int
+
+    def _store_hash(self) -> None:
+        object.__setattr__(
+            self,
+            "_hash",
+            hash(
+                (
+                    "_Kont" if isinstance(self, _Kont) else type(self).__name__,
+                    _value_parts(self),
+                )
+            ),
+        )
+
+    def __hash__(self) -> int:
+        try:
+            return self._hash
+        except AttributeError:
+            self._cache_value_hash()
+            return self._hash
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, _ValueBase):
+            return NotImplemented
+        if type(self) is not type(other) and not (
+            isinstance(self, _Kont) and isinstance(other, _Kont)
+        ):
+            return False
+        if hash(self) != hash(other):
+            return False
+        return _same_value(self, other)
+
+    def _cache_value_hash(self) -> None:
+        """Rebuild missing derived hashes bottom-up after pickle or deepcopy."""
+        pending: list[tuple[object, bool]] = [(self, False)]
+        while pending:
+            node, ready = pending.pop()
+            if isinstance(node, tuple):
+                pending.extend((part, False) for part in node)
+                continue
+            if not isinstance(node, _ValueBase) or hasattr(node, "_hash"):
+                continue
+            if ready:
+                _ValueBase._store_hash(node)
+            else:
+                pending.append((node, True))
+                pending.extend((part, False) for part in _value_parts(node))
+
+
+def _value_parts(value: _ValueBase) -> tuple[object, ...]:
+    if isinstance(value, _Kont):
+        return value.frame, value.rest
+    return tuple(getattr(value, field.name) for field in fields(cast("Any", value)))
+
+
+def _same_value(left: object, right: object) -> bool:
+    pending = [(left, right)]
+    seen = set()
+    while pending:
+        left, right = pending.pop()
+        if left is right:
+            continue
+        if type(left) is not type(right) and not (
+            isinstance(left, _Kont) and isinstance(right, _Kont)
+        ):
+            return False
+        pair = id(left), id(right)
+        if pair in seen:
+            continue
+        seen.add(pair)
+        if isinstance(left, _ValueBase):
+            node = cast("_ValueBase", right)
+            if isinstance(left, _Kont) and left.depth != cast("_Kont", node).depth:
+                return False
+            pending.extend(zip(_value_parts(left), _value_parts(node), strict=True))
+        elif isinstance(left, tuple):
+            items = cast("tuple[object, ...]", right)
+            if len(left) != len(items):
+                return False
+            pending.extend(zip(left, items, strict=True))
+        elif left != right:
+            return False
+    return True
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,22 +164,22 @@ class _Query:
     char: str
 
 
-@dataclass(frozen=True, slots=True)
-class _Partial:
+@dataclass(frozen=True, slots=True, eq=False)
+class _Partial(_ValueBase):
     """A combinator that has some of its arguments: ``k1``, ``s1``, ``s2``."""
 
     name: str
     args: tuple[_Value, ...]
 
 
-@dataclass(frozen=True, slots=True)
-class _Promise:
+@dataclass(frozen=True, slots=True, eq=False)
+class _Promise(_ValueBase):
     """What ``d`` made: a term held unevaluated until something applies it."""
 
     term: _Term
 
 
-class _Kont:
+class _Kont(_ValueBase):
     """A non-empty continuation: its innermost frame, and the rest.
 
     Linked rather than a tuple, so a push, a pop and ``c``'s capture are each
@@ -104,6 +194,28 @@ class _Kont:
         self.rest = rest
         self.depth: int = 1 + (rest.depth if rest is not None else 0)
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, _Kont):
+            return NotImplemented
+        return super().__eq__(other)
+
+    __hash__ = _ValueBase.__hash__
+
+    def __getstate__(self) -> tuple[None, dict[str, object]]:
+        """Preserve the old native slots while omitting the derived hash."""
+        return None, {"depth": self.depth, "frame": self.frame, "rest": self.rest}
+
+    def __setstate__(self, state: tuple[None, dict[str, Any]]) -> None:
+        """Restore the legacy continuation state; hashing rebuilds its cache."""
+        dictionary, values = state
+        if dictionary is not None or values.keys() != {"depth", "frame", "rest"}:
+            raise TypeError("invalid continuation pickle state")
+        self.depth = values["depth"]
+        self.frame = values["frame"]
+        self.rest = values["rest"]
+        if hasattr(self, "_hash"):
+            object.__delattr__(self, "_hash")
+
     def frames(self) -> tuple[_Frame, ...]:
         """Return the frames, outermost first."""
         out: list[_Frame] = []
@@ -113,78 +225,60 @@ class _Kont:
             node = node.rest
         return tuple(reversed(out))
 
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, _Kont):
-            return NotImplemented
-        if self.depth != other.depth:
-            return False
-        mine: _Kont | None = self
-        theirs: _Kont | None = other
-        # Iterative, and a shared tail ends the walk at once.  Equal depths
-        # run out together.
-        while mine is not None and theirs is not None and mine is not theirs:
-            if mine.frame != theirs.frame:
-                return False
-            mine, theirs = mine.rest, theirs.rest
-        return True
 
-    def __hash__(self) -> int:
-        return hash(self.frames())
-
-
-@dataclass(frozen=True, slots=True)
-class _Cont:
+@dataclass(frozen=True, slots=True, eq=False)
+class _Cont(_ValueBase):
     """A continuation ``c`` captured; applying it abandons the current one."""
 
     kont: _Kont | None
 
 
-@dataclass(frozen=True, slots=True)
-class _App:
+@dataclass(frozen=True, slots=True, eq=False)
+class _App(_ValueBase):
     """An application, the language's one syntactic form."""
 
     f: _Term
     a: _Term
 
 
-@dataclass(frozen=True, slots=True)
-class _Val:
+@dataclass(frozen=True, slots=True, eq=False)
+class _Val(_ValueBase):
     """A value standing in for a term, so ``s`` can re-apply what it holds."""
 
     value: _Value
 
 
-@dataclass(frozen=True, slots=True)
-class _Arg:
+@dataclass(frozen=True, slots=True, eq=False)
+class _Arg(_ValueBase):
     """Waiting for the function's value, holding the argument's term."""
 
     term: _Term
 
 
-@dataclass(frozen=True, slots=True)
-class _Fun:
+@dataclass(frozen=True, slots=True, eq=False)
+class _Fun(_ValueBase):
     """Holding the function's value while the argument is evaluated."""
 
     value: _Value
 
 
-@dataclass(frozen=True, slots=True)
-class _Eval:
+@dataclass(frozen=True, slots=True, eq=False)
+class _Eval(_ValueBase):
     """Evaluate a term."""
 
     term: _Term
 
 
-@dataclass(frozen=True, slots=True)
-class _Apply:
+@dataclass(frozen=True, slots=True, eq=False)
+class _Apply(_ValueBase):
     """Apply one value to another."""
 
     f: _Value
     a: _Value
 
 
-@dataclass(frozen=True, slots=True)
-class _Ret:
+@dataclass(frozen=True, slots=True, eq=False)
+class _Ret(_ValueBase):
     """Hand a finished value back to the continuation."""
 
     value: _Value

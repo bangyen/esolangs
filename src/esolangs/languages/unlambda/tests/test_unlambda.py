@@ -279,3 +279,86 @@ def test_advancing_a_finished_state_is_answered_not_stepped() -> None:
 @pytest.mark.medium
 def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("Unlambda", "`i", "exactly two expressions")
+
+
+def test_deep_snapshots_preserve_identity_execution_and_cycle_boundaries() -> None:
+    """Deep identity terms stay finite, hashable and distinct from other values."""
+    from copy import deepcopy
+    from pickle import dumps, loads
+    from unittest.mock import patch
+
+    from esolangs.vm import run_until_halt_or_cycle
+
+    captured_machine = native._Machine("``ci`.Ai", ScriptedIO())
+    for _ in range(7):
+        captured_machine.step()
+    captured = captured_machine.snapshot()
+    assert isinstance(captured[0], native._Apply)
+    assert isinstance(captured[0].a, _Cont)
+    assert captured[0].a.kont is captured[1]
+    assert isinstance(captured[1], native._Kont)
+    dictionary, slots = captured[1].__getstate__()
+    assert dictionary is None
+    assert slots.keys() == {"depth", "frame", "rest"}
+    for restored in (loads(dumps(captured, protocol=5)), deepcopy(captured)):
+        assert isinstance(restored, tuple)
+        assert isinstance(restored[0], native._Apply)
+        assert isinstance(restored[0].a, _Cont)
+        assert isinstance(restored[1], native._Kont)
+        assert restored == captured
+        assert hash(restored) == hash(captured)
+        assert restored[0].a.kont is restored[1]
+    reused = native._Kont(_Arg(_Cmd("v")), None)
+    assert reused != captured[1]
+    reused.__setstate__(captured[1].__getstate__())
+    assert reused == captured[1]
+    assert hash(reused) == hash(captured[1])
+
+    depth = 1100
+    code = "`" * depth + "i" * (depth + 1)
+    port = ScriptedIO()
+    machine = native._Machine(code, port)
+    saved = machine.snapshot()
+    retained = {saved}
+    twin = native._Machine(code, ScriptedIO()).snapshot()
+    assert saved == twin
+    assert hash(saved) == hash(twin)
+    other = native._Machine("`" * depth + "i" * depth + "v", ScriptedIO())
+    assert saved != other.snapshot()
+    with patch.object(native._ValueBase, "__hash__", return_value=0):
+        # Fresh tuples avoid Python 3.14's cached hash across the patch.
+        colliding = machine.snapshot()
+        different = other.snapshot()
+        same = native._Machine(code, ScriptedIO()).snapshot()
+        assert hash(colliding) == hash(different)
+        assert colliding != different
+        assert colliding == same
+    for _ in range(5 * depth + 2):
+        assert not machine.halted
+        machine.step()
+    assert machine.halted
+    assert machine.state == (_Ret(_Cmd("i")), None, None, True)
+    assert port.getvalue() == ""
+    assert port.reads == port.progress() == port.past_end == 0
+    assert saved in retained
+    assert saved == twin
+    with pytest.raises(TimeoutError, match="undecided after 2 steps"):
+        run_until_halt_or_cycle(native._Machine(code, ScriptedIO()), limit=2)
+    assert run_until_halt_or_cycle(
+        native._Machine(code, ScriptedIO()), limit=5 * depth + 2
+    )
+    assert run_until_halt_or_cycle(native._Machine("`ii", ScriptedIO()), limit=7)
+    # S I I applied to itself revisits Apply(F, F): this is a genuine cycle,
+    # rather than treating every nontrivial term as undecided or finished.
+    assert not run_until_halt_or_cycle(
+        native._Machine("```sii``sii", ScriptedIO()), limit=200
+    )
+    for char in "AB":
+        output = ScriptedIO()
+        printing = native._Machine("`" + code + "`." + char + "i", output)
+        for _ in range(5 * depth + 20):
+            if printing.halted:
+                break
+            printing.step()
+        assert printing.halted
+        assert output.getvalue() == char
