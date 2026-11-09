@@ -3617,3 +3617,24 @@ The independent reader and ten full-matrix corruption/relocation controls pass;
 seven earlier pricing-reader controls remain. Active leaf time is 3,331.62s,
 maximum 24.13s against unchanged 60s caps. This evidence is pinned to wheel
 `75c312bb9`; accounting and whole-catalog completion remain open.
+
+
+What!?'s independent dual-tape oracle checks all five workspace components.
+All 142 original vectors, six manual assertions and cap 128 remain; 34 cases
+extend the corpus to 176. The existing fast owner passes in 0.33s; no collected
+nodes are added.
+
+Forty-four installed leaves pass on Python 3.12.11–final 3.15.0. Raw, prepared,
+VM and debugger each match 1,969 boundaries and ten constructor refusals.
+Each version checks 352 public calls, 100 actual capture masks, 64 native and
+30 public fault histories, eight readonly-metadata future controls and four
+typed-result controls. Twenty-one real workers cover twenty parity pairs and
+an isolated output limit. The independent written-state peak is 2,050 bits.
+
+The saved reader, relocation and sixteen corruption controls pass. Four real
+certification imports fail fatally under the 952-file startup guard; the new
+Fackward certification module is present and hashed. The wheel is pinned to
+`8e4e4632b`; active leaf time is 66.21s against unchanged 60s caps. The interpreter
+and generator are unchanged. What!?'s bounded accounting review is complete;
+general grammar, arbitrary providers and broader completion remain open.
+Accounting reviews pending: 22; 116 completion rows remain open.
