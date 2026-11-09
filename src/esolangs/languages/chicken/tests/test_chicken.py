@@ -8,7 +8,7 @@ import pytest
 
 from esolangs import run as execute
 from esolangs.exceptions import HaltError, InterpreterLimitError
-from esolangs.languages.chicken.interpreter import run
+from esolangs.languages.chicken.interpreter import _Machine, run
 from esolangs.runtime._isolated import termination_result_isolated
 from esolangs.runtime._result_wire import decode_decision, encode_decision
 from esolangs.runtime._termination import _termination_result
@@ -104,6 +104,34 @@ def test_load_reads_the_input_and_the_stack() -> None:
     assert _go((10 + 7, 6, 0)) == "undefined"
     assert _go((10 + 9, 6, 2)) == "undefined"  # cell 2 holds a number
 
+    policy = sys.get_int_max_str_digits()
+    for rounds in (3, 14):
+        source_lines = 1 + 4 * rounds
+        top = source_lines + 3
+        counts = [12]
+        for _ in range(rounds):
+            counts.extend((10 + top, 6, 0, 4))
+        assert len(counts) == source_lines
+        value = 1 << (1 << rounds)
+        chunks = []
+        while value:
+            value, chunk = divmod(value, 10**9)
+            chunks.append(chunk)
+        expected = str(chunks.pop()) + "".join(
+            f"{chunk:09d}" for chunk in reversed(chunks)
+        )
+        assert expected == "256" if rounds == 3 else len(expected) == 4933
+        io = ScriptedIO()
+        machine = _Machine(_lines(*counts), io)
+        for _ in range(2 + 3 * rounds):
+            assert not machine.halted
+            machine.step()
+        assert machine.halted
+        assert machine.pointer == top
+        assert io.getvalue() == expected
+        assert (io.position(), io.reads, io.past_end) == (0, 1, 0)
+    assert sys.get_int_max_str_digits() == policy
+
 
 def test_store_overwrites_a_cell_and_grows_the_array() -> None:
     assert _go((15, 10 + 20, 7, 10 + 20, 6, 0)) == "5"
@@ -130,6 +158,18 @@ def test_input_is_the_whole_stdin() -> None:
         1,
         0,
     )
+    assert sys.get_int_max_str_digits() == policy
+
+    for stdin in ("65", "0" * 5000 + "65"):
+        io = ScriptedIO(stdin)
+        machine = _Machine(_lines(11, 6, 0, 10, 3), io)
+        for _ in range(5):
+            assert not machine.halted
+            machine.step()
+        assert machine.halted
+        assert machine.pointer == 8
+        assert io.getvalue() == "65"
+        assert (io.position(), io.reads, io.past_end) == (len(stdin), 1, 0)
     assert sys.get_int_max_str_digits() == policy
 
 

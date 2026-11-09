@@ -140,7 +140,7 @@ def _number(value: _Value) -> int | float:
         text = value.strip()
         if not text:
             return 0
-        return int(text) if _INTEGER.fullmatch(text) else NAN
+        return parse_integer(text) if _INTEGER.fullmatch(text) else NAN
     return NAN
 
 
@@ -155,6 +155,8 @@ def _text(value: _Value) -> str:
         return "true" if value else "false"
     if isinstance(value, float):
         return "NaN"
+    if type(value) is int:
+        return format_integer(value)
     return "undefined" if value is None else str(value)
 
 
