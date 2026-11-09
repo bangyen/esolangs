@@ -3417,3 +3417,37 @@ size fault and 118 codec/deferred-recorder controls pass. All 951 production
 files stay byte-identical. Tests/source remain 115,817/115,818; no case,
 assertion, control, node or cap is removed. 27 accounting rows and all 117
 completion rows remain open.
+
+
+LaserFuck's workspace v2 includes the existing dumped latch. A post-halt dump
+changes future output; it now charges one bit. Native transitions and cycle
+keys stay unchanged. All 3,477 cases retain 16,073 steps/19,550 captures;
+comparison excludes only the model name and added component, with both full
+workspace streams retained. The six-step mirror preserves ordinary state while
+branching keys distinguish fresh heading choice from a fixed beam.
+
+Sixteen focused installed leaves pass on Python 3.12.11–final 3.15.0: all four
+headings, sixteen literal trajectories/112 boundaries, four mirrors, twelve
+public routes, thirty-two writer retries, eighteen public fault routes and
+sixteen actual latch corruptions per interpreter. Eight guarded children cover
+six bounded parity pairs and output-cap refusal/success. Every process checks
+all 951 packaged files and forbids operational certification imports.
+
+All 256 three-input artifacts remain byte-identical (87,555 source characters).
+Their 8,192 heading/input rows run through dump and three idle steps. These
+controlled headings and later seed0 do not exhaust random paths or establish
+all-step workspace peaks. Parity at n=6/7 retains source and active steps; its
+measured peaks rise from 74/1,492 to 75/1,493 bits. Proof bounds add the latch.
+Benchmark sampling now includes completion and failed native steps; real Stisp
+regressions reproduce missing peaks of 33 and 32 bits and pass after repair.
+Twenty-seven sampling cases cover all nine eligible Boolean backends within
+an existing tooling node; its original cases and assertions remain.
+
+Two constant-test loops reuse the unchanged helper, saving eight lines. Both
+complete owning nodes retain 968 artifacts, 2,556 constructions, 83,644 steps,
+86,200 captures and 28,600 IO calls in byte-identical graph streams. All 512
+size programs execute 4,096 ordinary rows, preserving the 30,652/31,572
+character pins; twenty-five codec controls and two real extra-character faults
+pass. Tests/source are 115,814/115,820; no pre-existing case, assertion, control, node or cap
+is removed. This fixes the latch, not the full LaserFuck accounting review:
+27 accounting rows and all 117 completion rows remain open.

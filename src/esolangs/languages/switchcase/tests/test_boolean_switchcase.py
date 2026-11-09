@@ -7,7 +7,11 @@ from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
-from tests.support.generator_support import assert_every_row, three_input_corpus_size
+from tests.support.generator_support import (
+    assert_every_row,
+    constant_programs,
+    three_input_corpus_size,
+)
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -23,28 +27,21 @@ def test_every_row_prints_its_answer(table: str) -> None:
 def test_constant_reads_precede_output_and_preserve_the_next_character() -> None:
     from esolangs.languages.switchcase.interpreter import _Machine
 
-    for n in range(1, 13):
-        for bit in "01":
-            commands = n + 6 + int(bit)
-            workspace = 25 + (n + 1).bit_length() + n.bit_length()
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "SwitchCase", bit * (1 << n), **options
-                ).source
-                if not options:
-                    assert len(program) == n + 15 + 2 * int(bit)
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    stdin = esolangs.encode_inputs(
-                        "SwitchCase", list(map(int, f"{row:0{n}b}"))
-                    )
-                    io = ReadFirstIO(stdin + "Q", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = count_steps(machine, commands, written=written)
-                    assert steps == commands
-                    assert written.bits == workspace
-                    assert io.getvalue() == bit
-                    assert io.input_char() == ord("Q")
+    for n, bit, options, program in constant_programs("SwitchCase", range(1, 13)):
+        commands = n + 6 + int(bit)
+        workspace = 25 + (n + 1).bit_length() + n.bit_length()
+        if not options:
+            assert len(program) == n + 15 + 2 * int(bit)
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            stdin = esolangs.encode_inputs("SwitchCase", list(map(int, f"{row:0{n}b}")))
+            io = ReadFirstIO(stdin + "Q", expected=n)
+            machine = _Machine(program, io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = count_steps(machine, commands, written=written)
+            assert steps == commands
+            assert written.bits == workspace
+            assert io.getvalue() == bit
+            assert io.input_char() == ord("Q")
     assert three_input_corpus_size("SwitchCase") == 31572
 
     _check_shared_residuals()

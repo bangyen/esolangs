@@ -2,7 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [deep_arities]
-# The weighted route starts at n = 7 (74 -> 1,503 bits on parity), so the
+# The weighted route starts at n = 7 (75 -> 1,493 bits on parity), so the
 # fit needs n = 7..11 for its five rungs; n = 10, 11 add 1.9 s.
 workspace = 11
 
@@ -141,7 +141,7 @@ first = 5
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
 construction = "esolangs.languages.laserfuck.generator:laserfuck"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} at n = 5, 6, then 12T+n+6+2bl(n)", formula = "8n+26" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} at n = 5, 6, then 12T+n+7+2bl(n)", formula = "8n+27" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.laserfuck.tests.formulas:_cells"

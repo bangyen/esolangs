@@ -14,8 +14,8 @@ def execution(n: int, program: str) -> int:
 def workspace(n: int, _: str) -> int:
     """Tree to n=6; then last-onehot/all-ones attains the 3T-cell peak."""
     if n < 7:
-        return 8 * n + 26
-    return 12 * (1 << n) + n + 6 + 2 * n.bit_length()
+        return 8 * n + 27
+    return 12 * (1 << n) + n + 7 + 2 * n.bit_length()
 
 
 def all_heading_execution(n: int, program: str) -> int:

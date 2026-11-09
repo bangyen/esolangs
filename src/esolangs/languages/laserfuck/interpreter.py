@@ -199,7 +199,7 @@ def _advance(
 
 
 _WORKSPACE_MODEL = WorkspaceModel(
-    "laserfuck-v1",
+    "laserfuck-v2",
     (
         "pointer",
         "tape",
@@ -210,6 +210,7 @@ _WORKSPACE_MODEL = WorkspaceModel(
         "input_reads",
         "random_draws",
         "second_start",
+        "dumped",
     ),
 )
 
@@ -322,6 +323,7 @@ class _Machine:
             input_reads=self._input_reads,
             random_draws=self._draws,
             second_start=self._second_start,
+            dumped=self._dumped,
         )
 
     def snapshot(self) -> tuple[object, ...]:

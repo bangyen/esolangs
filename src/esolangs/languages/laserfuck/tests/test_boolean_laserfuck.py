@@ -60,8 +60,9 @@ class TestLaserFuck:
                 commands, written = measure_run(machine)
                 assert commands == execution(n, program) + 2 * (heading in (1, 2))
                 assert commands <= all_heading_execution(n, program)
-                assert written.bits == workspace(n, program)
                 machine.step()
+                written.sample(machine.workspace_snapshot())
+                assert written.bits == workspace(n, program)
                 assert stream.getvalue() == "1"
                 assert stream.reads == n
                 assert stream.input_char() == ord("Q")

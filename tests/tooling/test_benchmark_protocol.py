@@ -66,6 +66,7 @@ def test_valid_multiline_protocol_runs_all_rows(monkeypatch, capsys) -> None:
     record["peak_stack_items"] = 3
     assert benchmark.main(["Brainfuck", "01", "--all-rows"]) == 1
     assert json.loads(capsys.readouterr().out) == record
+    _check_store_sampling(monkeypatch)
 
 
 @pytest.mark.medium
@@ -123,3 +124,89 @@ def test_timing_journal_is_scratch_but_source_edits_change_identity(
         benchmark.source_identity()["tracked_diff_sha256"]
         != before["tracked_diff_sha256"]
     )
+
+
+def _check_store_sampling(monkeypatch) -> None:
+    import esolangs
+    from esolangs.registry import LANGUAGES
+    from esolangs.vm import _capture_workspace, complete_vm, make_vm
+    from scripts import benchmark
+
+    cohort = [
+        name
+        for name, language in LANGUAGES.items()
+        if language.backend is not None
+        and esolangs.describe(name)["dumps_on_the_post_halt_step"]
+        and esolangs.describe(name)["steppable_to_answer"]
+        and esolangs.describe(name)["answer_mode"] != "termination"
+    ]
+    assert len(cohort) == 9
+    completion_gains = active_gains = 0
+    for name in cohort:
+        program = esolangs.generate(name, "01")
+        source = (
+            esolangs.instantiate(name, program, (0,))
+            if isinstance(program, esolangs.TemplateArtifact)
+            else program
+        )
+        vm = make_vm(
+            name,
+            source,
+            stdin=""
+            if isinstance(program, esolangs.TemplateArtifact)
+            else esolangs.encode_inputs(name, [0], truth_table="01"),
+        )
+        assert not vm.halted
+        written = benchmark.WrittenState(_capture_workspace(vm))
+        commands = 0
+        while not vm.halted:
+            vm.step()
+            commands += 1
+            assert commands < 10000
+            written.sample(_capture_workspace(vm))
+            if commands == 1:
+                active_peak = written.bits
+        peak = written.bits
+        output = complete_vm(vm, max_steps=0)
+        written.sample(_capture_workspace(vm))
+        assert esolangs.read_answer(name, output) == "0"
+        completion_gains += written.bits == peak + 1
+        active_gains += active_peak > 0
+        for phase in ("complete", "refuse-complete", "refuse-active"):
+            with monkeypatch.context() as patch:
+
+                def finish(machine, max_steps, phase=phase):
+                    result = complete_vm(machine, max_steps=max_steps)
+                    if phase == "refuse-complete":
+                        raise TimeoutError("completion already changed workspace")
+                    return result
+
+                def refusing_factory(*args, **kwargs):
+                    actual = make_vm(*args, **kwargs)
+                    real_step = actual.step
+
+                    def refuse_after_step():
+                        real_step()
+                        raise TimeoutError("active step already changed workspace")
+
+                    patch.setattr(actual, "step", refuse_after_step)
+                    return actual
+
+                patch.setattr(benchmark, "complete_vm", finish)
+                if phase == "refuse-active":
+                    patch.setattr(benchmark.debugger_api, "make_vm", refusing_factory)
+                record = benchmark._execute(
+                    name, program, "01", 0, 10000, 5, track_store=True
+                )
+            assert record["peak_written_bits"] == (
+                active_peak if phase == "refuse-active" else written.bits
+            )
+            assert record["commands"] == (
+                None if phase == "refuse-active" else commands
+            )
+            assert record["execution_status"] == (
+                "halted" if phase == "complete" else "step_cap"
+            )
+            assert record["actual_answer"] == ("0" if phase == "complete" else None)
+    assert completion_gains > 0
+    assert active_gains > 0

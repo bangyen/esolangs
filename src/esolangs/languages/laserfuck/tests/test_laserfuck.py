@@ -217,7 +217,11 @@ class TestSurvivorGaps:
         retained = {saved}
         machine.snapshot = lambda: ("unrelated cycle key",)
         machine.step()
-        assert machine.workspace_snapshot() == saved
+        captured = machine.workspace_snapshot()
+        assert captured.model == saved.model
+        assert captured.parts[:-1] == saved.parts[:-1]
+        assert saved.parts[-1] is False
+        assert captured.parts[-1] is True
         assert saved in retained
         first = io_obj.getvalue()
         assert first  # the dump actually produced something to repeat

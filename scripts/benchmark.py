@@ -471,9 +471,11 @@ def _execute(
         sample_store()
         steps = 0
         while not vm.halted and steps < cap:
-            vm.step()
+            try:
+                vm.step()
+            finally:
+                sample_store()
             steps += 1
-            sample_store()
         result["commands"] = steps if vm.halted else None
         if not vm.halted:
             result["execution_status"] = "step_cap"
@@ -481,7 +483,10 @@ def _execute(
             result["execution_status"] = "halted"
             result["actual_answer"] = str(list(facts["answer_encoding"]).index("halts"))
         else:
-            output = complete_vm(vm, max_steps=0)
+            try:
+                output = complete_vm(vm, max_steps=0)
+            finally:
+                sample_store()
             result["execution_status"] = "halted"
             result["actual_answer"] = esolangs.read_answer(language, output)
 

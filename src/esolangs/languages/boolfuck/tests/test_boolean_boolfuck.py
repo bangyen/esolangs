@@ -7,7 +7,7 @@ from esolangs.debugger import make_vm
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import three_input_corpus_size
+from tests.support.generator_support import constant_programs, three_input_corpus_size
 
 
 @pytest.mark.parametrize("table", ["01101001", "00000000"])
@@ -34,28 +34,23 @@ def _check_constants() -> None:
     from esolangs.languages.boolfuck.interpreter import _Machine
     from esolangs.languages.boolfuck.proof_formulas import workspace
 
-    for n in range(1, 13):
-        for bit in "01":
-            commands = (14 * n + 11 if n >= 3 else 8 * n + 10) + 2 * int(bit)
-            for options in ({}, {"width": 1}, {"balance": True}):
-                program = esolangs.generate(
-                    "Boolfuck", bit * (1 << n), **options
-                ).source
-                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
-                    io = ReadFirstIO(f"{row:0{n}b}" + "Q", expected=n)
-                    machine = _Machine(program, io)
-                    written = WrittenState(machine.workspace_snapshot())
-                    steps = 0
-                    while not machine.halted:
-                        command = machine.code[machine.state.pc]
-                        machine.step()
-                        written.sample(machine.workspace_snapshot())
-                        steps += int(command in "><+[],;")
-                        assert steps <= commands
-                    assert (steps, io.getvalue()) == (commands, bit)
-                    assert written.bits == workspace(n, program)
-                    assert (machine.state.remaining, io.past_end) == (0, 0)
-                    assert io.input_char() == ord("Q")
+    for n, bit, _options, program in constant_programs("Boolfuck", range(1, 13)):
+        commands = (14 * n + 11 if n >= 3 else 8 * n + 10) + 2 * int(bit)
+        for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+            io = ReadFirstIO(f"{row:0{n}b}" + "Q", expected=n)
+            machine = _Machine(program, io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = 0
+            while not machine.halted:
+                command = machine.code[machine.state.pc]
+                machine.step()
+                written.sample(machine.workspace_snapshot())
+                steps += int(command in "><+[],;")
+                assert steps <= commands
+            assert (steps, io.getvalue()) == (commands, bit)
+            assert written.bits == workspace(n, program)
+            assert (machine.state.remaining, io.past_end) == (0, 0)
+            assert io.input_char() == ord("Q")
     assert three_input_corpus_size("Boolfuck") == 30652
 
 
