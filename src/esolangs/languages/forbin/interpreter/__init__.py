@@ -224,25 +224,18 @@ class _Machine:
         """Return what ``frame`` is about to run, for the ancestor check.
 
         Two frames with equal keys replay each other, so the key is the
-        function, its bindings, and the input cursor -- not the statement
+        function, its reachable closure state, and input -- not the statement
         cursor, which has already moved on in the ancestor by the time the
         callee is pushed.  The input position is what keeps the check
         sound: a recursion whose base case waits on an unread byte enters
         with identical bindings every lap and is one read from returning,
         not looping.  See :func:`esolangs.vm.run_until_halt_or_ancestor`.
         """
-        bindings: dict[str, object] = {}
-        scope: int | None = frame.scope
-        while scope is not None:
-            node = self.state.scopes[scope]
-            for name, value in node.locals.items():
-                bindings.setdefault(name, value)
-            for name, function in node.fn.nested.items():
-                bindings.setdefault(name, function)
-            scope = node.parent
+        graph = _Scopes(self.state.scopes, self._global_scope)
+        entry = graph.reference(frame.scope)
         return (
             frame.fn,
-            tuple(sorted((name, self._render(v)) for name, v in bindings.items())),
+            (entry, graph.environments()),
             self.io.progress(),
             self.state.bits,
             self.state.reads,
