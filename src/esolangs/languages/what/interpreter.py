@@ -64,6 +64,7 @@ from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer
 
 _CELLS = 256
 _WORD = 1 << 16
@@ -248,7 +249,9 @@ def _advance(
     elif kind == "in":
         assert isinstance(value, int)
         if not 0 <= value < _WORD:
-            raise HaltError(f"What!?: input {value} does not fit 16 bits")
+            raise HaltError(
+                f"What!?: input {format_integer(value)} does not fit 16 bits"
+            )
         ints = persistent.put(ints, ptr, value)
     elif kind == "out":
         if token.arg == 1:
