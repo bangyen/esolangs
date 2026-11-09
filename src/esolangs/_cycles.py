@@ -302,11 +302,12 @@ def _branch_search(
         if successors is None:
             raise with_hint(
                 TimeoutError(
-                    "undecided: a branching transition needs input that cannot "
-                    "be safely forked"
+                    "undecided: a branching transition cannot be safely forked: "
+                    "it needs input or exceeds the outcome budget"
                 ),
                 (
-                    "use fixed input and a seeded single-path run; that "
+                    "increase the branch limit, or use fixed input and a seeded "
+                    "single-path run; that "
                     "does not decide all random paths"
                 ),
             )

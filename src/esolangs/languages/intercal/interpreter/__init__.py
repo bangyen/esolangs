@@ -260,9 +260,9 @@ class _Machine:
         )
 
     def branching_successors(
-        self, state: Any, _limit: int
+        self, state: Any, limit: int
     ) -> tuple[tuple[Any, ...], ...] | None:
-        """Return every outcome of the step's draws, or ``None`` at input.
+        """Return all outcomes, or ``None`` at input or above the outcome budget.
 
         Replays the pure transition over explicit draw prefixes: a missing
         draw is filled with ``0`` (the scripted default) and every position
@@ -270,12 +270,14 @@ class _Machine:
         outcome of a ``%chance`` qualifier.
         """
         current: tuple[Any, ...] = state
+        if limit < 1:
+            return None
         if self.branching_halted(current):
             return (current,)
         ind: int = current[0]
         if self._program.statements[ind].command.tag == "write" and not current[5][ind]:
             return None
-        successors = []
+        successors: list[tuple[Any, ...]] = []
         pending: list[tuple[int, ...]] = [()]
         while pending:
             prefix = pending.pop()
@@ -288,6 +290,9 @@ class _Machine:
                         branch, self._program, tuple(draws), ()
                     )
                 except _NeedDraw:
+                    # Each new draw needs the current path and one flipped prefix.
+                    if len(successors) + len(pending) + len(draws) - base + 2 > limit:
+                        return None
                     draws.append(0)
                     continue
                 except _NeedInput:

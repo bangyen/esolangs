@@ -71,7 +71,8 @@ def test_fixed_input_does_not_make_branch_input_forkable() -> None:
             vm.make_vm("Modulous", source, stdin="42\n")
         )
     assert str(caught.value) == (
-        "undecided: a branching transition needs input that cannot be safely forked"
+        "undecided: a branching transition cannot be safely forked: "
+        "it needs input or exceeds the outcome budget"
     )
     assert "seeded single-path run" in caught.value.__notes__[0]
     assert "does not decide all random paths" in caught.value.__notes__[0]

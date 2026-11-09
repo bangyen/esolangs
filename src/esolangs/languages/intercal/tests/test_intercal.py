@@ -630,6 +630,54 @@ def test_branch_search_cannot_fork_input() -> None:
     machine = _Machine("PLEASE WRITE IN .1\nDO GIVE UP\nDO GIVE UP", ScriptedIO(""))
     assert machine.branching_successors(machine.branching_snapshot(), 10) is None
 
+    class _NoDraw:
+        def __init__(self) -> None:
+            self.calls: list[int] = []
+
+        def randbelow(self, upper: int) -> int:
+            self.calls.append(upper)
+            raise AssertionError("branch enumeration consumed its provider")
+
+    source = "(1) PLEASE %50 .1 <- #1\nDO GIVE UP\nDO %50 COME FROM (1)\nDO GIVE UP"
+    io = ScriptedIO("")
+    provider = _NoDraw()
+    branching = _Machine(source, io, provider)
+    saved = branching.snapshot()
+    for limit in (0, 1, 2, 3):
+        assert branching.branching_successors(saved, limit) is None
+        assert branching.snapshot() == saved
+    successors = branching.branching_successors(saved, 4)
+    assert successors is not None
+    assert len(successors) == 4
+    assert {(state[0], state[1]) for state in successors} == {
+        (1, ()),
+        (2, ()),
+        (1, (((".", 1), 1),)),
+        (2, (((".", 1), 1),)),
+    }
+    with pytest.raises(TimeoutError, match="outcome budget") as caught:
+        run_until_halt_or_all_branches_cycle(branching, limit=2)
+    assert "cannot be safely forked" in str(caught.value)
+    assert "increase the branch limit" in caught.value.__notes__[0]
+    assert run_until_halt_or_all_branches_cycle(branching, limit=16)
+    assert branching.snapshot() == saved
+    assert provider.calls == []
+    assert (io.getvalue(), io.position(), io.reads, io.past_end) == ("", 0, 0, 0)
+    with pytest.raises(AssertionError, match="consumed its provider"):
+        branching.step()
+    assert provider.calls == [100]
+    assert branching.snapshot() == saved
+    assert (io.getvalue(), io.position(), io.reads, io.past_end) == ("", 0, 0, 0)
+
+    halted = _Machine("PLEASE GIVE UP\nDO GIVE UP\nDO GIVE UP", ScriptedIO(), provider)
+    halted.step()
+    boundary = halted.snapshot()
+    assert halted.halted
+    assert halted.branching_successors(boundary, 0) is None
+    assert halted.branching_successors(boundary, 1) == (boundary,)
+    assert halted.snapshot() == boundary
+    assert provider.calls == [100]
+
 
 def test_c_intercal_test2_multiplies_with_its_library_copy() -> None:
     """C-INTERCAL's pit/tests/test2.i (gitlab.com/esr/intercal, GPL-2.0+).
