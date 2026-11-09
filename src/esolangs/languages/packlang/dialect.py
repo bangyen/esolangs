@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from esolangs.runtime.memory import parse_integer
+
 LITERAL_POLICIES = ("decimal", "binary_digits")
 
 
@@ -18,10 +20,9 @@ class PacklangLiterals:
 
     def parse(self, text: str) -> int:
         """Return the literal value under this policy."""
-        return int(
-            text,
-            2 if self.policy == "binary_digits" and set(text) <= {"0", "1"} else 10,
-        )
+        if self.policy == "binary_digits" and set(text) <= {"0", "1"}:
+            return int(text, 2)
+        return parse_integer(text)
 
     def emit(self, value: int) -> str:
         """Return a literal spelling under this policy."""

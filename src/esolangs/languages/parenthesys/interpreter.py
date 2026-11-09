@@ -76,6 +76,7 @@ from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer
 
 _NUMBER = re.compile(r"-?[0-9]+(?:\.[0-9]+)?")
 _SYNTAX = frozenset("()[]{}<>|$\\")
@@ -341,12 +342,12 @@ def _builtin(name: str, x: _Value, y: _Value) -> _Value:
     if name == "ind":
         index = _integer(x, name)
         if not 0 <= index < len(y[0]):
-            raise _value_error(f"index {index} outside {y[0]!r}")
+            raise _value_error(f"index {format_integer(index)} outside {y[0]!r}")
         return (y[0][index], False)
     if name == "chr":
         code = _integer(x, name)
         if not 0 <= code <= 0x10FFFF or 0xD800 <= code <= 0xDFFF:
-            raise _value_error(f"chr {code} is no character")
+            raise _value_error(f"chr {format_integer(code)} is no character")
         return (chr(code), False)
     a, b = _number(x), _number(y)
     if name in ("gt", "lt"):

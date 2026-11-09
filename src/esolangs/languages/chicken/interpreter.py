@@ -76,6 +76,7 @@ from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime._validate import check_address
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 
@@ -370,10 +371,10 @@ class _Machine:
 
 
 def _unescape(match: re.Match[str]) -> str:
-    code = int(match.group(1))
+    code = parse_integer(match.group(1))
     if code > 0x10FFFF or 0xD800 <= code <= 0xDFFF:
         raise HaltError(
-            f"Chicken cannot print the code point {code}",
+            f"Chicken cannot print the code point {format_integer(code)}",
             hint="use a code point in 0..0x10FFFF outside the surrogates",
         )
     return chr(code)

@@ -1,5 +1,6 @@
 """Tests for the Parenthesys interpreter."""
 
+import sys
 from functools import partial
 from itertools import product
 
@@ -151,6 +152,21 @@ def test_runtime_errors() -> None:
         _run("([ind|3|abc])")
     with pytest.raises(HaltError, match="needs an integer"):
         _run("([chr|65.5|])")
+    policy = sys.get_int_max_str_digits()
+    digits = "1" + "0" * 5000
+    for builtin, suffix in (("chr", " is no character"), ("ind", " outside 'a'")):
+        io = ScriptedIO(digits + "\n")
+        with pytest.raises(HaltError) as caught:
+            run("([" + builtin + "|$|a])", io)
+        label = "chr " if builtin == "chr" else "index "
+        assert str(caught.value) == "Parenthesys ValueError: " + label + digits + suffix
+        assert (io.getvalue(), io.position(), io.reads, io.past_end) == (
+            "",
+            len(digits) + 1,
+            1,
+            0,
+        )
+    assert sys.get_int_max_str_digits() == policy
 
 
 def test_workspace_accumulator_ignores_piece_boundaries():

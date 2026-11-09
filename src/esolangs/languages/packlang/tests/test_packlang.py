@@ -1,6 +1,7 @@
 """Unit tests for the Packlang interpreter and its generator."""
 
 import contextlib
+import sys
 from dataclasses import replace
 from functools import partial
 from itertools import product
@@ -548,6 +549,15 @@ def test_literal_roundtrip(policy) -> None:
     for value in (0, 1, 2, 10, 48, 128, 255):
         assert literals.parse(literals.emit(value)) == value
     assert literals.parse("255") == 255
+    host_policy = sys.get_int_max_str_digits()
+    assert literals.parse("0" * 5000 + "65") == 65
+    assert literals.parse("0" * 5000 + "1") == 1
+    io = ScriptedIO("Q")
+    source = "Package : IO { Integer main { charPut(" + "0" * 5000 + "65); 0; } } p;"
+    run(source, io, literal_policy=policy)
+    assert (io.getvalue(), io.position(), io.reads, io.past_end) == ("A", 0, 0, 0)
+    assert io.input_char() == ord("Q")
+    assert sys.get_int_max_str_digits() == host_policy
 
 
 @pytest.mark.parametrize("value", [True, "text"])
