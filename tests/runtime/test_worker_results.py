@@ -208,6 +208,39 @@ def test_immutable_cycle_state_survives_json(interpreter_only_samples):
             del changed[key]
         refuses(broken, "snapshot record")
 
+    from esolangs.runtime._json import worker_dumps, worker_loads
+
+    for malformed in (
+        {"bytes": "AA"},
+        {"int": "0xA"},
+        {"fraction": ["0x2", "0x4"]},
+        {"frozenset": [1, True]},
+        {"frozenset": [1, 1.0]},
+        float("nan"),
+        {"record": {"module": "fractions", "name": "Fraction", "fields": {}}},
+        {"owned": {"module": "fractions", "name": "Fraction", "value": {"tuple": []}}},
+    ):
+        nested = malformed
+        for _ in range(1100):
+            nested = {"tuple": [nested]}
+        broken = copy.copy(metadata)
+        broken["completion"] = copy.copy(metadata["completion"])
+        broken["completion"]["cycle"] = copy.copy(metadata["completion"]["cycle"])
+        broken["completion"]["cycle"]["state"] = nested
+        with pytest.raises(
+            ValueError, match=r"noncanonical|duplicate|non-finite|snapshot"
+        ):
+            decode_result(result.output, broken)
+        message = worker_dumps({"result": result.output, "execution": broken})
+        stream = worker_dumps({"output": result.output}) + "\n" + message + "\n"
+        with pytest.raises(
+            esolangs.InterpreterLimitError, match="invalid isolated"
+        ) as caught:
+            _decode(stream, expired=False)
+        assert caught.value.partial_output == result.output
+        parsed = worker_loads(message)
+        assert type(parsed) is dict
+
 
 @pytest.mark.parametrize("counter", [-1, True])
 @pytest.mark.parametrize("failure", [False, True])

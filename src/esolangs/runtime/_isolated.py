@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import base64
-import json
 import os
 import subprocess  # fixed Python worker; source travels over stdin.
 import sys
@@ -23,7 +22,7 @@ from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry import resolve
 from esolangs.results import ExecutionResult
 from esolangs.runtime._input import InputSource, read_input
-from esolangs.runtime._json import canonical_integer, worker_dumps, worker_object
+from esolangs.runtime._json import canonical_integer, worker_dumps, worker_loads
 from esolangs.runtime._program import Program
 from esolangs.runtime._proof import TerminationResult
 from esolangs.runtime._result_wire import (
@@ -159,7 +158,7 @@ def _decode(text: str, *, expired: bool) -> _WorkerResult:
     malformed = False
     for line in text.splitlines():
         try:
-            message = json.loads(line, object_pairs_hook=worker_object)
+            message = worker_loads(line)
         except ValueError:
             malformed = True
             break  # A killed write may leave only part of its last JSON record.
@@ -460,7 +459,7 @@ def _bounded_output(
                 raise record
             output.append(record)
             try:
-                message = json.loads(record, object_pairs_hook=worker_object)
+                message = worker_loads(record)
                 limited = (
                     isinstance(message, dict) and message.get("output_limit") is True
                 )
@@ -612,7 +611,7 @@ def _worker() -> None:
 
 def _read_request(stream: TextIO) -> dict[str, Any]:
     """Decode the canonical request; omitted options are protocol errors."""
-    request = json.load(stream, object_pairs_hook=worker_object)
+    request = worker_loads(stream.read())
     if not isinstance(request, dict) or set(request) != _REQUEST_FIELDS:
         raise ValueError("invalid worker request fields")
     flags = (

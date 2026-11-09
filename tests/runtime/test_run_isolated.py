@@ -89,6 +89,111 @@ def test_decode_missing_result_and_notes() -> None:
             object_pairs_hook=worker_object,
         )
 
+    from unittest.mock import patch
+
+    from esolangs.runtime._json import worker_loads
+
+    for packet in (
+        {"plain": [0, -0.0, True, None, "λ"]},
+        [1, {"a": "b"}],
+        {1: "int-key"},
+    ):
+        assert worker_dumps(packet) == json.dumps(packet)
+        assert worker_loads(worker_dumps(packet)) == json.loads(
+            json.dumps(packet), object_pairs_hook=worker_object
+        )
+    literal = {"$python_text": "\ud800\udfff"}
+    calls = []
+
+    def counted(pairs):
+        calls.append(tuple(key for key, _ in pairs))
+        return worker_object(pairs)
+
+    with patch("esolangs.runtime._json.worker_object", counted):
+        assert worker_loads(worker_dumps(literal)) == literal
+    assert calls == [("$python_text",), ("$python_object",)]
+    deep = literal
+    for level in range(1100):
+        deep = [deep] if level % 2 else {"node": deep}
+    restored = worker_loads(worker_dumps(deep))
+    for level in reversed(range(1100)):
+        assert type(restored) is (list if level % 2 else dict)
+        restored = restored[0] if level % 2 else restored["node"]
+    assert restored == literal
+    for document in (
+        "",
+        " ",
+        "\u00a0[]",
+        "[",
+        "{",
+        "[1,]",
+        '{"a":}',
+        '{"a" 1}',
+        '{"a":1,}',
+        "[1 2]",
+        "00",
+        "+1",
+        "1.",
+        "1e",
+        "truex",
+        "[] {}",
+        '"\\uZZZZ"',
+        '{"x":1,"\\u0078":2}',
+    ):
+        with pytest.raises(ValueError, match=r"Expecting|Extra data|Invalid|duplicate"):
+            worker_loads(document)
+    for document in (
+        "0",
+        "-0",
+        "-0.0",
+        "1e+2",
+        "true",
+        "false",
+        "null",
+        '"\\u0061"',
+        '[0,{"x":[true,null]}]',
+    ):
+        assert worker_loads(document) == json.loads(
+            document, object_pairs_hook=worker_object
+        )
+    for payload in (0, None, "EDA080", "ed a0 80", "ff", "41", ""):
+        with pytest.raises(ValueError, match=r"worker text|decode"):
+            worker_loads(json.dumps({"$python_text": payload}))
+    for entries in (
+        None,
+        0,
+        [],
+        [["other", 1]],
+        [["$python_text"]],
+        [["$python_text", 1, 2]],
+    ):
+        with pytest.raises(ValueError, match="worker object"):
+            worker_loads(json.dumps({"$python_object": entries}))
+    import math
+
+    assert worker_dumps(-0.0) == "-0.0"
+    assert math.copysign(1, worker_loads("-0.0")) == -1
+    assert math.isnan(worker_loads("NaN"))
+    assert worker_loads("Infinity") == float("inf")
+    shared = ["x"]
+    assert worker_loads(worker_dumps([shared, shared])) == [["x"], ["x"]]
+    circular = []
+    circular.append(circular)
+    with pytest.raises(ValueError, match="Circular reference"):
+        worker_dumps(circular)
+
+    json_depth = 33_000
+    wide = 0
+    for _ in range(json_depth):
+        wide = [wide]
+    wide = worker_loads(worker_dumps(wide))
+    for _ in range(json_depth):
+        assert type(wide) is list
+        assert len(wide) == 1
+        wide = wide[0]
+    assert type(wide) is int
+    assert wide == 0
+
 
 def test_decode_truncated_write_on_timeout() -> None:
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:

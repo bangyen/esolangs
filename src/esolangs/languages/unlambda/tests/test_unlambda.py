@@ -362,3 +362,120 @@ def test_deep_snapshots_preserve_identity_execution_and_cycle_boundaries() -> No
             printing.step()
         assert printing.halted
         assert output.getvalue() == char
+
+    from dataclasses import fields, is_dataclass
+
+    from esolangs._cycles import _halt_or_cycle_result
+    from esolangs.results import ExecutionResult
+    from esolangs.runtime._json import worker_dumps, worker_loads
+    from esolangs.runtime._proof import TerminationResult
+    from esolangs.runtime._result_wire import (
+        decode_decision,
+        decode_termination,
+        encode_decision,
+        encode_result,
+    )
+
+    def same_typed(left, right):
+        pending = [(left, right)]
+        while pending:
+            one, two = pending.pop()
+            assert type(one) is type(two)
+            if isinstance(one, native._Kont):
+                assert one.depth == two.depth
+                pending.extend(((one.frame, two.frame), (one.rest, two.rest)))
+            elif is_dataclass(one):
+                pending.extend(
+                    (getattr(one, field.name), getattr(two, field.name))
+                    for field in fields(one)
+                )
+            elif isinstance(one, tuple):
+                assert len(one) == len(two)
+                pending.extend(zip(one, two, strict=True))
+            else:
+                assert one == two
+
+    cycling = "`" + "```sii``sii" + code
+    loop_port = ScriptedIO()
+    loop = native._Machine(cycling, loop_port)
+    states = []
+    seen = {}
+    for command in range(42):
+        snapshot = loop.snapshot()
+        states.append(snapshot)
+        if snapshot in seen:
+            assert (seen[snapshot], command) == (25, 41)
+            break
+        seen[snapshot] = command
+        loop.step()
+    assert len(states) == 42
+    assert states[25] == states[41]
+    assert (
+        loop_port.getvalue(),
+        loop_port.progress(),
+        loop_port.reads,
+        loop_port.past_end,
+    ) == ("", 0, 0, 0)
+    wire = _state_wire(states[25])
+    restored = _state_from_wire(worker_loads(worker_dumps(wire)))
+    same_typed(states[25], restored)
+    assert restored == states[25]
+    assert hash(restored) == hash(states[25])
+    pending = [(wire, 0)]
+    deepest = None
+    while pending:
+        value, level = pending.pop()
+        if isinstance(value, dict):
+            record = value.get("record")
+            if (
+                record
+                and record["name"] == "_Cmd"
+                and record["fields"]["name"] == "i"
+                and (deepest is None or level > deepest[0])
+            ):
+                deepest = level, record["fields"]
+            pending.extend((child, level + 1) for child in value.values())
+        elif isinstance(value, list):
+            pending.extend((child, level + 1) for child in value)
+    assert deepest is not None
+    deepest[1]["name"] = "v"
+    wrong = _state_from_wire(worker_loads(worker_dumps(wire)))
+    assert wrong != restored
+    with pytest.raises(AssertionError):
+        same_typed(wrong, restored)
+    decision_port = ScriptedIO()
+    decision_machine = native._Machine(cycling, decision_port)
+    decision = _halt_or_cycle_result(decision_machine, limit=128)
+    assert decision.halts is False
+    assert decision.cycle is not None
+    assert decision.commands == 47
+    assert (
+        decision.cycle.first_pass,
+        decision.cycle.repeat_pass,
+        decision.cycle.commands_per_pass,
+    ) == (31, 47, 1)
+    decoded = decode_decision(worker_loads(worker_dumps(encode_decision(decision))))
+    assert decoded == decision
+    assert decoded.cycle is not None
+    same_typed(decoded.cycle.state, decision.cycle.state)
+    assert hash(decoded.cycle.state) == hash(decision.cycle.state)
+    assert decision_machine.snapshot() == decision.cycle.state
+    outcome = TerminationResult(
+        ExecutionResult(
+            decision_port.getvalue(),
+            decision_port.position(),
+            decision_port.reads,
+            decision_port.past_end,
+        ),
+        decision,
+    )
+    assert outcome.observation == ExecutionResult("", 0, 0, 0)
+    message = worker_loads(
+        worker_dumps(
+            {
+                "execution": encode_result(outcome.observation),
+                "decision": encode_decision(outcome.decision),
+            }
+        )
+    )
+    assert decode_termination("", message["execution"], message["decision"]) == outcome

@@ -8,7 +8,7 @@ from fractions import Fraction
 from functools import cache
 from importlib import import_module
 from math import isfinite
-from typing import Any, cast
+from typing import Any, NamedTuple, cast
 
 from esolangs.results import ExecutionResult
 from esolangs.runtime._json import canonical_integer
@@ -62,43 +62,103 @@ def _owned_codec(module_name: str, name: str) -> SnapshotCodec[Any]:
     raise ValueError("undeclared snapshot codec")
 
 
+class _EncodeTask(NamedTuple):
+    """A snapshot visit, delayed field access, or completed ancestor."""
+
+    action: str
+    node: Any
+    parent: Any
+    key: str | int | None
+    attribute: str | None
+
+
+class _DecodeTask(NamedTuple):
+    """A wire visit or bottom-up immutable value construction."""
+
+    action: str
+    node: Any
+    items: Any
+    parent: Any
+    key: str | int
+    identity: int | None
+
+
 def _state_wire(state: Hashable) -> Any:
-    """Tag immutable containers so JSON cannot turn snapshots into lists."""
-    if type(state) is float and not isfinite(state):
-        raise ValueError("non-finite cycle state")
-    # A valid program's integers can exceed Python's decimal rendering cap.
-    if type(state) is int and state.bit_length() > 1024:
-        return {"int": hex(state)}
-    if state is None or type(state) in (str, int, bool, float):
-        return state
-    if type(state) is Fraction:
-        return {"fraction": [hex(state.numerator), hex(state.denominator)]}
-    if isinstance(state, bytes):
-        return {"bytes": state.hex()}
-    if isinstance(state, tuple):
-        return {"tuple": [_state_wire(value) for value in state]}
-    if isinstance(state, frozenset):
-        return {"frozenset": [_state_wire(value) for value in state]}
-    if not isinstance(state, type) and is_dataclass(type(state)):
-        cls = _record_type(type(state).__module__, type(state).__qualname__)
-        return {
-            "record": {
-                "module": cls.__module__,
-                "name": cls.__qualname__,
-                "fields": {
-                    field.name: _state_wire(getattr(state, field.name))
-                    for field in fields(cls)
-                },
-            }
-        }
-    codec = _owned_codec(type(state).__module__, type(state).__qualname__)
-    return {
-        "owned": {
-            "module": codec.cls.__module__,
-            "name": codec.cls.__qualname__,
-            "value": _state_wire(codec.encode(state)),
-        }
-    }
+    """Tag immutable snapshots without recursing through their containers."""
+    result: list[Any] = [None]
+    pending: list[_EncodeTask] = [_EncodeTask("visit", state, result, 0, None)]
+    active: set[int] = set()
+    while pending:
+        action, node, parent, key, attribute = pending.pop()
+        if action == "finish":
+            active.remove(id(node))
+            continue
+        assert key is not None
+        if attribute is not None:
+            node = getattr(node, attribute)
+        if type(node) is float and (not isfinite(node)):
+            raise ValueError("non-finite cycle state")
+        # Valid integers may exceed CPython's decimal rendering cap.
+        if type(node) is int and node.bit_length() > 1024:
+            parent[key] = {"int": hex(node)}
+        elif node is None or type(node) in (str, int, bool, float):
+            parent[key] = node
+        elif type(node) is Fraction:
+            parent[key] = {"fraction": [hex(node.numerator), hex(node.denominator)]}
+        elif isinstance(node, bytes):
+            parent[key] = {"bytes": node.hex()}
+        else:
+            if id(node) in active:
+                raise ValueError("cyclic cycle state")
+            active.add(id(node))
+            pending.append(_EncodeTask("finish", node, None, None, None))
+            if isinstance(node, (tuple, frozenset)):
+                values = [value for value in node]  # noqa: C416 - preserve iteration without length hints
+                items: list[Any] = [None] * len(values)
+                parent[key] = {
+                    "tuple" if isinstance(node, tuple) else "frozenset": items
+                }
+                pending.extend(
+                    _EncodeTask("visit", values[index], items, index, None)
+                    for index in reversed(range(len(values)))
+                )
+            elif not isinstance(node, type) and is_dataclass(type(node)):
+                cls = _record_type(type(node).__module__, type(node).__qualname__)
+                declared = fields(cls)
+                values_by_name: dict[str, Any] = {
+                    field.name: None for field in declared
+                }
+                parent[key] = {
+                    "record": {
+                        "module": cls.__module__,
+                        "name": cls.__qualname__,
+                        "fields": values_by_name,
+                    }
+                }
+                pending.extend(
+                    _EncodeTask("visit", node, values_by_name, field.name, field.name)
+                    for field in reversed(declared)
+                )
+            else:
+                codec = _owned_codec(type(node).__module__, type(node).__qualname__)
+                owned: dict[str, Any] = {
+                    "module": codec.cls.__module__,
+                    "name": codec.cls.__qualname__,
+                    "value": None,
+                }
+                parent[key] = {"owned": owned}
+                pending.append(
+                    _EncodeTask("visit", codec.encode(node), owned, "value", None)
+                )
+    return result[0]
+
+
+def _bytes_from_wire(value: str) -> bytes:
+    """Require the lowercase compact spelling emitted for immutable bytes."""
+    decoded = bytes.fromhex(value)
+    if decoded.hex() != value:
+        raise ValueError("noncanonical cycle bytes")
+    return decoded
 
 
 def _fraction_from_wire(pair: Any) -> Fraction:
@@ -114,17 +174,8 @@ def _fraction_from_wire(pair: Any) -> Fraction:
     return fraction
 
 
-def _owned_from_wire(owned: Any) -> Hashable:
-    """Restore declared owned values, normalizing malformed payload failures."""
-    if (
-        not isinstance(owned, dict)
-        or set(owned) != {"module", "name", "value"}
-        or not isinstance(owned["module"], str)
-        or not isinstance(owned["name"], str)
-    ):
-        raise ValueError("invalid owned snapshot")
-    codec = _owned_codec(owned["module"], owned["name"])
-    payload = _state_from_wire(owned["value"])
+def _owned_from_wire(codec: SnapshotCodec[Any], payload: Hashable) -> Hashable:
+    """Restore a validated owned payload, normalizing malformed payload failures."""
     try:
         decoded_value = codec.decode(payload)
     except TypeError as error:
@@ -136,54 +187,99 @@ def _owned_from_wire(owned: Any) -> Hashable:
 
 
 def _state_from_wire(value: Any) -> Hashable:
-    """Restore supported immutable snapshots, refusing untagged containers."""
-    if type(value) is float and not isfinite(value):
-        raise ValueError("non-finite cycle state")
-    if value is None or type(value) in (str, int, bool, float):
-        return cast("Hashable", value)
-    if not isinstance(value, dict) or len(value) != 1:
-        raise ValueError("invalid cycle state")
-    if "bytes" in value and isinstance(value["bytes"], str):
-        decoded = bytes.fromhex(value["bytes"])
-        if decoded.hex() != value["bytes"]:
-            raise ValueError("noncanonical cycle bytes")
-        return decoded
-    if "int" in value:
-        return canonical_integer(value["int"])
-    if "fraction" in value:
-        return _fraction_from_wire(value["fraction"])
-    if "owned" in value:
-        return _owned_from_wire(value["owned"])
-    if "record" in value:
-        record = value["record"]
-        if (
-            not isinstance(record, dict)
-            or set(record) != {"module", "name", "fields"}
-            or not isinstance(record["fields"], dict)
-        ):
-            raise ValueError("invalid snapshot record")
-        if not isinstance(record["module"], str) or not isinstance(record["name"], str):
-            raise ValueError("invalid snapshot record type")
-        cls = _record_type(record["module"], record["name"])
-        if set(record["fields"]) != {field.name for field in fields(cls)}:
-            raise ValueError("invalid snapshot record fields")
-        return cast(
-            "Hashable",
-            cls(
-                **{
-                    key: _state_from_wire(item)
-                    for key, item in record["fields"].items()
-                }
-            ),
-        )
-    for key, build in (("tuple", tuple), ("frozenset", frozenset)):
-        if key in value and isinstance(value[key], list):
-            items = tuple(_state_from_wire(item) for item in value[key])
-            decoded_items = build(items)
-            if len(decoded_items) != len(items):
-                raise ValueError("duplicate cycle state member")
-            return decoded_items
-    raise ValueError("invalid cycle state tag")
+    """Restore tagged immutable snapshots with an explicit build stack."""
+    result: list[Any] = [None]
+    pending: list[_DecodeTask] = [_DecodeTask("visit", value, None, result, 0, None)]
+    active: set[int] = set()
+    while pending:
+        action, node, items, parent, key, identity = pending.pop()
+        if action != "visit":
+            assert identity is not None
+            if action == "record":
+                parent[key] = node(**items)
+            elif action == "owned":
+                parent[key] = _owned_from_wire(node, items[0])
+            else:
+                decoded_items = tuple(items) if action == "tuple" else frozenset(items)
+                if len(decoded_items) != len(items):
+                    raise ValueError("duplicate cycle state member")
+                parent[key] = decoded_items
+            active.remove(identity)
+            continue
+        if type(node) is float and (not isfinite(node)):
+            raise ValueError("non-finite cycle state")
+        if node is None or type(node) in (str, int, bool, float):
+            parent[key] = node
+            continue
+        if not isinstance(node, dict) or len(node) != 1:
+            raise ValueError("invalid cycle state")
+        if "bytes" in node and isinstance(node["bytes"], str):
+            parent[key] = _bytes_from_wire(node["bytes"])
+        elif "int" in node:
+            parent[key] = canonical_integer(node["int"])
+        elif "fraction" in node:
+            parent[key] = _fraction_from_wire(node["fraction"])
+        else:
+            if id(node) in active:
+                raise ValueError("cyclic cycle state")
+            active.add(id(node))
+            if "owned" in node:
+                owned = node["owned"]
+                if (
+                    not isinstance(owned, dict)
+                    or set(owned) != {"module", "name", "value"}
+                    or (not isinstance(owned["module"], str))
+                    or (not isinstance(owned["name"], str))
+                ):
+                    raise ValueError("invalid owned snapshot")
+                codec = _owned_codec(owned["module"], owned["name"])
+                payload: list[Any] = [None]
+                pending.append(
+                    _DecodeTask("owned", codec, payload, parent, key, id(node))
+                )
+                pending.append(
+                    _DecodeTask("visit", owned["value"], None, payload, 0, None)
+                )
+            elif "record" in node:
+                record = node["record"]
+                if (
+                    not isinstance(record, dict)
+                    or set(record) != {"module", "name", "fields"}
+                    or (not isinstance(record["fields"], dict))
+                ):
+                    raise ValueError("invalid snapshot record")
+                if not isinstance(record["module"], str) or not isinstance(
+                    record["name"], str
+                ):
+                    raise ValueError("invalid snapshot record type")
+                cls = _record_type(record["module"], record["name"])
+                if set(record["fields"]) != {field.name for field in fields(cls)}:
+                    raise ValueError("invalid snapshot record fields")
+                arguments: dict[str, Any] = dict.fromkeys(record["fields"])
+                pending.append(
+                    _DecodeTask("record", cls, arguments, parent, key, id(node))
+                )
+                pending.extend(
+                    (
+                        _DecodeTask("visit", item, None, arguments, name, None)
+                        for name, item in reversed(tuple(record["fields"].items()))
+                    )
+                )
+            else:
+                tag = next(iter(node))
+                if tag not in ("tuple", "frozenset") or not isinstance(node[tag], list):
+                    raise ValueError("invalid cycle state tag")
+                decoded_values: list[Any] = [None] * len(node[tag])
+                pending.append(
+                    _DecodeTask(tag, None, decoded_values, parent, key, id(node))
+                )
+                pending.extend(
+                    _DecodeTask(
+                        "visit", node[tag][index], None, decoded_values, index, None
+                    )
+                    for index in reversed(range(len(node[tag])))
+                )
+    return cast("Hashable", result[0])
 
 
 def _counter(value: Any) -> int:
