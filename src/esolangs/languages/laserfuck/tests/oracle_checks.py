@@ -10,8 +10,15 @@ from itertools import product
 import pytest
 
 from esolangs.languages.laserfuck.interpreter import _Machine
-from tests.interpreters.oracle_support import observed, stalled
+from tests.interpreters.oracle_support import stalled
 from tests.interpreters.semantic_oracles import signed32
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model(
+    "laserfuck-v2",
+    "pointer tape jumps beam_cursor beams input_cursor input_reads random_draws "
+    "second_start dumped",
+)
 
 
 class _Draw:
@@ -183,9 +190,27 @@ def _check(factory, code, stdin="unused", heading=3, split=0):
     def build(source, io):
         return factory(source, io, _Draw(heading, split))
 
-    assert observed(build, code, stdin, _view, cap=48) == _model(
-        code, stdin, heading, split
-    ), (code, stdin, heading, split)
+    workspace.agrees(
+        _model(code, stdin, heading, split),
+        (build, code, stdin),
+        (
+            _WORKSPACE,
+            lambda row: (
+                row[0][0],
+                row[0][1],
+                row[0][4],
+                row[0][3],
+                row[0][2],
+                row[-1],
+                *row[0][8:],
+                row[0][6],
+                row[0][7],
+            ),
+        ),
+        _view,
+        cap=48,
+        context=(code, stdin, heading, split),
+    )
 
 
 def check_raw_laserfuck():
@@ -219,3 +244,5 @@ def check_raw_laserfuck():
     for factory in (stalled(_Machine), WrongHeading, DoubleDump):
         with pytest.raises(AssertionError):
             _check(factory, ["o+x"])
+
+    workspace.check_erasures(_WORKSPACE, _check, _Machine, ["o+x"])

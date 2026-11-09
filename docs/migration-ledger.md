@@ -3482,3 +3482,28 @@ rejected and its modified program executes all eight rows. All 951 production
 files remain unchanged. The net twenty-two test lines leave tests/source
 115,792/115,820 and twenty-seven strict spare lines. LaserFuck's full accounting
 review remains pending: 27 accounting rows and all 117 completion rows stay open.
+
+
+LaserFuck's independent flat tape/beam oracle now checks all ten workspace
+components. All 3,477 records, cap 48, three post-halt steps and three old
+controls remain; ten component erasures are rejected. Before/after captures
+match at all 19,550 boundaries. Prepared execution retains the scripted paths;
+VM/debugger each check 19,493 boundaries using independently predicted seeded
+draws, including actual provider calls and retained capture/cycle hashes.
+
+Thirty-six installed leaves pass on Python 3.12.11–final 3.15.0. Each version
+runs all 3,477 seeded public records bounded and ordinary; 3,469 ordinary
+None-provider records have prior finite certificates, with eight kept bounded.
+Branch checks cover 6,954 records/39,043 boundaries, including skipped reads
+and splits. The populated witness measures 29 written bits across nine mutable
+components; second-start remains readonly. Actual capture overrides cover
+144 masks, 36 reduced schemas and 40 readonly controls; twelve natural source
+futures check start coordinates and fresh branching. Sixty physical writer
+refusals, twelve provider refusals, four repeated-EOF and two public EOF routes
+check partial state/output and manual retries. Twelve guarded children cover ten native/worker
+parities and output-cap refusal/success. Random paths are not exhaustive.
+
+All 951 production files remain unchanged. The permanent bridge adds exactly
+twenty-seven test lines: tests/source are 115,819/115,820, with no strict spare
+line. No existing case, assertion, control, node or cap is removed. Accounting
+reviews still pending: 26; all 117 completion rows remain open.
