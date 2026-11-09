@@ -1,6 +1,8 @@
 """Coverage shards retain branch evidence and cannot fail open."""
 
+import json
 import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -53,7 +55,7 @@ def test_combining_shards_retains_every_branch(tmp_path) -> None:
     assert (2, 4) in expected
 
 
-def test_coverage_gate_requires_success_and_both_artifacts() -> None:
+def test_coverage_gate_requires_success_and_both_artifacts(tmp_path) -> None:
     jobs = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())["jobs"]
     shard = jobs["coverage-tests"]
     assert shard["strategy"]["matrix"]["shard"] == [0, 1]
@@ -85,6 +87,34 @@ def test_coverage_gate_requires_success_and_both_artifacts() -> None:
     assert "--exclude-node" not in command
     assert "--cov-branch" in command
     assert "--duration-output notes/ci/test-durations.json" in command
+    arguments = shlex.split(command.split(" -- ", 1)[1])
+    timings = tmp_path / "durations.json"
+    arguments[arguments.index("--duration-output") + 1] = str(timings)
+    arguments[arguments.index("-n") + 1] = "0"
+    probe = tmp_path / "test_probe.py"
+    probe.write_text("def test_probe():\n    assert True\n")
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            *arguments,
+            "--collect-only",
+            "-o",
+            "addopts=",
+            str(probe),
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "COVERAGE_FILE": str(tmp_path / ".coverage")},
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    receipt = json.loads(timings.with_suffix(".json.meta.json").read_text())
+    assert receipt["exitstatus"] == 0
+    assert len(receipt["collected"]) == 1
     gate = jobs["deadcode"]
     assert gate["needs"] == "deadcode-scan"
     assert gate["steps"][0]["run"] == 'test "$SHARD_RESULT" = success'
