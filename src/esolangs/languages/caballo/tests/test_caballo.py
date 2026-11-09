@@ -3,6 +3,7 @@
 import pytest
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.caballo import interpreter
 from esolangs.languages.caballo.interpreter import _Machine, prepare_machine, run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
@@ -124,13 +125,34 @@ def test_a_ticket_equal_to_the_first_weight_picks_the_second_stack() -> None:
     assert outputs == ["[]", "[1]", "[1]"]
 
 
-def test_the_branching_halt_flag_is_the_done_flag() -> None:
+def test_the_branching_halt_flag_is_the_done_flag(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """With no input read, ``done`` is True while the progress count is 0."""
     machine = _machine("1")
     assert not machine.branching_halted(machine.snapshot())
     while not machine.halted:
         machine.step()
     assert machine.branching_halted(machine.snapshot())
+
+    machine = _machine("")
+    initial = machine.branching_snapshot()
+    with monkeypatch.context() as blocked:
+        blocked.setattr(
+            interpreter,
+            "_advance",
+            lambda *_: pytest.fail("zero outcome budget must not advance"),
+        )
+        assert machine.branching_successors(initial, 0) is None
+    successor = machine.branching_successors(initial, 1)
+    assert machine.branching_snapshot() == initial
+    assert machine.io.getvalue() == ""
+    machine.step()
+    final = machine.branching_snapshot()
+    assert successor == (final,)
+    assert machine.io.getvalue() == "[]"
+    assert machine.branching_successors(final, 0) is None
+    assert machine.branching_successors(final, 1) == (final,)
 
 
 def test_input_must_be_naturals() -> None:

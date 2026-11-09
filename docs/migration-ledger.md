@@ -3547,3 +3547,14 @@ unchanged; no collected nodes are added. Whitespace's bounded accounting
 review is complete; full
 parser/public-fault acceptance remains open. Accounting reviews pending: 25;
 116 completion rows remain open.
+
+
+Caballo now refuses a zero branching-outcome budget before evaluating a
+transition, including naturally halted states. The existing done-flag test
+retains its original case and adds zero/one-budget controls against a real
+empty-program step, with zero-budget evaluation forbidden. No node is added.
+All 687 source/input records and 703 weighted tickets match before/after on
+raw and declared prepared routes: 1,406 paired runs and 10,316 boundaries.
+All 30,948 positive-budget outcomes agree; 10,316 zero-budget calls refuse.
+A stale-successor mutant is detected. Caballo's accounting review remains
+pending; the 25 accounting and 116 completion counts are unchanged.

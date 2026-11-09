@@ -295,13 +295,15 @@ class _Machine:
         return bool(cast(tuple[object, ...], state)[2])
 
     def branching_successors(
-        self, state: object, _limit: int
+        self, state: object, limit: int
     ) -> tuple[tuple[object, ...], ...] | None:
-        """Return the one successor.
+        """Return the one successor, or ``None`` without an outcome budget.
 
         The draw picks only what is printed, never the next state, so a
         step has a single successor however the draw falls.
         """
+        if limit < 1:
+            return None
         frames, mapping, done, progress = cast(tuple[object, ...], state)
         if done:
             return (cast(tuple[object, ...], state),)
