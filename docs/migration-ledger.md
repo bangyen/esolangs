@@ -3526,3 +3526,24 @@ and all four Python versions: 6,208 cases, 31,816 startup markers, 7,130 seconds
 and a 19.82-second maximum against the unchanged 60-second leaf cap. This
 closes that default-profile execution batch, not the remaining dialect,
 accounting or catalog acceptance work.
+
+
+Whitespace's independent oracle now checks all six workspace components.
+All 549 cases, six syntax refusals, cap 48, post-halt steps and three original
+controls remain; six erasures and a wrong-number control are rejected.
+Old/new model results agree for every original case. A literal populated
+witness measures 23 written bits; independent ASCII decimal folding adds
+five long-input/refusal cases without changing the host digit policy.
+
+All 44 installed leaves pass on Python 3.12.11–final 3.15.0. Per version,
+raw, prepared, VM and debugger each match 7,512 original-corpus boundaries;
+all 549 public cases run bounded and 548 independently finite cases run
+ordinary. One hundred twenty capture-mask trajectories include 24 constructor-None
+and 24 consistent reduced schemas. Sixteen physical writer, four provider
+and four repeated-EOF trajectories retain failure phases and retry history;
+fourteen real workers cover selected traces, syntax, step and output limits.
+The numeric cases reach 33,243 written bits. Interpreters and generators stay
+unchanged; no collected nodes are added. Whitespace's bounded accounting
+review is complete; full
+parser/public-fault acceptance remains open. Accounting reviews pending: 25;
+116 completion rows remain open.

@@ -12,7 +12,13 @@ from itertools import product
 import pytest
 
 from esolangs.languages.whitespace.interpreter import _Machine
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import decorate_io, observed, overread, stalled
+from tests.support import workspace_oracle as workspace
+
+_WORKSPACE = workspace.workspace_model(
+    "whitespace-v1", "instruction stack heap return_stack ended input_cursor"
+)
 
 # S/T/N spell the specification's space/tab/line-feed command table.
 _CODES = {
@@ -108,6 +114,16 @@ def _flow(kind, args, stack, calls, labels, pc):
     return labels[args[0]] if (value == 0 if kind == "jz" else value < 0) else pc + 1
 
 
+def _decimal(text):
+    """Fold an already validated signed ASCII decimal without the host cap."""
+    negative = text[0] == "-"
+    digits = text[1:] if text[0] in "+-" else text
+    value = 0
+    for digit in digits:
+        value = value * 10 + ord(digit) - ord("0")
+    return -value if negative else value
+
+
 def _read(kind, stdin, cursor):
     if kind == "read_char":
         if cursor == len(stdin):
@@ -120,7 +136,7 @@ def _read(kind, stdin, cursor):
     token = stdin[cursor : len(stdin) if end < 0 else end].strip()
     if re.fullmatch(r"[+-]?[0-9]+", token) is None:
         return None, stop, "argument"
-    return int(token), stop, None
+    return _decimal(token), stop, None
 
 
 def _model(program, offsets, stdin):
@@ -195,9 +211,14 @@ def _check(factory, program, stdin="unused"):
         pc, stack, heap, calls, done = machine.state
         return pc, stack, heap, calls, done, machine.ip
 
-    assert observed(factory, source, stdin, state, cap=48) == _model(
-        program, offsets, stdin
-    ), (program, stdin)
+    workspace.agrees(
+        _model(program, offsets, stdin),
+        (factory, source, stdin),
+        (_WORKSPACE, lambda row: (*row[0][:5], row[-1])),
+        state,
+        cap=48,
+        context=(program, stdin),
+    )
 
 
 def check_raw_whitespace():
@@ -348,3 +369,66 @@ def check_raw_whitespace():
     for factory in (stalled(_Machine), overread(_Machine), wrong_print):
         with pytest.raises(AssertionError):
             _check(factory, (("push", 1), ("out_num",), ("end",)))
+
+    # Calls and END mutate distinct fields even when END leaves an in-range pc.
+    program = (
+        ("push", 0),
+        ("read_char",),
+        ("call", "0"),
+        ("end",),
+        ("mark", "0"),
+        ("push", 0),
+        ("retrieve",),
+        ("out_num",),
+        ("return",),
+    )
+    _check(_Machine, program, "A")
+    workspace.check_erasures(_WORKSPACE, _check, _Machine, program, "A")
+    source, offsets = _assemble(program)
+    rows = _model(program, offsets, "A")[1]
+    io = ScriptedIO("A")
+    machine = _Machine(source, io)
+    witness = workspace.WorkspaceWitness(_WORKSPACE)
+    for index, row in enumerate(rows):
+        witness.sample(machine.workspace_snapshot(), (*row[0][:5], row[-1]))
+        if index + 1 < len(rows):
+            machine.step()
+    witness.finish()
+    assert all(witness.expected.written)
+    assert witness.measured.bits == witness.expected.bits == 23
+
+    # Input admits ASCII decimal beyond the host cap; output stays a small residue.
+    numeric = (
+        ("push", 3),
+        ("read_num",),
+        ("push", 3),
+        ("retrieve",),
+        ("push", 7),
+        ("mod",),
+        ("out_num",),
+        ("end",),
+    )
+    for stdin in (
+        "0" * 5000 + "65\nQ",
+        "+1" + "0" * 5000 + "\nQ",
+        "\u2003-00065\u2003\nQ",
+        "٦٥\nQ",
+        "6_5\nQ",
+    ):
+        _check(_Machine, numeric, stdin)
+
+    class WrongNumber(_Machine):
+        def step(self):
+            super().step()
+            pc, stack, heap, calls, ended = self.state
+            if heap:
+                self.state = (
+                    pc,
+                    stack,
+                    tuple((a, n + 1) for a, n in heap),
+                    calls,
+                    ended,
+                )
+
+    with pytest.raises(AssertionError):
+        _check(WrongNumber, numeric, "0" * 5000 + "65\nQ")
