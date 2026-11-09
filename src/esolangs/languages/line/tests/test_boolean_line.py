@@ -248,6 +248,10 @@ def test_line_extent_fast_path_preserves_merged_runs_and_shared_arms() -> None:
     with pytest.raises(ValueError, match="goto"):
         tree_extents(leaf)
 
+    from .workspace_checks import check_accounting_line
+
+    check_accounting_line()
+
 
 @pytest.mark.medium
 def test_tighter_spacing_executes_every_small_function(tmp_path: Path) -> None:

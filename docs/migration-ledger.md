@@ -3638,3 +3638,25 @@ Fackward certification module is present and hashed. The wheel is pinned to
 and generator are unchanged. What!?'s bounded accounting review is complete;
 general grammar, arbitrary providers and broader completion remain open.
 Accounting reviews pending: 22; 116 completion rows remain open.
+
+
+Line's independent stroke graph derives the four and ten frames of its two PNG
+fixtures. All 92 original cases, cap 1000, three old controls and 84 compiled
+complements remain. An existing medium owner carries the new workspace checks;
+the original fast hook is byte-identical, with no collected nodes added.
+
+Forty-eight installed leaves pass on Python 3.12.11–final 3.15.0. Raw, prepared,
+VM and debugger each match 6,821 boundaries, including readonly metadata, visited
+zeros, IO and held captures. Each version checks five component erasures, six
+retry histories, 100 actual capture trajectories, 24 manual fault histories,
+16 repeated EOF histories and twelve public failure histories. Public execution
+checks 92 ordinary and 92 bounded results; 92 real workers retain their outcomes.
+The independent written-state peak is 30 bits, with populated 14/25-bit anchors.
+
+The saved reader, relocation and seventeen corruption controls pass. All 368
+children and 416 startup markers reconcile under the 952-file guard. Active leaf
+time is 198.51s against unchanged 60s caps; the wheel is pinned to `8e4e4632b`.
+The interpreter and generator are unchanged. Line's bounded accounting review
+is complete; other rasters, scale-two metadata and final lifecycle/transport
+reconciliation remain open. Accounting reviews pending: 21; 116 completion rows
+remain open.
