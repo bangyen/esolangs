@@ -8,7 +8,11 @@ import esolangs
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
-from tests.support.generator_support import assert_native_rows, constant_programs
+from tests.support.generator_support import (
+    assert_native_rows,
+    constant_programs,
+    three_input_corpus_size,
+)
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -55,10 +59,4 @@ def _check_native_constants() -> None:
     before = sum(base**size for size in (1, 2, 3)) + rank - 1
     assert list(islice(_names(), before, before + 2)) == ["maim", "maio"]
 
-    assert (
-        sum(
-            len(esolangs.generate("Object disoriented", f"{v:08b}").source)
-            for v in range(256)
-        )
-        == 48562
-    )
+    assert three_input_corpus_size("Object disoriented") == 48562

@@ -7,6 +7,7 @@ from esolangs.debugger import make_vm
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.event_io import ReadFirstIO
+from tests.support.generator_support import three_input_corpus_size
 
 
 @pytest.mark.parametrize("table", ["01101001", "00000000"])
@@ -55,10 +56,7 @@ def _check_constants() -> None:
                     assert written.bits == workspace(n, program)
                     assert (machine.state.remaining, io.past_end) == (0, 0)
                     assert io.input_char() == ord("Q")
-    assert (
-        sum(len(esolangs.generate("Boolfuck", f"{v:08b}").source) for v in range(256))
-        == 30652
-    )
+    assert three_input_corpus_size("Boolfuck") == 30652
 
 
 def _check_zero_guard() -> None:

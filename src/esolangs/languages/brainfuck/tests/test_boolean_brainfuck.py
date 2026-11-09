@@ -13,6 +13,7 @@ from tests.support.generator_support import (
     constant_programs,
     evaluate_generated,
     measure_run,
+    three_input_corpus_size,
 )
 from tests.support.reference import REFERENCE
 
@@ -158,10 +159,7 @@ def _check_constants() -> None:
             assert io.getvalue() == bit
             assert written.bits == 16 + len(program).bit_length() + n.bit_length()
             assert io.input_char() == ord("Q")
-    assert (
-        sum(len(esolangs.generate("brainfuck", f"{v:08b}").source) for v in range(256))
-        == 64098
-    )
+    assert three_input_corpus_size("brainfuck") == 64098
 
 
 def _check_zero_guards() -> None:

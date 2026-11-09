@@ -18,6 +18,7 @@ from tests.support.generator_support import (
     constant_programs,
     evaluate_generated,
     run_lines,
+    three_input_corpus_size,
     verify_generated,
 )
 from tests.support.witness_tables import parity, witnesses
@@ -481,7 +482,4 @@ def _check_constants() -> None:
             assert io.getvalue() == bit
             assert io.reads == n
             assert io.input_char() == ord("1")
-    assert (
-        sum(len(esolangs.generate("thisthat", f"{v:08b}").source) for v in range(256))
-        == 47482
-    )
+    assert three_input_corpus_size("thisthat") == 47482

@@ -3374,3 +3374,46 @@ fault and ninety-nine graph-codec controls pass. All 951 production files stay
 byte-identical. Tests/source are 115,817/115,818; no case, assertion, control,
 node or cap is removed. 28 accounting rows and all 117 completion rows remain
 open.
+
+
+Pointless's unchanged straight-line model now checks frames, pointer, tape,
+bang latch and input cursor. All 2,202 cases, cap64, three post-halt steps,
+old LostWrite control and None return remain; five erasures add controls.
+The complete owning node retains its two earlier runs and three assertions;
+all 9,863 steps/12,067 captures remain byte-identical.
+
+Thirty-six installed leaves pass on Python 3.12.11–final 3.15.0. Raw, prepared,
+VM and debug each retain 2,202 cases/12,054 boundaries, peak540 bits. All 2,202
+independently finite cases also run ordinarily through native/public and
+publicly bounded. Physical allocation, including zero writes, is independently
+tracked separately from canonical trailing-zero trimming. Populated witnesses
+charge 23 and 2,061 bits.
+
+Eighty actual masks, twenty reduced schemas and twenty constructor-None
+trajectories preserve snapshots, cycles, IO, histories and meters. Thirty-two
+physical writer trajectories and sixteen public routes retain postcommit
+state. Four provider refusals, twelve repeated failures, eight repeated EOF
+routes, twelve allocation traces and actual readonly/future-opcode corruptions
+pass. Ten guarded children cover nine bounded parity pairs and an output-limit
+witness. Functions, calls, brackets, declarations, parser failures and unbounded
+growth remain outside this independent cohort.
+
+Ten size assertions reuse the unchanged helper, saving the twenty-line bridge.
+All eleven complete owning nodes, including both HQ parameter nodes, retain
+3,825 artifacts, 5,209 native constructions, 708,810 steps, 714,019 captures,
+81,112 IO calls, 42 public runs and 698 direct generator calls in matching graph
+streams. Brainfuck retains actual immutable states and all 625,192 workspace
+calls; serialization follows the timed test. Its unchanged five-second band
+passes at 4.74/4.66 seconds. Compiled public runs retain result/IO coverage.
+Raw callback sidecars remain; 254 code locations relocate with code otherwise
+equal after first-line normalization.
+
+All 2,816 measured programs execute all 22,528 ordinary rows, retaining every
+local character-count pin (504,281 total). SuperSNUSP's 256 size artifacts have
+builtin-string sources before/after; its former str wrapper is identity here.
+Three random-capable languages retain 6,144 default-None bindings and make no
+draws in this corpus; random paths remain nonexhaustive. A real extra-character
+size fault and 118 codec/deferred-recorder controls pass. All 951 production
+files stay byte-identical. Tests/source remain 115,817/115,818; no case,
+assertion, control, node or cap is removed. 27 accounting rows and all 117
+completion rows remain open.

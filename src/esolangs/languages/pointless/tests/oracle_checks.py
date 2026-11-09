@@ -6,8 +6,12 @@ import pytest
 
 from esolangs.languages.pointless.interpreter import _Machine
 from tests.interpreters.oracle_support import observed
+from tests.support import workspace_oracle as workspace
 
 _COMMANDS = "<>:!=+-.,"
+_WORKSPACE = workspace.workspace_model(
+    "pointless-v1", "frames pointer tape banged input_cursor"
+)
 
 
 def _model(code, stdin):
@@ -68,7 +72,21 @@ def check_raw_pointless():
             cells = {i: value for i, value in enumerate(machine.memory) if value}
             return machine.ip, machine.pointer, machine.banged, cells
 
-        assert observed(factory, code, stdin, state) == _model(code, stdin)
+        offsets = [i for i, char in enumerate(code) if char in _COMMANDS]
+
+        def parts(row):
+            (offset, pointer, banged, tape), halted, *_ = row
+            return (
+                () if halted else ((0, offsets.index(offset)),),
+                pointer,
+                bytes(tape.get(i, 0) for i in range(max(tape, default=-1) + 1)),
+                banged,
+                row[-1],
+            )
+
+        expected = _model(code, stdin)
+        view = workspace.workspace_view(expected[1], _WORKSPACE, parts, state)
+        assert observed(factory, code, stdin, view) == expected
 
     corpus = [" xyz ".join(chars) for chars in product(_COMMANDS, repeat=3)]
     corpus += [",>,<:.", ",>,<+.", ",>,<-.", "!>+>+:=", "comment"]
@@ -82,3 +100,5 @@ def check_raw_pointless():
 
     with pytest.raises(AssertionError):
         check(LostWrite, "!>+.", "")
+
+    workspace.check_erasures(_WORKSPACE, check, _Machine, "!>+,.", "A")

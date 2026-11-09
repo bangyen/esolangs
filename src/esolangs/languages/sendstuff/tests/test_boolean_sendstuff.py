@@ -6,7 +6,11 @@ import esolangs
 from esolangs.languages.sendstuff.generator import sendstuff
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_every_row, measure_run
+from tests.support.generator_support import (
+    assert_every_row,
+    measure_run,
+    three_input_corpus_size,
+)
 
 #: Nonconstant one- and two-input tables; a diagram's sharing bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(1, 2**2**n - 1)]
@@ -56,10 +60,4 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
                     assert steps == n + (1 if identity else 3 if negation else 2)
                     assert written.bits <= workspace(n, program)
                     assert io.input_char() == ord("Q")
-    assert (
-        sum(
-            len(esolangs.generate("SendStuff", format(v, "08b")).source)
-            for v in range(256)
-        )
-        == 48361
-    )
+    assert three_input_corpus_size("SendStuff") == 48361

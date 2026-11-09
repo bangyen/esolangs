@@ -9,7 +9,11 @@ from esolangs.languages.super_snusp.generator import balance_super_snusp, super_
 from esolangs.runtime.io import ScriptedIO
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_roots, measure_run
+from tests.support.generator_support import (
+    assert_constant_roots,
+    measure_run,
+    three_input_corpus_size,
+)
 
 
 class TestSuperSNUSPWidth:
@@ -253,10 +257,4 @@ def _check_stacked_operands() -> None:
                             + n.bit_length()
                         )
                         assert written.bits <= bound
-    assert (
-        sum(
-            len(str(esolangs.generate("Super SNUSP", f"{v:08b}").source))
-            for v in range(256)
-        )
-        == 11236
-    )
+    assert three_input_corpus_size("Super SNUSP") == 11236

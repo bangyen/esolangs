@@ -13,6 +13,7 @@ from tests.support.generator_support import (
     assert_every_row,
     constant_programs,
     evaluate_generated,
+    three_input_corpus_size,
 )
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
@@ -53,7 +54,4 @@ def _check_constants() -> None:
             assert io.getvalue() == bit + "\n"
             assert written.bits == (n + 1).bit_length() + (2 * n).bit_length()
             assert io.input_str() == "Q"
-    assert (
-        sum(len(esolangs.generate("BASICER", f"{v:08b}").source) for v in range(256))
-        == 23222
-    )
+    assert three_input_corpus_size("BASICER") == 23222

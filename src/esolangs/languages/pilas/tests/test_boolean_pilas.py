@@ -9,6 +9,7 @@ from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
+from tests.support.generator_support import three_input_corpus_size
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -19,10 +20,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
         _check_constants()
     n = len(table).bit_length() - 1
     if table == "01101001":
-        assert (
-            sum(len(esolangs.generate("Pilas", f"{i:08b}").source) for i in range(256))
-            == 24034
-        )
+        assert three_input_corpus_size("Pilas") == 24034
 
     class ReadFirstIO(ScriptedIO):
         def _write(self, value):

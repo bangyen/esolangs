@@ -12,7 +12,11 @@ from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_an_ignored_input_costs, measure_run
+from tests.support.generator_support import (
+    assert_an_ignored_input_costs,
+    measure_run,
+    three_input_corpus_size,
+)
 from tests.support.witness_tables import witnesses
 
 run_modulous = _runner("modulous", newline=True)
@@ -134,13 +138,7 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
                     assert steps == 2 * n + 3
                     assert written.bits <= workspace(n, program)
                     assert io.input_token() == "Q"
-    assert (
-        sum(
-            len(esolangs.generate("Modulous", format(v, "08b")).source)
-            for v in range(256)
-        )
-        == 37030
-    )
+    assert three_input_corpus_size("Modulous") == 37030
 
 
 def _check_pair_resources() -> None:
