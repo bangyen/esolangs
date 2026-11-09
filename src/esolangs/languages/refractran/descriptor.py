@@ -29,7 +29,7 @@ LANGUAGE = Language(
         ),
         wrap=wrap_space_delimited,
         balance=FunctionRef(
-            "esolangs.languages.refractran.generator", "_balance", ("_table", "default")
+            "esolangs.languages.refractran.generator", "_balance", ("table", "default")
         ),
         template=TemplateSpec(pair=PAIR),
     ),

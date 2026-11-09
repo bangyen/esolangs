@@ -174,3 +174,16 @@ budget = 10
 band = "fast"
 construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
 notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Reuse the first narrow banded build below the five-column gate floor. With next_column>=1 and narrow stride4, limits1..4 make identical room decisions; free-column reuse is also limit-independent. Larger widths still reserve the output dash and colon through the second build. No emitted program, numerical bound, pin or Size anchor changes."
+
+[ablations.compact_balance_20261109]
+kind = "measurement"
+audited = 2026-11-09
+witness = { arity = 10, rule = "random", seed = 1847 }
+source = { unit = "cells", value = 391395 }
+balanced = { unit = "cells", value = 391395 }
+scale = 1
+rows = [0, 1023]
+budget = 15
+band = "medium"
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
+notes = "Adds a balanced-only H-pool candidate: existing atomic muxes, leaf extents rounded with unchanged routing clearance, and one retained function definition. Admission preserves the primitive area ceiling and expanded G<=T+n. Default pins and Size anchors remain unchanged. This smoke witness retains its prior winner; direct n=9/10 pool controls execute the new layout. Strict seeded n=10/12 enclosing-square exponent: 1.069, with 12 larger rows within unchanged resource bounds. Text may grow: this repairs shape growth, not source size."

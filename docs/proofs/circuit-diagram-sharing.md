@@ -99,6 +99,17 @@ clock admission checks. Full parity uses a derived XOR ladder: execution is
 $n+1$ and written scalar values require at most $3n$ bits. Constants and every
 previous finite proof scope retain their existing bounds.
 
+Balanced generation also compares an H-pool whose atoms use native muxes.
+Each leaf rounds its largest atom dimension plus the existing $8k+48$
+routing clearance up to eight cells. Admission reserves another 24 cells
+below the primitive leaf ceiling, covering the 23-row shared definition.
+The old area ceiling therefore still holds. Counting each native mux as
+four primitive gates and requiring $G\le T+n$ preserves the workspace bound;
+atomic evaluation only shortens the existing prefix/atom/return path.
+The fixed seven/eight-input atoms and unchanged H recurrence keep emission
+and construction linear. This candidate minimizes enclosing-square shape;
+its emitted text can be larger than the default's.
+
 ## Executed evidence
 
 The following large-layout measurements predate native mux nodes.

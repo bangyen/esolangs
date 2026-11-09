@@ -3,7 +3,8 @@
 
 # Atomic muxes use three slots instead of six (four with a root NOT);
 # prefix definitions are not outer-machine state. Primitive copied pools
-# retain their geometry and slots. Latches never clear: 3T - 6 + n flat
+# retain their geometry and slots. Balanced pools admit atomic leaves only
+# when their expanded primitive count stays <= T+n. Latches never clear: 3T - 6 + n flat
 # slots, 6T - 10 + n under the
 # H-layout. Same-state pulses are an antichain: T/2 + n flat, T + n after.
 def workspace(n: int, program: str) -> int:

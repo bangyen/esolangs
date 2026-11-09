@@ -14,6 +14,7 @@ from esolangs.languages.circuit_diagram.generator import (
     _narrowest_present,
 )
 from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
+from esolangs.languages.circuit_diagram.generator.hpool import _compact_pool_layout
 from esolangs.languages.circuit_diagram.generator.layout import _Layout
 
 # Width of the 2-input all-XOR flat drawing below (``-.X.-:``).
@@ -99,6 +100,10 @@ def balance_circuit_diagram(table: str, default: str) -> str:
     # Retain the former H candidate until a folded layout beats its score.
     if len(table) >= 256:
         candidates.append(_h_term_layout(table).render())
+    if len(table) >= 512 and (pool := _compact_pool_layout(table)) is not None:
+        # Atomic leaves trade text area for the enclosing square: n=12 seeded
+        # sides fall from 8592/8548 to 5654/5718 columns (including the body).
+        candidates.append(pool.render())
     # A drawing's area is about that of the flat one whatever its width, so
     # the square side is isqrt(CELL_ASPECT * area).
     area = grid_width(flat) * (flat.count("\n") + 1)

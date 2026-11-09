@@ -92,7 +92,9 @@ def _pool_inputs(
     return n, order, ports
 
 
-def _pool_atoms(table: str, k: int, p: int) -> dict[str, _Layout]:
+def _pool_atoms(
+    table: str, k: int, p: int, *, atomic_mux: bool = False
+) -> dict[str, _Layout]:
     """Return one atom layout per distinct mixed suffix chunk."""
     from . import _circuit_diagram_model
 
@@ -102,7 +104,7 @@ def _pool_atoms(table: str, k: int, p: int) -> dict[str, _Layout]:
     for i in range(0, len(table), 1 << k):
         chunk = table[i : i + (1 << k)]
         if constant_output(chunk) is None and chunk not in atoms:
-            atoms[chunk] = _circuit_diagram_model(chunk, None)
+            atoms[chunk] = _circuit_diagram_model(chunk, None, atomic_mux=atomic_mux)
     return atoms
 
 
@@ -114,12 +116,12 @@ class _PoolGeometry:
     dimensions: dict[int, tuple[int, int]]
 
 
-def _pool_geometry(k: int, p: int) -> _PoolGeometry:
+def _pool_geometry(k: int, p: int, leaf_height: int | None = None) -> _PoolGeometry:
     """Leaf rectangle plus the block size at every even prefix depth."""
     # Every atom is at most 375 (k=7) / 587 (k=8) wide, inside the leaf's
     # 584 / 976 square, whatever the table: the stride lemma bounds an atom's
     # strides by 2**(k-2) + 3k + 7 at six columns each (``_check_fits``).
-    leaf = _large_leaf_height(k)
+    leaf = _large_leaf_height(k) if leaf_height is None else leaf_height
     prefix_x, bank_y = leaf - 16, 8 * k + 8
     dimensions = {0: (leaf, leaf)}
     for remaining in range(2, p + 1, 2):
@@ -180,12 +182,13 @@ class _PoolBuild:
         order: list[int],
         ports: int,
         atoms: dict[str, _Layout],
+        leaf_height: int | None = None,
     ) -> None:
         self.table, self.k, self.order, self.ports = table, k, order, ports
         self.atoms = atoms
         self.n = len(table).bit_length() - 1
         self.p = self.n - k
-        self.geometry = _pool_geometry(k, self.p)
+        self.geometry = _pool_geometry(k, self.p, leaf_height)
         width, height = self.geometry.dimensions[self.p]
         self.blocks = {1: _Block(0, 0, width, height)}
         raw: dict[int, tuple[int, int]] = {}
@@ -378,8 +381,41 @@ def _pool_layout(
     if n <= k:
         return _circuit_diagram_model(table, None, input_order=order, port_inputs=ports)
     build = _PoolBuild(table, k, order, ports, _pool_atoms(table, k, n - k))
+    return _finish_pool(build)
+
+
+def _finish_pool(build: _PoolBuild) -> _Layout:
     build.place_leaves()
     result_gates = build.merge_results()
     build.route_suffix_inputs()
     build.route_wires()
     return build.finish(result_gates)
+
+
+def _compact_pool_layout(table: str) -> _Layout | None:
+    """Return a square pool with atomic muxes inside measured leaf rectangles."""
+    from . import _mux_prefix
+
+    n, order, ports = _pool_inputs(table, None, None)
+    k = _atom_inputs(n)
+    if n <= k:
+        return None
+    atoms = _pool_atoms(table, k, n - k, atomic_mux=True)
+    if not atoms:
+        return None
+    extent = max(max(atom.bounds()) for atom in atoms.values())
+    # The existing routing clearance is unchanged; only unused leaf space goes.
+    leaf = 8 * ((extent + 8 * k + 55) // 8)
+    # Leave room for the 23-row definition inside the original area ceiling.
+    if leaf + 24 > _large_leaf_height(k):
+        return None
+    model = _finish_pool(_PoolBuild(table, k, order, ports, atoms, leaf))
+    # M expands to NOT/AND/AND/OR. Preserve the primitive workspace proof.
+    gates = sum(
+        4 if char == "M" else char in "aoAO~xX" for char in model.glyphs.values()
+    )
+    if gates > len(table) + n:
+        return None
+    if "M" in model.glyphs.values():
+        model.prefix = _mux_prefix()
+    return model

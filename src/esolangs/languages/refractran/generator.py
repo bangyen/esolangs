@@ -12,6 +12,9 @@ O(T/log T) nodes. Their O(log T)-digit fractions and a linear sieve through
 O((nodes+n) log(nodes+n)) give O(T) construction and text. Construction counts
 O(log T)-bit word operations and expected constant-time interning lookups.
 Constants omit gates and share prime 3 for their input exponents.
+Balanced layouts may instead follow the DAG with a program-counter prime.
+Visited-node markers prevent reverse transfers through unrelated parents;
+only the inputs and counter are initialized, keeping that token O(n log n).
 Each swap takes at most eight inspections. Gated builds have squarefree
 rails; constants are at most 2*3**n. Both bound the integer to fewer than
 4L bits. The cursor and flags fit bl(L)+16 more bits.
@@ -133,8 +136,51 @@ def refractran(truth_table: str, width: int | None = None) -> str:
     return wrap_space_delimited(program, width) if width is not None else program
 
 
-def _balance(_table: str, default: str) -> str:
-    """Return the better of the plain and closed-form wrapped layouts."""
-    tokens = default.split()
-    width = balanced_token_width(tokens, " ", minimum=max(map(len, tokens)))
-    return min([default, wrap_space_delimited(default, width)], key=balance_score)
+def _path_program(table: str) -> str | None:
+    """Return root-first transfers with an O(n log n) initial token."""
+    n = len(table).bit_length() - 1
+    diagram, root = reduced_diagram(table, n)
+    if root < 2:
+        return None
+    needed: set[int] = set()
+
+    def visit(reference: int) -> None:
+        if reference < 2 or reference in needed:
+            return
+        needed.add(reference)
+        visit(diagram[reference].zero)
+        visit(diagram[reference].one)
+
+    visit(root)
+    references = sorted(needed, reverse=True)
+    free = [
+        prime
+        for prime in _primes(5 + n + 2 * len(references))
+        if prime not in {2, 3, 11, 13, 17}
+    ]
+    inputs = free[:n]
+    counters = {0: 2, 1: 3} | {
+        reference: free[n + 2 * i] for i, reference in enumerate(references)
+    }
+    fractions: list[str] = []
+    for i, reference in enumerate(references):
+        level, zero, one = diagram[reference]
+        marker = free[n + 2 * i + 1]
+        # A child counter alone cannot trigger an unvisited parent's inverse.
+        fractions += _swap(
+            counters[reference], counters[one] * marker, (inputs[level],)
+        )
+        fractions += _swap(counters[reference], counters[zero] * marker, ())
+    initial = [str(counters[root]), *(f"{prime}^{TEMPLATE_CHAR}" for prime in inputs)]
+    return " ".join(["*".join(initial), *fractions])
+
+
+def _balance(table: str, default: str) -> str:
+    """Return the best plain, rail-circuit or marked-path layout."""
+    candidates = [default]
+    for program in (default, _path_program(table)):
+        if program is not None:
+            tokens = program.split()
+            width = balanced_token_width(tokens, " ", minimum=max(map(len, tokens)))
+            candidates.append(wrap_space_delimited(program, width))
+    return min(candidates, key=balance_score)

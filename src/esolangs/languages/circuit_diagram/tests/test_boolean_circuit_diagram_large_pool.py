@@ -9,6 +9,7 @@ import pytest
 from esolangs.languages.circuit_diagram.generator import circuit_diagram
 from esolangs.languages.circuit_diagram.generator.hpool import (
     _atom_gate_bound,
+    _compact_pool_layout,
     _large_pool_layout,
 )
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
@@ -46,6 +47,34 @@ def test_large_pool_routes_mixed_constant_and_shared_atoms() -> None:
     model = _large_pool_layout(table)
     assert model is not None
     _execute(table, model.render())
+    compact = _compact_pool_layout(table)
+    assert compact is not None
+    assert compact.bounds()[0] < model.bounds()[0]
+    _execute(table, compact.render())
+
+
+@pytest.mark.medium
+def test_compact_pool_retains_its_definition_and_clearance(monkeypatch) -> None:
+    from esolangs import run
+    from esolangs.languages.circuit_diagram.generator import hpool
+
+    table = dense(10)
+    model = _compact_pool_layout(table)
+    assert model is not None
+    assert "M" in model.glyphs.values()
+    assert model.prefix.startswith("{M\n")
+    rows = (0, 1, 341, 682, 1022, 1023)
+    _execute(table, model.render(), rows)
+    model.prefix = ""
+    broken = model.render()
+    assert any(
+        run("Circuit Diagram", broken, stdin=f"{row:010b}").output != table[row]
+        for row in rows
+    )
+    assert _compact_pool_layout("0" * 512) is None
+    assert _compact_pool_layout(dense(8)) is None
+    monkeypatch.setattr(hpool, "_large_leaf_height", lambda _k: 8)
+    assert _compact_pool_layout(table) is None
 
 
 @pytest.mark.medium

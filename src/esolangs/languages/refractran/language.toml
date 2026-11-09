@@ -37,6 +37,19 @@ archive_context = { audited = "2026-11-02", n3_source_units = 74510, n3_commands
 trick_prototype = 2026-11-02
 blind_reimplementation = 2026-11-01
 
+[ablations.marked_balance_20261109]
+kind = "measurement"
+audited = 2026-11-09
+witness = { arity = 10, rule = "random", seed = 1847 }
+source = { unit = "chars", value = 30327 }
+balanced = { unit = "cells", value = 17020 }
+scale = 1
+rows = [0, 341, 682, 1023]
+budget = 10
+band = "fast"
+construction = "esolangs.languages.refractran.generator:refractran"
+notes = "Adds one balanced-only root-first DAG path with counter and visited-marker primes; markers prevent inverse transfers through unrelated parents. The short initial token removes the rail header's width wall. Existing plain/wrapped candidates remain for smaller shapes. Default size pins and Size anchor are unchanged. Strict seeded n=10/12 enclosing-square growth exponent: 0.844; 2,120 supported small rows and 12 larger rows executed within unchanged resource bounds."
+
 [interpreter_ablations]
 archive_refs = [
     "blind_reimplementation",
