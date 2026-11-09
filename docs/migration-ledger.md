@@ -3719,3 +3719,24 @@ Deadfish, HQ9+ and Nope. have no Boolean backend, so these generator claims
 are not applicable. Runtime-isolation and declaration scopes remain separate.
 This reconciliation strengthens no declared claim and closes no language
 completion, lifecycle/accounting or whole-catalog retirement row.
+
+
+Canonical retirement controls pass in 32 installed leaves on Python
+3.12.11–final 3.15.0: 59 cases per version, 236 overall, with every setup, call
+and teardown passing. All 42 copied definitions retain their original bodies
+and decorators, apart from two exact fixture-import prebindings. Actual pytest
+9.2.0, timeout 2.4.0 and four dependencies match six locked wheels and 493 payload
+members. The existing fast/medium duration policy is unchanged.
+
+The 952-file guard reconciles 36 markers and four actual pickle children. The
+worker-request controls execute the real worker in the parent; they add no
+process claim. Active leaf time is 38.30s against unchanged 60s caps. The saved
+reader, relocation and 23 corruption controls pass; repeated metadata freezes
+are byte-identical. The wheel remains pinned to `8e4e4632b`.
+
+Two rejected evidence revisions remain: version-dependent AST formatting and
+Python 3.15's explicit import-laziness field. Complete typed field encoding now
+retains that field, supplies integer zero for older eager-import grammar and
+rejects lazy or Boolean flags. All 84 original/adopted definition hashes match
+on all four versions. This verifies the named canonical controls; all-language
+retirement and the twenty pending accounting reviews remain open.
