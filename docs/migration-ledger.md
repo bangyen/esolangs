@@ -3660,3 +3660,24 @@ The interpreter and generator are unchanged. Line's bounded accounting review
 is complete; other rasters, scale-two metadata and final lifecycle/transport
 reconciliation remain open. Accounting reviews pending: 21; 116 completion rows
 remain open.
+
+
+Flowchart's independent declared layouts check all eight workspace components,
+readonly grid metadata and held captures. All 153 original vectors and caps
+64/8 remain; fifteen cases extend the corpus to 168. The unchanged fast owner
+is byte-identical; an existing medium owner retains all 64 old rows and adds
+the accounting checks. No collected nodes are added.
+
+Sixty installed leaves pass on Python 3.12.11–final 3.15.0. Raw, prepared, VM
+and debugger each match 3,666 boundaries and a 702-bit written-state peak. Each
+version checks 334 public results, 160 actual capture profiles, 32 manual and
+sixteen public fault histories. All raw snapshots round-trip; 168 corpus workers,
+ten consumer workers and three proof workers run per version.
+
+The saved reader, relocation and twenty corruption controls pass; result-counter
+mutations also change saved stdout. All 724 children and 784 startup markers
+reconcile under the 952-file guard. Active leaf time is 478.13s against unchanged
+60s caps; the wheel is pinned to `8e4e4632b`. The interpreter and generator are
+unchanged. Flowchart's bounded accounting review is complete; general layouts,
+arbitrary providers and broader completion remain open. Accounting reviews
+pending: 20; 116 completion rows remain open.

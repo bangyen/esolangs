@@ -113,6 +113,10 @@ class TestFlowchart:
             bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
             assert run_flowchart(program, bits) == table[row], row
 
+        from .oracle_checks import check_raw_flowchart
+
+        check_raw_flowchart()
+
     def test_wide_deque_lookup_scales_linearly(self) -> None:
         """The two-row layout grows no faster than its table doubles."""
         sizes = [len(boolean.flowchart("01" * (2 ** (n - 1)))) for n in range(7, 11)]
