@@ -33,8 +33,8 @@ permissions:
 jobs:
   slow:
     runs-on: ubuntu-latest
-    # The band is 7m46s locally at two workers; CI is slower per core, and a
-    # timeout that trips on an ordinary run is worse than no timeout.
+    # Run 42665501725 reached 45m on 3.13 with a workspace proof unfinished.
+    # Partition the whole collection; the referee below requires every node.
     timeout-minutes: 45
     strategy:
       # One failing interpreter should not cancel the evidence from the
@@ -43,6 +43,7 @@ jobs:
       matrix:
         # Python 3.14 runs the full corpus in deadcode-scan below.
         python-version: ["3.12", "3.13", "3.15"]
+        shard: [0, 1]
 
     steps:
     - uses: actions/checkout@v7
@@ -60,21 +61,25 @@ jobs:
     # fast tests unexercised at these interpreters for a week, and they are
     # the cheap part of the bill.
     #
-    # Bare `pytest` is also what makes this the *only* runner that sees the
-    # `weekly` marker.  `scripts/verify/gate.py` appends `-m "not weekly"` on a
-    # --full run and `-m "not slow"` otherwise, so the `weekly` probes run
-    # here and nowhere else.
+    # The empty marker retains slow and weekly probes; the local gate
+    # excludes weekly probes even with --full.
     #
-    - name: Test with pytest (full suite, including the slow band)
-      run: uv run python -m pytest -n auto -p scripts.ci.shard --duration-output notes/ci/test-durations.json
+    - name: Test one full-suite shard
+      run: >
+        uv run python scripts/ci/shard.py shard --marker ""
+        --durations snapshot.json --shard ${{ matrix.shard }} --shards 2
+        --manifest notes/ci/weekly.shard.json --
+        -n auto -p scripts.ci.shard --duration-output notes/ci/test-durations.json
 
     - name: Retain measured test durations
       if: always()
       uses: actions/upload-artifact@v7
       with:
-        name: test-durations-${{ matrix.python-version }}
+        name: test-durations-${{ matrix.python-version }}-${{ matrix.shard }}
         path: |
           notes/ci/test-durations*.json*
+          notes/ci/weekly.shard.json
+        if-no-files-found: error
 
     - name: Retain worker and verification logs
       if: always()
@@ -86,6 +91,35 @@ jobs:
           notes/benchmarks/*.log
         if-no-files-found: ignore
         retention-days: 14
+
+  shard-completeness:
+    needs: slow
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.15"]
+    steps:
+    - name: Require successful source jobs
+      env:
+        RESULT: ${{ needs.slow.result }}
+      run: test "$RESULT" = success
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+        persist-credentials: false
+    - name: Set up Python
+      uses: ./.github/actions/setup
+      with:
+        python-version: ${{ matrix.python-version }}
+    - uses: actions/download-artifact@v8
+      with:
+        pattern: test-durations-${{ matrix.python-version }}-*
+        path: shard-evidence
+    - name: Require complete selection and execution
+      run: uv run python checks/check_shard_manifests.py shard-evidence --marker "" --shards 2
 
   # Generation *time* is the one axis the per-PR gate cannot judge: it is
   # machine- and load-dependent, and a threshold loose enough not to flake on

@@ -76,6 +76,42 @@ def test_coverage_gate_requires_success_and_both_artifacts(tmp_path) -> None:
     jobs = yaml.safe_load((ROOT / ".github/workflows/weekly.yml").read_text())["jobs"]
     versions = jobs["slow"]["strategy"]["matrix"]["python-version"]
     assert sorted([*versions, "3.14"]) == ["3.12", "3.13", "3.14", "3.15"]
+    full = jobs["slow"]
+    assert full["timeout-minutes"] == 45
+    assert full["strategy"]["matrix"]["shard"] == [0, 1]
+    full_command = next(
+        step["run"]
+        for step in full["steps"]
+        if step.get("name") == "Test one full-suite shard"
+    )
+    assert '--marker ""' in full_command
+    assert "--exclude-node" not in full_command
+    assert "--shards 2" in full_command
+    assert "--manifest notes/ci/weekly.shard.json" in full_command
+    assert "-p scripts.ci.shard --duration-output" in full_command
+    census = jobs["shard-completeness"]
+    assert census["needs"] == "slow"
+    assert census["if"] == "always()"
+    assert census["steps"][0]["run"] == 'test "$RESULT" = success'
+    assert census["strategy"]["matrix"]["python-version"] == versions
+    assert census["steps"][-1]["run"].endswith('--marker "" --shards 2')
+    upload = next(
+        step["with"]
+        for step in full["steps"]
+        if "actions/upload-artifact@" in step.get("uses", "")
+        and "weekly.shard.json" in step["with"]["path"]
+    )
+    download = next(
+        step["with"]
+        for step in census["steps"]
+        if "actions/download-artifact@" in step.get("uses", "")
+    )
+    assert (
+        upload["name"]
+        == "test-durations-${{ matrix.python-version }}-${{ matrix.shard }}"
+    )
+    assert download["pattern"] == "test-durations-${{ matrix.python-version }}-*"
+    assert upload["if-no-files-found"] == "error"
     scan = jobs["deadcode-scan"]
     assert scan["strategy"]["matrix"]["shard"] == [0, 1, 2, 3]
     command = next(
