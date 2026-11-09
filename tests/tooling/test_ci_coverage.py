@@ -85,10 +85,25 @@ def test_coverage_gate_requires_success_and_both_artifacts(tmp_path) -> None:
         if step.get("name") == "Test one full-suite shard"
     )
     assert '--marker ""' in full_command
-    assert "--exclude-node" not in full_command
+    serial_nodes = full["env"]["CI_SERIAL_NODES"].split()
+    assert serial_nodes == [
+        "src/esolangs/languages/flowchart/tests/test_boolean_flowchart.py::"
+        f"test_constant_lookup_reads_without_deque_or_selector[{bit}]"
+        for bit in (0, 1)
+    ]
+    assert '--exclude-node "$node"' in full_command
+    assert '"${excluded[@]}"' in full_command
     assert "--shards 2" in full_command
     assert "--manifest notes/ci/weekly.shard.json" in full_command
     assert "-p scripts.ci.shard --duration-output" in full_command
+    serial = next(
+        step
+        for step in full["steps"]
+        if step.get("name") == "Check Flowchart witnesses without competing workers"
+    )
+    assert serial["if"] == "${{ !cancelled() && matrix.shard == 0 }}"
+    assert '-n 0 -m ""' in serial["run"]
+    assert 'test-durations-serial.json "${nodes[@]}"' in serial["run"]
     census = jobs["shard-completeness"]
     assert census["needs"] == "slow"
     assert census["if"] == "always()"

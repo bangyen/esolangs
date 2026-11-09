@@ -1,6 +1,8 @@
 """Shard evidence proves successful, exactly-once execution of fresh collection."""
 
 import json
+import subprocess
+import sys
 
 import pytest
 
@@ -104,6 +106,7 @@ def test_real_shards_publish_complete_execution_evidence(tmp_path, monkeypatch) 
     (tmp_path / "test_example.py").write_text(
         "def test_one():\n    assert 1 + 1 == 2\n\n"
         "def test_two():\n    assert 2 + 2 == 4\n"
+        "def test_serial():\n    assert 3 + 3 == 6\n"
     )
     monkeypatch.setattr(pytest_shard, "ROOT", tmp_path)
     monkeypatch.setenv("PYTHONPATH", str(Path(__file__).resolve().parents[2]))
@@ -122,6 +125,8 @@ def test_real_shards_publish_complete_execution_evidence(tmp_path, monkeypatch) 
                     "2",
                     "--manifest",
                     str(path),
+                    "--exclude-node",
+                    "test_example.py::test_serial",
                     "--",
                     "-q",
                     "-p",
@@ -133,4 +138,24 @@ def test_real_shards_publish_complete_execution_evidence(tmp_path, monkeypatch) 
             == 0
         )
         paths.append(path)
-    check(paths, pytest_shard.collect_ids("not slow"), "not slow", 2)
+    corpus = pytest_shard.collect_ids("not slow")
+    with pytest.raises(ValueError, match="omit"):
+        check(paths, corpus, "not slow", 2)
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "-p",
+            "scripts.ci.shard",
+            "--duration-output",
+            str(paths[0].parent / "serial.json"),
+            "test_example.py::test_serial",
+        ],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        timeout=30,
+    )
+    check(paths, corpus, "not slow", 2)

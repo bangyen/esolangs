@@ -44,6 +44,12 @@ jobs:
         # Python 3.14 runs the full corpus in deadcode-scan below.
         python-version: ["3.12", "3.13", "3.15"]
         shard: [0, 1]
+    # Run 42675320187: a Flowchart witness took 15.78s against its 15s
+    # medium cap alongside workers. Keep its band and execute it serially.
+    env:
+      CI_SERIAL_NODES: >-
+        src/esolangs/languages/flowchart/tests/test_boolean_flowchart.py::test_constant_lookup_reads_without_deque_or_selector[0]
+        src/esolangs/languages/flowchart/tests/test_boolean_flowchart.py::test_constant_lookup_reads_without_deque_or_selector[1]
 
     steps:
     - uses: actions/checkout@v7
@@ -65,11 +71,17 @@ jobs:
     # excludes weekly probes even with --full.
     #
     - name: Test one full-suite shard
-      run: >
-        uv run python scripts/ci/shard.py shard --marker ""
-        --durations snapshot.json --shard ${{ matrix.shard }} --shards 2
-        --manifest notes/ci/weekly.shard.json --
-        -n auto -p scripts.ci.shard --duration-output notes/ci/test-durations.json
+      run: |
+        read -r -a nodes <<< "$CI_SERIAL_NODES"
+        excluded=()
+        for node in "${nodes[@]}"; do excluded+=(--exclude-node "$node"); done
+        uv run python scripts/ci/shard.py shard --marker "" --durations snapshot.json --shard ${{ matrix.shard }} --shards 2 --manifest notes/ci/weekly.shard.json "${excluded[@]}" -- -n auto -p scripts.ci.shard --duration-output notes/ci/test-durations.json
+
+    - name: Check Flowchart witnesses without competing workers
+      if: ${{ !cancelled() && matrix.shard == 0 }}
+      run: |
+        read -r -a nodes <<< "$CI_SERIAL_NODES"
+        uv run python -m pytest -q -n 0 -m "" -p scripts.ci.shard --duration-output notes/ci/test-durations-serial.json "${nodes[@]}"
 
     - name: Retain measured test durations
       if: always()
