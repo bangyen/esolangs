@@ -129,15 +129,18 @@ def test_branching_protocol_covers_random_input_plain_and_halted_states(
 ) -> None:
     random = _Machine(["x"], ScriptedIO(""))
     start = random.branching_snapshot()
+    assert random.branching_successors(start, 3) is None
     assert len(random.branching_successors(start, 10) or ()) == 4
     reading = _Machine(["i"], ScriptedIO(""))
     assert reading.branching_successors(reading.branching_snapshot(), 10) is None
     plain = _Machine(["1"], ScriptedIO(""))
+    assert plain.branching_successors(plain.branching_snapshot(), 0) is None
     assert len(plain.branching_successors(plain.branching_snapshot(), 10) or ()) == 1
     halted = _Machine([";"], ScriptedIO(""))
     halted.step()
     final = halted.branching_snapshot()
     assert halted.branching_halted(final)
+    assert halted.branching_successors(final, 0) is None
     assert halted.branching_successors(final, 10) == (final,)
     halted.step()
 

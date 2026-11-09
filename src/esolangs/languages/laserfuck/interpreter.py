@@ -382,7 +382,7 @@ class _Machine:
         return "x"
 
     def branching_successors(
-        self, state: object, _limit: int
+        self, state: object, limit: int
     ) -> tuple[_BranchState, ...] | None:
         """Return the state for every draw this state could make.
 
@@ -391,8 +391,12 @@ class _Machine:
         returns ``None`` (each branch would need its own input cursor), so
         the caller reports undecided.
         """
+        if limit < 1:
+            return None
         tape, ptr, lsrs, ind, jmp = cast(_BranchState, state)
         if lsrs is None:
+            if limit < 4:
+                return None
             return tuple(
                 (tape, ptr, ((self.start[0], self.start[1], d),), ind, jmp)
                 for d in range(4)
@@ -410,6 +414,8 @@ class _Machine:
             return None
 
         splits = (0, 1) if op == "*" else (0,)
+        if len(splits) > limit:
+            return None
         return tuple(
             _strip_pos(
                 _advance(

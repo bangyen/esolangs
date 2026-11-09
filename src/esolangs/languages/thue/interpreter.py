@@ -400,15 +400,19 @@ class _Machine:
         return not _matches(str(state), self.rules)
 
     def branching_successors(
-        self, state: object, _limit: int
+        self, state: object, limit: int
     ) -> tuple[_State, ...] | None:
         """Return the state after every rewrite the draw could choose.
 
         ``None`` declines, as a random-input language does: a ``:::`` rule wants a
         line of input, which a pure search has no business taking.
         """
+        if limit < 1:
+            return None
         text = str(state)
         found = _matches(text, self.rules)
+        if len(found) > limit:
+            return None
         if any(self.rules[index][1] == _INPUT for index, _at in found):
             return None
         return tuple(_advance(text, self.rules, match)[0] for match in found)

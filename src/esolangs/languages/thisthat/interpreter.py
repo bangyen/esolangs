@@ -745,6 +745,8 @@ class _Machine:
             raise TypeError("invalid thisthat branch state")
         current: _State = state
         if self.branching_halted(current):
+            if limit < 1:
+                return None
             return (current,)
         pointers, cells, cursor, halted, progress, reads, grid, set_ended = current
         if grid != self.grid:

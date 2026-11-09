@@ -163,6 +163,9 @@ def test_the_branching_protocol_reports_the_state_it_searches() -> None:
     assert machine.branching_snapshot() == "aa"
     assert not machine.branching_halted("aa")
     assert machine.branching_halted("zz")
+    assert machine.branching_successors("aa", 0) is None
+    assert machine.branching_successors("aa", 3) is None
+    assert set(machine.branching_successors("aa", 4)) == {"ba", "ab", "ca", "ac"}
     assert set(machine.branching_successors("aa", 8)) == {"ba", "ab", "ca", "ac"}
 
 

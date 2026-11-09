@@ -212,13 +212,15 @@ class _Machine:
         return cast(_State, state)[0] >= len(self.ops)
 
     def branching_successors(
-        self, state: object, _limit: int
+        self, state: object, limit: int
     ) -> tuple[_State, ...] | None:
         """Return both draws at ``RND``, ``None`` at ``INPUT``, else the one step.
 
         ``INPUT`` would need a cursor per branch, so the caller reports
         undecided; printing changes no state.
         """
+        if limit < 1:
+            return None
         current = cast(_State, state)
         if current[0] >= len(self.ops):
             return (current,)
@@ -226,6 +228,8 @@ class _Machine:
         if opcode == _INPUT:
             return None
         values = (0, 1) if opcode == _RND else (None,)
+        if len(values) > limit:
+            return None
         return tuple(_advance(current, self.ops, value)[0] for value in values)
 
     def step(self) -> None:

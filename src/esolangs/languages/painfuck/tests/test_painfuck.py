@@ -472,9 +472,19 @@ def test_branching_limit_admits_exactly_its_outcomes() -> None:
     # One coin forks into two outcomes: a limit of 2 holds them, 1 does not.
     machine = Painfuck(_encode("yp"), ScriptedIO())
     start = machine.branching_snapshot()
+    assert machine.branching_successors(start, 0) is None
     assert len(machine.branching_successors(start, 2) or ()) == 2
     with pytest.raises(TimeoutError, match="coin outcomes"):
         machine.branching_successors(start, 1)
+
+    plain = Painfuck("p", ScriptedIO())
+    state = plain.branching_snapshot()
+    assert plain.branching_successors(state, 0) is None
+    outcomes = plain.branching_successors(state, 1)
+    assert outcomes is not None
+    assert len(outcomes) == 1
+    plain.step()
+    assert outcomes == (plain.branching_snapshot(),)
 
 
 def test_w_copies_the_right_neighbour_from_a_middle_cell() -> None:

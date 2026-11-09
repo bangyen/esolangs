@@ -249,15 +249,8 @@ def _compile_range(spec: str) -> _Range:
     return _Range(spec, tuple(_compile_bound(part) for part in parts))
 
 
-def _run_range(
-    compiled: _Range, acc: int, rng: Randomness | None, byte: int | None
-) -> int:
-    """Evaluate a compiled bracket, which never writes the accumulator.
-
-    An omitted bound is the accumulator; ``$py`` is the byte the shell
-    read.  A reversed range is normalised rather than refused -- the spec
-    says "between a and b inclusive" and names no order.
-    """
+def _range_bounds(compiled: _Range, acc: int, byte: int | None) -> tuple[int, int]:
+    """Validate both bounds in their original evaluation order."""
     if compiled.malformed:
         raise HaltError(f"malformed random range: {compiled.spec!r}")
     bounds = []
@@ -272,7 +265,20 @@ def _run_range(
             bounds.append(bound.value)
         else:
             raise HaltError(f"not a dice literal: {bound.text!r}")
-    low, high = min(bounds), max(bounds)
+    low, high = (min(bounds), max(bounds))
+    return (low, high)
+
+
+def _run_range(
+    compiled: _Range, acc: int, rng: Randomness | None, byte: int | None
+) -> int:
+    """Evaluate a compiled bracket, which never writes the accumulator.
+
+    An omitted bound is the accumulator; ``$py`` is the byte the shell
+    read.  A reversed range is normalised rather than refused -- the spec
+    says "between a and b inclusive" and names no order.
+    """
+    low, high = _range_bounds(compiled, acc, byte)
     return low + draw(rng, high - low + 1)
 
 
@@ -535,24 +541,41 @@ def _branch_state(state: object) -> _State:
     return _State(*cast("_BranchState", state))
 
 
-def _draw_range(line: str) -> int:
-    """How many distinct outcomes ``line`` has: 1 unless it draws.
-
-    ``~`` has ten (it prints on one). A range stores at most 256 byte values;
-    its first 256 pinned offsets cover every wrapped result.
-    """
-    if line == "~":
-        return 10
-    return 256 if line.startswith("[") and line.endswith("]") else 1
+def _argument_bounds(arg: _Arg, acc: int) -> tuple[int, int]:
+    """Return a no-input argument's closed interval, retaining deferred errors."""
+    if arg.kind == "range":
+        return _range_bounds(cast("_Range", arg.range), acc, None)
+    value = _run_arg(arg, acc, None, None)
+    return value, value
 
 
-def _outcomes(state: _State) -> tuple[_State, ...]:
-    """Every state one line could reach, one per draw it could make."""
-    seen: dict[_State, None] = {}
-    for draw_value in range(_draw_range(state.current)):
-        nxt, _out = _advance(state, _Pinned(draw_value))
-        seen.setdefault(nxt, None)
-    return tuple(seen)
+def _outcomes(state: _State, limit: int) -> tuple[_State, ...] | None:
+    """Materialize every distinct next state only when the complete set fits."""
+    instr = _compile(state.current)
+    if instr.op == "range":
+        low, high = _range_bounds(cast("_Range", instr.range), state.acc, None)
+        count = min(high - low + 1, 256)
+        if count > limit:
+            return None
+        return tuple(_advance_cursor(state, low + offset) for offset in range(count))
+    if instr.op == "values":
+        intervals = tuple(_argument_bounds(arg, state.acc) for arg in instr.args)
+        equal = max(low for low, _ in intervals) <= min(high for _, high in intervals)
+        same = all(low == high == intervals[0][0] for low, high in intervals)
+        first = (
+            _FALSE if intervals[0][0] == intervals[1][0] == intervals[2][0] else _TRUE
+        )
+        values = (
+            (first, _TRUE if first == _FALSE else _FALSE)
+            if equal and not same
+            else (_FALSE,)
+            if equal
+            else (_TRUE,)
+        )
+        if len(values) > limit:
+            return None
+        return tuple(_advance_cursor(state, value) for value in values)
+    return (_advance(state, _Pinned(0), instr=instr)[0],)
 
 
 @lru_cache(maxsize=4)
@@ -645,8 +668,8 @@ class _Machine:
         s = self.state
         return (s.lines, s.ip, s.acc, s.slot, s.frames, self.io.progress())
 
-    # The branching-search protocol.  ``[a b]`` and ``~`` are the two random
-    # instructions, so a hang proof has to hold over *every* draw.  A line
+    # The branching-search protocol.  ``[a b]``, ``~`` and range arguments
+    # in ``{values}`` draw, so a hang proof must cover *every* draw.  A line
     # that reads input declines instead of forking: sibling branches cannot
     # share one input cursor.
 
@@ -660,17 +683,25 @@ class _Machine:
         return _branch_state(state).halted
 
     def branching_successors(
-        self, state: object, _limit: int
+        self, state: object, limit: int
     ) -> tuple[tuple[object, ...], ...] | None:
-        """Every state this line could reach, over all draws it could make.
+        """Every next state, or None when input or the outcome budget prevents it.
 
         ``None`` where the line reads input: the siblings would have to
         share one cursor, so the search declines rather than guessing.
         """
-        current = _branch_state(state)
-        if _read_kinds(current.current):
+        if limit < 1:
             return None
-        reached = _outcomes(current)
+        current = _branch_state(state)
+        reached: tuple[_State, ...] | None
+        if current.halted:
+            reached = (current,)
+        elif _read_kinds(current.current):
+            return None
+        else:
+            reached = _outcomes(current, limit)
+            if reached is None:
+                return None
         return tuple(
             (nxt.lines, nxt.ip, nxt.acc, nxt.slot, nxt.frames) for nxt in reached
         )

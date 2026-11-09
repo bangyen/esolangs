@@ -403,8 +403,11 @@ def test_modulous_reset_loops_and_end_halts() -> None:
 def test_modulous_forks_every_value_rnd_could_draw(monkeypatch) -> None:
     """``RND n`` opens exactly ``n`` outcomes, one per drawable value."""
     machine = Modulous("[RND 4]", ScriptedIO())
+    assert machine.branching_successors(machine.branching_snapshot(), 0) is None
+    assert machine.branching_successors(machine.branching_snapshot(), 3) is None
     successors = machine.branching_successors(machine.branching_snapshot(), 100)
     assert successors is not None
+    assert machine.branching_successors(machine.branching_snapshot(), 4) == successors
     assert sorted(state[0][0][-1] for state in successors) == [0, 1, 2, 3]
 
     # A bound below one is rejected by the handler, so the search raises

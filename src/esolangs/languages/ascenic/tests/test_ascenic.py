@@ -101,6 +101,21 @@ def test_rnd_draws_zero_and_one() -> None:
         seen.add(io.getvalue())
     assert seen == {"0", "1"}
 
+    branching = _Machine(code, ScriptedIO(), Seeded(0))
+    start = branching.branching_snapshot()
+    assert branching.branching_successors(start, 0) is None
+    assert branching.branching_successors(start, 1) is None
+    outcomes = branching.branching_successors(start, 2)
+    assert outcomes is not None
+    assert {state[1][0] for state in outcomes} == {0, 1}
+    assert branching.branching_snapshot() == start
+    branching.step()
+    assert branching.branching_snapshot() in outcomes
+    branching.step()
+    final = branching.branching_snapshot()
+    assert branching.branching_successors(final, 0) is None
+    assert branching.branching_successors(final, 1) == (final,)
+
     rng, before, options, factory = rng_factory(prepare_machine, code)
     options.clear()
     assert rng._random.getstate() == before

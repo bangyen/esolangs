@@ -354,12 +354,14 @@ def test_laserfuck_search_skips_the_command_after_a_hash() -> None:
     """``#`` skips in the search exactly as it does in a step."""
     machine = Laserfuck(["o#{"], ScriptedIO())
     start = machine.branching_snapshot()
+    assert machine.branching_successors(start, 3) is None
     rightward = next(
         state
         for state in machine.branching_successors(start, 100) or ()
         if state[2] is not None and state[2][0][2] == 3
     )
 
+    assert machine.branching_successors(rightward, 0) is None
     (at_hash,) = machine.branching_successors(rightward, 100) or ()
     assert at_hash[2] == ((0, 1, 3),)
     assert at_hash[4] == frozenset({0}), "'#' arms beam 0's skip"
@@ -391,6 +393,22 @@ def test_laserfuck_a_placed_beam_starts_the_search_unplaced() -> None:
 
 def test_laserfuck_explores_both_beam_splitter_outcomes() -> None:
     """``*``'s coin is searched, not sampled."""
+    machine = Laserfuck(["o*"], ScriptedIO(), FirstDraw(3))
+    initial = machine.branching_snapshot()
+    rightward = next(
+        state
+        for state in machine.branching_successors(initial, 4) or ()
+        if state[2] is not None and state[2][0][2] == 3
+    )
+    assert machine.branching_successors(rightward, 1) is None
+    splits = machine.branching_successors(rightward, 2)
+    assert splits is not None
+    assert len(set(splits)) == 2
+    for split in (0, 1):
+        actual = Laserfuck(["o*"], ScriptedIO(), FirstDraw(3, rest=split))
+        actual.step()
+        assert actual.branching_snapshot() in splits
+    assert machine.branching_snapshot() == initial
     code = ["/{v", "^o^", "*/*"]
     for heading in range(4):
         draws = FirstDraw(heading, rest=0)
@@ -419,5 +437,5 @@ def test_laserfuck_declines_a_reachable_input_command() -> None:
 
 
 def test_branching_search_leaves_an_unbounded_graph_undecided() -> None:
-    with pytest.raises(TimeoutError, match="reachable graph may be unbounded"):
+    with pytest.raises(TimeoutError, match="exceeds the outcome budget"):
         run_until_halt_or_all_branches_cycle(Laserfuck(["o*"], ScriptedIO()), limit=1)

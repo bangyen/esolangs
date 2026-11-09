@@ -706,6 +706,8 @@ class _Machine:
         run several ``y``.  Input is declined (each branch would need its own
         cursor), so the caller reports undecided.
         """
+        if limit < 1:
+            return None
         pending: list[tuple[int, ...]] = [()]
         successors: list[_State] = []
         while pending:

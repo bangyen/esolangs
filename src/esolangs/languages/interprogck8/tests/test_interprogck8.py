@@ -7,13 +7,16 @@ actually does, and the corrected one to pin the loop/halt structure the
 example was reaching for.
 """
 
+from unittest.mock import patch
+
 import pytest
 
+from esolangs import ProgramArtifact
 from esolangs.exceptions import HaltError
 from esolangs.languages.interprogck8 import interpreter as native
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import FirstDraw, Seeded
-from esolangs.vm import run_until_halt_or_all_branches_cycle
+from esolangs.vm import SnapshotVM, make_vm, run_until_halt_or_all_branches_cycle
 
 # The wiki's Hello World, verbatim.
 HELLO = """nNnN
@@ -330,9 +333,87 @@ class TestBranchingSearch:
             )
             start = machine.branching_snapshot()
             assert not machine.branching_halted(start)
-            successors = machine.branching_successors(start, 100)
+            successors = machine.branching_successors(
+                start, max(100, min(high - low + 1, 256))
+            )
             assert successors is not None
             assert {s[2] for s in successors} == {v % 256 for v in range(low, high + 1)}
+            needed = len({v % 256 for v in range(low, high + 1)})
+            assert machine.branching_successors(start, needed - 1) is None
+            exact = machine.branching_successors(start, needed)
+            assert exact is not None
+            assert set(exact) == set(successors)
+
+        class NoDraw:
+            """Forbid using the live provider to enumerate outcomes."""
+
+            def __init__(self):
+                self.calls = []
+
+            def randbelow(self, upper):
+                self.calls.append(upper)
+                raise AssertionError("live branch provider called")
+
+        provider = NoDraw()
+        large = ":" * 128
+        for line, values in (
+            ("{values/=[. :]/=./=.}", {81, 84}),
+            ("{values/=[. :]/=[. :]/=[. :]}", {81, 84}),
+            ("{values/=[. .]/=./=.}", {81}),
+            ("{values/=[. :]/=:/=:}", {81, 84}),
+            ("{values/=[. :]/=:/=...}", {84}),
+            ("{values/=[. ]/=/=}", {81, 84}),
+            ("{values/=/=/=}", {81}),
+            (f"{{values/=[{large} {large}:]/=./=.}}", {84}),
+        ):
+            port = ScriptedIO("")
+            machine = native._Machine(line + "\nx", port, provider)
+            start = machine.branching_snapshot()
+            saved = machine.snapshot()
+            workspace = machine.workspace_snapshot()
+            hashes = hash(saved), hash(workspace)
+            successors = machine.branching_successors(start, len(values))
+            assert successors is not None
+            assert {state[2] for state in successors} == values
+            assert machine.branching_successors(start, len(values) - 1) is None
+            assert machine.snapshot() == saved
+            assert machine.workspace_snapshot() == workspace
+            assert (hash(saved), hash(workspace)) == hashes
+            assert (port.getvalue(), port.position(), port.reads, port.past_end) == (
+                "",
+                0,
+                0,
+                0,
+            )
+            assert provider.calls == []
+
+        machine = native._Machine("[. :]", ScriptedIO(""), provider)
+        with patch.object(native, "_outcomes", side_effect=AssertionError("evaluated")):
+            assert machine.branching_successors(machine.branching_snapshot(), 0) is None
+        with pytest.raises(AssertionError, match="live branch provider called"):
+            machine.step()
+        assert provider.calls == [2]
+
+        # Q loops; independent range draws can produce T and fall off the code.
+        source = "{values/=[. :]/=./=.}\n<\nx\nEXE\n>\nIFQ"
+        actual = native._Machine(source, ScriptedIO(""), FirstDraw(1))
+        for _ in range(3):
+            actual.step()
+        assert actual.halted
+        assert actual.state.acc == 84
+        assert actual.io.getvalue() == ""
+        guarded = NoDraw()
+        machine = native._Machine(source, ScriptedIO(""), guarded)
+        before = machine.snapshot()
+        assert run_until_halt_or_all_branches_cycle(machine, limit=32) is True
+        assert machine.snapshot() == before
+        assert guarded.calls == []
+        vm = make_vm("Interprogck8", ProgramArtifact(source, "Interprogck8"))
+        assert isinstance(vm, SnapshotVM)
+        before = vm.snapshot()
+        assert run_until_halt_or_all_branches_cycle(vm, limit=32) is True
+        assert vm.snapshot() == before
+        assert vm.output == ""
 
     def test_tilde_has_one_outcome_the_state_can_see(self) -> None:
         """``~``'s ten draws differ only in output, which is left out."""
@@ -340,6 +421,9 @@ class TestBranchingSearch:
         successors = machine.branching_successors(machine.branching_snapshot(), 100)
         assert successors is not None
         assert len(successors) == 1
+        start = machine.branching_snapshot()
+        assert machine.branching_successors(start, 0) is None
+        assert machine.branching_successors(start, 1) == successors
 
     @pytest.mark.parametrize("line", ["[. :", "[. :x"])
     def test_a_range_missing_its_closer_is_refused(self, line: str) -> None:
@@ -351,17 +435,28 @@ class TestBranchingSearch:
         """Siblings cannot share one input cursor, so the search declines."""
         machine = native._Machine("u\ndiv", ScriptedIO("a\n"))
         assert machine.branching_successors(machine.branching_snapshot(), 100) is None
+        port = ScriptedIO("A\n")
+        machine = native._Machine("{values/=bad/=u/=}", port)
+        assert machine.branching_successors(machine.branching_snapshot(), 1) is None
+        assert (port.position(), port.reads, port.past_end) == (0, 0, 0)
 
     def test_an_unexecutable_line_fails_the_search(self) -> None:
         """A native error cannot become a divergence verdict."""
         machine = native._Machine("nonsense", ScriptedIO(""))
         with pytest.raises(HaltError, match="unknown instruction"):
             machine.branching_successors(machine.branching_snapshot(), 100)
+        for line in ("{values/=[. :]/=./=bad}", "{values/=[bad .]/=x/=y}"):
+            machine = native._Machine(line, ScriptedIO(""))
+            with pytest.raises(HaltError, match="not a dice literal: 'bad'"):
+                machine.branching_successors(machine.branching_snapshot(), 1)
 
     def test_a_finished_program_is_branching_halted(self) -> None:
         machine = native._Machine("x", ScriptedIO(""))
         machine.step()
         assert machine.branching_halted(machine.branching_snapshot())
+        state = machine.branching_snapshot()
+        assert machine.branching_successors(state, 0) is None
+        assert machine.branching_successors(state, 1) == (state,)
 
 
 class TestNestedArguments:

@@ -347,7 +347,7 @@ class _Machine:
         return cast(_State, state).done
 
     def branching_successors(
-        self, state: object, _limit: int
+        self, state: object, limit: int
     ) -> tuple[_State, ...] | None:
         """Return one state per direction ``?`` could take.
 
@@ -355,6 +355,8 @@ class _Machine:
         transition that raises is left to propagate, as it does from
         :meth:`step`: catching it would hide a halting branch.
         """
+        if limit < 1:
+            return None
         current = cast(_State, state)
         if current.done:
             return (current,)
@@ -362,6 +364,8 @@ class _Machine:
             case None:
                 return (_advance(current)[0],)
             case "draw":
+                if limit < 4:
+                    return None
                 return tuple(_advance(current, random_dir=d)[0] for d in range(4))
             case _:
                 return None  # a read cannot be forked

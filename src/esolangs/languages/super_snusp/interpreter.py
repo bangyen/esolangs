@@ -490,7 +490,7 @@ class _Machine:
         return cast(_State, state).done
 
     def branching_successors(
-        self, state: object, _limit: int
+        self, state: object, limit: int
     ) -> tuple[_State, ...] | None:
         """Return the state for every value ``=`` could store.
 
@@ -508,6 +508,8 @@ class _Machine:
         invalid operation, and catching it would hide a *terminating* branch
         and let the search report a universal hang for a program that stops.
         """
+        if limit < 1:
+            return None
         current = cast(_State, state)
         row, col, _ = current.cursor
         pointer, cells = current.tape
@@ -530,6 +532,8 @@ class _Machine:
                         "limit does not raise this transition cap"
                     ),
                 )
+            if high - low + 1 > limit:
+                return None
             offsets = tuple(range(high - low + 1))
 
         return tuple(

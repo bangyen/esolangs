@@ -236,13 +236,16 @@ def test_super_snusp_forks_every_value_equals_could_store() -> None:
     machine = SuperSnusp(['"3{(='], ScriptedIO())
     state = machine.branching_snapshot()
     for _ in range(4):  # '"', '3', '{', '(' -- all deterministic
+        assert machine.branching_successors(state, 0) is None
         successors = machine.branching_successors(state, 100)
         assert successors is not None
         assert len(successors) == 1, "only '=' draws"
         (state,) = successors
 
+    assert machine.branching_successors(state, 1) is None
     at_equals = machine.branching_successors(state, 100)
     assert at_equals is not None
+    assert machine.branching_successors(state, 2) == at_equals
     stored = sorted(_read_cell(nxt) for nxt in at_equals)
     assert stored == [2, 3], "both ends of the span are reachable"
 

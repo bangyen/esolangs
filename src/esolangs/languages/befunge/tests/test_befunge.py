@@ -201,17 +201,20 @@ def test_the_branching_protocol_forks_the_draw() -> None:
     machine = _Machine(["?"], IO())
     start = machine.branching_snapshot()
     assert not machine.branching_halted(start)
+    assert machine.branching_successors(start, 3) is None
     assert len(machine.branching_successors(start, 4)) == 4
     # A read cell cannot be forked, and a halted machine is its own successor.
     reading = _Machine(["~"], IO())
     assert reading.branching_successors(reading.branching_snapshot(), 4) is None
     # An ordinary command is deterministic: one successor.
     plain = _Machine(["0"], IO())
+    assert plain.branching_successors(plain.branching_snapshot(), 0) is None
     assert len(plain.branching_successors(plain.branching_snapshot(), 4)) == 1
     halted = _Machine(["@"], IO())
     halted.step()
     final = halted.branching_snapshot()
     assert halted.branching_halted(final)
+    assert halted.branching_successors(final, 0) is None
     assert halted.branching_successors(final, 4) == (final,)
 
 

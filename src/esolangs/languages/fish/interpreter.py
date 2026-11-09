@@ -547,9 +547,11 @@ class _Machine:
         return bool(cast(_State, state)[8])
 
     def branching_successors(
-        self, state: object, _limit: int
+        self, state: object, limit: int
     ) -> tuple[_State, ...] | None:
         """Return every random successor, or ``None`` at input."""
+        if limit < 1:
+            return None
         current = cast(_State, state)
         if self.branching_halted(current):
             return (current,)
@@ -559,6 +561,8 @@ class _Machine:
         if interpreting and command == "i":
             return None
         choices = range(4) if interpreting and command == "x" else range(1)
+        if len(choices) > limit:
+            return None
         successors = []
         for choice in choices:
             moved, _effect = _advance(core, random_dir=choice)

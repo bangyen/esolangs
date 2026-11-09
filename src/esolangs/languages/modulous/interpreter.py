@@ -286,7 +286,7 @@ class _Machine:
         return halted or ind >= len(self.tokens)
 
     def branching_successors(
-        self, state: object, _limit: int
+        self, state: object, limit: int
     ) -> tuple[_BranchState, ...] | None:
         """Return the state for every value ``RND`` could draw.
 
@@ -296,10 +296,12 @@ class _Machine:
 
         ``RND n`` takes its range from the program text, so one token can ask
         for arbitrarily many outcomes; a bound above ``_RND_FANOUT`` raises
-        ``TimeoutError`` rather than being materialized, and the caller's
-        ``limit`` is not consulted.  ``n < 1`` draws nothing and is left to
+        ``TimeoutError`` rather than being materialized. The caller's
+        ``limit`` also bounds outcomes. ``n < 1`` draws nothing and is left to
         the single deterministic call, as in the step.
         """
+        if limit < 1:
+            return None
         core, halted = _thaw(cast(_BranchState, state))
         stk, var, ind = core
         ind, mod, command, datum = _pre_read(self.tokens, ind, stk, var)
@@ -321,6 +323,8 @@ class _Machine:
                         "does not raise this transition cap"
                     ),
                 )
+            if datum > limit:
+                return None
             values = tuple(range(datum))
 
         return tuple(

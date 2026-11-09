@@ -355,6 +355,7 @@ def test_branching_protocol_covers_random_input_plain_and_halted() -> None:
         halted.step()
     state = halted.branching_snapshot()
     assert halted.branching_halted(state)
+    assert halted.branching_successors(state, 0) is None
     assert halted.branching_successors(state, 10) == (state,)
 
     assert not halted.branching_halted(None)
