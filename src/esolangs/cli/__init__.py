@@ -516,7 +516,8 @@ def _read_answer(rest: list[str]) -> None:
             f"whether it halts"
         )
     output = _read_stdin(hint="; pipe a program's output in, or close stdin")
-    if not output.strip():
+    # NQ's false answer is a space; only absent output is empty stdin.
+    if not output:
         _fail(
             f"nothing on stdin to read an answer out of; pipe a program's "
             f"output in: esolangs run {language} prog.txt | esolangs "

@@ -11,13 +11,25 @@ from esolangs.languages.nq.generator import nq
 from esolangs.languages.nq.tests.ablations import ablate
 from esolangs.languages.nq.tests.test_nq import check_instructions
 from scripts.benchmark import WrittenState
+from tests.support.cli_support import call_main
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row
 
 
+def _check_cli_answers(capsys: pytest.CaptureFixture[str]) -> None:
+    """NQ's final space is an answer, including after an earlier true answer."""
+    for output, answer in ((" ", "0"), ("#", "1"), ("# \n", "0")):
+        assert call_main(["read-answer", "NQ"], capsys, stdin=output) == answer + "\n"
+    with pytest.raises(SystemExit) as exc:
+        call_main(["read-answer", "NQ"], capsys)
+    assert exc.value.code == 2
+    assert "nothing on stdin" in capsys.readouterr().err
+
+
 @pytest.mark.medium
-def test_language_contract(monkeypatch) -> None:
+def test_language_contract(monkeypatch, capsys: pytest.CaptureFixture[str]) -> None:
     """Execute all small tables and sampled larger rows through the real VM."""
+    _check_cli_answers(capsys)
     _check_constants()
     check_instructions()
     language = esolangs.Language("NQ")

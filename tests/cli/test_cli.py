@@ -327,6 +327,7 @@ _REFUSALS = {
         "read-answer brainfuck",
         "no answer this could read",
         "no digits here!",
+        " \t\n",
     ),
     "a_genuine_extra_argument_still_says_so": (
         "describe brainfuck zzz",
@@ -355,4 +356,5 @@ def test_a_bad_command_exits_2_and_says_why(
     case: tuple[str, ...], tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     command, message, *stdin = case
-    assert message in _refused(command, tmp_path, capsys, *stdin)
+    for output in stdin or [""]:
+        assert message in _refused(command, tmp_path, capsys, output)
