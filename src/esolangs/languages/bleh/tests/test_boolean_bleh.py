@@ -57,6 +57,10 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
         == 49108
     )
 
+    from esolangs.languages.bleh.tests.oracle_checks import check_accounting_bleh
+
+    check_accounting_bleh()
+
 
 def test_skipped_reads_reject_eof() -> None:
     for table, stdin in (("00", ""), ("0011", "0"), ("0101", ""), ("01", "")):

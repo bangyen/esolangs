@@ -3583,3 +3583,37 @@ lines with no collected nodes; the 951-file runtime wheel is unchanged.
 Caballo's bounded accounting review is complete; general grammar, public
 fault matrices and full branching acceptance remain open. Accounting reviews
 pending: 24; 116 completion rows remain open.
+
+
+Bleh's independent lazy-heap/continuation oracle checks all six workspace
+components. All 118 cases, 91 original families, caps 128/256/768 and eight
+original controls remain. Oracle-only control-label renaming preserves all
+2,605 typed model boundaries byte-for-byte; no collected nodes are added.
+
+Sixty installed leaves pass on Python 3.12.11–final 3.15.0. Raw, prepared, VM
+and debugger each match 2,605 boundaries and three constructor refusals;
+public execution covers 118 bounded and 116 independently finite ordinary cases.
+Each version checks 120 actual capture masks, eight physical writer and four
+provider histories, readonly-code corruption and 2,605 snapshot round trips.
+The 33-bit anchors and 16,021-bit written-state peak match the independent model.
+All 118 cases execute in real workers; constructor/limit and proof controls
+bring the total to 127 children per version. The saved reader and 18 corruption
+controls pass. The wheel is pinned to `19bc9784c`; runtime/support code still
+matches that revision. The interpreter and generator are unchanged.
+
+Bleh's bounded accounting review is complete. General grammar, arbitrary
+providers and broader completion remain open. Accounting reviews pending: 23;
+116 completion rows remain open.
+
+
+The dialect matrix completes all 372 leaves on Python 3.12.11–final 3.15.0:
+50 API and 43 CLI selectors per version across eight runtimes. All one-input
+tables retain 2,976 truth rows through generation, binding, persistence and
+execution. Typed settings distinguish defaults, explicit empty values and
+overrides; Line retains scale two. Fatal startup guards verify 14,288 process
+markers and 13,916 spawns: 12,208 CLI children and 1,708 workers.
+
+The independent reader and ten full-matrix corruption/relocation controls pass;
+seven earlier pricing-reader controls remain. Active leaf time is 3,331.62s,
+maximum 24.13s against unchanged 60s caps. This evidence is pinned to wheel
+`75c312bb9`; accounting and whole-catalog completion remain open.
