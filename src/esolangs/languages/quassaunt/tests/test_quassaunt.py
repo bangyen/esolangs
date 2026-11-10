@@ -72,12 +72,17 @@ def test_the_wikis_duplicate_idiom_copies_a_string() -> None:
 
 
 def test_set_operations_and_their_error_messages() -> None:
+    from .oracle_checks import _check, check_raw_quassaunt
+
+    check_raw_quassaunt()
+
     def construct(members: set[str]) -> str:
         return "%%Empty" + "".join(
             f" @@{member} %%Swap %%Makecontain" for member in sorted(members)
         )
 
     def check(source, output):
+        _check(_Machine, source, "unused")
         check_terminal(
             _Machine,
             source,

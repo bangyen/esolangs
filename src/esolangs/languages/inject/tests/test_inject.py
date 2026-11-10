@@ -89,9 +89,12 @@ class TestWikiExamples:
         assert second_io.getvalue() == ""
 
     def test_cat_preserves_line_content_and_order(self) -> None:
+        from .oracle_checks import _check
+
         for first in ["", "a b", "loop;", "λ", "\tword", "ab"]:
             for last in ["", "0", "skip", "  ", "cd"]:
                 data = f"{first}\n\n{last}\n"
+                _check(_Machine, CAT, data)
                 assert _run(CAT, data) == data
                 state = (
                     tuple(CAT.splitlines()),
@@ -164,6 +167,9 @@ class TestCommands:
             _run(program)
 
     def test_readto_overwrites_the_block(self) -> None:
+        from .oracle_checks import check_raw_inject
+
+        check_raw_inject()
         program = "\n".join(
             ["readto data", "send data", "skip", "data;", "old", "data;"]
         )

@@ -11,6 +11,10 @@ from itertools import product
 import pytest
 
 from esolangs.languages.intercal.interpreter import _Machine
+from esolangs.languages.intercal.tests.workspace_checks import (
+    check_workspace_intercal,
+    observe_scalar,
+)
 from tests.interpreters.oracle_support import decorate_io, observed, reject_faults
 
 _WORDS = [
@@ -190,9 +194,11 @@ def _view(machine):
 
 
 def _check(factory, ops, stdin="unused"):
-    assert observed(factory, _source(ops), stdin, _view, cap=16) == _model(
-        ops, stdin
-    ), (ops, stdin)
+    expected = _model(ops, stdin)
+    assert observe_scalar(factory, _source(ops), stdin, _view, expected) == expected, (
+        ops,
+        stdin,
+    )
 
 
 def check_raw_intercal():
@@ -293,3 +299,5 @@ def check_raw_intercal():
                 ("halt",),
             ),
         )
+
+    check_workspace_intercal()

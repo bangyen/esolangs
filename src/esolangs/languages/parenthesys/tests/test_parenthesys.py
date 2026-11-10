@@ -114,6 +114,11 @@ def test_numbers_keep_their_text_and_results_are_plain() -> None:
     assert _run("([/|1|3])") == "0." + "3" * 28
     assert _run("([^|2|-2])([^|0|0])([^|2|100])") == "0.251" + str(2**100)
     assert _run("([%|-7|3])([%|7|-3])") == "2-2"
+    from esolangs.languages.parenthesys.tests.oracle_checks import (
+        check_workspace_parenthesys,
+    )
+
+    check_workspace_parenthesys()
 
 
 def test_functions_have_one_namespace_and_see_globals() -> None:

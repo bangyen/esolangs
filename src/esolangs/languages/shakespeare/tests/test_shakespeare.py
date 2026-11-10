@@ -150,6 +150,11 @@ def test_stacks_remember_onto_the_listener_and_recall_into_it() -> None:
         "Recall my past. Open your heart. Recall my sins. Open your heart."
     )
     assert out == "41"
+    from esolangs.languages.shakespeare.tests.oracle_checks import (
+        check_workspace_shakespeare,
+    )
+
+    check_workspace_shakespeare()
 
 
 def test_character_input_stores_the_code_and_number_input_a_token() -> None:

@@ -3899,3 +3899,43 @@ leaf. Native and generator code are unchanged. Packlang's bounded scalar
 accounting review is complete; arrays, calls, structured control and host
 expansion remain open. Accounting reviews pending: 15; completion joins remain
 separate.
+
+Nine populated accounting witnesses pass complete registered semantic owners on
+Python 3.12.11, 3.13.15, 3.14.7 and final 3.15.0. Quassaunt retains 164 cases plus
+14 named traces; Smu retains 1,541 plus eight; Shakespeare covers six. Circuit
+Diagram retains 686 gate/input cases plus clock and output-failure witnesses;
+Inject checks 30 old cat inputs plus eighteen cases; Parenthesys retains 57
+loops plus four focused traces. Their caps remain 64/64/32/8/64/256.
+
+Unlambda retains 1,130 runtime cases and seven constructor sources, application
+fuel 128 and native cap 256; six focused traces cover delay, continuations and
+IO. INTERCAL retains 489 scalar cases at cap 16, three constructors at 64, four
+rich traces at 32 and a physical output failure. Rubic retains 55 cases, seven
+focused traces and a writer failure at cap 80. Every declared component has
+independent state/charge, read/EOF, capture-history and sibling observations,
+with populated erasures. Original cases, assertions, faults, bands and nodes
+remain; native and generator code are unchanged.
+
+Two strict timing failures were fixed without changing budgets. Unlambda's
+1.10s fast-band overrun is removed by observing resources during its original
+native execution. Fargo's medium-band overrun is removed by equivalent explicit
+comparison loops: 739,737 live capture comparisons agree across 266 cases and
+10,398 boundaries; fourteen forced-hash field corruptions are rejected by both
+versions. Fargo's two exact accounting medium owners separately pass all four
+Python versions. Its declared semantic owner does not reach these helpers and
+is not credited for that execution. Nine models have 36 actual profile joins;
+Fargo adds four distinct named-owner joins. Source-verifier provenance remains
+separate from unchanged guarded installed runtime receipts.
+
+Subleq, Forbin, Fargo, Boolfuck and Packlang close their completion rows using
+accepted accounting packets, current source qualifications and forty actual
+historical API/CLI success leaves (320 finite rows). Those successes retain their
+original wheel provenance; current catalog, constructor, canonical protocol,
+retirement and failure joins remain separate. Fargo's changed test comparator
+has an explicit execution-qualified exception. Forbin's native closure-cycle
+key transport remains unsupported; canonical workspace envelopes round-trip.
+Packlang retains its finite scalar scope. Grammar, provider, host-allocation and
+raw-closure limits remain explicit. Evidence: `notes/migration-closure-batch3-final`.
+Completion rows: 111 closed, six open; six accounting reviews remain pending.
+The combined branch referee receipt is retained with this batch; the final
+whole-migration referee remains pending.

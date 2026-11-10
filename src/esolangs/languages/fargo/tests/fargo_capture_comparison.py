@@ -141,12 +141,12 @@ def _header(actual, kind, digest, size):
 
 
 def _scalars(actual, expected, kind):
-    return (
-        type(actual) is tuple
-        and len(actual) == len(expected)
-        and all(type(value) is kind for value in actual)
-        and actual == expected
-    )
+    if type(actual) is not tuple or len(actual) != len(expected):
+        return False
+    for value in actual:
+        if type(value) is not kind:
+            return False
+    return actual == expected
 
 
 def _callable_matches(actual, plan):
@@ -174,10 +174,10 @@ def _value_matches(actual, plan, seen):
     if pair in seen:
         return True
     seen.add(pair)
-    return all(
-        _value_matches(child, wanted, seen)
-        for child, wanted in zip(actual.values, plan.children, strict=True)
-    )
+    for child, wanted in zip(actual.values, plan.children, strict=True):
+        if not _value_matches(child, wanted, seen):
+            return False
+    return True
 
 
 def _pending_matches(actual, expected, seen):
@@ -191,11 +191,9 @@ def _pending_matches(actual, expected, seen):
             return False
         if type(args) is not tuple or len(args) != len(arguments):
             return False
-        if not all(
-            _value_matches(value, plan, seen)
-            for value, plan in zip(args, arguments, strict=True)
-        ):
-            return False
+        for value, plan in zip(args, arguments, strict=True):
+            if not _value_matches(value, plan, seen):
+                return False
     return True
 
 
@@ -247,7 +245,12 @@ def capture_matches(actual, plan):
     if type(actual.parts) is not tuple or len(actual.parts) != 5:
         return False
     instruction, number, output, frames, cursor = actual.parts
-    if not all(type(value) is int for value in (instruction, number, output, cursor)):
+    if (
+        type(instruction) is not int
+        or type(number) is not int
+        or type(output) is not int
+        or type(cursor) is not int
+    ):
         return False
     if (instruction, number, output, cursor) != (
         plan.parts[0],
@@ -259,7 +262,7 @@ def capture_matches(actual, plan):
     if type(frames) is not tuple or len(frames) != len(plan.parts[3]):
         return False
     seen = set()
-    return all(
-        _frame_matches(frame, wanted, seen)
-        for frame, wanted in zip(frames, plan.parts[3], strict=True)
-    )
+    for frame, wanted in zip(frames, plan.parts[3], strict=True):
+        if not _frame_matches(frame, wanted, seen):
+            return False
+    return True
