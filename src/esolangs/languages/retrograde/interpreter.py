@@ -36,7 +36,7 @@ from esolangs.languages.retrograde.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -57,7 +57,10 @@ def _bit(state: _State) -> int:
     return (state.right >> p if p >= 0 else state.left >> (-p - 1)) & 1
 
 
-def _parse(source: str) -> tuple[str, tuple[int, ...], tuple[int, ...]]:
+type _Image = tuple[str, tuple[int, ...], tuple[int, ...]]
+
+
+def _parse(source: str) -> _Image:
     """Return commands, paired cursor indices and original source offsets."""
     code: list[str] = []
     offsets: list[int] = []
@@ -116,8 +119,10 @@ _WORKSPACE_MODEL = WorkspaceModel(
 class _Machine:
     """Exact packed tape halves and the two cursors."""
 
-    def __init__(self, code: str, io: IO) -> None:
-        self.code, self.pairs, self.offsets = _parse(code)
+    def __init__(self, code: str | _Image, io: IO) -> None:
+        self.code, self.pairs, self.offsets = (
+            _parse(code) if isinstance(code, str) else code
+        )
         self.state = tuple.__new__(_State, (0, 0, 1, 0, 0))
         self.io = io
         self.printed = False
@@ -175,22 +180,18 @@ class _Machine:
             self.state = _advance(self.state, self.code, self.pairs)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain parsed instructions and allocate state per invocation."""
     if not isinstance(source, str):
         raise TypeError("retrograde machines require text source")
     if options:
         raise TypeError("retrograde machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _parse(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run Retrograde and dump its final current bit."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

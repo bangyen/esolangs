@@ -165,6 +165,15 @@ These language-owned plans retain parsed source:
 - CARP: validated register instructions.
 - SStack: operations and resolved bracket targets.
 - SwitchCase: cases and read-only arm maps.
+- Crement: initial instructions, copied on self-modification.
+- Fackward: persistent source stack and nested blocks.
+- HQ9+ with headers: compiled instructions and workspace size.
+- lol waht i cant edit talk pages: parsed statements.
+- REFRACTRAN: initial integer and fractions.
+- Retrograde: commands and paired braces.
+- Rubic: commands and paired loops.
+- SendStuff: expanded commands and their targets.
+- What!?: linked tokens.
 
 `Language` also binds `instantiate`; use package functions across languages.
 

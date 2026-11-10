@@ -1,5 +1,7 @@
 """Retrograde VM, wrapped serialization and exact step witnesses."""
 
+import pytest
+
 import esolangs
 from esolangs.debugger import make_vm
 from esolangs.languages.retrograde.tests.test_boolean_retrograde import (
@@ -10,9 +12,9 @@ from esolangs.languages.retrograde.tests.test_retrograde import (
 )
 
 
-def test_language_contract() -> None:
+def test_language_contract(monkeypatch: pytest.MonkeyPatch) -> None:
     """Opcode directions, Boolean rows, serialization and step witnesses."""
-    check_instruction_semantics()
+    check_instruction_semantics(monkeypatch)
     check_boolean_tables()
     language = esolangs.Language("Retrograde")
     for n in range(1, 9):

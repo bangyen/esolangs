@@ -2,11 +2,13 @@
 
 import pytest
 
+from esolangs.languages.retrograde import interpreter as native
 from esolangs.languages.retrograde.interpreter import _advance, _Machine, _parse, _State
 from esolangs.runtime.io import ScriptedIO
+from tests.support.prepared_support import check_image_reuse
 
 
-def check_instruction_semantics() -> None:
+def check_instruction_semantics(monkeypatch: pytest.MonkeyPatch) -> None:
     from esolangs.languages.retrograde.tests.oracle_checks import check_raw_retrograde
 
     check_raw_retrograde()
@@ -55,3 +57,6 @@ def check_instruction_semantics() -> None:
     assert vm.memory == [1, 1]
     assert vm.ptr == 0
     assert vm.io.getvalue() == "1"
+    check_image_reuse(
+        "Retrograde", "< * > /", native, "_parse", monkeypatch, cases=(("", "1"),) * 3
+    )

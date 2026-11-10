@@ -2,10 +2,12 @@
 
 import pytest
 
+from esolangs.languages.rubic import interpreter as native
 from esolangs.languages.rubic.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.runner import native_runner
+from tests.support.prepared_support import check_image_reuse
 
 HELLO = (
     ".ww ( +ww ) ! +ww +ww +ww +ww r -wg ! +oo b -og ! ! +wo' ! b' .wg "
@@ -32,10 +34,13 @@ def test_the_wiki_hello_world() -> None:
     assert _run(HELLO) == "Hello World!\n"
 
 
-def test_the_wiki_cat_never_reads_and_its_repair_echoes() -> None:
+def test_the_wiki_cat_never_reads_and_its_repair_echoes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """After ``r b``, ``go`` is 0; ``og`` is the 1 the cat needs."""
     assert _run("r b -go ( ! ) !", "A") == "\x00"
     assert _run("r b -og ( ! ) !", "A") == "A"
+    check_image_reuse("Rubic", "r b -og ( ! ) !", native, "parse", monkeypatch)
 
 
 @pytest.mark.parametrize("face", "rulfdbmes")

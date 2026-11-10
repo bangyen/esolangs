@@ -37,7 +37,7 @@ from esolangs.languages.crement.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -240,9 +240,12 @@ _WORKSPACE_MODEL = WorkspaceModel("crement-v1", ("configuration", "input_cursor"
 class _Machine:
     """Mutable VM shell around Crement's pure transition."""
 
-    def __init__(self, code: str, io: IO | None = None) -> None:
+    def __init__(
+        self, code: str | tuple[_Instruction, ...], io: IO | None = None
+    ) -> None:
         self.io = io if io is not None else IO()
-        self.state = _State(0, _parse(code))
+        program = _parse(code) if isinstance(code, str) else code
+        self.state = _State(0, program)
 
     @property
     def halted(self) -> bool:
@@ -281,22 +284,18 @@ class _Machine:
         self.state = _advance(self.state)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain parsed instructions and allocate state per invocation."""
     if not isinstance(source, str):
         raise TypeError("crement machines require text source")
     if options:
         raise TypeError("crement machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _parse(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | tuple[_Instruction, ...], io: IO) -> CompletionReport:
     """Run a Crement program until it executes past its final instruction."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

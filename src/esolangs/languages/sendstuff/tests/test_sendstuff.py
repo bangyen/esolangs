@@ -5,10 +5,12 @@ from itertools import product
 import pytest
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.sendstuff import interpreter as native
 from esolangs.languages.sendstuff.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.runner import native_runner
+from tests.support.prepared_support import check_image_reuse
 
 #: The wiki's Hello world: its closing parentheses are left off, so each
 #: ``Add`` is a child of the one before and the deltas accumulate.
@@ -65,8 +67,9 @@ def test_hello_world_prints_as_stated() -> None:
     assert _run(HELLO) == "Hello, World!"
 
 
-def test_cat_echoes_any_character_until_eof() -> None:
+def test_cat_echoes_any_character_until_eof(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _run(CAT, "héllo\nworld") == "héllo\nworld"
+    check_image_reuse("SendStuff", CAT, native, "_parse", monkeypatch)
 
 
 def test_the_talk_pages_sub_is_refused_and_subtract_works() -> None:

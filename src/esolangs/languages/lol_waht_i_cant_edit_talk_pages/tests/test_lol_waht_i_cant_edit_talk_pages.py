@@ -6,6 +6,7 @@ from esolangs.exceptions import HaltError, InputExhaustedError
 from esolangs.languages.lol_waht_i_cant_edit_talk_pages import interpreter as native
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
+from tests.support.prepared_support import check_image_reuse
 
 TRUTH = """user:i
 im awesome tottaly but no i
@@ -73,9 +74,17 @@ def test_a_plus_b(code: str) -> None:
     assert _out(code, "3 4") == "7"
 
 
-def test_output_a() -> None:
+def test_output_a(monkeypatch: pytest.MonkeyPatch) -> None:
     code = "user:A\nedit user talk:A to change 65 messages\ngrr why u do this A"
     assert _out(code + "\nwaht i got banned") == "A"
+    check_image_reuse(
+        "lol waht i cant edit talk pages",
+        code + "\nwaht i got banned",
+        native,
+        "_parse",
+        monkeypatch,
+        cases=(("", "A"),) * 3,
+    )
 
 
 def test_hello_world_signature() -> None:

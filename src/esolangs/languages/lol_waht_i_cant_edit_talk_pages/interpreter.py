@@ -46,7 +46,7 @@ Decisions:
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
@@ -54,7 +54,7 @@ from esolangs.languages.lol_waht_i_cant_edit_talk_pages.lifecycle import CAPABIL
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -140,7 +140,7 @@ def _value(env: dict[str, int], token: str) -> int:
 
 
 def _advance(
-    state: _State, ops: list[_Op], number: int | None = None
+    state: _State, ops: Sequence[_Op], number: int | None = None
 ) -> tuple[_State, str | None]:
     """Return the state after one statement, and the text it prints.
 
@@ -193,8 +193,8 @@ class _Machine:
     # ``ip`` counts parsed statements, not source characters.
     ip_shape = "opaque"
 
-    def __init__(self, code: str, io: IO) -> None:
-        self.ops = _parse(code)
+    def __init__(self, code: str | tuple[_Op, ...], io: IO) -> None:
+        self.ops = _parse(code) if isinstance(code, str) else code
         self.io = io
         self.state = _State(0, ())
 
@@ -229,10 +229,8 @@ class _Machine:
             self.io.print_str(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain parsed instructions and allocate state per invocation."""
     if not isinstance(source, str):
         raise TypeError("lol_waht_i_cant_edit_talk_pages machines require text source")
     if options:
@@ -240,13 +238,11 @@ def prepare_machine(
             "lol_waht_i_cant_edit_talk_pages machines accept no runtime options"
         )
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = tuple(_parse(source))
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | tuple[_Op, ...], io: IO) -> CompletionReport:
     """Run a program until it is banned or runs out of lines."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

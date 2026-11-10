@@ -51,7 +51,7 @@ from esolangs.languages.rubic.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -296,13 +296,15 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+type _Image = tuple[str, _Program]
+
+
 class _Machine:
     """The run state over the parsed program."""
 
-    def __init__(self, code: str, io: IO) -> None:
-        self.code = code
+    def __init__(self, code: str | _Image, io: IO) -> None:
+        self.code, self.program = (code, parse(code)) if isinstance(code, str) else code
         self.io = io
-        self.program = parse(code)
         self.state = _State(0, 0, _SOLVED, ())
 
     @property
@@ -356,22 +358,18 @@ class _Machine:
             self.io.print_char(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain parsed instructions and allocate state per invocation."""
     if not isinstance(source, str):
         raise TypeError("rubic machines require text source")
     if options:
         raise TypeError("rubic machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = source, parse(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a Rubic program."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

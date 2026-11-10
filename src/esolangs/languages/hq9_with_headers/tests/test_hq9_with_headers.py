@@ -6,9 +6,11 @@ from operator import add, floordiv, mul, sub
 import pytest
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.hq9_with_headers import interpreter as native
 from esolangs.languages.hq9_with_headers.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
+from tests.support.prepared_support import check_image_reuse
 
 _HQ = """==== HEADER ====
 COMMAND FLOW
@@ -88,12 +90,20 @@ def _steps(code: str, stdin: str, count: int) -> _Machine:
     return machine
 
 
-def test_wiki_hq9_example_prints_its_title() -> None:
+def test_wiki_hq9_example_prints_its_title(monkeypatch: pytest.MonkeyPatch) -> None:
     # Labelled 'Print "Hello, World!QHQQHQ"': flow 2,1,3 runs H, Q, Q.
     from .oracle_checks import check_raw_hq9_with_headers
 
     check_raw_hq9_with_headers()
     assert _run(_HQ) == "Hello, World!QHQQHQ"
+    check_image_reuse(
+        "HQ9+ with headers",
+        _HQ,
+        native,
+        "parse",
+        monkeypatch,
+        cases=(("", "Hello, World!QHQQHQ"),) * 3,
+    )
 
     # Startup supplies the operands. Flow executes the arithmetic before print
     # despite their opposite order in the source program.

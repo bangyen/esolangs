@@ -56,7 +56,7 @@ from esolangs.languages.fackward.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -250,9 +250,10 @@ class _Machine:
 
     ip_shape = "opaque"
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Stack, io: IO) -> None:
         self.io = io
-        self.state: _State = (parse(code), None, False, False, False)
+        stack = parse(code) if isinstance(code, str) else code
+        self.state: _State = (stack, None, False, False, False)
 
     @property
     def halted(self) -> bool:
@@ -320,22 +321,18 @@ def _depth(stack: _Stack) -> int:
     return depth
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain parsed instructions and allocate state per invocation."""
     if not isinstance(source, str):
         raise TypeError("fackward machines require text source")
     if options:
         raise TypeError("fackward machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = parse(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Stack, io: IO) -> CompletionReport:
     """Run a Fackward program."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

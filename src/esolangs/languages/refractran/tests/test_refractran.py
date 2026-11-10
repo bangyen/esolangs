@@ -2,14 +2,16 @@
 
 import pytest
 
+from esolangs.languages.refractran import interpreter as native
 from esolangs.languages.refractran.interpreter import _Machine, run
 from esolangs.languages.refractran.tests.test_integration_refractran import (
     check_serialized_narrow_template_and_vm,
 )
 from esolangs.runtime.io import ScriptedIO
+from tests.support.prepared_support import check_image_reuse
 
 
-def test_fraction_search() -> None:
+def test_fraction_search(monkeypatch: pytest.MonkeyPatch) -> None:
     """Directions, malformed sources and serialized templates."""
     from esolangs.languages.refractran.tests.oracle_checks import check_raw_refractran
 
@@ -40,3 +42,11 @@ def test_fraction_search() -> None:
     assert tuple(machine.state) == (1, 5, 1)
     machine.step()
     assert tuple(machine.state) == (2, 5, 1)
+    check_image_reuse(
+        "REFRACTRAN",
+        "2 3/5 3/2",
+        native,
+        "_parse",
+        monkeypatch,
+        cases=(("", "101"),) * 3,
+    )

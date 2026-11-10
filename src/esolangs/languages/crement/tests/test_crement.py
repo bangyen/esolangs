@@ -6,6 +6,7 @@ from esolangs.exceptions import HaltError, ProgramError
 from esolangs.languages.crement import interpreter as native
 from esolangs.runtime.io import IO
 from esolangs.vm import run_until_halt_or_cycle
+from tests.support.prepared_support import check_image_reuse
 
 
 def _halts(program: str) -> bool:
@@ -19,7 +20,9 @@ def test_positive_and_negative_jump_conditions() -> None:
     assert _halts("-J 0 1")
 
 
-def test_data_instruction_rewrites_the_target_data() -> None:
+def test_data_instruction_rewrites_the_target_data(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from .oracle_checks import check_raw_crement
 
     check_raw_crement()
@@ -28,6 +31,14 @@ def test_data_instruction_rewrites_the_target_data() -> None:
     assert machine.state.program[1].data == 5
     assert machine.state.program[1].address == 2
     assert native._advance(machine.state).ip == 2
+    check_image_reuse(
+        "Crement",
+        "+D 1 4\n+J 2 0",
+        native,
+        "_parse",
+        monkeypatch,
+        cases=(("", ""),) * 3,
+    )
 
 
 def test_address_instruction_rewrites_the_target_address() -> None:

@@ -4,9 +4,11 @@ import pytest
 
 from esolangs import run as execute
 from esolangs.exceptions import HaltError, InterpreterLimitError
+from esolangs.languages.fackward import interpreter as native
 from esolangs.languages.fackward.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
+from tests.support.prepared_support import check_image_reuse
 
 _run = native_runner(run)
 
@@ -32,13 +34,16 @@ def test_the_null_program_is_a_cat_that_reads_in_pairs() -> None:
     assert _run("") == ""
 
 
-def test_results_are_pushed_in_written_order() -> None:
+def test_results_are_pushed_in_written_order(monkeypatch: pytest.MonkeyPatch) -> None:
     from .oracle_checks import check_raw_fackward
 
     check_raw_fackward()
     # ``~`` pushes 66 then 65, and the next pass reads 65 first; the other
     # order would push what moving 65 and 66 does, printing "BA".
     assert _run(")[H]~65 66") == "AB"
+    check_image_reuse(
+        "Fackward", ")[H]~65 66", native, "parse", monkeypatch, cases=(("", "AB"),) * 3
+    )
 
 
 def test_a_function_runs_only_on_the_values_behind_it() -> None:

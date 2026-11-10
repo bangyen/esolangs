@@ -6,10 +6,12 @@ import pytest
 
 from esolangs import run as public_run
 from esolangs.exceptions import ArgumentError, HaltError
+from esolangs.languages.what import interpreter as native
 from esolangs.languages.what.interpreter import _Machine, run
 from esolangs.results import ExecutionResult
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
+from tests.support.prepared_support import check_image_reuse
 
 _TRUTH = ".??([1:!!][1;,1.(-)]),0!!"
 _BOTTLES = r"""99 " bottles of beer on the wall, ".
@@ -25,9 +27,10 @@ _BOTTLES = r"""99 " bottles of beer on the wall, ".
 _run = native_runner(run)
 
 
-def test_wiki_hello_world_and_cat() -> None:
+def test_wiki_hello_world_and_cat(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _run('"Hello, World!"!!! !!!!') == "Hello, World!\n"
     assert _run("???!!!", "a line\nmore") == "a line"
+    check_image_reuse("What!?", "???!!!", native, "parse", monkeypatch)
 
 
 def test_wiki_truth_machine() -> None:

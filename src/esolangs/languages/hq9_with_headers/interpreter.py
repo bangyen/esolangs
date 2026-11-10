@@ -53,7 +53,7 @@ Decisions:
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -65,7 +65,7 @@ from esolangs.runtime._digits import digit_limit_for
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -360,7 +360,7 @@ def _get(store: persistent.Chunked[int | None], slot: int) -> int:
 
 
 def _advance(
-    state: _State, ops: list[_Op], value: int | None = None
+    state: _State, ops: Sequence[_Op], value: int | None = None
 ) -> tuple[_State, int | str | None]:
     """Return the state after one op, and what it prints.
 
@@ -410,14 +410,18 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+type _Image = tuple[tuple[_Op, ...], int]
+
+
 class _Machine:
     """The run state: op index and variable values."""
 
     eof_is_a_value = True
     ip_shape = "line"
 
-    def __init__(self, code: str, io: IO) -> None:
-        self.ops, count = parse(code)
+    def __init__(self, code: str | _Image, io: IO) -> None:
+        ops, count = parse(code) if isinstance(code, str) else code
+        self.ops: Sequence[_Op] = ops
         self.io = io
         self.state: _State = (0, persistent.chunked([None] * count))
 
@@ -483,22 +487,19 @@ class _Machine:
             self.io.print_str(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain parsed instructions and allocate state per invocation."""
     if not isinstance(source, str):
         raise TypeError("hq9_with_headers machines require text source")
     if options:
         raise TypeError("hq9_with_headers machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
+    ops, count = parse(source)
+    image = tuple(ops), count
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
-    return build
 
-
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run an HQ9+ with headers program."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 
