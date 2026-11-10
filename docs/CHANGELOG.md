@@ -14,6 +14,18 @@ Releases before 0.10.0 are described on the
 - **Breaking:** Unfilled templates require explicit bindings and cannot execute.
   Tagged-string wrappers, inferred bindings and temporary compatibility aliases
   are removed. Use canonical artifact APIs and supported imports.
+- **Breaking:** Construct dialect overrides with `Language(name).settings(...)`;
+  settings are immutable and validated against that language's schema.
+- **Breaking:** Raw `Raster` and `CompressedText` payloads no longer carry
+  language, dialect or scale metadata; retain their enclosing artifact.
+- Add immutable `Catalog` scopes through `catalog=` and `Language` bindings.
+  Subprocess isolation requires runtime declarations matching the installed
+  catalog; native and cooperative execution use the supplied declarations.
+- Add `Language.prepare(...)` returning `PreparedProgram` for repeated native
+  runs or VM construction, with fresh IO, machine state and randomness per call.
+  Source decoding is shared; parsing remains language-owned.
+- Share execution control between bounded runs and the debugger, with
+  invocation-owned IO.
 - Declare interpreter lifecycle, source-loading, dialect and accounting
   capabilities independently of generator implementations.
 - Tighten worker, snapshot and persistence validation. Supported version-1
