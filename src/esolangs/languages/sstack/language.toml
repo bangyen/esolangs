@@ -79,7 +79,8 @@ scale = 1
 construction = "esolangs.languages.sstack.generator:sstack_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.sstack.generator:sstack_request"
 
 [resource_evidence.execution]
 expression = "7n + 3"
@@ -87,8 +88,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.sstack.generator:sstack_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, six a tree node plus guarded dispatch" }
 
 [resource_evidence.workspace]
@@ -97,8 +96,6 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.sstack.generator:sstack_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, K commands: n stacked input bytes", formula = "6n + 12 + bl(K) + bl(n)" }
 
 [resource_evidence.scaling]
@@ -107,8 +104,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.sstack.generator:sstack_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: 21 a node, 3 a leaf, 12 prologue" }
 
 [semantic_evidence]

@@ -70,7 +70,8 @@ scale = 1
 construction = "esolangs.languages.parenthesys.generator:parenthesys_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.parenthesys.generator:parenthesys_request"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.parenthesys.tests.formulas:_steps"
@@ -78,8 +79,6 @@ exact = true
 arities = [4, 5, 6, 7, 8]
 first = 4
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.parenthesys.generator:parenthesys_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: grouped reads (G chars, H ops), lookup, bit test", formula = "25 + H" }
 
 [resource_evidence.workspace]
@@ -88,8 +87,6 @@ exact = false
 arities = [4, 5, 7, 8]
 first = 4
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.parenthesys.generator:parenthesys_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: the final call's stack" }
 
 [resource_evidence.scaling]
@@ -98,8 +95,6 @@ exact = true
 arities = [4, 5, 6, 7, 8]
 first = 4
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.parenthesys.generator:parenthesys_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}", formula = "T/8 + 54 + G" }
 
 [semantic_evidence]

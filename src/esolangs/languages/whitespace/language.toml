@@ -76,7 +76,8 @@ scale = 1
 construction = "esolangs.languages.whitespace.generator:whitespace_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.whitespace.generator:whitespace_request"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.whitespace.proof_formulas:execution"
@@ -84,8 +85,6 @@ exact = true
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.whitespace.generator:whitespace_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: calls never nest", formula = "16 at n=1, otherwise 12n+7" }
 
 [resource_evidence.workspace]
@@ -94,8 +93,6 @@ exact = true
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.whitespace.generator:whitespace_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: stack, sparse heap and cursors", formula = "15 at n=1, otherwise 5T-3+bl(n+17)+bl(n+2)+bl(2n)" }
 
 [resource_evidence.scaling]
@@ -104,8 +101,6 @@ exact = true
 arities = [1, 2, 3, 5, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.whitespace.generator:whitespace_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one literal and shared step", formula = "S" }
 
 [semantic_evidence]

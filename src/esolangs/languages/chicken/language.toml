@@ -57,7 +57,8 @@ scale = 1
 construction = "esolangs.languages.chicken.generator:chicken_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.chicken.generator:chicken_request"
 
 [resource_evidence.execution]
 expression = "9n + 3"
@@ -65,8 +66,6 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.chicken.generator:chicken_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
@@ -75,8 +74,6 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.chicken.generator:chicken_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
@@ -85,8 +82,6 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.chicken.generator:chicken_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [semantic_evidence]

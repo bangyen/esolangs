@@ -77,7 +77,8 @@ scale = 1
 construction = "esolangs.languages.sonata.generator:sonata_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.sonata.generator:sonata_request"
 
 [resource_evidence.execution]
 expression = "T + n + 3 - min(1,(n-2)^2)"
@@ -85,8 +86,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "steps"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.sonata.generator:sonata_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: index, strips, halt" }
 
 [resource_evidence.workspace]
@@ -95,8 +94,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.sonata.generator:sonata_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the string at its longest, an index of T - 1 units beside the table" }
 
 [resource_evidence.scaling]
@@ -105,8 +102,6 @@ exact = [1, 2, 3, 4, 5, 6]
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.sonata.generator:sonata_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: exact n=1..6, upper bound thereafter", formula = "T+4n+101-21min(1,(n-2)^2)" }
 
 [semantic_evidence]

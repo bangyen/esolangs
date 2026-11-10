@@ -75,7 +75,8 @@ scale = 1
 construction = "esolangs.languages.freestajlo.generator:freestajlo_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.freestajlo.generator:freestajlo_request"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.freestajlo.tests.formulas:_execution"
@@ -83,8 +84,6 @@ exact = true
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.freestajlo.generator:freestajlo_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} to n = 4, then 4n + 17: the literal, the reads and folds, the decode", formula = "4n" }
 
 [resource_evidence.workspace]
@@ -93,8 +92,6 @@ exact = true
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.freestajlo.generator:freestajlo_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the literal's codes on the stack, plain or packed", formula = "max(P, W)" }
 
 [resource_evidence.scaling]
@@ -103,8 +100,6 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.freestajlo.generator:freestajlo_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [semantic_evidence]

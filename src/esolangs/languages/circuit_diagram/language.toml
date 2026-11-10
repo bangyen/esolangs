@@ -120,7 +120,8 @@ scale = 1
 construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"
 
 [resource_evidence.execution]
 expression = "2n + 1"
@@ -128,8 +129,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: atomic muxes only shorten paths" }
 
 [resource_evidence.workspace]
@@ -138,8 +137,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}, n ≤ 7; 7T + 2n - 9 after: latches, pulses", formula = "7T/2 + 2n - 5" }
 
 [resource_evidence.scaling]
@@ -148,8 +145,6 @@ exact = false
 arities = [9, 10, 11]
 first = 9
 unit = "cells"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: H-tree pool caps it", formula = "F" }
 
 [semantic_evidence]

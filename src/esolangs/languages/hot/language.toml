@@ -72,7 +72,8 @@ scale = 1
 construction = "esolangs.languages.hot.generator:hot_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.hot.generator:hot_request"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.hot.proof_formulas:execution"
@@ -80,8 +81,6 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "rewrites"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.hot.generator:hot_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: a pair a level, then the answer stage", formula = "35n + 45" }
 
 [resource_evidence.workspace]
@@ -90,8 +89,6 @@ exact = true
 arities = [2, 3, 6]
 first = 2
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.hot.generator:hot_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: two copies early, three at the end", formula = "max(88T+232n+235, 132T+24n-53) + bl(n)" }
 
 [resource_evidence.scaling]
@@ -100,8 +97,6 @@ exact = true
 arities = [2, 3, 6]
 first = 2
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.hot.generator:hot_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: pairs" }
 
 [semantic_evidence]

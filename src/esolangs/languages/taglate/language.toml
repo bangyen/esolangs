@@ -85,7 +85,8 @@ scale = 1
 construction = "esolangs.languages.taglate.generator:taglate_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.taglate.generator:taglate_request"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.taglate.proof_formulas:execution"
@@ -93,8 +94,6 @@ exact = true
 arities = [3, 4, 5]
 first = 3
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.taglate.generator:taglate_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: literal seed; bootstrap at most B+C+56", formula = "C+56" }
 
 [resource_evidence.workspace]
@@ -103,8 +102,6 @@ exact = true
 arities = [3, 4, 5]
 first = 3
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.taglate.generator:taglate_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: literal seed; bootstrap at most max(Q,7B,28)+bl(A)+bl(n)", formula = "Q+bl(C)+bl(n)" }
 
 [resource_evidence.scaling]
@@ -113,8 +110,6 @@ exact = true
 arities = [3, 5]
 first = 3
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.taglate.generator:taglate_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: nibble leaves" }
 
 [semantic_evidence]

@@ -85,7 +85,8 @@ scale = 1
 construction = "esolangs.languages.inject.generator:inject_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.inject.generator:inject_request"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.inject.proof_formulas:execution"
@@ -93,8 +94,6 @@ exact = true
 arities = [5, 6]
 first = 5
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.inject.generator:inject_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}, halving per level", formula = "9n + 10" }
 
 [resource_evidence.workspace]
@@ -103,8 +102,6 @@ exact = true
 arities = [5]
 first = 5
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.inject.generator:inject_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 5..16: program after n reads", formula = "8T + 512n + 184 + 16R + A" }
 
 [resource_evidence.scaling]
@@ -113,8 +110,6 @@ exact = true
 arities = [5, 6, 17]
 first = 5
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.inject.generator:inject_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: every n", formula = "C" }
 
 [semantic_evidence]

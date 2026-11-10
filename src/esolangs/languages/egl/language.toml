@@ -86,7 +86,8 @@ scale = 1
 construction = "esolangs.languages.egl.generator:egl_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.egl.generator:egl_request"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.egl.proof_formulas:execution"
@@ -94,8 +95,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.egl.generator:egl_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}; at most 2E+1 with wrapping newlines", formula = "E default" }
 
 [resource_evidence.workspace]
@@ -104,8 +103,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.egl.generator:egl_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: grid, one counter frame and cursors", formula = "W" }
 
 [resource_evidence.scaling]
@@ -114,8 +111,6 @@ exact = true
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.egl.generator:egl_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: full binary layout with T-1 painted ones", formula = "F" }
 
 [semantic_evidence]

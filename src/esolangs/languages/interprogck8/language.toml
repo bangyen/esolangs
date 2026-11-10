@@ -96,7 +96,8 @@ scale = 1
 construction = "esolangs.languages.interprogck8.generator:interprogck8_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.interprogck8.generator:interprogck8_request"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.interprogck8.tests.formulas:_steps"
@@ -104,8 +105,6 @@ exact = true
 arities = [3, 4, 5, 6, 7, 8, 9, 10]
 first = 3
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.interprogck8.generator:interprogck8_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n = 3..12; at most F to n = 34: max of generic and parity walks", formula = "F" }
 
 [resource_evidence.workspace]
@@ -114,8 +113,6 @@ exact = true
 arities = [3, 4, 5, 6]
 first = 3
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.interprogck8.generator:interprogck8_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: accumulator, line cursor, input cursor, slot and frame bodies", formula = "bl(R) + bl(2n) + 543" }
 
 [resource_evidence.scaling]
@@ -124,8 +121,6 @@ exact = true
 arities = [3, 4, 5, 6, 7, 8, 9, 10]
 first = 3
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.interprogck8.generator:interprogck8_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n = 3..10; at most beyond", formula = "F" }
 
 [semantic_evidence]

@@ -81,7 +81,8 @@ scale = 1
 construction = "esolangs.languages.algebraic_programming_language.generator:algebraic_programming_language_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.algebraic_programming_language.generator:algebraic_programming_language_request"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.algebraic_programming_language.tests.formulas:execution"
@@ -89,8 +90,6 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6, 8]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.algebraic_programming_language.generator:algebraic_programming_language_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: definitions initialize once and execute at most once", formula = "max(21,ceil(65n/2)-21)+K+2min(K,3n+1)" }
 
 [resource_evidence.workspace]
@@ -99,8 +98,6 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6, 8]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.algebraic_programming_language.generator:algebraic_programming_language_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: frame/global state", formula = "179n+400+V+W if K=0, else A(198+8d+3b)+Q(b+114)+65n+d+bl(2n-1)" }
 
 [resource_evidence.scaling]
@@ -109,8 +106,6 @@ exact = false
 arities = [2, 3, 4, 5, 6, 8]
 first = 2
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.algebraic_programming_language.generator:algebraic_programming_language_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: 10T + 4n + 6, n = 2..14", formula = "F" }
 
 [semantic_evidence]

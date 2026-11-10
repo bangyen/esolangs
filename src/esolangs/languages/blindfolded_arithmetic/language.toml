@@ -72,7 +72,8 @@ scale = 1
 construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic_request"
 
 [resource_evidence.execution]
 expression = "⌊T/2⌋ + ⌈T/3⌉ + 8n + 8"
@@ -80,8 +81,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: half the rows set, run once" }
 
 [resource_evidence.workspace]
@@ -90,8 +89,6 @@ exact = true
 arities = [3, 5]
 first = 3
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: b and its even copy" }
 
 [resource_evidence.scaling]
@@ -100,8 +97,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: six an instruction" }
 
 [semantic_evidence]

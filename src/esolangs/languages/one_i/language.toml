@@ -76,7 +76,8 @@ scale = 1
 construction = "esolangs.languages.one_i.generator:one_i_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.one_i.generator:one_i_request"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.one_i.proof_formulas:execution"
@@ -84,8 +85,6 @@ exact = true
 arities = [1, 2, 3, 5, 6]
 first = 1
 unit = "steps"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.one_i.generator:one_i_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: four a branch level, twelve in an arithmetic tail", formula = "E" }
 
 [resource_evidence.workspace]
@@ -94,8 +93,6 @@ exact = true
 arities = [2, 3, 4, 5, 6, 7, 8, 9]
 first = 2
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.one_i.generator:one_i_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: default frame, stack and input position", formula = "W" }
 
 [resource_evidence.scaling]
@@ -104,8 +101,6 @@ exact = true
 arities = [2, 3, 6]
 first = 2
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.one_i.generator:one_i_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: six a node" }
 
 [semantic_evidence]

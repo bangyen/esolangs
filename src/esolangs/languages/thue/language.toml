@@ -76,7 +76,8 @@ scale = 1
 construction = "esolangs.languages.thue.generator:thue_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.thue.generator:thue_request"
 
 [resource_evidence.execution]
 expression = "5T/2 + 3n - 1"
@@ -84,8 +85,6 @@ exact = false
 arities = [3, 7]
 first = 1
 unit = "rewrites"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.thue.generator:thue_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: n marker sweeps, one expanding pairs" }
 
 [resource_evidence.workspace]
@@ -94,8 +93,6 @@ exact = true
 arities = [3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.thue.generator:thue_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the T + 3 character state string" }
 
 [resource_evidence.scaling]
@@ -104,8 +101,6 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.thue.generator:thue_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: T/2 + 223 once pairs pack" }
 
 [semantic_evidence]

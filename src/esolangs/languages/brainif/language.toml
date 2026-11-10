@@ -90,7 +90,8 @@ scale = 1
 construction = "esolangs.languages.brainif.generator:brainif_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.brainif.generator:brainif_request"
 
 [resource_evidence.execution]
 expression = "4n + 50"
@@ -98,8 +99,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.brainif.generator:brainif_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, one DAG path and a tail" }
 
 [resource_evidence.workspace]
@@ -108,8 +107,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.brainif.generator:brainif_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: two cells, a line cursor", formula = "13 + bl(lines) + bl(n)" }
 
 [resource_evidence.scaling]
@@ -118,8 +115,6 @@ exact = false
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.brainif.generator:brainif_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: widest layered DAG, before the fall-through layout", formula = "W" }
 
 [semantic_evidence]

@@ -62,7 +62,8 @@ scale = 1
 construction = "esolangs.languages.aprknia.generator:aprknia_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.aprknia.generator:aprknia_request"
 
 [resource_evidence.execution]
 expression = "18n + 5"
@@ -70,8 +71,6 @@ exact = true
 arities = [1, 2, 3, 5, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.aprknia.generator:aprknia_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
@@ -80,8 +79,6 @@ exact = false
 arities = [1, 2, 3, 5, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.aprknia.generator:aprknia_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: quotient guards retain two extra bits per completed one arm" }
 
 [resource_evidence.scaling]
@@ -90,8 +87,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.aprknia.generator:aprknia_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: one at-most22-command node per branch" }
 
 [semantic_evidence]

@@ -86,7 +86,8 @@ scale = 1
 construction = "esolangs.languages.dig.generator:dig_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.dig.generator:dig_request"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.dig.proof_formulas:execution"
@@ -94,8 +95,6 @@ exact = false
 arities = [7, 8, 9, 10, 11, 12]
 first = 7
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.dig.generator:dig_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n={previous}; H includes the indexed caps", formula = "max(H,48n-48)" }
 
 [resource_evidence.workspace]
@@ -104,8 +103,6 @@ exact = true
 arities = [5]
 first = 5
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.dig.generator:dig_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n={previous}: byte grid, coordinates, halt latch and derived transient maxima; equality at n=5", formula = "W" }
 
 [resource_evidence.scaling]
@@ -114,8 +111,6 @@ exact = [10]
 arities = [7, 8, 10]
 first = 7
 unit = "cells"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.dig.generator:dig_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: the dense table", formula = "A" }
 
 [semantic_evidence]

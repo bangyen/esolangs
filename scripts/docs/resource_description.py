@@ -126,9 +126,11 @@ def parse_descriptions(data: dict[str, Any]) -> ResourceDescriptions:
     """Validate every resource description without importing formula providers."""
     if (
         not isinstance(data, dict)
-        or set(data) != COLUMNS | {"version"}
+        or set(data) != COLUMNS | {"version", "construction"}
         or type(data["version"]) is not int
-        or data["version"] != 1
+        or data["version"] != 2
+        or not isinstance(data["construction"], str)
+        or not data["construction"]
         or any(not isinstance(data[c], dict) for c in COLUMNS)
     ):
         raise ValueError("invalid resource descriptions schema")

@@ -80,7 +80,8 @@ scale = 1
 construction = "esolangs.languages.six_five.generator:six_five_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.six_five.generator:six_five_request"
 
 [resource_evidence.execution]
 expression = "L + 6T + 3n"
@@ -88,8 +89,6 @@ exact = false
 arities = [3, 7]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.six_five.generator:six_five_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the walk's home loop reruns 3 commands a cell; other routes loop-free" }
 
 [resource_evidence.workspace]
@@ -98,8 +97,6 @@ exact = true
 arities = [8]
 first = 7
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.six_five.generator:six_five_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: a tape of 2T cells" }
 
 [resource_evidence.scaling]
@@ -108,8 +105,6 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.six_five.generator:six_five_request"
 description = { growth = "linear, time n log", claim = "at most", template = "{claim} {formula} {unit}: two raced orders over canonical subtree IDs", formula = "N" }
 
 [semantic_evidence]

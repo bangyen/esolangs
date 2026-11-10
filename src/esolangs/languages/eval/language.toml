@@ -76,7 +76,8 @@ scale = 1
 construction = "esolangs.languages.eval.generator:eval_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.eval.generator:eval_request"
 
 [resource_evidence.execution]
 expression = "L+1"
@@ -84,8 +85,6 @@ exact = true
 arities = [4, 6]
 first = 4
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.eval.generator:eval_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n={previous}: unwrapped L<=S; all-one setters skip nothing" }
 
 [resource_evidence.workspace]
@@ -94,8 +93,6 @@ exact = true
 arities = [4, 6]
 first = 4
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.eval.generator:eval_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n={previous}: one frame and staged Boolean cells", formula = "W" }
 
 [resource_evidence.scaling]
@@ -104,8 +101,6 @@ exact = true
 arities = [4, 6]
 first = 4
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.eval.generator:eval_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n={previous}: Gray-indexed table halves", formula = "S" }
 
 [semantic_evidence]

@@ -46,8 +46,6 @@ class ResourceBound:
     arities: tuple[int, ...]
     first: int
     unit: str
-    witnesses: str
-    construction: str
 
 
 def _arities(value: object) -> tuple[int, ...]:
@@ -88,6 +86,8 @@ def parse_bounds(language: str, data: dict[str, Any]) -> dict[str, ResourceBound
         raise ValueError("resource evidence requires a Boolean generator")
     generate = backend.generate
     construction = f"{generate.__module__}:{generate.__name__}"
+    if data["construction"] != construction:
+        raise ValueError("resource construction does not match its backend")
     found = {}
     for column in COLUMNS & data.keys():
         if not getattr(descriptions, column).bounded:
@@ -98,8 +98,6 @@ def parse_bounds(language: str, data: dict[str, Any]) -> dict[str, ResourceBound
             "arities",
             "first",
             "unit",
-            "witnesses",
-            "construction",
             "description",
         }
         if not isinstance(row, dict) or set(row) not in (
@@ -136,10 +134,6 @@ def parse_bounds(language: str, data: dict[str, Any]) -> dict[str, ResourceBound
             "pixels",
         }:
             raise ValueError("scaling bounds require an emitted source unit")
-        if row["witnesses"] != "tests.proofs.measurement:tables":
-            raise ValueError("resource witnesses must retain the execution corpus")
-        if row["construction"] != construction:
-            raise ValueError("resource construction does not match its backend")
         formula: Formula
         if "expression" in row:
             if not isinstance(row["expression"], str):
@@ -153,8 +147,6 @@ def parse_bounds(language: str, data: dict[str, Any]) -> dict[str, ResourceBound
             arities,
             row["first"],
             unit,
-            row["witnesses"],
-            construction,
         )
     if not {"execution", "workspace"} <= found.keys():
         raise ValueError("resource evidence requires execution and workspace bounds")

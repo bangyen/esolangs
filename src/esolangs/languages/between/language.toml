@@ -66,7 +66,8 @@ scale = 1
 construction = "esolangs.languages.between.generator:between_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.between.generator:between_request"
 
 [resource_evidence.execution]
 expression = "4n + 1"
@@ -74,8 +75,6 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.between.generator:between_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
@@ -84,8 +83,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.between.generator:between_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
@@ -94,8 +91,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "lines"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.between.generator:between_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [semantic_evidence]

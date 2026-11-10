@@ -74,7 +74,8 @@ scale = 1
 construction = "esolangs.languages.fackward.generator:fackward_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.fackward.generator:fackward_request"
 
 [resource_evidence.execution]
 expression = "38n - 26"
@@ -82,8 +83,6 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "steps"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.fackward.generator:fackward_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: 38 a level, the last printing what it reads" }
 
 [resource_evidence.workspace]
@@ -92,8 +91,6 @@ exact = true
 arities = [2, 3, 6]
 first = 2
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.fackward.generator:fackward_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: the two stacks hold the program's tokens" }
 
 [resource_evidence.scaling]
@@ -102,8 +99,6 @@ exact = true
 arities = [2, 3, 6]
 first = 2
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.fackward.generator:fackward_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: block per node" }
 
 [semantic_evidence]

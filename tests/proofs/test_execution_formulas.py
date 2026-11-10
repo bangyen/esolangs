@@ -49,7 +49,11 @@ def test_every_formula_cell_is_checked() -> None:
         broken[column].update(changes)
         with pytest.raises(ValueError, match=r"resource|workspace|scaling|execution"):
             parse_bounds(REFERENCE, broken)
-    for broken in (data | {"version": True}, data | {"unknown": {}}):
+    for broken in (
+        data | {"version": True},
+        data | {"unknown": {}},
+        data | {"construction": "other:generate"},
+    ):
         with pytest.raises(ValueError, match="resource"):
             parse_bounds(REFERENCE, broken)
     broken = copy.deepcopy(data)

@@ -62,7 +62,8 @@ scale = 1
 construction = "esolangs.languages.nq.generator:nq_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.nq.generator:nq_request"
 
 [resource_evidence.execution]
 expression = "3n + 4"
@@ -70,8 +71,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.nq.generator:nq_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: one extra guard for compact parity leaves" }
 
 [resource_evidence.workspace]
@@ -80,8 +79,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.nq.generator:nq_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: queued trits, flag, cursor, lap and input progress" }
 
 [resource_evidence.scaling]
@@ -90,8 +87,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.nq.generator:nq_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [semantic_evidence]

@@ -78,7 +78,8 @@ scale = 1
 construction = "esolangs.languages.rubic.generator:rubic_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.rubic.generator:rubic_request"
 
 [resource_evidence.execution]
 expression = "16n + 5"
@@ -86,8 +87,6 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.rubic.generator:rubic_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: the negated last bit costs 19, earlier differing nodes add 16" }
 
 [resource_evidence.workspace]
@@ -96,8 +95,6 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.rubic.generator:rubic_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: I=1 for n<3, else 0; n frames, n+4-bit positions", formula = "3n²+15n+117+bl(n)+I" }
 
 [resource_evidence.scaling]
@@ -106,8 +103,6 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.rubic.generator:rubic_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: distinct maximal children, seeded by constant/NOT pairs" }
 
 [semantic_evidence]

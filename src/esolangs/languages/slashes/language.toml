@@ -74,7 +74,8 @@ scale = 1
 construction = "esolangs.languages.slashes.generator:slashes_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.slashes.generator:slashes_request"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.slashes.tests.formulas:_execution"
@@ -82,8 +83,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "steps"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.slashes.generator:slashes_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: 9T/2+n+21 past n = 1; 28 at n = 1", formula = "E" }
 
 [resource_evidence.workspace]
@@ -92,8 +91,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.slashes.generator:slashes_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: expanded source and separate pattern/replacement peaks", formula = "W" }
 
 [resource_evidence.scaling]
@@ -102,8 +99,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 4
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.slashes.generator:slashes_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: 5T/2+n+83 from n=4; 76/95/107 below", formula = "F" }
 
 [semantic_evidence]

@@ -77,7 +77,8 @@ scale = 1
 construction = "esolangs.languages.cvnc.generator:cvnc_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.cvnc.generator:cvnc_request"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.cvnc.proof_formulas:execution"
@@ -85,8 +86,6 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.cvnc.generator:cvnc_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula}", formula = "17 + 4n + (n-1)(3 + sqrt(2L)) tokens: the path plus shared-subtree climbs" }
 
 [resource_evidence.workspace]
@@ -95,8 +94,6 @@ exact = true
 arities = [1, 2, 3, 4, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.cvnc.generator:cvnc_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, n in 4..13", formula = "17 + bl(2n-1) + bl(L)" }
 
 [resource_evidence.scaling]
@@ -105,8 +102,6 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.cvnc.generator:cvnc_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: pair 12, node 5, prologue 18" }
 
 [semantic_evidence]

@@ -85,7 +85,8 @@ scale = 1
 construction = "esolangs.languages.packlang.generator:packlang_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.packlang.generator:packlang_request"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.packlang.proof_formulas:execution"
@@ -93,8 +94,6 @@ exact = false
 arities = [3, 7]
 first = 3
 unit = "steps"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.packlang.generator:packlang_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} for n = 3..7, then 3T/64 + 1205 - n", formula = "19T/2 - n - 5" }
 
 [resource_evidence.workspace]
@@ -103,8 +102,6 @@ exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.packlang.generator:packlang_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: one frame, array", formula = "min(T,128) + 2n + min(n,7) + 192 + 16[n>7] + bl(L) + 2bl(n)" }
 
 [resource_evidence.scaling]
@@ -113,8 +110,6 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.packlang.generator:packlang_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: one write per differing row", formula = "N" }
 
 [semantic_evidence]

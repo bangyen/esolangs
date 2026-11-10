@@ -71,7 +71,8 @@ scale = 1
 construction = "esolangs.languages.cyclic_tag.generator:cyclic_tag_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.cyclic_tag.generator:cyclic_tag_request"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.cyclic_tag.proof_formulas:execution"
@@ -79,8 +80,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "steps"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.cyclic_tag.generator:cyclic_tag_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: indexed marker and at most one named continuation", formula = "E" }
 
 [resource_evidence.workspace]
@@ -89,8 +88,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.cyclic_tag.generator:cyclic_tag_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: queue, production pointer and output latch", formula = "W" }
 
 [resource_evidence.scaling]
@@ -99,8 +96,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.cyclic_tag.generator:cyclic_tag_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, weighted padding" }
 
 [semantic_evidence]

@@ -92,7 +92,8 @@ scale = 1
 construction = "esolangs.languages.minsky_swap.generator:minsky_swap_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.minsky_swap.generator:minsky_swap_request"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.minsky_swap.proof_formulas:execution"
@@ -100,8 +101,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.minsky_swap.generator:minsky_swap_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: unary index or ignored-tail macros; dump follows", formula = "max(T+6n+5,16n-3)" }
 
 [resource_evidence.workspace]
@@ -110,8 +109,6 @@ exact = [1, 2, 3, 6]
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.minsky_swap.generator:minsky_swap_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}; equality at n=1,2,3,6: registers, pointer, cursor and dump latch", formula = "W" }
 
 [resource_evidence.scaling]
@@ -120,8 +117,6 @@ exact = [1, 2, 3, 4, 5]
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.minsky_swap.generator:minsky_swap_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} through n=5; at most beyond", formula = "N" }
 
 [semantic_evidence]

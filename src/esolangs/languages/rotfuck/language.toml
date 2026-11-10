@@ -81,7 +81,8 @@ scale = 1
 construction = "esolangs.languages.rotfuck.generator:rotfuck_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.rotfuck.generator:rotfuck_request"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.rotfuck.proof_formulas:execution"
@@ -89,8 +90,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.rotfuck.generator:rotfuck_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} at n=1; E for n=2..6, R after: penultimate lone zero", formula = "183" }
 
 [resource_evidence.workspace]
@@ -99,8 +98,6 @@ exact = true
 arities = [2, 3, 4, 5]
 first = 2
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.rotfuck.generator:rotfuck_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 2..6, at most V after: 2T + 7 cells", formula = "W" }
 
 [resource_evidence.scaling]
@@ -109,8 +106,6 @@ exact = true
 arities = [2, 3, 4, 5, 6, 7, 8, 9, 10]
 first = 2
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.rotfuck.generator:rotfuck_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n = 2..10: a lone zero", formula = "P" }
 
 [semantic_evidence]

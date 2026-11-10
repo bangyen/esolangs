@@ -73,7 +73,8 @@ scale = 1
 construction = "esolangs.languages.basicfuck.generator:basicfuck_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.basicfuck.generator:basicfuck_request"
 
 [resource_evidence.execution]
 expression = "5n + 55"
@@ -81,8 +82,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.basicfuck.generator:basicfuck_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: reads, two tests and a call a level, block tests" }
 
 [resource_evidence.workspace]
@@ -91,8 +90,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.basicfuck.generator:basicfuck_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: digit cells, the answer, flags, counter" }
 
 [resource_evidence.scaling]
@@ -101,8 +98,6 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.basicfuck.generator:basicfuck_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the plain tree" }
 
 [semantic_evidence]

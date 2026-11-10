@@ -76,7 +76,8 @@ scale = 1
 construction = "esolangs.languages.bit_tilde.generator:bit_tilde_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.bit_tilde.generator:bit_tilde_request"
 
 [resource_evidence.execution]
 expression = "19T/4+18n+123"
@@ -84,8 +85,6 @@ exact = true
 arities = [4, 5, 6, 8]
 first = 4
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.bit_tilde.generator:bit_tilde_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: planting and two walks" }
 
 [resource_evidence.workspace]
@@ -94,8 +93,6 @@ exact = true
 arities = [4, 5, 6, 8]
 first = 4
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.bit_tilde.generator:bit_tilde_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: tape and cursors" }
 
 [resource_evidence.scaling]
@@ -104,8 +101,6 @@ exact = true
 arities = [4, 6, 8]
 first = 4
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.bit_tilde.generator:bit_tilde_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: minority planting", formula = "3T+19n+115" }
 
 [semantic_evidence]

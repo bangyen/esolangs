@@ -98,7 +98,8 @@ scale = 1
 construction = "esolangs.languages.boolfuck.generator:boolfuck_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.boolfuck.generator:boolfuck_request"
 
 [resource_evidence.execution]
 expression = "4n^2 + 30n + 8"
@@ -106,8 +107,6 @@ exact = true
 arities = [2, 3, 6]
 first = 2
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.boolfuck.generator:boolfuck_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: the all-ones row of a symmetric count table" }
 
 [resource_evidence.workspace]
@@ -116,8 +115,6 @@ exact = false
 arities = [2, 3, 4, 6, 7, 8]
 first = 2
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.boolfuck.generator:boolfuck_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}", formula = "bl(L-1) + max(12, bl(2n-3)+11) + n + Σ_{i<n} bl(i) + bl(2n) + bl(n)" }
 
 [resource_evidence.scaling]
@@ -126,8 +123,6 @@ exact = [3]
 arities = [3, 4, 5, 6, 7, 8]
 first = 3
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.boolfuck.generator:boolfuck_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} at n = 3, then at most C", formula = "C" }
 
 [semantic_evidence]

@@ -77,7 +77,8 @@ scale = 1
 construction = "esolangs.languages.subleq.generator:subleq_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.subleq.generator:subleq_request"
 
 [resource_evidence.execution]
 expression = "8T+(7n+5)(⌊T/n⌋-1)+23n-8"
@@ -85,8 +86,6 @@ exact = true
 arities = [9]
 first = 9
 unit = "steps"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.subleq.generator:subleq_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: the packed decoder" }
 
 [resource_evidence.workspace]
@@ -95,8 +94,6 @@ exact = true
 arities = [1, 2, 3, 5, 9]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.subleq.generator:subleq_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: image, rewritten cells, pc, cursor", formula = "I + R + P + bl(n)" }
 
 [resource_evidence.scaling]
@@ -105,8 +102,6 @@ exact = [9, 10, 11, 12, 13, 14]
 arities = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 first = 9
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.subleq.generator:subleq_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} at n = 9..14, at most elsewhere", formula = "min(P, H)" }
 
 [semantic_evidence]

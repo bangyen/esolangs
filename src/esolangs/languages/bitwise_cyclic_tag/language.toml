@@ -72,7 +72,8 @@ scale = 1
 construction = "esolangs.languages.bitwise_cyclic_tag.generator:bitwise_cyclic_tag_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.bitwise_cyclic_tag.generator:bitwise_cyclic_tag_request"
 
 [resource_evidence.execution]
 expression = "19T/4 + n + 2"
@@ -80,8 +81,6 @@ exact = true
 arities = [3, 5]
 first = 3
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.bitwise_cyclic_tag.generator:bitwise_cyclic_tag_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: input segments, then the walk" }
 
 [resource_evidence.workspace]
@@ -90,8 +89,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.bitwise_cyclic_tag.generator:bitwise_cyclic_tag_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: live queue of 3T/2 + 1 bits, answer, head and completion latch" }
 
 [resource_evidence.scaling]
@@ -100,8 +97,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.bitwise_cyclic_tag.generator:bitwise_cyclic_tag_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: seven per two-row cell, reads six a unit" }
 
 [semantic_evidence]

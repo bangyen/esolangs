@@ -88,7 +88,8 @@ scale = 1
 construction = "esolangs.languages.clockwise.generator:clockwise_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.clockwise.generator:clockwise_request"
 
 [resource_evidence.execution]
 expression = "16T + 22n + 2"
@@ -96,8 +97,6 @@ exact = true
 arities = [2, 3, 5]
 first = 2
 unit = "steps"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.clockwise.generator:clockwise_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: the pointer's path to the last row" }
 
 [resource_evidence.workspace]
@@ -106,8 +105,6 @@ exact = true
 arities = [3, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.clockwise.generator:clockwise_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: 7n-character queue" }
 
 [resource_evidence.scaling]
@@ -116,8 +113,6 @@ exact = true
 arities = [2, 3, 4, 5, 6, 7, 8, 9, 10]
 first = 2
 unit = "cells"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.clockwise.generator:clockwise_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}", formula = "25T + 40n + 20" }
 
 [semantic_evidence]

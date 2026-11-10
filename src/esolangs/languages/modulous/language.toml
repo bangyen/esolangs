@@ -79,7 +79,8 @@ scale = 1
 construction = "esolangs.languages.modulous.generator:modulous_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.modulous.generator:modulous_request"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.modulous.proof_formulas:execution"
@@ -87,8 +88,6 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.modulous.generator:modulous_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n=1; worst7 at n=1; split literal adds H-1", formula = "E" }
 
 [resource_evidence.workspace]
@@ -97,8 +96,6 @@ exact = true
 arities = [1, 2, 3, 4, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.modulous.generator:modulous_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n=1; worst13 at n=1; split literal uses max(P,actual) command cursor", formula = "W" }
 
 [resource_evidence.scaling]
@@ -107,8 +104,6 @@ exact = true
 arities = [1, 2, 3, 4, 5, 8]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.modulous.generator:modulous_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n=1; worst68 at n=1", formula = "S" }
 
 [semantic_evidence]

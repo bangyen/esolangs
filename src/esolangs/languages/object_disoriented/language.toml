@@ -76,7 +76,8 @@ scale = 1
 construction = "esolangs.languages.object_disoriented.generator:object_disoriented_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.object_disoriented.generator:object_disoriented_request"
 
 [resource_evidence.execution]
 expression = "76n + 34"
@@ -84,8 +85,6 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.object_disoriented.generator:object_disoriented_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: one tree path, 76 ops a level" }
 
 [resource_evidence.workspace]
@@ -94,8 +93,6 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.object_disoriented.generator:object_disoriented_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, c code ids, 2n+4 frames", formula = "F + H + M + bl(6n+9) + bl(n) + 14" }
 
 [resource_evidence.scaling]
@@ -104,8 +101,6 @@ exact = [2, 3, 4, 5, 6, 7, 8]
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.object_disoriented.generator:object_disoriented_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} to n = 8, at most min(24T+56, S)", formula = "D" }
 
 [semantic_evidence]

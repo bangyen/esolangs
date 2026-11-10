@@ -71,7 +71,8 @@ scale = 1
 construction = "esolangs.languages.ram0.generator:ram0_request"
 
 [resource_evidence]
-version = 1
+version = 2
+construction = "esolangs.languages.ram0.generator:ram0_request"
 
 [resource_evidence.execution]
 expression = "n^2 + 7n + 4"
@@ -79,8 +80,6 @@ exact = true
 arities = [3, 6]
 first = 3
 unit = "commands"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.ram0.generator:ram0_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}, one root-to-leaf path" }
 
 [resource_evidence.workspace]
@@ -89,8 +88,6 @@ exact = true
 arities = [3, 6]
 first = 3
 unit = "bits"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.ram0.generator:ram0_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}, S the token count", formula = "1 + n + bl(S) + 2max(1,bl(n-1)) + Σ_{a<n} max(1,bl(a))" }
 
 [resource_evidence.scaling]
@@ -99,8 +96,6 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "characters"
-witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.ram0.generator:ram0_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: tokens per distinct subtable", formula = "C" }
 
 [semantic_evidence]
