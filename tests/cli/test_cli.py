@@ -128,10 +128,14 @@ class TestInProcess:
     ) -> None:
         program = tmp_path / "prog.txt"
         program.write_text("anything")
-        with pytest.raises(SystemExit) as exc:
-            call_main(["run", "NoSuchLanguage", str(program)], capsys)
-        assert exc.value.code == 2
-        assert "unknown language" in capsys.readouterr().err
+        for command, args in (("run", [str(program)]), ("generate", ["01"])):
+            for options in ([], ["--set", "mode=1"], ["--settings", '{"mode":1}']):
+                with pytest.raises(SystemExit) as exc:
+                    call_main([command, "NoSuchLanguage", *args, *options], capsys)
+                assert exc.value.code == 2
+                error = capsys.readouterr().err
+                assert "unknown language" in error
+                assert "internal error" not in error
 
     def test_no_arguments(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as exc:

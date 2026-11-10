@@ -417,15 +417,15 @@ def _settings_of(
         values.update(parsed)
     if language is None and (values or set_pairs or "--settings" in options):
         _fail("dialect settings require a language")
-    for pair in set_pairs:
-        key, sep, raw = pair.partition("=")
-        if not sep or not key:
-            _fail(f"--set needs KEY=VALUE, got {pair!r}")
-        assert language is not None
-        values[key] = _set_value(key, raw, language)
-    if not values and "--settings" not in options and not set_pairs:
-        return None
     try:
+        for pair in set_pairs:
+            key, sep, raw = pair.partition("=")
+            if not sep or not key:
+                _fail(f"--set needs KEY=VALUE, got {pair!r}")
+            assert language is not None
+            values[key] = _set_value(key, raw, language)
+        if not values and "--settings" not in options and not set_pairs:
+            return None
         assert language is not None
         return settings_for(language, **values)  # type: ignore[arg-type]
     except EsolangError as exc:
