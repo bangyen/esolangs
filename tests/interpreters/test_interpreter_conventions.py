@@ -474,7 +474,7 @@ class TestEntryPointConventions:
             if keyword.arg == "loader":
                 wanted = {
                     "raster_source": {"Raster"},
-                    "literal_text_source": {"str"},
+                    "text_source": {"str"},
                     "compressed_text_source": {"str", "CompressedText"},
                 }[ast.unparse(keyword.value)]
                 shape = "loaded"

@@ -36,8 +36,27 @@ def test_wiki_while_zero_translation() -> None:
     assert _out(code) == "1"
 
 
-def test_reads_bytes() -> None:
-    assert _out(",.\n  ", "A") == "A"
+def test_reads_bytes(tmp_path) -> None:
+    import esolangs
+
+    source = ",.\n  "
+    assert _out(source, "A") == "A"
+    api = esolangs.Language("Pilas")
+    path = tmp_path / "source.txt"
+    path.write_bytes((source + "\r\n").encode())
+    assert api.from_file(path).source == source + "\r\n"
+    for program in (source + "\r\n", path):
+        for options in ({}, {"max_steps": 100}):
+            with pytest.raises(esolangs.ProgramError, match="lines"):
+                api.run(program, stdin="A", **options)
+    native = api.from_file(path, normalize=True)
+    assert native.source == source
+    assert api.run(native, stdin="A").output == "A"
+    esolangs.save_program(api.from_source(source), path)
+    assert path.read_bytes() == source.encode()
+    assert api.run(path, stdin="A").output == "A"
+    esolangs.save_program(api.from_source(source), path, normalize=True)
+    assert path.read_bytes() == (source + "\n").encode()
 
 
 @pytest.mark.parametrize(

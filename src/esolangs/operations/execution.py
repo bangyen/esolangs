@@ -110,11 +110,11 @@ def run(
     """Execute ``program`` and return output, input usage and completion evidence.
 
     Args:
-        program: Source or a :class:`~pathlib.Path`; a string shaped like a
-            filename is refused.  A file loses one trailing newline and has
-            CRLF and lone CR read as LF; a string keeps both.  Bytes hold UTF-8
-            text or PNG; a readable stream is consumed from its current
-            position and left open.
+        program: Literal source or a :class:`~pathlib.Path` naming a file.
+            Text retains line endings and terminators in every container.
+            Bytes hold UTF-8 text or PNG; a readable stream is consumed from
+            its current position and left open. Use ``Language.from_file``
+            with ``normalize=True`` for native newline handling.
         stdin: Consumed verbatim in the language's input unit, without
             Boolean validation; binary is decoded as UTF-8.  Build a
             Boolean-generated program's stdin with :func:`encode_inputs`,

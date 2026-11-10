@@ -30,18 +30,13 @@ class SourceLoader(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class TextSourcePolicy:
-    """UTF-8 text; native files trim one terminator and exports append one."""
+    """Lossless UTF-8 text; explicit native adapters trim or append one terminator."""
 
-    path_like: bool = False
     kind: ClassVar[SourceKind] = SourceKind.TEXT
     loader: ClassVar[SourceLoader] = SourceLoader.TEXT
     split: ClassVar[bool] = False
     compressed: ClassVar[bool] = False
     file_newline: ClassVar[bool] = True
-
-    def __post_init__(self) -> None:
-        if type(self.path_like) is not bool:
-            raise ValueError("path-like source policy must be boolean")
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,7 +71,6 @@ class RasterSourcePolicy:
     split: ClassVar[bool] = False
     compressed: ClassVar[bool] = False
     file_newline: ClassVar[bool] = True
-    path_like: ClassVar[bool] = False
 
 
 type SourcePolicy = (
@@ -140,11 +134,6 @@ class RuntimeSpec:
     def split(self) -> bool:
         """Return the source policy's split."""
         return self.source_policy.split
-
-    @property
-    def path_like_source(self) -> bool:
-        """Return the source policy's path like source."""
-        return self.source_policy.path_like
 
     @property
     def source_kind(self) -> SourceKind:

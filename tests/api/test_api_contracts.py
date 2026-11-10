@@ -21,7 +21,7 @@ from esolangs.exceptions import (
     TruthTableError,
     UnknownLanguageError,
 )
-from esolangs.operations.source import _check_program, _looks_like_a_path
+from esolangs.operations.source import _check_program
 from esolangs.registry import LANGUAGES
 from tests.support.generator_support import CHECK, evaluate_generated
 from tests.support.pick import languages
@@ -201,7 +201,7 @@ class TestEveryDeliberateErrorIsCatchable:
     # beside pytest.
     @pytest.mark.medium
     def test_every_committed_example_runs_from_its_described_path(self) -> None:
-        """describe() handed out paths run() choked on: the file's newline."""
+        """Packaged native examples explicitly use their file newline policy."""
         failures = []
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
@@ -211,7 +211,10 @@ class TestEveryDeliberateErrorIsCatchable:
                 try:
                     esolangs.run(
                         name,
-                        pathlib.Path(str(files("esolangs") / example)),
+                        esolangs.Language(name).from_file(
+                            pathlib.Path(str(files("esolangs") / example)),
+                            normalize=True,
+                        ),
                         stdin=esolangs.encode_inputs(name, [0, 1]),
                         timeout=20,
                     )
@@ -264,50 +267,40 @@ class TestAMissingFileIsAFileNotFoundError:
         assert "cannot read" in str(caught.value)
 
 
-class TestAMistypedPathIsNotRunAsAProgram:
-    """The guard keyed on ``os.path.exists``, so it fired on the mistake
-    you would have noticed anyway and missed the one you would not.
-    """
+class TestSourceAndPathsAreExplicit:
+    """Strings remain source regardless of spelling or filesystem contents."""
 
-    @pytest.mark.parametrize(
-        "argument",
-        ["/tmp/definitely-not-here.txt", r"a\\b.txt"],
-    )
-    def test_a_path_that_does_not_exist_is_refused(self, argument: str) -> None:
-        """Existence is exactly what it must not depend on."""
-        assert not pathlib.Path(argument).exists()
-        with pytest.raises(esolangs.ProgramError, match="looks like a path"):
-            esolangs.run(REFERENCE, argument, stdin="", timeout=5)
+    @pytest.mark.parametrize("argument", ["/tmp/definitely-not-here.txt", r"a\\b.txt"])
+    def test_a_missing_filename_is_literal_source(self, argument: str) -> None:
+        api = esolangs.Language(REFERENCE)
+        assert api.run(argument) == api.run(api.from_source(argument))
 
-    def test_a_path_that_does_exist_is_still_refused(
-        self, tmp_path: pathlib.Path
-    ) -> None:
-        """The case that already worked has to keep working."""
+    def test_an_existing_filename_is_still_literal_source(self, tmp_path) -> None:
         path = tmp_path / "p.txt"
         path.write_text("+++.")
-        with pytest.raises(esolangs.ProgramError, match="looks like a path"):
-            esolangs.run(REFERENCE, str(path), stdin="", timeout=5)
+        api = esolangs.Language(REFERENCE)
+        assert api.run(str(path)) == api.run(api.from_source(str(path)))
+        assert api.run(path).output == "\x03"
 
     def test_every_entry_point_agrees(self) -> None:
-        """All four take a program, so all four have to refuse the same thing."""
-        for call in (
-            lambda: esolangs.run(REFERENCE, "nope.txt", stdin="", timeout=5).output,
-            lambda: _check_program(REFERENCE, "nope.txt", ""),
-            lambda: debugger_api.make_vm(REFERENCE, "nope.txt", stdin=""),
-            lambda: debugger_api.make_debugger(REFERENCE, "nope.txt", stdin=""),
-        ):
-            with pytest.raises(esolangs.ProgramError, match="looks like a path"):
-                call()
+        source = "nope.txt"
+        assert esolangs.run(REFERENCE, source).output == "\x00"
+        assert _check_program(REFERENCE, source).source == source
+        from esolangs.vm import complete_vm
+
+        assert complete_vm(debugger_api.make_vm(REFERENCE, source)) == "\x00"
+        debugger = debugger_api.make_debugger(REFERENCE, source)
+        assert debugger.run(max_steps=100) == "halted"
+        assert debugger.output == "\x00"
 
     def test_a_real_program_is_untouched(self) -> None:
         """A guard that refuses real programs is worse than the bug."""
         assert esolangs.run(REFERENCE, "+++.", stdin="", timeout=5).output == "\x03"
 
-    def test_no_committed_example_looks_like_a_path(self) -> None:
-        """The claim the widened rule rests on, checked rather than asserted."""
-        for path in sorted(pathlib.Path("examples").glob("*.txt")):
-            text = path.read_text()
-            assert not ("\n" not in text and text.endswith(".txt")), path.name
+    def test_file_bytes_are_source_without_spelling_rules(self, tmp_path) -> None:
+        path = tmp_path / "source.txt"
+        path.write_bytes(b"nope.txt\r\n")
+        assert _check_program(REFERENCE, path).source == "nope.txt\r\n"
 
     def test_a_pathlib_path_is_read_in_both_directions(
         self, tmp_path: pathlib.Path
@@ -400,8 +393,8 @@ class TestTheVersionIsResolvedWhenAsked:
         assert result.stdout.strip() == f"esolangs {esolangs.__version__}"
 
 
-class TestThePathGuardKnowsMoreThanTxt:
-    """It tested for a literal ``.txt`` and nothing else."""
+class TestSourceSpellingDoesNotSelectAContainer:
+    """Paths require Path objects, regardless of extensions or commands."""
 
     @pytest.mark.parametrize(
         "argument",
@@ -414,10 +407,9 @@ class TestThePathGuardKnowsMoreThanTxt:
             "data.1",
         ],
     )
-    def test_a_path_shaped_string_is_refused(self, argument: str) -> None:
-        """Rooted, or ending in a short extension, and only path characters."""
-        with pytest.raises(esolangs.ProgramError, match="looks like a path"):
-            esolangs.run(REFERENCE, argument, stdin="", timeout=5)
+    def test_a_path_shaped_string_is_source(self, argument: str) -> None:
+        api = esolangs.Language(REFERENCE)
+        assert api.run(argument) == api.run(api.from_source(argument))
 
     @pytest.mark.parametrize("program", [".", ".."])
     def test_a_real_program_still_runs(self, program: str) -> None:
@@ -427,7 +419,7 @@ class TestThePathGuardKnowsMoreThanTxt:
     @pytest.mark.parametrize("program", ["~~", "-", "a/b/c", "/", "./", "1.5"])
     def test_a_hand_written_program_is_not_mistaken(self, program: str) -> None:
         """Adjacent commands ``~~`` were refused, and Befunge's ``/``."""
-        assert not _looks_like_a_path(program), program
+        assert _check_program(REFERENCE, program).source == program
 
 
 class TestTheArgumentBoundaryRefusesCleanly:

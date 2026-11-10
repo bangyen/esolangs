@@ -86,7 +86,9 @@ def _read_program(
 ) -> ProgramArtifact[Program]:
     """Read bounded source, refusing a non-text or oversized file."""
     try:
-        return _check_program(language, _FileSource(path, _bounded_read(path, timeout)))
+        return _check_program(
+            language, _FileSource(path, _bounded_read(path, timeout)), normalize=True
+        )
     except EsolangError as exc:
         _fail(exc)
         raise  # pragma: no cover - _fail exits

@@ -38,8 +38,8 @@ def test_runtime_facts_are_owned_only_by_the_runtime_record():
     assert not VerbatimSourcePolicy().file_newline
     assert CompressedSourcePolicy().compressed
     assert RasterSourcePolicy().kind == RasterSourcePolicy().loader == "raster"
-    with pytest.raises(ValueError, match="boolean"):
-        TextSourcePolicy(path_like=1)
+    with pytest.raises(TypeError):
+        TextSourcePolicy(path_like=True)
     runtime_fields = {field.name for field in fields(RuntimeSpec)}
     assert runtime_fields.isdisjoint(
         {

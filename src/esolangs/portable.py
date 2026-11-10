@@ -38,16 +38,16 @@ def save_program(
     path: str | PathLike[str],
     *,
     gzip: bool = False,
-    normalize: bool = True,
+    normalize: bool = False,
     catalog: Catalog | None = None,
 ) -> None:
     """Write a program as a native source file.
 
-    Text is UTF-8 with a language-permitted terminator, compressed source stays gzip,
+    Text retains its UTF-8 bytes and line endings, compressed source stays gzip,
     and rasters are PNG. ``gzip=True`` compresses ordinary text exports too.
     Compression is explicit; a ``.gz`` suffix alone does not enable it.
-    Gzip exports follow the same file-newline policy as plain exports.
-    ``normalize=False`` preserves decoded text exactly, including line endings.
+    ``normalize=True`` appends a language-permitted native file terminator to text,
+    including gzip exports.
     An existing file is replaced after encoding and
     writing succeed. Use :func:`dump_program` for a portable document that
     preserves dialect settings and template setters.

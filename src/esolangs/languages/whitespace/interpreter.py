@@ -76,7 +76,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import MachineFactory
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._source import literal_text_source
+from esolangs.runtime._source import text_source
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer
@@ -420,4 +420,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    script_main(run, loader=literal_text_source)
+    script_main(run, loader=text_source)

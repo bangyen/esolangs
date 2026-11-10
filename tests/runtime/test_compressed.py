@@ -21,7 +21,7 @@ def test_streaming_text_round_trip_and_size(tmp_path: Path) -> None:
     assert text_source(program.to_gzip()) == source
     path = tmp_path / "source.gz"
     program.save(path)
-    assert text_source(path) == source.removesuffix("\n")
+    assert text_source(path) == source
     assert program.to_gzip() == CompressedText.from_chunks((source,)).to_gzip()
     empty = CompressedText.from_chunks(("",))
     assert len(empty) == 0

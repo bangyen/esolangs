@@ -119,15 +119,17 @@ def test_binary_stdin_uses_the_same_unicode_character_stream(stdin: Any) -> None
     assert esolangs.run(REFERENCE, ",.", stdin=stdin).output == "é"
 
 
-def test_path_loading_retains_existing_newline_normalization(tmp_path: Path) -> None:
+def test_path_loading_is_lossless_with_explicit_native_normalization(
+    tmp_path: Path,
+) -> None:
     path = tmp_path / "source.txt"
     path.write_bytes(b"+,\r\n.\r\n")
     api = esolangs.Language(REFERENCE)
     assert api.from_file(path).source == "+,\r\n.\r\n"
     assert api.from_file(path, normalize=True).source == "+,\n."
-    esolangs.save_program(api.from_file(path), path, normalize=False)
+    esolangs.save_program(api.from_file(path), path)
     assert path.read_bytes() == b"+,\r\n.\r\n"
-    assert _check_program(REFERENCE, path).source == "+,\n."
+    assert _check_program(REFERENCE, path).source == "+,\r\n.\r\n"
     assert esolangs.run(REFERENCE, path, stdin="Q").output == "Q"
 
 

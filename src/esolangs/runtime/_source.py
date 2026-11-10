@@ -26,7 +26,7 @@ type ProgramSource = Program | Artifact | bytes | os.PathLike[str] | IO[str] | I
 
 @dataclass(frozen=True, slots=True)
 class _FileSource:
-    """A bounded file snapshot retaining file newline semantics."""
+    """A bounded file snapshot retaining its filename for errors."""
 
     path: str
     content: bytes
@@ -75,8 +75,8 @@ def _read_container(
 
 
 def text_source(source: ProgramSource | _FileSource) -> str:
-    """Load UTF-8 source; only Paths lose one trailing newline."""
-    value, path = _read_container(source)
+    """Decode UTF-8 source without changing line endings or terminators."""
+    value, _path = _read_container(source)
     if isinstance(value, bytes) and value.startswith(b"\x1f\x8b"):
         value = CompressedText(value)
     if isinstance(value, CompressedText):
@@ -96,17 +96,14 @@ def text_source(source: ProgramSource | _FileSource) -> str:
             "pass text source or UTF-8 bytes; use pathlib.Path for a text filename",
             error_type=ProgramError,
         )
+    return value
+
+
+def native_text_source(source: ProgramSource | _FileSource) -> str:
+    """Normalize native text line endings and remove one file terminator."""
     return (
-        value.replace("\r\n", "\n").replace("\r", "\n").removesuffix("\n")
-        if path
-        else value
+        text_source(source).replace("\r\n", "\n").replace("\r", "\n").removesuffix("\n")
     )
-
-
-def literal_text_source(source: ProgramSource | _FileSource) -> str:
-    """Preserve file command line feeds, including the last byte."""
-    value, _path = _read_container(source)
-    return text_source(value)
 
 
 def compressed_text_source(source: ProgramSource | _FileSource) -> str | CompressedText:
@@ -137,7 +134,7 @@ _SOURCE_LOADERS: dict[
     SourceLoader, Callable[[ProgramSource | _FileSource], Program]
 ] = {
     SourceLoader.TEXT: text_source,
-    SourceLoader.VERBATIM: literal_text_source,
+    SourceLoader.VERBATIM: text_source,
     SourceLoader.COMPRESSED: compressed_text_source,
     SourceLoader.RASTER: raster_source,
 }
@@ -148,15 +145,17 @@ def source_for(
     source: ProgramSource | _FileSource,
     *,
     catalog: Catalog | None = None,
+    native: bool = False,
 ) -> Program:
     """Decode containers using declared policy without importing an interpreter."""
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
 
-    return _SOURCE_LOADERS[
-        catalog.languages[catalog.resolve(language)].runtime.source_loader
-    ](source)
+    loader = catalog.languages[catalog.resolve(language)].runtime.source_loader
+    if native and loader is SourceLoader.TEXT:
+        return native_text_source(source)
+    return _SOURCE_LOADERS[loader](source)
 
 
 def effective_scale(

@@ -96,14 +96,16 @@ cannot run. `Language` binds language-specific operations; saving uses the
 top-level `save_program` function.
 
 `save_program(record, path, gzip=True)` compresses native text exports;
-`generate --gzip` does the same on the CLI. Both retain native file newlines.
+`generate --gzip` does the same on the CLI. API exports are lossless by default;
+CLI generation uses native file terminators.
 Use `dump_program` to preserve dialect settings and template bindings on disk.
 
 `Language.from_source(source)` declares runnable source explicitly, including
 text that resembles a filename. `Language.from_file(path)` preserves decoded text
 exactly and retains embedded dialect settings and scale. Use `normalize=True`
-for native file newline handling, or `save_program(..., normalize=False)` for
-lossless text export. Direct `run(Path(...))` retains native normalization.
+on import or `save_program(..., normalize=True)` on export for native file
+terminators. Direct `run(Path(...))` is lossless; strings are always source.
+The CLI explicitly loads native files with newline normalization.
 Both return `ProgramArtifact`; parsing still happens when the program executes.
 
 `generate` and `load_program` return artifacts; `instantiate` returns a filled

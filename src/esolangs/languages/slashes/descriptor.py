@@ -18,7 +18,7 @@ LANGUAGE = Language(
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
         category="program_based",
-        source_policy=TextSourcePolicy(path_like=True),
+        source_policy=TextSourcePolicy(),
     ),
     id="slashes",
     aliases=("Slashalash",),

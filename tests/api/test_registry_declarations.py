@@ -30,7 +30,7 @@ def _check_scoped_catalogs():
     import esolangs
     import esolangs.operations.execution as execution
     from esolangs.registry import CATALOG
-    from esolangs.runtime._definition import TextSourcePolicy
+    from esolangs.runtime._definition import VerbatimSourcePolicy
     from esolangs.runtime.io import ScriptedIO
 
     records = list(LANGUAGES.values())
@@ -56,9 +56,7 @@ def _check_scoped_catalogs():
         replace(
             original,
             aliases=(*original.aliases, "scoped-bf"),
-            runtime=replace(
-                original.runtime, source_policy=TextSourcePolicy(path_like=True)
-            ),
+            runtime=replace(original.runtime, source_policy=VerbatimSourcePolicy()),
         )
     )
     bound = scoped.bind("scoped-bf")
@@ -67,8 +65,7 @@ def _check_scoped_catalogs():
     assert bound.run("input.bf", max_steps=10).output == "\x00"
     with pytest.raises(esolangs.UnknownLanguageError):
         CATALOG.resolve("scoped-bf")
-    with pytest.raises(esolangs.ProgramError, match="path"):
-        snapshot.bind("Brainfuck").run("input.bf", max_steps=10)
+    assert snapshot.bind("Brainfuck").run("input.bf", max_steps=10).output == "\x00"
 
     class Unreadable:
         def read(self):

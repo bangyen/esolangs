@@ -20,7 +20,7 @@ class TestNameResolutionIsTrulyCaseInsensitive:
 
 
 class TestPathAndTextTrailingNewline:
-    """Path input strips one trailing newline; string input preserves it."""
+    """Path and string input preserve the same source newlines."""
 
     def test_lf_ignored_by_cvnc_makes_path_and_text_agree(self, tmp_path: Path) -> None:
         path = tmp_path / "c.txt"

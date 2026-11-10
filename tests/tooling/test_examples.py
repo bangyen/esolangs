@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 
 import esolangs
-import esolangs.operations.source as _source_operations
 from esolangs._cycles import _BranchingStepMachine, _FramedMachine, _TapeMachine
 from esolangs.compressed import CompressedText
 from esolangs.generation.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
@@ -215,7 +214,7 @@ def test_boolean_example(name: str) -> None:
     _module, _inputs, expected, _splitlines, _kwargs = BOOLEAN_EXAMPLES[name]
     path = BASE_DIR / "src/esolangs" / esolangs.describe(name)["examples"][0]
     stdin = BOOLEAN_GENERATED[name].stdin
-    program = _source_operations._read_source(name, path)
+    program = esolangs.Language(name).from_file(path, normalize=True).source
     if isinstance(program, Raster):
         got = esolangs.run(name, program, stdin=stdin).output
     else:

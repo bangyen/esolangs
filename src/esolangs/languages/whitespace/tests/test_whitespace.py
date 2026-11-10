@@ -154,7 +154,7 @@ def test_untaken_branches_skip_missing_label_lookup() -> None:
             wrun(branch + T + L + END)
 
 
-def test_character_output_uses_the_code_point_range() -> None:
+def test_character_output_uses_the_code_point_range(tmp_path) -> None:
     for value in (0, 255, 256, 0xD800, 0xDFFF, 0x10000, 0x10FFFF):
         assert wrun(push(value) + OUT_CHAR + END) == chr(value)
     for value in (-1, 0x110000, -(2**80), 2**80):
@@ -162,6 +162,39 @@ def test_character_output_uses_the_code_point_range() -> None:
         with pytest.raises(HaltError, match="character output"):
             run(push(65) + OUT_CHAR + push(value) + OUT_CHAR + END, io)
         assert io.getvalue() == "A"
+    _check_lossless_containers(tmp_path)
+
+
+def _check_lossless_containers(tmp_path):
+    import io
+
+    import esolangs
+
+    api = esolangs.Language("Whitespace")
+    source = (push(65) + OUT_CHAR + END).replace("\n", "\r\n")
+    path = tmp_path / "source.ws"
+    artifact = api.from_source(source)
+    esolangs.save_program(artifact, path)
+    assert path.read_bytes() == source.encode()
+    assert api.from_file(path).source == source
+    assert api.from_file(path, normalize=True).source == source
+    for program in (
+        source,
+        source.encode(),
+        path,
+        artifact,
+        io.StringIO(source),
+        io.BytesIO(source.encode()),
+    ):
+        prepared = api.prepare(program)
+        assert prepared.artifact.source == source
+        assert prepared.run().output == "A"
+        assert prepared.run(max_steps=100).output == "A"
+    assert api.run(path, isolated=True, max_steps=100).output == "A"
+    assert api.execute(path).unwrap().output == "A"
+    esolangs.save_program(artifact, path, gzip=True)
+    assert api.from_file(path).source == source
+    assert api.run(path).output == "A"
 
 
 def test_numeric_reads_consume_one_complete_line() -> None:
