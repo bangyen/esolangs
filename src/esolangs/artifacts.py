@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
 
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import ArgumentError, ProgramError, TemplateError
@@ -21,8 +20,7 @@ from esolangs.runtime._validate import check_bits, check_provenance, check_scale
 
 __all__ = ["Artifact", "ProgramArtifact", "TemplateArtifact", "TemplateBindings"]
 
-if TYPE_CHECKING:
-    from esolangs.settings import DialectSettings
+from esolangs.settings import DialectSettings
 
 
 def _origin(source: object, language: str, settings: DialectSettings | None) -> str:

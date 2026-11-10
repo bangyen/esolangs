@@ -7,14 +7,12 @@ from dataclasses import dataclass, field
 from functools import partial
 from itertools import takewhile
 from operator import is_not
-from typing import TYPE_CHECKING, cast
-
-if TYPE_CHECKING:
-    from esolangs.settings import DialectSettings
+from typing import cast
 
 from esolangs.exceptions import ArgumentError, MissingDependencyError, ProgramError
 from esolangs.runtime._validate import check_provenance, check_scale
 from esolangs.runtime.source_hints import syntax_error
+from esolangs.settings import DialectSettings
 
 from . import png
 

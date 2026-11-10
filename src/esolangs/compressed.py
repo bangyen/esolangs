@@ -9,13 +9,10 @@ import zlib
 from collections.abc import Iterable, Iterator
 from dataclasses import KW_ONLY, dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from esolangs.exceptions import ArgumentError, GeneratorCapError, ProgramError
 from esolangs.runtime._validate import check_provenance
-
-if TYPE_CHECKING:
-    from esolangs.settings import DialectSettings
+from esolangs.settings import DialectSettings
 
 
 @dataclass(frozen=True)

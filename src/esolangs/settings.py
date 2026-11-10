@@ -5,15 +5,18 @@ from difflib import get_close_matches
 from typing import Any, TypedDict
 
 from esolangs.exceptions import ArgumentError
-from esolangs.registry import LANGUAGES, resolve
 from esolangs.runtime._validate import _argument_repr
 
-#: Every setting a language's ``dialect=`` may take, and its values.
-_CHOICES: dict[str, tuple[int | str, ...]] = {
-    key: values
-    for language in LANGUAGES.values()
-    for key, values in (language.runtime.dialect_values or {}).items()
-}
+
+def _choices() -> dict[str, tuple[int | str, ...]]:
+    """Load catalog choices only when constructing settings."""
+    from esolangs.registry import LANGUAGES
+
+    return {
+        key: values
+        for language in LANGUAGES.values()
+        for key, values in (language.runtime.dialect_values or {}).items()
+    }
 
 
 @dataclass(frozen=True, init=False, repr=False)
@@ -29,16 +32,17 @@ class DialectSettings:
         here rather than at first use (``rotation="sideways"`` once reached
         ``generate``).  Unsupported keys still fail only at use.
         """
+        known_choices = _choices()
         for key, value in choices.items():
-            if key not in _CHOICES:
-                known = sorted(_CHOICES)
+            if key not in known_choices:
+                known = sorted(known_choices)
                 close = get_close_matches(key, known, n=1, cutoff=0.6)
                 suggestion = f" (did you mean {close[0]}?)" if close else ""
                 raise ArgumentError(
                     f"unknown dialect setting: {key}{suggestion}; "
                     f"known settings: {', '.join(known)}"
                 )
-            values = _CHOICES[key]
+            values = known_choices[key]
             # ``type`` rather than ``==`` alone: True == 1 and 256.0 == 256.
             if type(value) is not type(values[0]) or value not in values:
                 raise ArgumentError(
@@ -59,6 +63,8 @@ class DialectSettings:
         Raises:
             ArgumentError: ``language`` has no such setting or value.
         """
+        from esolangs.registry import LANGUAGES, resolve
+
         name = resolve(language)
         values: dict[str, Any] = dict(self._items)
         runtime = LANGUAGES[name].runtime
@@ -102,6 +108,7 @@ def effective_settings(
     from esolangs.artifacts import ProgramArtifact, TemplateArtifact
     from esolangs.compressed import CompressedText
     from esolangs.raster import Raster
+    from esolangs.registry import resolve
 
     if settings is not None and not isinstance(settings, DialectSettings):
         raise ArgumentError(
@@ -132,11 +139,14 @@ class DialectOption(TypedDict):
 
 def dialect_choices(language: str) -> dict[str, DialectOption]:
     """Return fresh choices and explicitly declared defaults."""
+    from esolangs.registry import LANGUAGES, resolve
+
     runtime = LANGUAGES[resolve(language)].runtime
     if runtime.dialect is None:
         return {}
     assert runtime.dialect_defaults is not None
+    choices = runtime.dialect_values or {}
     return {
-        key: {"default": default, "choices": _CHOICES[key]}
+        key: {"default": default, "choices": choices[key]}
         for key, default in runtime.dialect_defaults.items()
     }
