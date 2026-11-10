@@ -89,6 +89,10 @@ class TestBrainfuck:
 @pytest.mark.medium
 def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint(REFERENCE, "[", "close this '['")
+    from .test_semantic_oracle import _corpus
+    from .workspace_checks import check_workspace_brainfuck
+
+    check_workspace_brainfuck(_corpus)
 
 
 @pytest.mark.parametrize("io_type", [ScriptedIO, PositionlessIO])

@@ -3939,3 +3939,30 @@ raw-closure limits remain explicit. Evidence: `notes/migration-closure-batch3-fi
 Completion rows: 111 closed, six open; six accounting reviews remain pending.
 The combined branch referee receipt is retained with this batch; the final
 whole-migration referee remains pending.
+
+Brainfuck retains all 1,670 original oracle invocations and seven existing
+tail/hint cases. The independent transition engine is unchanged; its final
+wrapper exposes full allocated tape and control state. Bounds remain 200,
+with the old wrap-tail's exact 257 limit and three post-halt idles. The existing
+medium owner retains its old body; no nodes or bands change.
+
+Fifty-six fresh installed leaves pass on Python 3.12.11–final 3.15.0. Raw,
+prepared, VM and debugger each match 29,492 boundaries, seventeen constructor
+refusals, 225 active failures, 23,569 successful steps and 89 live cap-200 runs.
+All four workspace parts, full IO, readonly code/brackets and retained captures
+are checked; the corpus peak is 26 bits. Each version checks 1,677 bounded
+public calls, 1,588 finite ordinary calls, 96 actual masks and sixteen physical
+fault histories. The ordinary API is compiled: its IO/Result checks provide
+zero raw-history boundaries. The installed mask witness is 16 bits; the
+separate 14-bit native witness belongs to the repository owner.
+
+All 29,492 raw snapshots round-trip per version. Twenty-four representative
+workers, four cap workers, four ordinary workers and three proof workers yield
+140 children and 196 startup markers overall under the 952-file guard. The
+strict saved reader, full relocation and 28 corruption controls pass; result
+mutations also change saved stdout. V1's empty-views assertion failed on the
+real VM; V2 derives the declared ind/ptr/tape text and pointer independently.
+All 56 leaves were rerun, with 172.70s active time and unchanged 60s caps. Native
+and generator code are unchanged. Brainfuck's bounded accounting review is
+complete; arbitrary syntax, allocation and provider universality remain open.
+Accounting reviews pending: 5; completion joins remain separate.
